@@ -1,16 +1,16 @@
-name: Continuous Integration
+name: Checcks
 
 on:
   push:
     branches:
-      - main
+      ignore:
+        - main
 
 jobs:
   ci:
-    name: Continuous Integration
+    name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # @TODO: handle `env`
     steps:
       - uses: actions/checkout@v2
 
@@ -34,5 +34,3 @@ jobs:
 
       - name: Test
         run: make test
-
-      # @TODO: handle publishing `if: github.ref == 'refs/heads/main'`
