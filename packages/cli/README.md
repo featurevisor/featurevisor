@@ -59,7 +59,7 @@ Test your generated datafiles using the SDK, against specs written in YAMLs.
 $ featurevisor test
 ```
 
-See test specs in YAMLs [here](../../examples/example-1/tests) for inspiration
+See test specs in YAMLs [here](../../examples/example-1/tests) for inspiration.
 
 ## License
 
