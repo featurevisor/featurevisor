@@ -32,6 +32,10 @@
     "type": "git",
     "url": "https://github.com/fahad19/featurevisor.git"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "bugs": {
     "url": "https://github.com/fahad19/featurevisor/issues"
   },
