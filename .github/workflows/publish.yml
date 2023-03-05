@@ -32,7 +32,10 @@ jobs:
         run: make install
 
       - name: Build
-        run: make build
+        run: |
+          make build
+
+          git shortlog
 
       # - name: Lint
       #   run: make lint
@@ -43,7 +46,6 @@ jobs:
       - name: Publish
         if: github.ref == 'refs/heads/main'
         run: |
-          git shortlog
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
           npx lerna version --no-private --conventional-commits --conventional-graduate --yes
