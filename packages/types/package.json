@@ -1,0 +1,39 @@
+{
+  "name": "@featurevisor/types",
+  "version": "0.0.0",
+  "description": "Common Typescript types for Featurevisor",
+  "main": "dist/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
+    "dist": "webpack --config ./webpack.config.js",
+    "build": "npm run transpile && npm run dist",
+    "test": "echo 'Nothing to test in types package'"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "experimentation",
+    "experiment",
+    "experiments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahad19/featurevisor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fahad19/featurevisor/issues"
+  },
+  "license": "MIT"
+}
