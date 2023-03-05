@@ -1,0 +1,51 @@
+{
+  "name": "@featurevisor/core",
+  "version": "0.0.0",
+  "description": "Core package of Featurevisor for Node.js usage",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
+    "dist": "echo 'Nothing to dist here'",
+    "build": "npm run transpile",
+    "test": "jest --config ../../jest.config.js --verbose"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "experimentation",
+    "experiment",
+    "experiments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahad19/featurevisor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fahad19/featurevisor/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@featurevisor/sdk": "0.0.0",
+    "@featurevisor/types": "0.0.0",
+    "axios": "^1.3.4",
+    "joi": "^17.8.3",
+    "js-yaml": "^4.1.0",
+    "mkdirp": "^2.1.3",
+    "tar": "^6.1.13"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.5",
+    "@types/tar": "^6.1.4"
+  }
+}

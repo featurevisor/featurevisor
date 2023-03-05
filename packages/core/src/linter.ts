@@ -1,0 +1,328 @@
+// for use in node only
+import * as fs from "fs";
+import * as path from "path";
+
+import * as Joi from "joi";
+
+import { ProjectConfig } from "./config";
+import { getYAMLFiles, parseYaml } from "./utils";
+
+export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
+  const attributeJoiSchema = Joi.object({
+    archived: Joi.boolean(),
+    type: Joi.string().allow("boolean", "string", "integer", "double"),
+    description: Joi.string(),
+    capture: Joi.boolean().optional(),
+  });
+
+  return attributeJoiSchema;
+}
+
+export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
+  const plainConditionJoiSchema = Joi.object({
+    attribute: Joi.string(),
+    operator: Joi.string().valid(
+      "equals",
+      "notEquals",
+
+      // numeric
+      "greaterThan",
+      "greaterThanOrEquals",
+      "lessThan",
+      "lessThanOrEquals",
+
+      // string
+      "contains",
+      "notContains",
+      "startsWith",
+      "endsWith",
+
+      // array of strings
+      "in",
+      "notIn",
+    ),
+    value: Joi.alternatives().try(
+      // @TODO: make them more specific
+      Joi.string(),
+      Joi.number(),
+      Joi.boolean(),
+      Joi.array().items(Joi.string()),
+    ),
+  });
+
+  const andOrConditionJoiSchema = Joi.alternatives()
+    .try(
+      Joi.object({
+        and: Joi.array().items(Joi.link("#andOrCondition"), plainConditionJoiSchema),
+      }),
+      Joi.object({
+        or: Joi.array().items(Joi.link("#andOrCondition"), plainConditionJoiSchema),
+      }),
+    )
+    .id("andOrCondition");
+
+  const conditionJoiSchema = Joi.alternatives().try(
+    andOrConditionJoiSchema,
+    plainConditionJoiSchema,
+  );
+
+  const conditionsJoiSchema = Joi.alternatives().try(
+    conditionJoiSchema,
+    Joi.array().items(conditionJoiSchema),
+  );
+
+  return conditionsJoiSchema;
+}
+
+export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
+  const segmentJoiSchema = Joi.object({
+    archived: Joi.boolean().optional(),
+    description: Joi.string(),
+    conditions: conditionsJoiSchema,
+  });
+
+  return segmentJoiSchema;
+}
+
+export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
+  const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
+  const variableValueJoiSchema = Joi.alternatives()
+    .try(Joi.string(), Joi.number(), Joi.boolean(), Joi.array().items(Joi.string()))
+    .allow("");
+
+  const plainGroupSegment = Joi.string();
+
+  const andOrGroupSegment = Joi.alternatives()
+    .try(
+      Joi.object({
+        and: Joi.array().items(Joi.link("#andOrGroupSegment"), plainGroupSegment),
+      }),
+      Joi.object({
+        or: Joi.array().items(Joi.link("#andOrGroupSegment"), plainGroupSegment),
+      }),
+    )
+    .id("andOrGroupSegment");
+
+  const groupSegment = Joi.alternatives().try(andOrGroupSegment, plainGroupSegment);
+
+  const groupSegmentsJoiSchema = Joi.alternatives().try(
+    Joi.array().items(groupSegment),
+    groupSegment,
+  );
+
+  const environmentJoiSchema = Joi.object({
+    expose: Joi.boolean(),
+    rules: Joi.array().items(
+      Joi.object({
+        key: Joi.string(), // @TODO: make it unique among siblings
+        segments: groupSegmentsJoiSchema,
+        percentage: Joi.number().min(0).max(100), // @TODO: allow maximum 3 decimal places
+      }),
+    ),
+    force: Joi.array().items(
+      Joi.object({
+        // @TODO: either of the two below
+        segments: groupSegmentsJoiSchema,
+        conditions: conditionsJoiSchema,
+
+        variation: variationValueJoiSchema,
+        variables: Joi.object(), // @TODO: make it stricter
+      }),
+    ),
+  });
+
+  const allEnvironomentsSchema = {};
+  projectConfig.environments.forEach((environmentKey) => {
+    allEnvironomentsSchema[environmentKey] = environmentJoiSchema;
+  });
+  const allEnvironomentsJoiSchema = Joi.object(allEnvironomentsSchema);
+
+  const featureJoiSchema = Joi.object({
+    archived: Joi.boolean().optional(),
+    description: Joi.string(),
+    tags: Joi.array().items(Joi.string()),
+
+    defaultVariation: variationValueJoiSchema,
+
+    bucketBy: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+
+    variablesSchema: Joi.array().items(
+      Joi.object({
+        key: Joi.string(), // @TODO: make it unique among siblings
+        type: Joi.string().valid("string", "integer", "boolean", "double", "array"),
+        defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
+      }),
+    ),
+
+    variations: Joi.array().items(
+      Joi.object({
+        type: Joi.string().valid("string", "integer", "boolean", "double"),
+        value: variationValueJoiSchema, // @TODO: make it unique among siblings
+        weight: Joi.number().integer().min(0).max(100), // @TODO: total sum among siblings should be exactly 100, allow maximum 3 decimal places
+        variables: Joi.array().items(
+          Joi.object({
+            key: Joi.string(), // @TODO: make it unique among siblings
+            value: variableValueJoiSchema,
+            overrides: Joi.array().items(
+              Joi.object({
+                // @TODO: either segments or conditions prsent at a time
+                segments: groupSegmentsJoiSchema,
+                conditions: conditionsJoiSchema,
+
+                // @TODO: make it stricter based on `type`
+                value: variableValueJoiSchema,
+              }),
+            ),
+          }),
+        ),
+      }),
+    ),
+
+    environments: allEnvironomentsJoiSchema,
+  });
+
+  return featureJoiSchema;
+}
+
+export function getTestsJoiSchema(projectConfig: ProjectConfig) {
+  const testsJoiSchema = Joi.object({
+    tests: Joi.array().items(
+      Joi.object({
+        description: Joi.string().optional(),
+        tag: Joi.string(), // @TODO: make it specific
+        environment: Joi.string().valid("production", "staging", "testing", "development"), // TODO: make it specific
+        features: Joi.array().items(
+          Joi.object({
+            key: Joi.string(), // @TODO: make it specific
+            assertions: Joi.array().items(
+              Joi.object({
+                description: Joi.string().optional(),
+                at: Joi.number().integer().min(0).max(100),
+                attributes: Joi.object(), // @TODO: make it specific
+
+                // @TODO: one or both below
+                expectedVariation: Joi.alternatives().try(
+                  Joi.string(),
+                  Joi.number(),
+                  Joi.boolean(),
+                ), // @TODO: make it specific
+                expectedVariables: Joi.object(), // @TODO: make it specific
+              }),
+            ),
+          }),
+        ),
+      }),
+    ),
+  });
+
+  return testsJoiSchema;
+}
+
+export function printJoiError(e: Joi.ValidationError) {
+  const { details } = e;
+
+  details.forEach((detail) => {
+    console.error("     => Error:", detail.message);
+    console.error("     => Path:", detail.path.join("."));
+    console.error("     => Value:", detail.context?.value);
+  });
+}
+
+export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
+  let hasError = false;
+
+  // lint attributes
+  console.log("Linting attributes...\n");
+  const attributeFilePaths = getYAMLFiles(path.join(projectConfig.attributesDirectoryPath));
+  const attributeJoiSchema = getAttributeJoiSchema(projectConfig);
+
+  for (const filePath of attributeFilePaths) {
+    const key = path.basename(filePath, ".yml");
+    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    console.log("  =>", key);
+
+    try {
+      await attributeJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
+      }
+
+      hasError = true;
+    }
+  }
+
+  // lint segments
+  console.log("\nLinting segments...\n");
+  const segmentFilePaths = getYAMLFiles(path.join(projectConfig.segmentsDirectoryPath));
+  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig);
+  const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
+
+  for (const filePath of segmentFilePaths) {
+    const key = path.basename(filePath, ".yml");
+    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    console.log("  =>", key);
+
+    try {
+      await segmentJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
+      }
+
+      hasError = true;
+    }
+  }
+
+  // lint features
+  console.log("\nLinting features...\n");
+  const featureFilePaths = getYAMLFiles(path.join(projectConfig.featuresDirectoryPath));
+  const featureJoiSchema = getFeatureJoiSchema(projectConfig, conditionsJoiSchema);
+
+  for (const filePath of featureFilePaths) {
+    const key = path.basename(filePath, ".yml");
+    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    console.log("  =>", key);
+
+    try {
+      await featureJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
+      }
+
+      hasError = true;
+    }
+  }
+
+  // lint tests
+  console.log("\nLinting tests...\n");
+  const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
+  const testsJoiSchema = getTestsJoiSchema(projectConfig);
+
+  for (const filePath of testFilePaths) {
+    const key = path.basename(filePath, ".yml");
+    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    console.log("  =>", key);
+
+    try {
+      await testsJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
+      }
+
+      hasError = true;
+    }
+  }
+
+  return hasError;
+}
