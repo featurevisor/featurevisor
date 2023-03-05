@@ -45,34 +45,34 @@ jobs:
       # - name: Test
       #   run: make test
 
-      # - name: Bump version
-      #   continue-on-error: true
-      #   id: graduateRelease
-      #   run: |
-      #     git config user.name "${{ github.actor }}"
-      #     git config user.email "${{ github.actor}}@users.noreply.github.com"
-      #     npx lerna version --no-private --conventional-commits --conventional-graduate --yes
+      - name: Bump version
+        continue-on-error: true
+        id: graduateRelease
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor}}@users.noreply.github.com"
+          npx lerna version --no-private --conventional-commits --conventional-graduate --yes
 
-      # - name: Bump version fallback
-      #   if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
-      #   run: |
-      #     git config user.name "${{ github.actor }}"
-      #     git config user.email "${{ github.actor}}@users.noreply.github.com"
+      - name: Bump version fallback
+        if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor}}@users.noreply.github.com"
 
-      #     echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
-      #     git stash
-      #     npx lerna version --conventional-commits --yes
-
-      # - name: Publish
-      #   run: |
-      #     git config user.name "${{ github.actor }}"
-      #     git config user.email "${{ github.actor}}@users.noreply.github.com"
-      #     npx lerna publish --no-private from-git --yes
+          echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
+          git stash
+          npx lerna version --conventional-commits --yes
 
       - name: Publish
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-
-          npx lerna version --no-private --conventional-commits --conventional-graduate --yes
           npx lerna publish --no-private from-git --yes
+
+      # - name: Publish
+      #   run: |
+      #     git config user.name "${{ github.actor }}"
+      #     git config user.email "${{ github.actor}}@users.noreply.github.com"
+
+      #     npx lerna version --no-private --conventional-commits --conventional-graduate --yes
+      #     npx lerna publish --no-private from-git --yes
