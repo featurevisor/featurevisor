@@ -1,0 +1,7 @@
+archived: false
+description: users from Switzerland
+conditions:
+  and:
+    - attribute: country
+      operator: equals
+      value: ch

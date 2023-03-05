@@ -1,0 +1,36 @@
+tests:
+  - tag: all
+    environment: staging
+    features:
+      - key: foo
+        assertions:
+          - at: 40
+            attributes:
+              country: de
+            expectedVariation: false
+
+          - at: 60
+            attributes:
+              country: ch
+            expectedVariation: true
+
+          - at: 60
+            attributes:
+              country: us
+            expectedVariation: true
+
+          - at: 60
+            attributes:
+              country: us
+            expectedVariation: true
+            expectedVariables:
+              bar: bar_here
+              baz: baz_here
+
+          - at: 80
+            attributes:
+              country: de
+            expectedVariation: true
+            expectedVariables:
+              bar: bar for DE or CH
+              baz: baz_here

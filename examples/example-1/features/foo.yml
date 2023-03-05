@@ -1,0 +1,71 @@
+archived: false
+description: blah
+tags:
+  - all
+  - signIn
+  - signUp
+
+bucketBy: userId
+
+defaultVariation: false
+
+variablesSchema:
+  - key: bar
+    type: string
+    defaultValue: ""
+  - key: baz
+    type: string
+    defaultValue: ""
+
+variations:
+  - type: boolean
+    value: false
+    weight: 50
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: bar
+        value: bar_here
+        overrides:
+          - segments:
+              or:
+                - germany
+                - switzerland
+            value: bar for DE or CH
+      - key: baz
+        value: baz_here
+
+environments:
+  staging:
+    expose: true
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    expose: true
+    rules:
+      - key: "1"
+        segments:
+          and:
+            - mobile
+            - or:
+                - germany
+                - switzerland
+        percentage: 80
+      - key: "2"
+        segments: "*"
+        percentage: 50
+    force:
+      - conditions:
+          and:
+            - attribute: userId
+              operator: equals
+              value: "123"
+            - attribute: deviceId
+              operator: equals
+              value: "234"
+        variation: true
+        variables:
+          bar: yoooooo

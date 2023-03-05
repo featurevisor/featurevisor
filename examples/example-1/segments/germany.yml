@@ -1,0 +1,7 @@
+archived: false
+description: users from Germany
+conditions:
+  and:
+    - attribute: country
+      operator: equals
+      value: de

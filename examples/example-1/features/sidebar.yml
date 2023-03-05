@@ -1,0 +1,55 @@
+description: Show sidebar or not
+tags:
+  - all
+
+bucketBy: userId
+
+defaultVariation: false
+
+variablesSchema:
+  - key: position
+    type: string
+    defaultValue: "left"
+  - key: color
+    type: string
+    defaultValue: red
+  - key: sections
+    type: array
+    defaultValue: []
+
+variations:
+  - type: boolean
+    value: false
+    weight: 10
+  - type: boolean
+    value: true
+    weight: 90
+    variables:
+      - key: position
+        value: right
+      - key: color
+        value: red
+        overrides:
+          - segments: germany
+            value: yellow
+          - segments: japan
+            value: white
+      - key: sections
+        value: ["home", "about", "contact"]
+        overrides:
+          - segments: germany
+            value: ["home", "about", "contact", "imprint"]
+          - segments: netherlands
+            value: ["home", "about", "contact", "bitterballen"]
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
