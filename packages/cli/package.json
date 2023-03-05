@@ -1,0 +1,48 @@
+{
+  "name": "@featurevisor/cli",
+  "version": "0.0.0",
+  "description": "CLI package of Featurevisor",
+  "main": "bin.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "featurevisor": "bin.js"
+  },
+  "scripts": {
+    "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
+    "dist": "echo 'Nothing to dist here'",
+    "build": "npm run transpile",
+    "test": "echo 'Nothing to test in this package'"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "experimentation",
+    "experiment",
+    "experiments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahad19/featurevisor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fahad19/featurevisor/issues"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@featurevisor/core": "^0.0.0",
+    "yargs": "^17.6.2"
+  },
+  "devDependencies": {
+    "@types/yargs": "^17.0.22"
+  }
+}
