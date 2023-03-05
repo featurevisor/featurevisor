@@ -19,9 +19,6 @@ jobs:
         with:
           node-version: 16
 
-      - name: Authenticate with npm
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
       - name: Cache dependencies
         uses: actions/cache@v2
         with:
@@ -34,10 +31,7 @@ jobs:
         run: make install
 
       - name: Build
-        run: |
-          make build
-
-          git shortlog
+        run: make build
 
       # - name: Lint
       #   run: make lint
@@ -64,12 +58,6 @@ jobs:
           npx lerna version --conventional-commits --yes
 
       - name: Publish
-        run: npx lerna publish --no-private from-git --yes
-
-      # - name: Publish
-      #   run: |
-      #     git config user.name "${{ github.actor }}"
-      #     git config user.email "${{ github.actor}}@users.noreply.github.com"
-
-      #     npx lerna version --no-private --conventional-commits --conventional-graduate --yes
-      #     npx lerna publish --no-private from-git --yes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          npx lerna publish --no-private from-git --yes
