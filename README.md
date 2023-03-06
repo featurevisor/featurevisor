@@ -1,4 +1,4 @@
-![Featurevisor](./assets/banner-bordered.png)
+[![Featurevisor](./assets/banner-bordered.png)](https://featurevisor.com)
 
 <div align="center">
   <h3><strong>Feature management for developers</strong></h3>
