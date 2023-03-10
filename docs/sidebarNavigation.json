@@ -1,0 +1,46 @@
+[
+  {
+    "title": "Getting started",
+    "links": [{ "title": "Quick start", "href": "/docs/quick-start" }]
+  },
+  {
+    "title": "Concepts",
+    "links": [
+      { "title": "Feature management", "href": "/docs/feature-management" }
+    ]
+  },
+  {
+    "title": "Building blocks",
+    "links": [
+      { "title": "Attributes", "href": "/docs/attributes" },
+      { "title": "Segments", "href": "/docs/segments" },
+      { "title": "Features", "href": "/docs/features" }
+    ]
+  },
+  {
+    "title": "Workflow",
+    "links": [
+      { "title": "Configuration", "href": "/docs/configuration" },
+      { "title": "Linting YAMLs", "href": "/docs/linting-yamls" },
+      { "title": "Building datafiles", "href": "/docs/building-datafiles" },
+      { "title": "State files", "href": "/docs/state-files" },
+      { "title": "Testing features", "href": "/docs/testing-features" },
+      { "title": "Deployment", "href": "/docs/deployment" },
+      { "title": "SDKs", "href": "/docs/sdks" }
+    ]
+  },
+  {
+    "title": "Advanced",
+    "links": [{ "title": "Bucketing", "href": "/docs/bucketing" }]
+  },
+  {
+    "title": "Project",
+    "links": [
+      { "title": "Roadmap", "href": "/docs/roadmap" },
+      { "title": "FAQ", "href": "/docs/faq" },
+      { "title": "Examples", "href": "/docs/examples" },
+      { "title": "Contributing", "href": "/docs/contributing" },
+      { "title": "GitHub", "href": "https://github.com/fahad19/featurevisor" }
+    ]
+  }
+]
