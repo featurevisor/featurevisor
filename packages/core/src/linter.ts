@@ -50,19 +50,23 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
     ),
   });
 
-  const andOrConditionJoiSchema = Joi.alternatives()
+  const andOrNotConditionJoiSchema = Joi.alternatives()
     .try(
       Joi.object({
-        and: Joi.array().items(Joi.link("#andOrCondition"), plainConditionJoiSchema),
+        and: Joi.array().items(Joi.link("#andOrNotCondition"), plainConditionJoiSchema),
       }),
       Joi.object({
-        or: Joi.array().items(Joi.link("#andOrCondition"), plainConditionJoiSchema),
+        or: Joi.array().items(Joi.link("#andOrNotCondition"), plainConditionJoiSchema),
+      }),
+      Joi.object({
+        // @TODO: allow plainConditionJoiSchema as well?
+        not: Joi.array().items(Joi.link("#andOrNotCondition"), plainConditionJoiSchema),
       }),
     )
-    .id("andOrCondition");
+    .id("andOrNotCondition");
 
   const conditionJoiSchema = Joi.alternatives().try(
-    andOrConditionJoiSchema,
+    andOrNotConditionJoiSchema,
     plainConditionJoiSchema,
   );
 
@@ -92,18 +96,22 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
 
   const plainGroupSegment = Joi.string();
 
-  const andOrGroupSegment = Joi.alternatives()
+  const andOrNotGroupSegment = Joi.alternatives()
     .try(
       Joi.object({
-        and: Joi.array().items(Joi.link("#andOrGroupSegment"), plainGroupSegment),
+        and: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
       }),
       Joi.object({
-        or: Joi.array().items(Joi.link("#andOrGroupSegment"), plainGroupSegment),
+        or: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
+      }),
+      Joi.object({
+        // @TODO: allow plainGroupSegment as well?
+        not: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
       }),
     )
-    .id("andOrGroupSegment");
+    .id("andOrNotGroupSegment");
 
-  const groupSegment = Joi.alternatives().try(andOrGroupSegment, plainGroupSegment);
+  const groupSegment = Joi.alternatives().try(andOrNotGroupSegment, plainGroupSegment);
 
   const groupSegmentsJoiSchema = Joi.alternatives().try(
     Joi.array().items(groupSegment),

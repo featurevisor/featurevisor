@@ -188,6 +188,13 @@ describe("sdk: Conditions", function () {
           browser_type: "chrome",
         }),
       ).toEqual(true);
+
+      // not match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "firefox",
+        }),
+      ).toEqual(false);
     });
 
     it("should match with multiple conditions inside AND", function () {
@@ -276,6 +283,82 @@ describe("sdk: Conditions", function () {
       expect(
         allConditionsAreMatched(conditions, {
           browser_type: "firefox",
+        }),
+      ).toEqual(false);
+    });
+  });
+
+  describe("NOT condition", function () {
+    it("should match with one NOT condition", function () {
+      const conditions: Condition[] = [
+        {
+          not: [
+            {
+              attribute: "browser_type",
+              operator: "equals",
+              value: "chrome",
+            },
+          ],
+        },
+      ];
+
+      // match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "firefox",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match with multiple conditions inside NOT", function () {
+      const conditions: Condition[] = [
+        {
+          not: [
+            {
+              attribute: "browser_type",
+              operator: "equals",
+              value: "chrome",
+            },
+            {
+              attribute: "browser_version",
+              operator: "equals",
+              value: "1.0",
+            },
+          ],
+        },
+      ];
+
+      // match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "firefox",
+          browser_version: "2.0",
+        }),
+      ).toEqual(true);
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+        }),
+      ).toEqual(true);
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+          browser_version: "2.0",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+          browser_version: "1.0",
         }),
       ).toEqual(false);
     });

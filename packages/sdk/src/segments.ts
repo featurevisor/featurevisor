@@ -37,6 +37,13 @@ export function allGroupSegmentsAreMatched(
         allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader),
       );
     }
+
+    if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
+      return groupSegments.not.every(
+        (groupSegment) =>
+          allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader) === false,
+      );
+    }
   }
 
   if (Array.isArray(groupSegments)) {
