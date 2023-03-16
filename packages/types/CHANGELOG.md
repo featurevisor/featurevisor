@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0](https://github.com/fahad19/featurevisor/compare/v0.1.0...v0.2.0) (2023-03-16)
+
+
+### Features
+
+* NOT operator ([#16](https://github.com/fahad19/featurevisor/issues/16)) ([9c7b239](https://github.com/fahad19/featurevisor/commit/9c7b23944a37c327308f441f4afd2731aaf97889))
+
+
+
+
+
 # [0.1.0](https://github.com/fahad19/featurevisor/compare/v0.0.4...v0.1.0) (2023-03-05)
 
 **Note:** Version bump only for package @featurevisor/types
