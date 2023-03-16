@@ -221,7 +221,9 @@ conditions:
       value: ca
 ```
 
-### Complex conditions
+### Complex
+
+`and` and `or` can be combined to create complex conditions:
 
 ```yml
 # ...
@@ -237,6 +239,21 @@ conditions:
     - attribute: country
       operator: equals
       value: ca
+```
+
+You can also nest `and`, `or`, and `not` operators:
+
+```yml
+# ...
+conditions:
+  - not:
+    - or:
+      - attribute: country
+        operator: equals
+        value: us
+      - attribute: country
+        operator: equals
+        value: ca
 ```
 
 ## Archiving

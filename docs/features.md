@@ -214,7 +214,7 @@ environments:
 
 ### Complex
 
-You can combine `and` & `or` operators to create complex segments:
+You can combine `and`, `or`, and `not` operators to create complex segments:
 
 With `and` operator:
 
@@ -248,7 +248,23 @@ environments:
         percentage: 100
 ```
 
-Combining both `and` & `or` operators:
+With `not` operator:
+
+```yml
+# ...
+environments:
+  production:
+    rules:
+      - key: "1"
+        # targeting: users from everywhere except The Netherlands or Germany
+        segments:
+          not:
+            - netherlands
+            - germany
+        percentage: 100
+```
+
+Combining `and`, `or`, and `not` operators:
 
 ```yml
 # ...
@@ -258,7 +274,8 @@ environments:
       - key: "1"
         # targeting:
         #   - adult users with iPhone, and
-        #   - from either The Netherlands or Germany
+        #   - from either The Netherlands or Germany, and
+        #   - not newsletterSubscribers
         segments:
           - and:
             - iphoneUsers
@@ -266,6 +283,26 @@ environments:
           - or:
             - netherlands
             - germany
+          - not:
+            - newsletterSubscribers
+        percentage: 100
+```
+
+You can also nest `and`, `or`, and `not` operators:
+
+```yml
+# ...
+environments:
+  production:
+    rules:
+      - key: "1"
+        segments:
+          - and:
+            - iphoneUsers
+            - adultUsers
+            - or:
+              - netherlands
+              - germany
         percentage: 100
 ```
 

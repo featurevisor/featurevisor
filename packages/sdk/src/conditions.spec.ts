@@ -347,6 +347,12 @@ describe("sdk: Conditions", function () {
           browser_type: "chrome",
         }),
       ).toEqual(true);
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+          browser_version: "2.0",
+        }),
+      ).toEqual(true);
 
       // not match
       expect(

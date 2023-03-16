@@ -64,7 +64,15 @@ export function allConditionsAreMatched(
   }
 
   if ("not" in conditions && Array.isArray(conditions.not)) {
-    return conditions.not.every((c) => allConditionsAreMatched(c, attributes) === false);
+    return conditions.not.every(
+      (c) =>
+        allConditionsAreMatched(
+          {
+            and: conditions.not,
+          },
+          attributes,
+        ) === false,
+    );
   }
 
   if (Array.isArray(conditions)) {
