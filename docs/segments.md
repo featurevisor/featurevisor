@@ -177,7 +177,7 @@ conditions:
 
 ## Conditions
 
-Conditions can also be combined using `and` and `or` operators.
+Conditions can also be combined using `and`, `or`, and `not` operators.
 
 ### `and`
 
@@ -207,7 +207,21 @@ conditions:
       value: ca
 ```
 
-### `and` & `or` together
+### `not`
+
+```yml
+# ...
+conditions:
+  not:
+    - attribute: country
+      operator: equals
+      value: us
+    - attribute: country
+      operator: equals
+      value: ca
+```
+
+### Complex conditions
 
 ```yml
 # ...
@@ -223,7 +237,6 @@ conditions:
     - attribute: country
       operator: equals
       value: ca
-
 ```
 
 ## Archiving
