@@ -216,9 +216,6 @@ conditions:
     - attribute: country
       operator: equals
       value: us
-    - attribute: country
-      operator: equals
-      value: ca
 ```
 
 ### Complex

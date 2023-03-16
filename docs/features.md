@@ -256,10 +256,9 @@ environments:
   production:
     rules:
       - key: "1"
-        # targeting: users from everywhere except The Netherlands or Germany
+        # targeting: users from everywhere except Germany
         segments:
           not:
-            - netherlands
             - germany
         percentage: 100
 ```
