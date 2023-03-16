@@ -49,9 +49,13 @@ export interface OrCondition {
   or: Condition[];
 }
 
-export type AndOrCondition = AndCondition | OrCondition;
+export interface NotCondition {
+  not: Condition[];
+}
 
-export type Condition = PlainCondition | AndOrCondition;
+export type AndOrNotCondition = AndCondition | OrCondition | NotCondition;
+
+export type Condition = PlainCondition | AndOrNotCondition;
 
 export type SegmentKey = string;
 
@@ -71,10 +75,14 @@ export interface OrGroupSegment {
   or: GroupSegment[];
 }
 
-export type AndOrGroupSegment = AndGroupSegment | OrGroupSegment;
+export interface NotGroupSegment {
+  not: GroupSegment[];
+}
+
+export type AndOrNotGroupSegment = AndGroupSegment | OrGroupSegment | NotGroupSegment;
 
 // group of segment keys with and/or conditions, or just string
-export type GroupSegment = PlainGroupSegment | AndOrGroupSegment;
+export type GroupSegment = PlainGroupSegment | AndOrNotGroupSegment;
 
 export type VariationType = "boolean" | "string" | "integer" | "double";
 export type VariationValue = boolean | string | number | null | undefined;
