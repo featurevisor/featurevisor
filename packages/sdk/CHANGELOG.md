@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/fahad19/featurevisor/compare/v0.2.0...v0.3.0) (2023-03-17)
+
+
+### Features
+
+* support objects as variables ([#18](https://github.com/fahad19/featurevisor/issues/18)) ([c1b6160](https://github.com/fahad19/featurevisor/commit/c1b61609d299bbf2e46c644c4f09336cdd94e128))
+
+
+
+
+
 # [0.2.0](https://github.com/fahad19/featurevisor/compare/v0.1.0...v0.2.0) (2023-03-16)
 
 
