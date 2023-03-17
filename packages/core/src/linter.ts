@@ -91,7 +91,27 @@ export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
 export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
   const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
   const variableValueJoiSchema = Joi.alternatives()
-    .try(Joi.string(), Joi.number(), Joi.boolean(), Joi.array().items(Joi.string()))
+    .try(
+      Joi.string(),
+      Joi.number(),
+      Joi.boolean(),
+      Joi.array().items(Joi.string()),
+      Joi.object().custom(function (value, helper) {
+        let isFlat = true;
+
+        Object.keys(value).forEach((key) => {
+          if (typeof value[key] === "object") {
+            isFlat = false;
+          }
+        });
+
+        if (!isFlat) {
+          throw new Error("object is not flat");
+        }
+
+        return value;
+      }),
+    )
     .allow("");
 
   const plainGroupSegment = Joi.string();
@@ -157,7 +177,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
     variablesSchema: Joi.array().items(
       Joi.object({
         key: Joi.string(), // @TODO: make it unique among siblings
-        type: Joi.string().valid("string", "integer", "boolean", "double", "array"),
+        type: Joi.string().valid("string", "integer", "boolean", "double", "array", "object"),
         defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
       }),
     ),
@@ -197,8 +217,8 @@ export function getTestsJoiSchema(projectConfig: ProjectConfig) {
     tests: Joi.array().items(
       Joi.object({
         description: Joi.string().optional(),
-        tag: Joi.string(), // @TODO: make it specific
-        environment: Joi.string().valid("production", "staging", "testing", "development"), // TODO: make it specific
+        tag: Joi.string().valid(...projectConfig.tags),
+        environment: Joi.string().valid(...projectConfig.environments),
         features: Joi.array().items(
           Joi.object({
             key: Joi.string(), // @TODO: make it specific

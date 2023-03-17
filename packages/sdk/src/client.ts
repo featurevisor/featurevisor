@@ -7,6 +7,7 @@ import {
   BucketKey,
   BucketValue,
   FeatureKey,
+  VariableObjectValue,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -32,8 +33,8 @@ export interface SdkOptions {
 }
 
 // union of VariableValue and VariationValue
-type FieldType = "string" | "integer" | "double" | "boolean" | "array";
-type ValueType = string | number | boolean | string[] | null | undefined;
+type FieldType = "string" | "integer" | "double" | "boolean" | "array" | "object";
+type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
   if (value === undefined) {
@@ -51,6 +52,8 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
       return value === true;
     case "array":
       return Array.isArray(value) ? value : undefined;
+    case "object":
+      return typeof value === "object" ? value : undefined;
     default:
       return value;
   }
@@ -334,5 +337,15 @@ export class FeaturevisorSDK {
     const variableValue = this.getVariable(featureKey, variableKey, attributes);
 
     return getValueByType(variableValue, "array") as string[] | undefined;
+  }
+
+  getVariableObject<T>(
+    featureKey: FeatureKey | Feature,
+    variableKey: string,
+    attributes: Attributes = {},
+  ): T | undefined {
+    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+
+    return getValueByType(variableValue, "object") as T | undefined;
   }
 }

@@ -59,6 +59,28 @@ export function checkIfArraysAreEqual(a, b) {
   return true;
 }
 
+export function checkIfObjectsAreEqual(a, b) {
+  if (typeof a !== "object" || typeof b !== "object") {
+    return false;
+  }
+
+  if (a === null || b === null) {
+    return false;
+  }
+
+  if (Object.keys(a).length !== Object.keys(b).length) {
+    return false;
+  }
+
+  for (const key in a) {
+    if (a[key] !== b[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
   let hasError = false;
 
@@ -140,16 +162,24 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
                 assertion.expectedVariables && assertion.expectedVariables[variableKey];
               const actualValue = sdk.getVariable(featureKey, variableKey, assertion.attributes);
 
-              const passed = Array.isArray(expectedValue)
-                ? checkIfArraysAreEqual(expectedValue, actualValue)
-                : expectedValue === actualValue;
+              let passed;
+
+              if (typeof expectedValue === "object") {
+                passed = checkIfObjectsAreEqual(expectedValue, actualValue);
+              } else if (Array.isArray(expectedValue)) {
+                passed = checkIfArraysAreEqual(expectedValue, actualValue);
+              } else {
+                passed = expectedValue === actualValue;
+              }
 
               if (!passed) {
                 hasError = true;
                 assertionHasError = true;
 
                 console.error(
-                  `           Variable "${variableKey}" failed: expected "${expectedValue}", got "${actualValue}"`,
+                  `           Variable "${variableKey}" failed: expected ${JSON.stringify(
+                    expectedValue,
+                  )}, got "${JSON.stringify(actualValue)}"`,
                 );
               }
             });

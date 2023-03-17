@@ -347,6 +347,7 @@ These types of variables are allowed:
 - `double`
 - `integer`
 - `array` (of strings)
+- `object` (flat objects only)
 
 ### Overrides
 

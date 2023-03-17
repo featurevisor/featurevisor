@@ -1,0 +1,55 @@
+tags:
+  - all
+
+bucketBy: userId
+
+defaultVariation: control
+
+variablesSchema:
+  - key: color
+    type: string
+    defaultValue: "red"
+  - key: hero
+    type: object
+    defaultValue:
+      title: Hero Title
+      subtitle: Hero Subtitle
+      alignment: center
+
+variations:
+  - type: string
+    value: control
+    weight: 33
+  - type: string
+    value: b
+    weight: 33
+    variables:
+      - key: hero
+        value:
+          title: Hero Title for B
+          subtitle: Hero Subtitle for B
+          alignment: center for B
+        overrides:
+          - segments:
+              or:
+                - germany
+                - switzerland
+            value:
+              title: Hero Title for B in DE or CH
+              subtitle: Hero Subtitle for B in DE of CH
+              alignment: center for B in DE or CH
+  - type: string
+    value: c
+    weight: 34
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100

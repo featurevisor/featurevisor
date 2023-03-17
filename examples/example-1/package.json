@@ -9,6 +9,6 @@
     "test": "featurevisor test"
   },
   "dependencies": {
-    "@featurevisor/cli": "^0.0.3"
+    "@featurevisor/cli": "^0.2.0"
   }
 }
