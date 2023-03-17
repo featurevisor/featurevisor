@@ -161,10 +161,10 @@ export function getBucketedVariableValue(
 
   // single variable
   const variableSchema = variablesSchema.find((v) => {
-    v.key === variableKey;
+    return v.key === variableKey;
   });
 
-  if (variableSchema) {
+  if (!variableSchema) {
     return undefined;
   }
 
@@ -179,7 +179,7 @@ export function getBucketedVariableValue(
   });
 
   if (!variableFromVariation) {
-    return undefined;
+    return variableSchema.defaultValue;
   }
 
   if (variableFromVariation.overrides) {

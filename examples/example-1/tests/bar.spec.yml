@@ -1,0 +1,38 @@
+tests:
+  - tag: all
+    environment: staging
+    features:
+      - key: bar
+        assertions:
+          - at: 30
+            attributes:
+              country: us
+            expectedVariation: control
+            expectedVariables:
+              color: red
+              hero:
+                title: Hero Title
+                subtitle: Hero Subtitle
+                alignment: center
+
+          - at: 40
+            attributes:
+              country: us
+            expectedVariation: b
+            expectedVariables:
+              color: red
+              hero:
+                title: Hero Title for B
+                subtitle: Hero Subtitle for B
+                alignment: center for B
+
+          - at: 40
+            attributes:
+              country: de
+            expectedVariation: b
+            expectedVariables:
+              color: red
+              hero:
+                title: Hero Title for B in DE or CH
+                subtitle: Hero Subtitle for B in DE of CH
+                alignment: center for B in DE or CH

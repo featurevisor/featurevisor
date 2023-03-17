@@ -32,8 +32,8 @@ export interface SdkOptions {
 }
 
 // union of VariableValue and VariationValue
-type FieldType = "string" | "integer" | "double" | "boolean" | "array";
-type ValueType = string | number | boolean | string[] | null | undefined;
+type FieldType = "string" | "integer" | "double" | "boolean" | "array" | "object";
+type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
   if (value === undefined) {
@@ -51,6 +51,8 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
       return value === true;
     case "array":
       return Array.isArray(value) ? value : undefined;
+    case "object":
+      return typeof value === "object" ? value : undefined;
     default:
       return value;
   }

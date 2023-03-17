@@ -88,8 +88,18 @@ export type VariationType = "boolean" | "string" | "integer" | "double";
 export type VariationValue = boolean | string | number | null | undefined;
 
 export type VariableKey = string;
-export type VariableType = "boolean" | "string" | "integer" | "double" | "array";
-export type VariableValue = boolean | string | number | string[] | null | undefined;
+export type VariableType = "boolean" | "string" | "integer" | "double" | "array" | "object";
+export interface VariableObjectValue {
+  [key: string]: VariableValue;
+}
+export type VariableValue =
+  | boolean
+  | string
+  | number
+  | string[]
+  | VariableObjectValue
+  | null
+  | undefined;
 
 export interface VariableOverrideSegments {
   segments: GroupSegment | GroupSegment[];
