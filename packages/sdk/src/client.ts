@@ -7,6 +7,7 @@ import {
   BucketKey,
   BucketValue,
   FeatureKey,
+  VariableObjectValue,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -336,5 +337,15 @@ export class FeaturevisorSDK {
     const variableValue = this.getVariable(featureKey, variableKey, attributes);
 
     return getValueByType(variableValue, "array") as string[] | undefined;
+  }
+
+  getVariableObject<T>(
+    featureKey: FeatureKey | Feature,
+    variableKey: string,
+    attributes: Attributes = {},
+  ): T | undefined {
+    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+
+    return getValueByType(variableValue, "object") as T | undefined;
   }
 }

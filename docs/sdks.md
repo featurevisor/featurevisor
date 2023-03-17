@@ -42,7 +42,7 @@ const featureKey = "my_feature";
 const attributes = {
   userId: "123",
   country: "nl",
-}
+};
 
 const variation = sdk.getVariation(featureKey, attributes);
 ```
@@ -126,4 +126,10 @@ sdk.getVariableDouble(featureKey, variableKey, attributes);
 
 ```js
 sdk.getVariableArray(featureKey, variableKey, attributes);
+```
+
+### `object`
+
+```ts
+sdk.getVariableObject<T>(featureKey, variableKey, attributes);
 ```
