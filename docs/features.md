@@ -316,7 +316,7 @@ Before assigning variable values, we must define the schema for our variables in
 variablesSchema:
   - key: bgColor
     type: string
-    defaultValue: "red"
+    defaultValue: red
 ```
 
 Then, we can assign values to the variables inside variations:
@@ -338,7 +338,7 @@ variations:
 
 If users are bucketed in the `true` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red`.
 
-### Types
+### Supported types
 
 These types of variables are allowed:
 
@@ -371,7 +371,6 @@ variations:
 
 If you want to embed conditions directly:
 
-
 ```yml
 # ...
 variations:
@@ -389,6 +388,132 @@ variations:
                 operator: equals
                 value: nl
             value: orange
+```
+
+## Variable types
+
+Examples of each type of variable:
+
+### `string`
+
+```yml
+# ...
+variablesSchema:
+  - key: bgColor
+    type: string
+    defaultValue: red
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: bgColor
+        value: blue
+```
+
+### `boolean`
+
+```yml
+# ...
+variablesSchema:
+  - key: showSidebar
+    type: boolean
+    defaultValue: false
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: showSidebar
+        value: true
+```
+
+### `integer`
+
+```yml
+# ...
+variablesSchema:
+  - key: position
+    type: integer
+    defaultValue: 1
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: position
+        value: 2
+```
+
+### `double`
+
+```yml
+# ...
+variablesSchema:
+  - key: amount
+    type: double
+    defaultValue: 9.99
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: amount
+        value: 4.99
+```
+
+### `array`
+
+```yml
+# ...
+variablesSchema:
+  - key: acceptedCards
+    type: array
+    defaultValue:
+      - visa
+      - mastercard
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: acceptedCards
+        value:
+          - visa
+          - amex
+```
+
+### `object`
+
+```yml
+# ...
+variablesSchema:
+  - key: hero
+    type: object
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our website
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: hero
+        value:
+          title: Welcome to our website
+          subtitle: We are glad you are here
 ```
 
 ## Force
