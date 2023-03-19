@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.4.0](https://github.com/fahad19/featurevisor/compare/v0.3.0...v0.4.0) (2023-03-19)
+
+
+### Features
+
+* Create SDK instance for fetching datafile ([#19](https://github.com/fahad19/featurevisor/issues/19)) ([4560fb2](https://github.com/fahad19/featurevisor/commit/4560fb24a1989e46b2d18eb342806e0fc3a50af7))
+
+
+
+
+
 # [0.3.0](https://github.com/fahad19/featurevisor/compare/v0.2.0...v0.3.0) (2023-03-17)
 
 
