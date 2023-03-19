@@ -7,7 +7,6 @@ import {
   BucketKey,
   BucketValue,
   FeatureKey,
-  VariableObjectValue,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -26,9 +25,10 @@ export type ActivationCallback = (
 ) => void;
 
 export type ConfigureBucketValue = (feature, attributes, bucketValue: BucketValue) => BucketValue;
+
 export interface SdkOptions {
   datafile: DatafileContent | string;
-  onActivation?: ActivationCallback;
+  onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
 }
 
@@ -59,6 +59,8 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+// @TODO: change it to FeaturevisorEngine in next breaking semver
+// @TODO: move activate*() methods to FeaturevisorInstance in next breaking semver
 export class FeaturevisorSDK {
   private onActivation?: ActivationCallback;
   private datafileReader: DatafileReader;
@@ -73,9 +75,13 @@ export class FeaturevisorSDK {
       this.configureBucketValue = options.configureBucketValue;
     }
 
+    this.setDatafile(options.datafile);
+  }
+
+  setDatafile(datafile: DatafileContent | string) {
     try {
       this.datafileReader = new DatafileReader(
-        typeof options.datafile === "string" ? JSON.parse(options.datafile) : options.datafile,
+        typeof datafile === "string" ? JSON.parse(datafile) : datafile,
       );
     } catch (e) {
       console.error(`Featurevisor could not parse the datafile`);

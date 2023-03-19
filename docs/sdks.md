@@ -17,18 +17,59 @@ $ npm install --save @featurevisor/sdk
 
 ## Initialization
 
-Fetch your datafile and initialize the SDK:
+The SDK can be initialized in two different ways depending on your needs.
+
+### Synchronous
+
+If you already have the content of your datafile available:
 
 ```js
-import { FeaturevisorSDK } from "@featurevisor/sdk";
+import { createInstance } from "@featurevisor/sdk";
 
 const datafileURL =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 
 const datafileContent = await fetch(datafileURL).then((res) => res.json());
 
-const sdk = new FeaturevisorSDK({
+const sdk = createInstance({
   datafile: datafileContent
+});
+```
+
+### Asynchronous
+
+If you want to delegate the responsibility of fetching the datafile to the SDK:
+
+```js
+// your-app/index.js
+import { createInstance } from "@featurevisor/sdk";
+
+const datafileURL =
+  "https://cdn.yoursite.com/production/datafile-tag-all.json";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  onReady: function () {
+    // datafile has been fetched successfully,
+    // and you can start using the SDK
+  }
+});
+```
+
+If you need to take further control on how the datafile is fetched, you can pass a custom `handleDatafileFetch` function:
+
+```js
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  onReady: function () {
+    console.log("sdk is ready");
+  },
+  handleDatafileFetch: function (url) {
+    // you can pass custom headers here, etc
+    // or even use XMLHttpRequest instead of fetch,
+    // as long as it returns a promise with datafile content
+    return fetch(url).then((res) => res.json());
+  },
 });
 ```
 
@@ -62,7 +103,7 @@ Activation is useful when you want to track what features and their variations a
 It works the same as `sdk.getVariation()` method, but it will also bubble an event up that you can listen to.
 
 ```js
-const sdk = new FeaturevisorSDK({
+const sdk = createInstance({
   datafile: datafileContent,
 
   // handler for activations

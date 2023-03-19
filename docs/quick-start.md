@@ -179,20 +179,44 @@ $ npm install --save @featurevisor/sdk
 
 Featurevisor SDK is compatible with both Node.js and browser environments.
 
-And then, you can use the SDK as follows:
+### Synchronous
+
+If you already have the datafile content available, you can initialize the SDK as follows:
 
 ```js
 // your-app/index.js
-import { FeaturevisorSDK } from "@featurevisor/sdk";
+import { createInstance } from "@featurevisor/sdk";
 
 const datafileURL =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 const datafileContent = await fetch(datafileURL).then((res) => res.json());
 
-const sdk = new FeaturevisorSDK({
+const sdk = createInstance({
   datafile: datafileContent,
 });
 ```
+
+### Asynchronous
+
+If you want to delegate the responsibility of fetching the datafile to the SDK, you can initialize it as follows:
+
+```js
+// your-app/index.js
+import { createInstance } from "@featurevisor/sdk";
+
+const datafileURL =
+  "https://cdn.yoursite.com/production/datafile-tag-all.json";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  onReady: function () {
+    // datafile has been fetched successfully,
+    // and you can start using the SDK
+  }
+});
+```
+
+### Usage
 
 Once the SDK is initialized, you can get variations of your features as follows:
 
@@ -204,3 +228,5 @@ const darkModeEnabled = sdk.getVariation("darkMode". {
 ```
 
 Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes.
+
+Find more examples of SDK usage [here](/docs/sdks).
