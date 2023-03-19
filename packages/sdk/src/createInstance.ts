@@ -12,6 +12,7 @@ export interface InstanceOptions {
   // additions
   datafileUrl?: string;
   onReady?: ReadyCallback;
+  handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
 }
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
@@ -56,27 +57,27 @@ export interface FeaturevisorInstance {
 function getInstanceFromSdk(sdk: FeaturevisorSDK, options: InstanceOptions): FeaturevisorInstance {
   return {
     // variation
-    getVariation: sdk.getVariation,
-    getVariationBoolean: sdk.getVariationBoolean,
-    getVariationInteger: sdk.getVariationInteger,
-    getVariationDouble: sdk.getVariationDouble,
-    getVariationString: sdk.getVariationString,
+    getVariation: sdk.getVariation.bind(sdk),
+    getVariationBoolean: sdk.getVariationBoolean.bind(sdk),
+    getVariationInteger: sdk.getVariationInteger.bind(sdk),
+    getVariationDouble: sdk.getVariationDouble.bind(sdk),
+    getVariationString: sdk.getVariationString.bind(sdk),
 
     // activate
     activate: sdk.activate,
-    activateBoolean: sdk.activateBoolean,
-    activateInteger: sdk.activateInteger,
-    activateDouble: sdk.activateDouble,
-    activateString: sdk.activateString,
+    activateBoolean: sdk.activateBoolean.bind(sdk),
+    activateInteger: sdk.activateInteger.bind(sdk),
+    activateDouble: sdk.activateDouble.bind(sdk),
+    activateString: sdk.activateString.bind(sdk),
 
     // variable
-    getVariable: sdk.getVariable,
-    getVariableBoolean: sdk.getVariableBoolean,
-    getVariableInteger: sdk.getVariableInteger,
-    getVariableDouble: sdk.getVariableDouble,
-    getVariableString: sdk.getVariableString,
-    getVariableArray: sdk.getVariableArray,
-    getVariableObject: sdk.getVariableObject,
+    getVariable: sdk.getVariable.bind(sdk),
+    getVariableBoolean: sdk.getVariableBoolean.bind(sdk),
+    getVariableInteger: sdk.getVariableInteger.bind(sdk),
+    getVariableDouble: sdk.getVariableDouble.bind(sdk),
+    getVariableString: sdk.getVariableString.bind(sdk),
+    getVariableArray: sdk.getVariableArray.bind(sdk),
+    getVariableObject: sdk.getVariableObject.bind(sdk),
 
     // additions
     // @TODO
@@ -94,10 +95,18 @@ const emptyDatafile: DatafileContent = {
   features: [],
 };
 
+function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<DatafileContent> {
+  if (options.handleDatafileFetch) {
+    return options.handleDatafileFetch(datafileUrl);
+  }
+
+  return fetch(datafileUrl).then((res) => res.json());
+}
+
 export function createInstance(options: InstanceOptions) {
   if (!options.datafile && !options.datafileUrl) {
     throw new Error(
-      "Featurevisor SDK instance cannot be created without `datafile` or `datafileUrl`",
+      "Featurevisor SDK instance cannot be created without `datafile` or `datafileUrl` option",
     );
   }
 
@@ -128,8 +137,7 @@ export function createInstance(options: InstanceOptions) {
   });
 
   if (options.datafileUrl) {
-    fetch(options.datafileUrl)
-      .then((res) => res.json())
+    fetchDatafileContent(options.datafileUrl, options)
       .then((datafile) => {
         sdk.setDatafile(datafile);
 
