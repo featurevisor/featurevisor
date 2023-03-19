@@ -8,7 +8,7 @@ import {
   VariableValue,
   VariationValue,
 } from "@featurevisor/types";
-import { FeaturevisorSDK, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
@@ -123,7 +123,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
       let currentAt = 0;
 
-      let sdk = new FeaturevisorSDK({
+      let sdk = createInstance({
         datafile: datafileContent,
         configureBucketValue: (feature, attributes, bucketValue) => {
           return currentAt;
