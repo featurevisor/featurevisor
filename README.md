@@ -61,7 +61,9 @@
 
 Featurevisor is a solution for managing your feature flags and remote config. It's built for developers, by developers.
 
-It introduces a workflow that's fully git-based, where configuration is stored in YAMLs and changes are reviewed and merged via pull requests.
+It introduces a workflow that's fully git-based, where configuration is stored as YAMLs and changes are reviewed and merged via pull requests.
+
+The workflow results into a datafile (JSON file) that can be used by your application to fetch the latest feature flags and remote config, evaluated by Featurevisor SDKs.
 
 More documentation available at [https://featurevisor.com](https://featurevisor.com).
 
