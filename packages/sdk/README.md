@@ -15,11 +15,11 @@ $ npm install --save @featurevisor/sdk
 Initialize the SDK:
 
 ```js
-import { FeaturevisorSDK } from "@featurevisor/sdk";
+import { createInstance } from "@featurevisor/sdk";
 
 const datafileContent = fetch(datafileURL).then((res) => res.json());
 
-const sdk = new FeaturevisorSDK({
+const sdk = createInstance({
   // required
   datafile: datafileContent,
 
