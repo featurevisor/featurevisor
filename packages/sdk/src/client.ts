@@ -28,7 +28,7 @@ export type ConfigureBucketValue = (feature, attributes, bucketValue: BucketValu
 
 export interface SdkOptions {
   datafile: DatafileContent | string;
-  onActivation?: ActivationCallback;
+  onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
 }
 
@@ -59,6 +59,8 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+// @TODO: change it to FeaturevisorEngine in next breaking semver
+// @TODO: move activate*() methods to FeaturevisorInstance in next breaking semver
 export class FeaturevisorSDK {
   private onActivation?: ActivationCallback;
   private datafileReader: DatafileReader;

@@ -14,6 +14,7 @@ export interface InstanceOptions {
   onReady?: ReadyCallback;
 }
 
+// @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
 export interface FeaturevisorInstance {
   /**
    * From FeaturevisorSDK
@@ -135,6 +136,10 @@ export function createInstance(options: InstanceOptions) {
         if (typeof options.onReady === "function") {
           options.onReady();
         }
+      })
+      .catch((e) => {
+        console.error("Featurevisor failed to fetch datafile:");
+        console.error(e);
       });
   }
 
