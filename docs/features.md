@@ -351,7 +351,21 @@ These types of variables are allowed:
 
 ### Overrides
 
-You can override variable values for specific segments:
+You can override variable values for specific segments when defining rollout rules:
+
+```yml
+# ...
+environments:
+  production:
+    rules:
+      - key: "1"
+        segments: netherlands
+        percentage: 100
+        variables:
+          bgColor: orange
+```
+
+Or, you can override within variations:
 
 ```yml
 # ...
@@ -369,7 +383,7 @@ variations:
             value: orange
 ```
 
-If you want to embed conditions directly:
+If you want to embed overriding conditions directly within variations:
 
 ```yml
 # ...
