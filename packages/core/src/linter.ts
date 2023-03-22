@@ -145,16 +145,17 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
         key: Joi.string(), // @TODO: make it unique among siblings
         segments: groupSegmentsJoiSchema,
         percentage: Joi.number().min(0).max(100), // @TODO: allow maximum 3 decimal places
+        variables: Joi.object().optional(), // @TODO: make it stricter
       }),
     ),
     force: Joi.array().items(
       Joi.object({
         // @TODO: either of the two below
-        segments: groupSegmentsJoiSchema,
-        conditions: conditionsJoiSchema,
+        segments: groupSegmentsJoiSchema.optional(),
+        conditions: conditionsJoiSchema.optional(),
 
         variation: variationValueJoiSchema,
-        variables: Joi.object(), // @TODO: make it stricter
+        variables: Joi.object().optional(), // @TODO: make it stricter
       }),
     ),
   });

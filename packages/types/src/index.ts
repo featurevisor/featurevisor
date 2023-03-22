@@ -178,6 +178,9 @@ export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
   percentage: Percentage;
+  variables?: {
+    [key: string]: VariableValue;
+  };
   allocation: Allocation[];
 }
 
