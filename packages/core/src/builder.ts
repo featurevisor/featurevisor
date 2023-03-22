@@ -121,7 +121,7 @@ export function buildDatafile(
         const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
         extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
 
-        featureTraffic.push({
+        const traffic: Traffic = {
           key: parsedRule.key,
           segments:
             typeof parsedRule.segments === "string"
@@ -129,7 +129,13 @@ export function buildDatafile(
               : JSON.stringify(parsedRule.segments),
           percentage: parsedRule.percentage * (MAX_BUCKETED_NUMBER / 100),
           allocation: [],
-        });
+        };
+
+        if (parsedRule.variables) {
+          traffic.variables = parsedRule.variables;
+        }
+
+        featureTraffic.push(traffic);
       }
 
       const feature: Feature = {
