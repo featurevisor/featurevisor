@@ -9,13 +9,16 @@ defaultVariation: false
 variablesSchema:
   - key: position
     type: string
-    defaultValue: "left"
+    defaultValue: left
   - key: color
     type: string
     defaultValue: red
   - key: sections
     type: array
     defaultValue: []
+  - key: title
+    type: string
+    defaultValue: "Sidebar Title"
 
 variations:
   - type: boolean
@@ -53,3 +56,5 @@ environments:
       - key: "1"
         segments: "*"
         percentage: 100
+        variables:
+          title: Sidebar Title for production

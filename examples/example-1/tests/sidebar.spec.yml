@@ -29,6 +29,7 @@ tests:
             expectedVariables:
               position: right
               color: yellow
+              title: Sidebar Title for production
 
           - at: 90
             attributes:

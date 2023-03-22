@@ -24,6 +24,10 @@ export function getNewTraffic(
       allocation: [],
     };
 
+    if (parsedRollout.variables) {
+      traffic.variables = parsedRollout.variables;
+    }
+
     const existingTrafficRollout = existingFeature?.traffic.find(
       (t) => t.key === parsedRollout.key,
     );

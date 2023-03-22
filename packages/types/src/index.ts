@@ -218,6 +218,9 @@ export interface Rule {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
+  variables?: {
+    [key: string]: VariableValue;
+  };
 }
 
 export interface Environment {

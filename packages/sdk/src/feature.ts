@@ -168,7 +168,34 @@ export function getBucketedVariableValue(
     return undefined;
   }
 
-  const variation = getBucketedVariation(feature, attributes, bucketValue, datafileReader);
+  // get traffic
+  const matchedTraffic = getMatchedTraffic(
+    feature.traffic,
+    attributes,
+    bucketValue,
+    datafileReader,
+  );
+
+  if (!matchedTraffic) {
+    return undefined;
+  }
+
+  // see if variable is set at traffic/rule level
+  if (matchedTraffic.variables && typeof matchedTraffic.variables[variableKey] !== "undefined") {
+    return matchedTraffic.variables[variableKey];
+  }
+
+  const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
+
+  if (!allocation) {
+    return undefined;
+  }
+
+  const variationValue = allocation.variation;
+
+  const variation = feature.variations.find((v) => {
+    return v.value === variationValue;
+  });
 
   if (!variation) {
     return undefined;
