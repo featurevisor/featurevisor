@@ -1,5 +1,12 @@
 import { Attributes, Condition, PlainCondition } from "@featurevisor/types";
 
+import semverGt from "semver/functions/gt";
+import semverLt from "semver/functions/lt";
+import semverEq from "semver/functions/eq";
+import semverNeq from "semver/functions/neq";
+import semverGte from "semver/functions/gte";
+import semverLte from "semver/functions/lte";
+
 export function conditionIsMatched(condition: PlainCondition, attributes: Attributes): boolean {
   const { attribute, operator, value } = condition;
 
@@ -28,6 +35,18 @@ export function conditionIsMatched(condition: PlainCondition, attributes: Attrib
       return valueInAttributes.startsWith(value);
     } else if (operator === "endsWith") {
       return valueInAttributes.endsWith(value);
+    } else if (operator === "semverEquals") {
+      return semverEq(valueInAttributes, value);
+    } else if (operator === "semverNotEquals") {
+      return semverNeq(valueInAttributes, value);
+    } else if (operator === "semverGreaterThan") {
+      return semverGt(valueInAttributes, value);
+    } else if (operator === "semverGreaterThanOrEquals") {
+      return semverGte(valueInAttributes, value);
+    } else if (operator === "semverLessThan") {
+      return semverLt(valueInAttributes, value);
+    } else if (operator === "semverLessThanOrEquals") {
+      return semverLte(valueInAttributes, value);
     }
   } else if (typeof attributes[attribute] === "number" && typeof value === "number") {
     // numeric

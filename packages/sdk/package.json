@@ -43,6 +43,7 @@
   "license": "MIT",
   "dependencies": {
     "@featurevisor/types": "^0.6.0",
-    "murmurhash": "^2.0.1"
+    "murmurhash": "^2.0.1",
+    "semver": "^7.3.8"
   }
 }
