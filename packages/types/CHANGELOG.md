@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.5.3](https://github.com/fahad19/featurevisor/compare/v0.5.2...v0.5.3) (2023-03-25)
+
+
+### Bug Fixes
+
+* linting fixes ([#27](https://github.com/fahad19/featurevisor/issues/27)) ([8f16194](https://github.com/fahad19/featurevisor/commit/8f161943332a617a5e25f811c985e1a33a9559fa))
+
+
+
+
+
 # [0.5.0](https://github.com/fahad19/featurevisor/compare/v0.4.0...v0.5.0) (2023-03-22)
 
 
