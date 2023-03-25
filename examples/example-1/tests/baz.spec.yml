@@ -5,16 +5,19 @@ tests:
       - key: baz
         assertions:
           - at: 10
+            description: "At 10%, the feature should be enabled"
             attributes:
               country: nl
             expectedVariation: true
 
           - at: 70
+            description: "At 70%, the feature should be enabled"
             attributes:
               country: nl
             expectedVariation: true
 
           - at: 90
+            description: "At 90%, the feature should be disabled"
             attributes:
               country: nl
             expectedVariation: false

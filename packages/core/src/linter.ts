@@ -185,6 +185,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
 
     variations: Joi.array().items(
       Joi.object({
+        description: Joi.string().optional(),
         type: Joi.string().valid("string", "integer", "boolean", "double"),
         value: variationValueJoiSchema, // @TODO: make it unique among siblings
         weight: Joi.number().integer().min(0).max(100), // @TODO: total sum among siblings should be exactly 100, allow maximum 3 decimal places
