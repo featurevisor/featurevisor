@@ -4,13 +4,13 @@ import {
   Traffic,
   Feature,
   Variation,
-  VariableKey,
   VariableValue,
   Force,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
+import { VariableSchema } from "@featurevisor/types/src";
 
 export function getMatchedTraffic(
   traffic: Traffic[],
@@ -132,7 +132,7 @@ export function getBucketedVariation(
 
 export function getForcedVariableValue(
   feature: Feature,
-  variableKey: VariableKey,
+  variableSchema: VariableSchema,
   attributes: Attributes,
   datafileReader: DatafileReader,
 ): VariableValue | undefined {
@@ -142,32 +142,22 @@ export function getForcedVariableValue(
     return undefined;
   }
 
-  return force.variables[variableKey];
+  const value = force.variables[variableSchema.key];
+
+  if (typeof value === "string" && variableSchema.type === "json") {
+    return JSON.parse(value);
+  }
+
+  return value;
 }
 
 export function getBucketedVariableValue(
   feature: Feature,
-  variableKey: VariableKey,
+  variableSchema: VariableSchema,
   attributes: Attributes,
   bucketValue: number,
   datafileReader: DatafileReader,
 ): VariableValue | undefined {
-  // all variables
-  const variablesSchema = feature.variablesSchema;
-
-  if (!variablesSchema) {
-    return undefined;
-  }
-
-  // single variable
-  const variableSchema = variablesSchema.find((v) => {
-    return v.key === variableKey;
-  });
-
-  if (!variableSchema) {
-    return undefined;
-  }
-
   // get traffic
   const matchedTraffic = getMatchedTraffic(
     feature.traffic,
@@ -179,6 +169,8 @@ export function getBucketedVariableValue(
   if (!matchedTraffic) {
     return undefined;
   }
+
+  const variableKey = variableSchema.key;
 
   // see if variable is set at traffic/rule level
   if (matchedTraffic.variables && typeof matchedTraffic.variables[variableKey] !== "undefined") {
@@ -206,6 +198,10 @@ export function getBucketedVariableValue(
   });
 
   if (!variableFromVariation) {
+    if (variableSchema.type === "json") {
+      return JSON.parse(variableSchema.defaultValue as string);
+    }
+
     return variableSchema.defaultValue;
   }
 
@@ -232,8 +228,16 @@ export function getBucketedVariableValue(
     });
 
     if (override) {
+      if (variableSchema.type === "json") {
+        return JSON.parse(override.value as string);
+      }
+
       return override.value;
     }
+  }
+
+  if (variableSchema.type === "json") {
+    return JSON.parse(variableFromVariation.value as string);
   }
 
   return variableFromVariation.value;

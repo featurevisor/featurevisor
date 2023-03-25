@@ -8,6 +8,9 @@ tests:
             attributes:
               country: nl
             expectedVariation: control
+            variables:
+              fooConfig:
+                foo: bar
 
           - at: 33.33
             attributes:
@@ -23,6 +26,9 @@ tests:
             attributes:
               country: nl
             expectedVariation: b
+            expectedVariables:
+              fooConfig:
+                foo: bar b
 
           - at: 34
             attributes:

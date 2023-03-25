@@ -178,7 +178,15 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
     variablesSchema: Joi.array().items(
       Joi.object({
         key: Joi.string(), // @TODO: make it unique among siblings
-        type: Joi.string().valid("string", "integer", "boolean", "double", "array", "object"),
+        type: Joi.string().valid(
+          "string",
+          "integer",
+          "boolean",
+          "double",
+          "array",
+          "object",
+          "json",
+        ),
         defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
       }),
     ),
