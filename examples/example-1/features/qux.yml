@@ -1,0 +1,30 @@
+description: Variations with weights having decimal places
+tags:
+  - all
+
+defaultVariation: control
+
+bucketBy: userId
+
+variations:
+  - type: string
+    value: control
+    weight: 33.34
+  - type: string
+    value: b
+    weight: 33.33
+  - type: string
+    value: c
+    weight: 33.33
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100

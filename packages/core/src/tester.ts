@@ -136,7 +136,9 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
         console.log(`     => Feature "${featureKey}" in environment "${test.environment}":`);
 
         feature.assertions.forEach(function (assertion, aIndex) {
-          console.log(`        => Assertion #${aIndex + 1}: ${assertion.description || ""}`);
+          const description = assertion.description || `at ${assertion.at}%`;
+
+          console.log(`        => Assertion #${aIndex + 1}: ${description}`);
 
           let assertionHasError = false;
           currentAt = assertion.at * (MAX_BUCKETED_NUMBER / 100);
