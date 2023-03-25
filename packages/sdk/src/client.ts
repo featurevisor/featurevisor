@@ -7,6 +7,8 @@ import {
   BucketKey,
   BucketValue,
   FeatureKey,
+  VariationType,
+  VariableType,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -16,6 +18,7 @@ import {
   getForcedVariableValue,
 } from "./feature";
 import { getBucketedNumber } from "./bucket";
+import { VariableSchema } from "@featurevisor/types/src";
 
 export type ActivationCallback = (
   featureName: string,
@@ -32,8 +35,7 @@ export interface SdkOptions {
   configureBucketValue?: ConfigureBucketValue;
 }
 
-// union of VariableValue and VariationValue
-type FieldType = "string" | "integer" | "double" | "boolean" | "array" | "object";
+type FieldType = VariationType | VariableType;
 type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
@@ -54,6 +56,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
       return Array.isArray(value) ? value : undefined;
     case "object":
       return typeof value === "object" ? value : undefined;
+    // @NOTE: `json` is not handled here intentionally
     default:
       return value;
   }
@@ -268,9 +271,17 @@ export class FeaturevisorSDK {
         return undefined;
       }
 
+      const variableSchema = Array.isArray(feature.variablesSchema)
+        ? feature.variablesSchema.find((v) => v.key === variableKey)
+        : undefined;
+
+      if (!variableSchema) {
+        return undefined;
+      }
+
       const forcedVariableValue = getForcedVariableValue(
         feature,
-        variableKey,
+        variableSchema,
         attributes,
         this.datafileReader,
       );
@@ -283,7 +294,7 @@ export class FeaturevisorSDK {
 
       return getBucketedVariableValue(
         feature,
-        variableKey,
+        variableSchema,
         attributes,
         bucketValue,
         this.datafileReader,
@@ -353,5 +364,15 @@ export class FeaturevisorSDK {
     const variableValue = this.getVariable(featureKey, variableKey, attributes);
 
     return getValueByType(variableValue, "object") as T | undefined;
+  }
+
+  getVariableJSON<T>(
+    featureKey: FeatureKey | Feature,
+    variableKey: string,
+    attributes: Attributes = {},
+  ): T | undefined {
+    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+
+    return getValueByType(variableValue, "json") as T | undefined;
   }
 }

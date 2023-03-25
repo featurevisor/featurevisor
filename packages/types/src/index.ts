@@ -88,7 +88,14 @@ export type VariationType = "boolean" | "string" | "integer" | "double";
 export type VariationValue = boolean | string | number | null | undefined;
 
 export type VariableKey = string;
-export type VariableType = "boolean" | "string" | "integer" | "double" | "array" | "object";
+export type VariableType =
+  | "boolean"
+  | "string"
+  | "integer"
+  | "double"
+  | "array"
+  | "object"
+  | "json";
 export interface VariableObjectValue {
   [key: string]: VariableValue;
 }

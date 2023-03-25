@@ -6,6 +6,11 @@ defaultVariation: control
 
 bucketBy: userId
 
+variablesSchema:
+  - type: json
+    key: fooConfig
+    defaultValue: '{"foo": "bar"}'
+
 variations:
   - type: string
     value: control
@@ -13,6 +18,9 @@ variations:
   - type: string
     value: b
     weight: 33.33
+    variables:
+      - key: fooConfig
+        value: '{"foo": "bar b"}'
   - type: string
     value: c
     weight: 33.33

@@ -348,6 +348,7 @@ These types of variables are allowed:
 - `integer`
 - `array` (of strings)
 - `object` (flat objects only)
+- `json` (any valid JSON in stringified form)
 
 ### Overrides
 
@@ -528,6 +529,25 @@ variations:
         value:
           title: Welcome to our website
           subtitle: We are glad you are here
+```
+
+### `json`
+
+```yml
+# ...
+variablesSchema:
+  - key: hero
+    type: json
+    defaultValue: '{"title": "Welcome", "subtitle": "Welcome to our website"}'
+
+variations:
+  # ...
+  - type: boolean
+    value: true
+    weight: 50
+    variables:
+      - key: hero
+        value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
 ```
 
 ## Force
