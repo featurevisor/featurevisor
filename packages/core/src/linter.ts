@@ -144,7 +144,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
       Joi.object({
         key: Joi.string(), // @TODO: make it unique among siblings
         segments: groupSegmentsJoiSchema,
-        percentage: Joi.number().min(0).max(100), // @TODO: allow maximum 3 decimal places
+        percentage: Joi.number().precision(3).min(0).max(100),
         variables: Joi.object().optional(), // @TODO: make it stricter
       }),
     ),
@@ -183,29 +183,40 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
       }),
     ),
 
-    variations: Joi.array().items(
-      Joi.object({
-        type: Joi.string().valid("string", "integer", "boolean", "double"),
-        value: variationValueJoiSchema, // @TODO: make it unique among siblings
-        weight: Joi.number().integer().min(0).max(100), // @TODO: total sum among siblings should be exactly 100, allow maximum 3 decimal places
-        variables: Joi.array().items(
-          Joi.object({
-            key: Joi.string(), // @TODO: make it unique among siblings
-            value: variableValueJoiSchema,
-            overrides: Joi.array().items(
-              Joi.object({
-                // @TODO: either segments or conditions prsent at a time
-                segments: groupSegmentsJoiSchema,
-                conditions: conditionsJoiSchema,
+    variations: Joi.array()
+      .items(
+        Joi.object({
+          description: Joi.string().optional(),
+          type: Joi.string().valid("string", "integer", "boolean", "double"),
+          value: variationValueJoiSchema, // @TODO: make it unique among siblings
+          weight: Joi.number().precision(3).min(0).max(100),
+          variables: Joi.array().items(
+            Joi.object({
+              key: Joi.string(), // @TODO: make it unique among siblings
+              value: variableValueJoiSchema,
+              overrides: Joi.array().items(
+                Joi.object({
+                  // @TODO: either segments or conditions prsent at a time
+                  segments: groupSegmentsJoiSchema,
+                  conditions: conditionsJoiSchema,
 
-                // @TODO: make it stricter based on `type`
-                value: variableValueJoiSchema,
-              }),
-            ),
-          }),
-        ),
+                  // @TODO: make it stricter based on `type`
+                  value: variableValueJoiSchema,
+                }),
+              ),
+            }),
+          ),
+        }),
+      )
+      .custom((value, helpers) => {
+        var total = value.reduce((a, b) => a + b.weight, 0);
+
+        if (total !== 100) {
+          throw new Error(`Sum of all variation weights must be 100, got ${total}`);
+        }
+
+        return value;
       }),
-    ),
 
     environments: allEnvironomentsJoiSchema,
   });
@@ -226,7 +237,7 @@ export function getTestsJoiSchema(projectConfig: ProjectConfig) {
             assertions: Joi.array().items(
               Joi.object({
                 description: Joi.string().optional(),
-                at: Joi.number().integer().min(0).max(100),
+                at: Joi.number().precision(3).min(0).max(100),
                 attributes: Joi.object(), // @TODO: make it specific
 
                 // @TODO: one or both below

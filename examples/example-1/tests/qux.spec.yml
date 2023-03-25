@@ -1,0 +1,40 @@
+tests:
+  - tag: all
+    environment: production
+    features:
+      - key: qux
+        assertions:
+          - at: 33
+            attributes:
+              country: nl
+            expectedVariation: control
+
+          - at: 33.33
+            attributes:
+              country: nl
+            expectedVariation: control
+
+          - at: 33.34
+            attributes:
+              country: nl
+            expectedVariation: control
+
+          - at: 33.35
+            attributes:
+              country: nl
+            expectedVariation: b
+
+          - at: 34
+            attributes:
+              country: nl
+            expectedVariation: b
+
+          - at: 66
+            attributes:
+              country: nl
+            expectedVariation: b
+
+          - at: 67
+            attributes:
+              country: nl
+            expectedVariation: c
