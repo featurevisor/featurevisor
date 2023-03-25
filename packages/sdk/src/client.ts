@@ -146,7 +146,7 @@ export class FeaturevisorSDK {
       const variation = getBucketedVariation(feature, attributes, bucketValue, this.datafileReader);
 
       if (!variation) {
-        return undefined;
+        return feature.defaultVariation;
       }
 
       return variation.value;

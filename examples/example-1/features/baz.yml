@@ -1,0 +1,27 @@
+description: Classic on/off switch
+tags:
+  - all
+
+defaultVariation: false
+
+bucketBy: userId
+
+variations:
+  - type: boolean
+    value: true
+    weight: 100
+  - type: boolean
+    value: false
+    weight: 0
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 80

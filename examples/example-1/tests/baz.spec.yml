@@ -1,0 +1,20 @@
+tests:
+  - tag: all
+    environment: production
+    features:
+      - key: baz
+        assertions:
+          - at: 10
+            attributes:
+              country: nl
+            expectedVariation: true
+
+          - at: 70
+            attributes:
+              country: nl
+            expectedVariation: true
+
+          - at: 90
+            attributes:
+              country: nl
+            expectedVariation: false
