@@ -1,11 +1,11 @@
 import { Attributes, Condition, PlainCondition } from "@featurevisor/types";
 
-import semverGt from "semver/functions/gt";
-import semverLt from "semver/functions/lt";
-import semverEq from "semver/functions/eq";
-import semverNeq from "semver/functions/neq";
-import semverGte from "semver/functions/gte";
-import semverLte from "semver/functions/lte";
+import * as semverGt from "semver/functions/gt";
+import * as semverLt from "semver/functions/lt";
+import * as semverEq from "semver/functions/eq";
+import * as semverNeq from "semver/functions/neq";
+import * as semverGte from "semver/functions/gte";
+import * as semverLte from "semver/functions/lte";
 
 export function conditionIsMatched(condition: PlainCondition, attributes: Attributes): boolean {
   const { attribute, operator, value } = condition;
