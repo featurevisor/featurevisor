@@ -32,20 +32,26 @@ conditions:
 
 These operators are supported for conditions:
 
-| Operator              | Type of attribute   | Description              |
-|-----------------------|---------------------|--------------------------|
-| `equals`              | any                 | Equals to                |
-| `notEquals`           | any                 | Not equals to            |
-| `greaterThan`         | `integer`, `double` | Greater than             |
-| `greaterThanOrEquals` | `integer`, `double` | Greater than or equal to |
-| `lessThan`            | `integer`, `double` | Less than                |
-| `lessThanOrEquals`    | `integer`, `double` | Less than or equal to    |
-| `contains`            | `string`            | Contains string          |
-| `notContains`         | `string`            | Does not contain string  |
-| `startsWith`          | `string`            | Starts with string       |
-| `endsWith`            | `string`            | Ends with string         |
-| `in`                  | `string`            | In array of strings      |
-| `notIn`               | `string`            | Not in array of strings  |
+| Operator                    | Type of attribute   | Description                   |
+|-----------------------------|---------------------|-------------------------------|
+| `equals`                    | any                 | Equals to                     |
+| `notEquals`                 | any                 | Not equals to                 |
+| `greaterThan`               | `integer`, `double` | Greater than                  |
+| `greaterThanOrEquals`       | `integer`, `double` | Greater than or equal to      |
+| `lessThan`                  | `integer`, `double` | Less than                     |
+| `lessThanOrEquals`          | `integer`, `double` | Less than or equal to         |
+| `contains`                  | `string`            | Contains string               |
+| `notContains`               | `string`            | Does not contain string       |
+| `startsWith`                | `string`            | Starts with string            |
+| `endsWith`                  | `string`            | Ends with string              |
+| `in`                        | `string`            | In array of strings           |
+| `notIn`                     | `string`            | Not in array of strings       |
+| `semverEquals`              | `string`            | Semver equals to              |
+| `semverNotEquals`           | `string`            | Semver not equals to          |
+| `semverGreaterThan`         | `string`            | Semver greater than           |
+| `semverGreaterThanOrEquals` | `string`            | Semver greater than or equals |
+| `semverLessThan`            | `string`            | Semver less than              |
+| `semverLessThanOrEquals`    | `string`            | Semver less than or equals    |
 
 Examples of each operator below:
 
@@ -173,6 +179,66 @@ conditions:
       - fr
       - gb
       - de
+```
+
+### `semverEquals`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverEquals
+    value: 1.0.0
+```
+
+### `semverNotEquals`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverNotEquals
+    value: 1.0.0
+```
+
+### `semverGreaterThan`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverGreaterThan
+    value: 1.0.0
+```
+
+### `semverGreaterThanOrEquals`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverGreaterThanOrEquals
+    value: 1.0.0
+```
+
+### `semverLessThan`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverLessThan
+    value: 1.0.0
+```
+
+### `semverLessThanOrEquals`
+
+```yml
+# ...
+conditions:
+  - attribute: version
+    operator: semverLessThanOrEquals
+    value: 1.0.0
 ```
 
 ## Conditions
