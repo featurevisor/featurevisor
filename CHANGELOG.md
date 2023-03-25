@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.6.0](https://github.com/fahad19/featurevisor/compare/v0.5.3...v0.6.0) (2023-03-25)
+
+
+### Features
+
+* Introduce new JSON type for variables ([#28](https://github.com/fahad19/featurevisor/issues/28)) ([49ff4cb](https://github.com/fahad19/featurevisor/commit/49ff4cb99f840f29e9ac8fcacfee9a9a961ff776))
+
+
+
+
+
 ## [0.5.3](https://github.com/fahad19/featurevisor/compare/v0.5.2...v0.5.3) (2023-03-25)
 
 
