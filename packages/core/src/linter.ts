@@ -37,6 +37,14 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
       "startsWith",
       "endsWith",
 
+      // semver (string)
+      "semverEquals",
+      "semverNotEquals",
+      "semverGreaterThan",
+      "semverGreaterThanOrEquals",
+      "semverLessThan",
+      "semverLessThanOrEquals",
+
       // array of strings
       "in",
       "notIn",

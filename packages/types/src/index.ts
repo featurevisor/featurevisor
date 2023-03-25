@@ -29,6 +29,14 @@ export type Operator =
   | "startsWith"
   | "endsWith"
 
+  // semver (string)
+  | "semverEquals"
+  | "semverNotEquals"
+  | "semverGreaterThan"
+  | "semverGreaterThanOrEquals"
+  | "semverLessThan"
+  | "semverLessThanOrEquals"
+
   // array of strings
   | "in"
   | "notIn";

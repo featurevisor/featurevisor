@@ -70,6 +70,103 @@ describe("sdk: Conditions", function () {
       // not match
       expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
     });
+
+    it("should match with operator: semverEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverEquals",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(false);
+    });
+
+    it("should match with operator: semverNotEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverNotEquals",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(false);
+    });
+
+    it("should match with operator: semverGreaterThan", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverGreaterThan",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
+    });
+
+    it("should match with operator: semverGreaterThanOrEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverGreaterThanOrEquals",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
+    });
+
+    it("should match with operator: semverLessThan", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverLessThan",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
+    });
+
+    it("should match with operator: semverLessThanOrEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "version",
+          operator: "semverLessThanOrEquals",
+          value: "1.0.0",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
+    });
   });
 
   describe("simple condition", function () {
