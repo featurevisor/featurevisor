@@ -174,3 +174,9 @@ sdk.getVariableArray(featureKey, variableKey, attributes);
 ```ts
 sdk.getVariableObject<T>(featureKey, variableKey, attributes);
 ```
+
+### `json`
+
+```ts
+sdk.getVariableJSON<T>(featureKey, variableKey, attributes);
+```
