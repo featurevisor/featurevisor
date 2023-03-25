@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-1",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
@@ -9,6 +9,6 @@
     "test": "featurevisor test"
   },
   "dependencies": {
-    "@featurevisor/cli": "^0.5.0"
+    "@featurevisor/cli": "^0.5.2"
   }
 }
