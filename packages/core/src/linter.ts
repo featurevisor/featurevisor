@@ -4,7 +4,8 @@ import * as path from "path";
 
 import * as Joi from "joi";
 
-import { ProjectConfig } from "./config";
+import { ProjectConfig } from "@featurevisor/types";
+
 import { getYAMLFiles, parseYaml } from "./utils";
 
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {

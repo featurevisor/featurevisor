@@ -50,6 +50,7 @@
     "style-loader": "^3.3.2"
   },
   "dependencies": {
+    "@featurevisor/types": "^0.7.0",
     "http-server": "^14.1.1"
   }
 }

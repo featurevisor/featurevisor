@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { BucketBy } from "@featurevisor/types";
+import { ProjectConfig } from "@featurevisor/types";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -17,18 +17,6 @@ export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 
 export const SCHEMA_VERSION = "1";
-
-export interface ProjectConfig {
-  featuresDirectoryPath: string;
-  segmentsDirectoryPath: string;
-  attributesDirectoryPath: string;
-  testsDirectoryPath: string;
-  stateDirectoryPath: string;
-  outputDirectoryPath: string;
-  environments: string[];
-  tags: string[];
-  defaultBucketBy: BucketBy;
-}
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {

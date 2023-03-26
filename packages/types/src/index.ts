@@ -289,3 +289,18 @@ export interface ExistingFeatures {
 export interface ExistingState {
   features: ExistingFeatures;
 }
+
+/**
+ * Project
+ */
+export interface ProjectConfig {
+  featuresDirectoryPath: string;
+  segmentsDirectoryPath: string;
+  attributesDirectoryPath: string;
+  testsDirectoryPath: string;
+  stateDirectoryPath: string;
+  outputDirectoryPath: string;
+  environments: string[];
+  tags: string[];
+  defaultBucketBy: BucketBy;
+}
