@@ -1,7 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { ProjectConfig, Attribute, ParsedFeature, Segment } from "@featurevisor/types";
+import { Attribute, ParsedFeature, Segment } from "@featurevisor/types";
+
+import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
 
 export function generateSearchIndex(projectConfig: ProjectConfig) {

@@ -6,12 +6,10 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "lint": "echo 'not linting in this package yet'",
-    "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
-    "copy:html": "cp ./fe/index.html ./dist/index.html",
-    "dist:fe": "webpack --config ./webpack.fe.config.js",
-    "dist": "npm run dist:fe",
-    "build": "npm run dist && npm run copy:html && npm run transpile",
-    "server:local": "http-server ./dist",
+    "transpile": "echo 'Nothing to transpile in this package'",
+    "copy:html": "cp ./src/index.html ./dist/index.html",
+    "dist": "webpack --config ./webpack.config.js",
+    "build": "npm run dist && npm run copy:html",
     "test": "echo 'Nothing to test in types package'"
   },
   "author": {

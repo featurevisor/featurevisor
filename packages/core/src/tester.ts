@@ -7,10 +7,10 @@ import {
   VariableKey,
   VariableValue,
   VariationValue,
-  ProjectConfig,
 } from "@featurevisor/types";
 import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
+import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
 import { getDatafilePath } from "./builder";
 
