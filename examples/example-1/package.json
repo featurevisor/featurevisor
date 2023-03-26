@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "featurevisor lint",
     "build": "featurevisor build",
-    "test": "featurevisor test"
+    "test": "featurevisor test",
+    "generate-site": "featurevisor generate-site"
   },
   "dependencies": {
     "@featurevisor/cli": "^0.7.0"

@@ -8,10 +8,16 @@ import { parseYaml } from "./utils";
 
 export function generateSearchIndex(projectConfig: ProjectConfig) {
   const result = {
-    attributes: [] as Attribute[],
-    segments: [] as Segment[],
-    features: [] as ParsedFeature[],
+    entities: {
+      attributes: [] as Attribute[],
+      segments: [] as Segment[],
+      features: [] as ParsedFeature[],
+    },
   };
+
+  /**
+   * Entities
+   */
 
   // attributes
   const attributeFiles = fs.readdirSync(projectConfig.attributesDirectoryPath);
@@ -24,7 +30,7 @@ export function generateSearchIndex(projectConfig: ProjectConfig) {
       const fileContent = fs.readFileSync(filePath, "utf8");
       const parsed = parseYaml(fileContent) as Attribute;
 
-      result.attributes.push({
+      result.entities.attributes.push({
         ...parsed,
         key: entityName,
       });
@@ -41,7 +47,7 @@ export function generateSearchIndex(projectConfig: ProjectConfig) {
       const fileContent = fs.readFileSync(filePath, "utf8");
       const parsed = parseYaml(fileContent) as Segment;
 
-      result.segments.push({
+      result.entities.segments.push({
         ...parsed,
         key: entityName,
       });
@@ -49,7 +55,7 @@ export function generateSearchIndex(projectConfig: ProjectConfig) {
 
   // features
   const featureFiles = fs.readdirSync(projectConfig.featuresDirectoryPath);
-  segmentFiles
+  featureFiles
     .filter((fileName) => fileName.endsWith(".yml"))
     .forEach((fileName) => {
       const filePath = path.join(projectConfig.featuresDirectoryPath, fileName);
@@ -58,11 +64,23 @@ export function generateSearchIndex(projectConfig: ProjectConfig) {
       const fileContent = fs.readFileSync(filePath, "utf8");
       const parsed = parseYaml(fileContent) as ParsedFeature;
 
-      result.features.push({
+      result.entities.features.push({
         ...parsed,
         key: entityName,
       });
     });
 
   return result;
+}
+
+export function generateSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
+  const hasError = false;
+
+  const searchIndex = generateSearchIndex(projectConfig);
+  const searchIndexFilePath = path.join(projectConfig.outputDirectoryPath, "search-index.json");
+
+  fs.writeFileSync(searchIndexFilePath, JSON.stringify(searchIndex, null, 2));
+  console.log(`File written at: ${searchIndexFilePath}`);
+
+  return hasError;
 }
