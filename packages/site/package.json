@@ -40,5 +40,8 @@
   "bugs": {
     "url": "https://github.com/fahad19/featurevisor/issues"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "^18.0.29"
+  }
 }
