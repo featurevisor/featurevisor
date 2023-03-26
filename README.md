@@ -75,6 +75,7 @@ More documentation available at [https://featurevisor.com](https://featurevisor.
 | [@featurevisor/core](./packages/core)   | Core package used by CLI                   |
 | [@featurevisor/types](./packages/types) | Common typings                             |
 | [@featurevisor/sdk](./packages/sdk)     | Universal SDK for both Node.js and browser |
+| [@featurevisor/site](./packages/site)   | Static site generator for your project     |
 
 # License
 
