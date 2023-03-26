@@ -14,12 +14,13 @@ module.exports = function getWebpackConfig(options) {
     mode,
     devtool,
     tsConfigFilePath,
+    enableCssModules,
   } = options;
 
   const entry = {};
   entry[entryKey] = entryFilePath;
 
-  return {
+  const config = {
     entry: entry,
     output: {
       path: outputDirectoryPath,
@@ -51,4 +52,26 @@ module.exports = function getWebpackConfig(options) {
       ],
     },
   };
+
+  if (enableCssModules) {
+    config.resolve.extensions.push(".css");
+
+    config.module.rules.push({
+      test: /\.css$/,
+      use: [
+        {
+          loader: "style-loader",
+        },
+        {
+          loader: "css-loader",
+          options: {
+            importLoaders: 1,
+            modules: true,
+          },
+        },
+      ],
+    });
+  }
+
+  return config;
 };
