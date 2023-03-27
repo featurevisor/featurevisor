@@ -7,7 +7,8 @@
     "lint": "featurevisor lint",
     "build": "featurevisor build",
     "test": "featurevisor test",
-    "generate-site": "featurevisor generate-site"
+    "export": "featurevisor site export",
+    "start": "featurevisor site serve"
   },
   "dependencies": {
     "@featurevisor/cli": "^0.7.0"

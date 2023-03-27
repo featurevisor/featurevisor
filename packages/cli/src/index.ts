@@ -99,28 +99,35 @@ async function main() {
      * Site
      */
     .command({
-      command: "site export",
+      command: "site [subcommand]",
       handler: function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
-        const hasError = exportSite(rootDirectoryPath, projectConfig);
+        const allowedSubcommands = ["export", "serve"];
 
-        if (hasError) {
-          process.exit(1);
+        if (!allowedSubcommands.includes(options.subcommand)) {
+          console.log("Please specify a subcommand: `export` or `serve`");
+          return;
+        }
+
+        // export
+        if (options.subcommand === "export") {
+          const hasError = exportSite(rootDirectoryPath, projectConfig);
+
+          if (hasError) {
+            process.exit(1);
+          }
+        }
+
+        // serve
+        if (options.subcommand === "serve") {
+          serveSite(rootDirectoryPath, projectConfig);
         }
       },
     })
     .example("$0 site export", "generate static site with project data")
-
-    .command({
-      command: "site serve",
-      handler: function (options) {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
-
-        serveSite(rootDirectoryPath, projectConfig, options);
-      },
-    })
-    .example("$0 site export", "generate static site with project data")
+    .example("$0 site serve", "serve already exported site locally")
+    .example("$0 site serve -p 3000", "serve in a specific port")
 
     /**
      * Options
