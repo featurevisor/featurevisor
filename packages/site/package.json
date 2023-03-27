@@ -1,9 +1,8 @@
 {
   "name": "@featurevisor/site",
   "version": "0.7.0",
-  "description": "Static site generator for Featurevisor",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "description": "Static site for Featurevisor",
+  "main": "dist",
   "scripts": {
     "lint": "echo 'not linting in this package yet'",
     "transpile": "echo 'Nothing to transpile in this package'",
@@ -43,12 +42,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/react": "^18.0.29",
-    "bulma": "^0.9.4",
     "css-loader": "^6.7.3",
     "style-loader": "^3.3.2"
   },
   "dependencies": {
-    "@featurevisor/types": "^0.7.0",
-    "http-server": "^14.1.1"
+    "@featurevisor/types": "^0.7.0"
   }
 }

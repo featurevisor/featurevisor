@@ -1,12 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as mkdirp from "mkdirp";
+
 import { Attribute, ParsedFeature, Segment } from "@featurevisor/types";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
 
-export function generateSearchIndex(projectConfig: ProjectConfig) {
+export function generateSiteSearchIndex(projectConfig: ProjectConfig) {
   const result = {
     entities: {
       attributes: [] as Attribute[],
@@ -73,14 +75,32 @@ export function generateSearchIndex(projectConfig: ProjectConfig) {
   return result;
 }
 
-export function generateSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
+export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
   const hasError = false;
 
-  const searchIndex = generateSearchIndex(projectConfig);
-  const searchIndexFilePath = path.join(projectConfig.outputDirectoryPath, "search-index.json");
+  mkdirp.sync(projectConfig.siteExportDirectoryPath);
 
-  fs.writeFileSync(searchIndexFilePath, JSON.stringify(searchIndex, null, 2));
-  console.log(`File written at: ${searchIndexFilePath}`);
+  const sitePackagePath = path.dirname(require.resolve("@featurevisor/site/package.json"));
+
+  // copy site dist
+  const siteDistPath = path.join(sitePackagePath, "dist");
+  fs.cpSync(siteDistPath, projectConfig.siteExportDirectoryPath, { recursive: true });
+  console.log("Site dist copied to:", projectConfig.siteExportDirectoryPath);
+
+  // site search index
+  const searchIndex = generateSiteSearchIndex(projectConfig);
+  const searchIndexFilePath = path.join(projectConfig.siteExportDirectoryPath, "search-index.json");
+  fs.writeFileSync(searchIndexFilePath, JSON.stringify(searchIndex));
+  console.log(`Site search index written at: ${searchIndexFilePath}`);
+
+  // copy datafiles
+  fs.cpSync(
+    projectConfig.outputDirectoryPath,
+    path.join(projectConfig.siteExportDirectoryPath, "datafiles"),
+    { recursive: true },
+  );
+
+  // @TODO: replace placeoholders in index.html
 
   return hasError;
 }

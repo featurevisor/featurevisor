@@ -1,6 +1,6 @@
 # @featurevisor/site
 
-Static site generator for Featurevisor projects.
+Static site for Featurevisor projects.
 
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 

@@ -10,7 +10,7 @@ import {
   testProject,
   buildProject,
   initProject,
-  generateSite,
+  exportSite,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason, p) => {
@@ -95,18 +95,18 @@ async function main() {
     .example("$0 test", "test features")
 
     .command({
-      command: "generate-site",
+      command: "site export",
       handler: function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
-        const hasError = generateSite(rootDirectoryPath, projectConfig);
+        const hasError = exportSite(rootDirectoryPath, projectConfig);
 
         if (hasError) {
           process.exit(1);
         }
       },
     })
-    .example("$0 generate-site", "generate static site with project data")
+    .example("$0 site export", "generate static site with project data")
 
     /**
      * Options

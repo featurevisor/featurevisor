@@ -1,0 +1,66 @@
+/*** CSS variables */
+:root {
+  --focus: transparent; /* disable buttons outline:; or change its color */
+}
+
+/*** Dark mode */
+:where(.dark-mode, #dark-mode, [dark-mode], [data-mode="dark"]) {
+}
+
+@supports (font-variation-settings: normal) {
+  :root {
+    --fontFamily: var(--fontFamilyVar);
+  }
+} /* If Variable fonts are supported */
+a,
+a:hover {
+  text-decoration: none;
+} /* remove underline from links */
+
+/* ------------------
+  media query
+------------------ */
+@media (prefers-reduced-motion: reduce) {
+} /* User prefers NO motion-based animation */
+
+/*** Detect OS Dark/Light mode */
+@media (prefers-color-scheme: dark) {
+} /* if OS in DARK mode */
+@media (prefers-color-scheme: light) {
+} /* if OS in LIGHT mode */
+
+/*** Responsive */
+/** Skelet. BREAKING POINTS */
+@media (max-width: 600px) {
+} /* Grid SMALL becomes active */
+@media (min-width: 601px) and (max-width: 1024px) {
+} /* Grid MEDIUM becomes active */
+@media (min-width: 1599px) {
+} /* Grid LARGE becomes active */
+
+/** General breaking points */
+/* Device = Most of Mobile (Portrait) | Screen = b/w 0 to 480px */
+@media (max-width: 480px) {
+}
+/* Device = Low Resolution Tablet, Mobile (Landscape) | Screen = b/w 481px to 767px */
+@media (min-width: 481px) and (max-width: 767px) {
+}
+/* Device = Tablet, iPad (landscape) | Screen = b/w 768px to 1024px */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+}
+/* Device = Tablet, iPad (portrait) | Screen = b/w 768px to 1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+}
+/* Device = Laptop, Desktop | Screen = b/w 1025px to 1280px */
+@media (min-width: 1025px) and (max-width: 1280px) {
+}
+/* Device = Desktop | Screen = 1281px to higher resolution desktops */
+@media (min-width: 1281px) {
+}
+/* Device = Desktop | Screen = 1599px huge resolution desktops */
+@media (min-width: 1599px) {
+}
+
+/**
+ * Elements
+ */
