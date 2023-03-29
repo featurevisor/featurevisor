@@ -2,15 +2,15 @@ import * as React from "react";
 
 import { Attribute, Segment, ParsedFeature } from "@featurevisor/types";
 
-interface SearchIndexData {
+export interface SearchIndexData {
   entities: {
     attributes: Attribute[];
     segments: Segment[];
-    featuures: ParsedFeature[];
+    features: ParsedFeature[];
   };
 }
 
-interface SearchIndexProps {
+export interface SearchIndexProps {
   isLoaded: boolean;
   data?: SearchIndexData;
 }
