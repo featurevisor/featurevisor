@@ -8,7 +8,7 @@
     "build": "featurevisor build",
     "test": "featurevisor test",
     "export": "featurevisor site export",
-    "start": "featurevisor site serve"
+    "start": "npm run export && featurevisor site serve"
   },
   "dependencies": {
     "@featurevisor/cli": "^0.7.0"
