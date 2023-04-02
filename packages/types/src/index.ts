@@ -289,3 +289,36 @@ export interface ExistingFeatures {
 export interface ExistingState {
   features: ExistingFeatures;
 }
+
+/**
+ * Site index and history
+ */
+export interface HistoryEntity {
+  type: "attribute" | "segment" | "feature";
+  key: string;
+}
+
+export interface HistoryEntry {
+  commit: string;
+  author: string;
+  timestamp: string;
+  entities: HistoryEntity[];
+}
+
+export interface LastModified {
+  commit: string;
+  timestamp: string;
+  author: string;
+}
+
+export interface LastModifiedProperty {
+  lastModified?: LastModified;
+}
+
+export interface SearchIndex {
+  entities: {
+    attributes: (Attribute & LastModifiedProperty)[];
+    segments: (Segment & LastModifiedProperty)[];
+    features: (ParsedFeature & LastModifiedProperty)[];
+  };
+}

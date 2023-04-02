@@ -5,22 +5,17 @@ import { execSync } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
-import { Attribute, ParsedFeature, Segment } from "@featurevisor/types";
+import {
+  Attribute,
+  ParsedFeature,
+  Segment,
+  HistoryEntry,
+  LastModified,
+  SearchIndex,
+} from "@featurevisor/types";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
-
-export interface HistoryEntity {
-  type: "attribute" | "segment" | "feature";
-  key: string;
-}
-
-export interface HistoryEntry {
-  commit: string;
-  author: string;
-  timestamp: string;
-  entities: HistoryEntity[];
-}
 
 export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig): HistoryEntry[] {
   try {
@@ -126,16 +121,6 @@ export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig)
   }
 }
 
-interface LastModified {
-  commit: string;
-  timestamp: string;
-  author: string;
-}
-
-interface LastModifiedProperty {
-  lastModified?: LastModified;
-}
-
 export function getLastModifiedFromHistory(
   fullHistory: HistoryEntry[],
   type,
@@ -156,13 +141,15 @@ export function getLastModifiedFromHistory(
   }
 }
 
-export function generateSiteSearchIndex(projectConfig: ProjectConfig, fullHistory: HistoryEntry[]) {
-  [];
-  const result = {
+export function generateSiteSearchIndex(
+  projectConfig: ProjectConfig,
+  fullHistory: HistoryEntry[],
+): SearchIndex {
+  const result: SearchIndex = {
     entities: {
-      attributes: [] as (Attribute & LastModifiedProperty)[],
-      segments: [] as (Segment & LastModifiedProperty)[],
-      features: [] as (ParsedFeature & LastModifiedProperty)[],
+      attributes: [],
+      segments: [],
+      features: [],
     },
   };
 
