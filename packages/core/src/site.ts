@@ -12,10 +12,18 @@ import {
   HistoryEntry,
   LastModified,
   SearchIndex,
+  FeatureKey,
+  SegmentKey,
+  AttributeKey,
+  Condition,
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "./config";
-import { parseYaml } from "./utils";
+import {
+  parseYaml,
+  extractAttributeKeysFromConditions,
+  extractSegmentKeysFromGroupSegments,
+} from "./utils";
 
 export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig): HistoryEntry[] {
   try {
@@ -156,6 +164,135 @@ export function generateSiteSearchIndex(
   /**
    * Entities
    */
+  // usage
+  const attributesUsedInFeatures: {
+    [key: AttributeKey]: Set<FeatureKey>;
+  } = {};
+  const attributesUsedInSegments: {
+    [key: AttributeKey]: Set<SegmentKey>;
+  } = {};
+  const segmentsUsedInFeatures: {
+    [key: SegmentKey]: Set<FeatureKey>;
+  } = {};
+
+  // features
+  const featureFiles = fs.readdirSync(projectConfig.featuresDirectoryPath);
+  featureFiles
+    .filter((fileName) => fileName.endsWith(".yml"))
+    .forEach((fileName) => {
+      const filePath = path.join(projectConfig.featuresDirectoryPath, fileName);
+      const entityName = fileName.replace(".yml", "");
+
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      const parsed = parseYaml(fileContent) as ParsedFeature;
+
+      parsed.variations.forEach((variation) => {
+        if (!variation.variables) {
+          return;
+        }
+
+        variation.variables.forEach((v) => {
+          if (v.overrides) {
+            v.overrides.forEach((o) => {
+              if (o.conditions) {
+                extractAttributeKeysFromConditions(o.conditions).forEach((attributeKey) => {
+                  if (!attributesUsedInFeatures[attributeKey]) {
+                    attributesUsedInFeatures[attributeKey] = new Set();
+                  }
+
+                  attributesUsedInFeatures[attributeKey].add(entityName);
+                });
+              }
+
+              if (o.segments && o.segments !== "*") {
+                extractSegmentKeysFromGroupSegments(o.segments).forEach((segmentKey) => {
+                  if (!segmentsUsedInFeatures[segmentKey]) {
+                    segmentsUsedInFeatures[segmentKey] = new Set();
+                  }
+
+                  segmentsUsedInFeatures[segmentKey].add(entityName);
+                });
+              }
+            });
+          }
+        });
+      });
+
+      Object.keys(parsed.environments).forEach((environmentKey) => {
+        const env = parsed.environments[environmentKey];
+
+        env.rules.forEach((rule) => {
+          if (rule.segments && rule.segments !== "*") {
+            extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
+              if (!segmentsUsedInFeatures[segmentKey]) {
+                segmentsUsedInFeatures[segmentKey] = new Set();
+              }
+
+              segmentsUsedInFeatures[segmentKey].add(entityName);
+            });
+          }
+        });
+
+        if (env.force) {
+          env.force.forEach((force) => {
+            if (force.segments && force.segments !== "*") {
+              extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
+                if (!segmentsUsedInFeatures[segmentKey]) {
+                  segmentsUsedInFeatures[segmentKey] = new Set();
+                }
+
+                segmentsUsedInFeatures[segmentKey].add(entityName);
+              });
+            }
+
+            if (force.conditions) {
+              extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
+                if (!attributesUsedInFeatures[attributeKey]) {
+                  attributesUsedInFeatures[attributeKey] = new Set();
+                }
+
+                attributesUsedInFeatures[attributeKey].add(entityName);
+              });
+            }
+          });
+        }
+      });
+
+      result.entities.features.push({
+        ...parsed,
+        key: entityName,
+        lastModified: getLastModifiedFromHistory(fullHistory, "feature", entityName),
+      });
+    });
+
+  // segments
+  const segmentFiles = fs.readdirSync(projectConfig.segmentsDirectoryPath);
+  segmentFiles
+    .filter((fileName) => fileName.endsWith(".yml"))
+    .forEach((fileName) => {
+      const filePath = path.join(projectConfig.segmentsDirectoryPath, fileName);
+      const entityName = fileName.replace(".yml", "");
+
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      const parsed = parseYaml(fileContent) as Segment;
+
+      extractAttributeKeysFromConditions(parsed.conditions as Condition | Condition[]).forEach(
+        (attributeKey) => {
+          if (!attributesUsedInSegments[attributeKey]) {
+            attributesUsedInSegments[attributeKey] = new Set();
+          }
+
+          attributesUsedInSegments[attributeKey].add(entityName);
+        },
+      );
+
+      result.entities.segments.push({
+        ...parsed,
+        key: entityName,
+        lastModified: getLastModifiedFromHistory(fullHistory, "segment", entityName),
+        usedInFeatures: Array.from(segmentsUsedInFeatures[entityName] || []),
+      });
+    });
 
   // attributes
   const attributeFiles = fs.readdirSync(projectConfig.attributesDirectoryPath);
@@ -172,42 +309,8 @@ export function generateSiteSearchIndex(
         ...parsed,
         key: entityName,
         lastModified: getLastModifiedFromHistory(fullHistory, "attribute", entityName),
-      });
-    });
-
-  // segments
-  const segmentFiles = fs.readdirSync(projectConfig.segmentsDirectoryPath);
-  segmentFiles
-    .filter((fileName) => fileName.endsWith(".yml"))
-    .forEach((fileName) => {
-      const filePath = path.join(projectConfig.segmentsDirectoryPath, fileName);
-      const entityName = fileName.replace(".yml", "");
-
-      const fileContent = fs.readFileSync(filePath, "utf8");
-      const parsed = parseYaml(fileContent) as Segment;
-
-      result.entities.segments.push({
-        ...parsed,
-        key: entityName,
-        lastModified: getLastModifiedFromHistory(fullHistory, "segment", entityName),
-      });
-    });
-
-  // features
-  const featureFiles = fs.readdirSync(projectConfig.featuresDirectoryPath);
-  featureFiles
-    .filter((fileName) => fileName.endsWith(".yml"))
-    .forEach((fileName) => {
-      const filePath = path.join(projectConfig.featuresDirectoryPath, fileName);
-      const entityName = fileName.replace(".yml", "");
-
-      const fileContent = fs.readFileSync(filePath, "utf8");
-      const parsed = parseYaml(fileContent) as ParsedFeature;
-
-      result.entities.features.push({
-        ...parsed,
-        key: entityName,
-        lastModified: getLastModifiedFromHistory(fullHistory, "feature", entityName),
+        usedInFeatures: Array.from(attributesUsedInFeatures[entityName] || []),
+        usedInSegments: Array.from(attributesUsedInSegments[entityName] || []),
       });
     });
 

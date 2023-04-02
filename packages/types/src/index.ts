@@ -311,14 +311,19 @@ export interface LastModified {
   author: string;
 }
 
-export interface LastModifiedProperty {
-  lastModified?: LastModified;
-}
-
 export interface SearchIndex {
   entities: {
-    attributes: (Attribute & LastModifiedProperty)[];
-    segments: (Segment & LastModifiedProperty)[];
-    features: (ParsedFeature & LastModifiedProperty)[];
+    attributes: (Attribute & {
+      lastModified?: LastModified;
+      usedInSegments: SegmentKey[];
+      usedInFeatures: FeatureKey[];
+    })[];
+    segments: (Segment & {
+      lastModified?: LastModified;
+      usedInFeatures: FeatureKey[];
+    })[];
+    features: (ParsedFeature & {
+      lastModified?: LastModified;
+    })[];
   };
 }
