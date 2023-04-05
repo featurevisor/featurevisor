@@ -33,6 +33,6 @@ Given you own everything in your own repository, you can switch to any other too
 
 You will also be owning the responsibility of migration yourself in that case.
 
-## Can I swith from another SaaS to Featurevisor?
+## Can I switch from another SaaS to Featurevisor?
 
 Yes, you can. But Featurevisor does not provide any migration tool to import your features and experiments from another service (yet).
