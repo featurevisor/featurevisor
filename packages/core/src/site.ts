@@ -162,13 +162,6 @@ export function getLastModifiedFromHistory(
   }
 }
 
-interface RepoDetails {
-  branch: string;
-  remoteUrl: string;
-  blobUrl: string;
-  commitUrl: string;
-}
-
 function getOwnerAndRepoFromUrl(url: string): { owner: string; repo: string } {
   let owner;
   let repo;
@@ -187,8 +180,19 @@ function getOwnerAndRepoFromUrl(url: string): { owner: string; repo: string } {
   return { owner, repo };
 }
 
+interface RepoDetails {
+  branch: string;
+  remoteUrl: string;
+  blobUrl: string;
+  commitUrl: string;
+  topLevelPath: string;
+}
+
 export function getDetailsFromRepo(rootDirectoryPath): RepoDetails | undefined {
   try {
+    const topLevelPathOutput = execSync(`git rev-parse --show-toplevel`);
+    const topLevelPath = topLevelPathOutput.toString().trim();
+
     const remoteUrlOutput = execSync(`git remote get-url origin`);
     const remoteUrl = remoteUrlOutput.toString().trim();
 
@@ -225,6 +229,7 @@ export function getDetailsFromRepo(rootDirectoryPath): RepoDetails | undefined {
       remoteUrl,
       blobUrl,
       commitUrl,
+      topLevelPath,
     };
   } catch (e) {
     console.error(e);
@@ -258,13 +263,24 @@ export function generateSiteSearchIndex(
       projectConfig,
     );
 
+    let prefix = "";
+    if (repoDetails.topLevelPath !== rootDirectoryPath) {
+      prefix = rootDirectoryPath.replace(repoDetails.topLevelPath + "/", "") + "/";
+    }
+
     result.links = {
       attribute: repoDetails.blobUrl.replace(
         "{{blobPath}}",
-        relativeAttributesPath + "/{{key}}.yml",
+        prefix + relativeAttributesPath + "/{{key}}.yml",
       ),
-      segment: repoDetails.blobUrl.replace("{{blobPath}}", relativeSegmentsPath + "/{{key}}.yml"),
-      feature: repoDetails.blobUrl.replace("{{blobPath}}", relativeFeaturesPath + "/{{key}}.yml"),
+      segment: repoDetails.blobUrl.replace(
+        "{{blobPath}}",
+        prefix + relativeSegmentsPath + "/{{key}}.yml",
+      ),
+      feature: repoDetails.blobUrl.replace(
+        "{{blobPath}}",
+        prefix + relativeFeaturesPath + "/{{key}}.yml",
+      ),
       commit: repoDetails.commitUrl,
     };
   }
