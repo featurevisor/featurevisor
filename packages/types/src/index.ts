@@ -312,6 +312,12 @@ export interface LastModified {
 }
 
 export interface SearchIndex {
+  links?: {
+    feature: string;
+    segment: string;
+    attribute: string;
+    commit: string;
+  };
   entities: {
     attributes: (Attribute & {
       lastModified?: LastModified;

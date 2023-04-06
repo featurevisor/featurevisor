@@ -25,22 +25,35 @@ import {
   extractSegmentKeysFromGroupSegments,
 } from "./utils";
 
+function getRelativePaths(rootDirectoryPath, projectConfig: ProjectConfig) {
+  const relativeFeaturesPath = path.relative(
+    rootDirectoryPath,
+    projectConfig.featuresDirectoryPath,
+  );
+  const relativeSegmentsPath = path.relative(
+    rootDirectoryPath,
+    projectConfig.segmentsDirectoryPath,
+  );
+  const relativeAttributesPath = path.relative(
+    rootDirectoryPath,
+    projectConfig.attributesDirectoryPath,
+  );
+
+  return {
+    relativeFeaturesPath,
+    relativeSegmentsPath,
+    relativeAttributesPath,
+  };
+}
+
 export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig): HistoryEntry[] {
   try {
     // raw history
     const rawHistoryFilePath = path.join(projectConfig.siteExportDirectoryPath, "history-raw.txt");
 
-    const relativeFeaturesPath = path.relative(
+    const { relativeFeaturesPath, relativeSegmentsPath, relativeAttributesPath } = getRelativePaths(
       rootDirectoryPath,
-      projectConfig.featuresDirectoryPath,
-    );
-    const relativeSegmentsPath = path.relative(
-      rootDirectoryPath,
-      projectConfig.segmentsDirectoryPath,
-    );
-    const relativeAttributesPath = path.relative(
-      rootDirectoryPath,
-      projectConfig.attributesDirectoryPath,
+      projectConfig,
     );
 
     const separator = "|";
@@ -149,17 +162,112 @@ export function getLastModifiedFromHistory(
   }
 }
 
+interface RepoDetails {
+  branch: string;
+  remoteUrl: string;
+  blobUrl: string;
+  commitUrl: string;
+}
+
+function getOwnerAndRepoFromUrl(url: string): { owner: string; repo: string } {
+  let owner;
+  let repo;
+
+  if (url.startsWith("https://")) {
+    const parts = url.split("/");
+    repo = (parts.pop() as string).replace(".git", "");
+    owner = parts.pop();
+  } else if (url.startsWith("git@")) {
+    const urlParts = url.split(":");
+    const parts = urlParts[1].split("/");
+    repo = (parts.pop() as string).replace(".git", "");
+    owner = parts.pop();
+  }
+
+  return { owner, repo };
+}
+
+export function getDetailsFromRepo(rootDirectoryPath): RepoDetails | undefined {
+  try {
+    const remoteUrlOutput = execSync(`git remote get-url origin`);
+    const remoteUrl = remoteUrlOutput.toString().trim();
+
+    const branchOutput = execSync(`git rev-parse --abbrev-ref HEAD`);
+    const branch = branchOutput.toString().trim();
+
+    if (!remoteUrl || !branch) {
+      return;
+    }
+
+    const { owner, repo } = getOwnerAndRepoFromUrl(remoteUrl);
+
+    if (!owner || !repo) {
+      return;
+    }
+
+    let blobUrl;
+    let commitUrl;
+
+    if (remoteUrl.indexOf("github.com") > -1) {
+      blobUrl = `https://github.com/${owner}/${repo}/blob/${branch}/{{blobPath}}`;
+      commitUrl = `https://github.com/${owner}/${repo}/commit/{{hash}}`;
+    } else if (remoteUrl.indexOf("bitbucket.org") > -1) {
+      blobUrl = `https://bitbucket.org/${owner}/${repo}/src/${branch}/{{blobPath}}`;
+      commitUrl = `https://bitbucket.org/${owner}/${repo}/commits/{{hash}}`;
+    }
+
+    if (!blobUrl || !commitUrl) {
+      return;
+    }
+
+    return {
+      branch,
+      remoteUrl,
+      blobUrl,
+      commitUrl,
+    };
+  } catch (e) {
+    console.error(e);
+    return;
+  }
+
+  return;
+}
+
 export function generateSiteSearchIndex(
+  rootDirectoryPath: string,
   projectConfig: ProjectConfig,
   fullHistory: HistoryEntry[],
+  repoDetails: RepoDetails | undefined,
 ): SearchIndex {
   const result: SearchIndex = {
+    links: undefined,
     entities: {
       attributes: [],
       segments: [],
       features: [],
     },
   };
+
+  /**
+   * Links
+   */
+  if (repoDetails) {
+    const { relativeAttributesPath, relativeSegmentsPath, relativeFeaturesPath } = getRelativePaths(
+      rootDirectoryPath,
+      projectConfig,
+    );
+
+    result.links = {
+      attribute: repoDetails.blobUrl.replace(
+        "{{blobPath}}",
+        relativeAttributesPath + "/{{key}}.yml",
+      ),
+      segment: repoDetails.blobUrl.replace("{{blobPath}}", relativeSegmentsPath + "/{{key}}.yml"),
+      feature: repoDetails.blobUrl.replace("{{blobPath}}", relativeFeaturesPath + "/{{key}}.yml"),
+      commit: repoDetails.commitUrl,
+    };
+  }
 
   /**
    * Entities
@@ -333,7 +441,13 @@ export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConf
   const fullHistory = generateHistory(rootDirectoryPath, projectConfig);
 
   // site search index
-  const searchIndex = generateSiteSearchIndex(projectConfig, fullHistory);
+  const repoDetails = getDetailsFromRepo(rootDirectoryPath);
+  const searchIndex = generateSiteSearchIndex(
+    rootDirectoryPath,
+    projectConfig,
+    fullHistory,
+    repoDetails,
+  );
   const searchIndexFilePath = path.join(projectConfig.siteExportDirectoryPath, "search-index.json");
   fs.writeFileSync(searchIndexFilePath, JSON.stringify(searchIndex));
   console.log(`Site search index written at: ${searchIndexFilePath}`);
