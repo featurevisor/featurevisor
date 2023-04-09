@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useOutletContext, Outlet } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -10,23 +10,9 @@ import { EditLink } from "./EditLink";
 import { useSearchIndex } from "../hooks/searchIndexHook";
 import { Markdown } from "./Markdown";
 
-const tabs = [
-  {
-    title: "Overview",
-    to: "#",
-    active: true,
-  },
-  {
-    title: "Usage",
-    to: "#",
-  },
-  {
-    title: "History",
-    to: "#",
-  },
-];
+export function DisplaySegmentOverview() {
+  const { segment } = useOutletContext() as any;
 
-function DisplaySegmentOverview({ segment }) {
   return (
     <div className="border-t border-gray-200 py-6">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
@@ -62,7 +48,9 @@ function DisplaySegmentOverview({ segment }) {
   );
 }
 
-function DisplaySegmentUsage({ segment }) {
+export function DisplaySegmentUsage() {
+  const { segment } = useOutletContext() as any;
+
   return (
     <div className="border-t border-gray-200 py-6">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
@@ -85,6 +73,12 @@ function DisplaySegmentUsage({ segment }) {
   );
 }
 
+export function DisplaySegmentHistory() {
+  const { segment } = useOutletContext() as any;
+
+  return <HistoryTimeline entityType="segment" entityKey={segment.key} />;
+}
+
 export function ShowSegment(props) {
   const { segmentKey } = useParams();
   const { data } = useSearchIndex();
@@ -94,6 +88,21 @@ export function ShowSegment(props) {
   if (!segment) {
     return <div>Segment not found</div>;
   }
+
+  const tabs = [
+    {
+      title: "Overview",
+      to: `/segments/${segmentKey}`,
+    },
+    {
+      title: "Usage",
+      to: `/segments/${segmentKey}/usage`,
+    },
+    {
+      title: "History",
+      to: `/segments/${segmentKey}/history`,
+    },
+  ];
 
   return (
     <PageContent>
@@ -105,19 +114,7 @@ export function ShowSegment(props) {
       <Tabs tabs={tabs} />
 
       <div className="px-8">
-        <HistoryTimeline entityType="segment" entityKey={segmentKey} />
-      </div>
-
-      <hr />
-
-      <div className="px-8">
-        <DisplaySegmentOverview segment={segment} />
-      </div>
-
-      <hr />
-
-      <div className="px-8">
-        <DisplaySegmentUsage segment={segment} />
+        <Outlet context={{ segment }} />
       </div>
     </PageContent>
   );
