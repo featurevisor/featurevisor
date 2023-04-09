@@ -3,6 +3,7 @@ lib
 *.log
 coverage
 dist
+out
 
 .DS_Store
 

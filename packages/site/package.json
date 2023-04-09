@@ -1,0 +1,61 @@
+{
+  "name": "@featurevisor/site",
+  "version": "0.7.0",
+  "description": "Static site for Featurevisor",
+  "main": "dist",
+  "scripts": {
+    "lint": "echo 'not linting in this package yet'",
+    "transpile": "echo 'Nothing to transpile in this package'",
+    "dist:js": "webpack --config ./webpack.config.js",
+    "dist:css": "tailwindcss -i ./src/index.css -o ./dist/index.css",
+    "dist": "npm run dist:js && npm run dist:css",
+    "build": "npm run dist",
+    "test": "echo 'Nothing to test in types package'"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "experimentation",
+    "experiment",
+    "experiments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahad19/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/fahad19/featurevisor/issues"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@heroicons/react": "^2.0.17",
+    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/typography": "^0.5.9",
+    "@types/react": "^18.0.29",
+    "@types/react-dom": "^18.0.11",
+    "css-loader": "^6.7.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.6",
+    "react-router-dom": "^6.10.0",
+    "style-loader": "^3.3.2",
+    "tailwindcss": "^3.3.0"
+  },
+  "dependencies": {
+    "@featurevisor/types": "^0.7.0"
+  }
+}

@@ -8,6 +8,7 @@ export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
 export const OUTPUT_DIRECTORY_NAME = "dist";
+export const SITE_EXPORT_DIRECTORY_NAME = "out";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
 export const ROOT_DIR_PLACECOLDER = "<rootDir>";
@@ -28,11 +29,13 @@ export interface ProjectConfig {
   environments: string[];
   tags: string[];
   defaultBucketBy: BucketBy;
+
+  siteExportDirectoryPath: string;
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
-  const baseConfig = {
+  const baseConfig: ProjectConfig = {
     featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
@@ -43,6 +46,9 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     environments: DEFAULT_ENVIRONMENTS,
     tags: DEFAULT_TAGS,
+    defaultBucketBy: "userId",
+
+    siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);

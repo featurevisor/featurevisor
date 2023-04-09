@@ -10,6 +10,8 @@ import {
   testProject,
   buildProject,
   initProject,
+  exportSite,
+  serveSite,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason, p) => {
@@ -92,6 +94,40 @@ async function main() {
       },
     })
     .example("$0 test", "test features")
+
+    /**
+     * Site
+     */
+    .command({
+      command: "site [subcommand]",
+      handler: function (options) {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        const allowedSubcommands = ["export", "serve"];
+
+        if (!allowedSubcommands.includes(options.subcommand)) {
+          console.log("Please specify a subcommand: `export` or `serve`");
+          return;
+        }
+
+        // export
+        if (options.subcommand === "export") {
+          const hasError = exportSite(rootDirectoryPath, projectConfig);
+
+          if (hasError) {
+            process.exit(1);
+          }
+        }
+
+        // serve
+        if (options.subcommand === "serve") {
+          serveSite(rootDirectoryPath, projectConfig);
+        }
+      },
+    })
+    .example("$0 site export", "generate static site with project data")
+    .example("$0 site serve", "serve already exported site locally")
+    .example("$0 site serve -p 3000", "serve in a specific port")
 
     /**
      * Options

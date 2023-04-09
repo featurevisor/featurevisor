@@ -26,7 +26,7 @@ import {
 } from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
-import { ProjectConfig, SCHEMA_VERSION } from "./config";
+import { SCHEMA_VERSION, ProjectConfig } from "./config";
 import { getNewTraffic } from "./traffic";
 import {
   parseYaml,

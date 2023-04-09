@@ -289,3 +289,47 @@ export interface ExistingFeatures {
 export interface ExistingState {
   features: ExistingFeatures;
 }
+
+/**
+ * Site index and history
+ */
+export interface HistoryEntity {
+  type: "attribute" | "segment" | "feature";
+  key: string;
+}
+
+export interface HistoryEntry {
+  commit: string;
+  author: string;
+  timestamp: string;
+  entities: HistoryEntity[];
+}
+
+export interface LastModified {
+  commit: string;
+  timestamp: string;
+  author: string;
+}
+
+export interface SearchIndex {
+  links?: {
+    feature: string;
+    segment: string;
+    attribute: string;
+    commit: string;
+  };
+  entities: {
+    attributes: (Attribute & {
+      lastModified?: LastModified;
+      usedInSegments: SegmentKey[];
+      usedInFeatures: FeatureKey[];
+    })[];
+    segments: (Segment & {
+      lastModified?: LastModified;
+      usedInFeatures: FeatureKey[];
+    })[];
+    features: (ParsedFeature & {
+      lastModified?: LastModified;
+    })[];
+  };
+}

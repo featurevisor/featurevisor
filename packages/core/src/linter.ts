@@ -4,8 +4,9 @@ import * as path from "path";
 
 import * as Joi from "joi";
 
-import { ProjectConfig } from "./config";
 import { getYAMLFiles, parseYaml } from "./utils";
+
+import { ProjectConfig } from "./config";
 
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({

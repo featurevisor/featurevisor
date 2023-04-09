@@ -52,7 +52,9 @@ export function extractSegmentKeysFromGroupSegments(
   return result;
 }
 
-export function extractAttributeKeysFromConditions(conditions: Condition | Condition[]) {
+export function extractAttributeKeysFromConditions(
+  conditions: Condition | Condition[],
+): Set<AttributeKey> {
   const result = new Set<AttributeKey>();
 
   if (Array.isArray(conditions)) {
