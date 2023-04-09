@@ -1,68 +1,103 @@
 import * as React from "react";
 
-import { SearchIndexData } from "../contexts/SearchIndexContext";
+import { TagIcon } from "@heroicons/react/20/solid";
+
+import { SearchIndex } from "@featurevisor/types";
 import { useSearchIndex } from "../hooks/searchIndexHook";
+import { getQueryFromString, getFeaturesByQuery } from "../utils";
+import { EnvironmentDot } from "./EnvironmentDot";
+import { Tag } from "./Tag";
+import { Alert } from "./Alert";
+import { SearchInput } from "./SearchInput";
+import { PageTitle } from "./PageTitle";
+import { PageContent } from "./PageContent";
+import { LastModified } from "./LastModified";
 
 export function ListFeatures() {
+  const [q, setQ] = React.useState("");
+
   const contextValue = useSearchIndex();
-  const data = contextValue.data as SearchIndexData;
-  const features = data.entities.features.sort((a, b) => a.key.localeCompare(b.key));
+  const data = contextValue.data as SearchIndex;
+
+  const query = getQueryFromString(q);
+  const features = getFeaturesByQuery(query, data);
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:px-8">
-      <h1 className="text-5xl font-bold">Features</h1>
+    <PageContent>
+      <PageTitle>Features</PageTitle>
 
-      <input
-        type="text"
-        name="search"
-        id="q"
-        className="block w-full rounded-md border-0 py-2 text-2xl text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-        placeholder="you@example.com"
-      />
+      <SearchInput value={q} onChange={(e: any) => setQ(e.target.value)} />
 
-      <table className="min-w-full divide-y divide-gray-300">
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 lg:pl-8"
-            >
-              Key
-            </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-              Description
-            </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-              -
-            </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-              -
-            </th>
-            <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 lg:pr-8">
-              <span className="sr-only">Edit</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="table-auto divide-y divide-gray-200 bg-white">
-          {features.map((feature) => (
-            <tr key={feature.key}>
-              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8">
-                {feature.key}
-              </td>
-              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                {feature.description}
-              </td>
-              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">blah</td>
-              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">blah</td>
-              <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 lg:pr-8">
-                <a href="#" className="text-indigo-600 hover:text-indigo-900">
-                  Edit<span className="sr-only">, blah</span>
-                </a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      {features.length === 0 && <Alert type="warning">No results found</Alert>}
+
+      {features.length > 0 && (
+        <div>
+          <ul className="diving-gray-200 divide-y">
+            {features.map((feature: any) => (
+              <li key={feature.key}>
+                <div className="block hover:bg-gray-50">
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-md relative font-bold text-slate-600">
+                        <EnvironmentDot
+                          feature={feature}
+                          className="relative top-[0.5px] inline-block pr-2"
+                        />{" "}
+                        <a href="#" className="font-bold">
+                          {feature.key}
+                        </a>{" "}
+                        {feature.archived && (
+                          <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                            archived
+                          </span>
+                        )}
+                      </p>
+
+                      <div className="ml-2 flex flex-shrink-0">
+                        <div>
+                          <TagIcon className="inline-block h-6 w-6 pr-1 text-xs text-gray-400" />
+                          {feature.tags.map((tag: string) => (
+                            <a
+                              href="#"
+                              onClick={() => {
+                                if (q.length > 0) {
+                                  setQ(`${q} tag:${tag}`);
+                                } else {
+                                  setQ(`tag:${tag}`);
+                                }
+                              }}
+                            >
+                              <Tag tag={tag} key={tag} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex justify-between">
+                      <div className="flex">
+                        <p className="line-clamp-3 max-w-md items-center pl-6 text-sm text-gray-500">
+                          {feature.description && feature.description.trim().length > 0
+                            ? feature.description
+                            : "n/a"}
+                        </p>
+                      </div>
+
+                      <div className="items-top mt-2 flex text-xs text-gray-500 sm:mt-0">
+                        <LastModified lastModified={feature.lastModified} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            A total of <span className="font-bold">{features.length}</span> results found.
+          </p>
+        </div>
+      )}
+    </PageContent>
   );
 }

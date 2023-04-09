@@ -1,26 +1,55 @@
 import * as React from "react";
 
+const navItems = [
+  {
+    title: "Features",
+    href: "#",
+    active: true,
+  },
+  {
+    title: "Segments",
+    href: "#",
+  },
+  {
+    title: "Attributes",
+    href: "#",
+  },
+];
+
 export function Header() {
   return (
-    <header className="bg-gray-900">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
-        <a href="#" className="text-gray-50">
-          <span className="">Featurevisor</span>
+    <div className="bg-gray-800">
+      <nav className="mx-auto flex max-w-4xl items-center justify-between px-8 pb-4 pt-3">
+        <a href="/" className="text-gray-50">
+          <img
+            alt="Featurevisor"
+            src="/favicon-128.png"
+            className="absolute top-4 -ml-2 w-[36px]"
+          />
         </a>
-        <div className="flex gap-x-12">
-          <a key="features" href="#" className="text-sm font-semibold leading-6 text-gray-50">
-            Features
-          </a>
 
-          <a key="segments" href="#" className="text-sm font-semibold leading-6 text-gray-50">
-            Segments
-          </a>
-
-          <a key="attributes" href="#" className="text-sm font-semibold leading-6 text-gray-50">
-            Attributes
-          </a>
+        <div className="relative flex gap-x-4">
+          {navItems.map((item) => (
+            <a
+              key={item.title}
+              href={item.href}
+              className={[
+                "relative",
+                "rounded-lg",
+                item.active ? "bg-gray-700" : "",
+                "px-3",
+                "py-2",
+                "text-sm",
+                "font-semibold",
+                "leading-6",
+                "text-gray-50",
+              ].join(" ")}
+            >
+              {item.title}
+            </a>
+          ))}
         </div>
       </nav>
-    </header>
+    </div>
   );
 }

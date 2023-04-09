@@ -451,6 +451,10 @@ export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConf
   // copy site dist
   const siteDistPath = path.join(sitePackagePath, "dist");
   fs.cpSync(siteDistPath, projectConfig.siteExportDirectoryPath, { recursive: true });
+
+  const sitePublicPath = path.join(sitePackagePath, "public");
+  fs.cpSync(sitePublicPath, projectConfig.siteExportDirectoryPath, { recursive: true });
+
   console.log("Site dist copied to:", projectConfig.siteExportDirectoryPath);
 
   // generate history

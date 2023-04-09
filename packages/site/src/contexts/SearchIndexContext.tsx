@@ -1,18 +1,10 @@
 import * as React from "react";
 
-import { Attribute, Segment, ParsedFeature } from "@featurevisor/types";
-
-export interface SearchIndexData {
-  entities: {
-    attributes: Attribute[];
-    segments: Segment[];
-    features: ParsedFeature[];
-  };
-}
+import { SearchIndex } from "@featurevisor/types";
 
 export interface SearchIndexProps {
   isLoaded: boolean;
-  data?: SearchIndexData;
+  data?: SearchIndex;
 }
 
 export const SearchIndexContext = React.createContext<SearchIndexProps>({

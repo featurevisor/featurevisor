@@ -6,11 +6,10 @@
   "scripts": {
     "lint": "echo 'not linting in this package yet'",
     "transpile": "echo 'Nothing to transpile in this package'",
-    "copy:html": "cp ./src/index.html ./dist/index.html",
     "dist:js": "webpack --config ./webpack.config.js",
     "dist:css": "tailwindcss -i ./src/index.css -o ./dist/index.css",
     "dist": "npm run dist:js && npm run dist:css",
-    "build": "npm run dist && npm run copy:html",
+    "build": "npm run dist",
     "test": "echo 'Nothing to test in types package'"
   },
   "author": {
@@ -43,6 +42,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@heroicons/react": "^2.0.17",
     "@tailwindcss/forms": "^0.5.3",
     "@tailwindcss/typography": "^0.5.9",
     "@types/react": "^18.0.29",
@@ -50,6 +50,7 @@
     "css-loader": "^6.7.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.6",
     "style-loader": "^3.3.2",
     "tailwindcss": "^3.3.0"
   },
