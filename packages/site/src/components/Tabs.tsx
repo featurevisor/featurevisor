@@ -20,6 +20,7 @@ export function Tabs(props: TabsProps) {
           <NavLink
             key={tab.title}
             to={tab.to}
+            end
             className={({ isActive }) =>
               [
                 "w-1/4",

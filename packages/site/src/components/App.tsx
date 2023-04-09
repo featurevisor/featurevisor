@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Routes, Route, redirect } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import { Header } from "./Header";
 import { Footer } from "./Footer";
@@ -10,7 +10,12 @@ import { ListFeatures } from "./ListFeatures";
 import { ListSegments } from "./ListSegments";
 import { ListAttributes } from "./ListAttributes";
 
-import { ShowAttribute } from "./ShowAttribute";
+import {
+  DisplayAttributeOverview,
+  DisplayAttributeUsage,
+  DisplayAttributeHistory,
+  ShowAttribute,
+} from "./ShowAttribute";
 import { ShowSegment } from "./ShowSegment";
 import { ShowFeature } from "./ShowFeature";
 
@@ -39,13 +44,19 @@ export function App() {
             <Routes>
               <Route path="features/:featureKey" element={<ShowFeature />} />
               <Route path="segments/:segmentKey" element={<ShowSegment />} />
-              <Route path="attributes/:attributeKey" element={<ShowAttribute />} />
 
               <Route path="features" element={<ListFeatures />} />
               <Route path="segments" element={<ListSegments />} />
-              <Route path="attributes" element={<ListAttributes />} />
 
-              <Route path="*" loader={() => redirect("/features")} />
+              <Route path="attributes">
+                <Route index element={<ListAttributes />} />
+
+                <Route path=":attributeKey" element={<ShowAttribute />}>
+                  <Route index element={<DisplayAttributeOverview />} />
+                  <Route path="usage" element={<DisplayAttributeUsage />} />
+                  <Route path="history" element={<DisplayAttributeHistory />} />
+                </Route>
+              </Route>
             </Routes>
           </SearchIndexContext.Provider>
         )}

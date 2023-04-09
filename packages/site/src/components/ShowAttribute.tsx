@@ -1,15 +1,17 @@
 import * as React from "react";
-import { useParams, Routes, Route, Outlet } from "react-router-dom";
+import { useParams, Outlet, useOutletContext } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
 import { Tabs } from "./Tabs";
-import { HistoryTimeline } from "./HistoryTimeline";
 import { EditLink } from "./EditLink";
 import { useSearchIndex } from "../hooks/searchIndexHook";
 import { Markdown } from "./Markdown";
+import { HistoryTimeline } from "./HistoryTimeline";
 
-function DisplayAttributeOverview({ attribute }) {
+export function DisplayAttributeOverview() {
+  const { attribute } = useOutletContext() as any;
+
   return (
     <div className="border-t border-gray-200 py-6">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
@@ -48,7 +50,9 @@ function DisplayAttributeOverview({ attribute }) {
   );
 }
 
-function DisplayAttributeUsage({ attribute }) {
+export function DisplayAttributeUsage() {
+  const { attribute } = useOutletContext() as any;
+
   return (
     <div className="border-t border-gray-200 py-6">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
@@ -83,6 +87,12 @@ function DisplayAttributeUsage({ attribute }) {
       </dl>
     </div>
   );
+}
+
+export function DisplayAttributeHistory() {
+  const { attribute } = useOutletContext() as any;
+
+  return <HistoryTimeline entityType="attribute" entityKey={attribute.key} />;
 }
 
 export function ShowAttribute(props) {
@@ -120,16 +130,7 @@ export function ShowAttribute(props) {
       <Tabs tabs={tabs} />
 
       <div className="px-8">
-        <Routes>
-          <Route index element={<DisplayAttributeOverview attribute={attribute} />} />
-          <Route path="usage" element={<DisplayAttributeUsage attribute={attribute} />} />
-          <Route
-            path="history"
-            element={<HistoryTimeline entityType="attribute" entityKey={attributeKey} />}
-          />
-        </Routes>
-
-        <Outlet />
+        <Outlet context={{ attribute }} />
       </div>
     </PageContent>
   );
