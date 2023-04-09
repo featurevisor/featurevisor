@@ -16,6 +16,10 @@ export function Header() {
       title: "Attributes",
       to: "attributes",
     },
+    {
+      title: "History",
+      to: "history",
+    },
   ];
 
   return (

@@ -9,6 +9,7 @@ import { Alert } from "./Alert";
 import { ListFeatures } from "./ListFeatures";
 import { ListSegments } from "./ListSegments";
 import { ListAttributes } from "./ListAttributes";
+import { ListHistory } from "./ListHistory";
 
 import {
   DisplayAttributeOverview,
@@ -115,6 +116,8 @@ export function App() {
                   <Route path="history" element={<DisplayAttributeHistory />} />
                 </Route>
               </Route>
+
+              <Route path="history" element={<ListHistory />} />
             </Routes>
           </SearchIndexContext.Provider>
         )}
