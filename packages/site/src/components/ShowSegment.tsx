@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useParams } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -8,10 +9,6 @@ import { ExpandConditions } from "./ExpandConditions";
 import { EditLink } from "./EditLink";
 import { useSearchIndex } from "../hooks/searchIndexHook";
 import { Markdown } from "./Markdown";
-
-interface ShowSegmentProps {
-  segmentKey: string;
-}
 
 const tabs = [
   {
@@ -88,19 +85,21 @@ function DisplaySegmentUsage({ segment }) {
   );
 }
 
-export function ShowSegment(props: ShowSegmentProps) {
-  const { segmentKey } = props;
+export function ShowSegment(props) {
+  const { segmentKey } = useParams();
   const { data } = useSearchIndex();
   const links = data?.links;
   const segment = data?.entities.segments.find((s) => s.key === segmentKey);
+
+  if (!segment) {
+    return <div>Segment not found</div>;
+  }
 
   return (
     <PageContent>
       <PageTitle className="border-none">
         Segment: {segmentKey}{" "}
-        {links && (
-          <EditLink url={links.segment.replace("{{key}}", segment.key)} />
-        )}
+        {links && <EditLink url={links.segment.replace("{{key}}", segment.key)} />}
       </PageTitle>
 
       <Tabs tabs={tabs} />

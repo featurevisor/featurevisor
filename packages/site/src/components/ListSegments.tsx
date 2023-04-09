@@ -1,6 +1,5 @@
 import * as React from "react";
-
-import { TagIcon } from "@heroicons/react/20/solid";
+import { Link } from "react-router-dom";
 
 import { SearchIndex } from "@featurevisor/types";
 import { useSearchIndex } from "../hooks/searchIndexHook";
@@ -34,7 +33,7 @@ export function ListSegments() {
           <ul className="diving-gray-200 divide-y">
             {segments.map((segment: any) => (
               <li key={segment.key}>
-                <div className="block hover:bg-gray-50">
+                <Link to={`/segments/${segment.key}`} className="block hover:bg-gray-50">
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <p className="text-md relative font-bold text-slate-600">
@@ -67,7 +66,7 @@ export function ListSegments() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

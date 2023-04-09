@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 
 import { SearchIndex } from "@featurevisor/types";
 import { useSearchIndex } from "../hooks/searchIndexHook";
@@ -32,7 +33,7 @@ export function ListAttributes() {
           <ul className="diving-gray-200 divide-y">
             {attributes.map((attribute: any) => (
               <li key={attribute.key}>
-                <div className="block hover:bg-gray-50">
+                <Link to={`/attributes/${attribute.key}`} className="block hover:bg-gray-50">
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <p className="text-md relative font-bold text-slate-600">
@@ -71,7 +72,7 @@ export function ListAttributes() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

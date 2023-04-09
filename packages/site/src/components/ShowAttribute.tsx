@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useParams } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -7,10 +8,6 @@ import { HistoryTimeline } from "./HistoryTimeline";
 import { EditLink } from "./EditLink";
 import { useSearchIndex } from "../hooks/searchIndexHook";
 import { Markdown } from "./Markdown";
-
-interface ShowAttributeProps {
-  attributeKey: string;
-}
 
 const tabs = [
   {
@@ -104,21 +101,21 @@ function DisplayAttributeUsage({ attribute }) {
   );
 }
 
-export function ShowAttribute(props: ShowAttributeProps) {
-  const { attributeKey } = props;
+export function ShowAttribute(props) {
+  const { attributeKey } = useParams();
   const { data } = useSearchIndex();
   const links = data?.links;
-  const attribute = data?.entities.attributes.find(
-    (a) => a.key === attributeKey
-  );
+  const attribute = data?.entities.attributes.find((a) => a.key === attributeKey);
+
+  if (!attribute) {
+    return <p>Attribute not found.</p>;
+  }
 
   return (
     <PageContent>
       <PageTitle className="border-none">
         Attribute: {attributeKey}{" "}
-        {links && (
-          <EditLink url={links.attribute.replace("{{key}}", attribute.key)} />
-        )}
+        {links && <EditLink url={links.attribute.replace("{{key}}", attribute.key)} />}
       </PageTitle>
 
       <Tabs tabs={tabs} />

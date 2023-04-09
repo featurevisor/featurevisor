@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useParams } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -40,10 +41,6 @@ const tabs = [
     href: "#",
   },
 ];
-
-interface ShowFeatureProps {
-  featureKey: string;
-}
 
 function DisplayFeatureOverview({ feature }) {
   const environmentKeys = Object.keys(feature.environments).sort();
@@ -119,7 +116,7 @@ function DisplayFeatureOverview({ feature }) {
         <div className="col-span-2">
           <dt className="text-sm font-medium text-gray-500">Description</dt>
           <dd className="mt-1 text-sm text-gray-900">
-            {feature.description.trim().length > 0 ? (
+            {feature.description && feature.description.trim().length > 0 ? (
               <Markdown children={feature.description} />
             ) : (
               "n/a"
@@ -144,6 +141,8 @@ function DisplayFeatureForce({ feature }) {
     };
   });
 
+  const selectedEnvironment = environmentKeys[0];
+
   return (
     <>
       <nav className="flex space-x-4" aria-label="Tabs">
@@ -161,67 +160,71 @@ function DisplayFeatureForce({ feature }) {
         ))}
       </nav>
 
-      <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Conditions / Segments
-            </th>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Variation
-            </th>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Variables
-            </th>
-          </tr>
-        </thead>
+      {feature.environments[selectedEnvironment]?.force ? (
+        <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+                Conditions / Segments
+              </th>
+              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+                Variation
+              </th>
+              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+                Variables
+              </th>
+            </tr>
+          </thead>
 
-        <tbody>
-          {feature.environments.production.force.map((force, index) => {
-            return (
-              <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                  {force.conditions ? (
-                    <ExpandConditions conditions={force.conditions} />
-                  ) : (
-                    <ExpandRuleSegments segments={force.segments} />
-                  )}
-                </td>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                  {force.variation && typeof force.variation === "string" && (
-                    <span>{force.variation}</span>
-                  )}
+          <tbody>
+            {feature.environments.production.force.map((force, index) => {
+              return (
+                <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                    {force.conditions ? (
+                      <ExpandConditions conditions={force.conditions} />
+                    ) : (
+                      <ExpandRuleSegments segments={force.segments} />
+                    )}
+                  </td>
+                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                    {force.variation && typeof force.variation === "string" && (
+                      <span>{force.variation}</span>
+                    )}
 
-                  {force.variation && typeof force.variation != "string" && (
-                    <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                      {JSON.stringify(force.variation)}
-                    </code>
-                  )}
-                </td>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                  {force.variables && (
-                    <ul className="list-inside list-disc">
-                      {Object.keys(force.variables).map((k) => {
-                        return (
-                          <li key={k}>
-                            <span className="font-semibold">{k}</span>:{" "}
-                            {typeof force.variables[k] === "string" && force.variables[k]}
-                            {typeof force.variables[k] !== "string" && (
-                              <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                {force.variables[k]}
-                              </code>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    {force.variation && typeof force.variation != "string" && (
+                      <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                        {JSON.stringify(force.variation)}
+                      </code>
+                    )}
+                  </td>
+                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                    {force.variables && (
+                      <ul className="list-inside list-disc">
+                        {Object.keys(force.variables).map((k) => {
+                          return (
+                            <li key={k}>
+                              <span className="font-semibold">{k}</span>:{" "}
+                              {typeof force.variables[k] === "string" && force.variables[k]}
+                              {typeof force.variables[k] !== "string" && (
+                                <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                                  {force.variables[k]}
+                                </code>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <p className="py-4">n/a</p>
+      )}
     </>
   );
 }
@@ -378,6 +381,10 @@ function DisplayFeatureVariations({ feature }) {
 }
 
 function DisplayFeatureVariablesSchema({ feature }) {
+  if (!feature.variablesSchema || feature.variablesSchema.length === 0) {
+    return <p>n/a</p>;
+  }
+
   return (
     <table className="min-w-full divide-y divide-gray-300 border border-gray-200">
       <thead className="bg-gray-50">
@@ -423,11 +430,15 @@ function DisplayFeatureVariablesSchema({ feature }) {
   );
 }
 
-export function ShowFeature(props: ShowFeatureProps) {
-  const { featureKey } = props;
+export function ShowFeature(props) {
+  const { featureKey } = useParams();
   const { data } = useSearchIndex();
   const feature = data?.entities.features.find((f) => f.key === featureKey);
   const links = data?.links;
+
+  if (!feature) {
+    return <p>Feature not found</p>;
+  }
 
   const environmentKeys = Object.keys(feature.environments).sort();
 
