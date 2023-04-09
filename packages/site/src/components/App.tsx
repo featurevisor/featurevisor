@@ -22,7 +22,15 @@ import {
   DisplaySegmentHistory,
   ShowSegment,
 } from "./ShowSegment";
-import { ShowFeature } from "./ShowFeature";
+import {
+  DisplayFeatureOverview,
+  DisplayFeatureVariations,
+  DisplayFeatureVariablesSchema,
+  DisplayFeatureRules,
+  DisplayFeatureForce,
+  DisplayFeatureHistory,
+  ShowFeature,
+} from "./ShowFeature";
 
 import { SearchIndexContext } from "../contexts/SearchIndexContext";
 
@@ -47,8 +55,18 @@ export function App() {
         {fetchedSearchIndex && (
           <SearchIndexContext.Provider value={{ isLoaded: true, data: fetchedSearchIndex }}>
             <Routes>
-              <Route path="features/:featureKey" element={<ShowFeature />} />
-              <Route path="features" element={<ListFeatures />} />
+              <Route path="features">
+                <Route index element={<ListFeatures />} />
+
+                <Route path=":featureKey" element={<ShowFeature />}>
+                  <Route index element={<DisplayFeatureOverview />} />
+                  <Route path="variations" element={<DisplayFeatureVariations />} />
+                  <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
+                  <Route path="rules" element={<DisplayFeatureRules />} />
+                  <Route path="force" element={<DisplayFeatureForce />} />
+                  <Route path="history" element={<DisplayFeatureHistory />} />
+                </Route>
+              </Route>
 
               <Route path="segments">
                 <Route index element={<ListSegments />} />

@@ -113,7 +113,7 @@ export function ShowSegment(props) {
 
       <Tabs tabs={tabs} />
 
-      <div className="px-8">
+      <div className="p-8">
         <Outlet context={{ segment }} />
       </div>
     </PageContent>

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useOutletContext, Outlet } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -13,35 +13,9 @@ import { ExpandConditions } from "./ExpandConditions";
 import { EditLink } from "./EditLink";
 import { Markdown } from "./Markdown";
 
-const tabs = [
-  {
-    title: "Overview",
-    to: "#",
-  },
-  ,
-  {
-    title: "Variations",
-    to: "#",
-  },
-  {
-    title: "Variables",
-    to: "#",
-  },
-  {
-    title: "Rules",
-    to: "#",
-  },
-  {
-    title: "Force",
-    to: "#",
-  },
-  {
-    title: "History",
-    to: "#",
-  },
-];
+export function DisplayFeatureOverview() {
+  const { feature } = useOutletContext() as any;
 
-function DisplayFeatureOverview({ feature }) {
   const environmentKeys = Object.keys(feature.environments).sort();
 
   return (
@@ -127,7 +101,8 @@ function DisplayFeatureOverview({ feature }) {
   );
 }
 
-function DisplayFeatureForce({ feature }) {
+export function DisplayFeatureForce() {
+  const { feature } = useOutletContext() as any;
   const environmentKeys = Object.keys(feature.environments).sort();
 
   const environmentTabs = environmentKeys.map((environmentKey, index) => {
@@ -228,7 +203,8 @@ function DisplayFeatureForce({ feature }) {
   );
 }
 
-function DisplayFeatureRules({ feature }) {
+export function DisplayFeatureRules() {
+  const { feature } = useOutletContext() as any;
   const environmentKeys = Object.keys(feature.environments).sort();
 
   const environmentTabs = environmentKeys.map((environmentKey, index) => {
@@ -309,7 +285,9 @@ function DisplayFeatureRules({ feature }) {
   );
 }
 
-function DisplayFeatureVariations({ feature }) {
+export function DisplayFeatureVariations() {
+  const { feature } = useOutletContext() as any;
+
   return (
     <table className="min-w-full divide-y divide-gray-300 border border-gray-200">
       <thead className="bg-gray-50">
@@ -379,7 +357,9 @@ function DisplayFeatureVariations({ feature }) {
   );
 }
 
-function DisplayFeatureVariablesSchema({ feature }) {
+export function DisplayFeatureVariablesSchema() {
+  const { feature } = useOutletContext() as any;
+
   if (!feature.variablesSchema || feature.variablesSchema.length === 0) {
     return <p>n/a</p>;
   }
@@ -429,6 +409,12 @@ function DisplayFeatureVariablesSchema({ feature }) {
   );
 }
 
+export function DisplayFeatureHistory() {
+  const { feature } = useOutletContext() as any;
+
+  return <HistoryTimeline entityType="feature" entityKey={feature.key} />;
+}
+
 export function ShowFeature(props) {
   const { featureKey } = useParams();
   const { data } = useSearchIndex();
@@ -439,7 +425,33 @@ export function ShowFeature(props) {
     return <p>Feature not found</p>;
   }
 
-  const environmentKeys = Object.keys(feature.environments).sort();
+  const tabs = [
+    {
+      title: "Overview",
+      to: `/features/${featureKey}`,
+    },
+    ,
+    {
+      title: "Variations",
+      to: `/features/${featureKey}/variations`,
+    },
+    {
+      title: "Variables",
+      to: `/features/${featureKey}/variables`,
+    },
+    {
+      title: "Rules",
+      to: `/features/${featureKey}/rules`,
+    },
+    {
+      title: "Force",
+      to: `/features/${featureKey}/force`,
+    },
+    {
+      title: "History",
+      to: `/features/${featureKey}/history`,
+    },
+  ];
 
   return (
     <PageContent>
@@ -451,39 +463,7 @@ export function ShowFeature(props) {
       <Tabs tabs={tabs} />
 
       <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">Overview</h2>
-
-        <DisplayFeatureOverview feature={feature} />
-      </div>
-
-      <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">Force</h2>
-
-        <DisplayFeatureForce feature={feature} />
-      </div>
-
-      <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">Rules</h2>
-
-        <DisplayFeatureRules feature={feature} />
-      </div>
-
-      <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">History</h2>
-
-        <HistoryTimeline entityType="feature" entityKey={featureKey} />
-      </div>
-
-      <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">Variations</h2>
-
-        <DisplayFeatureVariations feature={feature} />
-      </div>
-
-      <div className="p-8">
-        <h2 className="my-3 text-2xl font-black leading-6 text-gray-800">Variables schema</h2>
-
-        <DisplayFeatureVariablesSchema feature={feature} />
+        <Outlet context={{ feature }} />
       </div>
     </PageContent>
   );
