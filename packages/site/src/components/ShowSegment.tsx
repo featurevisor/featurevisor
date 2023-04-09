@@ -13,16 +13,16 @@ import { Markdown } from "./Markdown";
 const tabs = [
   {
     title: "Overview",
-    href: "#",
+    to: "#",
     active: true,
   },
   {
     title: "Usage",
-    href: "#",
+    to: "#",
   },
   {
     title: "History",
-    href: "#",
+    to: "#",
   },
 ];
 

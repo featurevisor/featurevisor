@@ -1,9 +1,9 @@
 import * as React from "react";
+import { NavLink } from "react-router-dom";
 
 interface Tab {
   title: string;
-  href: string;
-  active?: boolean;
+  to: string;
 }
 
 interface TabsProps {
@@ -17,25 +17,27 @@ export function Tabs(props: TabsProps) {
     <div className="border-b border-gray-200">
       <div className="flex">
         {tabs.map((tab) => (
-          <a
+          <NavLink
             key={tab.title}
-            href={tab.href}
-            className={[
-              "w-1/4",
-              "border-b-2",
-              "pt-2",
-              "pb-4",
-              "px-1",
-              "text-center",
-              "text-sm",
-              "font-medium",
-              tab.active
-                ? "border-slate-500 text-slate-600"
-                : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700",
-            ].join(" ")}
+            to={tab.to}
+            className={({ isActive }) =>
+              [
+                "w-1/4",
+                "border-b-2",
+                "pt-2",
+                "pb-4",
+                "px-1",
+                "text-center",
+                "text-sm",
+                "font-medium",
+                isActive
+                  ? "border-slate-500 text-slate-600"
+                  : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700",
+              ].join(" ")
+            }
           >
             {tab.title}
-          </a>
+          </NavLink>
         ))}
       </div>
     </div>

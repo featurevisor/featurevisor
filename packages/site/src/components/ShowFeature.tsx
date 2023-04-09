@@ -16,29 +16,28 @@ import { Markdown } from "./Markdown";
 const tabs = [
   {
     title: "Overview",
-    href: "#",
-    active: true,
+    to: "#",
   },
   ,
   {
     title: "Variations",
-    href: "#",
+    to: "#",
   },
   {
     title: "Variables",
-    href: "#",
+    to: "#",
   },
   {
     title: "Rules",
-    href: "#",
+    to: "#",
   },
   {
     title: "Force",
-    href: "#",
+    to: "#",
   },
   {
     title: "History",
-    href: "#",
+    to: "#",
   },
 ];
 

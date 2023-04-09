@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Routes, Route, Outlet } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -8,22 +8,6 @@ import { HistoryTimeline } from "./HistoryTimeline";
 import { EditLink } from "./EditLink";
 import { useSearchIndex } from "../hooks/searchIndexHook";
 import { Markdown } from "./Markdown";
-
-const tabs = [
-  {
-    title: "Overview",
-    href: "#",
-    active: true,
-  },
-  {
-    title: "Usage",
-    href: "#",
-  },
-  {
-    title: "History",
-    href: "#",
-  },
-];
 
 function DisplayAttributeOverview({ attribute }) {
   return (
@@ -111,6 +95,21 @@ export function ShowAttribute(props) {
     return <p>Attribute not found.</p>;
   }
 
+  const tabs = [
+    {
+      title: "Overview",
+      to: `/attributes/${attributeKey}`,
+    },
+    {
+      title: "Usage",
+      to: `/attributes/${attributeKey}/usage`,
+    },
+    {
+      title: "History",
+      to: `/attributes/${attributeKey}/history`,
+    },
+  ];
+
   return (
     <PageContent>
       <PageTitle className="border-none">
@@ -121,22 +120,16 @@ export function ShowAttribute(props) {
       <Tabs tabs={tabs} />
 
       <div className="px-8">
-        <h2 className="text-2xl font-bold">History</h2>
-        <HistoryTimeline entityType="attribute" entityKey={attributeKey} />
-      </div>
+        <Routes>
+          <Route index element={<DisplayAttributeOverview attribute={attribute} />} />
+          <Route path="usage" element={<DisplayAttributeUsage attribute={attribute} />} />
+          <Route
+            path="history"
+            element={<HistoryTimeline entityType="attribute" entityKey={attributeKey} />}
+          />
+        </Routes>
 
-      <hr />
-
-      <div className="px-8">
-        <h2 className="text-2xl font-bold">Overview</h2>
-
-        <DisplayAttributeOverview attribute={attribute} />
-      </div>
-
-      <div className="px-8">
-        <h2 className="text-2xl font-bold">Usage</h2>
-
-        <DisplayAttributeUsage attribute={attribute} />
+        <Outlet />
       </div>
     </PageContent>
   );
