@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.1](https://github.com/fahad19/featurevisor/compare/v0.8.0...v0.8.1) (2023-04-09)
+
+
+### Bug Fixes
+
+* Add site package as a dependency in core ([#33](https://github.com/fahad19/featurevisor/issues/33)) ([3d59400](https://github.com/fahad19/featurevisor/commit/3d59400d27e20df60f640e9b5bc4e7a60514b67d))
+
+
+
+
+
 # [0.8.0](https://github.com/fahad19/featurevisor/compare/v0.7.0...v0.8.0) (2023-04-09)
 
 
