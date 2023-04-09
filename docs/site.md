@@ -17,6 +17,8 @@ This also helps communicate the current state of things to your wider organizati
 
 It is expected that you already have a Featurevisor project with some feature flags, and you have already initialized your git repository with at least one commit.
 
+The git repo also needs to have an `origin` remote set up, in order for the edit links to work in the generated website.
+
 ## Generate a status site
 
 Use Featurevisor CLI:
