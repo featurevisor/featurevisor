@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams, useOutletContext, Outlet } from "react-router-dom";
+import { useParams, useOutletContext, Outlet, NavLink } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -19,7 +19,7 @@ export function DisplayFeatureOverview() {
   const environmentKeys = Object.keys(feature.environments).sort();
 
   return (
-    <div className="border-t border-gray-200 py-6">
+    <div className="border-gray-200">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-medium text-gray-500">Key</dt>
@@ -101,105 +101,172 @@ export function DisplayFeatureOverview() {
   );
 }
 
+export function DisplayFeatureForceTable() {
+  const { feature } = useOutletContext() as any;
+  const { environmentKey } = useParams();
+
+  if (
+    !environmentKey ||
+    !feature.environments[environmentKey] ||
+    !feature.environments[environmentKey].force
+  ) {
+    return <p>n/a</p>;
+  }
+
+  return (
+    <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+            Conditions / Segments
+          </th>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+            Variation
+          </th>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+            Variables
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {feature.environments[environmentKey].force.map((force, index) => {
+          return (
+            <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                {force.conditions ? (
+                  <ExpandConditions conditions={force.conditions} />
+                ) : (
+                  <ExpandRuleSegments segments={force.segments} />
+                )}
+              </td>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                {force.variation && typeof force.variation === "string" && (
+                  <span>{force.variation}</span>
+                )}
+
+                {force.variation && typeof force.variation != "string" && (
+                  <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                    {JSON.stringify(force.variation)}
+                  </code>
+                )}
+              </td>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                {force.variables && (
+                  <ul className="list-inside list-disc">
+                    {Object.keys(force.variables).map((k) => {
+                      return (
+                        <li key={k}>
+                          <span className="font-semibold">{k}</span>:{" "}
+                          {typeof force.variables[k] === "string" && force.variables[k]}
+                          {typeof force.variables[k] !== "string" && (
+                            <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                              {force.variables[k]}
+                            </code>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 export function DisplayFeatureForce() {
   const { feature } = useOutletContext() as any;
   const environmentKeys = Object.keys(feature.environments).sort();
 
   const environmentTabs = environmentKeys.map((environmentKey, index) => {
-    const isActive = index === 0;
-
     return {
       title: environmentKey,
-      href: "#",
-      active: isActive,
+      to: `/features/${feature.key}/force/${environmentKey}`,
     };
   });
-
-  const selectedEnvironment = environmentKeys[0];
 
   return (
     <>
       <nav className="flex space-x-4" aria-label="Tabs">
         {environmentTabs.map((tab) => (
-          <a
+          <NavLink
             key={tab.title}
-            href={tab.href}
-            className={[
-              tab.active ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
-              "rounded-md px-3 py-2 text-sm font-medium",
-            ].join(" ")}
+            to={tab.to}
+            className={({ isActive }) =>
+              [
+                isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
+                "rounded-md px-3 py-2 text-sm font-medium",
+              ].join(" ")
+            }
           >
             {tab.title}
-          </a>
+          </NavLink>
         ))}
       </nav>
 
-      {feature.environments[selectedEnvironment]?.force ? (
-        <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-                Conditions / Segments
-              </th>
-              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-                Variation
-              </th>
-              <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-                Variables
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {feature.environments.production.force.map((force, index) => {
-              return (
-                <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                    {force.conditions ? (
-                      <ExpandConditions conditions={force.conditions} />
-                    ) : (
-                      <ExpandRuleSegments segments={force.segments} />
-                    )}
-                  </td>
-                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                    {force.variation && typeof force.variation === "string" && (
-                      <span>{force.variation}</span>
-                    )}
-
-                    {force.variation && typeof force.variation != "string" && (
-                      <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                        {JSON.stringify(force.variation)}
-                      </code>
-                    )}
-                  </td>
-                  <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                    {force.variables && (
-                      <ul className="list-inside list-disc">
-                        {Object.keys(force.variables).map((k) => {
-                          return (
-                            <li key={k}>
-                              <span className="font-semibold">{k}</span>:{" "}
-                              {typeof force.variables[k] === "string" && force.variables[k]}
-                              {typeof force.variables[k] !== "string" && (
-                                <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                  {force.variables[k]}
-                                </code>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      ) : (
-        <p className="py-4">n/a</p>
-      )}
+      <Outlet context={{ feature }} />
     </>
+  );
+}
+
+export function DisplayFeatureRulesTable() {
+  const { feature } = useOutletContext() as any;
+  const { environmentKey } = useParams();
+
+  if (!environmentKey || !feature.environments[environmentKey]) {
+    return <p>n/a</p>;
+  }
+
+  return (
+    <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+            Percentage
+          </th>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">Segments</th>
+          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+            Variables
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {feature.environments[environmentKey].rules.map((rule, index) => {
+          return (
+            <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">{rule.percentage}%</td>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                <ExpandRuleSegments segments={rule.segments} />
+              </td>
+              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                {rule.variables && (
+                  <ul className="list-inside list-disc">
+                    {Object.keys(rule.variables).map((k) => {
+                      return (
+                        <li key={k}>
+                          <span className="font-semibold">{k}</span>:{" "}
+                          {typeof rule.variables[k] === "string" && rule.variables[k]}
+                          {typeof rule.variables[k] !== "string" && (
+                            <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                              {rule.variables[k]}
+                            </code>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
@@ -208,12 +275,9 @@ export function DisplayFeatureRules() {
   const environmentKeys = Object.keys(feature.environments).sort();
 
   const environmentTabs = environmentKeys.map((environmentKey, index) => {
-    const isActive = index === 0;
-
     return {
       title: environmentKey,
-      href: "#",
-      active: isActive,
+      to: `/features/${feature.key}/rules/${environmentKey}`,
     };
   });
 
@@ -221,66 +285,22 @@ export function DisplayFeatureRules() {
     <>
       <nav className="flex space-x-4" aria-label="Tabs">
         {environmentTabs.map((tab) => (
-          <a
+          <NavLink
             key={tab.title}
-            href={tab.href}
-            className={[
-              tab.active ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
-              "rounded-md px-3 py-2 text-sm font-medium",
-            ].join(" ")}
+            to={tab.to}
+            className={({ isActive }) =>
+              [
+                isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
+                "rounded-md px-3 py-2 text-sm font-medium",
+              ].join(" ")
+            }
           >
             {tab.title}
-          </a>
+          </NavLink>
         ))}
       </nav>
 
-      <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Percentage
-            </th>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Segments
-            </th>
-            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-              Variables
-            </th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {feature.environments.production.rules.map((rule, index) => {
-            return (
-              <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">{rule.percentage}%</td>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                  <ExpandRuleSegments segments={rule.segments} />
-                </td>
-                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                  {rule.variables && (
-                    <ul className="list-inside list-disc">
-                      {Object.keys(rule.variables).map((k) => {
-                        return (
-                          <li key={k}>
-                            <span className="font-semibold">{k}</span>:{" "}
-                            {typeof rule.variables[k] === "string" && rule.variables[k]}
-                            {typeof rule.variables[k] !== "string" && (
-                              <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                {rule.variables[k]}
-                              </code>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <Outlet context={{ feature }} />
     </>
   );
 }

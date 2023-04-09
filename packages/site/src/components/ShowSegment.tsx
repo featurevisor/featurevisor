@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams, useOutletContext, Outlet } from "react-router-dom";
+import { useParams, useOutletContext, Outlet, Link } from "react-router-dom";
 
 import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
@@ -14,7 +14,7 @@ export function DisplaySegmentOverview() {
   const { segment } = useOutletContext() as any;
 
   return (
-    <div className="border-t border-gray-200 py-6">
+    <div className="border-gray-200">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-medium text-gray-500">Key</dt>
@@ -52,7 +52,7 @@ export function DisplaySegmentUsage() {
   const { segment } = useOutletContext() as any;
 
   return (
-    <div className="border-t border-gray-200 py-6">
+    <div className="border-gray-200">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-medium text-gray-500">Features</dt>
@@ -62,7 +62,11 @@ export function DisplaySegmentUsage() {
             {segment.usedInFeatures.length > 0 && (
               <ul className="list-inside list-disc">
                 {segment.usedInFeatures.map((feature) => {
-                  return <li key={feature}>{feature}</li>;
+                  return (
+                    <li key={feature}>
+                      <Link to={`/features/${feature}`}>{feature}</Link>
+                    </li>
+                  );
                 })}
               </ul>
             )}

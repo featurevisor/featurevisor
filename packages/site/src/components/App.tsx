@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, redirect } from "react-router-dom";
 
 import { Header } from "./Header";
 import { Footer } from "./Footer";
@@ -27,12 +27,15 @@ import {
   DisplayFeatureVariations,
   DisplayFeatureVariablesSchema,
   DisplayFeatureRules,
+  DisplayFeatureRulesTable,
   DisplayFeatureForce,
+  DisplayFeatureForceTable,
   DisplayFeatureHistory,
   ShowFeature,
 } from "./ShowFeature";
 
 import { SearchIndexContext } from "../contexts/SearchIndexContext";
+import { SearchIndex } from "@featurevisor/types";
 
 export function App() {
   const [fetchedSearchIndex, setSearchIndex] = React.useState(undefined);
@@ -45,6 +48,10 @@ export function App() {
       });
   }, []);
 
+  const environmentKeys = fetchedSearchIndex
+    ? Object.keys((fetchedSearchIndex as SearchIndex).entities.features[0].environments).sort()
+    : [];
+
   return (
     <div>
       <Header />
@@ -55,6 +62,9 @@ export function App() {
         {fetchedSearchIndex && (
           <SearchIndexContext.Provider value={{ isLoaded: true, data: fetchedSearchIndex }}>
             <Routes>
+              {/* @TODO: try redirecting to /features */}
+              <Route path="/" element={<ListFeatures />} />
+
               <Route path="features">
                 <Route index element={<ListFeatures />} />
 
@@ -62,8 +72,26 @@ export function App() {
                   <Route index element={<DisplayFeatureOverview />} />
                   <Route path="variations" element={<DisplayFeatureVariations />} />
                   <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
-                  <Route path="rules" element={<DisplayFeatureRules />} />
-                  <Route path="force" element={<DisplayFeatureForce />} />
+                  <Route path="rules" element={<DisplayFeatureRules />}>
+                    <Route path=":environmentKey" element={<DisplayFeatureRulesTable />} />
+                    <Route
+                      path="*"
+                      loader={({ params }) =>
+                        /* @TODO: fix redirection */
+                        redirect(`/features/${params.featureKey}/rules/${environmentKeys[0]}`)
+                      }
+                    />
+                  </Route>
+                  <Route path="force" element={<DisplayFeatureForce />}>
+                    <Route path=":environmentKey" element={<DisplayFeatureForceTable />} />
+                    <Route
+                      path="*"
+                      loader={({ params }) =>
+                        /* @TODO: fix redirection */
+                        redirect(`/features/${params.featureKey}/force/${environmentKeys[0]}`)
+                      }
+                    />
+                  </Route>
                   <Route path="history" element={<DisplayFeatureHistory />} />
                 </Route>
               </Route>
