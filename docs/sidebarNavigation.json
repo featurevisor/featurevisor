@@ -5,9 +5,7 @@
   },
   {
     "title": "Concepts",
-    "links": [
-      { "title": "Feature management", "href": "/docs/feature-management" }
-    ]
+    "links": [{ "title": "Feature management", "href": "/docs/feature-management" }]
   },
   {
     "title": "Building blocks",
@@ -25,6 +23,7 @@
       { "title": "Building datafiles", "href": "/docs/building-datafiles" },
       { "title": "State files", "href": "/docs/state-files" },
       { "title": "Testing features", "href": "/docs/testing-features" },
+      { "title": "Status site", "href": "/docs/site" },
       { "title": "Deployment", "href": "/docs/deployment" },
       { "title": "SDKs", "href": "/docs/sdks" }
     ]
