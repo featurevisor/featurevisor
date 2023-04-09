@@ -42,6 +42,7 @@
   "license": "MIT",
   "dependencies": {
     "@featurevisor/sdk": "^0.8.0",
+    "@featurevisor/site": "^0.8.0",
     "@featurevisor/types": "^0.8.0",
     "axios": "^1.3.4",
     "joi": "^17.8.3",
