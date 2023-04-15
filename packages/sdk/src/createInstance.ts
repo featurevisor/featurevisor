@@ -1,5 +1,6 @@
 import { DatafileContent } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
+import { createLogger, Logger } from "./logger";
 
 export type ReadyCallback = () => void;
 
@@ -13,6 +14,7 @@ export interface InstanceOptions {
   datafileUrl?: string;
   onReady?: ReadyCallback;
   handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
+  logger?: Logger;
 }
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
@@ -106,9 +108,11 @@ function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<Da
 export function createInstance(options: InstanceOptions) {
   if (!options.datafile && !options.datafileUrl) {
     throw new Error(
-      "Featurevisor SDK instance cannot be created without `datafile` or `datafileUrl` option",
+      "Featurevisor SDK instance cannot be created without both `datafile` and `datafileUrl` options",
     );
   }
+
+  const logger = options.logger || createLogger();
 
   // datafile content is already provided
   if (options.datafile) {
@@ -116,6 +120,7 @@ export function createInstance(options: InstanceOptions) {
       datafile: options.datafile,
       onActivation: options.onActivation,
       configureBucketValue: options.configureBucketValue,
+      logger,
     });
 
     if (typeof options.onReady === "function") {
@@ -134,6 +139,7 @@ export function createInstance(options: InstanceOptions) {
     datafile: emptyDatafile,
     onActivation: options.onActivation,
     configureBucketValue: options.configureBucketValue,
+    logger,
   });
 
   if (options.datafileUrl) {
