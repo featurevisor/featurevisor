@@ -222,3 +222,21 @@ const sdk = createInstance({
 ```
 
 Further log levels like `info` and `debug` will help you understand how the feature variations and variables are evaluated in the runtime against given attributes.
+
+## Intercepting attributes
+
+You can intercept attributes before they are used for evaluation:
+
+```ts
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  // ...
+  interceptAttributes: function (attributes) {
+    // return updated attributes
+    return attributes;
+  }
+});
+```
+
+This is useful when you wish to add a default set of attributes for all your evaluations, giving you the convenience of not having to pass them in every time.

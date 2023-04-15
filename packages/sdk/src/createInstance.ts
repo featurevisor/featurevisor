@@ -1,4 +1,4 @@
-import { DatafileContent } from "@featurevisor/types";
+import { DatafileContent, Attributes } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
 import { createLogger, Logger } from "./logger";
 
@@ -15,6 +15,7 @@ export interface InstanceOptions {
   onReady?: ReadyCallback;
   handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
   logger?: Logger;
+  interceptAttributes?: (attributes: Attributes) => Attributes;
 }
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
@@ -121,6 +122,7 @@ export function createInstance(options: InstanceOptions) {
       onActivation: options.onActivation,
       configureBucketValue: options.configureBucketValue,
       logger,
+      interceptAttributes: options.interceptAttributes,
     });
 
     if (typeof options.onReady === "function") {
@@ -140,6 +142,7 @@ export function createInstance(options: InstanceOptions) {
     onActivation: options.onActivation,
     configureBucketValue: options.configureBucketValue,
     logger,
+    interceptAttributes: options.interceptAttributes,
   });
 
   if (options.datafileUrl) {

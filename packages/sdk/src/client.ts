@@ -33,7 +33,8 @@ export interface SdkOptions {
   datafile: DatafileContent | string;
   onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
-  logger?: Logger; // TODO: keep it in FeaturevisorInstance only in next breaking semver
+  logger?: Logger; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
+  interceptAttributes?: (attributes: Attributes) => Attributes; // @TODO: move it to FeaturevisorInstance in next breaking semver
 }
 
 type FieldType = VariationType | VariableType;
@@ -70,6 +71,7 @@ export class FeaturevisorSDK {
   private datafileReader: DatafileReader;
   private configureBucketValue?: ConfigureBucketValue;
   private logger: Logger;
+  private interceptAttributes?: (attributes: Attributes) => Attributes;
 
   constructor(options: SdkOptions) {
     if (options.onActivation) {
@@ -81,6 +83,10 @@ export class FeaturevisorSDK {
     }
 
     this.logger = options.logger || createLogger();
+
+    if (options.interceptAttributes) {
+      this.interceptAttributes = options.interceptAttributes;
+    }
 
     this.setDatafile(options.datafile);
   }
@@ -143,7 +149,11 @@ export class FeaturevisorSDK {
         return undefined;
       }
 
-      const forcedVariation = getForcedVariation(feature, attributes, this.datafileReader);
+      const finalAttributes = this.interceptAttributes
+        ? this.interceptAttributes(attributes)
+        : attributes;
+
+      const forcedVariation = getForcedVariation(feature, finalAttributes, this.datafileReader);
 
       if (forcedVariation) {
         this.logger.debug("forced variation found", {
@@ -154,11 +164,11 @@ export class FeaturevisorSDK {
         return forcedVariation.value;
       }
 
-      const bucketValue = this.getBucketValue(feature, attributes);
+      const bucketValue = this.getBucketValue(feature, finalAttributes);
 
       const variation = getBucketedVariation(
         feature,
-        attributes,
+        finalAttributes,
         bucketValue,
         this.datafileReader,
         this.logger,
@@ -230,6 +240,10 @@ export class FeaturevisorSDK {
       }
 
       if (this.onActivation) {
+        const finalAttributes = this.interceptAttributes
+          ? this.interceptAttributes(attributes)
+          : attributes;
+
         const captureAttributes: Attributes = {};
 
         const attributesForCapturing = this.datafileReader
@@ -237,12 +251,12 @@ export class FeaturevisorSDK {
           .filter((a) => a.capture === true);
 
         attributesForCapturing.forEach((a) => {
-          if (typeof attributes[a.key] !== "undefined") {
+          if (typeof finalAttributes[a.key] !== "undefined") {
             captureAttributes[a.key] = attributes[a.key];
           }
         });
 
-        this.onActivation(featureKey, variationValue, attributes, captureAttributes);
+        this.onActivation(featureKey, variationValue, finalAttributes, captureAttributes);
       }
 
       return variationValue;
@@ -305,10 +319,14 @@ export class FeaturevisorSDK {
         return undefined;
       }
 
+      const finalAttributes = this.interceptAttributes
+        ? this.interceptAttributes(attributes)
+        : attributes;
+
       const forcedVariableValue = getForcedVariableValue(
         feature,
         variableSchema,
-        attributes,
+        finalAttributes,
         this.datafileReader,
       );
 
@@ -318,12 +336,12 @@ export class FeaturevisorSDK {
         return forcedVariableValue;
       }
 
-      const bucketValue = this.getBucketValue(feature, attributes);
+      const bucketValue = this.getBucketValue(feature, finalAttributes);
 
       return getBucketedVariableValue(
         feature,
         variableSchema,
-        attributes,
+        finalAttributes,
         bucketValue,
         this.datafileReader,
         this.logger,
