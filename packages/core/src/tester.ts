@@ -129,7 +129,12 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
           return currentAt;
         },
         logger: createLogger({
-          levels: ["debug", "info", "warn", "error"],
+          levels: [
+            // "debug",
+            // "info",
+            // "warn",
+            "error",
+          ],
         }),
       });
 

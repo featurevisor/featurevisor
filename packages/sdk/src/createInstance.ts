@@ -1,6 +1,6 @@
 import { DatafileContent } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
-import { createLogger, LogHandler } from "./logger";
+import { createLogger, Logger } from "./logger";
 
 export type ReadyCallback = () => void;
 
@@ -14,7 +14,7 @@ export interface InstanceOptions {
   datafileUrl?: string;
   onReady?: ReadyCallback;
   handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
-  logger?: LogHandler;
+  logger?: Logger;
 }
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver

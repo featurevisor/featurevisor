@@ -18,7 +18,7 @@ import {
   getForcedVariableValue,
 } from "./feature";
 import { getBucketedNumber } from "./bucket";
-import { createLogger, LogHandler } from "./logger";
+import { createLogger, Logger } from "./logger";
 
 export type ActivationCallback = (
   featureName: string,
@@ -33,7 +33,7 @@ export interface SdkOptions {
   datafile: DatafileContent | string;
   onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
-  logger?: LogHandler; // TODO: keep it in FeaturevisorInstance only in next breaking semver
+  logger?: Logger; // TODO: keep it in FeaturevisorInstance only in next breaking semver
 }
 
 type FieldType = VariationType | VariableType;
@@ -69,7 +69,7 @@ export class FeaturevisorSDK {
   private onActivation?: ActivationCallback;
   private datafileReader: DatafileReader;
   private configureBucketValue?: ConfigureBucketValue;
-  private logger: LogHandler;
+  private logger: Logger;
 
   constructor(options: SdkOptions) {
     if (options.onActivation) {
@@ -91,7 +91,7 @@ export class FeaturevisorSDK {
         typeof datafile === "string" ? JSON.parse(datafile) : datafile,
       );
     } catch (e) {
-      this.logger("error", "could not parse datafile", { error: e });
+      this.logger.error("could not parse datafile", { error: e });
     }
   }
 
@@ -138,7 +138,7 @@ export class FeaturevisorSDK {
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
-        this.logger("warn", "feature not found in datafile", { featureKey });
+        this.logger.warn("feature not found in datafile", { featureKey });
 
         return undefined;
       }
@@ -146,7 +146,7 @@ export class FeaturevisorSDK {
       const forcedVariation = getForcedVariation(feature, attributes, this.datafileReader);
 
       if (forcedVariation) {
-        this.logger("debug", "forced variation found", {
+        this.logger.debug("forced variation found", {
           featureKey,
           variation: forcedVariation.value,
         });
@@ -165,7 +165,7 @@ export class FeaturevisorSDK {
       );
 
       if (!variation) {
-        this.logger("debug", "using default variation", {
+        this.logger.debug("using default variation", {
           featureKey,
           bucketValue,
           variation: feature.defaultVariation,
@@ -176,7 +176,7 @@ export class FeaturevisorSDK {
 
       return variation.value;
     } catch (e) {
-      this.logger("error", "getVariation", { featureKey, error: e });
+      this.logger.error("getVariation", { featureKey, error: e });
 
       return undefined;
     }
@@ -247,7 +247,7 @@ export class FeaturevisorSDK {
 
       return variationValue;
     } catch (e) {
-      this.logger("error", "activate", { featureKey, error: e });
+      this.logger.error("activate", { featureKey, error: e });
 
       return undefined;
     }
@@ -290,7 +290,7 @@ export class FeaturevisorSDK {
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
-        this.logger("warn", "feature not found in datafile", { featureKey, variableKey });
+        this.logger.warn("feature not found in datafile", { featureKey, variableKey });
 
         return undefined;
       }
@@ -300,7 +300,7 @@ export class FeaturevisorSDK {
         : undefined;
 
       if (!variableSchema) {
-        this.logger("warn", "variable schema not found", { featureKey, variableKey });
+        this.logger.warn("variable schema not found", { featureKey, variableKey });
 
         return undefined;
       }
@@ -313,7 +313,7 @@ export class FeaturevisorSDK {
       );
 
       if (typeof forcedVariableValue !== "undefined") {
-        this.logger("debug", "forced variable value found", { featureKey, variableKey });
+        this.logger.debug("forced variable value found", { featureKey, variableKey });
 
         return forcedVariableValue;
       }
@@ -329,7 +329,7 @@ export class FeaturevisorSDK {
         this.logger,
       );
     } catch (e) {
-      this.logger("error", "getVariable", { featureKey, variableKey, error: e });
+      this.logger.error("getVariable", { featureKey, variableKey, error: e });
 
       return undefined;
     }
