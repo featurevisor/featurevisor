@@ -185,6 +185,8 @@ sdk.getVariableJSON<T>(featureKey, variableKey, attributes);
 
 By default, Featurevisor SDKs will print out logs to the console for `warn` and `error` levels.
 
+### Levels
+
 You can customize it further:
 
 ```ts
@@ -202,6 +204,8 @@ const sdk = createInstance({
   })
 });
 ```
+
+### Handler
 
 You can also pass your own log handler, if you do not wish to print the logs to the console:
 
