@@ -18,7 +18,7 @@ import {
   getForcedVariableValue,
 } from "./feature";
 import { getBucketedNumber } from "./bucket";
-import { VariableSchema } from "@featurevisor/types/src";
+import { createLogger, LogHandler } from "./logger";
 
 export type ActivationCallback = (
   featureName: string,
@@ -33,6 +33,7 @@ export interface SdkOptions {
   datafile: DatafileContent | string;
   onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
+  logger?: LogHandler; // TODO: keep it in FeaturevisorInstance only in next breaking semver
 }
 
 type FieldType = VariationType | VariableType;
@@ -68,6 +69,7 @@ export class FeaturevisorSDK {
   private onActivation?: ActivationCallback;
   private datafileReader: DatafileReader;
   private configureBucketValue?: ConfigureBucketValue;
+  private logger: LogHandler;
 
   constructor(options: SdkOptions) {
     if (options.onActivation) {
@@ -78,6 +80,8 @@ export class FeaturevisorSDK {
       this.configureBucketValue = options.configureBucketValue;
     }
 
+    this.logger = options.logger || createLogger();
+
     this.setDatafile(options.datafile);
   }
 
@@ -87,8 +91,7 @@ export class FeaturevisorSDK {
         typeof datafile === "string" ? JSON.parse(datafile) : datafile,
       );
     } catch (e) {
-      console.error(`Featurevisor could not parse the datafile`);
-      console.error(e);
+      this.logger("error", "could not parse datafile", { error: e });
     }
   }
 
@@ -135,26 +138,45 @@ export class FeaturevisorSDK {
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
+        this.logger("warn", "feature not found in datafile", { featureKey });
+
         return undefined;
       }
 
       const forcedVariation = getForcedVariation(feature, attributes, this.datafileReader);
 
       if (forcedVariation) {
+        this.logger("debug", "forced variation found", {
+          featureKey,
+          variation: forcedVariation.value,
+        });
+
         return forcedVariation.value;
       }
 
       const bucketValue = this.getBucketValue(feature, attributes);
 
-      const variation = getBucketedVariation(feature, attributes, bucketValue, this.datafileReader);
+      const variation = getBucketedVariation(
+        feature,
+        attributes,
+        bucketValue,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (!variation) {
+        this.logger("debug", "using default variation", {
+          featureKey,
+          bucketValue,
+          variation: feature.defaultVariation,
+        });
+
         return feature.defaultVariation;
       }
 
       return variation.value;
     } catch (e) {
-      console.error("[Featurevisor]", e);
+      this.logger("error", "getVariation", { featureKey, error: e });
 
       return undefined;
     }
@@ -203,7 +225,7 @@ export class FeaturevisorSDK {
     try {
       const variationValue = this.getVariation(featureKey, attributes);
 
-      if (!variationValue) {
+      if (typeof variationValue === "undefined") {
         return undefined;
       }
 
@@ -225,7 +247,7 @@ export class FeaturevisorSDK {
 
       return variationValue;
     } catch (e) {
-      console.error("[Featurevisor]", e);
+      this.logger("error", "activate", { featureKey, error: e });
 
       return undefined;
     }
@@ -268,6 +290,8 @@ export class FeaturevisorSDK {
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
+        this.logger("warn", "feature not found in datafile", { featureKey, variableKey });
+
         return undefined;
       }
 
@@ -276,6 +300,8 @@ export class FeaturevisorSDK {
         : undefined;
 
       if (!variableSchema) {
+        this.logger("warn", "variable schema not found", { featureKey, variableKey });
+
         return undefined;
       }
 
@@ -287,6 +313,8 @@ export class FeaturevisorSDK {
       );
 
       if (typeof forcedVariableValue !== "undefined") {
+        this.logger("debug", "forced variable value found", { featureKey, variableKey });
+
         return forcedVariableValue;
       }
 
@@ -298,9 +326,10 @@ export class FeaturevisorSDK {
         attributes,
         bucketValue,
         this.datafileReader,
+        this.logger,
       );
     } catch (e) {
-      console.error("[Featurevisor]", e);
+      this.logger("error", "getVariable", { featureKey, variableKey, error: e });
 
       return undefined;
     }

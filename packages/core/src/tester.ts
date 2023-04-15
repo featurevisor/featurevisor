@@ -8,7 +8,7 @@ import {
   VariableValue,
   VariationValue,
 } from "@featurevisor/types";
-import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { createInstance, createLogger, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
@@ -128,6 +128,9 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
         configureBucketValue: (feature, attributes, bucketValue) => {
           return currentAt;
         },
+        logger: createLogger({
+          levels: ["debug", "info", "warn", "error"],
+        }),
       });
 
       test.features.forEach(function (feature, fIndex) {

@@ -11,12 +11,14 @@ import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
 import { VariableSchema } from "@featurevisor/types/src";
+import { LogHandler } from "./logger";
 
 export function getMatchedTraffic(
   traffic: Traffic[],
   attributes: Attributes,
   bucketValue: number,
   datafileReader: DatafileReader,
+  logger: LogHandler,
 ): Traffic | undefined {
   return traffic.find((traffic) => {
     if (bucketValue > traffic.percentage) {
@@ -35,6 +37,10 @@ export function getMatchedTraffic(
     ) {
       return false;
     }
+
+    logger("debug", "matched rule", {
+      ruleKey: traffic.key,
+    });
 
     return true;
   });
@@ -99,21 +105,33 @@ export function getBucketedVariation(
   attributes: Attributes,
   bucketValue: number,
   datafileReader: DatafileReader,
+  logger: LogHandler,
 ): Variation | undefined {
   const matchedTraffic = getMatchedTraffic(
     feature.traffic,
     attributes,
     bucketValue,
     datafileReader,
+    logger,
   );
 
   if (!matchedTraffic) {
+    logger("debug", "no matched rule found", {
+      featureKey: feature.key,
+      bucketValue,
+    });
+
     return undefined;
   }
 
   const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
 
   if (!allocation) {
+    logger("debug", "no matched allocation found", {
+      featureKey: feature.key,
+      bucketValue,
+    });
+
     return undefined;
   }
 
@@ -124,8 +142,21 @@ export function getBucketedVariation(
   });
 
   if (!variation) {
+    // this should never happen
+    logger("debug", "no matched variation found", {
+      featureKey: feature.key,
+      variation: variationValue,
+      bucketValue,
+    });
+
     return undefined;
   }
+
+  logger("debug", "matched variation", {
+    featureKey: feature.key,
+    variation: variation.value,
+    bucketValue,
+  });
 
   return variation;
 }
@@ -157,6 +188,7 @@ export function getBucketedVariableValue(
   attributes: Attributes,
   bucketValue: number,
   datafileReader: DatafileReader,
+  logger: LogHandler,
 ): VariableValue | undefined {
   // get traffic
   const matchedTraffic = getMatchedTraffic(
@@ -164,9 +196,16 @@ export function getBucketedVariableValue(
     attributes,
     bucketValue,
     datafileReader,
+    logger,
   );
 
   if (!matchedTraffic) {
+    logger("debug", "no matched rule found", {
+      featureKey: feature.key,
+      variableKey: variableSchema.key,
+      bucketValue,
+    });
+
     return undefined;
   }
 
@@ -174,12 +213,24 @@ export function getBucketedVariableValue(
 
   // see if variable is set at traffic/rule level
   if (matchedTraffic.variables && typeof matchedTraffic.variables[variableKey] !== "undefined") {
+    logger("debug", "using variable from rule", {
+      featureKey: feature.key,
+      variableKey,
+      bucketValue,
+    });
+
     return matchedTraffic.variables[variableKey];
   }
 
   const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
 
   if (!allocation) {
+    logger("debug", "no matched allocation found", {
+      featureKey: feature.key,
+      variableKey,
+      bucketValue,
+    });
+
     return undefined;
   }
 
@@ -190,6 +241,14 @@ export function getBucketedVariableValue(
   });
 
   if (!variation) {
+    // this should never happen
+    logger("debug", "no matched variation found", {
+      feature: feature.key,
+      variableKey,
+      variation: variationValue,
+      bucketValue,
+    });
+
     return undefined;
   }
 
@@ -198,6 +257,13 @@ export function getBucketedVariableValue(
   });
 
   if (!variableFromVariation) {
+    logger("debug", "using default value as variation has no variable", {
+      featureKey: feature.key,
+      variableKey,
+      variation: variationValue,
+      bucketValue,
+    });
+
     if (variableSchema.type === "json") {
       return JSON.parse(variableSchema.defaultValue as string);
     }
@@ -228,6 +294,13 @@ export function getBucketedVariableValue(
     });
 
     if (override) {
+      logger("debug", "using override value from variation", {
+        feature: feature.key,
+        variableKey,
+        variation: variationValue,
+        bucketValue,
+      });
+
       if (variableSchema.type === "json") {
         return JSON.parse(override.value as string);
       }
@@ -235,6 +308,13 @@ export function getBucketedVariableValue(
       return override.value;
     }
   }
+
+  logger("debug", "using value from variation", {
+    feature: feature.key,
+    variableKey,
+    variation: variationValue,
+    bucketValue,
+  });
 
   if (variableSchema.type === "json") {
     return JSON.parse(variableFromVariation.value as string);
