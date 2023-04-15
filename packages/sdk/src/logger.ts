@@ -56,7 +56,7 @@ export class Logger {
   }
 
   log(level: LogLevel, message: LogMessage, details?: LogDetails) {
-    if (this.levels.includes(level)) {
+    if (this.levels.indexOf(level) !== -1) {
       this.handle(level, message, details);
     }
   }
