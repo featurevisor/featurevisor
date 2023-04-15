@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/fahad19/featurevisor/compare/v0.9.0...v0.10.0) (2023-04-15)
+
+
+### Features
+
+* intercept attributes ([#48](https://github.com/fahad19/featurevisor/issues/48)) ([4e08784](https://github.com/fahad19/featurevisor/commit/4e0878422f6d23e850c708eaa4deadf1e8f0d04c))
+
+
+
+
+
 # [0.9.0](https://github.com/fahad19/featurevisor/compare/v0.8.1...v0.9.0) (2023-04-15)
 
 
