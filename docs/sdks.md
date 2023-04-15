@@ -189,7 +189,7 @@ By default, Featurevisor SDKs will print out logs to the console for `warn` and 
 
 You can customize it further:
 
-```ts
+```js
 import { createInstance, createLogger } from "@featurevisor/sdk";
 
 const sdk = createInstance({
@@ -209,7 +209,7 @@ const sdk = createInstance({
 
 You can also pass your own log handler, if you do not wish to print the logs to the console:
 
-```ts
+```js
 const sdk = createInstance({
   // ...
   logger: createLogger({
@@ -227,7 +227,7 @@ Further log levels like `info` and `debug` will help you understand how the feat
 
 You can intercept attributes before they are used for evaluation:
 
-```ts
+```js
 import { createInstance } from "@featurevisor/sdk";
 
 const sdk = createInstance({
