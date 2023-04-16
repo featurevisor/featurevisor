@@ -26,10 +26,10 @@ If you already have the content of your datafile available:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const datafileURL =
+const datafileUrl =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 
-const datafileContent = await fetch(datafileURL).then((res) => res.json());
+const datafileContent = await fetch(datafileUrl).then((res) => res.json());
 
 const sdk = createInstance({
   datafile: datafileContent
@@ -44,7 +44,7 @@ If you want to delegate the responsibility of fetching the datafile to the SDK:
 // your-app/index.js
 import { createInstance } from "@featurevisor/sdk";
 
-const datafileURL =
+const datafileUrl =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 
 const sdk = createInstance({
