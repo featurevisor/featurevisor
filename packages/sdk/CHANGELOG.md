@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/fahad19/featurevisor/compare/v0.10.1...v0.11.0) (2023-04-17)
+
+
+### Features
+
+* refresh datafile ([#52](https://github.com/fahad19/featurevisor/issues/52)) ([d09b966](https://github.com/fahad19/featurevisor/commit/d09b966b2b5b19ac267b1c5dae77a05296f0d174))
+
+
+
+
+
 ## [0.10.1](https://github.com/fahad19/featurevisor/compare/v0.10.0...v0.10.1) (2023-04-17)
 
 **Note:** Version bump only for package @featurevisor/sdk
