@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/fahad19/featurevisor/compare/v0.11.0...v0.12.0) (2023-04-17)
+
+
+### Features
+
+* Allow overriding variation for specific rules ([#51](https://github.com/fahad19/featurevisor/issues/51)) ([e6447df](https://github.com/fahad19/featurevisor/commit/e6447df579d8b579aa67a44ba7a370b7cac9f320))
+
+
+
+
+
 # [0.11.0](https://github.com/fahad19/featurevisor/compare/v0.10.1...v0.11.0) (2023-04-17)
 
 **Note:** Version bump only for package @featurevisor/types
