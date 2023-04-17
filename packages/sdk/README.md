@@ -2,7 +2,7 @@
 
 Universal Featurevisor SDK for both Node.js and the browser.
 
-Visit [https://featurevisor.com](https://featurevisor.com) for more information.
+Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/) for more information.
 
 ## Installation
 
