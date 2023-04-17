@@ -28,6 +28,10 @@ export function getNewTraffic(
       traffic.variables = parsedRollout.variables;
     }
 
+    if (parsedRollout.variation) {
+      traffic.variation = parsedRollout.variation;
+    }
+
     const existingTrafficRollout = existingFeature?.traffic.find(
       (t) => t.key === parsedRollout.key,
     );
