@@ -194,6 +194,7 @@ export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
   percentage: Percentage;
+  variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };
@@ -234,6 +235,7 @@ export interface Rule {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
+  variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };

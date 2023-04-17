@@ -124,6 +124,22 @@ export function getBucketedVariation(
     return undefined;
   }
 
+  if (matchedTraffic.variation) {
+    const variation = feature.variations.find((v) => {
+      return v.value === matchedTraffic.variation;
+    });
+
+    if (variation) {
+      logger.debug("using variation from rule", {
+        featureKey: feature.key,
+        variation: variation.value,
+        ruleKey: matchedTraffic.key,
+      });
+
+      return variation;
+    }
+  }
+
   const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
 
   if (!allocation) {

@@ -154,6 +154,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
         key: Joi.string(), // @TODO: make it unique among siblings
         segments: groupSegmentsJoiSchema,
         percentage: Joi.number().precision(3).min(0).max(100),
+        variation: variationValueJoiSchema.optional(),
         variables: Joi.object().optional(), // @TODO: make it stricter
       }),
     ),

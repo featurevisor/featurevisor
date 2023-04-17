@@ -44,3 +44,13 @@ tests:
             attributes:
               country: nl
             expectedVariation: c
+
+          - at: 90
+            attributes:
+              country: de
+            expectedVariation: b
+
+          - at: 10
+            attributes:
+              country: de
+            expectedVariation: b

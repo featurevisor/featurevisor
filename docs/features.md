@@ -168,7 +168,8 @@ environments:
   production:
     rules:
       - key: "1"
-        segments: netherlands
+        segments:
+          - netherlands
         percentage: 50
 
       - key: "2"
@@ -179,6 +180,24 @@ environments:
 The first rule matched always wins when features are evaluated by the SDKs.
 
 Read more in [Bucketing](/docs/bucketing).
+
+### Overriding variation
+
+You can also override the variation of a feature for a specific rule:
+
+```yml
+# ...
+environments:
+  production:
+    rules:
+      - key: "1"
+        segments:
+          - netherlands
+        percentage: 100
+        variation: b
+```
+
+This is useful when you know the desired variation you want to stick to in a specific rule's segments, while continuing testing other variations in other rules.
 
 ## Segments
 
@@ -350,9 +369,9 @@ These types of variables are allowed:
 - `object` (flat objects only)
 - `json` (any valid JSON in stringified form)
 
-### Overrides
+### Overriding variables
 
-You can override variable values for specific segments when defining rollout rules:
+You can override variable values for specific rules:
 
 ```yml
 # ...
@@ -360,7 +379,8 @@ environments:
   production:
     rules:
       - key: "1"
-        segments: netherlands
+        segments:
+          - netherlands
         percentage: 100
         variables:
           bgColor: orange
@@ -380,7 +400,8 @@ variations:
       - key: bgColor
         value: blue
         overrides:
-          - segments: netherlands
+          - segments:
+              - netherlands
             value: orange
 ```
 
@@ -552,9 +573,9 @@ variations:
 
 ## Force
 
-You can force a feature to be enabled or disabled (or any another variation) for a specific user.
+You can force a feature to be enabled or disabled (or any another variation) for custom conditions.
 
-This is very useful when you wish to test something out just for yourself in a specific environment without affecting any other users.
+This is very useful when you wish to test something out quickly just for yourself in a specific environment without affecting any other users.
 
 ```yml
 # ...
