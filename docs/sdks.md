@@ -240,3 +240,75 @@ const sdk = createInstance({
 ```
 
 This is useful when you wish to add a default set of attributes for all your evaluations, giving you the convenience of not having to pass them in every time.
+
+## Refreshing datafile
+
+Refreshing the datafile is useful when you want to update the datafile in runtime, for example when you want to update the feature variations and variables without having to restart your application.
+
+It is only possible to refresh datafile in Featurevisor if you are using the `datafileUrl` option when creating your SDK instance.
+
+### Manual refresh
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+});
+
+sdk.refresh();
+```
+
+### Refresh by interval
+
+If you want to refresh your datafile every X number of seconds, you can pass the `refreshInterval` option when creating your SDK instance:
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  refreshInterval: 30, // 30 seconds
+});
+```
+
+You can stop the interval by calling:
+
+```js
+sdk.stopRefreshing();
+```
+
+If you want to resume refreshing:
+
+```js
+sdk.startRefreshing();
+```
+
+### Listening for updates
+
+Every successful refresh will trigger the `onRefresh()` option:
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  onRefresh: function () {
+    // datafile has been refreshed successfully
+  }
+});
+```
+
+Not every refresh is going to be of a new datafile version. If you want to know if datafile content has changed in any particular refresh, you can listen to `onUpdate` option:
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: datafileUrl,
+  onUpdate: function () {
+    // datafile has been refreshed, and
+    // new datafile content is different from the previous one
+  }
+});
+```
