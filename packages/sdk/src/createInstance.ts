@@ -16,6 +16,9 @@ export interface InstanceOptions {
   handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
   logger?: Logger;
   interceptAttributes?: (attributes: Attributes) => Attributes;
+  refreshInterval?: number; // seconds
+  onRefresh?: () => void;
+  onUpdate?: () => void;
 }
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
@@ -49,16 +52,30 @@ export interface FeaturevisorInstance {
 
   /**
    * Additions
-   *
-   * @TODO
    */
-  // start: () => void;
-  // stop: () => void;
-  // refresh: () => void;
+  setLogLevels: Logger["setLevels"];
+  refresh: () => void;
+  startRefreshing: () => void;
+  stopRefreshing: () => void;
 }
 
-function getInstanceFromSdk(sdk: FeaturevisorSDK, options: InstanceOptions): FeaturevisorInstance {
-  return {
+function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<DatafileContent> {
+  if (options.handleDatafileFetch) {
+    return options.handleDatafileFetch(datafileUrl);
+  }
+
+  return fetch(datafileUrl).then((res) => res.json());
+}
+
+function getInstanceFromSdk(
+  sdk: FeaturevisorSDK,
+  options: InstanceOptions,
+  logger: Logger,
+): FeaturevisorInstance {
+  let intervalId;
+  let refreshInProgress = false;
+
+  const instance: FeaturevisorInstance = {
     // variation
     getVariation: sdk.getVariation.bind(sdk),
     getVariationBoolean: sdk.getVariationBoolean.bind(sdk),
@@ -83,11 +100,78 @@ function getInstanceFromSdk(sdk: FeaturevisorSDK, options: InstanceOptions): Fea
     getVariableObject: sdk.getVariableObject.bind(sdk),
 
     // additions
-    // @TODO
-    // start: () => {},
-    // stop: () => {},
-    // refresh: () => {},
+    setLogLevels: logger.setLevels.bind(logger),
+
+    refresh() {
+      logger.debug("refreshing datafile");
+
+      if (refreshInProgress) {
+        return logger.warn("refresh in progress, skipping");
+      }
+
+      if (!options.datafileUrl) {
+        return logger.error("cannot refresh since `datafileUrl` is not provided");
+      }
+
+      refreshInProgress = true;
+
+      fetchDatafileContent(options.datafileUrl, options)
+        .then((datafile) => {
+          const currentRevision = sdk.getRevision();
+          const newRevision = datafile.revision;
+          const isNotSameRevision = currentRevision !== newRevision;
+
+          sdk.setDatafile(datafile);
+          logger.info("refreshed datafile");
+
+          if (typeof options.onRefresh === "function") {
+            options.onRefresh();
+          }
+
+          if (isNotSameRevision && typeof options.onUpdate === "function") {
+            options.onUpdate();
+          }
+
+          refreshInProgress = false;
+        })
+        .catch((e) => {
+          logger.error("failed to refresh datafile", { error: e });
+          refreshInProgress = false;
+        });
+    },
+
+    startRefreshing() {
+      if (!options.datafileUrl) {
+        return logger.error("cannot start refreshing since `datafileUrl` is not provided");
+      }
+
+      if (intervalId) {
+        return logger.warn("refreshing has already started");
+      }
+
+      if (!options.refreshInterval) {
+        return logger.warn("no `refreshInterval` option provided");
+      }
+
+      intervalId = setInterval(() => {
+        instance.refresh();
+      }, options.refreshInterval * 1000);
+    },
+
+    stopRefreshing() {
+      if (!intervalId) {
+        return logger.warn("refreshing has not started yet");
+      }
+
+      clearInterval(intervalId);
+    },
   };
+
+  if (options.datafileUrl && options.refreshInterval) {
+    instance.startRefreshing();
+  }
+
+  return instance;
 }
 
 const emptyDatafile: DatafileContent = {
@@ -98,14 +182,6 @@ const emptyDatafile: DatafileContent = {
   features: [],
 };
 
-function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<DatafileContent> {
-  if (options.handleDatafileFetch) {
-    return options.handleDatafileFetch(datafileUrl);
-  }
-
-  return fetch(datafileUrl).then((res) => res.json());
-}
-
 export function createInstance(options: InstanceOptions) {
   if (!options.datafile && !options.datafileUrl) {
     throw new Error(
@@ -114,6 +190,10 @@ export function createInstance(options: InstanceOptions) {
   }
 
   const logger = options.logger || createLogger();
+
+  if (!options.datafileUrl && options.refreshInterval) {
+    logger.warn("refreshing datafile requires `datafileUrl` option");
+  }
 
   // datafile content is already provided
   if (options.datafile) {
@@ -133,7 +213,7 @@ export function createInstance(options: InstanceOptions) {
       }, 0);
     }
 
-    return getInstanceFromSdk(sdk, options);
+    return getInstanceFromSdk(sdk, options, logger);
   }
 
   // datafile has to be fetched
@@ -155,10 +235,10 @@ export function createInstance(options: InstanceOptions) {
         }
       })
       .catch((e) => {
-        console.error("Featurevisor failed to fetch datafile:");
+        logger.error("failed to fetch datafile:");
         console.error(e);
       });
   }
 
-  return getInstanceFromSdk(sdk, options);
+  return getInstanceFromSdk(sdk, options, logger);
 }

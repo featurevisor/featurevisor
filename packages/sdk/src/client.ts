@@ -101,6 +101,10 @@ export class FeaturevisorSDK {
     }
   }
 
+  getRevision(): string {
+    return this.datafileReader.getRevision();
+  }
+
   private getFeature(featureKey: string | Feature): Feature | undefined {
     return typeof featureKey === "string"
       ? this.datafileReader.getFeature(featureKey) // only key provided
