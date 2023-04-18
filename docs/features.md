@@ -44,7 +44,16 @@ environments:
         percentage: 100
 ```
 
-Quite a lot of things are happening there. We will go through each of them in the following sections.
+Quite a lot of things are happening there. We will go through each of properties from the snippet above in the following sections.
+
+## Description
+
+This is for describing what the feature is about, and meant to be used by the team members who are working on the feature.
+
+```yml
+# features/sidebar.yml
+description: Some human readable description of this particular feature
+```
 
 ## Tags
 
@@ -62,7 +71,7 @@ tags:
   - ios
 ```
 
-Read more in [Building datafiles](/docs/building-datafiles).
+Read more about how tags are relevant in [Building datafiles](/docs/building-datafiles).
 
 ## Bucketing
 
@@ -111,7 +120,7 @@ variations:
     weight: 50
 ```
 
-But we could have also used multivate experiments with different values as strings for each variation:
+But we could have also have `string` type variations where number of total variations can be more than two:
 
 ```yml
 defaultVariation: control
@@ -133,7 +142,7 @@ variations:
 The sum of all variations' weights must be 100.
 
 {% callout type="note" title="Control variation" %}
-In the world of multivariate experiments, the default variation is usually called the `control` variation.
+In the world of experimentation, the default variation is usually called the `control` variation.
 {% /callout %}
 
 ## Environments
@@ -155,6 +164,8 @@ environments:
         segments: "*"
         percentage: 100
 ```
+
+Each environment is keyed by its name, as seen above with `staging` and `production` environments.
 
 ## Rules
 
@@ -205,7 +216,7 @@ Targeting your audience is one of the most important things when rolling out fea
 
 ### Everyone
 
-If we wish to roll out a feature to all users, we can use the `*` wildcard for the `segments` property:
+If we wish to roll out a feature to all users, we can use the `*` wildcard in `segments` property:
 
 ```yml
 # ...
@@ -227,7 +238,8 @@ environments:
   production:
     rules:
       - key: "1"
-        segments: germany
+        segments:
+          - germany
         percentage: 100
 ```
 
@@ -328,7 +340,7 @@ environments:
 
 Variables are really powerful and should be used with caution as they can grow very fast.
 
-Before assigning variable values, we must define the schema for our variables in the feature:
+Before assigning variable values, we must define the schema of our variables in the feature:
 
 ```yml
 # ...
@@ -355,7 +367,7 @@ variations:
         value: blue
 ```
 
-If users are bucketed in the `true` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red`.
+If users are bucketed in the `true` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the schema.
 
 ### Supported types
 
@@ -573,7 +585,7 @@ variations:
 
 ## Force
 
-You can force a feature to be enabled or disabled (or any another variation) for custom conditions.
+You can force a feature to be enabled or disabled (or any another variation) against custom conditions.
 
 This is very useful when you wish to test something out quickly just for yourself in a specific environment without affecting any other users.
 
