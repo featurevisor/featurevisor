@@ -1,11 +1,6 @@
-import { Attributes, Condition, PlainCondition } from "@featurevisor/types";
+import { compareVersions } from "compare-versions";
 
-import * as semverGt from "semver/functions/gt";
-import * as semverLt from "semver/functions/lt";
-import * as semverEq from "semver/functions/eq";
-import * as semverNeq from "semver/functions/neq";
-import * as semverGte from "semver/functions/gte";
-import * as semverLte from "semver/functions/lte";
+import { Attributes, Condition, PlainCondition } from "@featurevisor/types";
 
 export function conditionIsMatched(condition: PlainCondition, attributes: Attributes): boolean {
   const { attribute, operator, value } = condition;
@@ -36,17 +31,17 @@ export function conditionIsMatched(condition: PlainCondition, attributes: Attrib
     } else if (operator === "endsWith") {
       return valueInAttributes.endsWith(value);
     } else if (operator === "semverEquals") {
-      return semverEq(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) === 0;
     } else if (operator === "semverNotEquals") {
-      return semverNeq(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) !== 0;
     } else if (operator === "semverGreaterThan") {
-      return semverGt(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) === 1;
     } else if (operator === "semverGreaterThanOrEquals") {
-      return semverGte(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) >= 0;
     } else if (operator === "semverLessThan") {
-      return semverLt(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) === -1;
     } else if (operator === "semverLessThanOrEquals") {
-      return semverLte(valueInAttributes, value);
+      return compareVersions(valueInAttributes, value) <= 0;
     }
   } else if (typeof attributes[attribute] === "number" && typeof value === "number") {
     // numeric
