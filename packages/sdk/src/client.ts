@@ -19,6 +19,7 @@ import {
 } from "./feature";
 import { getBucketedNumber } from "./bucket";
 import { createLogger, Logger } from "./logger";
+import { Emitter } from "./emitter";
 
 export type ActivationCallback = (
   featureName: string,
@@ -34,7 +35,9 @@ export interface SdkOptions {
   onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
   configureBucketValue?: ConfigureBucketValue;
   logger?: Logger; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
+  emitter?: Emitter; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
   interceptAttributes?: (attributes: Attributes) => Attributes; // @TODO: move it to FeaturevisorInstance in next breaking semver
+  fromInstance?: boolean;
 }
 
 type FieldType = VariationType | VariableType;
@@ -71,7 +74,9 @@ export class FeaturevisorSDK {
   private datafileReader: DatafileReader;
   private configureBucketValue?: ConfigureBucketValue;
   private logger: Logger;
+  private emitter?: Emitter;
   private interceptAttributes?: (attributes: Attributes) => Attributes;
+  private fromInstance: boolean;
 
   constructor(options: SdkOptions) {
     if (options.onActivation) {
@@ -88,7 +93,13 @@ export class FeaturevisorSDK {
       this.interceptAttributes = options.interceptAttributes;
     }
 
+    if (options.emitter) {
+      this.emitter = options.emitter;
+    }
+
     this.setDatafile(options.datafile);
+
+    this.fromInstance = options.fromInstance || false;
   }
 
   setDatafile(datafile: DatafileContent | string) {
@@ -243,23 +254,33 @@ export class FeaturevisorSDK {
         return undefined;
       }
 
-      if (this.onActivation) {
-        const finalAttributes = this.interceptAttributes
-          ? this.interceptAttributes(attributes)
-          : attributes;
+      const finalAttributes = this.interceptAttributes
+        ? this.interceptAttributes(attributes)
+        : attributes;
 
-        const captureAttributes: Attributes = {};
+      const captureAttributes: Attributes = {};
 
-        const attributesForCapturing = this.datafileReader
-          .getAllAttributes()
-          .filter((a) => a.capture === true);
+      const attributesForCapturing = this.datafileReader
+        .getAllAttributes()
+        .filter((a) => a.capture === true);
 
-        attributesForCapturing.forEach((a) => {
-          if (typeof finalAttributes[a.key] !== "undefined") {
-            captureAttributes[a.key] = attributes[a.key];
-          }
-        });
+      attributesForCapturing.forEach((a) => {
+        if (typeof finalAttributes[a.key] !== "undefined") {
+          captureAttributes[a.key] = attributes[a.key];
+        }
+      });
 
+      if (this.emitter) {
+        this.emitter.emit(
+          "activation",
+          featureKey,
+          variationValue,
+          finalAttributes,
+          captureAttributes,
+        );
+      }
+
+      if (this.fromInstance && this.onActivation) {
         this.onActivation(featureKey, variationValue, finalAttributes, captureAttributes);
       }
 

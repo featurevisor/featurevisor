@@ -1,6 +1,7 @@
 import { DatafileContent, Attributes } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
 import { createLogger, Logger } from "./logger";
+import { Emitter } from "./emitter";
 
 export type ReadyCallback = () => void;
 
@@ -20,6 +21,8 @@ export interface InstanceOptions {
   onRefresh?: () => void;
   onUpdate?: () => void;
 }
+
+export type Event = "ready" | "refresh" | "update" | "activation";
 
 // @TODO: consider renaming it to FeaturevisorSDK in next breaking semver
 export interface FeaturevisorInstance {
@@ -54,9 +57,16 @@ export interface FeaturevisorInstance {
    * Additions
    */
   setLogLevels: Logger["setLevels"];
+
   refresh: () => void;
   startRefreshing: () => void;
   stopRefreshing: () => void;
+
+  addListener: Emitter["addListener"];
+  on: Emitter["addListener"];
+  removeListener: Emitter["removeListener"];
+  off: Emitter["removeListener"];
+  removeAllListeners: Emitter["removeAllListeners"];
 }
 
 function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<DatafileContent> {
@@ -67,13 +77,21 @@ function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<Da
   return fetch(datafileUrl).then((res) => res.json());
 }
 
+interface Listeners {
+  [key: string]: Function[];
+}
+
 function getInstanceFromSdk(
   sdk: FeaturevisorSDK,
   options: InstanceOptions,
   logger: Logger,
+  emitter: Emitter,
 ): FeaturevisorInstance {
   let intervalId;
   let refreshInProgress = false;
+
+  const on = emitter.addListener.bind(emitter);
+  const off = emitter.removeListener.bind(emitter);
 
   const instance: FeaturevisorInstance = {
     // variation
@@ -102,6 +120,14 @@ function getInstanceFromSdk(
     // additions
     setLogLevels: logger.setLevels.bind(logger),
 
+    // emitter
+    on: on,
+    addListener: on,
+    off: off,
+    removeListener: off,
+    removeAllListeners: emitter.removeAllListeners.bind(emitter),
+
+    // refresh
     refresh() {
       logger.debug("refreshing datafile");
 
@@ -124,12 +150,10 @@ function getInstanceFromSdk(
           sdk.setDatafile(datafile);
           logger.info("refreshed datafile");
 
-          if (typeof options.onRefresh === "function") {
-            options.onRefresh();
-          }
+          emitter.emit("refresh");
 
-          if (isNotSameRevision && typeof options.onUpdate === "function") {
-            options.onUpdate();
+          if (isNotSameRevision) {
+            emitter.emit("update");
           }
 
           refreshInProgress = false;
@@ -190,9 +214,26 @@ export function createInstance(options: InstanceOptions) {
   }
 
   const logger = options.logger || createLogger();
+  const emitter = new Emitter();
 
   if (!options.datafileUrl && options.refreshInterval) {
     logger.warn("refreshing datafile requires `datafileUrl` option");
+  }
+
+  if (options.onReady) {
+    emitter.addListener("ready", options.onReady);
+  }
+
+  if (options.onActivation) {
+    emitter.addListener("activation", options.onActivation);
+  }
+
+  if (options.onRefresh) {
+    emitter.addListener("refresh", options.onRefresh);
+  }
+
+  if (options.onUpdate) {
+    emitter.addListener("update", options.onUpdate);
   }
 
   // datafile content is already provided
@@ -202,18 +243,16 @@ export function createInstance(options: InstanceOptions) {
       onActivation: options.onActivation,
       configureBucketValue: options.configureBucketValue,
       logger,
+      emitter,
       interceptAttributes: options.interceptAttributes,
+      fromInstance: true,
     });
 
-    if (typeof options.onReady === "function") {
-      const onReady = options.onReady;
+    setTimeout(function () {
+      emitter.emit("ready");
+    }, 0);
 
-      setTimeout(function () {
-        onReady();
-      }, 0);
-    }
-
-    return getInstanceFromSdk(sdk, options, logger);
+    return getInstanceFromSdk(sdk, options, logger, emitter);
   }
 
   // datafile has to be fetched
@@ -222,7 +261,9 @@ export function createInstance(options: InstanceOptions) {
     onActivation: options.onActivation,
     configureBucketValue: options.configureBucketValue,
     logger,
+    emitter,
     interceptAttributes: options.interceptAttributes,
+    fromInstance: true,
   });
 
   if (options.datafileUrl) {
@@ -230,9 +271,7 @@ export function createInstance(options: InstanceOptions) {
       .then((datafile) => {
         sdk.setDatafile(datafile);
 
-        if (typeof options.onReady === "function") {
-          options.onReady();
-        }
+        emitter.emit("ready");
       })
       .catch((e) => {
         logger.error("failed to fetch datafile:");
@@ -240,5 +279,5 @@ export function createInstance(options: InstanceOptions) {
       });
   }
 
-  return getInstanceFromSdk(sdk, options, logger);
+  return getInstanceFromSdk(sdk, options, logger, emitter);
 }
