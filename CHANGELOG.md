@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.1](https://github.com/fahad19/featurevisor/compare/v0.12.0...v0.12.1) (2023-04-18)
+
+
+### Bug Fixes
+
+* use compare-versions package to reduce sdk bundle size ([#53](https://github.com/fahad19/featurevisor/issues/53)) ([d921436](https://github.com/fahad19/featurevisor/commit/d921436a51f88b713d4b295521f34f6c1e447972))
+
+
+
+
+
 # [0.12.0](https://github.com/fahad19/featurevisor/compare/v0.11.0...v0.12.0) (2023-04-17)
 
 

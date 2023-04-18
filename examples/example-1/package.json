@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-1",
   "private": true,
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
@@ -11,6 +11,6 @@
     "start": "npm run export && featurevisor site serve"
   },
   "dependencies": {
-    "@featurevisor/cli": "^0.12.0"
+    "@featurevisor/cli": "^0.12.1"
   }
 }
