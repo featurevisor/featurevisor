@@ -67,6 +67,8 @@ export interface FeaturevisorInstance {
   removeListener: Emitter["removeListener"];
   off: Emitter["removeListener"];
   removeAllListeners: Emitter["removeAllListeners"];
+
+  isReady: () => boolean;
 }
 
 function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<DatafileContent> {
@@ -81,11 +83,16 @@ interface Listeners {
   [key: string]: Function[];
 }
 
+interface Statuses {
+  ready: boolean;
+}
+
 function getInstanceFromSdk(
   sdk: FeaturevisorSDK,
   options: InstanceOptions,
   logger: Logger,
   emitter: Emitter,
+  statuses: Statuses,
 ): FeaturevisorInstance {
   let intervalId;
   let refreshInProgress = false;
@@ -189,6 +196,10 @@ function getInstanceFromSdk(
 
       clearInterval(intervalId);
     },
+
+    isReady() {
+      return statuses.ready;
+    },
   };
 
   if (options.datafileUrl && options.refreshInterval) {
@@ -215,6 +226,9 @@ export function createInstance(options: InstanceOptions) {
 
   const logger = options.logger || createLogger();
   const emitter = new Emitter();
+  const statuses: Statuses = {
+    ready: false,
+  };
 
   if (!options.datafileUrl && options.refreshInterval) {
     logger.warn("refreshing datafile requires `datafileUrl` option");
@@ -248,11 +262,12 @@ export function createInstance(options: InstanceOptions) {
       fromInstance: true,
     });
 
+    statuses.ready = true;
     setTimeout(function () {
       emitter.emit("ready");
     }, 0);
 
-    return getInstanceFromSdk(sdk, options, logger, emitter);
+    return getInstanceFromSdk(sdk, options, logger, emitter, statuses);
   }
 
   // datafile has to be fetched
@@ -271,6 +286,7 @@ export function createInstance(options: InstanceOptions) {
       .then((datafile) => {
         sdk.setDatafile(datafile);
 
+        statuses.ready = true;
         emitter.emit("ready");
       })
       .catch((e) => {
@@ -279,5 +295,5 @@ export function createInstance(options: InstanceOptions) {
       });
   }
 
-  return getInstanceFromSdk(sdk, options, logger, emitter);
+  return getInstanceFromSdk(sdk, options, logger, emitter, statuses);
 }

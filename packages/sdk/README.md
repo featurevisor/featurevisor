@@ -77,6 +77,12 @@ Also supports additional type specific methods:
 - `activateInteger`
 - `activateDouble`
 
+### `isReady`
+
+> `isReady(): boolean`
+
+Synchonously check if the SDK is ready to be used.
+
 ### `refresh`
 
 > `refresh(): void`

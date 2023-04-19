@@ -148,9 +148,13 @@ describe("sdk: createInstance", function () {
       },
     });
 
+    expect(sdk.isReady()).toEqual(false);
+
     setTimeout(function () {
       expect(refreshed).toEqual(true);
       expect(updated).toEqual(true);
+
+      expect(sdk.isReady()).toEqual(true);
 
       sdk.stopRefreshing();
 

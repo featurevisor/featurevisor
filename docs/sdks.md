@@ -205,6 +205,12 @@ const sdk = createInstance({
 });
 ```
 
+You can also set log levels from instance afterwards:
+
+```js
+sdk.setLogLevels(["error", "warn"]);
+```
+
 ### Handler
 
 You can also pass your own log handler, if you do not wish to print the logs to the console:
@@ -332,6 +338,14 @@ sdk.on("ready", function () {
 ```
 
 The `ready` event is fired maximum once.
+
+You can also synchronously check if the SDK is ready:
+
+```js
+if (sdk.isReady()) {
+  // sdk is ready to be used
+}
+```
 
 #### `activation`
 
