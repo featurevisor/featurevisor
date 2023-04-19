@@ -19,11 +19,13 @@ Featurevisor is a tool aimed at developers, and its entire workflow is based on 
 
 Therefore there is no UI involved.
 
+Except for the [status site](/docs/site), which is a static site generated from the repository content.
+
 ## Should I use Featurevisor?
 
 It depends.
 
-If you are a small team of developers, and you are comfortable with working with YAMLs and git workflow, then yes, you can consider using Featurevisor.
+If you are a small team of developers, and you are comfortable working with YAMLs and git workflow, then yes, you can consider using Featurevisor.
 
 But given the stable v1.0.0 has not landed yet, you should be prepared to deal with some bugs and issues.
 

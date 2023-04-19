@@ -30,7 +30,7 @@ Product development is a continuous process of experimentation and learning. You
 
 Feature management is a great way to experiment with new features of your product, and learn from the feedback you get from your users. Simple on/off switches are not enough to do this. You need to be able to test out multiple variations of your feature, and see which one performs the best.
 
-That's where multivariate testing (often called A/B testing) comes in. You can define multiple variations of your feature, and expose them to a small percentage of your users. You can then measure the performance of each variation, and decide which one to roll out to the rest of your users.
+That's where A/B testing and multivariate testing come in. You can define multiple variations of your feature, and expose them to a small percentage of your users. You can then measure the performance of each variation, and decide which one to roll out to the rest of your users.
 
 ## Establishing a workflow
 

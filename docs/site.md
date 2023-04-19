@@ -48,3 +48,9 @@ Examples:
 - `in:production`: search features by environment
 - `archived:true` or `archived:false`
 - `capture:true` or `capture:false`: for filtering attributes
+
+## Read-only mode
+
+It is important to note that the generated site is a static one, and therefore it is read-only.
+
+To make any changes to your features, segments, or attributes, you will have to make those changes in your git repository.
