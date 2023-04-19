@@ -21,6 +21,28 @@ describe("sdk: createInstance", function () {
     expect(typeof sdk.getVariation).toEqual("function");
   });
 
+  it("should trigger onReady event once", function (done) {
+    let readyCount = 0;
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [],
+        attributes: [],
+        segments: [],
+      },
+      onReady: () => {
+        readyCount += 1;
+      },
+    });
+
+    setTimeout(() => {
+      expect(readyCount).toEqual(1);
+      done();
+    }, 0);
+  });
+
   it("should intercept attributes", function () {
     let intercepted = false;
 
@@ -126,9 +148,13 @@ describe("sdk: createInstance", function () {
       },
     });
 
+    expect(sdk.isReady()).toEqual(false);
+
     setTimeout(function () {
       expect(refreshed).toEqual(true);
       expect(updated).toEqual(true);
+
+      expect(sdk.isReady()).toEqual(true);
 
       sdk.stopRefreshing();
 
