@@ -2,10 +2,18 @@
 
 Basic example showing how Featurevisor works.
 
+## Initialize
+
+```
+$ mkdir example-1
+$ cd example-1
+$ npx @featurevisor/cli init
+```
+
 ## Installation
 
 ```
-$ npm ci
+$ npm install
 ```
 
 ## Usage
@@ -26,4 +34,12 @@ $ npm run build
 
 ```
 $ npm test
+```
+
+### Start local server
+
+Generates and serves status site:
+
+```
+$ npm start
 ```
