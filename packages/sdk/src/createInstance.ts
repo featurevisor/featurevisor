@@ -85,6 +85,7 @@ interface Listeners {
 
 interface Statuses {
   ready: boolean;
+  refreshInProgress: boolean;
 }
 
 function getInstanceFromSdk(
@@ -95,7 +96,6 @@ function getInstanceFromSdk(
   statuses: Statuses,
 ): FeaturevisorInstance {
   let intervalId;
-  let refreshInProgress = false;
 
   const on = emitter.addListener.bind(emitter);
   const off = emitter.removeListener.bind(emitter);
@@ -138,7 +138,7 @@ function getInstanceFromSdk(
     refresh() {
       logger.debug("refreshing datafile");
 
-      if (refreshInProgress) {
+      if (statuses.refreshInProgress) {
         return logger.warn("refresh in progress, skipping");
       }
 
@@ -146,7 +146,7 @@ function getInstanceFromSdk(
         return logger.error("cannot refresh since `datafileUrl` is not provided");
       }
 
-      refreshInProgress = true;
+      statuses.refreshInProgress = true;
 
       fetchDatafileContent(options.datafileUrl, options)
         .then((datafile) => {
@@ -163,11 +163,11 @@ function getInstanceFromSdk(
             emitter.emit("update");
           }
 
-          refreshInProgress = false;
+          statuses.refreshInProgress = false;
         })
         .catch((e) => {
           logger.error("failed to refresh datafile", { error: e });
-          refreshInProgress = false;
+          statuses.refreshInProgress = false;
         });
     },
 
@@ -228,6 +228,7 @@ export function createInstance(options: InstanceOptions) {
   const emitter = new Emitter();
   const statuses: Statuses = {
     ready: false,
+    refreshInProgress: false,
   };
 
   if (!options.datafileUrl && options.refreshInterval) {
