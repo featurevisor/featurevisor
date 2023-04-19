@@ -312,3 +312,97 @@ const sdk = createInstance({
   }
 });
 ```
+
+## Events
+
+Featurevisor SDK implements a simple event emitter that allows you can use to listen to events that happen in the runtime.
+
+### Listening to events
+
+You can listen to these events that can occur at various stages in your application:
+
+#### `ready`
+
+When the SDK is ready to be used if used in an asynchronous way involving `datafileUrl` option:
+
+```js
+sdk.on("ready", function () {
+  // sdk is ready to be used
+});
+```
+
+The `ready` event is fired maximum once.
+
+#### `activation`
+
+When a feature is activated:
+
+```js
+sdk.on("activation", function (
+  featureKey,
+  variationValue,
+  allAttributes,
+  capturedAttributes
+) {
+  // allAttributes (object):
+  //   - all the attributes used for evaluating
+
+  // capturedAttributes (object):
+  //   - attributes that you want to capture,
+  //   - marked as `capture: true` in Attribute YAMLs
+});
+```
+
+#### `refresh`
+
+When the datafile is refreshed:
+
+```js
+sdk.on("refresh", function () {
+  // datafile has been refreshed successfully
+});
+```
+
+This will only occur if you are using `refreshInterval` option.
+
+#### `update`
+
+When the datafile is refreshed, and new datafile content is different from the previous one:
+
+```js
+sdk.on("update", function () {
+  // datafile has been refreshed, and
+  // new datafile content is different from the previous one
+});
+```
+
+This will only occur if you are using `refreshInterval` option.
+
+### Stop listening
+
+You can stop listening to specific events by calling `off()` or `removeListener()`:
+
+```js
+const onReadyHandler = function () {
+  // ...
+};
+
+sdk.on("ready", onReadyHandler);
+
+sdk.removeListener("ready", onReadyHandler);
+```
+
+### Remove all listeners
+
+If you wish to remove all listeners of any specific event type:
+
+```js
+sdk.removeAllListeners("ready");
+sdk.removeAllListeners("activation");
+```
+
+If you wish to remove all active listeners of all event types in one go:
+
+```js
+sdk.removeAllListeners();
+```
