@@ -10,7 +10,7 @@
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",
-    "test": "echo 'Nothing to test in types package'"
+    "test": "jest --config jest.config.js --verbose"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -45,5 +45,10 @@
     "@featurevisor/sdk": "^0.13.0",
     "@featurevisor/types": "^0.13.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^14.0.0",
+    "jest-environment-jsdom": "^29.5.0"
+  }
 }

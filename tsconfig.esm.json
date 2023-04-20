@@ -9,6 +9,6 @@
     "jsx": "react",
     "moduleResolution": "node"
   },
-  "include": ["./packages/**/*.ts"],
-  "exclude": ["./packages/**/*.spec.ts"]
+  "include": ["./packages/**/*.ts", "./packages/**/*.tsx"],
+  "exclude": ["./packages/**/*.spec.ts", "./packages/**/*.spec.tsx"]
 }
