@@ -41,12 +41,12 @@ function getNewInstance() {
   return sdk;
 }
 
-describe("react: useSdk", function () {
+describe("react: useVariation", function () {
   test("should be a function", function () {
     expect(useVariation).toBeInstanceOf(Function);
   });
 
-  test("should return the sdk", function () {
+  test("should return the variation", function () {
     function TestComponent() {
       const variation = useVariation("test", { userId: "1" });
 
