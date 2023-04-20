@@ -63,7 +63,7 @@ Featurevisor is a solution for managing your feature flags and remote config. It
 
 It introduces a workflow that's fully git-based, where configuration is stored as YAMLs and changes are reviewed and merged via pull requests.
 
-The workflow results into a datafile (JSON file) that can be used by your application to fetch the latest feature flags and remote config, evaluated by Featurevisor SDKs.
+The workflow results into datafiles (JSON files), that contain your feature configurations. These datafiles can then be fetched by your applications and evaluated using Featurevisor SDKs.
 
 More documentation available at [https://featurevisor.com](https://featurevisor.com).
 
@@ -75,6 +75,7 @@ More documentation available at [https://featurevisor.com](https://featurevisor.
 | [@featurevisor/core](./packages/core)   | Core package used by CLI                   |
 | [@featurevisor/types](./packages/types) | Common typings                             |
 | [@featurevisor/sdk](./packages/sdk)     | Universal SDK for both Node.js and browser |
+| [@featurevisor/react](./packages/react) | React package                              |
 | [@featurevisor/site](./packages/site)   | Static site generator for your project     |
 
 # License

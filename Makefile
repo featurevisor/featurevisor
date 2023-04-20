@@ -7,7 +7,7 @@ install:
 
 build:
 	npm run build
-	make print-sdk-size
+	make print-bundle-size
 
 test:
 	npm test
@@ -18,6 +18,13 @@ lint:
 ##
 # Misc.
 #
-print-sdk-size:
-	gzip -c packages/sdk/dist/index.js > packages/sdk/dist/index.js.gz
-	ls -alh packages/sdk/dist | grep index.js | awk '{print $$9 "\t" $$5}'
+print-bundle-size:
+	@gzip -c packages/sdk/dist/index.js > packages/sdk/dist/index.js.gz
+	@echo 'SDK package size:'
+	@ls -alh packages/sdk/dist | grep index.js | awk '{print $$9 "\t" $$5}'
+
+	@echo ''
+
+	@gzip -c packages/react/dist/index.js > packages/react/dist/index.js.gz
+	@echo 'React package size:'
+	@ls -alh packages/react/dist | grep index.js | awk '{print $$9 "\t" $$5}'
