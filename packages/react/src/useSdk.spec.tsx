@@ -50,10 +50,9 @@ describe("react: useSdk", function () {
     function TestComponent() {
       const sdk = useSdk();
 
-      console.log("rendered, with sdk:", sdk);
       expect(typeof sdk.isReady).toEqual("function");
 
-      return <div />;
+      return <p>Test</p>;
     }
 
     render(
@@ -61,5 +60,7 @@ describe("react: useSdk", function () {
         <TestComponent />
       </FeaturevisorProvider>,
     );
+
+    expect(screen.getByText("Test")).toBeInTheDocument();
   });
 });
