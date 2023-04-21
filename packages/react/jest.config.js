@@ -1,5 +1,6 @@
 module.exports = {
   preset: "ts-jest",
+  bail: true,
 
   // for react testing library
   testEnvironment: "jsdom",

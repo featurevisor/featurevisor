@@ -109,7 +109,7 @@ function getInstanceFromSdk(
     getVariationString: sdk.getVariationString.bind(sdk),
 
     // activate
-    activate: sdk.activate,
+    activate: sdk.activate.bind(sdk),
     activateBoolean: sdk.activateBoolean.bind(sdk),
     activateInteger: sdk.activateInteger.bind(sdk),
     activateDouble: sdk.activateDouble.bind(sdk),
@@ -264,7 +264,7 @@ export function createInstance(options: InstanceOptions) {
     });
 
     statuses.ready = true;
-    setTimeout(function () {
+    setTimeout(function() {
       emitter.emit("ready");
     }, 0);
 

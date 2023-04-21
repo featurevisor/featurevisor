@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
-import { activateFeature } from "./activateFeature";
+import { useStatus } from "./useStatus";
 import { createInstance } from "@featurevisor/sdk";
 
 function getNewInstance() {
@@ -41,16 +41,16 @@ function getNewInstance() {
   return sdk;
 }
 
-describe("react: activateFeature", function() {
-  test("should be a function", function() {
-    expect(activateFeature).toBeInstanceOf(Function);
+describe("react: useStatus", function () {
+  test("should be a function", function () {
+    expect(useStatus).toBeInstanceOf(Function);
   });
 
-  test("should return the variation", function() {
+  test("should return the variation", function () {
     function TestComponent() {
-      const variation = activateFeature("test", { userId: "1" });
+      const { isReady } = useStatus();
 
-      return variation === true ? <p>True</p> : <p>False</p>;
+      return isReady ? <p>Ready</p> : <p>Loading...</p>;
     }
 
     render(
@@ -59,6 +59,6 @@ describe("react: activateFeature", function() {
       </FeaturevisorProvider>,
     );
 
-    expect(screen.getByText("True")).toBeInTheDocument();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
   });
 });
