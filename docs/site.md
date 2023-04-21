@@ -37,6 +37,22 @@ Run:
 $ featurevisor site serve
 ```
 
+## Screenshots
+
+Screenshots here may differ from latest site generator.
+
+### Features list
+
+[![Features list](/img/site-screenshot-features.png)](/img/site-screenshot-features.png)
+
+### Feature details
+
+[![Feature details](/img/site-screenshot-feature-view.png)](/img/site-screenshot-feature-view.png)
+
+### History
+
+[![History](/img/site-screenshot-history.png)](/img/site-screenshot-history.png)
+
 ## Advanced search
 
 The generated website supports advanced search besides just searching by name of your features, segments, or attributes.
