@@ -60,6 +60,8 @@ module.exports = {
 };
 ```
 
+Learn more in [Configuration](/docs/configuration).
+
 ## Create an attribute
 
 Attributes are the building blocks of creating segments.
@@ -99,11 +101,13 @@ conditions:
 
 We have come to the most interesting part now.
 
-Let's create a feature called `darkMode`, and we wish to roll it out gradually in Germany first and then rest of the world.
+### Boolean flags
+
+We can create a new `showBanner` feature, that controls a banner on our website:
 
 ```yml
-# features/darkMode.yml
-description: Dark mode
+# features/showBanner.yml
+description: Show banner
 tags:
   - all
 
@@ -112,29 +116,82 @@ bucketBy: userId
 
 defaultVariation: false
 
-# two variations: true or false
+# boolean flags have only two variations: true and false
 variations:
   - type: boolean
-    value: false
-    weight: 50 # out of a total of 100
-  - type: boolean
     value: true
-    weight: 50 # half the traffic will get true, and half will get false
+    weight: 100 # out of a total of 100
+
+  # weight is 0 because it's boolean, and
+  # we can control the rollout percentage from environment rules below
+  - type: boolean
+    value: false
+    weight: 0
 
 environments:
   staging:
     rules:
       - key: "1"
-        segments: "*" # in staging, we want to test the feature for everyone
+        segments: "*" # in staging, we want to show the banner to everyone
+        percentage: 100
+  production:
+    rules:
+      # in production, we want to test the feature in Germany first, and
+      # it will be `true` variation for 50% of the traffic
+      - key: "1"
+        segments:
+          - "germany"
+        percentage: 50
+```
+
+### A/B test with variations
+
+Unlike boolean flags, A/B tests can have more than 2 variations, and they are of `string` type.
+
+Let's create a feature called `darkMode` which has 3 variations, and we wish to roll it out gradually in Germany first and then rest of the world.
+
+```yml
+# features/darkMode.yml
+description: Dark mode
+tags:
+  - all
+
+bucketBy: userId
+
+defaultVariation: light
+
+# three variations: light, dimmed, and dark.
+# sum of all weights must be 100
+variations:
+  - type: string
+    value: light
+    weight: 33.34
+
+  - type: string
+    value: dimmed
+    weight: 33.33
+
+  - type: string
+    value: dark
+    weight: 33.33
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
         percentage: 100
   production:
     rules:
       - key: "1"
-        segments: "germany" # in production, we want to test the feature for Germany first
-        percentage: 50 # 50% of the traffic in Germany will be exposed to the feature
-```
+        segments:
+          - "germany"
+        percentage: 100
 
-Given our variations are a 50-50 split, and our production rule's rollout in Germany is 50%, it means 25% (50% variation weight of 50% rollout rule) of the traffic in Germany will get `true` and the rest will get `false`.
+      - key: "2"
+        segments: "*" # everyone
+        percentage: 0 # disabled for everyone else
+```
 
 ## Linting
 
@@ -221,7 +278,7 @@ const sdk = createInstance({
 Once the SDK is initialized, you can get variations of your features as follows:
 
 ```js
-const darkModeEnabled = sdk.getVariation("darkMode". {
+const showBanner = sdk.getVariation("showBanner". {
   userId: "123",
   country: "de",
 });
