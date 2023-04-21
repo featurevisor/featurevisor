@@ -15,6 +15,7 @@ module.exports = function getWebpackConfig(options) {
     devtool,
     tsConfigFilePath,
     enableCssModules,
+    externals,
   } = options;
 
   const entry = {};
@@ -39,6 +40,7 @@ module.exports = function getWebpackConfig(options) {
     resolve: {
       extensions: [".ts", ".tsx", ".js"],
     },
+    externals: externals || {},
     module: {
       rules: [
         {

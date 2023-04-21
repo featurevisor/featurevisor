@@ -29,8 +29,42 @@
     ]
   },
   {
+    "title": "Framework guides",
+    "links": [{ "title": "React", "href": "/docs/react" }]
+  },
+
+  {
     "title": "Advanced",
     "links": [{ "title": "Bucketing", "href": "/docs/bucketing" }]
+  },
+  {
+    "title": "Packages",
+    "links": [
+      {
+        "title": "@featurevisor/types",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/types"
+      },
+      {
+        "title": "@featurevisor/core",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/core"
+      },
+      {
+        "title": "@featurevisor/cli",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/cli"
+      },
+      {
+        "title": "@featurevisor/sdk",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/sdk"
+      },
+      {
+        "title": "@featurevisor/site",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/site"
+      },
+      {
+        "title": "@featurevisor/react",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/react"
+      }
+    ]
   },
   {
     "title": "Project",

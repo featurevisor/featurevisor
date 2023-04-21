@@ -1,49 +1,49 @@
 {
-  "name": "@featurevisor/sdk",
-  "version": "0.13.0",
-  "description": "Featurevisor SDK for Node.js and the browser",
-  "main": "dist/index.js",
-  "module": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "scripts": {
-    "lint": "echo 'not linting in this package yet'",
-    "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
-    "dist": "webpack --config ./webpack.config.js",
-    "build": "npm run transpile && npm run dist",
-    "test": "jest --config ../../jest.config.js --verbose"
-  },
-  "author": {
-    "name": "Fahad Heylaal",
-    "url": "https://fahad19.com"
-  },
-  "homepage": "https://featurevisor.com",
-  "keywords": [
-    "featurevisor",
-    "feature",
-    "features",
-    "flags",
-    "feature flags",
-    "feature toggles",
-    "feature management",
-    "experimentation",
-    "experiment",
-    "experiments"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/fahad19/featurevisor.git"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
-  "bugs": {
-    "url": "https://github.com/fahad19/featurevisor/issues"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "@featurevisor/types": "^0.13.0",
-    "compare-versions": "^6.0.0-rc.1",
-    "murmurhash": "^2.0.1"
-  }
+    "name": "@featurevisor/sdk",
+    "version": "0.13.0",
+    "description": "Featurevisor SDK for Node.js and the browser",
+    "main": "dist/index.js",
+    "module": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "scripts": {
+        "lint": "echo 'not linting in this package yet'",
+        "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
+        "dist": "webpack --config ./webpack.config.js",
+        "build": "npm run transpile && npm run dist",
+        "test": "jest --config jest.config.js --verbose"
+    },
+    "author": {
+        "name": "Fahad Heylaal",
+        "url": "https://fahad19.com"
+    },
+    "homepage": "https://featurevisor.com",
+    "keywords": [
+        "featurevisor",
+        "feature",
+        "features",
+        "flags",
+        "feature flags",
+        "feature toggles",
+        "feature management",
+        "experimentation",
+        "experiment",
+        "experiments"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/fahad19/featurevisor.git"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "bugs": {
+        "url": "https://github.com/fahad19/featurevisor/issues"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "@featurevisor/types": "^0.13.0",
+        "compare-versions": "^6.0.0-rc.1",
+        "murmurhash": "^2.0.1"
+    }
 }
