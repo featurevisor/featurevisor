@@ -12,17 +12,14 @@ variablesSchema:
     defaultValue: '{"foo": "bar"}'
 
 variations:
-  - type: string
-    value: control
+  - value: control
     weight: 33.34
-  - type: string
-    value: b
+  - value: b
     weight: 33.33
     variables:
       - key: fooConfig
         value: '{"foo": "bar b"}'
-  - type: string
-    value: c
+  - value: c
     weight: 33.33
 
 environments:

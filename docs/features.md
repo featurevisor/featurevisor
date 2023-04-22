@@ -22,13 +22,11 @@ bucketBy: userId
 defaultVariation: false
 
 variations:
-  - type: boolean
-    value: false
-    weight: 50
+  - value: true
+    weight: 100
 
-  - type: boolean
-    value: true
-    weight: 50
+  - value: false
+    weight: 0
 
 environments:
   staging:
@@ -44,7 +42,7 @@ environments:
         percentage: 100
 ```
 
-Quite a lot of things are happening there. We will go through each of properties from the snippet above in the following sections.
+Quite a lot of things are happening there. We will go through each of the properties from the snippet above in the following sections.
 
 ## Description
 
@@ -104,42 +102,43 @@ defaultVariation: false
 
 ## Variations
 
-A feature can have multiple variations. Each variation must have a different value.
+A feature can have multiple variations. Each variation must have a different value, but all variations must of the same type.
 
-Here, we have used simple boolean values for the variations with an equal 50-50 weight distribution:
+### Boolean flags
+
+Here, we have used simple boolean values for the variations:
 
 ```yml
 # ...
 variations:
-  - type: boolean
-    value: false
-    weight: 50
+  - value: true
+    weight: 100
 
-  - type: boolean
-    value: true
-    weight: 50
+  - value: false
+    weight: 0
 ```
 
-But we could have also have `string` type variations where number of total variations can be more than two:
+### A/B tests
+
+But we could have also used `string` type variations where number of total variations can be more than two:
 
 ```yml
 defaultVariation: control
 
 variations:
-  - type: string
-    value: control
+  - value: control
     weight: 50
 
-  - type: string
-    value: b
+  - value: b
     weight: 25
 
-  - type: string
-    value: c
+  - value: c
     weight: 25
 ```
 
 The sum of all variations' weights must be 100.
+
+You can have upto 2 decimal places for each weight.
 
 {% callout type="note" title="Control variation" %}
 In the world of experimentation, the default variation is usually called the `control` variation.
@@ -167,6 +166,8 @@ environments:
 
 Each environment is keyed by its name, as seen above with `staging` and `production` environments.
 
+The environment keys are based on your project configuration. Read more in [Configuration](/docs/configuration).
+
 ## Rules
 
 Each environment can have multiple rollout rules.
@@ -184,7 +185,7 @@ environments:
         percentage: 50
 
       - key: "2"
-        segments: "*"
+        segments: "*" # everyone
         percentage: 100
 ```
 
@@ -216,7 +217,7 @@ Targeting your audience is one of the most important things when rolling out fea
 
 ### Everyone
 
-If we wish to roll out a feature to all users, we can use the `*` wildcard in `segments` property:
+If we wish to roll out a feature to everyone, we can use the `*` wildcard in `segments` property:
 
 ```yml
 # ...
@@ -355,16 +356,14 @@ Then, we can assign values to the variables inside variations:
 ```yml
 # ...
 variations:
-  - type: boolean
-    value: false
-    weight: 50
-
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: bgColor
         value: blue
+
+  - value: false
+    weight: 0
 ```
 
 If users are bucketed in the `true` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the schema.
@@ -404,10 +403,8 @@ Or, you can override within variations:
 # ...
 variations:
   # ...
-
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: bgColor
         value: blue
@@ -424,9 +421,8 @@ If you want to embed overriding conditions directly within variations:
 variations:
   # ...
 
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: bgColor
         value: blue
@@ -453,9 +449,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: bgColor
         value: blue
@@ -472,9 +467,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: showSidebar
         value: true
@@ -491,9 +485,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: position
         value: 2
@@ -510,9 +503,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: amount
         value: 4.99
@@ -531,9 +523,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: acceptedCards
         value:
@@ -554,9 +545,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: hero
         value:
@@ -575,9 +565,8 @@ variablesSchema:
 
 variations:
   # ...
-  - type: boolean
-    value: true
-    weight: 50
+  - value: true
+    weight: 100
     variables:
       - key: hero
         value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'

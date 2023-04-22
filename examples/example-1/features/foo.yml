@@ -18,11 +18,9 @@ variablesSchema:
     defaultValue: ""
 
 variations:
-  - type: boolean
-    value: false
+  - value: false
     weight: 50
-  - type: boolean
-    value: true
+  - value: true
     weight: 50
     variables:
       - key: bar

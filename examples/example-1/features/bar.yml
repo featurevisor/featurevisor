@@ -1,3 +1,4 @@
+description: Example with object variable type
 tags:
   - all
 
@@ -17,11 +18,9 @@ variablesSchema:
       alignment: center
 
 variations:
-  - type: string
-    value: control
+  - value: control
     weight: 33
-  - type: string
-    value: b
+  - value: b
     weight: 33
     variables:
       - key: hero
@@ -38,8 +37,7 @@ variations:
               title: Hero Title for B in DE or CH
               subtitle: Hero Subtitle for B in DE of CH
               alignment: center for B in DE or CH
-  - type: string
-    value: c
+  - value: c
     weight: 34
 
 environments:

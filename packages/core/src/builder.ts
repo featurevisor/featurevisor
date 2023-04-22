@@ -144,7 +144,6 @@ export function buildDatafile(
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
         variations: parsedFeature.variations.map((variation: Variation) => {
           const mappedVariation: any = {
-            type: variation.type,
             value: variation.value,
           };
 

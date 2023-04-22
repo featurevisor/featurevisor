@@ -21,11 +21,9 @@ variablesSchema:
     defaultValue: "Sidebar Title"
 
 variations:
-  - type: boolean
-    value: false
+  - value: false
     weight: 10
-  - type: boolean
-    value: true
+  - value: true
     weight: 90
     variables:
       - key: position
