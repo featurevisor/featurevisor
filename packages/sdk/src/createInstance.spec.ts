@@ -2,12 +2,12 @@ import { DatafileContent } from "@featurevisor/types";
 
 import { createInstance } from "./createInstance";
 
-describe("sdk: createInstance", function() {
-  it("should be a function", function() {
+describe("sdk: createInstance", function () {
+  it("should be a function", function () {
     expect(typeof createInstance).toEqual("function");
   });
 
-  it("should create instance with datafile content", function() {
+  it("should create instance with datafile content", function () {
     const sdk = createInstance({
       datafile: {
         schemaVersion: "1",
@@ -21,7 +21,7 @@ describe("sdk: createInstance", function() {
     expect(typeof sdk.getVariation).toEqual("function");
   });
 
-  it("should trigger onReady event once", function(done) {
+  it("should trigger onReady event once", function (done) {
     let readyCount = 0;
 
     const sdk = createInstance({
@@ -43,7 +43,7 @@ describe("sdk: createInstance", function() {
     }, 0);
   });
 
-  it("should intercept attributes", function() {
+  it("should intercept attributes", function () {
     let intercepted = false;
 
     const sdk = createInstance({
@@ -55,10 +55,7 @@ describe("sdk: createInstance", function() {
             key: "test",
             defaultVariation: false,
             bucketBy: "userId",
-            variations: [
-              { type: "boolean", value: true },
-              { type: "boolean", value: false },
-            ],
+            variations: [{ value: true }, { value: false }],
             traffic: [
               {
                 key: "1",
@@ -75,7 +72,7 @@ describe("sdk: createInstance", function() {
         attributes: [],
         segments: [],
       },
-      interceptAttributes: function(attributes) {
+      interceptAttributes: function (attributes) {
         intercepted = true;
 
         return {
@@ -92,7 +89,7 @@ describe("sdk: createInstance", function() {
     expect(intercepted).toEqual(true);
   });
 
-  it("should activate feature", function() {
+  it("should activate feature", function () {
     let activated = false;
 
     const sdk = createInstance({
@@ -104,10 +101,7 @@ describe("sdk: createInstance", function() {
             key: "test",
             defaultVariation: false,
             bucketBy: "userId",
-            variations: [
-              { type: "boolean", value: true },
-              { type: "boolean", value: false },
-            ],
+            variations: [{ value: true }, { value: false }],
             traffic: [
               {
                 key: "1",
@@ -124,7 +118,7 @@ describe("sdk: createInstance", function() {
         attributes: [],
         segments: [],
       },
-      onActivation: function(featureKey) {
+      onActivation: function (featureKey) {
         activated = true;
       },
     });
@@ -144,7 +138,7 @@ describe("sdk: createInstance", function() {
     expect(activatedVariation).toEqual(true);
   });
 
-  it("should refresh datafile", function(done) {
+  it("should refresh datafile", function (done) {
     let revision = 1;
     let refreshed = false;
     let updated = false;
@@ -158,10 +152,7 @@ describe("sdk: createInstance", function() {
             key: "test",
             defaultVariation: false,
             bucketBy: "userId",
-            variations: [
-              { type: "boolean", value: true },
-              { type: "boolean", value: false },
-            ],
+            variations: [{ value: true }, { value: false }],
             traffic: [
               {
                 key: "1",
@@ -186,8 +177,8 @@ describe("sdk: createInstance", function() {
 
     const sdk = createInstance({
       datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function(datafileUrl) {
-        return new Promise(function(resolve, reject) {
+      handleDatafileFetch: function (datafileUrl) {
+        return new Promise(function (resolve, reject) {
           resolve(getDatafileContent());
         });
       },
@@ -202,7 +193,7 @@ describe("sdk: createInstance", function() {
 
     expect(sdk.isReady()).toEqual(false);
 
-    setTimeout(function() {
+    setTimeout(function () {
       expect(refreshed).toEqual(true);
       expect(updated).toEqual(true);
 
