@@ -16,10 +16,7 @@ function getNewInstance() {
           key: "test",
           defaultVariation: false,
           bucketBy: "userId",
-          variations: [
-            { type: "boolean", value: true },
-            { type: "boolean", value: false },
-          ],
+          variations: [{ value: true }, { value: false }],
           traffic: [
             {
               key: "1",
@@ -41,12 +38,12 @@ function getNewInstance() {
   return sdk;
 }
 
-describe("react: activateFeature", function() {
-  test("should be a function", function() {
+describe("react: activateFeature", function () {
+  test("should be a function", function () {
     expect(activateFeature).toBeInstanceOf(Function);
   });
 
-  test("should return the variation", function() {
+  test("should return the variation", function () {
     function TestComponent() {
       const variation = activateFeature("test", { userId: "1" });
 

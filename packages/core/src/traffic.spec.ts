@@ -11,12 +11,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "on",
           weight: 100,
         },
         {
-          type: "string",
           value: "off",
           weight: 0,
         },
@@ -59,12 +57,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "on",
           weight: 50,
         },
         {
-          type: "string",
           value: "off",
           weight: 50,
         },
@@ -107,17 +103,14 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "yes",
           weight: 33.33,
         },
         {
-          type: "string",
           value: "no",
           weight: 33.33,
         },
         {
-          type: "string",
           value: "maybe",
           weight: 33.34,
         },
@@ -164,12 +157,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "on",
           weight: 50,
         },
         {
-          type: "string",
           value: "off",
           weight: 50,
         },
@@ -250,12 +241,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "on",
           weight: 50,
         },
         {
-          type: "string",
           value: "off",
           weight: 50,
         },
@@ -325,17 +314,14 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "a",
           weight: 33.33,
         },
         {
-          type: "string",
           value: "b",
           weight: 33.33,
         },
         {
-          type: "string",
           value: "c",
           weight: 33.34,
         },
@@ -409,22 +395,18 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "a",
           weight: 25,
         },
         {
-          type: "string",
           value: "b",
           weight: 25,
         },
         {
-          type: "string",
           value: "c",
           weight: 25,
         },
         {
-          type: "string",
           value: "d",
           weight: 25,
         },
@@ -502,12 +484,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "a",
           weight: 50,
         },
         {
-          type: "string",
           value: "b",
           weight: 50,
         },
@@ -593,12 +573,10 @@ describe("core: Traffic", function () {
       // parsed variations from YAML
       [
         {
-          type: "string",
           value: "a",
           weight: 50,
         },
         {
-          type: "string",
           value: "b",
           weight: 50,
         },

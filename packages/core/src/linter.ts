@@ -11,9 +11,9 @@ import { ProjectConfig } from "./config";
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
     archived: Joi.boolean(),
-    type: Joi.string().allow("boolean", "string", "integer", "double"),
-    description: Joi.string(),
-    capture: Joi.boolean().optional(),
+    type: Joi.string().allow("boolean", "string", "integer", "double").required(),
+    description: Joi.string().required(),
+    capture: Joi.boolean(),
   });
 
   return attributeJoiSchema;
@@ -21,42 +21,46 @@ export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
 
 export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
   const plainConditionJoiSchema = Joi.object({
-    attribute: Joi.string(),
-    operator: Joi.string().valid(
-      "equals",
-      "notEquals",
+    attribute: Joi.string().required(),
+    operator: Joi.string()
+      .valid(
+        "equals",
+        "notEquals",
 
-      // numeric
-      "greaterThan",
-      "greaterThanOrEquals",
-      "lessThan",
-      "lessThanOrEquals",
+        // numeric
+        "greaterThan",
+        "greaterThanOrEquals",
+        "lessThan",
+        "lessThanOrEquals",
 
-      // string
-      "contains",
-      "notContains",
-      "startsWith",
-      "endsWith",
+        // string
+        "contains",
+        "notContains",
+        "startsWith",
+        "endsWith",
 
-      // semver (string)
-      "semverEquals",
-      "semverNotEquals",
-      "semverGreaterThan",
-      "semverGreaterThanOrEquals",
-      "semverLessThan",
-      "semverLessThanOrEquals",
+        // semver (string)
+        "semverEquals",
+        "semverNotEquals",
+        "semverGreaterThan",
+        "semverGreaterThanOrEquals",
+        "semverLessThan",
+        "semverLessThanOrEquals",
 
-      // array of strings
-      "in",
-      "notIn",
-    ),
-    value: Joi.alternatives().try(
-      // @TODO: make them more specific
-      Joi.string(),
-      Joi.number(),
-      Joi.boolean(),
-      Joi.array().items(Joi.string()),
-    ),
+        // array of strings
+        "in",
+        "notIn",
+      )
+      .required(),
+    value: Joi.alternatives()
+      .try(
+        // @TODO: make them more specific
+        Joi.string(),
+        Joi.number(),
+        Joi.boolean(),
+        Joi.array().items(Joi.string()),
+      )
+      .required(),
   });
 
   const andOrNotConditionJoiSchema = Joi.alternatives()
@@ -90,8 +94,8 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
 export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
   const segmentJoiSchema = Joi.object({
     archived: Joi.boolean().optional(),
-    description: Joi.string(),
-    conditions: conditionsJoiSchema,
+    description: Joi.string().required(),
+    conditions: conditionsJoiSchema.required(),
   });
 
   return segmentJoiSchema;
@@ -149,15 +153,17 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
 
   const environmentJoiSchema = Joi.object({
     expose: Joi.boolean(),
-    rules: Joi.array().items(
-      Joi.object({
-        key: Joi.string(), // @TODO: make it unique among siblings
-        segments: groupSegmentsJoiSchema,
-        percentage: Joi.number().precision(3).min(0).max(100),
-        variation: variationValueJoiSchema.optional(),
-        variables: Joi.object().optional(), // @TODO: make it stricter
-      }),
-    ),
+    rules: Joi.array()
+      .items(
+        Joi.object({
+          key: Joi.string(), // @TODO: make it unique among siblings
+          segments: groupSegmentsJoiSchema,
+          percentage: Joi.number().precision(3).min(0).max(100),
+          variation: variationValueJoiSchema.optional(),
+          variables: Joi.object().optional(), // @TODO: make it stricter
+        }),
+      )
+      .required(),
     force: Joi.array().items(
       Joi.object({
         // @TODO: either of the two below
@@ -172,18 +178,18 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
 
   const allEnvironomentsSchema = {};
   projectConfig.environments.forEach((environmentKey) => {
-    allEnvironomentsSchema[environmentKey] = environmentJoiSchema;
+    allEnvironomentsSchema[environmentKey] = environmentJoiSchema.required();
   });
   const allEnvironomentsJoiSchema = Joi.object(allEnvironomentsSchema);
 
   const featureJoiSchema = Joi.object({
-    archived: Joi.boolean().optional(),
-    description: Joi.string(),
-    tags: Joi.array().items(Joi.string()),
+    archived: Joi.boolean(),
+    description: Joi.string().required(),
+    tags: Joi.array().items(Joi.string()).required(),
 
     defaultVariation: variationValueJoiSchema,
 
-    bucketBy: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
+    bucketBy: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
 
     variablesSchema: Joi.array().items(
       Joi.object({
@@ -204,10 +210,9 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
     variations: Joi.array()
       .items(
         Joi.object({
-          description: Joi.string().optional(),
-          type: Joi.string().valid("string", "integer", "boolean", "double"),
-          value: variationValueJoiSchema, // @TODO: make it unique among siblings
-          weight: Joi.number().precision(3).min(0).max(100),
+          description: Joi.string(),
+          value: variationValueJoiSchema.required(), // @TODO: make it unique among siblings
+          weight: Joi.number().precision(3).min(0).max(100).required(),
           variables: Joi.array().items(
             Joi.object({
               key: Joi.string(), // @TODO: make it unique among siblings
@@ -233,10 +238,19 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
           throw new Error(`Sum of all variation weights must be 100, got ${total}`);
         }
 
-        return value;
-      }),
+        const typeOf = new Set(value.map((v) => typeof v.value));
 
-    environments: allEnvironomentsJoiSchema,
+        if (typeOf.size > 1) {
+          throw new Error(
+            `All variations must have the same type, got ${Array.from(typeOf).join(", ")}`,
+          );
+        }
+
+        return value;
+      })
+      .required(),
+
+    environments: allEnvironomentsJoiSchema.required(),
   });
 
   return featureJoiSchema;

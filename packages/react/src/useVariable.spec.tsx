@@ -16,14 +16,7 @@ function getNewInstance() {
           key: "test",
           defaultVariation: "control",
           bucketBy: "userId",
-          variations: [
-            { type: "string", value: "control" },
-            {
-              type: "string",
-              value: "b",
-            },
-            { type: "string", value: "c" },
-          ],
+          variations: [{ value: "control" }, { value: "b" }, { value: "c" }],
           traffic: [
             {
               key: "1",

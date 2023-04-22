@@ -118,14 +118,12 @@ defaultVariation: false
 
 # boolean flags have only two variations: true and false
 variations:
-  - type: boolean
-    value: true
+  - value: true
     weight: 100 # out of a total of 100
 
   # weight is 0 because it's boolean, and
   # we can control the rollout percentage from environment rules below
-  - type: boolean
-    value: false
+  - value: false
     weight: 0
 
 environments:
@@ -163,16 +161,13 @@ defaultVariation: light
 # three variations: light, dimmed, and dark.
 # sum of all weights must be 100
 variations:
-  - type: string
-    value: light
+  - value: light
     weight: 33.34
 
-  - type: string
-    value: dimmed
+  - value: dimmed
     weight: 33.33
 
-  - type: string
-    value: dark
+  - value: dark
     weight: 33.33
 
 environments:

@@ -8,11 +8,9 @@ bucketBy: userId
 
 variations:
   - description: Enabled for all
-    type: boolean
     value: true
     weight: 100
   - description: Disabled for all
-    type: boolean
     value: false
     weight: 0
 
