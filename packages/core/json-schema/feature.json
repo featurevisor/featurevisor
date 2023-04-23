@@ -284,6 +284,6 @@
       }
     }
   },
-  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML",
+  "description": "JSON Schema for creating Featurevisor feature, expressed in YAML",
   "required": ["description", "tags", "defaultVariation", "variations"]
 }
