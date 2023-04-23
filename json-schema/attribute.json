@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "archived": {
+      "type": "boolean",
+      "description": "Indicates whether the attribute is archived or not."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human readable description of the attribute for documentation purposes."
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of attribute. Allows values are: string, boolean, integer, and double."
+    },
+    "capture": {
+      "type": "boolean",
+      "description": "Mark this attribute as one for capturing during feature activation."
+    }
+  },
+  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML",
+  "required": ["description", "type"]
+}

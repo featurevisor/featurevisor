@@ -1,0 +1,289 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "variation_value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "flat_object": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [{ "type": "string" }, { "type": "boolean" }, { "type": "number" }]
+      }
+    },
+    "variable_value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "key": {
+              "$ref": "#/$defs/flat_object"
+            }
+          }
+        }
+      ]
+    },
+    "variation": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human readable description of the variation for documentation purposes."
+        },
+        "value": {
+          "$ref": "#/$defs/variation_value",
+          "description": "Value of the variation."
+        },
+        "weight": {
+          "type": "number",
+          "description": "Weight of the variation between 0 and 100 (inclusive).",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "variables": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "Key of the variable."
+            },
+            "value": {
+              "$ref": "#/$defs/variable_value",
+              "description": "Value of the variable."
+            },
+            "overrides": {
+              "type": "object",
+              "properties": {
+                "conditions": {
+                  "$ref": "segment.json#/$defs/multiple_conditions",
+                  "description": "Embedded conditions for overriding the variable"
+                },
+                "segments": {
+                  "$ref": "#/$defs/segments",
+                  "description": "Embedded conditions for overriding the variable"
+                },
+                "value": {
+                  "$ref": "#/$defs/variable_value",
+                  "description": "Value of the override."
+                }
+              },
+              "required": ["value"]
+            }
+          },
+          "description": "Variables for the variation.",
+          "required": ["key"]
+        }
+      },
+      "description": "Variation for the feature.",
+      "required": ["value"]
+    },
+    "segments": {
+      "oneOf": [
+        { "$ref": "#/$defs/segments_everyone" },
+        { "$ref": "#/$defs/segments_multiple" },
+        { "$ref": "#/$defs/segments_complex" }
+      ],
+      "description": "Array of segment keys"
+    },
+    "segments_everyone": {
+      "type": "string",
+      "description": "Target everyone",
+      "enum": ["*"]
+    },
+    "segments_single": {
+      "type": "string",
+      "description": "Target a specific segment"
+    },
+    "segments_complex": {
+      "oneOf": [
+        { "$ref": "#/$defs/segments_and" },
+        { "$ref": "#/$defs/segments_or" },
+        { "$ref": "#/$defs/segments_not" }
+      ]
+    },
+    "segments_and": {
+      "type": "object",
+      "properties": {
+        "and": {
+          "$ref": "#/$defs/segments_multiple"
+        }
+      },
+      "description": "Target segments with 'and' operator.",
+      "required": ["and"]
+    },
+    "segments_or": {
+      "type": "object",
+      "properties": {
+        "or": {
+          "$ref": "#/$defs/segments_multiple"
+        }
+      },
+      "description": "Target segments with 'or' operator.",
+      "required": ["or"]
+    },
+    "segments_not": {
+      "type": "object",
+      "properties": {
+        "or": {
+          "$ref": "#/$defs/segments_multiple"
+        }
+      },
+      "description": "Target segments with 'not' operator.",
+      "required": ["not"]
+    },
+    "segments_multiple": {
+      "type": "array",
+      "items": {
+        "oneOf": [{ "$ref": "#/$defs/segments_single" }, { "$ref": "#/$defs/segments_complex" }]
+      },
+      "description": "Target an array of segments"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "archived": {
+      "type": "boolean",
+      "description": "Indicates whether the feature is archived or not."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human readable description of the feature for documentation purposes."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of tags"
+    },
+    "defaultVariation": {
+      "$ref": "#/$defs/variation_value",
+      "description": "Default variation for the feature."
+    },
+    "variablesSchema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Key of the variable."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of this specific variable.",
+          "enum": ["string", "boolean", "integer", "double", "json", "array", "object"]
+        },
+        "defaultValue": {
+          "$ref": "#/$defs/variable_value",
+          "description": "Default value for this specific variable."
+        }
+      },
+      "description": "Schema for the feature's variables.",
+      "required": ["type"]
+    },
+    "variations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/variation"
+      },
+      "description": "Array of variations for the feature."
+    },
+    "environments": {
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "exposed": {
+            "type": "boolean",
+            "description": "Indicates whether the feature is exposed to the environment."
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Unique key of the rule among its siblings."
+                },
+                "segments": {
+                  "$ref": "#/$defs/segments",
+                  "description": "Embedded conditions for the rule"
+                },
+                "percentage": {
+                  "type": "number",
+                  "description": "Percentage of the rule between 0 and 100 (inclusive).",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "variation": {
+                  "$ref": "#/$defs/variation_value",
+                  "description": "Overriding variation value for this rule"
+                },
+                "variables": {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/variable_value",
+                    "description": "Overriding variable value for this rule"
+                  }
+                }
+              }
+            },
+            "description": "Array of rules for the feature.",
+            "required": ["key", "percentage", "segments"]
+          },
+          "force": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "segments": {
+                  "$ref": "#/$defs/segments",
+                  "description": "Embedded segments"
+                },
+                "conditions": {
+                  "$ref": "segment.json#/$defs/multiple_conditions"
+                },
+                "variation": {
+                  "$ref": "#/$defs/variation_value",
+                  "description": "Overriding variation value"
+                },
+                "variables": {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/variable_value",
+                    "description": "Overriding variable value"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Environment specific configuration for the feature.",
+        "required": ["rules"]
+      }
+    }
+  },
+  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML",
+  "required": ["description", "tags", "defaultVariation", "variations"]
+}
