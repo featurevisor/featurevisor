@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/fahad19/featurevisor/compare/v0.14.1...v0.15.0) (2023-04-23)
+
+
+### Features
+
+* JSON Schemas ([#58](https://github.com/fahad19/featurevisor/issues/58)) ([697536a](https://github.com/fahad19/featurevisor/commit/697536a0f08de81d78b853a00ece041fa1ff6405))
+
+
+
+
+
 ## [0.14.1](https://github.com/fahad19/featurevisor/compare/v0.14.0...v0.14.1) (2023-04-22)
 
 
