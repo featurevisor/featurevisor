@@ -1,0 +1,8 @@
+description: Exclusion group for some features
+
+slots:
+  - feature: bar
+    percentage: 50
+
+  - feature: b
+    percentage: 50

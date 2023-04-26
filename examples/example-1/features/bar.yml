@@ -45,9 +45,9 @@ environments:
     rules:
       - key: "1"
         segments: "*"
-        percentage: 100
+        percentage: 50
   production:
     rules:
       - key: "1"
         segments: "*"
-        percentage: 100
+        percentage: 50
