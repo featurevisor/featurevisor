@@ -119,10 +119,8 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig) {
           throw new Error("total percentage is not 100");
         }
 
-        let accumulatedPercentage = 0;
         for (const slot of value) {
-          const maxPercentageForRule = slot.percentage + accumulatedPercentage;
-          accumulatedPercentage += slot.percentage;
+          const maxPercentageForRule = slot.percentage;
 
           if (slot.feature) {
             const featureKey = slot.feature;
