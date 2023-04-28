@@ -23,8 +23,9 @@ import {
   FeatureKey,
   Allocation,
   EnvironmentKey,
+  Group,
+  Range,
 } from "@featurevisor/types";
-import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { SCHEMA_VERSION, ProjectConfig } from "./config";
 import { getNewTraffic } from "./traffic";
@@ -73,6 +74,49 @@ export function buildDatafile(
 
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
+  const featureRanges = new Map<FeatureKey, Range[]>();
+
+  // groups
+  const groups: Group[] = [];
+  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
+    const groupFiles = fs
+      .readdirSync(projectConfig.groupsDirectoryPath)
+      .filter((f) => f.endsWith(".yml"));
+
+    for (const groupFile of groupFiles) {
+      const groupKey = path.basename(groupFile, ".yml");
+      const groupFilePath = path.join(projectConfig.groupsDirectoryPath, groupFile);
+      const parsedGroup = parseYaml(fs.readFileSync(groupFilePath, "utf8")) as Group;
+
+      groups.push({
+        key: groupKey,
+        ...parsedGroup,
+      });
+
+      let accumulatedPercentage = 0;
+      parsedGroup.slots.forEach(function (slot, slotIndex) {
+        const isFirstSlot = slotIndex === 0;
+        const isLastSlot = slotIndex === parsedGroup.slots.length - 1;
+
+        if (slot.feature) {
+          const featureKey = slot.feature;
+          const featureRangesForFeature = featureRanges.get(featureKey) || [];
+
+          const start = isFirstSlot ? accumulatedPercentage : accumulatedPercentage + 1;
+          const end = accumulatedPercentage + slot.percentage * 1000;
+
+          featureRangesForFeature.push({
+            start,
+            end,
+          });
+
+          featureRanges.set(slot.feature, featureRangesForFeature);
+        }
+
+        accumulatedPercentage += slot.percentage * 1000;
+      });
+    }
+  }
 
   // features
   const features: Feature[] = [];
@@ -115,27 +159,9 @@ export function buildDatafile(
         continue;
       }
 
-      const featureTraffic: Traffic[] = [];
-
       for (const parsedRule of parsedFeature.environments[options.environment].rules) {
         const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
         extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
-
-        const traffic: Traffic = {
-          key: parsedRule.key,
-          segments:
-            typeof parsedRule.segments === "string"
-              ? parsedRule.segments
-              : JSON.stringify(parsedRule.segments),
-          percentage: parsedRule.percentage * (MAX_BUCKETED_NUMBER / 100),
-          allocation: [],
-        };
-
-        if (parsedRule.variables) {
-          traffic.variables = parsedRule.variables;
-        }
-
-        featureTraffic.push(traffic);
       }
 
       const feature: Feature = {
@@ -200,6 +226,7 @@ export function buildDatafile(
           parsedFeature.variations,
           parsedFeature.environments[options.environment].rules,
           existingFeatures && existingFeatures[featureKey],
+          featureRanges.get(featureKey) || [],
         ),
       };
 

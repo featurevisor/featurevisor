@@ -1,4 +1,4 @@
-import { Rule, ExistingFeature, Traffic, Variation } from "@featurevisor/types";
+import { Rule, ExistingFeature, Traffic, Variation, Range } from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 export function getNewTraffic(
@@ -8,8 +8,15 @@ export function getNewTraffic(
 
   // from previous release
   existingFeature: ExistingFeature | undefined,
+
+  // ranges from group slots
+  ranges: Range[] = [],
 ): Traffic[] {
   const result: Traffic[] = [];
+
+  // @TODO: for now we pick first one only. in future, we can pick more,
+  // and allow a Feature to exist in multiple slots inside a single Group
+  const offset = ranges.length > 0 ? ranges[0].start : 0;
 
   parsedRules.forEach((parsedRollout) => {
     const rolloutPercentage = parsedRollout.percentage;
@@ -42,7 +49,7 @@ export function getNewTraffic(
     //  - variation removed
     //  - variation weight changed
     //
-    // make it better by maintaining as much of the previous bucketing as possible
+    // @TODO: make it better by maintaining as much of the previous bucketing as possible
     const variationsChanged = existingFeature
       ? JSON.stringify(
           existingFeature.variations.map(({ value, weight }) => ({
@@ -60,10 +67,11 @@ export function getNewTraffic(
 
       if (
         diffPercentage > 0 &&
-        !variationsChanged // if variations changed, we need to re-bucket
+        !variationsChanged && // if variations changed, we need to re-bucket
+        existingTrafficRollout.allocation.length > 0 &&
+        existingTrafficRollout.allocation[0].percentage === offset // if a group was introduced after, we need to re-bucket
       ) {
         // increase: build on top of existing allocations
-
         traffic.allocation = existingTrafficRollout.allocation.map(({ variation, percentage }) => {
           return {
             variation,
@@ -85,23 +93,17 @@ export function getNewTraffic(
       if (!existingTrafficRollout || variationsChanged === true) {
         traffic.allocation.push({
           variation: variation.value,
-          percentage: newPercentage,
+          percentage: offset + newPercentage,
         });
 
         return;
       }
 
-      // const prevTotalWeightForVariation = existingTrafficRollout.allocation
-      //   .filter((a) => a.variation === variation.value)
-      //   .reduce((acc, curr) => acc + curr.percentage, 0);
-
-      // const diffWeightForVariation = (variation.weight as number) - prevTotalWeightForVariation / (MAX_BUCKETED_NUMBER / 100));
-
       if (diffPercentage === 0) {
         // no change
         traffic.allocation.push({
           variation: variation.value,
-          percentage: newPercentage,
+          percentage: offset + newPercentage,
         });
 
         return;
@@ -111,13 +113,15 @@ export function getNewTraffic(
         // increase - need to consistently bucket
         traffic.allocation.push({
           variation: variation.value,
-          percentage: parseInt(
-            (
-              (variation.weight as number) *
-              (diffPercentage / 100) *
-              (MAX_BUCKETED_NUMBER / 100)
-            ).toFixed(2),
-          ),
+          percentage:
+            offset +
+            parseInt(
+              (
+                (variation.weight as number) *
+                (diffPercentage / 100) *
+                (MAX_BUCKETED_NUMBER / 100)
+              ).toFixed(2),
+            ),
         });
 
         return;
@@ -130,7 +134,7 @@ export function getNewTraffic(
 
         traffic.allocation.push({
           variation: variation.value,
-          percentage: newPercentage,
+          percentage: offset + newPercentage,
         });
 
         return;

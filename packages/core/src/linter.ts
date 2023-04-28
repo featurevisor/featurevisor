@@ -428,6 +428,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     }
   }
 
+  // @TODO: feature cannot exist in multiple groups
+
   // lint features
   console.log("\nLinting features...\n");
   const featureFilePaths = getYAMLFiles(path.join(projectConfig.featuresDirectoryPath));

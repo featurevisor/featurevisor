@@ -176,6 +176,22 @@ export interface Force {
   };
 }
 
+export interface Slot {
+  feature: FeatureKey | false;
+  percentage: Weight; // 0 to 100
+}
+
+export interface Group {
+  key: string;
+  description: string;
+  slots: Slot[];
+}
+
+export interface Range {
+  start: Percentage; // 0 to 100k
+  end: Percentage; // 0 to 100k
+}
+
 export type BucketKey = string;
 export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
