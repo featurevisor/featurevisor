@@ -89,8 +89,8 @@ export function buildDatafile(
       const parsedGroup = parseYaml(fs.readFileSync(groupFilePath, "utf8")) as Group;
 
       groups.push({
-        key: groupKey,
         ...parsedGroup,
+        key: groupKey,
       });
 
       let accumulatedPercentage = 0;

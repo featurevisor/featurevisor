@@ -69,7 +69,8 @@ export function getNewTraffic(
       if (
         ranges &&
         ranges.length > 0 &&
-        JSON.stringify(existingFeature.ranges) !== JSON.stringify(ranges)
+        JSON.stringify(existingFeature ? existingFeature.ranges : undefined) !==
+          JSON.stringify(ranges)
       ) {
         rangesChanged = true;
       }
