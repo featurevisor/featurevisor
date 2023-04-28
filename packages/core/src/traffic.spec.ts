@@ -881,6 +881,12 @@ describe("core: Traffic", function () {
               ],
             },
           ],
+          ranges: [
+            {
+              start: 0,
+              end: 90000,
+            },
+          ],
         },
 
         // group ranges
@@ -892,7 +898,7 @@ describe("core: Traffic", function () {
         ],
       );
 
-      expect(result).toEqual([
+      const expected = [
         {
           key: "1",
           segments: "*",
@@ -919,7 +925,9 @@ describe("core: Traffic", function () {
             },
           ],
         },
-      ]);
+      ];
+
+      expect(result).toEqual(expected);
     });
 
     it("should allocate against previous known allocation, decreasing from 80% to 70%, with same variations and weight", function () {
