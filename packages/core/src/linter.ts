@@ -7,6 +7,7 @@ import * as Joi from "joi";
 import { getYAMLFiles, parseYaml } from "./utils";
 
 import { ProjectConfig } from "./config";
+import { ParsedFeature } from "@featurevisor/types";
 
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
@@ -99,6 +100,62 @@ export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
   });
 
   return segmentJoiSchema;
+}
+
+export function getGroupJoiSchema(projectConfig: ProjectConfig) {
+  const groupJoiSchema = Joi.object({
+    description: Joi.string().required(),
+    slots: Joi.array()
+      .items(
+        Joi.object({
+          feature: Joi.string(),
+          percentage: Joi.number().precision(3).min(0).max(100),
+        }),
+      )
+      .custom(function (value, helper) {
+        const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
+
+        if (totalPercentage !== 100) {
+          throw new Error("total percentage is not 100");
+        }
+
+        let accumulatedPercentage = 0;
+        for (const slot of value) {
+          const maxPercentageForRule = slot.percentage + accumulatedPercentage;
+          accumulatedPercentage += slot.percentage;
+
+          if (slot.feature) {
+            const featureKey = slot.feature;
+            const featurePath = path.join(projectConfig.featuresDirectoryPath, `${featureKey}.yml`);
+            const parsedFeature = parseYaml(fs.readFileSync(featurePath, "utf8")) as ParsedFeature;
+
+            if (!parsedFeature) {
+              throw new Error(`feature ${featureKey} not found`);
+            }
+
+            const environmentKeys = Object.keys(parsedFeature.environments);
+            for (const environmentKey of environmentKeys) {
+              const environment = parsedFeature.environments[environmentKey];
+              const rules = environment.rules;
+
+              for (const rule of rules) {
+                if (rule.percentage > maxPercentageForRule) {
+                  // @TODO: this does not help with same feature belonging to multiple slots. fix that.
+                  throw new Error(
+                    `Feature ${featureKey}'s rule ${rule.key} in ${environmentKey} has a percentage of ${rule.percentage} which is greater than the maximum percentage of ${maxPercentageForRule} for the slot`,
+                  );
+                }
+              }
+            }
+          }
+        }
+
+        return value;
+      })
+      .required(),
+  });
+
+  return groupJoiSchema;
 }
 
 export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
@@ -339,6 +396,29 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
     try {
       await segmentJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
+      }
+
+      hasError = true;
+    }
+  }
+
+  // lint groups
+  console.log("\nLinting groups...\n");
+  const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
+  const groupJoiSchema = getGroupJoiSchema(projectConfig);
+
+  for (const filePath of groupFilePaths) {
+    const key = path.basename(filePath, ".yml");
+    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    console.log("  =>", key);
+
+    try {
+      await groupJoiSchema.validateAsync(parsed);
     } catch (e) {
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
