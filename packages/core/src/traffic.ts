@@ -10,13 +10,13 @@ export function getNewTraffic(
   existingFeature: ExistingFeature | undefined,
 
   // ranges from group slots
-  ranges: Range[] = [],
+  ranges?: Range[],
 ): Traffic[] {
   const result: Traffic[] = [];
 
   // @TODO: for now we pick first one only. in future, we can pick more,
   // and allow a Feature to exist in multiple slots inside a single Group
-  const offset = ranges.length > 0 ? ranges[0].start : 0;
+  const offset = ranges && ranges.length > 0 ? ranges[0].start : 0;
 
   parsedRules.forEach((parsedRollout) => {
     const rolloutPercentage = parsedRollout.percentage;
@@ -65,11 +65,19 @@ export function getNewTraffic(
       diffPercentage =
         rolloutPercentage - existingTrafficRollout.percentage / (MAX_BUCKETED_NUMBER / 100);
 
+      let rangesChanged = false;
+      if (
+        ranges &&
+        ranges.length > 0 &&
+        JSON.stringify(existingFeature.ranges) !== JSON.stringify(ranges)
+      ) {
+        rangesChanged = true;
+      }
+
       if (
         diffPercentage > 0 &&
         !variationsChanged && // if variations changed, we need to re-bucket
-        existingTrafficRollout.allocation.length > 0 &&
-        existingTrafficRollout.allocation[0].percentage === offset // if a group was introduced after, we need to re-bucket
+        !rangesChanged // if ranges changed, we need to re-bucket
       ) {
         // increase: build on top of existing allocations
         traffic.allocation = existingTrafficRollout.allocation.map(({ variation, percentage }) => {

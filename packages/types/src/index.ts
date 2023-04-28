@@ -297,6 +297,7 @@ export interface ExistingFeature {
     percentage: Percentage;
     allocation: Allocation[];
   }[];
+  ranges?: Range[]; // if in a Group, these are the available slot ranges
 }
 
 export interface ExistingFeatures {

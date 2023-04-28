@@ -351,6 +351,7 @@ export function buildDatafile(
           }),
         };
       }),
+      ranges: featureRanges.get(feature.key) || undefined,
     };
 
     acc[feature.key] = item;
