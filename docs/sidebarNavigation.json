@@ -12,7 +12,8 @@
     "links": [
       { "title": "Attributes", "href": "/docs/attributes" },
       { "title": "Segments", "href": "/docs/segments" },
-      { "title": "Features", "href": "/docs/features" }
+      { "title": "Features", "href": "/docs/features" },
+      { "title": "Groups", "href": "/docs/groups" }
     ]
   },
   {
