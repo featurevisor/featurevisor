@@ -4,5 +4,5 @@ slots:
   - feature: bar
     percentage: 50
 
-  - feature: b
+  - feature: qux
     percentage: 50
