@@ -147,6 +147,8 @@ export function buildDatafile(
       const featureFilePath = path.join(featuresDirectory, featureFile);
       const parsedFeature = parseYaml(fs.readFileSync(featureFilePath, "utf8")) as ParsedFeature;
 
+      console.log(`\n\nBuilding feature: ${featureKey}`);
+
       if (parsedFeature.archived === true) {
         continue;
       }
@@ -324,7 +326,7 @@ export function buildDatafile(
   mkdirp.sync(outputEnvironmentDirPath);
 
   const outputFilePath = getDatafilePath(projectConfig, options.environment, options.tag);
-  fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
+  fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent, null, 2));
 
   // write to state directory
   if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
@@ -364,7 +366,7 @@ export function buildDatafile(
     features: updatedExistingFeatures,
   };
 
-  fs.writeFileSync(existingStateFilePath, JSON.stringify(updatedState));
+  fs.writeFileSync(existingStateFilePath, JSON.stringify(updatedState, null, 2));
 
   console.log(`     File generated: ${outputFilePath}`);
 

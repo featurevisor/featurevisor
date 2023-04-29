@@ -57,7 +57,9 @@ export function getTraffic(
   const result: Traffic[] = [];
 
   // @TODO: may be pass from builder directly?
-  const availableRanges = ranges || [{ start: 0, end: MAX_BUCKETED_NUMBER }];
+  console.log({ ranges });
+  const availableRanges =
+    ranges && ranges.length > 0 ? ranges : [{ start: 0, end: MAX_BUCKETED_NUMBER }];
 
   parsedRules.forEach(function (parsedRule) {
     const rulePercentage = parsedRule.percentage; // 0 - 100
@@ -130,6 +132,15 @@ export function getTraffic(
         throw new Error("An error occurred while building traffic allocations");
       }
 
+      console.log({
+        key: parsedRule.key,
+        weight,
+        rulePercentage,
+        percentage,
+        updatedAvailableRanges,
+        rangesToFill,
+      });
+
       rangesToFill.forEach(function (range) {
         traffic.allocation.push({
           variation: variation.value,
@@ -140,7 +151,7 @@ export function getTraffic(
 
       updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
         updatedAvailableRanges,
-        percentage,
+        percentage * (rulePercentage / 100),
       );
     });
 
