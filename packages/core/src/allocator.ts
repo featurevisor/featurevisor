@@ -1,7 +1,7 @@
 import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
-export function getAllocation(availableRanges: Range[], fill: Percentage) {
+export function getAllocation(availableRanges: Range[], fill: Percentage): Range[] {
   const result: Range[] = [];
 
   let remaining = fill;
