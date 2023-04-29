@@ -187,11 +187,6 @@ export interface Group {
   slots: Slot[];
 }
 
-export interface Range {
-  start: Percentage; // 0 to 100k
-  end: Percentage; // 0 to 100k
-}
-
 export type BucketKey = string;
 export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
@@ -200,15 +195,22 @@ export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three 
  */
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
+export interface Range {
+  start: Percentage; // 0 to 100k
+  end: Percentage; // 0 to 100k
+}
+
 export interface Allocation {
   variation: VariationValue;
-  percentage: Percentage;
+  percentage: Percentage; // @TODO: remove it in next breaking semver
+  range: Range;
 }
 
 export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
-  percentage: Percentage;
+  percentage: Percentage; // @TODO: remove it in next breaking semver
+  range: Range;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;

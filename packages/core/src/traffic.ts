@@ -27,7 +27,11 @@ export function getNewTraffic(
         typeof parsedRollout.segments !== "string"
           ? JSON.stringify(parsedRollout.segments)
           : parsedRollout.segments,
-      percentage: rolloutPercentage * (MAX_BUCKETED_NUMBER / 100),
+      percentage: rolloutPercentage * (MAX_BUCKETED_NUMBER / 100), // @TODO: remove in next breaking semver
+      range: {
+        start: offset,
+        end: offset + rolloutPercentage * (MAX_BUCKETED_NUMBER / 100),
+      },
       allocation: [],
     };
 
@@ -81,16 +85,34 @@ export function getNewTraffic(
         !rangesChanged // if ranges changed, we need to re-bucket
       ) {
         // increase: build on top of existing allocations
-        traffic.allocation = existingTrafficRollout.allocation.map(({ variation, percentage }) => {
-          return {
-            variation,
-            percentage,
-          };
-        });
+        traffic.allocation = existingTrafficRollout.allocation.map(
+          ({ variation, percentage, range }, allocationIndex) => {
+            const isFirstAllocation = allocationIndex === 0;
+            const isLastAllocation =
+              allocationIndex === existingTrafficRollout.allocation.length - 1;
+
+            const start = isFirstAllocation ? offset : offset + percentage;
+            const end = start + percentage;
+
+            return {
+              variation,
+              percentage, // @TODO: remove in next breaking semver
+              range: range
+                ? range
+                : {
+                    start,
+                    end,
+                  },
+            };
+          },
+        );
       }
     }
 
-    variations.forEach((variation) => {
+    let lastVariationEndPercentage = 0;
+    variations.forEach((variation, variationIndex) => {
+      const isFirstVariation = variationIndex === 0;
+
       const newPercentage = parseInt(
         (
           ((variation.weight as number) / 100) *
@@ -99,11 +121,20 @@ export function getNewTraffic(
         ).toFixed(2),
       );
 
+      const start = isFirstVariation ? offset : lastVariationEndPercentage + 1;
+      const end = isFirstVariation ? start + newPercentage : start + newPercentage - 1;
+
       if (!existingTrafficRollout || variationsChanged === true) {
         traffic.allocation.push({
           variation: variation.value,
-          percentage: offset + newPercentage,
+          percentage: offset + newPercentage, // @TODO: remove in next breaking semver
+          range: {
+            start,
+            end,
+          },
         });
+
+        lastVariationEndPercentage = end;
 
         return;
       }
@@ -112,14 +143,31 @@ export function getNewTraffic(
         // no change
         traffic.allocation.push({
           variation: variation.value,
-          percentage: offset + newPercentage,
+          percentage: offset + newPercentage, // @TODO: remove in next breaking semver
+          range: {
+            start,
+            end,
+          },
         });
+
+        lastVariationEndPercentage = end;
 
         return;
       }
 
       if (diffPercentage > 0) {
         // increase - need to consistently bucket
+        const start =
+          offset +
+          parseInt(
+            (
+              (variation.weight as number) *
+              (diffPercentage / 100) *
+              (MAX_BUCKETED_NUMBER / 100)
+            ).toFixed(2),
+          );
+        const end = start + newPercentage; // @TODO: verify this
+
         traffic.allocation.push({
           variation: variation.value,
           percentage:
@@ -131,7 +179,13 @@ export function getNewTraffic(
                 (MAX_BUCKETED_NUMBER / 100)
               ).toFixed(2),
             ),
+          range: {
+            start,
+            end,
+          },
         });
+
+        lastVariationEndPercentage = end;
 
         return;
       }
@@ -143,8 +197,14 @@ export function getNewTraffic(
 
         traffic.allocation.push({
           variation: variation.value,
-          percentage: offset + newPercentage,
+          percentage: offset + newPercentage, // @TODO: remove in next breaking semver
+          range: {
+            start,
+            end,
+          },
         });
+
+        lastVariationEndPercentage = end;
 
         return;
       }
