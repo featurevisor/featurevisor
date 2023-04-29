@@ -28,7 +28,7 @@ import {
 } from "@featurevisor/types";
 
 import { SCHEMA_VERSION, ProjectConfig } from "./config";
-import { getNewTraffic } from "./traffic";
+import { getTraffic, getNewTraffic } from "./traffic";
 import {
   parseYaml,
   extractAttributeKeysFromConditions,
@@ -222,7 +222,7 @@ export function buildDatafile(
 
           return mappedVariation;
         }),
-        traffic: getNewTraffic(
+        traffic: getTraffic(
           parsedFeature.variations,
           parsedFeature.environments[options.environment].rules,
           existingFeatures && existingFeatures[featureKey],
@@ -343,7 +343,6 @@ export function buildDatafile(
         return {
           key: t.key,
           percentage: t.percentage, // @TODO: remove this in next breaking semver
-          range: t.range,
           allocation: t.allocation.map((a: Allocation) => {
             return {
               variation: a.variation,

@@ -209,8 +209,7 @@ export interface Allocation {
 export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
-  percentage: Percentage; // @TODO: remove it in next breaking semver
-  range: Range;
+  percentage: Percentage;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
