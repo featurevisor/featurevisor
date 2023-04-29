@@ -144,7 +144,7 @@ export function getTraffic(
       rangesToFill.forEach(function (range) {
         traffic.allocation.push({
           variation: variation.value,
-          percentage, // @TODO remove it in next breaking semver
+          percentage: percentage * (rulePercentage / 100), // @TODO remove it in next breaking semver
           range,
         });
       });

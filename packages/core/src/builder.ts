@@ -173,6 +173,7 @@ export function buildDatafile(
         variations: parsedFeature.variations.map((variation: Variation) => {
           const mappedVariation: any = {
             value: variation.value,
+            weight: variation.weight,
           };
 
           if (!variation.variables) {
