@@ -128,14 +128,9 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
         configureBucketValue: (feature, attributes, bucketValue) => {
           return currentAt;
         },
-        logger: createLogger({
-          levels: [
-            // "debug",
-            // "info",
-            // "warn",
-            "error",
-          ],
-        }),
+        // logger: createLogger({
+        //   levels: ["debug", "info", "warn", "error"],
+        // }),
       });
 
       test.features.forEach(function (feature, fIndex) {

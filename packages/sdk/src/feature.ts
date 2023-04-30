@@ -21,20 +21,24 @@ export function getMatchedAllocation(
   bucketValue: number,
 ): Allocation | undefined {
   let total = 0; // @TODO: remove it in next breaking semver
+  const usePercentage =
+    traffic.allocation.length > 0 && typeof traffic.allocation[0].range === "undefined"; // @TODO: remove it in next breaking semver
 
   for (const allocation of traffic.allocation) {
     if (
       allocation.range &&
-      allocation.range.start >= bucketValue &&
-      allocation.range.end <= bucketValue
+      allocation.range.start <= bucketValue &&
+      allocation.range.end >= bucketValue
     ) {
       return allocation;
     }
 
     // @TODO: remove it in next breaking semver
-    total += allocation.percentage;
-    if (bucketValue <= total) {
-      return allocation;
+    if (usePercentage) {
+      total += allocation.percentage || 0;
+      if (bucketValue <= total) {
+        return allocation;
+      }
     }
   }
 
