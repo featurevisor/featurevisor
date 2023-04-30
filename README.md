@@ -5,7 +5,7 @@
 </div>
 
 <div align="center">
-  <small>Manage your feature flags and remote configuration declaratively from the comfort of your git workflow.</small>
+  <small>Manage your feature flags and experiments declaratively from the comfort of your git workflow.</small>
 </div>
 
 <br />
@@ -59,7 +59,7 @@
 
 # What is Featurevisor?
 
-Featurevisor is a solution for managing your feature flags and remote config. It's built for developers, by developers.
+Featurevisor is a solution for managing your feature flags, experiments, and remote config. It's built for developers, by developers.
 
 It introduces a workflow that's fully git-based, where configuration is stored as YAMLs and changes are reviewed and merged via pull requests.
 
