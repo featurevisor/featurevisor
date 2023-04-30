@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/fahad19/featurevisor/compare/v0.15.0...v0.16.0) (2023-04-30)
+
+
+### Features
+
+* Mutually exclusive experiments via Groups ([#63](https://github.com/fahad19/featurevisor/issues/63)) ([f3c8523](https://github.com/fahad19/featurevisor/commit/f3c85236d36fd0e499897f9ce1c2ed551c111523))
+
+
+
+
+
 # [0.15.0](https://github.com/fahad19/featurevisor/compare/v0.14.1...v0.15.0) (2023-04-23)
 
 
