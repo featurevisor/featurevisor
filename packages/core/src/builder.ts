@@ -325,7 +325,7 @@ export function buildDatafile(
   mkdirp.sync(outputEnvironmentDirPath);
 
   const outputFilePath = getDatafilePath(projectConfig, options.environment, options.tag);
-  fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent, null, 2));
+  fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
 
   // write to state directory
   if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
@@ -365,7 +365,7 @@ export function buildDatafile(
     features: updatedExistingFeatures,
   };
 
-  fs.writeFileSync(existingStateFilePath, JSON.stringify(updatedState, null, 2));
+  fs.writeFileSync(existingStateFilePath, JSON.stringify(updatedState));
 
   console.log(`     File generated: ${outputFilePath}`);
 
