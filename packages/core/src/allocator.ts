@@ -1,5 +1,4 @@
-import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
-import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { Range, Percentage } from "@featurevisor/types";
 
 export function getAllocation(availableRanges: Range[], fill: Percentage): Range[] {
   const result: Range[] = [];

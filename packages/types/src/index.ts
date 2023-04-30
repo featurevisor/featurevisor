@@ -202,8 +202,8 @@ export interface Range {
 
 export interface Allocation {
   variation: VariationValue;
-  percentage: Percentage; // @TODO: remove it in next breaking semver
-  range: Range;
+  percentage?: Percentage; // @TODO: remove it in next breaking semver
+  range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
 }
 
 export interface Traffic {

@@ -13,49 +13,26 @@ import { allConditionsAreMatched } from "./conditions";
 import { VariableSchema } from "@featurevisor/types/src";
 import { Logger } from "./logger";
 
-export function getMatchedTraffic(
-  traffic: Traffic[],
-  attributes: Attributes,
-  bucketValue: number,
-  datafileReader: DatafileReader,
-  logger: Logger,
-): Traffic | undefined {
-  return traffic.find((traffic) => {
-    if (bucketValue > traffic.percentage) {
-      // out of bucket range
-      return false;
-    }
-
-    if (
-      !allGroupSegmentsAreMatched(
-        typeof traffic.segments === "string" && traffic.segments !== "*"
-          ? JSON.parse(traffic.segments)
-          : traffic.segments,
-        attributes,
-        datafileReader,
-      )
-    ) {
-      return false;
-    }
-
-    logger.debug("matched rule", {
-      ruleKey: traffic.key,
-    });
-
-    return true;
-  });
-}
-
-// @TODO: make this function better with tests
+/**
+ * Traffic
+ */
 export function getMatchedAllocation(
-  matchedTraffic: Traffic,
+  traffic: Traffic,
   bucketValue: number,
 ): Allocation | undefined {
-  let total = 0;
+  let total = 0; // @TODO: remove it in next breaking semver
 
-  for (const allocation of matchedTraffic.allocation) {
+  for (const allocation of traffic.allocation) {
+    if (
+      allocation.range &&
+      allocation.range.start >= bucketValue &&
+      allocation.range.end <= bucketValue
+    ) {
+      return allocation;
+    }
+
+    // @TODO: remove it in next breaking semver
     total += allocation.percentage;
-
     if (bucketValue <= total) {
       return allocation;
     }
@@ -64,6 +41,49 @@ export function getMatchedAllocation(
   return undefined;
 }
 
+export interface MatchedTrafficAndAllocation {
+  matchedTraffic: Traffic | undefined;
+  matchedAllocation: Allocation | undefined;
+}
+
+export function getMatchedTrafficAndAllocation(
+  traffic: Traffic[],
+  attributes: Attributes,
+  bucketValue: number,
+  datafileReader: DatafileReader,
+  logger: Logger,
+): MatchedTrafficAndAllocation {
+  let matchedAllocation: Allocation | undefined;
+
+  const matchedTraffic = traffic.find((t) => {
+    if (
+      !allGroupSegmentsAreMatched(
+        typeof t.segments === "string" && t.segments !== "*" ? JSON.parse(t.segments) : t.segments,
+        attributes,
+        datafileReader,
+      )
+    ) {
+      return false;
+    }
+
+    matchedAllocation = getMatchedAllocation(t, bucketValue);
+
+    if (matchedAllocation) {
+      return true;
+    }
+
+    return false;
+  });
+
+  return {
+    matchedTraffic,
+    matchedAllocation,
+  };
+}
+
+/**
+ * Variations and variables
+ */
 function findForceFromFeature(
   feature: Feature,
   attributes: Attributes,
@@ -107,7 +127,7 @@ export function getBucketedVariation(
   datafileReader: DatafileReader,
   logger: Logger,
 ): Variation | undefined {
-  const matchedTraffic = getMatchedTraffic(
+  const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
     feature.traffic,
     attributes,
     bucketValue,
@@ -140,9 +160,7 @@ export function getBucketedVariation(
     }
   }
 
-  const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
-
-  if (!allocation) {
+  if (!matchedAllocation) {
     logger.debug("no matched allocation found", {
       featureKey: feature.key,
       bucketValue,
@@ -151,7 +169,7 @@ export function getBucketedVariation(
     return undefined;
   }
 
-  const variationValue = allocation.variation;
+  const variationValue = matchedAllocation.variation;
 
   const variation = feature.variations.find((v) => {
     return v.value === variationValue;
@@ -207,7 +225,7 @@ export function getBucketedVariableValue(
   logger: Logger,
 ): VariableValue | undefined {
   // get traffic
-  const matchedTraffic = getMatchedTraffic(
+  const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
     feature.traffic,
     attributes,
     bucketValue,
@@ -238,9 +256,7 @@ export function getBucketedVariableValue(
     return matchedTraffic.variables[variableKey];
   }
 
-  const allocation = getMatchedAllocation(matchedTraffic, bucketValue);
-
-  if (!allocation) {
+  if (!matchedAllocation) {
     logger.debug("no matched allocation found", {
       featureKey: feature.key,
       variableKey,
@@ -250,7 +266,7 @@ export function getBucketedVariableValue(
     return undefined;
   }
 
-  const variationValue = allocation.variation;
+  const variationValue = matchedAllocation.variation;
 
   const variation = feature.variations.find((v) => {
     return v.value === variationValue;
