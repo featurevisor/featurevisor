@@ -38,6 +38,12 @@ Path to the directory containing your features.
 
 Defaults to `<rootDir>/features`.
 
+### `groupsDirectoryPath`
+
+Path to the directory containing your groups.
+
+Defaults to `<rootDir>/groups`.
+
 ### `testsDirectoryPath`
 
 Path to the directory containing your tests.

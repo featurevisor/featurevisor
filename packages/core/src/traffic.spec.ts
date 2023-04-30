@@ -1,4 +1,3 @@
-import { DatafileContent, GroupSegment, ParsedFeature } from "@featurevisor/types";
 import { getTraffic } from "./traffic";
 
 describe("core: Traffic", function () {

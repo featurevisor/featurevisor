@@ -13,7 +13,7 @@ You want to run them both together in production, but you do not want to expose 
 
 That's what "mutually exclusive" means here. They will never overlap.
 
-You can take advantage of groups in Featurevisor to achieve this.
+You can take advantage of groups in Featurevisor to achieve this exclusions list.
 
 ## Create a group
 
@@ -31,11 +31,15 @@ slots:
     percentage: 50
 ```
 
+The name of the group file is not used anywhere, so you can name it however you want.
+
 ## Slots
 
-Each slot in a group defines a feature (by its key) and a percentage value (from 0 to 100). All the percentage values of slots in a group should add up to 100.
+A group consists of multiple slots.
 
-In the example above, we have two slots, each with a percentage of 50. This means that each user will be exposed to one of the features, but not both.
+Each slot in a group defines a feature (by its key) and a percentage value (from 0 to 100). All the percentage values of slots in a group must add up to 100.
+
+In the example above, we have two slots, each with a percentage of 50. This means that any user will be exposed to one of the features, but not both.
 
 The first 50% of the users will be exposed to `firstFeature`, and the other 50% will be exposed to `secondFeature`.
 
@@ -44,6 +48,8 @@ The first 50% of the users will be exposed to `firstFeature`, and the other 50% 
 The slot's percentage determines what's the maximum percentage value you can use in your Feature's rollout rules.
 
 In the example above, the maximum percentage value you can use in `firstFeature` and `secondFeature` is 50.
+
+Here's how the `firstFeature` would look like in that case:
 
 ```yml
 # features/firstFeature.yml
@@ -66,17 +72,18 @@ Read more in [Bucketing](/docs/bucketing).
 
 ## Limitations
 
-- A feature can only belong to maximum one group at a time
+- A feature can only belong to a maximum of one group at a time
 - A feature cannot repeat in the same group's slots (this will be supported in a future version)
 
 ## Guides
 
 To maintain consistent bucketing, you are advised to:
 
-- keep mutual exclusions in mind before creating the feature and the group
-- create them together, and then add the rollout rules to the feature
-- plan the percentage distribution in your slots when creating the group, and do not change those values afterwards
-- you can set `feature: false` if you want to remove a feature from a group's slot without any replacement
+- Keep mutual exclusions in mind before creating the feature and the group.
+- Create them together, and then add the rollout rules to the feature.
+- Plan the percentage distribution in your slots early when creating the group, and do not change those values afterwards.
+- Start with a bigger slot for your feature, even if you do not want to use the full percentage value for your feature's rules. You can slowly increase it at feature's rule level later.
+- You can set `feature: false` if you want to remove a feature from a group's slot without any replacement feature.
 
 Rely on [Linting YAMLs](/docs/linting-yamls) to catch any mistakes.
 
