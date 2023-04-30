@@ -407,24 +407,26 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
   // lint groups
   console.log("\nLinting groups...\n");
-  const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
-  const groupJoiSchema = getGroupJoiSchema(projectConfig);
+  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
+    const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
+    const groupJoiSchema = getGroupJoiSchema(projectConfig);
 
-  for (const filePath of groupFilePaths) {
-    const key = path.basename(filePath, ".yml");
-    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-    console.log("  =>", key);
+    for (const filePath of groupFilePaths) {
+      const key = path.basename(filePath, ".yml");
+      const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+      console.log("  =>", key);
 
-    try {
-      await groupJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+      try {
+        await groupJoiSchema.validateAsync(parsed);
+      } catch (e) {
+        if (e instanceof Joi.ValidationError) {
+          printJoiError(e);
+        } else {
+          console.log(e);
+        }
+
+        hasError = true;
       }
-
-      hasError = true;
     }
   }
 
@@ -455,24 +457,26 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
   // lint tests
   console.log("\nLinting tests...\n");
-  const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
-  const testsJoiSchema = getTestsJoiSchema(projectConfig);
+  if (fs.existsSync(projectConfig.testsDirectoryPath)) {
+    const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
+    const testsJoiSchema = getTestsJoiSchema(projectConfig);
 
-  for (const filePath of testFilePaths) {
-    const key = path.basename(filePath, ".yml");
-    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-    console.log("  =>", key);
+    for (const filePath of testFilePaths) {
+      const key = path.basename(filePath, ".yml");
+      const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+      console.log("  =>", key);
 
-    try {
-      await testsJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+      try {
+        await testsJoiSchema.validateAsync(parsed);
+      } catch (e) {
+        if (e instanceof Joi.ValidationError) {
+          printJoiError(e);
+        } else {
+          console.log(e);
+        }
+
+        hasError = true;
       }
-
-      hasError = true;
     }
   }
 
