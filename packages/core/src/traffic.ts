@@ -122,14 +122,11 @@ export function getTraffic(
       let rangesToFill: Range[] = [];
       if (needsRebucketing) {
         rangesToFill = getAllocation(updatedAvailableRanges, percentage * (rulePercentage / 100));
-      } else if (existingTrafficRule && rulePercentageDiff > 0) {
+      } else {
         rangesToFill = getAllocation(
           updatedAvailableRanges,
           rulePercentageDiff * (rulePercentage / 100),
         );
-      } else {
-        // should never happen
-        throw new Error("An error occurred while building traffic allocations");
       }
 
       console.log({
