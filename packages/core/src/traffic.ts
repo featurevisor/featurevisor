@@ -1,140 +1,154 @@
-import { Rule, ExistingFeature, Traffic, Variation } from "@featurevisor/types";
+import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
-export function getNewTraffic(
+import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
+
+export function detectIfVariationsChanged(
+  yamlVariations: Variation[], // as exists in latest YAML
+  existingFeature?: ExistingFeature, // from state file
+): boolean {
+  if (!existingFeature) {
+    return false;
+  }
+
+  return (
+    JSON.stringify(
+      existingFeature.variations.map(({ value, weight }) => ({
+        value,
+        weight,
+      })),
+    ) !== JSON.stringify(yamlVariations.map(({ value, weight }) => ({ value, weight })))
+  );
+}
+
+export function getRulePercentageDiff(
+  trafficPercentage: Percentage, // 0 to 100k
+  existingTrafficRule,
+): number {
+  if (!existingTrafficRule) {
+    return 0;
+  }
+
+  const existingPercentage = existingTrafficRule.percentage;
+
+  return trafficPercentage - existingPercentage;
+}
+
+export function detectIfRangesChanged(
+  availableRanges: Range[], // as exists in latest YAML
+  existingFeature?: ExistingFeature, // from state file
+): boolean {
+  if (!existingFeature) {
+    return false;
+  }
+
+  if (!existingFeature.ranges) {
+    return false;
+  }
+
+  return JSON.stringify(existingFeature.ranges) !== JSON.stringify(availableRanges);
+}
+
+export function getTraffic(
   // from current YAML
   variations: Variation[],
   parsedRules: Rule[],
-
   // from previous release
   existingFeature: ExistingFeature | undefined,
+  // ranges from group slots
+  ranges?: Range[],
 ): Traffic[] {
   const result: Traffic[] = [];
 
-  parsedRules.forEach((parsedRollout) => {
-    const rolloutPercentage = parsedRollout.percentage;
+  // @TODO: may be pass from builder directly?
+  const availableRanges =
+    ranges && ranges.length > 0 ? ranges : [{ start: 0, end: MAX_BUCKETED_NUMBER }];
+
+  parsedRules.forEach(function (parsedRule) {
+    const rulePercentage = parsedRule.percentage; // 0 - 100
 
     const traffic: Traffic = {
-      key: parsedRollout.key, // @TODO: not needed in datafile. keep it for now
+      key: parsedRule.key, // @TODO: not needed in datafile. keep it for now
       segments:
-        typeof parsedRollout.segments !== "string"
-          ? JSON.stringify(parsedRollout.segments)
-          : parsedRollout.segments,
-      percentage: rolloutPercentage * (MAX_BUCKETED_NUMBER / 100),
+        typeof parsedRule.segments !== "string"
+          ? JSON.stringify(parsedRule.segments)
+          : parsedRule.segments,
+      percentage: rulePercentage * (MAX_BUCKETED_NUMBER / 100),
       allocation: [],
     };
 
-    if (parsedRollout.variables) {
-      traffic.variables = parsedRollout.variables;
+    // overrides
+    if (parsedRule.variables) {
+      traffic.variables = parsedRule.variables;
     }
 
-    if (parsedRollout.variation) {
-      traffic.variation = parsedRollout.variation;
+    if (parsedRule.variation) {
+      traffic.variation = parsedRule.variation;
     }
 
-    const existingTrafficRollout = existingFeature?.traffic.find(
-      (t) => t.key === parsedRollout.key,
-    );
+    // detect changes
+    const variationsChanged = detectIfVariationsChanged(variations, existingFeature);
+    const existingTrafficRule = existingFeature?.traffic.find((t) => t.key === parsedRule.key);
+    const rulePercentageDiff = getRulePercentageDiff(traffic.percentage, existingTrafficRule);
+    const rangesChanged = detectIfRangesChanged(availableRanges, existingFeature);
 
-    // @TODO: handle if Variations changed (added/removed, or weight changed)
+    const needsRebucketing =
+      !existingTrafficRule || // new rule
+      variationsChanged || // variations changed
+      rulePercentageDiff <= 0 || // percentage decreased
+      rangesChanged; // belongs to a group, and group ranges changed
 
-    //  - new variation added
-    //  - variation removed
-    //  - variation weight changed
-    //
-    // make it better by maintaining as much of the previous bucketing as possible
-    const variationsChanged = existingFeature
-      ? JSON.stringify(
-          existingFeature.variations.map(({ value, weight }) => ({
-            value,
-            weight,
-          })),
-        ) !== JSON.stringify(variations.map(({ value, weight }) => ({ value, weight })))
-      : false;
+    let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));
 
-    let diffPercentage = 0;
+    let lastEnd = 0;
+    if (existingTrafficRule && !needsRebucketing) {
+      // increase: build on top of existing allocations
+      let existingSum = 0;
 
-    if (existingTrafficRollout) {
-      diffPercentage =
-        rolloutPercentage - existingTrafficRollout.percentage / (MAX_BUCKETED_NUMBER / 100);
+      traffic.allocation = existingTrafficRule.allocation.map(function ({
+        variation,
+        percentage, // @TODO: remove it in next breaking semver
+        range,
+      }) {
+        const result = {
+          variation,
+          percentage, // @TODO remove it in next breaking semver
+          range: range || {
+            start: lastEnd,
+            end: percentage,
+          },
+        };
 
-      if (
-        diffPercentage > 0 &&
-        !variationsChanged // if variations changed, we need to re-bucket
-      ) {
-        // increase: build on top of existing allocations
+        existingSum += percentage || 0;
+        lastEnd = lastEnd + (percentage || 0);
 
-        traffic.allocation = existingTrafficRollout.allocation.map(({ variation, percentage }) => {
-          return {
-            variation,
-            percentage,
-          };
+        return result;
+      });
+
+      updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, existingSum);
+    }
+
+    variations.forEach(function (variation) {
+      const weight = variation.weight as number;
+      const percentage = weight * (MAX_BUCKETED_NUMBER / 100);
+
+      let toFillValue = needsRebucketing
+        ? percentage * (rulePercentage / 100) // whole value
+        : (weight / 100) * rulePercentageDiff; // incrementing
+      const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
+
+      rangesToFill.forEach(function (range) {
+        traffic.allocation.push({
+          variation: variation.value,
+          percentage: toFillValue, // @TODO remove it in next breaking semver
+          range,
         });
-      }
-    }
+      });
 
-    variations.forEach((variation) => {
-      const newPercentage = parseInt(
-        (
-          ((variation.weight as number) / 100) *
-          rolloutPercentage *
-          (MAX_BUCKETED_NUMBER / 100)
-        ).toFixed(2),
+      updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
+        updatedAvailableRanges,
+        toFillValue,
       );
-
-      if (!existingTrafficRollout || variationsChanged === true) {
-        traffic.allocation.push({
-          variation: variation.value,
-          percentage: newPercentage,
-        });
-
-        return;
-      }
-
-      // const prevTotalWeightForVariation = existingTrafficRollout.allocation
-      //   .filter((a) => a.variation === variation.value)
-      //   .reduce((acc, curr) => acc + curr.percentage, 0);
-
-      // const diffWeightForVariation = (variation.weight as number) - prevTotalWeightForVariation / (MAX_BUCKETED_NUMBER / 100));
-
-      if (diffPercentage === 0) {
-        // no change
-        traffic.allocation.push({
-          variation: variation.value,
-          percentage: newPercentage,
-        });
-
-        return;
-      }
-
-      if (diffPercentage > 0) {
-        // increase - need to consistently bucket
-        traffic.allocation.push({
-          variation: variation.value,
-          percentage: parseInt(
-            (
-              (variation.weight as number) *
-              (diffPercentage / 100) *
-              (MAX_BUCKETED_NUMBER / 100)
-            ).toFixed(2),
-          ),
-        });
-
-        return;
-      }
-
-      if (diffPercentage < 0) {
-        // decrease - need to re-bucket
-
-        // @TODO: can we maintain as much pre bucketed values as possible? to be close to consistent bucketing?
-
-        traffic.allocation.push({
-          variation: variation.value,
-          percentage: newPercentage,
-        });
-
-        return;
-      }
     });
 
     result.push(traffic);

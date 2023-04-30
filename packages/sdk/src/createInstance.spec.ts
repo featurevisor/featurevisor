@@ -62,8 +62,8 @@ describe("sdk: createInstance", function () {
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, percentage: 100000 },
-                  { variation: false, percentage: 0 },
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
                 ],
               },
             ],
@@ -108,8 +108,8 @@ describe("sdk: createInstance", function () {
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, percentage: 100000 },
-                  { variation: false, percentage: 0 },
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
                 ],
               },
             ],
@@ -159,8 +159,8 @@ describe("sdk: createInstance", function () {
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, percentage: 100000 },
-                  { variation: false, percentage: 0 },
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
                 ],
               },
             ],

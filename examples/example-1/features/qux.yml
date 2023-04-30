@@ -27,14 +27,14 @@ environments:
     rules:
       - key: "1"
         segments: "*"
-        percentage: 100
+        percentage: 50
   production:
     rules:
       - key: "1"
         segments:
           - germany
-        percentage: 100
+        percentage: 50
         variation: b
       - key: "2"
         segments: "*"
-        percentage: 100
+        percentage: 50

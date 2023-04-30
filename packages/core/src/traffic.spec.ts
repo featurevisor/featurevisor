@@ -1,13 +1,12 @@
-import { DatafileContent, GroupSegment, ParsedFeature } from "@featurevisor/types";
-import { getNewTraffic } from "./traffic";
+import { getTraffic } from "./traffic";
 
 describe("core: Traffic", function () {
   it("should be a function", function () {
-    expect(typeof getNewTraffic).toEqual("function");
+    expect(typeof getTraffic).toEqual("function");
   });
 
   it("should allocate traffic for 100-0 weight on two variations", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -42,10 +41,10 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 80000,
-          },
-          {
-            variation: "off",
-            percentage: 0,
+            range: {
+              start: 0,
+              end: 80000,
+            },
           },
         ],
       },
@@ -53,7 +52,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate traffic for 50-50 weight on two variations", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -88,10 +87,18 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 40000,
+            range: {
+              start: 0,
+              end: 40000,
+            },
           },
           {
             variation: "off",
             percentage: 40000,
+            range: {
+              start: 40000,
+              end: 80000,
+            },
           },
         ],
       },
@@ -99,7 +106,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate traffic for weight with two decimal places among three variations", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -138,14 +145,26 @@ describe("core: Traffic", function () {
           {
             variation: "yes",
             percentage: 33330,
+            range: {
+              start: 0,
+              end: 33330,
+            },
           },
           {
             variation: "no",
             percentage: 33330,
+            range: {
+              start: 33330,
+              end: 66660,
+            },
           },
           {
             variation: "maybe",
             percentage: 33340,
+            range: {
+              start: 66660,
+              end: 100000,
+            },
           },
         ],
       },
@@ -153,7 +172,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, increasing from 80% to 90%, with same variations and weight", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -195,10 +214,18 @@ describe("core: Traffic", function () {
               {
                 variation: "on",
                 percentage: 40000,
+                range: {
+                  start: 0,
+                  end: 40000,
+                },
               },
               {
                 variation: "off",
                 percentage: 40000,
+                range: {
+                  start: 40000,
+                  end: 80000,
+                },
               },
             ],
           },
@@ -216,20 +243,36 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 40000,
+            range: {
+              start: 0,
+              end: 40000,
+            },
           },
           {
             variation: "off",
             percentage: 40000,
+            range: {
+              start: 40000,
+              end: 80000,
+            },
           },
 
           // new
           {
             variation: "on",
             percentage: 5000,
+            range: {
+              start: 80000,
+              end: 85000,
+            },
           },
           {
             variation: "off",
             percentage: 5000,
+            range: {
+              start: 85000,
+              end: 90000,
+            },
           },
         ],
       },
@@ -237,7 +280,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, decreasing from 80% to 70%, with same variations and weight", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -279,10 +322,18 @@ describe("core: Traffic", function () {
               {
                 variation: "on",
                 percentage: 40000,
+                range: {
+                  start: 0,
+                  end: 40000,
+                },
               },
               {
                 variation: "off",
                 percentage: 40000,
+                range: {
+                  start: 40000,
+                  end: 80000,
+                },
               },
             ],
           },
@@ -299,10 +350,18 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 35000,
+            range: {
+              start: 0,
+              end: 35000,
+            },
           },
           {
             variation: "off",
             percentage: 35000,
+            range: {
+              start: 35000,
+              end: 70000,
+            },
           },
         ],
       },
@@ -310,7 +369,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, increasing from 80% to 90%, with new added variation", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -356,10 +415,18 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 40000,
+                range: {
+                  start: 0,
+                  end: 40000,
+                },
               },
               {
                 variation: "b",
                 percentage: 40000,
+                range: {
+                  start: 40000,
+                  end: 80000,
+                },
               },
             ],
           },
@@ -376,14 +443,26 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 29997,
+            range: {
+              start: 0,
+              end: 29997,
+            },
           },
           {
             variation: "b",
             percentage: 29997,
+            range: {
+              start: 29997,
+              end: 59994,
+            },
           },
           {
             variation: "c",
             percentage: 30006,
+            range: {
+              start: 59994,
+              end: 90000,
+            },
           },
         ],
       },
@@ -391,7 +470,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, increasing from 80% to 100%, with new added variation, totalling 4 variations", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -441,10 +520,18 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 40000,
+                range: {
+                  start: 0,
+                  end: 40000,
+                },
               },
               {
                 variation: "b",
                 percentage: 40000,
+                range: {
+                  start: 40000,
+                  end: 80000,
+                },
               },
             ],
           },
@@ -461,18 +548,34 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 25000,
+            range: {
+              start: 0,
+              end: 25000,
+            },
           },
           {
             variation: "b",
             percentage: 25000,
+            range: {
+              start: 25000,
+              end: 50000,
+            },
           },
           {
             variation: "c",
             percentage: 25000,
+            range: {
+              start: 50000,
+              end: 75000,
+            },
           },
           {
             variation: "d",
             percentage: 25000,
+            range: {
+              start: 75000,
+              end: 100000,
+            },
           },
         ],
       },
@@ -480,7 +583,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, staying at same 100%, removing variations from 4 to 2", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -530,18 +633,34 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 25000,
+                range: {
+                  start: 0,
+                  end: 25000,
+                },
               },
               {
                 variation: "b",
                 percentage: 25000,
+                range: {
+                  start: 25000,
+                  end: 50000,
+                },
               },
               {
                 variation: "c",
                 percentage: 25000,
+                range: {
+                  start: 50000,
+                  end: 75000,
+                },
               },
               {
                 variation: "d",
                 percentage: 25000,
+                range: {
+                  start: 75000,
+                  end: 100000,
+                },
               },
             ],
           },
@@ -558,10 +677,18 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 50000,
+            range: {
+              start: 0,
+              end: 50000,
+            },
           },
           {
             variation: "b",
             percentage: 50000,
+            range: {
+              start: 50000,
+              end: 100000,
+            },
           },
         ],
       },
@@ -569,7 +696,7 @@ describe("core: Traffic", function () {
   });
 
   it("should allocate against previous known allocation, decreasing from 100% to 80%, removing variations from 4 to 2", function () {
-    const result = getNewTraffic(
+    const result = getTraffic(
       // parsed variations from YAML
       [
         {
@@ -619,18 +746,34 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 25000,
+                range: {
+                  start: 0,
+                  end: 25000,
+                },
               },
               {
                 variation: "b",
                 percentage: 25000,
+                range: {
+                  start: 25000,
+                  end: 50000,
+                },
               },
               {
                 variation: "c",
                 percentage: 25000,
+                range: {
+                  start: 50000,
+                  end: 75000,
+                },
               },
               {
                 variation: "d",
                 percentage: 25000,
+                range: {
+                  start: 75000,
+                  end: 100000,
+                },
               },
             ],
           },
@@ -647,10 +790,18 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 40000,
+            range: {
+              start: 0,
+              end: 40000,
+            },
           },
           {
             variation: "b",
             percentage: 40000,
+            range: {
+              start: 40000,
+              end: 80000,
+            },
           },
         ],
       },

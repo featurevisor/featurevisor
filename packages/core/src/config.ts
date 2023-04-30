@@ -5,6 +5,7 @@ import { BucketBy } from "@featurevisor/types";
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
+export const GROUPS_DIRECTORY_NAME = "groups";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
 export const OUTPUT_DIRECTORY_NAME = "dist";
@@ -23,6 +24,7 @@ export interface ProjectConfig {
   featuresDirectoryPath: string;
   segmentsDirectoryPath: string;
   attributesDirectoryPath: string;
+  groupsDirectoryPath: string;
   testsDirectoryPath: string;
   stateDirectoryPath: string;
   outputDirectoryPath: string;
@@ -39,6 +41,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
+    groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
 
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),

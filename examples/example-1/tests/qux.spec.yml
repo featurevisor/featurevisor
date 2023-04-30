@@ -4,7 +4,7 @@ tests:
     features:
       - key: qux
         assertions:
-          - at: 33
+          - at: 66.5 # (33.33 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: control
@@ -12,17 +12,17 @@ tests:
               fooConfig:
                 foo: bar
 
-          - at: 33.33
+          - at: 66.665 # (33.33 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: control
 
-          - at: 33.34
+          - at: 66.67 # (33.34 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: control
 
-          - at: 33.35
+          - at: 66.675 # (33.35 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: b
@@ -30,27 +30,27 @@ tests:
               fooConfig:
                 foo: bar b
 
-          - at: 34
+          - at: 67 # (42 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: b
 
-          - at: 66
+          - at: 83 # (66 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: b
 
-          - at: 67
+          - at: 83.5 # (67 * 0.5) + 50
             attributes:
               country: nl
             expectedVariation: c
 
-          - at: 90
+          - at: 95 # (90 * 0.5) + 50
             attributes:
               country: de
             expectedVariation: b
 
-          - at: 10
+          - at: 55 # (10 * 0.5) + 50
             attributes:
               country: de
             expectedVariation: b

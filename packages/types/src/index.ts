@@ -176,6 +176,17 @@ export interface Force {
   };
 }
 
+export interface Slot {
+  feature: FeatureKey | false;
+  percentage: Weight; // 0 to 100
+}
+
+export interface Group {
+  key: string;
+  description: string;
+  slots: Slot[];
+}
+
 export type BucketKey = string;
 export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
@@ -184,9 +195,15 @@ export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three 
  */
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
+export interface Range {
+  start: Percentage; // 0 to 100k
+  end: Percentage; // 0 to 100k
+}
+
 export interface Allocation {
   variation: VariationValue;
-  percentage: Percentage;
+  percentage?: Percentage; // @TODO: remove it in next breaking semver
+  range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
 }
 
 export interface Traffic {
@@ -281,6 +298,7 @@ export interface ExistingFeature {
     percentage: Percentage;
     allocation: Allocation[];
   }[];
+  ranges?: Range[]; // if in a Group, these are the available slot ranges
 }
 
 export interface ExistingFeatures {

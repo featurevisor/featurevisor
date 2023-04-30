@@ -4,7 +4,7 @@ tests:
     features:
       - key: bar
         assertions:
-          - at: 30
+          - at: 15 # 30 * 0.5
             attributes:
               country: us
             expectedVariation: control
@@ -15,7 +15,7 @@ tests:
                 subtitle: Hero Subtitle
                 alignment: center
 
-          - at: 40
+          - at: 20 # 40 * 0.5
             attributes:
               country: us
             expectedVariation: b
@@ -26,7 +26,7 @@ tests:
                 subtitle: Hero Subtitle for B
                 alignment: center for B
 
-          - at: 40
+          - at: 20 # 40 * 0.5
             attributes:
               country: de
             expectedVariation: b
