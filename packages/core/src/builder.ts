@@ -28,7 +28,7 @@ import {
 } from "@featurevisor/types";
 
 import { SCHEMA_VERSION, ProjectConfig } from "./config";
-import { getTraffic, getNewTraffic } from "./traffic";
+import { getTraffic } from "./traffic";
 import {
   parseYaml,
   extractAttributeKeysFromConditions,
@@ -147,8 +147,6 @@ export function buildDatafile(
       const featureFilePath = path.join(featuresDirectory, featureFile);
       const parsedFeature = parseYaml(fs.readFileSync(featureFilePath, "utf8")) as ParsedFeature;
 
-      console.log(`\n\nBuilding feature: ${featureKey}`);
-
       if (parsedFeature.archived === true) {
         continue;
       }
@@ -173,7 +171,7 @@ export function buildDatafile(
         variations: parsedFeature.variations.map((variation: Variation) => {
           const mappedVariation: any = {
             value: variation.value,
-            weight: variation.weight,
+            weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
           };
 
           if (!variation.variables) {
