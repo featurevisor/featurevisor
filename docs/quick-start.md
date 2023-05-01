@@ -23,7 +23,7 @@ $ npx @featurevisor/cli <command>
 
 ## Initialize your project
 
-This is meant be a completely separate repository from your application code. The idea is to be able to decouple your application deployments from releasing your features.
+This is meant to be a completely separate repository from your application code. The idea is to be able to decouple your application deployments from releasing your features.
 
 Run the following command to initialize your project:
 
