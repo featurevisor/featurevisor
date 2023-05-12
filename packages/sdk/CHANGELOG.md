@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.17.0](https://github.com/fahad19/featurevisor/compare/v0.16.0...v0.17.0) (2023-05-12)
+
+
+### Features
+
+* sticky features ([#65](https://github.com/fahad19/featurevisor/issues/65)) ([eb4ff69](https://github.com/fahad19/featurevisor/commit/eb4ff69dcb3d6f979eb1c9dec3fe4cf1583e1fc9))
+
+
+
+
+
 # [0.16.0](https://github.com/fahad19/featurevisor/compare/v0.15.0...v0.16.0) (2023-04-30)
 
 
