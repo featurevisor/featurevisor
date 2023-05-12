@@ -247,6 +247,8 @@ export interface StickyFeatures {
   };
 }
 
+export type InitialFeatures = StickyFeatures;
+
 /**
  * YAML-only type
  */
