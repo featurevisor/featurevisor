@@ -181,6 +181,57 @@ sdk.getVariableObject<T>(featureKey, variableKey, attributes);
 sdk.getVariableJSON<T>(featureKey, variableKey, attributes);
 ```
 
+## Stickiness
+
+Featurevisor relies on consistent bucketing making sure the same user always sees the same variation in a deterministic way. You can learn more about it in [Bucketing](/docs/bucketing) section.
+
+But there are times when your targeting conditions (segments) can change and this may lead to some users being re-bucketed into a different variation. This is where stickiness becomes important.
+
+If you have already identified your user in your application, and know what features should be exposed to them, you can initialize the SDK with a set of sticky features:
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: "...",
+
+  stickyFeatures: {
+    myFeatureKey: {
+      variation: true,
+
+      // optional variables
+      variables: {
+        myVariableKey: "myVariableValue",
+      }
+    },
+    anotherFeatureKey: {
+      variation: false,
+    }
+  },
+});
+```
+
+Once initialized with sticky features, the SDK will look for values there first before evaluating the targeting conditions and going through the bucketing process.
+
+You can also set sticky features after the SDK is initialized:
+
+```js
+sdk.setStickyFeatures({
+  myFeatureKey: {
+    variation: true,
+    variables: {},
+  },
+  anotherFeatureKey: {
+    variation: false,
+  }
+});
+```
+
+This will be handy when you want to:
+
+- update sticky features in the SDK without re-initializing it (or restarting the app), and
+- handle evaluation of features for multiple users from the same instance of the SDK (e.g. in a server dealing with incoming requests from multiple users)
+
 ## Logging
 
 By default, Featurevisor SDKs will print out logs to the console for `warn` and `error` levels.

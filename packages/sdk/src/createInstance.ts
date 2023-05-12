@@ -1,4 +1,4 @@
-import { DatafileContent, Attributes } from "@featurevisor/types";
+import { DatafileContent, Attributes, StickyFeatures } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
 import { createLogger, Logger } from "./logger";
 import { Emitter } from "./emitter";
@@ -20,6 +20,7 @@ export interface InstanceOptions {
   refreshInterval?: number; // seconds
   onRefresh?: () => void;
   onUpdate?: () => void;
+  stickyFeatures?: StickyFeatures;
 }
 
 export type Event = "ready" | "refresh" | "update" | "activation";
@@ -57,6 +58,7 @@ export interface FeaturevisorInstance {
    * Additions
    */
   setLogLevels: Logger["setLevels"];
+  setStickyFeatures: FeaturevisorSDK["setStickyFeatures"];
 
   refresh: () => void;
   startRefreshing: () => void;
@@ -126,6 +128,7 @@ function getInstanceFromSdk(
 
     // additions
     setLogLevels: logger.setLevels.bind(logger),
+    setStickyFeatures: sdk.setStickyFeatures.bind(sdk),
 
     // emitter
     on: on,
@@ -260,11 +263,12 @@ export function createInstance(options: InstanceOptions) {
       logger,
       emitter,
       interceptAttributes: options.interceptAttributes,
+      stickyFeatures: options.stickyFeatures,
       fromInstance: true,
     });
 
     statuses.ready = true;
-    setTimeout(function() {
+    setTimeout(function () {
       emitter.emit("ready");
     }, 0);
 
@@ -279,6 +283,7 @@ export function createInstance(options: InstanceOptions) {
     logger,
     emitter,
     interceptAttributes: options.interceptAttributes,
+    stickyFeatures: options.stickyFeatures,
     fromInstance: true,
   });
 
