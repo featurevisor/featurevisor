@@ -187,7 +187,7 @@ Featurevisor relies on consistent bucketing making sure the same user always see
 
 But there are times when your targeting conditions (segments) can change and this may lead to some users being re-bucketed into a different variation. This is where stickiness becomes important.
 
-If you have already identified your user in your application, and know what features should be exposed to them, you can initialize the SDK with a set of sticky features:
+If you have already identified your user in your application, and know what features should be exposed to them in what variations, you can initialize the SDK with a set of sticky features:
 
 ```js
 import { createInstance } from "@featurevisor/sdk";

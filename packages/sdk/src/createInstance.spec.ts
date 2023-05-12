@@ -274,4 +274,66 @@ describe("sdk: createInstance", function () {
       done();
     }, 75);
   });
+
+  it("should initialize with initial features", function (done) {
+    const sdk = createInstance({
+      initialFeatures: {
+        test: {
+          variation: false,
+        },
+      },
+      datafileUrl: "http://localhost:3000/datafile.json",
+      handleDatafileFetch: function (datafileUrl) {
+        const content: DatafileContent = {
+          schemaVersion: "1",
+          revision: "1.0",
+          features: [
+            {
+              key: "test",
+              defaultVariation: false,
+              bucketBy: "userId",
+              variations: [{ value: true }, { value: false }],
+              traffic: [
+                {
+                  key: "1",
+                  segments: "*",
+                  percentage: 100000,
+                  allocation: [
+                    { variation: true, range: { start: 0, end: 100000 } },
+                    { variation: false, range: { start: 0, end: 0 } },
+                  ],
+                },
+              ],
+            },
+          ],
+          attributes: [],
+          segments: [],
+        };
+
+        return new Promise(function (resolve, reject) {
+          setTimeout(function () {
+            resolve(content);
+          }, 50);
+        });
+      },
+    });
+
+    // initially false
+    expect(
+      sdk.getVariation("test", {
+        userId: "123",
+      }),
+    ).toEqual(false);
+
+    setTimeout(function () {
+      // true after fetching datafile
+      expect(
+        sdk.getVariation("test", {
+          userId: "123",
+        }),
+      ).toEqual(true);
+
+      done();
+    }, 75);
+  });
 });

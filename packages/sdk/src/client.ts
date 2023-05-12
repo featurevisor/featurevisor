@@ -10,6 +10,7 @@ import {
   VariationType,
   VariableType,
   StickyFeatures,
+  InitialFeatures,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -21,6 +22,7 @@ import {
 import { getBucketedNumber } from "./bucket";
 import { createLogger, Logger } from "./logger";
 import { Emitter } from "./emitter";
+import { Statuses } from "./statuses";
 
 export type ActivationCallback = (
   featureName: string,
@@ -39,6 +41,8 @@ export interface SdkOptions {
   emitter?: Emitter; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
   interceptAttributes?: (attributes: Attributes) => Attributes; // @TODO: move it to FeaturevisorInstance in next breaking semver
   stickyFeatures?: StickyFeatures;
+  initialFeatures?: InitialFeatures;
+  statuses?: Statuses;
   fromInstance?: boolean;
 }
 
@@ -79,6 +83,8 @@ export class FeaturevisorSDK {
   private emitter?: Emitter;
   private interceptAttributes?: (attributes: Attributes) => Attributes;
   private stickyFeatures?: StickyFeatures;
+  private initialFeatures?: InitialFeatures;
+  private statuses?: Statuses;
   private fromInstance: boolean;
 
   constructor(options: SdkOptions) {
@@ -102,6 +108,14 @@ export class FeaturevisorSDK {
 
     if (options.stickyFeatures) {
       this.stickyFeatures = options.stickyFeatures;
+    }
+
+    if (options.initialFeatures) {
+      this.initialFeatures = options.initialFeatures;
+    }
+
+    if (options.statuses) {
+      this.statuses = options.statuses;
     }
 
     this.setDatafile(options.datafile);
@@ -174,6 +188,24 @@ export class FeaturevisorSDK {
 
         if (typeof result !== "undefined") {
           this.logger.debug("using sticky variation", {
+            featureKey: key,
+            variation: result,
+          });
+
+          return result;
+        }
+      }
+
+      if (
+        this.statuses &&
+        !this.statuses.ready &&
+        this.initialFeatures &&
+        this.initialFeatures[key]
+      ) {
+        const result = this.initialFeatures[key].variation;
+
+        if (typeof result !== "undefined") {
+          this.logger.debug("using initial variation", {
             featureKey: key,
             variation: result,
           });
@@ -359,6 +391,25 @@ export class FeaturevisorSDK {
 
         if (typeof result !== "undefined") {
           this.logger.debug("using sticky variable", {
+            featureKey: key,
+            variableKey,
+          });
+
+          return result;
+        }
+      }
+
+      if (
+        this.statuses &&
+        !this.statuses.ready &&
+        this.initialFeatures &&
+        this.initialFeatures[key] &&
+        this.initialFeatures[key].variables
+      ) {
+        const result = this.initialFeatures[key].variables[variableKey];
+
+        if (typeof result !== "undefined") {
+          this.logger.debug("using initial variable", {
             featureKey: key,
             variableKey,
           });

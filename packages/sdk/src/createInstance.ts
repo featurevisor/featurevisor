@@ -1,7 +1,8 @@
-import { DatafileContent, Attributes, StickyFeatures } from "@featurevisor/types";
+import { DatafileContent, Attributes, StickyFeatures, InitialFeatures } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
 import { createLogger, Logger } from "./logger";
 import { Emitter } from "./emitter";
+import { Statuses } from "./statuses";
 
 export type ReadyCallback = () => void;
 
@@ -21,6 +22,7 @@ export interface InstanceOptions {
   onRefresh?: () => void;
   onUpdate?: () => void;
   stickyFeatures?: StickyFeatures;
+  initialFeatures?: InitialFeatures;
 }
 
 export type Event = "ready" | "refresh" | "update" | "activation";
@@ -83,11 +85,6 @@ function fetchDatafileContent(datafileUrl, options: InstanceOptions): Promise<Da
 
 interface Listeners {
   [key: string]: Function[];
-}
-
-interface Statuses {
-  ready: boolean;
-  refreshInProgress: boolean;
 }
 
 function getInstanceFromSdk(
@@ -264,6 +261,8 @@ export function createInstance(options: InstanceOptions) {
       emitter,
       interceptAttributes: options.interceptAttributes,
       stickyFeatures: options.stickyFeatures,
+      initialFeatures: options.initialFeatures,
+      statuses,
       fromInstance: true,
     });
 
@@ -284,6 +283,8 @@ export function createInstance(options: InstanceOptions) {
     emitter,
     interceptAttributes: options.interceptAttributes,
     stickyFeatures: options.stickyFeatures,
+    initialFeatures: options.initialFeatures,
+    statuses,
     fromInstance: true,
   });
 
