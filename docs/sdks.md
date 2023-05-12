@@ -181,6 +181,34 @@ sdk.getVariableObject<T>(featureKey, variableKey, attributes);
 sdk.getVariableJSON<T>(featureKey, variableKey, attributes);
 ```
 
+## Initial features
+
+You may want to initialize your SDK with a set of features before SDK has sucessfully fetched the datafile (if using `datafileUrl` option).
+
+This helps in cases when you fail to fetch the datafile, but you still wish your SDK instance to continue serving a set of sensible default values. And as soon as the datafile is fetched successfully, the SDK will start serving values from there.
+
+```js
+import { createInstance } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  datafileUrl: "...",
+
+  initialFeatures: {
+    myFeatureKey: {
+      variation: true,
+
+      // optional variables
+      variables: {
+        myVariableKey: "myVariableValue",
+      }
+    },
+    anotherFeatureKey: {
+      variation: false,
+    },
+  },
+});
+```
+
 ## Stickiness
 
 Featurevisor relies on consistent bucketing making sure the same user always sees the same variation in a deterministic way. You can learn more about it in [Bucketing](/docs/bucketing) section.
