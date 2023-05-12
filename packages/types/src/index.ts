@@ -238,6 +238,15 @@ export interface DatafileContent {
   features: Feature[];
 }
 
+export interface StickyFeatures {
+  [key: FeatureKey]: {
+    variation: VariationValue;
+    variables?: {
+      [key: VariableKey]: VariableValue;
+    };
+  };
+}
+
 /**
  * YAML-only type
  */

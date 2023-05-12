@@ -9,6 +9,7 @@ import {
   FeatureKey,
   VariationType,
   VariableType,
+  StickyFeatures,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import {
@@ -37,6 +38,7 @@ export interface SdkOptions {
   logger?: Logger; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
   emitter?: Emitter; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
   interceptAttributes?: (attributes: Attributes) => Attributes; // @TODO: move it to FeaturevisorInstance in next breaking semver
+  stickyFeatures?: StickyFeatures;
   fromInstance?: boolean;
 }
 
@@ -76,6 +78,7 @@ export class FeaturevisorSDK {
   private logger: Logger;
   private emitter?: Emitter;
   private interceptAttributes?: (attributes: Attributes) => Attributes;
+  private stickyFeatures?: StickyFeatures;
   private fromInstance: boolean;
 
   constructor(options: SdkOptions) {
@@ -97,6 +100,10 @@ export class FeaturevisorSDK {
       this.emitter = options.emitter;
     }
 
+    if (options.stickyFeatures) {
+      this.stickyFeatures = options.stickyFeatures;
+    }
+
     this.setDatafile(options.datafile);
 
     this.fromInstance = options.fromInstance || false;
@@ -110,6 +117,10 @@ export class FeaturevisorSDK {
     } catch (e) {
       this.logger.error("could not parse datafile", { error: e });
     }
+  }
+
+  setStickyFeatures(stickyFeatures: StickyFeatures | undefined) {
+    this.stickyFeatures = stickyFeatures;
   }
 
   getRevision(): string {
@@ -156,6 +167,21 @@ export class FeaturevisorSDK {
     attributes: Attributes = {},
   ): VariationValue | undefined {
     try {
+      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+
+      if (this.stickyFeatures && this.stickyFeatures[key]) {
+        const result = this.stickyFeatures[key].variation;
+
+        if (typeof result !== "undefined") {
+          this.logger.debug("using sticky variation", {
+            featureKey: key,
+            variation: result,
+          });
+
+          return result;
+        }
+      }
+
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
@@ -326,6 +352,21 @@ export class FeaturevisorSDK {
     attributes: Attributes = {},
   ): VariableValue | undefined {
     try {
+      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+
+      if (this.stickyFeatures && this.stickyFeatures[key] && this.stickyFeatures[key].variables) {
+        const result = this.stickyFeatures[key].variables[variableKey];
+
+        if (typeof result !== "undefined") {
+          this.logger.debug("using sticky variable", {
+            featureKey: key,
+            variableKey,
+          });
+
+          return result;
+        }
+      }
+
       const feature = this.getFeature(featureKey);
 
       if (!feature) {
