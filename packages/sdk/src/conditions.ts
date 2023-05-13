@@ -9,6 +9,17 @@ export function conditionIsMatched(condition: PlainCondition, attributes: Attrib
     return attributes[attribute] === value;
   } else if (operator === "notEquals") {
     return attributes[attribute] !== value;
+  } else if (operator === "before" || operator === "after") {
+    // date comparisons
+    const valueInAttributes = attributes[attribute] as string | Date;
+
+    const dateInAttributes =
+      valueInAttributes instanceof Date ? valueInAttributes : new Date(valueInAttributes);
+    const dateInCondition = value instanceof Date ? value : new Date(value as string);
+
+    return operator === "before"
+      ? dateInAttributes < dateInCondition
+      : dateInAttributes > dateInCondition;
   } else if (typeof attributes[attribute] === "string" && Array.isArray(value)) {
     // array
     const valueInAttributes = attributes[attribute] as string;
