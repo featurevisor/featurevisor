@@ -12,7 +12,7 @@ import { ParsedFeature } from "@featurevisor/types";
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
     archived: Joi.boolean(),
-    type: Joi.string().allow("boolean", "string", "integer", "double").required(),
+    type: Joi.string().allow("boolean", "string", "integer", "double", "date").required(),
     description: Joi.string().required(),
     capture: Joi.boolean(),
   });
