@@ -164,6 +164,8 @@ export class FeaturevisorInstance {
 
     // datafile
     if (options.datafileUrl) {
+      this.setDatafile(options.datafile || emptyDatafile);
+
       fetchDatafileContent(options.datafileUrl, options.handleDatafileFetch)
         .then((datafile) => {
           this.setDatafile(datafile);
