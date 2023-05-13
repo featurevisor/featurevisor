@@ -45,7 +45,7 @@ export type Operator =
   | "in"
   | "notIn";
 
-export type ConditionValue = string | number | boolean | null | undefined | string[];
+export type ConditionValue = string | number | boolean | Date | null | undefined | string[];
 
 export interface PlainCondition {
   attribute: AttributeKey;

@@ -48,6 +48,10 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
         "semverLessThan",
         "semverLessThanOrEquals",
 
+        // date comparisons
+        "before",
+        "after",
+
         // array of strings
         "in",
         "notIn",
@@ -59,6 +63,7 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
         Joi.string(),
         Joi.number(),
         Joi.boolean(),
+        Joi.date(),
         Joi.array().items(Joi.string()),
       )
       .required(),

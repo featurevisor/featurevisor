@@ -1,0 +1,32 @@
+description: Enable discount in checkout flow
+tags:
+  - all
+
+defaultVariation: false
+
+bucketBy: userId
+
+variations:
+  - description: Enabled for all
+    value: true
+    weight: 100
+  - description: Disabled for all
+    value: false
+    weight: 0
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "2"
+        segments:
+          - blackFridayWeekend
+        percentage: 100
+
+      - key: "1"
+        segments: "*"
+        percentage: 0
