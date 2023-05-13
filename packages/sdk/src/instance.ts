@@ -127,6 +127,13 @@ export class FeaturevisorInstance {
   private statuses: Statuses;
   private intervalId?: ReturnType<typeof setInterval>;
 
+  // exposed from emitter
+  public on: Emitter["addListener"];
+  public addListener: Emitter["addListener"];
+  public off: Emitter["removeListener"];
+  public removeListener: Emitter["removeListener"];
+  public removeAllListeners: Emitter["removeAllListeners"];
+
   constructor(options: InstanceOptions) {
     // from options
     this.configureBucketValue = options.configureBucketValue;
@@ -145,7 +152,7 @@ export class FeaturevisorInstance {
       refreshInProgress: false,
     };
 
-    // events
+    // register events
     if (options.onReady) {
       this.emitter.addListener("ready", options.onReady);
     }
@@ -161,6 +168,17 @@ export class FeaturevisorInstance {
     if (options.onActivation) {
       this.emitter.addListener("activation", options.onActivation);
     }
+
+    // expose emitter methods
+    const on = this.emitter.addListener.bind(this.emitter);
+    this.on = on;
+    this.addListener = on;
+
+    const off = this.emitter.removeListener.bind(this.emitter);
+    this.off = off;
+    this.removeListener = off;
+
+    this.removeAllListeners = this.emitter.removeAllListeners.bind(this.emitter);
 
     // datafile
     if (options.datafileUrl) {
