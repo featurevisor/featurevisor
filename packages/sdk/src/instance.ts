@@ -201,6 +201,7 @@ export class FeaturevisorInstance {
     } else if (options.datafile) {
       this.setDatafile(options.datafile);
       setTimeout(() => {
+        this.statuses.ready = true;
         this.emitter.emit("ready");
       }, 0);
     } else {

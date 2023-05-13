@@ -39,6 +39,7 @@ describe("sdk: instance", function () {
 
     setTimeout(() => {
       expect(readyCount).toEqual(1);
+      expect(sdk.isReady()).toEqual(true);
       done();
     }, 0);
   });
