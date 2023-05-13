@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.19.0](https://github.com/fahad19/featurevisor/compare/v0.18.0...v0.19.0) (2023-05-13)
+
+
+### Features
+
+* Date comparison operators ([#67](https://github.com/fahad19/featurevisor/issues/67)) ([b555f39](https://github.com/fahad19/featurevisor/commit/b555f39a0cb99e95e1d66a3c76df4483a26e2caf))
+
+
+
+
+
 # [0.18.0](https://github.com/fahad19/featurevisor/compare/v0.17.0...v0.18.0) (2023-05-12)
 
 **Note:** Version bump only for package @featurevisor/core
