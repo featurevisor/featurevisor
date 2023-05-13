@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.20.1](https://github.com/fahad19/featurevisor/compare/v0.20.0...v0.20.1) (2023-05-13)
+
+
+### Bug Fixes
+
+* remove duplicate redundant types ([#69](https://github.com/fahad19/featurevisor/issues/69)) ([9501802](https://github.com/fahad19/featurevisor/commit/95018028b9beed19af7ab98a12b30163fdd2434c))
+
+
+
+
+
 # [0.20.0](https://github.com/fahad19/featurevisor/compare/v0.19.0...v0.20.0) (2023-05-13)
 
 
