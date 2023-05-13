@@ -1,6 +1,6 @@
 export type AttributeKey = string;
 
-export type AttributeValue = string | number | boolean | null | undefined;
+export type AttributeValue = string | number | boolean | Date | null | undefined;
 
 export interface Attributes {
   [key: AttributeKey]: AttributeValue;
@@ -37,11 +37,15 @@ export type Operator =
   | "semverLessThan"
   | "semverLessThanOrEquals"
 
+  // date comparisons
+  | "before"
+  | "after"
+
   // array of strings
   | "in"
   | "notIn";
 
-export type ConditionValue = string | number | boolean | null | undefined | string[];
+export type ConditionValue = string | number | boolean | Date | null | undefined | string[];
 
 export interface PlainCondition {
   attribute: AttributeKey;

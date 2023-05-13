@@ -12,7 +12,7 @@ import { ParsedFeature } from "@featurevisor/types";
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
     archived: Joi.boolean(),
-    type: Joi.string().allow("boolean", "string", "integer", "double").required(),
+    type: Joi.string().allow("boolean", "string", "integer", "double", "date").required(),
     description: Joi.string().required(),
     capture: Joi.boolean(),
   });
@@ -48,6 +48,10 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
         "semverLessThan",
         "semverLessThanOrEquals",
 
+        // date comparisons
+        "before",
+        "after",
+
         // array of strings
         "in",
         "notIn",
@@ -59,6 +63,7 @@ export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
         Joi.string(),
         Joi.number(),
         Joi.boolean(),
+        Joi.date(),
         Joi.array().items(Joi.string()),
       )
       .required(),

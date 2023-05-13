@@ -167,6 +167,50 @@ describe("sdk: Conditions", function () {
       // not match
       expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
     });
+
+    it("should match with operator: before", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "date",
+          operator: "before",
+          value: "2023-05-13T16:23:59Z",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(true);
+      expect(
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }),
+      ).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(false);
+      expect(
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }),
+      ).toEqual(false);
+    });
+
+    it("should match with operator: after", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "date",
+          operator: "after",
+          value: "2023-05-13T16:23:59Z",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(true);
+      expect(
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }),
+      ).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(false);
+      expect(
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }),
+      ).toEqual(false);
+    });
   });
 
   describe("simple condition", function () {

@@ -46,6 +46,8 @@ These operators are supported for conditions:
 | `endsWith`                  | `string`            | Ends with string              |
 | `in`                        | `string`            | In array of strings           |
 | `notIn`                     | `string`            | Not in array of strings       |
+| `before`                    | `string`, `date`    | Date comparison               |
+| `after`                     | `string`, `date`    | Date comparison               |
 | `semverEquals`              | `string`            | Semver equals to              |
 | `semverNotEquals`           | `string`            | Semver not equals to          |
 | `semverGreaterThan`         | `string`            | Semver greater than           |
@@ -179,6 +181,26 @@ conditions:
       - fr
       - gb
       - de
+```
+
+### `before`
+
+```yml
+# ...
+conditions:
+  - attribute: date
+    operator: before
+    value: 2023-12-25T00:00:00Z
+```
+
+### `after`
+
+```yml
+# ...
+conditions:
+  - attribute: date
+    operator: after
+    value: 2023-12-25T00:00:00Z
 ```
 
 ### `semverEquals`
