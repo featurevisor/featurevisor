@@ -40,12 +40,6 @@ export interface Statuses {
   refreshInProgress: boolean;
 }
 
-export type Event = "ready" | "refresh" | "update" | "activation";
-
-interface Listeners {
-  [key: string]: Function[];
-}
-
 export interface InstanceOptions {
   configureBucketValue?: ConfigureBucketValue;
   datafile?: DatafileContent | string;
