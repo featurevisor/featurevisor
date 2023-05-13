@@ -2,7 +2,7 @@ import { DatafileContent } from "@featurevisor/types";
 
 import { createInstance } from "./instance";
 
-describe("sdk: createInstance", function () {
+describe("sdk: instance", function () {
   it("should be a function", function () {
     expect(typeof createInstance).toEqual("function");
   });
