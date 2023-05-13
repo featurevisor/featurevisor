@@ -1,3 +1,5 @@
+// @TODO: delete this file after `instance.ts` is ready
+
 import { DatafileContent, Attributes, StickyFeatures, InitialFeatures } from "@featurevisor/types";
 import { FeaturevisorSDK, ConfigureBucketValue, ActivationCallback } from "./client";
 import { createLogger, Logger } from "./logger";

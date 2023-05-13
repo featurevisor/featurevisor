@@ -1,6 +1,6 @@
 import { DatafileContent } from "@featurevisor/types";
 
-import { createInstance } from "./createInstance";
+import { createInstance } from "./instance";
 
 describe("sdk: createInstance", function () {
   it("should be a function", function () {
