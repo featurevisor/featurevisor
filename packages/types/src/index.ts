@@ -325,6 +325,35 @@ export interface ExistingState {
 }
 
 /**
+ * Tests
+ */
+export interface Assertion {
+  description?: string;
+  at: Weight; // bucket weight: 0 to 100
+  attributes: Attributes;
+  expectedVariation?: VariationValue;
+  expectedVariables?: {
+    [key: VariableKey]: VariableValue;
+  };
+}
+
+export interface TestFeature {
+  key: string;
+  assertions: Assertion[];
+}
+
+export interface Test {
+  description?: string;
+  tag: string;
+  environment: string;
+  features: TestFeature[];
+}
+
+export interface Spec {
+  tests: Test[];
+}
+
+/**
  * Site index and history
  */
 export interface HistoryEntity {

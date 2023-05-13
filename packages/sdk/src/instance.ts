@@ -1,28 +1,30 @@
 import {
   Attributes,
-  VariationValue,
-  VariableValue,
-  Feature,
-  DatafileContent,
   BucketKey,
   BucketValue,
+  DatafileContent,
+  Feature,
   FeatureKey,
-  VariationType,
-  VariableType,
-  StickyFeatures,
   InitialFeatures,
+  StickyFeatures,
+  VariableType,
+  VariableValue,
+  VariationType,
+  VariationValue,
 } from "@featurevisor/types";
+
+import { createLogger, Logger } from "./logger";
 import { DatafileReader } from "./datafileReader";
+import { Emitter } from "./emitter";
+import { getBucketedNumber } from "./bucket";
 import {
   getBucketedVariation,
   getBucketedVariableValue,
   getForcedVariation,
   getForcedVariableValue,
 } from "./feature";
-import { getBucketedNumber } from "./bucket";
-import { createLogger, Logger } from "./logger";
-import { Emitter } from "./emitter";
-import { Statuses } from "./statuses";
+
+export type ReadyCallback = () => void;
 
 export type ActivationCallback = (
   featureName: string,
@@ -33,17 +35,52 @@ export type ActivationCallback = (
 
 export type ConfigureBucketValue = (feature, attributes, bucketValue: BucketValue) => BucketValue;
 
-export interface SdkOptions {
-  datafile: DatafileContent | string;
-  onActivation?: ActivationCallback; // @TODO: move it to FeaturevisorInstance in next breaking semver
+export interface Statuses {
+  ready: boolean;
+  refreshInProgress: boolean;
+}
+
+export type Event = "ready" | "refresh" | "update" | "activation";
+
+interface Listeners {
+  [key: string]: Function[];
+}
+
+export interface InstanceOptions {
   configureBucketValue?: ConfigureBucketValue;
-  logger?: Logger; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
-  emitter?: Emitter; // @TODO: keep it in FeaturevisorInstance only in next breaking semver
-  interceptAttributes?: (attributes: Attributes) => Attributes; // @TODO: move it to FeaturevisorInstance in next breaking semver
-  stickyFeatures?: StickyFeatures;
+  datafile?: DatafileContent | string;
+  datafileUrl?: string;
+  handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
   initialFeatures?: InitialFeatures;
-  statuses?: Statuses;
-  fromInstance?: boolean;
+  interceptAttributes?: (attributes: Attributes) => Attributes;
+  logger?: Logger;
+  onActivation?: ActivationCallback;
+  onReady?: ReadyCallback;
+  onRefresh?: () => void;
+  onUpdate?: () => void;
+  refreshInterval?: number; // seconds
+  stickyFeatures?: StickyFeatures;
+}
+
+const emptyDatafile: DatafileContent = {
+  schemaVersion: "1",
+  revision: "unknown",
+  attributes: [],
+  segments: [],
+  features: [],
+};
+
+export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileContent>;
+
+function fetchDatafileContent(
+  datafileUrl,
+  handleDatafileFetch?: DatafileFetchHandler,
+): Promise<DatafileContent> {
+  if (handleDatafileFetch) {
+    return handleDatafileFetch(datafileUrl);
+  }
+
+  return fetch(datafileUrl).then((res) => res.json());
 }
 
 type FieldType = VariationType | VariableType;
@@ -73,54 +110,106 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
-// @TODO: change it to FeaturevisorEngine in next breaking semver
-// @TODO: move activate*() methods to FeaturevisorInstance in next breaking semver
-export class FeaturevisorSDK {
-  private onActivation?: ActivationCallback;
-  private datafileReader: DatafileReader;
+export class FeaturevisorInstance {
+  // from options
   private configureBucketValue?: ConfigureBucketValue;
-  private logger: Logger;
-  private emitter?: Emitter;
-  private interceptAttributes?: (attributes: Attributes) => Attributes;
-  private stickyFeatures?: StickyFeatures;
+  private datafileUrl?: string;
+  private handleDatafileFetch?: DatafileFetchHandler;
   private initialFeatures?: InitialFeatures;
-  private statuses?: Statuses;
-  private fromInstance: boolean;
+  private interceptAttributes?: (attributes: Attributes) => Attributes;
+  private logger: Logger;
+  private refreshInterval?: number; // seconds
+  private stickyFeatures?: StickyFeatures;
 
-  constructor(options: SdkOptions) {
-    if (options.onActivation) {
-      this.onActivation = options.onActivation;
-    }
+  // internally created
+  private datafileReader: DatafileReader;
+  private emitter: Emitter;
+  private statuses: Statuses;
+  private intervalId?: ReturnType<typeof setInterval>;
 
-    if (options.configureBucketValue) {
-      this.configureBucketValue = options.configureBucketValue;
-    }
+  // exposed from emitter
+  public on: Emitter["addListener"];
+  public addListener: Emitter["addListener"];
+  public off: Emitter["removeListener"];
+  public removeListener: Emitter["removeListener"];
+  public removeAllListeners: Emitter["removeAllListeners"];
 
+  constructor(options: InstanceOptions) {
+    // from options
+    this.configureBucketValue = options.configureBucketValue;
+    this.datafileUrl = options.datafileUrl;
+    this.handleDatafileFetch = options.handleDatafileFetch;
+    this.initialFeatures = options.initialFeatures;
+    this.interceptAttributes = options.interceptAttributes;
     this.logger = options.logger || createLogger();
+    this.refreshInterval = options.refreshInterval;
+    this.stickyFeatures = options.stickyFeatures;
 
-    if (options.interceptAttributes) {
-      this.interceptAttributes = options.interceptAttributes;
+    // internal
+    this.emitter = new Emitter();
+    this.statuses = {
+      ready: false,
+      refreshInProgress: false,
+    };
+
+    // register events
+    if (options.onReady) {
+      this.emitter.addListener("ready", options.onReady);
     }
 
-    if (options.emitter) {
-      this.emitter = options.emitter;
+    if (options.onRefresh) {
+      this.emitter.addListener("refresh", options.onRefresh);
     }
 
-    if (options.stickyFeatures) {
-      this.stickyFeatures = options.stickyFeatures;
+    if (options.onUpdate) {
+      this.emitter.addListener("update", options.onUpdate);
     }
 
-    if (options.initialFeatures) {
-      this.initialFeatures = options.initialFeatures;
+    if (options.onActivation) {
+      this.emitter.addListener("activation", options.onActivation);
     }
 
-    if (options.statuses) {
-      this.statuses = options.statuses;
+    // expose emitter methods
+    const on = this.emitter.addListener.bind(this.emitter);
+    this.on = on;
+    this.addListener = on;
+
+    const off = this.emitter.removeListener.bind(this.emitter);
+    this.off = off;
+    this.removeListener = off;
+
+    this.removeAllListeners = this.emitter.removeAllListeners.bind(this.emitter);
+
+    // datafile
+    if (options.datafileUrl) {
+      this.setDatafile(options.datafile || emptyDatafile);
+
+      fetchDatafileContent(options.datafileUrl, options.handleDatafileFetch)
+        .then((datafile) => {
+          this.setDatafile(datafile);
+
+          this.statuses.ready = true;
+          this.emitter.emit("ready");
+
+          if (this.refreshInterval) {
+            this.startRefreshing();
+          }
+        })
+        .catch((e) => {
+          this.logger.error("failed to fetch datafile", { error: e });
+        });
+    } else if (options.datafile) {
+      this.setDatafile(options.datafile);
+      this.statuses.ready = true;
+
+      setTimeout(() => {
+        this.emitter.emit("ready");
+      }, 0);
+    } else {
+      throw new Error(
+        "Featurevisor SDK instance cannot be created without both `datafile` and `datafileUrl` options",
+      );
     }
-
-    this.setDatafile(options.datafile);
-
-    this.fromInstance = options.fromInstance || false;
   }
 
   setDatafile(datafile: DatafileContent | string) {
@@ -148,9 +237,80 @@ export class FeaturevisorSDK {
   }
 
   /**
+   * Statuses
+   */
+  isReady(): boolean {
+    return this.statuses.ready;
+  }
+
+  /**
+   * Refresh
+   */
+  refresh() {
+    this.logger.debug("refreshing datafile");
+
+    if (this.statuses.refreshInProgress) {
+      return this.logger.warn("refresh in progress, skipping");
+    }
+
+    if (!this.datafileUrl) {
+      return this.logger.error("cannot refresh since `datafileUrl` is not provided");
+    }
+
+    this.statuses.refreshInProgress = true;
+
+    fetchDatafileContent(this.datafileUrl, this.handleDatafileFetch)
+      .then((datafile) => {
+        const currentRevision = this.getRevision();
+        const newRevision = datafile.revision;
+        const isNotSameRevision = currentRevision !== newRevision;
+
+        this.setDatafile(datafile);
+        this.logger.info("refreshed datafile");
+
+        this.emitter.emit("refresh");
+
+        if (isNotSameRevision) {
+          this.emitter.emit("update");
+        }
+
+        this.statuses.refreshInProgress = false;
+      })
+      .catch((e) => {
+        this.logger.error("failed to refresh datafile", { error: e });
+        this.statuses.refreshInProgress = false;
+      });
+  }
+
+  startRefreshing() {
+    if (!this.datafileUrl) {
+      return this.logger.error("cannot start refreshing since `datafileUrl` is not provided");
+    }
+
+    if (this.intervalId) {
+      return this.logger.warn("refreshing has already started");
+    }
+
+    if (!this.refreshInterval) {
+      return this.logger.warn("no `refreshInterval` option provided");
+    }
+
+    this.intervalId = setInterval(() => {
+      this.refresh();
+    }, this.refreshInterval * 1000);
+  }
+
+  stopRefreshing() {
+    if (!this.intervalId) {
+      return this.logger.warn("refreshing has not started yet");
+    }
+
+    clearInterval(this.intervalId);
+  }
+
+  /**
    * Bucketing
    */
-
   private getBucketKey(feature: Feature, attributes: Attributes): BucketKey {
     const featureKey = feature.key;
 
@@ -328,19 +488,13 @@ export class FeaturevisorSDK {
         }
       });
 
-      if (this.emitter) {
-        this.emitter.emit(
-          "activation",
-          featureKey,
-          variationValue,
-          finalAttributes,
-          captureAttributes,
-        );
-      }
-
-      if (this.fromInstance && this.onActivation) {
-        this.onActivation(featureKey, variationValue, finalAttributes, captureAttributes);
-      }
+      this.emitter.emit(
+        "activation",
+        featureKey,
+        variationValue,
+        finalAttributes,
+        captureAttributes,
+      );
 
       return variationValue;
     } catch (e) {
@@ -539,4 +693,8 @@ export class FeaturevisorSDK {
 
     return getValueByType(variableValue, "json") as T | undefined;
   }
+}
+
+export function createInstance(options: InstanceOptions): FeaturevisorInstance {
+  return new FeaturevisorInstance(options);
 }

@@ -1,8 +1,8 @@
 import { DatafileContent } from "@featurevisor/types";
 
-import { createInstance } from "./createInstance";
+import { createInstance } from "./instance";
 
-describe("sdk: createInstance", function () {
+describe("sdk: instance", function () {
   it("should be a function", function () {
     expect(typeof createInstance).toEqual("function");
   });
@@ -39,6 +39,7 @@ describe("sdk: createInstance", function () {
 
     setTimeout(() => {
       expect(readyCount).toEqual(1);
+      expect(sdk.isReady()).toEqual(true);
       done();
     }, 0);
   });

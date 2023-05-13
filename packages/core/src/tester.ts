@@ -1,46 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import {
-  Attributes,
-  DatafileContent,
-  VariableKey,
-  VariableValue,
-  VariationValue,
-} from "@featurevisor/types";
+import { DatafileContent, Spec } from "@featurevisor/types";
 import { createInstance, createLogger, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
 import { getDatafilePath } from "./builder";
-
-export interface Assertion {
-  description?: string;
-  at: number; // bucket weight: 0 to 100
-  attributes: Attributes;
-  expectedVariation?: VariationValue;
-  expectedVariables?: {
-    [key: VariableKey]: VariableValue;
-  };
-}
-
-export interface TestFeature {
-  key: string;
-  assertions: Assertion[];
-}
-
-export interface Test {
-  description?: string;
-  tag: string;
-  environment: string;
-  features: TestFeature[];
-}
-
-export interface Spec {
-  tests: Test[];
-}
-
-const errorColor = "\x1b[31m";
 
 // @TODO: make it better
 export function checkIfArraysAreEqual(a, b) {
