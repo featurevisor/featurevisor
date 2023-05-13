@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/fahad19/featurevisor/compare/v0.19.0...v0.20.0) (2023-05-13)
+
+
+### Features
+
+* SDK Instance from a single class ([#68](https://github.com/fahad19/featurevisor/issues/68)) ([1ab1d49](https://github.com/fahad19/featurevisor/commit/1ab1d49916fd4ccd14d5ec47d11e6bd863fd0af1))
+
+
+
+
+
 # [0.19.0](https://github.com/fahad19/featurevisor/compare/v0.18.0...v0.19.0) (2023-05-13)
 
 
