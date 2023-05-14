@@ -1,8 +1,38 @@
-# @featurevisor/sdk
+# @featurevisor/sdk <!-- omit in toc -->
 
 Universal JavaScript SDK for both Node.js and the browser.
 
 Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/) for more information.
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Options](#options)
+  - [`bucketKeySeparator`](#bucketkeyseparator)
+  - [`configureBucketValue`](#configurebucketvalue)
+  - [`datafile`](#datafile)
+  - [`datafileUrl`](#datafileurl)
+  - [`handleDatafileFetch`](#handledatafilefetch)
+  - [`initialFeatures`](#initialfeatures)
+  - [`interceptAttributes`](#interceptattributes)
+  - [`logger`](#logger)
+  - [`onActivation`](#onactivation)
+  - [`onReady`](#onready)
+  - [`onRefresh`](#onrefresh)
+  - [`onUpdate`](#onupdate)
+  - [`refreshInterval`](#refreshinterval)
+  - [`stickyFeatures`](#stickyfeatures)
+- [API](#api)
+  - [`getVariation`](#getvariation)
+  - [`getVariable`](#getvariable)
+  - [`activate`](#activate)
+  - [`isReady`](#isready)
+  - [`refresh`](#refresh)
+  - [`setLogLevels`](#setloglevels)
+  - [`on`](#on)
+  - [`addListener`](#addlistener)
+  - [`off`](#off)
+  - [`removeListener`](#removelistener)
+  - [`removeAllListeners`](#removealllisteners)
 
 ## Installation
 
@@ -22,20 +52,231 @@ const sdk = createInstance(options);
 
 ## Options
 
-| Key                   | Type       | Description                                            |
-|-----------------------|------------|--------------------------------------------------------|
-| `datafile`            | `object`   | Parsed datafile object                                 |
-| `datafileUrl`         | `string`   | URL to fetch the datafile from                         |
-| `onReady`             | `function` | Callback to be called when the SDK is ready to be used |
-| `onActivation`        | `function` | Callback to be called when a feature is activated      |
-| `onRefresh`           | `function` | Callback to be called when the datafile is refreshed   |
-| `onUpdate`            | `function` | Callback to be called when the datafile is updated     |
-| `refreshInterval`     | `number`   | Interval in seconds to refresh the datafile            |
-| `handleDatafileFetch` | `function` | Callback to be called when the datafile is fetched     |
-| `interceptAttributes` | `function` | Callback to be called before attributes are used       |
-| `logger`              | `Logger`   | Logger object to be used by the SDK                    |
+Options you can pass when creating Featurevisor SDK instance:
+
+### `bucketKeySeparator`
+
+- Type: `string`
+- Required: no
+- Defaults to: `.`
+
+### `configureBucketValue`
+
+- Type: `function`
+- Required: no
+
+Use it to take over bucketing process.
+
+```js
+const sdk = createInstance({
+  configureBucketValue: (feature, attributes, bucketValue) => {
+    return bucketValue; // 0 to 100,000
+  }
+});
+```
+
+### `datafile`
+
+- Type: `object`
+- Required: either `datafile` or `datafileUrl` is required
+
+Use it to pass the datafile object directly.
+
+### `datafileUrl`
+
+- Type: `string`
+- Required: either `datafile` or `datafileUrl` is required
+
+Use it to pass the URL to fetch the datafile from.
+
+### `handleDatafileFetch`
+
+- Type: `function`
+- Required: no
+
+Pass this function if you need to take over the datafile fetching and parsing process:
+
+```js
+const sdk = createInstance({
+  handleDatafileFetch: async (datafileUrl) => {
+    const response = await fetch(datafileUrl);
+    const datafile = await response.json();
+
+    return datafile;
+  }
+});
+```
+
+### `initialFeatures`
+
+- Type: `object`
+- Required: no
+
+Pass set of initial features with their variation and (optional) variables that you want the SDK to return until the datafile is fetched and parsed:
+
+```js
+const sdk = createInstance({
+  initialFeatures: {
+    myFeatureKey: {
+      variation: true,
+      variables: {
+        myVariableKey: "my-variable-value"
+      }
+    }
+  }
+});
+```
+
+### `interceptAttributes`
+
+- Type: `function`
+- Required: no
+
+Intercept given attributes before they are used to bucket the user:
+
+```js
+const defaultAttributes = {
+  platform: "web",
+  locale: "en-US",
+  country: "US",
+  timezone: "America/New_York",
+  userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)",
+};
+
+const sdk = createInstance({
+  interceptAttributes: (attributes) => {
+    return {
+      ...defaultAttributes,
+      ...attributes,
+    };
+  }
+});
+```
+
+### `logger`
+
+- Type: `object`
+- Required: no
+
+Pass a custom logger with custom levels, otherwise it the SDK will print logs to the console for `error` and `warn` levels.
+
+```js
+import { createInstance, createLogger } from "@featurevisor/sdk";
+
+const sdk = createInstance({
+  logger: createLogger({
+    levels: ["debug", "info", "warn", "error"],
+    handler: (level, message, details) => {
+      // do something with the log
+    },
+  }),
+});
+```
+
+### `onActivation`
+
+- Type: `function`
+- Required: no
+
+Capture activated features along with their evaluated variation:
+
+```js
+const sdk = createInstance({
+  onActivation: (featureKey, variation, attributes, captureAttributes) => {
+    // do something with the activated feature
+  }
+});
+```
+
+`captureAttributes` will only contain attributes that are marked as `capture: true` in the Attributes' YAML files.
+
+### `onReady`
+
+- Type: `function`
+- Required: no
+
+Triggered maximum once when the SDK is ready to be used.
+
+```js
+const sdk = createInstance({
+  onReady: () => {
+    // do something when the SDK is ready
+  }
+});
+```
+
+### `onRefresh`
+
+- Type: `function`
+- Required: no
+
+Triggered every time the datafile is refreshed.
+
+Works only when `datafileUrl` and `refreshInterval` are set.
+
+```js
+const sdk = createInstance({
+  onRefresh: () => {
+    // do something when the datafile is refreshed
+  }
+});
+```
+
+### `onUpdate`
+
+- Type: `function`
+- Required: no
+
+Triggered every time the datafile is refreshed, and the newly fetched datafile is detected to have different content than last fetched one.
+
+Works only when `datafileUrl` and `refreshInterval` are set.
+
+```js
+const sdk = createInstance({
+  onUpdate: () => {
+    // do something when the datafile is updated
+  }
+});
+```
+
+### `refreshInterval`
+
+- Type: `number` (in seconds)
+- Required: no
+
+Set the interval to refresh the datafile.
+
+```js
+const sdk = createInstance({
+  refreshInterval: 60 * 5, // every 5 minutes
+});
+```
+
+### `stickyFeatures`
+
+- Type: `object`
+- Required: no
+
+If set, the SDK will skip evaluating the datafile and return variation and variable results from this object instead.
+
+If a feature key is not present in this object, the SDK will continue to evaluate the datafile.
+
+```js
+const sdk = createInstance({
+  stickyFeatures: {
+    myFeatureKey: {
+      variation: true,
+      variables: {
+        myVariableKey: "my-variable-value"
+      }
+    }
+  }
+});
+```
 
 ## API
+
+These methods are available once the SDK instance is created:
 
 ### `getVariation`
 
@@ -122,6 +363,6 @@ Alias for `off` method.
 
 > `removeAllListeners(event?: string): void`
 
-## License
+## License <!-- omit in toc -->
 
 MIT © [Fahad Heylaal](https://fahad19.com)

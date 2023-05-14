@@ -48,6 +48,7 @@ tests:
           - at: 70
             attributes:
               country: nl
+              userId: "123"
             expectedVariation: true
             expectedVariables:
               sections: ["home", "about", "contact", "bitterballen"]
