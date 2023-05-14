@@ -1,5 +1,6 @@
 import {
   Attributes,
+  AttributeValue,
   BucketKey,
   BucketValue,
   DatafileContent,
@@ -40,7 +41,10 @@ export interface Statuses {
   refreshInProgress: boolean;
 }
 
+const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
+
 export interface InstanceOptions {
+  bucketKeySeparator?: string;
   configureBucketValue?: ConfigureBucketValue;
   datafile?: DatafileContent | string;
   datafileUrl?: string;
@@ -106,6 +110,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
 
 export class FeaturevisorInstance {
   // from options
+  private bucketKeySeparator: string;
   private configureBucketValue?: ConfigureBucketValue;
   private datafileUrl?: string;
   private handleDatafileFetch?: DatafileFetchHandler;
@@ -130,6 +135,7 @@ export class FeaturevisorInstance {
 
   constructor(options: InstanceOptions) {
     // from options
+    this.bucketKeySeparator = options.bucketKeySeparator || DEFAULT_BUCKET_KEY_SEPARATOR;
     this.configureBucketValue = options.configureBucketValue;
     this.datafileUrl = options.datafileUrl;
     this.handleDatafileFetch = options.handleDatafileFetch;
@@ -308,10 +314,24 @@ export class FeaturevisorInstance {
   private getBucketKey(feature: Feature, attributes: Attributes): BucketKey {
     const featureKey = feature.key;
 
-    const prefix =
-      typeof feature.bucketBy === "string" ? feature.bucketBy : feature.bucketBy.join("_");
+    const attributeKeys =
+      typeof feature.bucketBy === "string" ? [feature.bucketBy] : feature.bucketBy;
 
-    return `${prefix}_${featureKey}`;
+    const bucketKey: AttributeValue[] = [];
+
+    attributeKeys.forEach((attributeKey) => {
+      const attributeValue = attributes[attributeKey];
+
+      if (typeof attributeValue === "undefined") {
+        return;
+      }
+
+      bucketKey.push(attributeValue);
+    });
+
+    bucketKey.push(featureKey);
+
+    return bucketKey.join(this.bucketKeySeparator);
   }
 
   private getBucketValue(feature: Feature, attributes: Attributes): BucketValue {
