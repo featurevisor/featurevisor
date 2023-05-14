@@ -38,4 +38,4 @@ $ tree dist
 2 directories, 2 files
 ```
 
-Next to datafiles, the build process will also generate some additional JSON files that we can learn about in [State files](./docs/state-files).
+Next to datafiles, the build process will also generate some additional JSON files that we can learn about in [State files](/docs/state-files).

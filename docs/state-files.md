@@ -15,4 +15,4 @@ You don't have to deal with them directly ever, but they contain valuable rollou
 
 It is recommended that you keep your state files in the git repository.
 
-We will learn more about it in [Deployment](./deployment).
+We will learn more about it in [Deployment](/docs/deployment).
