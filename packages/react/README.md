@@ -1,8 +1,17 @@
-# @featurevisor/react
+# @featurevisor/react <!-- omit in toc -->
 
 React components and hooks for Featurevisor.
 
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
+
+- [Installation](#installation)
+- [API](#api)
+  - [`FeaturevisorProvider`](#featurevisorprovider)
+  - [`activateFeature`](#activatefeature)
+  - [`useSdk`](#usesdk)
+  - [`useStatus`](#usestatus)
+  - [`useVariation`](#usevariation)
+  - [`useVariable`](#usevariable)
 
 ## Installation
 
@@ -12,7 +21,7 @@ $ npm install --save @featurevisor/react
 
 ## API
 
-### FeaturevisorProvider
+### `FeaturevisorProvider`
 
 React Provider component for setting SDK instance:
 
@@ -34,19 +43,19 @@ function Root() {
 }
 ```
 
-### activateFeature
+### `activateFeature`
 
 > activateFeature(featureName, attributes = {}): VariationValue | undefined
 
 Hook for activate feature.
 
-### useSdk
+### `useSdk`
 
 > useSdk(): FeaturevisorInstance
 
 Hook for getting Featurevisor SDK instance.
 
-### useStatus
+### `useStatus`
 
 > useStatus(): { isReady: boolean }
 
@@ -67,18 +76,18 @@ function App() {
 }
 ```
 
-### useVariation
+### `useVariation`
 
 > useVariation(featureKey, attributes = {}): VariationValue | undefined
 
 Hook for getting variation value.
 
-### useVariable
+### `useVariable`
 
 > useVariable(featureKey, variableKey, attributes = {}): VariableValue | undefined
 
 Hook for getting variable value.
 
-## License
+## License <!-- omit in toc -->
 
 MIT © [Fahad Heylaal](https://fahad19.com)
