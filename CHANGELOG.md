@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/fahad19/featurevisor/compare/v0.21.0...v0.22.0) (2023-05-20)
+
+
+### Features
+
+* state files are now per environment ([#72](https://github.com/fahad19/featurevisor/issues/72)) ([925f4cf](https://github.com/fahad19/featurevisor/commit/925f4cf980134db60c40c2e27259a3d6142f16aa))
+
+
+
+
+
 # [0.21.0](https://github.com/fahad19/featurevisor/compare/v0.20.2...v0.21.0) (2023-05-14)
 
 
