@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/fahad19/featurevisor/compare/v0.22.0...v0.23.0) (2023-05-20)
+
+
+### Features
+
+* Linting based on available keys ([#73](https://github.com/fahad19/featurevisor/issues/73)) ([0dcc95a](https://github.com/fahad19/featurevisor/commit/0dcc95a17e7faae2b17f73c39b48a2a6a25d5891))
+
+
+
+
+
 # [0.22.0](https://github.com/fahad19/featurevisor/compare/v0.21.0...v0.22.0) (2023-05-20)
 
 
