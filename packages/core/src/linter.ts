@@ -112,13 +112,13 @@ export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
   return segmentJoiSchema;
 }
 
-export function getGroupJoiSchema(projectConfig: ProjectConfig) {
+export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
   const groupJoiSchema = Joi.object({
     description: Joi.string().required(),
     slots: Joi.array()
       .items(
         Joi.object({
-          feature: Joi.string(),
+          feature: Joi.string().valid(...availableFeatureKeys),
           percentage: Joi.number().precision(3).min(0).max(100),
         }),
       )
@@ -427,7 +427,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   console.log("\nLinting groups...\n");
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
     const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
-    const groupJoiSchema = getGroupJoiSchema(projectConfig);
+    const groupJoiSchema = getGroupJoiSchema(projectConfig, availableFeatureKeys);
 
     for (const filePath of groupFilePaths) {
       const key = path.basename(filePath, ".yml");
