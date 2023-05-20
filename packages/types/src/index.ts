@@ -9,7 +9,7 @@ export interface Attributes {
 export interface Attribute {
   archived?: boolean; // only available in YAML
   key: AttributeKey;
-  type: AttributeValue;
+  type: string;
   capture?: boolean;
 }
 
@@ -302,6 +302,7 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
+  revision: string;
   variations: {
     // @TODO: use Exclude with Variation?
     value: VariationValue;
@@ -338,7 +339,7 @@ export interface Assertion {
 }
 
 export interface TestFeature {
-  key: string;
+  key: FeatureKey;
   assertions: Assertion[];
 }
 

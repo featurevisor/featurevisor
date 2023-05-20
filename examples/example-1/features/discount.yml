@@ -1,6 +1,7 @@
 description: Enable discount in checkout flow
 tags:
   - all
+  - checkout
 
 defaultVariation: false
 
