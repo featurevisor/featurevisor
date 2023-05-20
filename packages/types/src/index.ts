@@ -9,7 +9,7 @@ export interface Attributes {
 export interface Attribute {
   archived?: boolean; // only available in YAML
   key: AttributeKey;
-  type: AttributeValue; // @TODO: fix it to be `string`
+  type: string;
   capture?: boolean;
 }
 
@@ -339,7 +339,7 @@ export interface Assertion {
 }
 
 export interface TestFeature {
-  key: string; // @TODO: use FeatureKey?
+  key: FeatureKey;
   assertions: Assertion[];
 }
 
