@@ -20,9 +20,14 @@ export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   return attributeJoiSchema;
 }
 
-export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
+export function getConditionsJoiSchema(
+  projectConfig: ProjectConfig,
+  availableAttributeKeys: string[],
+) {
   const plainConditionJoiSchema = Joi.object({
-    attribute: Joi.string().required(),
+    attribute: Joi.string()
+      .valid(...availableAttributeKeys)
+      .required(),
     operator: Joi.string()
       .valid(
         "equals",
@@ -363,6 +368,10 @@ export function printJoiError(e: Joi.ValidationError) {
 export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
   let hasError = false;
 
+  const availableAttributeKeys: string[] = [];
+  const availableSegmentKeys: string[] = [];
+  const availableFeatureKeys: string[] = [];
+
   // lint attributes
   console.log("Linting attributes...\n");
   const attributeFilePaths = getYAMLFiles(path.join(projectConfig.attributesDirectoryPath));
@@ -371,6 +380,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   for (const filePath of attributeFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableAttributeKeys.push(key);
+
     console.log("  =>", key);
 
     try {
@@ -389,12 +400,14 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint segments
   console.log("\nLinting segments...\n");
   const segmentFilePaths = getYAMLFiles(path.join(projectConfig.segmentsDirectoryPath));
-  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig);
+  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
   for (const filePath of segmentFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableSegmentKeys.push(key);
+
     console.log("  =>", key);
 
     try {
@@ -445,6 +458,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   for (const filePath of featureFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableFeatureKeys.push(key);
+
     console.log("  =>", key);
 
     try {

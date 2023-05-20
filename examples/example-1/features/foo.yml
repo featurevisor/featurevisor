@@ -61,9 +61,9 @@ environments:
             - attribute: userId
               operator: equals
               value: "123"
-            - attribute: deviceId
+            - attribute: device
               operator: equals
-              value: "234"
+              value: "mobile"
         variation: true
         variables:
           bar: yoooooo
