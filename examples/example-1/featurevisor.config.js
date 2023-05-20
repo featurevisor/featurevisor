@@ -1,4 +1,4 @@
 module.exports = {
   environments: ["staging", "production"],
-  tags: ["all"],
+  tags: ["all", "checkout"],
 };

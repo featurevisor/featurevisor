@@ -16,8 +16,6 @@ import {
   Attribute,
   GroupSegment,
   Condition,
-  ExistingFeatures,
-  ExistingFeature,
   ExistingState,
   ParsedFeature,
   FeatureKey,
@@ -55,28 +53,13 @@ export function getDatafilePath(
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
   environment: EnvironmentKey,
-  tag: string,
 ): string {
-  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}-${tag}.json`);
+  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
 }
 
-export function buildDatafile(
-  projectConfig: ProjectConfig,
-  options: BuildOptions,
-): DatafileContent {
-  const datafileContent: DatafileContent = {
-    schemaVersion: options.schemaVersion,
-    revision: options.revision,
-    attributes: [],
-    segments: [],
-    features: [],
-  };
-
-  const segmentKeysUsedByTag = new Set<SegmentKey>();
-  const attributeKeysUsedByTag = new Set<AttributeKey>();
+export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, Range[]> {
   const featureRanges = new Map<FeatureKey, Range[]>();
 
-  // groups
   const groups: Group[] = [];
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
     const groupFiles = fs
@@ -96,7 +79,6 @@ export function buildDatafile(
       let accumulatedPercentage = 0;
       parsedGroup.slots.forEach(function (slot, slotIndex) {
         const isFirstSlot = slotIndex === 0;
-        const isLastSlot = slotIndex === parsedGroup.slots.length - 1;
 
         if (slot.feature) {
           const featureKey = slot.feature;
@@ -118,26 +100,29 @@ export function buildDatafile(
     }
   }
 
+  return featureRanges;
+}
+
+export function buildDatafile(
+  projectConfig: ProjectConfig,
+  options: BuildOptions,
+  existingState: ExistingState,
+): DatafileContent {
+  const datafileContent: DatafileContent = {
+    schemaVersion: options.schemaVersion,
+    revision: options.revision,
+    attributes: [],
+    segments: [],
+    features: [],
+  };
+
+  const segmentKeysUsedByTag = new Set<SegmentKey>();
+  const attributeKeysUsedByTag = new Set<AttributeKey>();
+  const featureRanges = getFeatureRanges(projectConfig);
+
   // features
   const features: Feature[] = [];
   const featuresDirectory = projectConfig.featuresDirectoryPath;
-
-  let existingState = {} as ExistingState;
-  let existingFeatures = {} as ExistingFeatures;
-
-  const existingStateFilePath = getExistingStateFilePath(
-    projectConfig,
-    options.environment,
-    options.tag,
-  );
-
-  if (fs.existsSync(existingStateFilePath)) {
-    existingState = JSON.parse(fs.readFileSync(existingStateFilePath, "utf8")) as ExistingState;
-
-    if (existingState && existingState.features) {
-      existingFeatures = existingState.features;
-    }
-  }
 
   if (fs.existsSync(featuresDirectory)) {
     const featureFiles = fs.readdirSync(featuresDirectory).filter((f) => f.endsWith(".yml"));
@@ -223,12 +208,57 @@ export function buildDatafile(
 
           return mappedVariation;
         }),
-        traffic: getTraffic(
-          parsedFeature.variations,
-          parsedFeature.environments[options.environment].rules,
-          existingFeatures && existingFeatures[featureKey],
-          featureRanges.get(featureKey) || [],
-        ),
+        traffic:
+          existingState.features[featureKey] &&
+          existingState.features[featureKey].revision === options.revision
+            ? // use as exists in state, since it's already been allocated
+              parsedFeature.environments[options.environment].rules.map((rule) => {
+                return {
+                  key: rule.key,
+                  segments:
+                    typeof rule.segments !== "string"
+                      ? JSON.stringify(rule.segments)
+                      : rule.segments,
+                  percentage: rule.percentage, // @TODO: remove this in next breaking semver
+                  variation: rule.variation,
+                  variables: rule.variables,
+                  allocation:
+                    existingState.features[featureKey].traffic.find((t) => t.key === rule.key)
+                      ?.allocation || [],
+                };
+              })
+            : // generate new traffic allocation
+              getTraffic(
+                parsedFeature.variations,
+                parsedFeature.environments[options.environment].rules,
+                existingState.features[featureKey],
+                featureRanges.get(featureKey) || [],
+              ),
+      };
+
+      // update state in memory, so that next datafile build can use it (in case it contains the same feature)
+      existingState.features[featureKey] = {
+        revision: options.revision,
+        variations: feature.variations.map((v: Variation) => {
+          return {
+            value: v.value,
+            weight: v.weight || 0,
+          };
+        }),
+        traffic: feature.traffic.map((t: Traffic) => {
+          return {
+            key: t.key,
+            percentage: t.percentage, // @TODO: remove this in next breaking semver
+            allocation: t.allocation.map((a: Allocation) => {
+              return {
+                variation: a.variation,
+                percentage: a.percentage, // @TODO: remove this in next breaking semver
+                range: a.range,
+              };
+            }),
+          };
+        }),
+        ranges: featureRanges.get(feature.key) || undefined,
       };
 
       if (parsedFeature.variablesSchema) {
@@ -317,58 +347,6 @@ export function buildDatafile(
   datafileContent.segments = segments;
   datafileContent.features = features;
 
-  // write
-  const outputEnvironmentDirPath = path.join(
-    projectConfig.outputDirectoryPath,
-    options.environment,
-  );
-  mkdirp.sync(outputEnvironmentDirPath);
-
-  const outputFilePath = getDatafilePath(projectConfig, options.environment, options.tag);
-  fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
-
-  // write to state directory
-  if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
-    mkdirp.sync(projectConfig.stateDirectoryPath);
-  }
-
-  const updatedExistingFeatures = datafileContent.features.reduce((acc, feature) => {
-    const item: ExistingFeature = {
-      variations: feature.variations.map((v: Variation) => {
-        return {
-          value: v.value,
-          weight: v.weight || 0,
-        };
-      }),
-      traffic: feature.traffic.map((t: Traffic) => {
-        return {
-          key: t.key,
-          percentage: t.percentage, // @TODO: remove this in next breaking semver
-          allocation: t.allocation.map((a: Allocation) => {
-            return {
-              variation: a.variation,
-              percentage: a.percentage, // @TODO: remove this in next breaking semver
-              range: a.range,
-            };
-          }),
-        };
-      }),
-      ranges: featureRanges.get(feature.key) || undefined,
-    };
-
-    acc[feature.key] = item;
-
-    return acc;
-  }, existingFeatures);
-
-  const updatedState: ExistingState = {
-    features: updatedExistingFeatures,
-  };
-
-  fs.writeFileSync(existingStateFilePath, JSON.stringify(updatedState));
-
-  console.log(`     File generated: ${outputFilePath}`);
-
   return datafileContent;
 }
 
@@ -381,14 +359,39 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);
 
+    const existingStateFilePath = getExistingStateFilePath(projectConfig, environment);
+    const existingState: ExistingState = fs.existsSync(existingStateFilePath)
+      ? require(existingStateFilePath)
+      : {
+          features: {},
+        };
+
     for (const tag of tags) {
       console.log(`  => Tag: ${tag}`);
-      buildDatafile(projectConfig, {
-        schemaVersion: SCHEMA_VERSION,
-        revision: pkg.version,
-        environment: environment,
-        tag: tag,
-      });
+      const datafileContent = buildDatafile(
+        projectConfig,
+        {
+          schemaVersion: SCHEMA_VERSION,
+          revision: pkg.version,
+          environment: environment,
+          tag: tag,
+        },
+        existingState,
+      );
+
+      // write datafile for environment/tag
+      const outputEnvironmentDirPath = path.join(projectConfig.outputDirectoryPath, environment);
+      mkdirp.sync(outputEnvironmentDirPath);
+
+      const outputFilePath = getDatafilePath(projectConfig, environment, tag);
+      fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
+      console.log(`     File generated: ${outputFilePath}`);
     }
+
+    // write state for environment
+    if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
+      mkdirp.sync(projectConfig.stateDirectoryPath);
+    }
+    fs.writeFileSync(existingStateFilePath, JSON.stringify(existingState));
   }
 }

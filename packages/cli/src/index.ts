@@ -76,7 +76,12 @@ async function main() {
       handler: function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
-        buildProject(rootDirectoryPath, projectConfig);
+        try {
+          buildProject(rootDirectoryPath, projectConfig);
+        } catch (e) {
+          console.error(e);
+          process.exit(1);
+        }
       },
     })
     .example("$0 build", "build datafiles")
