@@ -31,16 +31,20 @@ variations:
       - key: color
         value: red
         overrides:
-          - segments: germany
+          - segments:
+              - germany
             value: yellow
-          - segments: japan
+          - segments:
+              - switzerland
             value: white
       - key: sections
         value: ["home", "about", "contact"]
         overrides:
-          - segments: germany
+          - segments:
+              - germany
             value: ["home", "about", "contact", "imprint"]
-          - segments: netherlands
+          - segments:
+              - netherlands
             value: ["home", "about", "contact", "bitterballen"]
 
 environments:

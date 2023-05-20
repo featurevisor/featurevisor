@@ -166,7 +166,11 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeature
   return groupJoiSchema;
 }
 
-export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
+export function getFeatureJoiSchema(
+  projectConfig: ProjectConfig,
+  conditionsJoiSchema,
+  availableSegmentKeys: string[],
+) {
   const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
   const variableValueJoiSchema = Joi.alternatives()
     .try(
@@ -192,7 +196,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
     )
     .allow("");
 
-  const plainGroupSegment = Joi.string();
+  const plainGroupSegment = Joi.string().valid("*", ...availableSegmentKeys);
 
   const andOrNotGroupSegment = Joi.alternatives()
     .try(
@@ -453,7 +457,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint features
   console.log("\nLinting features...\n");
   const featureFilePaths = getYAMLFiles(path.join(projectConfig.featuresDirectoryPath));
-  const featureJoiSchema = getFeatureJoiSchema(projectConfig, conditionsJoiSchema);
+  const featureJoiSchema = getFeatureJoiSchema(
+    projectConfig,
+    conditionsJoiSchema,
+    availableSegmentKeys,
+  );
 
   for (const filePath of featureFilePaths) {
     const key = path.basename(filePath, ".yml");
