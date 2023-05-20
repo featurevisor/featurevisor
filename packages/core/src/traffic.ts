@@ -95,7 +95,7 @@ export function getTraffic(
     const needsRebucketing =
       !existingTrafficRule || // new rule
       variationsChanged || // variations changed
-      rulePercentageDiff <= 0 || // percentage decreased
+      rulePercentageDiff < 0 || // percentage decreased
       rangesChanged; // belongs to a group, and group ranges changed
 
     let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));

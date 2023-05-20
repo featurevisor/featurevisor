@@ -208,32 +208,12 @@ export function buildDatafile(
 
           return mappedVariation;
         }),
-        traffic:
-          existingState.features[featureKey] &&
-          existingState.features[featureKey].revision === options.revision
-            ? // use as exists in state, since it's already been allocated
-              parsedFeature.environments[options.environment].rules.map((rule) => {
-                return {
-                  key: rule.key,
-                  segments:
-                    typeof rule.segments !== "string"
-                      ? JSON.stringify(rule.segments)
-                      : rule.segments,
-                  percentage: rule.percentage, // @TODO: remove this in next breaking semver
-                  variation: rule.variation,
-                  variables: rule.variables,
-                  allocation:
-                    existingState.features[featureKey].traffic.find((t) => t.key === rule.key)
-                      ?.allocation || [],
-                };
-              })
-            : // generate new traffic allocation
-              getTraffic(
-                parsedFeature.variations,
-                parsedFeature.environments[options.environment].rules,
-                existingState.features[featureKey],
-                featureRanges.get(featureKey) || [],
-              ),
+        traffic: getTraffic(
+          parsedFeature.variations,
+          parsedFeature.environments[options.environment].rules,
+          existingState.features[featureKey],
+          featureRanges.get(featureKey) || [],
+        ),
       };
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
