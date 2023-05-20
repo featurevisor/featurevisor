@@ -384,7 +384,7 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
       mkdirp.sync(outputEnvironmentDirPath);
 
       const outputFilePath = getDatafilePath(projectConfig, environment, tag);
-      fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
+      fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent, null, 2));
       console.log(`     File generated: ${outputFilePath}`);
     }
 
@@ -392,6 +392,6 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
     if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
       mkdirp.sync(projectConfig.stateDirectoryPath);
     }
-    fs.writeFileSync(existingStateFilePath, JSON.stringify(existingState));
+    fs.writeFileSync(existingStateFilePath, JSON.stringify(existingState, null, 2));
   }
 }
