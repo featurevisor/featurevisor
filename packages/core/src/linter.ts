@@ -20,9 +20,14 @@ export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   return attributeJoiSchema;
 }
 
-export function getConditionsJoiSchema(projectConfig: ProjectConfig) {
+export function getConditionsJoiSchema(
+  projectConfig: ProjectConfig,
+  availableAttributeKeys: string[],
+) {
   const plainConditionJoiSchema = Joi.object({
-    attribute: Joi.string().required(),
+    attribute: Joi.string()
+      .valid(...availableAttributeKeys)
+      .required(),
     operator: Joi.string()
       .valid(
         "equals",
@@ -107,13 +112,13 @@ export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
   return segmentJoiSchema;
 }
 
-export function getGroupJoiSchema(projectConfig: ProjectConfig) {
+export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
   const groupJoiSchema = Joi.object({
     description: Joi.string().required(),
     slots: Joi.array()
       .items(
         Joi.object({
-          feature: Joi.string(),
+          feature: Joi.string().valid(...availableFeatureKeys),
           percentage: Joi.number().precision(3).min(0).max(100),
         }),
       )
@@ -161,7 +166,11 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig) {
   return groupJoiSchema;
 }
 
-export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiSchema) {
+export function getFeatureJoiSchema(
+  projectConfig: ProjectConfig,
+  conditionsJoiSchema,
+  availableSegmentKeys: string[],
+) {
   const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
   const variableValueJoiSchema = Joi.alternatives()
     .try(
@@ -187,7 +196,7 @@ export function getFeatureJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
     )
     .allow("");
 
-  const plainGroupSegment = Joi.string();
+  const plainGroupSegment = Joi.string().valid("*", ...availableSegmentKeys);
 
   const andOrNotGroupSegment = Joi.alternatives()
     .try(
@@ -363,6 +372,10 @@ export function printJoiError(e: Joi.ValidationError) {
 export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
   let hasError = false;
 
+  const availableAttributeKeys: string[] = [];
+  const availableSegmentKeys: string[] = [];
+  const availableFeatureKeys: string[] = [];
+
   // lint attributes
   console.log("Linting attributes...\n");
   const attributeFilePaths = getYAMLFiles(path.join(projectConfig.attributesDirectoryPath));
@@ -371,6 +384,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   for (const filePath of attributeFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableAttributeKeys.push(key);
+
     console.log("  =>", key);
 
     try {
@@ -389,12 +404,14 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint segments
   console.log("\nLinting segments...\n");
   const segmentFilePaths = getYAMLFiles(path.join(projectConfig.segmentsDirectoryPath));
-  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig);
+  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
   for (const filePath of segmentFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableSegmentKeys.push(key);
+
     console.log("  =>", key);
 
     try {
@@ -414,7 +431,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   console.log("\nLinting groups...\n");
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
     const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
-    const groupJoiSchema = getGroupJoiSchema(projectConfig);
+    const groupJoiSchema = getGroupJoiSchema(projectConfig, availableFeatureKeys);
 
     for (const filePath of groupFilePaths) {
       const key = path.basename(filePath, ".yml");
@@ -440,11 +457,17 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint features
   console.log("\nLinting features...\n");
   const featureFilePaths = getYAMLFiles(path.join(projectConfig.featuresDirectoryPath));
-  const featureJoiSchema = getFeatureJoiSchema(projectConfig, conditionsJoiSchema);
+  const featureJoiSchema = getFeatureJoiSchema(
+    projectConfig,
+    conditionsJoiSchema,
+    availableSegmentKeys,
+  );
 
   for (const filePath of featureFilePaths) {
     const key = path.basename(filePath, ".yml");
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    availableFeatureKeys.push(key);
+
     console.log("  =>", key);
 
     try {
