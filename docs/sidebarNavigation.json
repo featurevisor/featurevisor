@@ -39,6 +39,10 @@
     "links": [{ "title": "Bucketing", "href": "/docs/bucketing" }]
   },
   {
+    "title": "Tracking guides",
+    "links": [{ "title": "Google Tag Manager", "href": "/docs/tracking/google-tag-manager" }]
+  },
+  {
     "title": "Packages",
     "links": [
       {
