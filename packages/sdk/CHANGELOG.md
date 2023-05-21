@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.24.0](https://github.com/fahad19/featurevisor/compare/v0.23.0...v0.24.0) (2023-05-21)
+
+
+### Features
+
+* ranges in datafiles as tuples ([#74](https://github.com/fahad19/featurevisor/issues/74)) ([07a3d92](https://github.com/fahad19/featurevisor/commit/07a3d9292f4038ebd68338bb905a34b2f13d36d9))
+
+
+
+
+
 # [0.23.0](https://github.com/fahad19/featurevisor/compare/v0.22.0...v0.23.0) (2023-05-20)
 
 **Note:** Version bump only for package @featurevisor/sdk
