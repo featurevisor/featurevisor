@@ -1,5 +1,13 @@
-import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
-import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import {
+  Rule,
+  ExistingFeature,
+  Traffic,
+  Variation,
+  Range,
+  Percentage,
+  RangeTuple,
+} from "@featurevisor/types";
+import { MAX_BUCKETED_NUMBER, getStartEndFromRange } from "@featurevisor/sdk";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
@@ -62,7 +70,7 @@ export function getTraffic(
 
   // @TODO: may be pass from builder directly?
   const availableRanges =
-    ranges && ranges.length > 0 ? ranges : [{ start: 0, end: MAX_BUCKETED_NUMBER }];
+    ranges && ranges.length > 0 ? ranges : ([[0, MAX_BUCKETED_NUMBER]] as RangeTuple[]);
 
   parsedRules.forEach(function (parsedRule) {
     const rulePercentage = parsedRule.percentage; // 0 - 100
@@ -113,10 +121,7 @@ export function getTraffic(
         const result = {
           variation,
           percentage, // @TODO remove it in next breaking semver
-          range: range || {
-            start: lastEnd,
-            end: percentage,
-          },
+          range: range ? getStartEndFromRange(range) : ([lastEnd, percentage] as RangeTuple),
         };
 
         existingSum += percentage || 0;

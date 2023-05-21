@@ -6,12 +6,25 @@ import {
   Variation,
   VariableValue,
   Force,
+  RangeObject,
+  RangeTuple,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
 import { VariableSchema } from "@featurevisor/types/src";
 import { Logger } from "./logger";
+
+// @TODO: remove this function in next breaking semver
+export function getStartEndFromRange(range: unknown): RangeTuple {
+  if (Array.isArray(range)) {
+    return range as RangeTuple;
+  }
+
+  const rangeObject = range as RangeObject;
+
+  return [rangeObject.start, rangeObject.end];
+}
 
 /**
  * Traffic
@@ -25,11 +38,9 @@ export function getMatchedAllocation(
     traffic.allocation.length > 0 && typeof traffic.allocation[0].range === "undefined"; // @TODO: remove it in next breaking semver
 
   for (const allocation of traffic.allocation) {
-    if (
-      allocation.range &&
-      allocation.range.start <= bucketValue &&
-      allocation.range.end >= bucketValue
-    ) {
+    const [start, end] = getStartEndFromRange(allocation.range);
+
+    if (allocation.range && start <= bucketValue && end >= bucketValue) {
       return allocation;
     }
 

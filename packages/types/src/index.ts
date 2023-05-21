@@ -199,10 +199,15 @@ export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three 
  */
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
-export interface Range {
+// @TODO: remove this in next breaking semver
+export interface RangeObject {
   start: Percentage; // 0 to 100k
   end: Percentage; // 0 to 100k
 }
+
+export type RangeTuple = [Percentage, Percentage]; // 0 to 100k
+
+export type Range = RangeObject | RangeTuple;
 
 export interface Allocation {
   variation: VariationValue;

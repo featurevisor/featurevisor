@@ -1,3 +1,4 @@
+import { RangeTuple } from "@featurevisor/types";
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
 describe("core: allocator", function () {
@@ -7,7 +8,7 @@ describe("core: allocator", function () {
   });
 
   test("fills a single range fully", function () {
-    const availableRanges = [{ start: 0, end: 100 }];
+    const availableRanges = [[0, 100]] as RangeTuple[];
     const result = getAllocation(availableRanges, 100);
 
     expect(result).toEqual(availableRanges);
@@ -17,20 +18,20 @@ describe("core: allocator", function () {
   });
 
   test("fills a single range partially", function () {
-    const availableRanges = [{ start: 0, end: 100 }];
+    const availableRanges = [[0, 100]] as RangeTuple[];
     const result = getAllocation(availableRanges, 80);
 
-    expect(result).toEqual([{ start: 0, end: 80 }]);
+    expect(result).toEqual([[0, 80]]);
 
     const updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, 80);
-    expect(updatedAvailableRanges).toEqual([{ start: 80, end: 100 }]);
+    expect(updatedAvailableRanges).toEqual([[80, 100]]);
   });
 
   test("fills multiple ranges fully", function () {
     const availableRanges = [
-      { start: 0, end: 50 },
-      { start: 50, end: 100 },
-    ];
+      [0, 50],
+      [50, 100],
+    ] as RangeTuple[];
     const result = getAllocation(availableRanges, 100);
 
     expect(result).toEqual(availableRanges);
@@ -41,9 +42,9 @@ describe("core: allocator", function () {
 
   test("fills multiple ranges with breaks in between fully", function () {
     const availableRanges = [
-      { start: 0, end: 40 },
-      { start: 60, end: 100 },
-    ];
+      [0, 40],
+      [60, 100],
+    ] as RangeTuple[];
     const result = getAllocation(availableRanges, 80);
 
     expect(result).toEqual(availableRanges);
@@ -54,51 +55,51 @@ describe("core: allocator", function () {
 
   test("fills multiple ranges partially", function () {
     const availableRanges = [
-      { start: 0, end: 50 },
-      { start: 50, end: 100 },
-    ];
+      [0, 50],
+      [50, 100],
+    ] as RangeTuple[];
     const result = getAllocation(availableRanges, 80);
 
     expect(result).toEqual([
-      { start: 0, end: 50 },
-      { start: 50, end: 80 },
+      [0, 50],
+      [50, 80],
     ]);
 
     const updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, 80);
-    expect(updatedAvailableRanges).toEqual([{ start: 80, end: 100 }]);
+    expect(updatedAvailableRanges).toEqual([[80, 100]]);
   });
 
   test("fills multiple ranges with breaks in between partially", function () {
     const availableRanges = [
-      { start: 0, end: 40 },
-      { start: 60, end: 100 },
-    ];
+      [0, 40],
+      [60, 100],
+    ] as RangeTuple[];
     const result = getAllocation(availableRanges, 50);
 
     expect(result).toEqual([
-      { start: 0, end: 40 },
-      { start: 60, end: 70 },
+      [0, 40],
+      [60, 70],
     ]);
 
     const updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, 50);
-    expect(updatedAvailableRanges).toEqual([{ start: 70, end: 100 }]);
+    expect(updatedAvailableRanges).toEqual([[70, 100]]);
   });
 
   test("fills multiple ranges with breaks in between partially, with 3 range items", function () {
     const availableRanges = [
-      { start: 0, end: 30 },
-      { start: 60, end: 70 },
-      { start: 90, end: 95 },
-    ];
+      [0, 30],
+      [60, 70],
+      [90, 95],
+    ] as RangeTuple[];
     const result = getAllocation(availableRanges, 42);
 
     expect(result).toEqual([
-      { start: 0, end: 30 },
-      { start: 60, end: 70 },
-      { start: 90, end: 92 },
+      [0, 30],
+      [60, 70],
+      [90, 92],
     ]);
 
     const updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, 42);
-    expect(updatedAvailableRanges).toEqual([{ start: 92, end: 95 }]);
+    expect(updatedAvailableRanges).toEqual([[92, 95]]);
   });
 });
