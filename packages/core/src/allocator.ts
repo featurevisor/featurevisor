@@ -1,4 +1,5 @@
 import { Range, Percentage } from "@featurevisor/types";
+import { getStartEndFromRange } from "@featurevisor/sdk";
 
 export function getAllocation(availableRanges: Range[], fill: Percentage): Range[] {
   const result: Range[] = [];
@@ -7,11 +8,10 @@ export function getAllocation(availableRanges: Range[], fill: Percentage): Range
   let i = 0;
   while (remaining > 0 && i < availableRanges.length) {
     const range = availableRanges[i];
-    const rangeFill = Math.min(remaining, range.end - range.start);
-    result.push({
-      start: range.start,
-      end: range.start + rangeFill,
-    });
+    const [start, end] = getStartEndFromRange(range);
+
+    const rangeFill = Math.min(remaining, end - start);
+    result.push([start, start + rangeFill]);
     remaining -= rangeFill;
     i++;
   }
@@ -29,12 +29,10 @@ export function getUpdatedAvailableRangesAfterFilling(
   let i = 0;
   while (remaining > 0 && i < availableRanges.length) {
     const range = availableRanges[i];
-    const rangeFill = Math.min(remaining, range.end - range.start);
-    if (rangeFill < range.end - range.start) {
-      result.push({
-        start: range.start + rangeFill,
-        end: range.end,
-      });
+    const [start, end] = getStartEndFromRange(range);
+    const rangeFill = Math.min(remaining, end - start);
+    if (rangeFill < end - start) {
+      result.push([start + rangeFill, end]);
     }
     remaining -= rangeFill;
     i++;

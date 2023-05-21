@@ -87,10 +87,7 @@ export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, 
           const start = isFirstSlot ? accumulatedPercentage : accumulatedPercentage + 1;
           const end = accumulatedPercentage + slot.percentage * 1000;
 
-          featureRangesForFeature.push({
-            start,
-            end,
-          });
+          featureRangesForFeature.push([start, end]);
 
           featureRanges.set(slot.feature, featureRangesForFeature);
         }
