@@ -41,10 +41,7 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 80000,
-            range: {
-              start: 0,
-              end: 80000,
-            },
+            range: [0, 80000],
           },
         ],
       },
@@ -87,18 +84,12 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 40000,
-            range: {
-              start: 0,
-              end: 40000,
-            },
+            range: [0, 40000],
           },
           {
             variation: "off",
             percentage: 40000,
-            range: {
-              start: 40000,
-              end: 80000,
-            },
+            range: [40000, 80000],
           },
         ],
       },
@@ -145,26 +136,17 @@ describe("core: Traffic", function () {
           {
             variation: "yes",
             percentage: 33330,
-            range: {
-              start: 0,
-              end: 33330,
-            },
+            range: [0, 33330],
           },
           {
             variation: "no",
             percentage: 33330,
-            range: {
-              start: 33330,
-              end: 66660,
-            },
+            range: [33330, 66660],
           },
           {
             variation: "maybe",
             percentage: 33340,
-            range: {
-              start: 66660,
-              end: 100000,
-            },
+            range: [66660, 100000],
           },
         ],
       },
@@ -215,18 +197,12 @@ describe("core: Traffic", function () {
               {
                 variation: "on",
                 percentage: 40000,
-                range: {
-                  start: 0,
-                  end: 40000,
-                },
+                range: [0, 40000],
               },
               {
                 variation: "off",
                 percentage: 40000,
-                range: {
-                  start: 40000,
-                  end: 80000,
-                },
+                range: [40000, 80000],
               },
             ],
           },
@@ -244,36 +220,24 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 40000,
-            range: {
-              start: 0,
-              end: 40000,
-            },
+            range: [0, 40000],
           },
           {
             variation: "off",
             percentage: 40000,
-            range: {
-              start: 40000,
-              end: 80000,
-            },
+            range: [40000, 80000],
           },
 
           // new
           {
             variation: "on",
             percentage: 5000,
-            range: {
-              start: 80000,
-              end: 85000,
-            },
+            range: [80000, 85000],
           },
           {
             variation: "off",
             percentage: 5000,
-            range: {
-              start: 85000,
-              end: 90000,
-            },
+            range: [85000, 90000],
           },
         ],
       },
@@ -324,18 +288,12 @@ describe("core: Traffic", function () {
               {
                 variation: "on",
                 percentage: 40000,
-                range: {
-                  start: 0,
-                  end: 40000,
-                },
+                range: [0, 40000],
               },
               {
                 variation: "off",
                 percentage: 40000,
-                range: {
-                  start: 40000,
-                  end: 80000,
-                },
+                range: [40000, 80000],
               },
             ],
           },
@@ -352,18 +310,12 @@ describe("core: Traffic", function () {
           {
             variation: "on",
             percentage: 35000,
-            range: {
-              start: 0,
-              end: 35000,
-            },
+            range: [0, 35000],
           },
           {
             variation: "off",
             percentage: 35000,
-            range: {
-              start: 35000,
-              end: 70000,
-            },
+            range: [35000, 70000],
           },
         ],
       },
@@ -418,18 +370,12 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 40000,
-                range: {
-                  start: 0,
-                  end: 40000,
-                },
+                range: [0, 40000],
               },
               {
                 variation: "b",
                 percentage: 40000,
-                range: {
-                  start: 40000,
-                  end: 80000,
-                },
+                range: [40000, 80000],
               },
             ],
           },
@@ -446,26 +392,17 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 29997,
-            range: {
-              start: 0,
-              end: 29997,
-            },
+            range: [0, 29997],
           },
           {
             variation: "b",
             percentage: 29997,
-            range: {
-              start: 29997,
-              end: 59994,
-            },
+            range: [29997, 59994],
           },
           {
             variation: "c",
             percentage: 30006,
-            range: {
-              start: 59994,
-              end: 90000,
-            },
+            range: [59994, 90000],
           },
         ],
       },
@@ -524,18 +461,12 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 40000,
-                range: {
-                  start: 0,
-                  end: 40000,
-                },
+                range: [0, 40000],
               },
               {
                 variation: "b",
                 percentage: 40000,
-                range: {
-                  start: 40000,
-                  end: 80000,
-                },
+                range: [40000, 80000],
               },
             ],
           },
@@ -552,34 +483,22 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 25000,
-            range: {
-              start: 0,
-              end: 25000,
-            },
+            range: [0, 25000],
           },
           {
             variation: "b",
             percentage: 25000,
-            range: {
-              start: 25000,
-              end: 50000,
-            },
+            range: [25000, 50000],
           },
           {
             variation: "c",
             percentage: 25000,
-            range: {
-              start: 50000,
-              end: 75000,
-            },
+            range: [50000, 75000],
           },
           {
             variation: "d",
             percentage: 25000,
-            range: {
-              start: 75000,
-              end: 100000,
-            },
+            range: [75000, 100000],
           },
         ],
       },
@@ -638,34 +557,22 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 25000,
-                range: {
-                  start: 0,
-                  end: 25000,
-                },
+                range: [0, 25000],
               },
               {
                 variation: "b",
                 percentage: 25000,
-                range: {
-                  start: 25000,
-                  end: 50000,
-                },
+                range: [25000, 50000],
               },
               {
                 variation: "c",
                 percentage: 25000,
-                range: {
-                  start: 50000,
-                  end: 75000,
-                },
+                range: [50000, 75000],
               },
               {
                 variation: "d",
                 percentage: 25000,
-                range: {
-                  start: 75000,
-                  end: 100000,
-                },
+                range: [75000, 100000],
               },
             ],
           },
@@ -682,18 +589,12 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 50000,
-            range: {
-              start: 0,
-              end: 50000,
-            },
+            range: [0, 50000],
           },
           {
             variation: "b",
             percentage: 50000,
-            range: {
-              start: 50000,
-              end: 100000,
-            },
+            range: [50000, 100000],
           },
         ],
       },
@@ -752,34 +653,22 @@ describe("core: Traffic", function () {
               {
                 variation: "a",
                 percentage: 25000,
-                range: {
-                  start: 0,
-                  end: 25000,
-                },
+                range: [0, 25000],
               },
               {
                 variation: "b",
                 percentage: 25000,
-                range: {
-                  start: 25000,
-                  end: 50000,
-                },
+                range: [25000, 50000],
               },
               {
                 variation: "c",
                 percentage: 25000,
-                range: {
-                  start: 50000,
-                  end: 75000,
-                },
+                range: [50000, 75000],
               },
               {
                 variation: "d",
                 percentage: 25000,
-                range: {
-                  start: 75000,
-                  end: 100000,
-                },
+                range: [75000, 100000],
               },
             ],
           },
@@ -796,18 +685,12 @@ describe("core: Traffic", function () {
           {
             variation: "a",
             percentage: 40000,
-            range: {
-              start: 0,
-              end: 40000,
-            },
+            range: [0, 40000],
           },
           {
             variation: "b",
             percentage: 40000,
-            range: {
-              start: 40000,
-              end: 80000,
-            },
+            range: [40000, 80000],
           },
         ],
       },
