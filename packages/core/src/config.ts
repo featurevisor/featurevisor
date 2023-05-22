@@ -18,6 +18,9 @@ export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 
+export const DEFAULT_PRETTY_STATE = false;
+export const DEFAULT_PRETTY_DATAFILE = false;
+
 export const SCHEMA_VERSION = "1";
 
 export interface ProjectConfig {
@@ -31,7 +34,8 @@ export interface ProjectConfig {
   environments: string[];
   tags: string[];
   defaultBucketBy: BucketBy;
-
+  prettyState: boolean;
+  prettyDatafile: boolean;
   siteExportDirectoryPath: string;
 }
 
@@ -50,6 +54,9 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     environments: DEFAULT_ENVIRONMENTS,
     tags: DEFAULT_TAGS,
     defaultBucketBy: "userId",
+
+    prettyState: DEFAULT_PRETTY_STATE,
+    prettyDatafile: DEFAULT_PRETTY_DATAFILE,
 
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
   };
