@@ -307,7 +307,6 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
-  revision: string;
   variations: {
     // @TODO: use Exclude with Variation?
     value: VariationValue;

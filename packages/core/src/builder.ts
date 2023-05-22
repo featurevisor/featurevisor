@@ -215,7 +215,6 @@ export function buildDatafile(
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
       existingState.features[featureKey] = {
-        revision: options.revision,
         variations: feature.variations.map((v: Variation) => {
           return {
             value: v.value,
