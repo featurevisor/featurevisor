@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.25.0](https://github.com/fahad19/featurevisor/compare/v0.24.0...v0.25.0) (2023-05-22)
+
+
+### Features
+
+* Pretty JSON ([#75](https://github.com/fahad19/featurevisor/issues/75)) ([322bc3a](https://github.com/fahad19/featurevisor/commit/322bc3a7f1676cf32e19f693d5736dc8f1db8d5a))
+
+
+
+
+
 # [0.24.0](https://github.com/fahad19/featurevisor/compare/v0.23.0...v0.24.0) (2023-05-21)
 
 
