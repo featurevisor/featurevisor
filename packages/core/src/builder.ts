@@ -215,7 +215,6 @@ export function buildDatafile(
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
       existingState.features[featureKey] = {
-        revision: options.revision,
         variations: feature.variations.map((v: Variation) => {
           return {
             value: v.value,
@@ -361,7 +360,12 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
       mkdirp.sync(outputEnvironmentDirPath);
 
       const outputFilePath = getDatafilePath(projectConfig, environment, tag);
-      fs.writeFileSync(outputFilePath, JSON.stringify(datafileContent));
+      fs.writeFileSync(
+        outputFilePath,
+        projectConfig.prettyDatafile
+          ? JSON.stringify(datafileContent, null, 2)
+          : JSON.stringify(datafileContent),
+      );
       console.log(`     File generated: ${outputFilePath}`);
     }
 
@@ -369,6 +373,11 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
     if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
       mkdirp.sync(projectConfig.stateDirectoryPath);
     }
-    fs.writeFileSync(existingStateFilePath, JSON.stringify(existingState));
+    fs.writeFileSync(
+      existingStateFilePath,
+      projectConfig.prettyState
+        ? JSON.stringify(existingState, null, 2)
+        : JSON.stringify(existingState),
+    );
   }
 }

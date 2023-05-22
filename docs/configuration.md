@@ -61,3 +61,15 @@ Read more in [State files](/docs/state-files).
 ### `defaultBucketBy`
 
 Default value for the `bucketBy` property in your project. Defaults to `userId`.
+
+### `prettyState`
+
+Set to `true` or `false` to enable or disable pretty-printing of state files.
+
+Defaults to `false`.
+
+### `prettyDatafile`
+
+Set to `true` or `false` to enable or disable pretty-printing of datafiles.
+
+Defaults to `false`.

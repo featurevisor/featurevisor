@@ -178,7 +178,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "on",
@@ -269,7 +268,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "on",
@@ -351,7 +349,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "a",
@@ -442,7 +439,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "a",
@@ -530,7 +526,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "a",
@@ -626,7 +621,6 @@ describe("core: Traffic", function () {
 
       // existing feature from previous release
       {
-        revision: "1",
         variations: [
           {
             value: "a",
