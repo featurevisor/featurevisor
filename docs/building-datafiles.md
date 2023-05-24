@@ -39,3 +39,13 @@ $ tree dist
 ```
 
 Next to datafiles, the build process will also generate some additional JSON files that we can learn about in [State files](/docs/state-files).
+
+## Revision
+
+By default, Featurevisor will use the `version` as exists in `package.json` of the project as the `revision` value in generated datafiles.
+
+You can customize the `revision` value in datafiles by passing a `--revision` flag when building:
+
+```
+$ featurevisor build --revision 1.2.3
+```

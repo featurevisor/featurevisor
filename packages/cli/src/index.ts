@@ -12,6 +12,7 @@ import {
   initProject,
   exportSite,
   serveSite,
+  BuildCLIOptions,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason, p) => {
@@ -77,7 +78,7 @@ async function main() {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          buildProject(rootDirectoryPath, projectConfig);
+          buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
         } catch (e) {
           console.error(e);
           process.exit(1);
