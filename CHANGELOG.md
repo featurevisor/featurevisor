@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/fahad19/featurevisor/compare/v0.25.0...v0.26.0) (2023-05-24)
+
+
+### Features
+
+* allow tags to be lower cased and alphanumeric only ([#76](https://github.com/fahad19/featurevisor/issues/76)) ([de353b9](https://github.com/fahad19/featurevisor/commit/de353b90c6ac3d2b09cb767192eac27ebf0ae4bd))
+
+
+
+
+
 # [0.25.0](https://github.com/fahad19/featurevisor/compare/v0.24.0...v0.25.0) (2023-05-22)
 
 
