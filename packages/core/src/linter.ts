@@ -166,6 +166,8 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeature
   return groupJoiSchema;
 }
 
+const tagRegex = /^[a-z0-9\-]+$/;
+
 export function getFeatureJoiSchema(
   projectConfig: ProjectConfig,
   conditionsJoiSchema,
@@ -254,7 +256,17 @@ export function getFeatureJoiSchema(
   const featureJoiSchema = Joi.object({
     archived: Joi.boolean(),
     description: Joi.string().required(),
-    tags: Joi.array().items(Joi.string()).required(),
+    tags: Joi.array()
+      .items(
+        Joi.string().custom((value, helpers) => {
+          if (!tagRegex.test(value)) {
+            throw new Error("tag must be lower cased and alphanumeric, and may contain hyphens.");
+          }
+
+          return value;
+        }),
+      )
+      .required(),
 
     defaultVariation: variationValueJoiSchema,
 
