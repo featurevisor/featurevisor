@@ -254,7 +254,17 @@ export function getFeatureJoiSchema(
   const featureJoiSchema = Joi.object({
     archived: Joi.boolean(),
     description: Joi.string().required(),
-    tags: Joi.array().items(Joi.string()).required(),
+    tags: Joi.array()
+      .items(
+        Joi.string().custom((value, helpers) => {
+          if (!/^[a-z0-9\-]+$/.test(value)) {
+            throw new Error("tag must be lower cased and alphanumeric, and may contain hyphens.");
+          }
+
+          return value;
+        }),
+      )
+      .required(),
 
     defaultVariation: variationValueJoiSchema,
 

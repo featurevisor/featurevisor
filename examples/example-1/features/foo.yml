@@ -2,8 +2,8 @@ archived: false
 description: blah
 tags:
   - all
-  - signIn
-  - signUp
+  - sign-in
+  - sign-up
 
 bucketBy: userId
 
