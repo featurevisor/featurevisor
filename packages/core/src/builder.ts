@@ -326,7 +326,15 @@ export function buildDatafile(
   return datafileContent;
 }
 
-export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
+export interface BuildCLIOptions {
+  revision?: string;
+}
+
+export function buildProject(
+  rootDirectoryPath,
+  projectConfig: ProjectConfig,
+  cliOptions: BuildCLIOptions = {},
+) {
   const tags = projectConfig.tags;
   const environments = projectConfig.environments;
 
@@ -348,7 +356,7 @@ export function buildProject(rootDirectoryPath, projectConfig: ProjectConfig) {
         projectConfig,
         {
           schemaVersion: SCHEMA_VERSION,
-          revision: pkg.version,
+          revision: cliOptions.revision || pkg.version,
           environment: environment,
           tag: tag,
         },
