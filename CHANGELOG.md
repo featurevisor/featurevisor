@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/fahad19/featurevisor/compare/v0.26.0...v0.27.0) (2023-05-24)
+
+
+### Features
+
+* allow building datafiles with custom revision flag in CLI ([#77](https://github.com/fahad19/featurevisor/issues/77)) ([dbcdcce](https://github.com/fahad19/featurevisor/commit/dbcdcce28c9d7791b7b010b3940e033439cc92a2))
+
+
+
+
+
 # [0.26.0](https://github.com/fahad19/featurevisor/compare/v0.25.0...v0.26.0) (2023-05-24)
 
 
