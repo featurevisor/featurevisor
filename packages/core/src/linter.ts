@@ -234,6 +234,16 @@ export function getFeatureJoiSchema(
           variables: Joi.object().optional(), // @TODO: make it stricter
         }),
       )
+      .custom((value, helpers) => {
+        const allKeys = value.map((rule) => rule.key);
+        const uniqueKeys = new Set(allKeys);
+
+        if (allKeys.length !== uniqueKeys.size) {
+          throw new Error("rule keys are not unique");
+        }
+
+        return value;
+      })
       .required(),
     force: Joi.array().items(
       Joi.object({
