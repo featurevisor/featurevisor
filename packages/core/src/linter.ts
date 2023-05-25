@@ -227,7 +227,7 @@ export function getFeatureJoiSchema(
     rules: Joi.array()
       .items(
         Joi.object({
-          key: Joi.string(), // @TODO: make it unique among siblings
+          key: Joi.string(),
           segments: groupSegmentsJoiSchema,
           percentage: Joi.number().precision(3).min(0).max(100),
           variation: variationValueJoiSchema.optional(),
@@ -282,21 +282,32 @@ export function getFeatureJoiSchema(
 
     bucketBy: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
 
-    variablesSchema: Joi.array().items(
-      Joi.object({
-        key: Joi.string(), // @TODO: make it unique among siblings
-        type: Joi.string().valid(
-          "string",
-          "integer",
-          "boolean",
-          "double",
-          "array",
-          "object",
-          "json",
-        ),
-        defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
+    variablesSchema: Joi.array()
+      .items(
+        Joi.object({
+          key: Joi.string(),
+          type: Joi.string().valid(
+            "string",
+            "integer",
+            "boolean",
+            "double",
+            "array",
+            "object",
+            "json",
+          ),
+          defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
+        }),
+      )
+      .custom((value, helpers) => {
+        const allKeys = value.map((variableSchema) => variableSchema.key);
+        const uniqueKeys = new Set(allKeys);
+
+        if (allKeys.length !== uniqueKeys.size) {
+          throw new Error("variable keys are not unique");
+        }
+
+        return value;
       }),
-    ),
 
     variations: Joi.array()
       .items(
