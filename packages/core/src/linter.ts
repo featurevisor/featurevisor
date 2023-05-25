@@ -234,16 +234,7 @@ export function getFeatureJoiSchema(
           variables: Joi.object().optional(), // @TODO: make it stricter
         }),
       )
-      .custom((value, helpers) => {
-        const allKeys = value.map((rule) => rule.key);
-        const uniqueKeys = new Set(allKeys);
-
-        if (allKeys.length !== uniqueKeys.size) {
-          throw new Error("rule keys are not unique");
-        }
-
-        return value;
-      })
+      .unique("key")
       .required(),
     force: Joi.array().items(
       Joi.object({
@@ -298,39 +289,32 @@ export function getFeatureJoiSchema(
           defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
         }),
       )
-      .custom((value, helpers) => {
-        const allKeys = value.map((variableSchema) => variableSchema.key);
-        const uniqueKeys = new Set(allKeys);
-
-        if (allKeys.length !== uniqueKeys.size) {
-          throw new Error("variable keys are not unique");
-        }
-
-        return value;
-      }),
+      .unique("key"),
 
     variations: Joi.array()
       .items(
         Joi.object({
           description: Joi.string(),
-          value: variationValueJoiSchema.required(), // @TODO: make it unique among siblings
+          value: variationValueJoiSchema.required(),
           weight: Joi.number().precision(3).min(0).max(100).required(),
-          variables: Joi.array().items(
-            Joi.object({
-              key: Joi.string(), // @TODO: make it unique among siblings
-              value: variableValueJoiSchema,
-              overrides: Joi.array().items(
-                Joi.object({
-                  // @TODO: either segments or conditions prsent at a time
-                  segments: groupSegmentsJoiSchema,
-                  conditions: conditionsJoiSchema,
+          variables: Joi.array()
+            .items(
+              Joi.object({
+                key: Joi.string(),
+                value: variableValueJoiSchema,
+                overrides: Joi.array().items(
+                  Joi.object({
+                    // @TODO: either segments or conditions prsent at a time
+                    segments: groupSegmentsJoiSchema,
+                    conditions: conditionsJoiSchema,
 
-                  // @TODO: make it stricter based on `type`
-                  value: variableValueJoiSchema,
-                }),
-              ),
-            }),
-          ),
+                    // @TODO: make it stricter based on `type`
+                    value: variableValueJoiSchema,
+                  }),
+                ),
+              }),
+            )
+            .unique("key"),
         }),
       )
       .custom((value, helpers) => {
@@ -358,7 +342,7 @@ export function getFeatureJoiSchema(
   return featureJoiSchema;
 }
 
-export function getTestsJoiSchema(projectConfig: ProjectConfig) {
+export function getTestsJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
   const testsJoiSchema = Joi.object({
     tests: Joi.array().items(
       Joi.object({
@@ -367,20 +351,22 @@ export function getTestsJoiSchema(projectConfig: ProjectConfig) {
         environment: Joi.string().valid(...projectConfig.environments),
         features: Joi.array().items(
           Joi.object({
-            key: Joi.string(), // @TODO: make it specific
+            key: Joi.string()
+              .valid(...availableFeatureKeys)
+              .required(),
             assertions: Joi.array().items(
               Joi.object({
                 description: Joi.string().optional(),
                 at: Joi.number().precision(3).min(0).max(100),
-                attributes: Joi.object(), // @TODO: make it specific
+                attributes: Joi.object(),
 
                 // @TODO: one or both below
                 expectedVariation: Joi.alternatives().try(
                   Joi.string(),
                   Joi.number(),
                   Joi.boolean(),
-                ), // @TODO: make it specific
-                expectedVariables: Joi.object(), // @TODO: make it specific
+                ),
+                expectedVariables: Joi.object(),
               }),
             ),
           }),
@@ -520,7 +506,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   console.log("\nLinting tests...\n");
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
     const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
-    const testsJoiSchema = getTestsJoiSchema(projectConfig);
+    const testsJoiSchema = getTestsJoiSchema(projectConfig, availableFeatureKeys);
 
     for (const filePath of testFilePaths) {
       const key = path.basename(filePath, ".yml");
