@@ -43,6 +43,13 @@
     "links": [{ "title": "Google Tag Manager", "href": "/docs/tracking/google-tag-manager" }]
   },
   {
+    "title": "CI/CD guides",
+    "links": [
+      { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
+      { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" }
+    ]
+  },
+  {
     "title": "Packages",
     "links": [
       {
