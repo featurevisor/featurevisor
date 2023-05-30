@@ -1,15 +1,18 @@
 ---
 title: Cloudflare Pages
 description: Learn how to upload Featurevisor datafiles to Cloudflare Pages
+ogImage: /img/og/docs-integrations-cloudflare-pages.png
 ---
 
 Set up continuous integration and deployment of your Feaurevisor project with GitHub Actions and Cloudflare Pages. {% .lead %}
 
-See more about GitHub Actions set up [here](/docs/integrations/github-actions).
+See more about GitHub Actions set up in previous guide [here](/docs/integrations/github-actions).
 
 ## Cloudflare Pages
 
 We are going to be uploading to and serving our datafiles from [Cloudflare Pages](https://pages.cloudflare.com/).
+
+Cloudflare Pages a product that allows you to host your static sites and apps on Cloudflare's global network, and it also comes with a free tier. Given Featurevisor project generates static datafiles (JSON files), it is a perfect fit for our use case.
 
 Make sure you already have a Cloudflare Pages project set up, and then use it in the publish workflow later.
 
@@ -71,7 +74,7 @@ jobs:
 
 ### Publish
 
-This workflow is intended to be run on every push to your main branch, and is suppsoed to handle uploading of your generated datafiles as well:
+This workflow is intended to be run on every push to your main branch, and is supposed to handle uploading of your generated datafiles as well:
 
 ```yml
 # .github/workflows/publish.yml
@@ -132,7 +135,9 @@ jobs:
 
 After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor state files back to the repository, so that future builds will be build on top of latest state.
 
-If you want an example of the actual uploading step, see [Cloudflare Pages](/docs/integration/cloudflare-pages) integration guide.
+Once uploaded, the your datafiles will be accessible as: `https://<yourProjectName>.pages.dev/<environment>/datafile-tag<yourTag>.json`.
+
+You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
 
 ## Full example
 
