@@ -135,7 +135,7 @@ jobs:
 
 After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor state files back to the repository, so that future builds will be build on top of latest state.
 
-Once uploaded, the your datafiles will be accessible as: `https://<yourProjectName>.pages.dev/<environment>/datafile-tag<yourTag>.json`.
+Once uploaded, the your datafiles will be accessible as: `https://<your-project>.pages.dev/<environment>/datafile-tag-<your-tag>.json`.
 
 You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
 
