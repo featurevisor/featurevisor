@@ -44,6 +44,147 @@ describe("sdk: instance", function () {
     }, 0);
   });
 
+  it("should configure plain bucketBy", function () {
+    let capturedBucketKey = "";
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            defaultVariation: false,
+            bucketBy: "userId",
+            variations: [{ value: true }, { value: false }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+      configureBucketKey: function (feature, attributes, bucketKey) {
+        capturedBucketKey = bucketKey;
+
+        return bucketKey;
+      },
+    });
+
+    const variation = sdk.getVariation("test", {
+      userId: "123",
+    });
+
+    expect(variation).toEqual(true);
+    expect(capturedBucketKey).toEqual("123.test");
+  });
+
+  it("should configure and bucketBy", function () {
+    let capturedBucketKey = "";
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            defaultVariation: false,
+            bucketBy: ["userId", "organizationId"],
+            variations: [{ value: true }, { value: false }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+      configureBucketKey: function (feature, attributes, bucketKey) {
+        capturedBucketKey = bucketKey;
+
+        return bucketKey;
+      },
+    });
+
+    const variation = sdk.getVariation("test", {
+      userId: "123",
+      organizationId: "456",
+    });
+
+    expect(variation).toEqual(true);
+    expect(capturedBucketKey).toEqual("123.456.test");
+  });
+
+  it("should configure or bucketBy", function () {
+    let capturedBucketKey = "";
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            defaultVariation: false,
+            bucketBy: { or: ["userId", "deviceId"] },
+            variations: [{ value: true }, { value: false }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: true, range: { start: 0, end: 100000 } },
+                  { variation: false, range: { start: 0, end: 0 } },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+      configureBucketKey: function (feature, attributes, bucketKey) {
+        capturedBucketKey = bucketKey;
+
+        return bucketKey;
+      },
+    });
+
+    expect(
+      sdk.getVariation("test", {
+        userId: "123",
+        deviceId: "456",
+      }),
+    ).toEqual(true);
+    expect(capturedBucketKey).toEqual("123.test");
+
+    expect(
+      sdk.getVariation("test", {
+        deviceId: "456",
+      }),
+    ).toEqual(true);
+    expect(capturedBucketKey).toEqual("456.test");
+  });
+
   it("should intercept attributes", function () {
     let intercepted = false;
 
