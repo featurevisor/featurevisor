@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/fahad19/featurevisor/compare/v0.27.1...v0.28.0) (2023-06-08)
+
+
+### Features
+
+* make bucketing key configurable ([#79](https://github.com/fahad19/featurevisor/issues/79)) ([c05f0da](https://github.com/fahad19/featurevisor/commit/c05f0dae9e6e1d4ee68f2c457a49137bbd6727d9))
+
+
+
+
+
 ## [0.27.1](https://github.com/fahad19/featurevisor/compare/v0.27.0...v0.27.1) (2023-05-25)
 
 
