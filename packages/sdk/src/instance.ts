@@ -34,6 +34,8 @@ export type ActivationCallback = (
   captureAttributes: Attributes,
 ) => void;
 
+export type ConfigureBucketKey = (feature, attributes, bucketKey: BucketKey) => BucketKey;
+
 export type ConfigureBucketValue = (feature, attributes, bucketValue: BucketValue) => BucketValue;
 
 export interface Statuses {
@@ -45,6 +47,7 @@ const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
 
 export interface InstanceOptions {
   bucketKeySeparator?: string;
+  configureBucketKey?: ConfigureBucketKey;
   configureBucketValue?: ConfigureBucketValue;
   datafile?: DatafileContent | string;
   datafileUrl?: string;
@@ -111,6 +114,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
 export class FeaturevisorInstance {
   // from options
   private bucketKeySeparator: string;
+  private configureBucketKey?: ConfigureBucketKey;
   private configureBucketValue?: ConfigureBucketValue;
   private datafileUrl?: string;
   private handleDatafileFetch?: DatafileFetchHandler;
@@ -136,6 +140,7 @@ export class FeaturevisorInstance {
   constructor(options: InstanceOptions) {
     // from options
     this.bucketKeySeparator = options.bucketKeySeparator || DEFAULT_BUCKET_KEY_SEPARATOR;
+    this.configureBucketKey = options.configureBucketKey;
     this.configureBucketValue = options.configureBucketValue;
     this.datafileUrl = options.datafileUrl;
     this.handleDatafileFetch = options.handleDatafileFetch;
@@ -237,6 +242,72 @@ export class FeaturevisorInstance {
   }
 
   /**
+   * Bucketing
+   */
+  private getBucketKey(feature: Feature, attributes: Attributes): BucketKey {
+    const featureKey = feature.key;
+
+    let type;
+    let attributeKeys;
+
+    if (typeof feature.bucketBy === "string") {
+      type = "plain";
+      attributeKeys = [feature.bucketBy];
+    } else if (Array.isArray(feature.bucketBy)) {
+      type = "and";
+      attributeKeys = feature.bucketBy;
+    } else if (typeof feature.bucketBy === "object" && Array.isArray(feature.bucketBy.or)) {
+      type = "or";
+      attributeKeys = feature.bucketBy.or;
+    } else {
+      this.logger.error("invalid bucketBy", { featureKey, bucketBy: feature.bucketBy });
+
+      throw new Error("invalid bucketBy");
+    }
+
+    const bucketKey: AttributeValue[] = [];
+
+    attributeKeys.forEach((attributeKey) => {
+      const attributeValue = attributes[attributeKey];
+
+      if (typeof attributeValue === "undefined") {
+        return;
+      }
+
+      if (type === "plain" || type === "and") {
+        bucketKey.push(attributeValue);
+      } else {
+        // or
+        if (bucketKey.length === 0) {
+          bucketKey.push(attributeValue);
+        }
+      }
+    });
+
+    bucketKey.push(featureKey);
+
+    const result = bucketKey.join(this.bucketKeySeparator);
+
+    if (this.configureBucketKey) {
+      return this.configureBucketKey(feature, attributes, result);
+    }
+
+    return result;
+  }
+
+  private getBucketValue(feature: Feature, attributes: Attributes): BucketValue {
+    const bucketKey = this.getBucketKey(feature, attributes);
+
+    const value = getBucketedNumber(bucketKey);
+
+    if (this.configureBucketValue) {
+      return this.configureBucketValue(feature, attributes, value);
+    }
+
+    return value;
+  }
+
+  /**
    * Statuses
    */
   isReady(): boolean {
@@ -306,44 +377,6 @@ export class FeaturevisorInstance {
     }
 
     clearInterval(this.intervalId);
-  }
-
-  /**
-   * Bucketing
-   */
-  private getBucketKey(feature: Feature, attributes: Attributes): BucketKey {
-    const featureKey = feature.key;
-
-    const attributeKeys =
-      typeof feature.bucketBy === "string" ? [feature.bucketBy] : feature.bucketBy;
-
-    const bucketKey: AttributeValue[] = [];
-
-    attributeKeys.forEach((attributeKey) => {
-      const attributeValue = attributes[attributeKey];
-
-      if (typeof attributeValue === "undefined") {
-        return;
-      }
-
-      bucketKey.push(attributeValue);
-    });
-
-    bucketKey.push(featureKey);
-
-    return bucketKey.join(this.bucketKeySeparator);
-  }
-
-  private getBucketValue(feature: Feature, attributes: Attributes): BucketValue {
-    const bucketKey = this.getBucketKey(feature, attributes);
-
-    const value = getBucketedNumber(bucketKey);
-
-    if (this.configureBucketValue) {
-      return this.configureBucketValue(feature, attributes, value);
-    }
-
-    return value;
   }
 
   /**
