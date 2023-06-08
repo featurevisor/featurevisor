@@ -271,7 +271,20 @@ export function getFeatureJoiSchema(
 
     defaultVariation: variationValueJoiSchema,
 
-    bucketBy: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
+    bucketBy: Joi.alternatives()
+      .try(
+        // plain
+        Joi.string(),
+
+        // and
+        Joi.array().items(Joi.string()),
+
+        // or
+        Joi.object({
+          or: Joi.array().items(Joi.string()),
+        }),
+      )
+      .required(),
 
     variablesSchema: Joi.array()
       .items(
