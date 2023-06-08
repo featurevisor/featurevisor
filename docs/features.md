@@ -91,6 +91,16 @@ bucketBy:
   - userId
 ```
 
+If you want to bucket users against first available attribute only, you can do as follows:
+
+```yml
+# ...
+bucketBy:
+  or:
+    - userId
+    - deviceId
+```
+
 ## Default variation
 
 If no rollout rules are matched for the user, Featurevisor SDKs will fall back to the default variation as set in `defaultVariation`.
