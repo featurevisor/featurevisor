@@ -8,6 +8,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
 - [Usage](#usage)
 - [Options](#options)
   - [`bucketKeySeparator`](#bucketkeyseparator)
+  - [`configureBucketKey`](#configurebucketkey)
   - [`configureBucketValue`](#configurebucketvalue)
   - [`datafile`](#datafile)
   - [`datafileUrl`](#datafileurl)
@@ -59,6 +60,21 @@ Options you can pass when creating Featurevisor SDK instance:
 - Type: `string`
 - Required: no
 - Defaults to: `.`
+
+### `configureBucketKey`
+
+- Type: `function`
+- Required: no
+
+Use it to take over bucketing key generation process.
+
+```js
+const sdk = createInstance({
+  configureBucketKey: (feature, attributes, bucketKey) => {
+    return bucketKey;
+  }
+});
+```
 
 ### `configureBucketValue`
 

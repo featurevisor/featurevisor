@@ -226,7 +226,13 @@ export interface Traffic {
   allocation: Allocation[];
 }
 
-export type BucketBy = AttributeKey | AttributeKey[]; // @TODO: have first available attribute as well?
+export type PlainBucketBy = AttributeKey;
+export type AndBucketBy = AttributeKey[];
+export interface OrBucketBy {
+  or: AttributeKey[];
+}
+export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
+
 export interface Feature {
   key: FeatureKey;
   // @TODO: introduce new `parent` key?
