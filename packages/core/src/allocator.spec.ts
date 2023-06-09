@@ -1,4 +1,4 @@
-import { RangeTuple } from "@featurevisor/types";
+import { Range } from "@featurevisor/types";
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
 describe("core: allocator", function () {
@@ -8,7 +8,7 @@ describe("core: allocator", function () {
   });
 
   test("fills a single range fully", function () {
-    const availableRanges = [[0, 100]] as RangeTuple[];
+    const availableRanges = [[0, 100]] as Range[];
     const result = getAllocation(availableRanges, 100);
 
     expect(result).toEqual(availableRanges);
@@ -18,7 +18,7 @@ describe("core: allocator", function () {
   });
 
   test("fills a single range partially", function () {
-    const availableRanges = [[0, 100]] as RangeTuple[];
+    const availableRanges = [[0, 100]] as Range[];
     const result = getAllocation(availableRanges, 80);
 
     expect(result).toEqual([[0, 80]]);
@@ -31,7 +31,7 @@ describe("core: allocator", function () {
     const availableRanges = [
       [0, 50],
       [50, 100],
-    ] as RangeTuple[];
+    ] as Range[];
     const result = getAllocation(availableRanges, 100);
 
     expect(result).toEqual(availableRanges);
@@ -44,7 +44,7 @@ describe("core: allocator", function () {
     const availableRanges = [
       [0, 40],
       [60, 100],
-    ] as RangeTuple[];
+    ] as Range[];
     const result = getAllocation(availableRanges, 80);
 
     expect(result).toEqual(availableRanges);
@@ -57,7 +57,7 @@ describe("core: allocator", function () {
     const availableRanges = [
       [0, 50],
       [50, 100],
-    ] as RangeTuple[];
+    ] as Range[];
     const result = getAllocation(availableRanges, 80);
 
     expect(result).toEqual([
@@ -73,7 +73,7 @@ describe("core: allocator", function () {
     const availableRanges = [
       [0, 40],
       [60, 100],
-    ] as RangeTuple[];
+    ] as Range[];
     const result = getAllocation(availableRanges, 50);
 
     expect(result).toEqual([
@@ -90,7 +90,7 @@ describe("core: allocator", function () {
       [0, 30],
       [60, 70],
       [90, 95],
-    ] as RangeTuple[];
+    ] as Range[];
     const result = getAllocation(availableRanges, 42);
 
     expect(result).toEqual([

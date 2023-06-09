@@ -1,13 +1,5 @@
-import {
-  Rule,
-  ExistingFeature,
-  Traffic,
-  Variation,
-  Range,
-  Percentage,
-  RangeTuple,
-} from "@featurevisor/types";
-import { MAX_BUCKETED_NUMBER, getStartEndFromRange } from "@featurevisor/sdk";
+import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
+import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
@@ -70,7 +62,7 @@ export function getTraffic(
 
   // @TODO: may be pass from builder directly?
   const availableRanges =
-    ranges && ranges.length > 0 ? ranges : ([[0, MAX_BUCKETED_NUMBER]] as RangeTuple[]);
+    ranges && ranges.length > 0 ? ranges : ([[0, MAX_BUCKETED_NUMBER]] as Range[]);
 
   parsedRules.forEach(function (parsedRule) {
     const rulePercentage = parsedRule.percentage; // 0 - 100
@@ -108,24 +100,17 @@ export function getTraffic(
 
     let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));
 
-    let lastEnd = 0;
     if (existingTrafficRule && !needsRebucketing) {
       // increase: build on top of existing allocations
       let existingSum = 0;
 
-      traffic.allocation = existingTrafficRule.allocation.map(function ({
-        variation,
-        percentage, // @TODO: remove it in next breaking semver
-        range,
-      }) {
+      traffic.allocation = existingTrafficRule.allocation.map(function ({ variation, range }) {
         const result = {
           variation,
-          percentage, // @TODO remove it in next breaking semver
-          range: range ? getStartEndFromRange(range) : ([lastEnd, percentage] as RangeTuple),
+          range: range,
         };
 
-        existingSum += percentage || 0;
-        lastEnd = lastEnd + (percentage || 0);
+        existingSum += range[1] - range[0];
 
         return result;
       });
@@ -145,7 +130,6 @@ export function getTraffic(
       rangesToFill.forEach(function (range) {
         traffic.allocation.push({
           variation: variation.value,
-          percentage: toFillValue, // @TODO remove it in next breaking semver
           range,
         });
       });
