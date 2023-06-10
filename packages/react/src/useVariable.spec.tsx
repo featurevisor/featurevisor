@@ -23,9 +23,9 @@ function getNewInstance() {
               segments: "*",
               percentage: 100000,
               allocation: [
-                { variation: "control", range: { start: 0, end: 33000 } },
-                { variation: "b", range: { start: 33000, end: 66000 } },
-                { variation: "c", range: { start: 66000, end: 100000 } },
+                { variation: "control", range: [0, 33000] },
+                { variation: "b", range: [33000, 66000] },
+                { variation: "c", range: [66000, 100000] },
               ],
             },
           ],

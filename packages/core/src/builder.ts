@@ -224,11 +224,10 @@ export function buildDatafile(
         traffic: feature.traffic.map((t: Traffic) => {
           return {
             key: t.key,
-            percentage: t.percentage, // @TODO: remove this in next breaking semver
+            percentage: t.percentage,
             allocation: t.allocation.map((a: Allocation) => {
               return {
                 variation: a.variation,
-                percentage: a.percentage, // @TODO: remove this in next breaking semver
                 range: a.range,
               };
             }),

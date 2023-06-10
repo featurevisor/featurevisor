@@ -40,7 +40,6 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "on",
-            percentage: 80000,
             range: [0, 80000],
           },
         ],
@@ -83,12 +82,10 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "on",
-            percentage: 40000,
             range: [0, 40000],
           },
           {
             variation: "off",
-            percentage: 40000,
             range: [40000, 80000],
           },
         ],
@@ -135,17 +132,14 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "yes",
-            percentage: 33330,
             range: [0, 33330],
           },
           {
             variation: "no",
-            percentage: 33330,
             range: [33330, 66660],
           },
           {
             variation: "maybe",
-            percentage: 33340,
             range: [66660, 100000],
           },
         ],
@@ -195,12 +189,10 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "on",
-                percentage: 40000,
                 range: [0, 40000],
               },
               {
                 variation: "off",
-                percentage: 40000,
                 range: [40000, 80000],
               },
             ],
@@ -218,24 +210,20 @@ describe("core: Traffic", function () {
           // existing
           {
             variation: "on",
-            percentage: 40000,
             range: [0, 40000],
           },
           {
             variation: "off",
-            percentage: 40000,
             range: [40000, 80000],
           },
 
           // new
           {
             variation: "on",
-            percentage: 5000,
             range: [80000, 85000],
           },
           {
             variation: "off",
-            percentage: 5000,
             range: [85000, 90000],
           },
         ],
@@ -285,12 +273,10 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "on",
-                percentage: 40000,
                 range: [0, 40000],
               },
               {
                 variation: "off",
-                percentage: 40000,
                 range: [40000, 80000],
               },
             ],
@@ -307,12 +293,10 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "on",
-            percentage: 35000,
             range: [0, 35000],
           },
           {
             variation: "off",
-            percentage: 35000,
             range: [35000, 70000],
           },
         ],
@@ -366,12 +350,10 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "a",
-                percentage: 40000,
                 range: [0, 40000],
               },
               {
                 variation: "b",
-                percentage: 40000,
                 range: [40000, 80000],
               },
             ],
@@ -388,17 +370,14 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "a",
-            percentage: 29997,
             range: [0, 29997],
           },
           {
             variation: "b",
-            percentage: 29997,
             range: [29997, 59994],
           },
           {
             variation: "c",
-            percentage: 30006,
             range: [59994, 90000],
           },
         ],
@@ -456,12 +435,10 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "a",
-                percentage: 40000,
                 range: [0, 40000],
               },
               {
                 variation: "b",
-                percentage: 40000,
                 range: [40000, 80000],
               },
             ],
@@ -478,22 +455,18 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "a",
-            percentage: 25000,
             range: [0, 25000],
           },
           {
             variation: "b",
-            percentage: 25000,
             range: [25000, 50000],
           },
           {
             variation: "c",
-            percentage: 25000,
             range: [50000, 75000],
           },
           {
             variation: "d",
-            percentage: 25000,
             range: [75000, 100000],
           },
         ],
@@ -551,22 +524,18 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "a",
-                percentage: 25000,
                 range: [0, 25000],
               },
               {
                 variation: "b",
-                percentage: 25000,
                 range: [25000, 50000],
               },
               {
                 variation: "c",
-                percentage: 25000,
                 range: [50000, 75000],
               },
               {
                 variation: "d",
-                percentage: 25000,
                 range: [75000, 100000],
               },
             ],
@@ -583,12 +552,10 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "a",
-            percentage: 50000,
             range: [0, 50000],
           },
           {
             variation: "b",
-            percentage: 50000,
             range: [50000, 100000],
           },
         ],
@@ -646,22 +613,18 @@ describe("core: Traffic", function () {
             allocation: [
               {
                 variation: "a",
-                percentage: 25000,
                 range: [0, 25000],
               },
               {
                 variation: "b",
-                percentage: 25000,
                 range: [25000, 50000],
               },
               {
                 variation: "c",
-                percentage: 25000,
                 range: [50000, 75000],
               },
               {
                 variation: "d",
-                percentage: 25000,
                 range: [75000, 100000],
               },
             ],
@@ -678,12 +641,10 @@ describe("core: Traffic", function () {
         allocation: [
           {
             variation: "a",
-            percentage: 40000,
             range: [0, 40000],
           },
           {
             variation: "b",
-            percentage: 40000,
             range: [40000, 80000],
           },
         ],

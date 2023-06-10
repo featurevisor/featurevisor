@@ -199,19 +199,10 @@ export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three 
  */
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
-// @TODO: remove this in next breaking semver
-export interface RangeObject {
-  start: Percentage; // 0 to 100k
-  end: Percentage; // 0 to 100k
-}
-
-export type RangeTuple = [Percentage, Percentage]; // 0 to 100k
-
-export type Range = RangeObject | RangeTuple;
+export type Range = [Percentage, Percentage]; // 0 to 100k
 
 export interface Allocation {
   variation: VariationValue;
-  percentage?: Percentage; // @TODO: remove it in next breaking semver
   range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
 }
 
@@ -236,7 +227,6 @@ export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 export interface Feature {
   key: FeatureKey;
   // @TODO: introduce new `parent` key?
-  // @TODO: introduce `type` for distinguishing between feature flags and experiments?
   defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
   variations: Variation[];
@@ -296,7 +286,7 @@ export interface ParsedFeature {
   description: string;
   tags: string[];
 
-  bucketBy?: AttributeKey | AttributeKey[]; // @TODO: have first available attribute as well?
+  bucketBy: BucketBy;
 
   defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
