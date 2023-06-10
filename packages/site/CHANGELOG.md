@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/fahad19/featurevisor/compare/v0.28.1...v0.29.0) (2023-06-10)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
 # [0.28.0](https://github.com/fahad19/featurevisor/compare/v0.27.1...v0.28.0) (2023-06-08)
 
 **Note:** Version bump only for package @featurevisor/site
