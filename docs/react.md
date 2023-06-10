@@ -110,3 +110,9 @@ function MyComponent(props) {
 Same as `useVariation`, but it will also bubble an activation event up to the SDK for tracking purposes.
 
 This should ideally be only called once per feature, and only when we know the feature has been exposed to the user.
+
+## Optimization
+
+Given the nature of components in React, they can re-render many times.
+
+You are advised to minimize the number of calls to Featurevisor SDK in your components by using memoization techniques.

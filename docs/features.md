@@ -7,7 +7,7 @@ Features are the building blocks of creating traditional boolean feature flags a
 
 ## Create a Feature
 
-Let's say we have built a new sidebar in our application's UI, and we wish to roll out gradually to our users.
+Let's say we have built a new sidebar in our application's UI, and we wish to roll it out gradually to our users.
 
 We can do that by creating a new feature called `sidebar`:
 
@@ -80,7 +80,7 @@ The `bucketBy` property is used to determine how the feature will be bucketed. M
 bucketBy: userId
 ```
 
-Given we used `userId` attribute as the `bucketBy` value, it means no matter which application or device the user is using, as long as the `userId` value is the same, the same variation of the feature will be consistently assigned to that particular user.
+Given we used `userId` attribute as the `bucketBy` value, it means no matter which application or device the user is using, as long as the `userId` attribute's value is the same, the same variation of the feature will be consistently assigned to that particular user.
 
 If you want to bucket users against multiple attributes together, you can do as follows:
 
@@ -112,7 +112,7 @@ defaultVariation: false
 
 ## Variations
 
-A feature can have multiple variations. Each variation must have a different value, but all variations must of the same type.
+A feature can have multiple variations. Each variation must have a different value, but all variations must be of the same type.
 
 ### Boolean flags
 
@@ -182,7 +182,7 @@ The environment keys are based on your project configuration. Read more in [Conf
 
 Each environment can have multiple rollout rules.
 
-Each rule must have a unique `key` value among sibling rules, and this is needed to maintain consistent bucketing as we increase our rollout percentage for the feature over time.
+Each rule must have a unique `key` value among sibling rules within that environment, and this is needed to maintain consistent bucketing as we increase our rollout percentage for the feature over time.
 
 ```yml
 # ...
@@ -256,7 +256,7 @@ environments:
 
 ### Complex
 
-You can combine `and`, `or`, and `not` operators to create complex segments:
+We can combine `and`, `or`, and `not` operators to create complex segments:
 
 With `and` operator:
 
@@ -349,7 +349,7 @@ environments:
 
 ## Variables
 
-Variables are really powerful and should be used with caution as they can grow very fast.
+Variables are really powerful, and they allow you to use Featurevisor as your application's runtime configuration management tool.
 
 Before assigning variable values, we must define the schema of our variables in the feature:
 

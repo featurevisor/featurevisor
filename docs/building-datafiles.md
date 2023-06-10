@@ -7,6 +7,8 @@ Datafiles are JSON files that are created against combinations of tags and envir
 
 ## Usage
 
+Use Featurevisor CLI to build your datafiles:
+
 ```
 $ featurevisor build
 ```
@@ -44,7 +46,7 @@ Next to datafiles, the build process will also generate some additional JSON fil
 
 By default, Featurevisor will use the `version` as exists in `package.json` of the project as the `revision` value in generated datafiles.
 
-You can customize the `revision` value in datafiles by passing a `--revision` flag when building:
+You can optionally customize the `revision` value in datafiles by passing a `--revision` flag when building:
 
 ```
 $ featurevisor build --revision 1.2.3

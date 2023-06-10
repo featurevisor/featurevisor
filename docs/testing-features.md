@@ -41,10 +41,10 @@ Read more in [Bucketing](/docs/bucketing).
 
 ## Running tests
 
-Use the Featurevisor CLI to run your tests:
+After [building datafiles](/docs/building-datafiles), use the Featurevisor CLI to run your tests:
 
 ```
 $ featurevisor test
 ```
 
-If any of your assertions fail in any test specs, it will exit with a non-zero exit code.
+If any of your assertions fail in any test specs, it will terminate with a non-zero exit code.

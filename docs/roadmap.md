@@ -8,7 +8,6 @@ description: Future plans and roadmap for Featurevisor
 - Get more tests in
 - Improve documentation
 - Prettify the CLI output
-- Make SDK more debuggable by printing logs in runtime
 - Get enough feedback to release v1.0.0 stable
 
 ## Next phase

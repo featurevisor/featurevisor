@@ -3,7 +3,7 @@ title: State files
 description: Learn about Featurevisor state files
 ---
 
-When you build your datafiles, Featurevisor generates some additional JSON files that are used to keep track of the most recent delpoyed build of your project. These files are called state files. {% .lead %}
+When you build your datafiles, Featurevisor generates some additional JSON files that are used to keep track of the most recently delpoyed build of your project. These files are called state files. {% .lead %}
 
 ## Location
 

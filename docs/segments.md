@@ -30,7 +30,7 @@ conditions:
 
 ## Operators
 
-These operators are supported for conditions:
+These operators are supported as conditions:
 
 | Operator                    | Type of attribute   | Description                   |
 |-----------------------------|---------------------|-------------------------------|

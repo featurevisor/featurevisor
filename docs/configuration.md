@@ -10,10 +10,11 @@ Every Featurevisor project expects a `featurevisor.config.js` file at the root o
 Minimum configuration:
 
 ```js
+// featurevisor.config.js
 module.exports = {
   tags: ["all"],
   environments: ["staging", "production"],
-}
+};
 ```
 
 As your tags and environments grow, you can keep adding them to your configuration file.

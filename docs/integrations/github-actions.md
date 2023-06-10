@@ -19,7 +19,7 @@ We will be covering two workflows for our set up with GitHub Actions.
 
 This workflow will be triggered on every push to the repository targeting any non-master or non-main branches.
 
-This will help identity any issues with your Pull Requests early before you merge them to your main branch.
+This will help identify any issues with your Pull Requests early before you merge them to your main branch.
 
 ```yml
 # .github/workflows/checks.yml
@@ -32,7 +32,7 @@ on:
       - master
 
 jobs:
-  ci:
+  checks:
     name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -58,7 +58,7 @@ jobs:
 
 ### Publish
 
-This workflow is intended to be run on every push to your main branch, and is suppsoed to handle uploading of your generated datafiles as well:
+This workflow is intended to be run on every push to your main (or master) branch, and is supposed to handle uploading of your generated datafiles as well:
 
 ```yml
 # .github/workflows/publish.yml
@@ -113,6 +113,6 @@ jobs:
           git push
 ```
 
-After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor state files back to the repository, so that future builds will be build on top of latest state.
+After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
-If you want an example of the actual uploading step, see [Cloudflare Pages](/docs/integration/cloudflare-pages) integration guide.
+If you want an example of an actual uploading step, see [Cloudflare Pages](/docs/integration/cloudflare-pages) integration guide.

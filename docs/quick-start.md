@@ -23,7 +23,9 @@ $ npx @featurevisor/cli <command>
 
 ## Initialize your project
 
-This is meant to be a completely separate repository from your application code. The idea is to be able to decouple your application deployments from releasing your features.
+This is meant to be a completely separate repository from your application code.
+
+The idea is to be able to decouple your application deployments from releasing your features. Therefore, it stays as a separate repository.
 
 Run the following command to initialize your project:
 
@@ -74,6 +76,8 @@ type: string
 description: User ID
 ```
 
+Learn more in [Attributes](/docs/attributes).
+
 ## Create a segment
 
 Segments are groups of users that you can target, and they are made up of conditions against various attributes.
@@ -96,6 +100,8 @@ conditions:
     operator: equals
     value: de
 ```
+
+Learn more in [Segments](/docs/segments).
 
 ## Create a feature
 
@@ -140,6 +146,10 @@ environments:
         segments:
           - "germany"
         percentage: 50
+
+      - key: "2"
+        segments: "*" # everyone
+        percentage: 0 # disabled for everyone else
 ```
 
 ### A/B test with variations
@@ -196,6 +206,8 @@ We can lint the content of all our YAML files to make sure it's all valid:
 $ featurevisor lint
 ```
 
+Learn more in [Linting YAMLs](/docs/linting-yamls).
+
 ## Build datafiles
 
 Datafiles are JSON files that we expect our client-side applications to consume using the Featurevisor SDK.
@@ -213,11 +225,15 @@ With our example, we will have the following datafiles generated:
 - `dist/staging/datafile-tag-all.json`
 - `dist/production/datafile-tag-all.json`
 
+Learn more in [Building datafiles](/docs/building-datafiles).
+
 ## Deploy datafiles
 
 This is the part where you deploy the datafiles to your CDN or any other static file hosting service.
 
 Once done, the URLs of the datafiles may look like `https://cdn.yoursite.com/production/datafile-tag-all.json`.
+
+Learn more in [Deployment](/docs/deployment).
 
 ## Consume datafiles using the SDK
 

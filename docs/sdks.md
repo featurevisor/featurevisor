@@ -3,9 +3,9 @@ title: SDKs
 description: Learn how to use Featurevisor SDKs
 ---
 
-At the moment, we have an SDK for JavaScript only covering Node.js and browser environments. More languages are planned for the future as Featurevisor nears a stable release. {% .lead %}
+SDKs are meant to be used in your own applications, where you want to evaluate features in the runtime. {% .lead %}
 
-SDKs are meant to be used in your own applications, where you want to evaluate features.
+At the moment, we have an SDK for JavaScript only covering Node.js and browser environments. More languages are planned for the future as Featurevisor nears a stable release.
 
 ## Installation
 
@@ -49,6 +49,7 @@ const datafileUrl =
 
 const sdk = createInstance({
   datafileUrl: datafileUrl,
+
   onReady: function () {
     // datafile has been fetched successfully,
     // and you can start using the SDK
@@ -61,9 +62,11 @@ If you need to take further control on how the datafile is fetched, you can pass
 ```js
 const sdk = createInstance({
   datafileUrl: datafileUrl,
+
   onReady: function () {
     console.log("sdk is ready");
   },
+
   handleDatafileFetch: function (url) {
     // you can pass custom headers here, etc
     // or even use XMLHttpRequest instead of fetch,
@@ -315,11 +318,18 @@ You can intercept attributes before they are used for evaluation:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
+const defaultAttributes = {
+  country: "nl",
+};
+
 const sdk = createInstance({
   // ...
   interceptAttributes: function (attributes) {
     // return updated attributes
-    return attributes;
+    return {
+      ...defaultAttributes,
+      ...attributes,
+    };
   }
 });
 ```
@@ -328,7 +338,7 @@ This is useful when you wish to add a default set of attributes for all your eva
 
 ## Refreshing datafile
 
-Refreshing the datafile is useful when you want to update the datafile in runtime, for example when you want to update the feature variations and variables without having to restart your application.
+Refreshing the datafile is convenient when you want to update the datafile in runtime, for example when you want to update the feature variations and variables config without having to restart your application.
 
 It is only possible to refresh datafile in Featurevisor if you are using the `datafileUrl` option when creating your SDK instance.
 
@@ -400,7 +410,7 @@ const sdk = createInstance({
 
 ## Events
 
-Featurevisor SDK implements a simple event emitter that allows you can use to listen to events that happen in the runtime.
+Featurevisor SDK implements a simple event emitter that allows you to listen to events that happen in the runtime.
 
 ### Listening to events
 

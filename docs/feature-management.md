@@ -9,7 +9,7 @@ It is best to consider feature management as a **practice** rather than a **tool
 
 One of the primary use cases of feature management is to decouple deployments from releases.
 
-When you deploy a new version of your software, it doesn't mean that all the new fancy features you built have to be exposed to all your users right away. You may decide to roll it out slowly to a tiny percentage of your traffic frist, and then gradually increase the percentage of users that are exposed to the new feature as you get enough positive feedback.
+When you deploy a new version of your software, it doesn't mean that all the new fancy features you built have to be exposed to all your users right away. You may decide to roll it out slowly to a tiny percentage of your traffic first (often called canary releases), and then gradually increase the percentage of users that are exposed to the new feature as you get enough positive feedback.
 
 Alternatively, you may even want to disable a feature that you just released completely.
 
@@ -22,7 +22,7 @@ To summarize:
 
 While feature management itself is a practice, feature flags are an implementation of conditional statements that act as on/off switches in your application.
 
-Featurevisor takes the concept of feature flags a step further by introducing multivariates which go beyond traditional boolean values.
+Featurevisor takes the concept of feature flags a step further by introducing multivariates which go beyond traditional boolean values, and also conditional variables which are scoped under individual features.
 
 ## Feature management and experimentation
 
@@ -45,4 +45,4 @@ Worklfow:
 - Team member send Pull Requests to create and update features
 - Team reviews it together and merges it
 - CI builds the datafiles and deploys (uploads) them to the CDN
-- Applications consumes the datafiles in relevant environments
+- Applications consume the datafiles in relevant environments using SDKs

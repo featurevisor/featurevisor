@@ -11,7 +11,7 @@ Let's say you have two experiments defined as `firstFeature` and `secondFeature`
 
 You want to run them both together in production, but you do not want to expose both of them together to any single user.
 
-That's what "mutually exclusive" means here. They will never overlap.
+That's what "mutually exclusive" means here. They will never overlap for the same user.
 
 You can take advantage of groups in Featurevisor to achieve this exclusions list.
 
@@ -39,7 +39,7 @@ A group consists of multiple slots.
 
 Each slot in a group defines a feature (by its key) and a percentage value (from 0 to 100). All the percentage values of slots in a group must add up to 100.
 
-In the example above, we have two slots, each with a percentage of 50. This means that any user will be exposed to one of the features, but not both.
+In the example above, we have two slots, each with a percentage value of 50. This means that any user once bucketed can only fall in one of the slots, and not both.
 
 The first 50% of the users will be exposed to `firstFeature`, and the other 50% will be exposed to `secondFeature`.
 

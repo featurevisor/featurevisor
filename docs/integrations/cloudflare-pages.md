@@ -12,7 +12,7 @@ See more about GitHub Actions set up in previous guide [here](/docs/integrations
 
 We are going to be uploading to and serving our datafiles from [Cloudflare Pages](https://pages.cloudflare.com/).
 
-Cloudflare Pages a product that allows you to host your static sites and apps on Cloudflare's global network, and it also comes with a free tier. Given Featurevisor project generates static datafiles (JSON files), it is a perfect fit for our use case.
+Cloudflare Pages is a product that allows you to host your static sites and apps on Cloudflare's global network. Given Featurevisor project generates static datafiles (JSON files), it is a great fit for our use case.
 
 Make sure you already have a Cloudflare Pages project set up, and then use it in the publish workflow later.
 
@@ -35,7 +35,7 @@ We will be covering two workflows for our set up with GitHub Actions.
 
 This workflow will be triggered on every push to the repository targeting any non-master or non-main branches.
 
-This will help identity any issues with your Pull Requests early before you merge them to your main branch.
+This will help identify any issues with your Pull Requests early before you merge them to your main branch.
 
 ```yml
 # .github/workflows/checks.yml
@@ -48,7 +48,7 @@ on:
       - master
 
 jobs:
-  ci:
+  checks:
     name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -74,7 +74,7 @@ jobs:
 
 ### Publish
 
-This workflow is intended to be run on every push to your main branch, and is supposed to handle uploading of your generated datafiles as well:
+This workflow is intended to be run on every push to your main (or master) branch, and is supposed to handle uploading of your generated datafiles to Cloudflare Pages:
 
 ```yml
 # .github/workflows/publish.yml
@@ -87,7 +87,7 @@ on:
       - master
 
 jobs:
-  ci:
+  publish:
     name: Publish
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -133,11 +133,13 @@ jobs:
           git push
 ```
 
-After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor state files back to the repository, so that future builds will be build on top of latest state.
+After generating new datafiles and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
 Once uploaded, the your datafiles will be accessible as: `https://<your-project>.pages.dev/<environment>/datafile-tag-<your-tag>.json`.
 
 You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
+
+Learn how too consume datafiles from URLs directly using [SDKs](/docs/sdks).
 
 ## Full example
 

@@ -23,7 +23,7 @@ $ fearurevisor lint
 $ npm version patch
 ```
 
-The new `version` value as available in `package.json` file will be used in generated datafiles.
+The new `version` value as available in `package.json` file will be used when building datafiles.
 
 ### Build the datafiles
 

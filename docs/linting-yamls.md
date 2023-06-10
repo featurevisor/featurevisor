@@ -7,10 +7,12 @@ Featurevisor provides a CLI command to lint your YAML files, making sure they ar
 
 ## Usage
 
+Run:
+
 ```
 $ featurevisor lint
 ```
 
 And it will show you the errors in your YAML files, if any.
 
-If any errors are found, it will exit with a non-zero exit code.
+If any errors are found, it will terminate with a non-zero exit code.

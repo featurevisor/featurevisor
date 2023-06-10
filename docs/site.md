@@ -69,4 +69,4 @@ Examples:
 
 It is important to note that the generated site is a static one, and therefore it is read-only.
 
-To make any changes to your features, segments, or attributes, you will have to make those changes in your git repository.
+To make any changes to your features, segments, or attributes, you will have to make those changes in your Git repository.

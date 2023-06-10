@@ -11,13 +11,13 @@ It is an Open Source project, released under the MIT license. You can use it for
 
 There's none really. The tool's author is a developer, and he wanted to see how far he can stretch the limits of YAMLs in a git repository for feature management.
 
-You can consider the tool itself to be an experiment.
+The tool started as an experiment itself, but after several releases and iterations, it is increasingly becoming a stable tool that can be used in production.
 
 ## Is there any UI for managing features?
 
-Featurevisor is a tool aimed at developers, and its entire workflow is based on working with a git repository.
+Featurevisor is a tool aimed at developers, and its entire workflow is based on working with a Git repository.
 
-Therefore there is no UI involved.
+Therefore there is no UI involved when it comes to changing anything. You will be editing YAML files in your repository, and committing them to Git.
 
 Except for the [status site](/docs/site), which is a static site generated from the repository content.
 
@@ -25,9 +25,9 @@ Except for the [status site](/docs/site), which is a static site generated from 
 
 It depends.
 
-If you are a small team of developers, and you are comfortable working with YAMLs and git workflow, then yes, you can consider using Featurevisor.
+If you are a team or organization that is open to managing all their feature flags, experiments, or any remote configuration via a Git repository based workflow, then yes, Featurevisor can fit in nicely.
 
-But given the stable v1.0.0 has not landed yet, you should be prepared to deal with some bugs and issues.
+But until v1.0 stable has landed, you should be prepared to deal with some bugs and issues.
 
 ## Can I switch to another tool or SaaS later?
 
