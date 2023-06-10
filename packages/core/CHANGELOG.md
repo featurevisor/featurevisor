@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/fahad19/featurevisor/compare/v0.29.0...v0.30.0) (2023-06-10)
+
+
+### Features
+
+* omit empty ranges in datafile ([#81](https://github.com/fahad19/featurevisor/issues/81)) ([148866f](https://github.com/fahad19/featurevisor/commit/148866fd77796378011a7ff474640c4188885e01))
+
+
+
+
+
 # [0.29.0](https://github.com/fahad19/featurevisor/compare/v0.28.1...v0.29.0) (2023-06-10)
 
 

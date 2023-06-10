@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/fahad19/featurevisor/compare/v0.29.0...v0.30.0) (2023-06-10)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
 # [0.29.0](https://github.com/fahad19/featurevisor/compare/v0.28.1...v0.29.0) (2023-06-10)
 
 
