@@ -140,6 +140,14 @@ export function getTraffic(
       );
     });
 
+    traffic.allocation = traffic.allocation.filter((a) => {
+      if (a.range && a.range[0] === a.range[1]) {
+        return false;
+      }
+
+      return true;
+    });
+
     result.push(traffic);
   });
 
