@@ -50,6 +50,10 @@
     ]
   },
   {
+    "title": "Use cases",
+    "links": [{ "title": "Entitlements", "href": "/docs/use-cases/entitlements" }]
+  },
+  {
     "title": "Packages",
     "links": [
       {
