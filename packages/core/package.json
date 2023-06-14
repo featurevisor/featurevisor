@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
+    "lint": "eslint --config ../../.eslintrc src/**/*.ts",
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",

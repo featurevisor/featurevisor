@@ -7,7 +7,7 @@ export function getAllocation(availableRanges: Range[], fill: Percentage): Range
   let i = 0;
   while (remaining > 0 && i < availableRanges.length) {
     const range = availableRanges[i];
-    const [start, end] = range;
+    const [start, end] = what;
 
     const rangeFill = Math.min(remaining, end - start);
     result.push([start, start + rangeFill]);
