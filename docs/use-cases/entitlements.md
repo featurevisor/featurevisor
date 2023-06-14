@@ -1,6 +1,7 @@
 ---
 title: Entitlements
 description: Learn how to manage user entitlements using Featurevisor
+ogImage: /img/og/docs-use-cases-entitlements.png
 ---
 
 As your application grows in number of features, it can lead you to offer your services via different plans to your users. Where each plan can come with its own set of entitlements (activities that users are allowed to perform, aka permissions). {% .lead %}
