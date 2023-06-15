@@ -51,7 +51,10 @@
   },
   {
     "title": "Use cases",
-    "links": [{ "title": "Entitlements", "href": "/docs/use-cases/entitlements" }]
+    "links": [
+      { "title": "Entitlements", "href": "/docs/use-cases/entitlements" },
+      { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" }
+    ]
   },
   {
     "title": "Packages",
