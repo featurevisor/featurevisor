@@ -195,7 +195,7 @@ We can either choose to:
 
 The drawback of using `deviceId` at all times for both anonymous and authenticated users is that it will result in inconsistent variations for logged in users across multiple sessions or devices.
 
-If we wish to get the maximum benefit of Featurevisor's consitent bucketing making sure the same logged in user sees same variation across all devices and sessions, then we should use:
+If we wish to get the maximum benefit of Featurevisor's consistent bucketing making sure the same logged in user sees same variation across all devices and sessions, then we should use:
 
 - `userId` for authenticated users, and
 - `deviceId` for anonymous users
@@ -223,7 +223,7 @@ This will make sure when `userId` attribute is available, it will be used for bu
 
 ## Consuming datafiles in your microfrontend
 
-Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment) your datafiles, you can consume them using Featurevisor SDKs in your micfrontends:
+Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment) your datafiles, you can consume them using Featurevisor SDKs in your microfrontends:
 
 ```js
 // in `products` microfrontend
@@ -258,6 +258,6 @@ if (showMarketingBanner) {
 
 We have seen how we can use Featurevisor to manage all your feature configurations in a microfrontends architecture in a single place declaratively, even if those features overlap and are used in multiple microfrontends together.
 
-We have also seen how to handle tricky situations like anonymous vs authenticated users, and how to make sure logged in users are bucketed in a way so they see the same variation across all devices and sessions consistently maintaininig a solid user experience.
+We have also seen how to handle tricky situations like anonymous vs authenticated users, and how to make sure logged in users are bucketed in a way so they see the same variation across all devices and sessions consistently maintaining a solid user experience.
 
 The freedom and flexibility that microfrontends architecture brings in is great, but it also comes with its own set of challenges. Featurevisor can help you manage your features in a microfrontends architecture bringing all parties together with a strong reviews and approval workflow, and make sure your features are consistent across all your microfrontends.
