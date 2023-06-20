@@ -1,22 +1,23 @@
 ---
-title: Testing in production (UAT)
-description: Learn how to coordinate user acceptance testing (UAT) in production with Featurevisor
+title: Testing in production
+description: Learn how to coordinate testing in production with Featurevisor
 ogImage: /img/og/docs-use-cases-testing-in-production.png
 ---
 
-As your application grows more complex with critical features, you want to have more confidence that everything works as expected in production environment where your real users are, before any new features are  exposed them. Coordinating user acceptance testing (UAT) with Featurevisor can help you there. {% .lead %}
+As your application grows more complex with critical features, you want to have more confidence that everything works as expected in production environment where your real users are, before any new features are  exposed to them. Featurevisor can help coordinating testing in production here. {% .lead %}
 
-## What is User Acceptance Testing?
+## Why test in production?
 
-User Acceptance Testing (UAT) is a type of testing performed by the end users or the client to verify/accept the software system before moving the software application to the production environment.
+Testing in production is important because it is the only way to know for sure that your application behaves as expected in the real world, where your real users are. As much as we have a staging environment that mimics the production environment, it is still not the real thing.
 
-UAT is done in the final phase of testing after functional, integration and system testing is done.
+It is also the only way to know for sure that your application can handle the real traffic. For this guide here though, we are focusing primarily on the application behavior.
 
 ## Who performs the testing?
 
 It depends how your team and/or organization is structured.
 
-For small teams, it can be the same team that develops the features. For larger organizations, there can be a dedicated QA (Quality Assurance) team consisting of SDETs (Software Development Engineers in Test).
+- **Manual**: For small teams, it can be the same team that develops the features. For larger organizations, there can be a dedicated QA (Quality Assurance) team that takes care of manually testing the flows in production.
+- **Automated**: It can also be automated, where a suite of integration tests are run against the production environment.
 
 ## Your application
 
@@ -26,7 +27,7 @@ One of the teams in your organization is working on a new feature that allows us
 
 ## Attributes
 
-Before continuing further with feature flags, let's have our Featurevisor attributes defined for your application.
+Before continuing further with feature flags, let's have our Featurevisor attributes defined for our application.
 
 ### `userId`
 
@@ -50,7 +51,7 @@ type: string
 capture: true
 ```
 
-To learn about what `capture` does, see [Attributes](/docs/attributes) page.
+To learn about what `capture` property does, see [Attributes](/docs/attributes) page.
 
 ## Feature
 
@@ -91,7 +92,7 @@ We will begin increasing the `percentage` value after we have done some testing 
 
 ## Letting QA team access the feature
 
-Even though the feature itself is disabled in production for everyone, we still wish our QA team to be able to access it so they can perform their testing and let the feature owning team know about it before they proceed to roll it out for everyone later.
+Even though the feature itself is disabled in production for everyone, we still wish our QA team to be able to access it so they can perform their testing and let the feature owning team know about the results before they proceed to roll it out for everyone later.
 
 Given the `wishlist` feature is bucketed against `userId` attribute, we need to know the User IDs of all QA team members first. Once that's in hand, those User IDs can be embedded directly targeting an environment of the feature flag.
 
@@ -125,11 +126,15 @@ environments:
 
 After you have [built](/docs/building-datafiles) and [deployed](/docs/deployment) your datafiles, the QA team members can access production version of your application with the `wishlist` feature enabled for them, while your regular users still see the feature disabled.
 
+{% callout type="note" title="User IDs for automated tests" %}
+If you are running automated tests in production without involving any QA team, then you can pass the User IDs of the test accounts that you want to run your tests against.
+{% /callout %}
+
 ## Making things more maintainable with segments
 
-The above approach works, but it can be a bit cumbersome to maintain as the number of QA team members grow and also when their responsibility for testing grows beyond just one feature at a time.
+The above approach works, but it can be a bit cumbersome to maintain as the number of QA team members (or your predefined test user accounts) grow and also when their responsibilities for testing grow beyond just one feature at a time.
 
-We can make things more maintainable by creating a new `qa` segment:
+We can make things more maintainable by creating a new `qa` [segment](/docs/segments):
 
 ```yml
 # segments/qa.yml
@@ -164,6 +169,10 @@ environments:
         segments: "*"
         percentage: 0
 ```
+
+From now on, every time we wish to test a new feature in production, we can just add the `qa` segment to it, and the QA team members will be able to access it.
+
+We could have also named our segment `testAccounts` instead of `qa` and include the User IDs of the test accounts instead of the QA team members. The meaning of this segment still stays the same.
 
 ## Evaluating the features with SDKs
 
@@ -226,11 +235,14 @@ conditions:
         - "device-id-5"
 ```
 
-We turned our original condition in the segment to an `or` condition, and added the `deviceId` condition to it. This way, whenever any of the conditions match, we will consider the user as a QA team member.
+We turned our original condition in the segment to an `or` condition, and added the `deviceId` condition to it. This way, whenever any of the conditions match, we will consider the user (either logged in or not) as a QA team member.
 
 ## Gradual rollout
 
-Once the QA team has verified that the feature works as expected, we can begin rolling it out to a small percentage of our users in the runtime.
+Once the QA team has verified that the feature works as expected:
+
+- the `qa` segment can be removed from the feature's rule, and
+- we can begin rolling it out to a small percentage of our real users in production.
 
 ```yml
 # features/wishlist.yml
@@ -249,8 +261,8 @@ As we gain more confidence, we can increase the `percentage` value gradually all
 
 ## Conclusion
 
-We have just learned how to coordinate user acceptance testing (UAT) in your organization with Featurevisor, where we can expose features to a subset of users in production environment, and how to evaluate those features with SDKs.
+We have just learned how to coordinate testing in production in our organization with Featurevisor, where we can expose features to a subset of known users who can provide us early feedback (either manually or in an automated way), and how to evaluate those features with SDKs reliably.
 
-All done while maintaining a single source of truth for managing the QA segment, and without having to deploy any code changes to your application.
+All done while maintaining a single source of truth for managing the QA segment, and without having to deploy any code changes of our application.
 
-Featurevisor is smart enough to not include any segment (like `qa`) in generated datafiles that is not being used in any of the feature flags, so you don't have to worry about your datafile size growing unnecessarily.
+Featurevisor is smart enough to not include any segment (like `qa`) in generated datafiles that is not being used actively in any of the feature flags belonging to any generated datafiles, so we don't have to worry about the datafile size growing unnecessarily.
