@@ -14,15 +14,9 @@ Going deep into microfrontends architecture is not the goal of this guide. But w
 - **Tech stack**: Each microfrontend can be developed using the technology that best suits the team
 - **Deployment**: Each microfrontend can be deployed independently at their own pace
 - **Ownership**: Each team can own their own feature and be solely responsible for it
+- **Rolling back**: If a particular microfrontend breaks, it can be rolled back without affecting the rest of the application
 
 See this talk by [Luca Mezzalira](https://twitter.com/lucamezzalira) for further explanation [here](https://www.youtube.com/watch?v=BuRB3djraeM).
-
-## Frameworks
-
-There are several frameworks and tools that can help achieve this architecture, such as:
-
-- [Module federation](https://webpack.js.org/concepts/module-federation/) (webpack)
-- [single-spa](https://single-spa.js.org/)
 
 ## Challenges
 
@@ -34,6 +28,13 @@ With all the freedom and autonomy, microfrontends architecture also comes with i
 - **Reviews and approvals**: It can be hard to keep track of and coordinate all the features and their changes across all microfrontends
 
 Rest of this guide will help us understand how Featurevisor can help mitigate these concerns in your team and organization.
+
+## Frameworks
+
+There are several frameworks and tools that can help achieve this architecture, such as:
+
+- [Module federation](https://webpack.js.org/concepts/module-federation/) (webpack)
+- [single-spa](https://single-spa.js.org/)
 
 ## Your application
 
@@ -255,7 +256,7 @@ bucketBy:
 # ...
 ```
 
-This will make sure when `userId` attribute's value is available, it will be used for bucketing. Otherwise, it will fall back to `deviceId`.
+This will make sure when `userId` attribute is passed for evaluation to the SDK, it will be used for bucketing. Otherwise, it will fall back to `deviceId`.
 
 ## Review and approval workflow
 
