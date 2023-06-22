@@ -17,7 +17,7 @@ It is also the only way to know for sure that your application can handle the re
 It depends how your team and/or organization is structured.
 
 - **Manual**: For small teams, it can be the same team that develops the features. For larger organizations, there can be a dedicated QA (Quality Assurance) team that takes care of manually testing the flows in production.
-- **Automated**: It can also be automated, where a suite of integration tests are run against the production environment.
+- **Automated**: It can also be automated, where a suite of integration and regression tests are run against the production environment. You may refer to them as end-to-end (e2e) tests often.
 
 ## Your application
 
@@ -163,11 +163,11 @@ environments:
     force:
       - segments:
           - qa
-        variation: true
+        variation: true # enabled for QA team members
     rules:
       - key: "1"
         segments: "*"
-        percentage: 0
+        percentage: 0 # still disabled for everyone else
 ```
 
 From now on, every time we wish to test a new feature in production, we can just add the `qa` segment to it, and the QA team members will be able to access it.
@@ -261,7 +261,7 @@ As we gain more confidence, we can increase the `percentage` value gradually all
 
 ## Conclusion
 
-We have just learned how to coordinate testing in production in our organization with Featurevisor, where we can expose features to a subset of known users who can provide us early feedback (either manually or in an automated way), and how to evaluate those features with SDKs reliably.
+We have just learned how to coordinate testing in production in our organization with Featurevisor, where we can expose features to a known subset of all users who can provide us early feedback (either manually or in an automated way), and how to evaluate those features with SDKs reliably.
 
 All done while maintaining a single source of truth for managing the QA segment, and without having to deploy any code changes of our application.
 
