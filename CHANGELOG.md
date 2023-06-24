@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/fahad19/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
+
+
+### Features
+
+* do not allow "variation" as variable key ([#87](https://github.com/fahad19/featurevisor/issues/87)) ([03353eb](https://github.com/fahad19/featurevisor/commit/03353eb02437b3e3d4e0987bb5c8a96b143d5579))
+
+
+
+
+
 ## [0.30.1](https://github.com/fahad19/featurevisor/compare/v0.30.0...v0.30.1) (2023-06-14)
 
 **Note:** Version bump only for package featurevisor
