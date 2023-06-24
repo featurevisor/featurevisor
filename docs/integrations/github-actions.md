@@ -115,4 +115,4 @@ jobs:
 
 After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
-If you want an example of an actual uploading step, see [Cloudflare Pages](/docs/integration/cloudflare-pages) integration guide.
+If you want an example of an actual uploading step, see [Cloudflare Pages](/docs/integrations/cloudflare-pages/) integration guide.

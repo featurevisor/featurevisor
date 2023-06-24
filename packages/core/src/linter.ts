@@ -289,7 +289,7 @@ export function getFeatureJoiSchema(
     variablesSchema: Joi.array()
       .items(
         Joi.object({
-          key: Joi.string(),
+          key: Joi.string().disallow("variation"),
           type: Joi.string().valid(
             "string",
             "integer",
