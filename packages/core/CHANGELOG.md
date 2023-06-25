@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.1](https://github.com/fahad19/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
+
+
+### Bug Fixes
+
+* typo fix in core package ([#89](https://github.com/fahad19/featurevisor/issues/89)) ([8b58885](https://github.com/fahad19/featurevisor/commit/8b588858631fcea952fb8737d32d1920b9879225))
+
+
+
+
+
 # [0.31.0](https://github.com/fahad19/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
 
 
