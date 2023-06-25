@@ -290,6 +290,15 @@ One example: if User X is exposed to feature `hero` which is running our multiva
 
 For those cases, you are recommended to see the [Groups](/docs/groups/) functionality of Featurevisor, which will help you achieve exactly that without your applications needing to do any extra code changes at all.
 
+## Further reading
+
+You are highly recommended to read and understand the building blocks of Featurevisor which will help you make the most out of this tool:
+
+- [Attributes](/docs/attributes/): building block for conditions
+- [Segments](/docs/segments/): conditions for targeting users
+- [Features](/docs/features/): feature flags and variables with rollout rules
+- [Groups](/docs/groups/): mutually exclusive features
+
 ## Conclusion
 
 We learned how to use Featurevisor for:
