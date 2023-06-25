@@ -248,11 +248,11 @@ export function getFeatureJoiSchema(
     ),
   });
 
-  const allEnvironomentsSchema = {};
+  const allEnvironmentsSchema = {};
   projectConfig.environments.forEach((environmentKey) => {
-    allEnvironomentsSchema[environmentKey] = environmentJoiSchema.required();
+    allEnvironmentsSchema[environmentKey] = environmentJoiSchema.required();
   });
-  const allEnvironomentsJoiSchema = Joi.object(allEnvironomentsSchema);
+  const allEnvironmentsJoiSchema = Joi.object(allEnvironmentsSchema);
 
   const featureJoiSchema = Joi.object({
     archived: Joi.boolean(),
@@ -349,7 +349,7 @@ export function getFeatureJoiSchema(
       })
       .required(),
 
-    environments: allEnvironomentsJoiSchema.required(),
+    environments: allEnvironmentsJoiSchema.required(),
   });
 
   return featureJoiSchema;
