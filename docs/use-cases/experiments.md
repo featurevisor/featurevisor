@@ -54,9 +54,6 @@ For this guide, let's say your application consists of a landing page containing
   - headline
   - subheading, and
   - call-to-action (CTA) button
-- **Pricing**: The pricing section of the landing page, which includes:
-  - pricing plans, and
-  - their features
 
 We now want to run both A/B Tests and Multivariate Tests using Featurevisor.
 
@@ -113,7 +110,7 @@ Now that we have defined our feature, we can use Featurevisor SDKs to evaluate t
 For Node.js and browser environments, install the JavaScript SDK:
 
 ```
-$ npm install @featurevisor/browser
+$ npm install @featurevisor/sdk
 ```
 
 Then, initialize the SDK in your application:
@@ -161,6 +158,12 @@ Previously we only ran an A/B test on the CTA button's text, but now we want to 
 | treatment2 | Hello there | Get started     |
 
 Instead of creating a separate feature per element, we can create a single feature for the Hero section and define multiple variables for each element.
+
+The relationship can be visualized as:
+
+- one **feature**
+- having multiple **variations**
+- each variation having its own set of **variable values**
 
 ```yml
 # features/hero.yml
@@ -254,7 +257,7 @@ const sdk = createInstance({
 
   onReady: () => console.log("Datafile has been fetched and SDK is ready"),
 
-  onActivate: (featureKey, variation, attributes, captureAttributes) => {
+  onActivation: (featureKey, variation, attributes, captureAttributes) => {
     // send the event to your analytics platform
     // or any other third-party service
   }
