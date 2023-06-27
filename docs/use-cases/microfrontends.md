@@ -45,6 +45,8 @@ Imagine you have an e-commerce application, where you offer your users the abili
 - add to cart and buy products, and
 - manage their account
 
+We can approach it as a microfrontends architecture next.
+
 ## Mapping activities against microfrontends
 
 We can map all these activities to their own microfrontend as follows:
@@ -70,9 +72,9 @@ We are using a very simple example here. But in a real world application, each m
 
 ## Configuring tags
 
-Your entire application can contain several feature flags, but given it is a microfrontends architecture, we want to make sure that each microfrontend only loads the features it needs.
+Your entire application can contain several feature flags. But given it is a microfrontends architecture, we want to make sure that each microfrontend only loads the features it needs.
 
-Otherwise it will result into bloated datafiles with unnecessary data transfer and processing that will slow down your application.
+Instead of creating multiple Featurevisor projects for each of your microfrontends, we can having a **single project** that contains all the features and their configurations, and then build **separate datafiles** for each microfrontend.
 
 To achieve that, we need to let our Featurevisor [configuration](/docs/configuration) know which tags we want to build our datafiles for:
 
@@ -123,7 +125,7 @@ dist
 
 ## Attributes
 
-We will set up some Featurevisor attributes first, that we will use in various stages of this guide later.
+We will set up some Featurevisor [attributes](/docs/attributes) first, that we will use in various stages of this guide later.
 
 ### `userId`
 
@@ -147,7 +149,7 @@ capture: true
 
 ## Feature
 
-For this example, we will create a new feature flag that's responsible for toggling a marketing banner that's shown at the bottom of a page. We can call it `showMarketingBanner`.
+For this example, we will create a new [feature](/docs/features) flag that's responsible for toggling a marketing banner that's shown at the bottom of a page. We can call it `showMarketingBanner`.
 
 ```yml
 # features/showMarketingBanner.yml
@@ -213,11 +215,17 @@ It's an easy decision to make when choosing the `bucketBy` value when the microf
 
 | Microfrontend | Access          | `bucketBy` |
 |---------------|-----------------|------------|
+| `products`    | Everyone        | ?          |
 | `signup`      | Anonymous users | `deviceId` |
 | `signin`      | Anonymous users | `deviceId` |
+| `checkout`    | Everyone        | ?          |
 | `account`     | Authenticated   | `userId`   |
 
 But what shall we do for microfrontends that are accessible to both anonymous and authenticated users? Like `products` and `checkout` in our example.
+
+{% callout type="note" title="Applies to both microfrontends and monoliths" %}
+This challenge applies to any application that deals with both anonymous and authenticated users, whether it's a microfrontends architecture or a monolithic application.
+{% /callout %}
 
 ### Design decision
 
@@ -280,6 +288,7 @@ const sdk = createInstance({
 Evaluate your features:
 
 ```js
+const featureKey = "showMarketingBanner";
 const attributes = {
   deviceId: "...",
 
@@ -287,10 +296,7 @@ const attributes = {
   userId: "...",
 };
 
-const showMarketingBanner = sdk.getVariation(
-  "showMarketingBanner",
-  attributes
-);
+const showMarketingBanner = sdk.getVariation(featureKey, attributes);
 
 if (showMarketingBanner) {
   // render marketing banner
