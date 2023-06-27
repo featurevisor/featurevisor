@@ -53,7 +53,8 @@
     "title": "Use cases",
     "links": [
       { "title": "Entitlements", "href": "/docs/use-cases/entitlements" },
-      { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" }
+      { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
+      { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" }
     ]
   },
   {
