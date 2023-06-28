@@ -6,6 +6,8 @@ ogImage: /img/og/docs-use-cases-microfrontends.png
 
 Microfrontends are a way of architecting your frontend application as a composition of loosely coupled features. Each feature is owned by a separate team, and can be developed and deployed independently. {% .lead %}
 
+In this guide, we will learn how Featurevisor and microfrontends architecture can complement each other, enabling your organization to ship faster with more confidence.
+
 ## Benefits
 
 Going deep into microfrontends architecture is not the goal of this guide. But we will briefly mention some of its key benefits:
