@@ -37,6 +37,7 @@ There are several frameworks and tools that can help achieve this architecture, 
 
 - [Module federation](https://webpack.js.org/concepts/module-federation/) (webpack)
 - [single-spa](https://single-spa.js.org/)
+- [Piral](https://piral.io/)
 
 ## Your application
 
