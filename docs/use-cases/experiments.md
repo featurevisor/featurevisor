@@ -21,11 +21,12 @@ By comparing the performance of the different variants, statistical analysis is 
 A/B testing follows a structured process that typically involves the following steps:
 
 1. **Identify the element to be tested**: Determine the specific element, such as a webpage, design element, pricing model, or user interface component, that will be subjected to variation.
-1. **Create variations**: Develop multiple versions of the element, ensuring they are distinct and have measurable differences.
-1. **Split traffic or users**: Randomly assign users or traffic into separate groups, with each group exposed to a different variant.
-1. **Run the experiment**: Implement the variants and collect data on the predefined metrics for each group over a specified period.
-1. **Analyze the results**: Use statistical analysis to compare the performance of the variants and determine if any differences are statistically significant.
-1. **Make informed decisions**: Based on the analysis, evaluate which variation performs better and whether it should be implemented as the new default or further optimized.
+2. **Power analysis**: Determine if there's enough traffic or users to run the experiment and achieve statistical significance.
+3. **Create variations**: Develop multiple versions of the element, ensuring they are distinct and have measurable differences.
+4. **Split traffic or users**: Randomly assign users or traffic into separate groups, with each group exposed to a different variant.
+5. **Run the experiment**: Implement the variants and collect data on the predefined metrics for each group over a specified period.
+6. **Analyze the results**: Use statistical analysis to compare the performance of the variants and determine if any differences are statistically significant.
+7. **Make informed decisions**: Based on the analysis, evaluate which variation performs better and whether it should be implemented as the new default or further optimized.
 
 ## What about Multivariate Testing?
 
