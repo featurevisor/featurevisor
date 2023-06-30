@@ -255,10 +255,19 @@ Depending on your needs, it is also possible to override variables:
 - at each [variation level](/docs/features/#overriding-variables), and also
 - at environment level by [forcing it](/docs/features/#force)
 
-You can see two other uses detailing these approaches:
+You can see two other use cases here detailing these approaches:
 
 - [Managing user entitlements](/docs/use-cases/entitlements)
 - [Testing in production](/docs/use-cases/testing-in-production)
+
+## How to notify applications about datafile changes?
+
+There are two ways this can happen:
+
+- You can configure your SDK to keep refreshing the datafile at a certain **interval** (like every 30 seconds), or
+- When deploying your Featurevisor datafiles, you can broadcast a notification to all your applications to refresh their datafiles **manually**
+
+You can refer to the SDK guide here for [refreshing datafile](/docs/sdks/#refreshing-datafile).
 
 ## Full feature example
 
@@ -335,7 +344,7 @@ We learned about:
 
 - various benefits of separating runtime configuration from our application
 - how to break down different configuration parameters of our application into variables
-- having them defined in a feature using Featurevisor
+- having them defined in a feature declaratively using Featurevisor
 - overriding them using rollout rules based on our needs
 
-Overall, Featurevisor can help manage your application's runtime configuration in a highly maintainable way for your team and your organization, with a strong review and approval process in one single place for everyone in the form of a Git repository.
+Overall, Featurevisor can help manage your application's runtime configuration in a highly readable and maintainable way for your team and your organization, with a strong review and approval process in one single place for everyone in the form of a Git repository.
