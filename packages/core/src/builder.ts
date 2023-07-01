@@ -350,7 +350,7 @@ export function buildProject(
         };
 
     for (const tag of tags) {
-      console.log(`  => Tag: ${tag}`);
+      console.log(`\n  => Tag: ${tag}`);
       const datafileContent = buildDatafile(
         projectConfig,
         {
@@ -373,7 +373,8 @@ export function buildProject(
           ? JSON.stringify(datafileContent, null, 2)
           : JSON.stringify(datafileContent),
       );
-      console.log(`     File generated: ${outputFilePath}`);
+      const shortPath = outputFilePath.replace(rootDirectoryPath + path.sep, "");
+      console.log(`     Datafile generated: ${shortPath}`);
     }
 
     // write state for environment
