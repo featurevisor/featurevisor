@@ -10,6 +10,8 @@ Running experiments like A/B Testing and Multivariate Testing is a powerful tech
 
 An **A/B test**, also known as **split testing** or **bucket testing**, is a controlled experiment used to compare two or more variations of a specific feature to determine which one performs better. It is commonly used in fields like web development, marketing, user experience design, and product management.
 
+It is common practice to call the default/existing behaviour as `control` variation, and the new/experimental behaviour as `treatment` variation.
+
 ## Why run A/B Tests?
 
 The primary goal of an A/B test is to measure the impact of the variations on predefined metrics or key performance indicators (KPIs). These metrics can include conversion rates, click-through rates, engagement metrics, revenue, or any other measurable outcome relevant to the experiment.
@@ -20,7 +22,7 @@ By comparing the performance of the different variants, statistical analysis is 
 
 A/B testing follows a structured process that typically involves the following steps:
 
-1. **Identify the element to be tested**: Determine the specific element, such as a webpage, design element, pricing model, or user interface component, that will be subjected to variation.
+1. **Research and identify**: Find a customer or business problem and turn it into a testable hypotheses by determining the specific element, such as a webpage, design element, pricing model, or user interface component, that will be subjected to variation.
 2. **Power analysis**: Determine if there's enough traffic or users to run the experiment and achieve statistical significance.
 3. **Create variations**: Develop multiple versions of the element, ensuring they are distinct and have measurable differences.
 4. **Split traffic or users**: Randomly assign users or traffic into separate groups, with each group exposed to a different variant.
