@@ -49,7 +49,7 @@ Often times, A/B tests with 3 or more variations are referred to as A/B/n tests.
 | Statistical Significance | Typically requires fewer samples to achieve significance       | Requires larger sample sizes to achieve significance                                           |
 | Insights                 | Provides insights into the impact of individual changes        | Provides insights into the interaction between changes                                         |
 | Test Duration            | Generally shorter duration                                     | Often requires longer duration to obtain reliable results                                      |
-| Examples                 | Ideal for testing isolated changes, UI tweaks, copy variations | Useful for testing larger-scale changes, page redesigns, interaction between multiple elements |
+| Examples                 | Ideal for testing isolated changes like UI tweaks, copy variations | Useful for testing multi-factor changes like page redesigns, interaction between multiple elements |
 
 ## Our application
 
