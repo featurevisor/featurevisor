@@ -116,9 +116,9 @@ We just set up our first A/B test experiment that is:
 - to be bucketed against `deviceId` attribute (since we don't have the user logged in yet)
 
 {% callout type="note" title="Importance of bucketing" %}
-Featurevisor relies on bucketing to make sure the same user always sees the same variation irrespective of which device they are using.
+Featurevisor relies on bucketing to make sure the same user or anonymous visitor always sees the same variation no matter how many times they go through the flow in your application.
 
-This is important to make sure the user experience is consistent across devices and sessions.
+This is important to make sure the user experience is consistent across devices (if user's ID is known) and sessions.
 
 You can read further about bucketing in these pages:
 
@@ -158,7 +158,7 @@ Now that we have defined our feature, we can use Featurevisor SDKs to evaluate t
 For Node.js and browser environments, install the JavaScript SDK:
 
 ```
-$ npm install @featurevisor/sdk
+$ npm install --save @featurevisor/sdk
 ```
 
 Then, initialize the SDK in your application:
@@ -177,7 +177,11 @@ Now we can evaluate the `ctaButton` feature wherever we need to render the CTA b
 
 ```js
 const featureKey = "ctaButton";
-const attributes = { deviceId: "device-123" };
+const attributes = {
+  deviceId: "device-123",
+  country: "nl",
+  deviceType: "iphone"
+};
 
 const ctaButtonVariation = sdk.getVariation(featureKey, attributes);
 
@@ -335,7 +339,7 @@ sdk.activate(featureKey, attributes);
 
 ## Mutually exclusive experiments
 
-Often times when you are running multiple experiments together, you want to make sure that they are mutually exclusive. This means that a user should not be bucketed into multiple experiments at the same time.
+Often times when we are running multiple experiments together, we want to make sure that they are mutually exclusive. This means that a user should not be bucketed into multiple experiments at the same time.
 
 In more plain words, the same user should not be exposed to multiple experiments together, and only one experiment at a time avoiding any overlap.
 
@@ -351,6 +355,7 @@ You are highly recommended to read and understand the building blocks of Feature
 - [Segments](/docs/segments/): conditions for targeting users
 - [Features](/docs/features/): feature flags and variables with rollout rules
 - [Groups](/docs/groups/): mutually exclusive features
+- [SDKs](/docs/sdks/): how to consume datafiles in your applications
 
 ## Conclusion
 
