@@ -36,6 +36,8 @@ Unlike A/B testing, which focuses on comparing two or more variants of a single 
 
 ## Difference between A/B Tests and Multivariate Tests
 
+Often times, A/B tests with 3 or more variations are referred to as A/B/n tests. We are considering them both as A/B tests in this guide.
+
 |                          | A/B Tests                                                      | Multivariate Tests                                                                             |
 |--------------------------|----------------------------------------------------------------|------------------------------------------------------------------------------------------------|
 | Purpose                  | Compare two or more variants of a single element               | Simultaneously test multiple elements and variations                                           |
@@ -47,9 +49,9 @@ Unlike A/B testing, which focuses on comparing two or more variants of a single 
 | Test Duration            | Generally shorter duration                                     | Often requires longer duration to obtain reliable results                                      |
 | Examples                 | Ideal for testing isolated changes, UI tweaks, copy variations | Useful for testing larger-scale changes, page redesigns, interaction between multiple elements |
 
-## Your application
+## Our application
 
-For this guide, let's say your application consists of a landing page containing these elements:
+For this guide, let's say our application consists of a landing page containing these elements:
 
 - **Hero section**: The main section of the landing page, which includes:
   - headline
@@ -57,6 +59,17 @@ For this guide, let's say your application consists of a landing page containing
   - call-to-action (CTA) button
 
 We now want to run both A/B Tests and Multivariate Tests using Featurevisor.
+
+{% callout type="note" title="Understanding the building blocks" %}
+Before going further in this guide, you are recommended to learn about the building blocks of Featurevisor to understand the concepts used in this guide:
+
+- [Attributes](/docs/attributes): building block for conditions
+- [Segments](/docs/segments): conditions for targeting users
+- [Features](/docs/features): feature flags and variables with rollout rules
+- [SDKs](/docs/sdks): how to consume datafiles in your applications
+
+The [quick start](/docs/quick-start) can be very handy as a summary.
+{% /callout %}
 
 ## A/B Test on CTA button
 
@@ -102,7 +115,41 @@ We just set up our first A/B test experiment that is:
 - with a 50/50 split between the `control` and `treatment` variations
 - to be bucketed against `deviceId` attribute (since we don't have the user logged in yet)
 
+{% callout type="note" title="Importance of bucketing" %}
+Featurevisor relies on bucketing to make sure the same user always sees the same variation irrespective of which device they are using.
+
+This is important to make sure the user experience is consistent across devices and sessions.
+
+You can read further about bucketing in these pages:
+
+- [Bucketing concept](/docs/bucketing/)
+- [Defining bucketing in features](/docs/features/#bucketing)
+{% /callout %}
+
 The `deviceId` attribute can be an unique UUID generated and persisted at client-side level where SDK evaluates the features.
+
+If we wanted to a more targeted rollout, we could have used [segments](/docs/segments/) to target specific users or groups of users:
+
+```yml
+# features/ctaButton.yml
+
+# ...
+
+environments:
+  production:
+    rules:
+      - key: "2"
+        segments:
+          - netherlands
+          - iphoneUsers
+        percentage: 100 # enabled for iPhone users in NL only
+
+      - key: "1"
+        segments: "*"
+        percentage: 0 # disabled for everyone else
+```
+
+You can read further how segments are defined in a feature's rollout rules [here](/docs/features/#segments).
 
 ## Evaluating feature with SDKs
 
@@ -248,7 +295,7 @@ We understood how to create features for defining simple A/B tests and also more
 
 But we also need to track the performance of our experiments to understand which variation is doing better than others.
 
-This is where the `activate()` method of the SDK comes in handy. Before we call the method, let's first set up our activation event handler in the SDK initialization:
+This is where the `activate()` method of the SDK comes in handy. Before we call the method, let's first set up our [activation](/docs/sdks/#activation) event handler in the SDK initialization:
 
 ```js
 import { createInstance } from "@featurevisor/sdk";
@@ -266,6 +313,8 @@ const sdk = createInstance({
 ```
 
 In the `onActivate` handler, we know which feature was activated and which variation was computed for the current user or device. From here, we are in full control of sending the event to our analytics platform or any other third-party service for further analysis.
+
+As an example, you can refer to the guide of [Google Tag Manager](/docs/tracking/google-tag-manager) for tracking purposes.
 
 {% callout type="note" title="Featurevisor is not an analytics platform" %}
 It is important to understand that Featurevisor is not an analytics platform. It is a feature management tool that helps you manage your features and experiments with a Git-based workflow, and helps evaluate your features in your application with its SDKs.
