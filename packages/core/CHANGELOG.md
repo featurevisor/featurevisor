@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.2](https://github.com/fahad19/featurevisor/compare/v0.31.1...v0.31.2) (2023-07-01)
+
+
+### Bug Fixes
+
+* build output in CLI made more readable ([#94](https://github.com/fahad19/featurevisor/issues/94)) ([5dc3ccf](https://github.com/fahad19/featurevisor/commit/5dc3ccf12169d9a996abee6168a470de262b990c))
+
+
+
+
+
 ## [0.31.1](https://github.com/fahad19/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
 
 
