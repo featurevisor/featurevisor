@@ -23,7 +23,7 @@
       { "title": "Linting YAMLs", "href": "/docs/linting-yamls" },
       { "title": "Building datafiles", "href": "/docs/building-datafiles" },
       { "title": "State files", "href": "/docs/state-files" },
-      { "title": "Testing features", "href": "/docs/testing-features" },
+      { "title": "Testing", "href": "/docs/testing" },
       { "title": "Status site", "href": "/docs/site" },
       { "title": "Deployment", "href": "/docs/deployment" },
       { "title": "SDKs", "href": "/docs/sdks" }
