@@ -328,7 +328,7 @@ export interface ExistingState {
 /**
  * Tests
  */
-export interface Assertion {
+export interface FeatureAssertion {
   description?: string;
   at: Weight; // bucket weight: 0 to 100
   attributes: Attributes;
@@ -340,14 +340,30 @@ export interface Assertion {
 
 export interface TestFeature {
   key: FeatureKey;
-  assertions: Assertion[];
+  assertions: FeatureAssertion[];
+}
+
+export interface SegmentAssertion {
+  description?: string;
+  attributes: Attributes;
+  expected: boolean;
+}
+
+export interface TestSegment {
+  key: SegmentKey;
+  assertions: SegmentAssertion[];
 }
 
 export interface Test {
   description?: string;
-  tag: string;
-  environment: string;
-  features: TestFeature[];
+
+  // needed for feature testing
+  tag?: string;
+  environment?: string;
+  features?: TestFeature[];
+
+  // needed for segment testing
+  segments?: TestSegment[];
 }
 
 export interface Spec {
