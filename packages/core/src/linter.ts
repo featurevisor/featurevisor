@@ -442,11 +442,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableAttributeKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await attributeJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -468,11 +468,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableSegmentKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await segmentJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -492,11 +492,12 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     for (const filePath of groupFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await groupJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {
@@ -524,11 +525,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableFeatureKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await featureJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -552,11 +553,12 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     for (const filePath of testFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await testsJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {
