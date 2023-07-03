@@ -1,5 +1,5 @@
 ---
-title: Experimentation
+title: Experiments
 description: Learn how to experiment with A/B Tests and Multivariate Tests using Featurevisor.
 ogImage: /img/og/docs-use-cases-experiments.png
 ---
