@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.1](https://github.com/fahad19/featurevisor/compare/v0.32.0...v0.32.1) (2023-07-03)
+
+
+### Bug Fixes
+
+* show linting error only when it fails ([#96](https://github.com/fahad19/featurevisor/issues/96)) ([f563487](https://github.com/fahad19/featurevisor/commit/f5634870a3b21fdb0078c92328b80aa87490df45))
+
+
+
+
+
 # [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
 
 
