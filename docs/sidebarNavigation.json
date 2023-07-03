@@ -33,7 +33,15 @@
     "title": "Framework guides",
     "links": [{ "title": "React", "href": "/docs/react" }]
   },
-
+  {
+    "title": "Use cases",
+    "links": [
+      { "title": "Entitlements", "href": "/docs/use-cases/entitlements" },
+      { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
+      { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
+      { "title": "Experiments", "href": "/docs/use-cases/experiments" }
+    ]
+  },
   {
     "title": "Advanced",
     "links": [{ "title": "Bucketing", "href": "/docs/bucketing" }]
@@ -47,14 +55,6 @@
     "links": [
       { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
       { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" }
-    ]
-  },
-  {
-    "title": "Use cases",
-    "links": [
-      { "title": "Entitlements", "href": "/docs/use-cases/entitlements" },
-      { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
-      { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" }
     ]
   },
   {
