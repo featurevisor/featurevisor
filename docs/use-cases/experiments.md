@@ -1,7 +1,7 @@
 ---
 title: Experimentation
 description: Learn how to experiment with A/B Tests and Multivariate Tests using Featurevisor.
-ogImage: /img/og/docs-use-cases-experimentation.png
+ogImage: /img/og/docs-use-cases-experiments.png
 ---
 
 Running experiments like A/B Testing and Multivariate Testing is a powerful technique in product development for continuous learning and iterating based on feedback. Featurevisor can help manage those experiments with a strong governance model in your organization. {% .lead %}
