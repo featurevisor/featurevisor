@@ -1,6 +1,6 @@
 ---
 title: Data Capturing via Google Tag Manager (GTM)
-description: Learn how to integrate Featurevisor SDK with Google Tag Manager and enable your experimentation reporting through custom dataLayer events
+description: Learn how to integrate Featurevisor SDK with Google Tag Manager {% .lead %}
 ---
 ## Intro:
 
