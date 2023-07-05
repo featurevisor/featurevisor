@@ -4,7 +4,7 @@ description: Learn how to integrate Featurevisor SDK with Google Tag Manager {% 
 ---
 ## Intro:
 
-Being able to report on the outcome of an experimnt by leveraging high-quality data is a key aspect of any business or individual who wants to take a step closer to achieving their goals and offering users an outstanding experience on their platform. This article guides you on how to run experimentation analysis by leveraging your existing frontend dataset and enabling segmentation for bahvioural analysis through an established data collection method: Google Tag Manager. 
+This article guides you on how to run experimentation analysis by leveraging your existing frontend dataset and enabling segmentation for bahvioural analysis through an established data collection method: Google Tag Manager. 
 
 ## Guide:
 
