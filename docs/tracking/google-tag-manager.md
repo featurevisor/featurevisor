@@ -16,7 +16,7 @@ The SDK integration section below provides a guide on how to push the `featurevi
 
 Find more info [here](https://support.google.com/tagmanager/answer/7679219?hl=en).
 
-IMPORTANT: push the event to the `dataLayer` at the very moment when a user is first activated into an experiment to ensure qualitative data collection.
+**IMPORTANT:** push the event to the `dataLayer` at the very moment when a user is first activated into an experiment to ensure qualitative data collection.
 
 ## SDK integration guide:
 
