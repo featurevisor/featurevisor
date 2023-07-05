@@ -36,7 +36,7 @@ const sdk = createInstance({
   ) {
     // push to dataLayer here
     window.dataLayer.push({
-      event: 'featureVisorActivation',
+      event: 'featurevisorActivation',
       featureKey,
       variationValue,
       capturedAttributes,
@@ -47,8 +47,10 @@ const sdk = createInstance({
 
 ## Pass the experiment name and its metadata as a Custom Dimension in your GTM Tags
 
+Custom Dimensions (Universal Analytics), Event Parameters and User Properties (GA4) are custom defined dimensions in which the value of a user-defined variable is stored. These assets are generally used to attach contextual information that enriches the events that are sent to your Analytics instance.
+
 To be able to filter your data and create segmentation for each of your experiments, make sure to pass the unique id of the experiment and its variation as a Custom Dimension in your GA4 tags. To achieve this, make sure to first register a new Custom Dimension on your interface and name it `fv_experiment_id`. You can decide whether to make that Custom Dimension an Event Paramenter or a User Property based on the principles of your custom analytics implementation. Once done, add the parameter to all of your GA4 tags in Google Tag Manager to attach the information to the event.
 
-## Analyse the results of your experiment 
+## Analyse results:
 
 Now that the hit is stored into your Google Analytics instance and is enriched by the experimentat information, you are ready to run analysis to establish the impact of the different variations of an experiment. Segmentation of events and users can be achieved both directly on the GA interface as well as directly using the raw data exported to Google BigQuery, which is the recommend method for those who want to achieve a deeper level of analysis and reporting flexibility.
