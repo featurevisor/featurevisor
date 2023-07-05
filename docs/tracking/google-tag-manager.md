@@ -8,15 +8,15 @@ This article guides you on how to run experimentation analysis by leveraging you
 
 ## Guide:
 
-Custom events are user defined events that are pushed to the dataLayer to expose a particular information or track a certain action. GTM is able to extract and store the data contained in the event's payload through a particular type of trigger that listens to the dataLayer and fires tags when the custom condition is met.
+Custom events are user defined events that are pushed to the `dataLayer` to expose a particular information or track a certain action. GTM is able to extract and store the data contained in the event's payload through a particular type of trigger that listens to the `dataLayer` and fires tags when the custom condition is met.
 
-## Send an experiment activation event to the dataLayer and collect data via GTM
+## Send an experiment activation event to the `dataLayer` and collect data via GTM
 
-The SDK integration section below provides a guide on how to push the `featureVisorActivation` event to the dataLayer created by Google Tag Manager. Once the event has been pushed to the dataLayer, the data can be sent to your Google Analytics property by firing a GA4 or Universal Analytics tag that leverages a Custom Event Trigger. Make sure to set the Custom Event Trigger to exactly match the name of the event pushed to the dataLayer (`featureVisorActivation`).
+The SDK integration section below provides a guide on how to push the `featurevisorActivation` event to the dataLayer created by Google Tag Manager. Once the event has been pushed to the dataLayer, the data can be sent to your Google Analytics property by firing a GA4 or Universal Analytics tag that leverages a Custom Event Trigger. Make sure to set the Custom Event Trigger to exactly match the name of the event pushed to the `dataLayer` (`featurevisorActivation`).
 
 Find more info [here](https://support.google.com/tagmanager/answer/7679219?hl=en).
 
-IMPORTANT: push the event to the dataLayer at the very moment when a user is first activated into an experiment to ensure qualitative data collection.
+IMPORTANT: push the event to the `dataLayer` at the very moment when a user is first activated into an experiment to ensure qualitative data collection.
 
 ## SDK integration guide:
 
