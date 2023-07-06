@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/sdk",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "description": "Featurevisor SDK for Node.js and the browser",
   "main": "dist/index.js",
   "module": "lib/index.js",
@@ -42,7 +42,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "^0.32.0",
+    "@featurevisor/types": "^0.33.0",
     "compare-versions": "^6.0.0-rc.1",
     "murmurhash": "^2.0.1"
   }
