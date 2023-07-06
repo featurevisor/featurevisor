@@ -47,5 +47,8 @@
     "vue": "^3.3.4"
   },
   "license": "MIT",
-  "devDependencies": {}
+  "devDependencies": {
+    "@vue/cli-plugin-unit-jest": "^5.0.8",
+    "@vue/test-utils": "^2.4.0"
+  }
 }
