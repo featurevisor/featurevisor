@@ -118,7 +118,7 @@ This should ideally be only called once per feature, and only when we know the f
 
 ## Optimization
 
-Given the nature of components in React, they can re-render many times.
+Given the nature of components in Vue.js, they can re-render many times.
 
 You are advised to minimize the number of calls to Featurevisor SDK in your components by using memoization techniques.
 
