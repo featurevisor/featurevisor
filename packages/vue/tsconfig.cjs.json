@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.cjs.json",
+  "compilerOptions": {
+    "outDir": "./lib",
+    "jsx": "preserve",
+    "types": ["jest"],
+    "paths": {
+      "react": ["./stub/types__react"]
+    }
+  },
+  "include": ["./src/**/*.ts"]
+}

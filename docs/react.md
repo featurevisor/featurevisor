@@ -1,9 +1,10 @@
 ---
 title: React SDK
 description: Learn how to use Featurevisor SDK with React
+ogImage: /img/og/docs-react.png
 ---
 
-Featureivisor also comes with an additional package for React.js, for ease of integration in your React.js application. {% .lead %}
+Featurevisor also comes with an additional package for React.js, for ease of integration in your React.js application. {% .lead %}
 
 ## Installation
 
