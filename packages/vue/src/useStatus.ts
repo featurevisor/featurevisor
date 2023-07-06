@@ -1,14 +1,26 @@
+import { Ref, readonly, ref } from "vue";
+
 import { useSdk } from "./useSdk";
 
 export interface Status {
   isReady: boolean;
 }
 
-export function useStatus(): Status {
+export function useStatus(): Ref<Status> {
   const sdk = useSdk();
   const initialStatus = sdk.isReady();
 
-  // @TODO: handle reactivity
+  const result = ref({
+    isReady: initialStatus,
+  });
 
-  return { isReady: initialStatus };
+  if (initialStatus) {
+    return result;
+  }
+
+  sdk.on("ready", () => {
+    result.value.isReady = true;
+  });
+
+  return readonly(result);
 }
