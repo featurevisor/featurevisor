@@ -1,6 +1,7 @@
 ---
 title: Vue.js SDK
 description: Learn how to use Featurevisor SDK with Vue.js
+ogImage: /img/og/docs-vue.png
 ---
 
 Featurevisor comes with an additional package for Vue.js, for ease of integration in your Vue.js application. {% .lead %}
