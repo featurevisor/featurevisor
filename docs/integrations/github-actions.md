@@ -1,9 +1,10 @@
 ---
 title: GitHub Actions (GHA)
 description: Learn how to set up CI/CD workflows with GitHub Actions for Featurevisor
+ogImage: /img/og/docs-integrations-github-actions.png
 ---
 
-Set up continuous integration and deployment of your Feaurevisor project with GitHub Actions. {% .lead %}
+Set up continuous integration and deployment of your Featurevisor project with GitHub Actions. {% .lead %}
 
 Find more info about GitHub Actions [here](https://github.com/features/actions).
 
@@ -113,6 +114,6 @@ jobs:
           git push
 ```
 
-After generating new datailfes and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
+After generating new datafiles and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
 If you want an example of an actual uploading step, see [Cloudflare Pages](/docs/integrations/cloudflare-pages/) integration guide.

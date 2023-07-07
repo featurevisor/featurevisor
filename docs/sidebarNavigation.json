@@ -47,7 +47,10 @@
   },
   {
     "title": "Advanced",
-    "links": [{ "title": "Bucketing", "href": "/docs/bucketing" }]
+    "links": [
+      { "title": "CLI usage", "href": "/docs/cli" },
+      { "title": "Bucketing", "href": "/docs/bucketing" }
+    ]
   },
   {
     "title": "Tracking guides",
@@ -86,6 +89,10 @@
       {
         "title": "@featurevisor/react",
         "href": "https://github.com/fahad19/featurevisor/tree/main/packages/react"
+      },
+      {
+        "title": "@featurevisor/vue",
+        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/vue"
       }
     ]
   },
