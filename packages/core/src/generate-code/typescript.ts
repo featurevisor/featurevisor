@@ -39,6 +39,30 @@ function getPascalCase(str) {
   return pascalCased;
 }
 
+function getFeaturevisorTypeFromValue(value) {
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+
+  if (typeof value === "string") {
+    return "string";
+  }
+
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return "integer";
+    }
+
+    return "double";
+  }
+
+  if (value instanceof Date) {
+    return "date";
+  }
+
+  throw new Error("Could not detect Featurevisor type from value");
+}
+
 const instanceSnippet = `
 import { FeaturevisorInstance } from "@featurevisor/sdk";
 
@@ -93,11 +117,14 @@ export function generateTypeScriptCodeForProject(
       return `  ${attribute.key}?: ${attribute.typescriptType};`;
     })
     .join("\n");
-  const attributesContent = `export interface Attributes {
+  const attributesContent = `
+import { AttributeKey, AttributeValue } from "@featurevisor/types";
+
+export interface Attributes {
 ${attributeProperties}
-  [key: string]: any;
+  [key: AttributeKey]: AttributeValue;
 }
-`;
+`.trimStart();
 
   const attributesTypeFilePath = path.join(outputPath, "Attributes.ts");
   fs.writeFileSync(attributesTypeFilePath, attributesContent);
@@ -110,7 +137,8 @@ ${attributeProperties}
     const featureKey = path.basename(featureFile, ".yml");
     const parsedFeature = parseYaml(fs.readFileSync(featureFile, "utf8")) as ParsedFeature;
 
-    const variationType = typeof parsedFeature.defaultVariation;
+    const variationType = getFeaturevisorTypeFromValue(parsedFeature.defaultVariation);
+    const variationTypeScriptType = convertFeaturevisorTypeToTypeScriptType(variationType);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;
@@ -119,6 +147,33 @@ ${attributeProperties}
     const namespaceValue = getPascalCase(featureKey) + "Feature";
     featureNamespaces.push(namespaceValue);
 
+    let variableMethods = "";
+
+    if (parsedFeature.variablesSchema) {
+      for (const variableSchema of parsedFeature.variablesSchema) {
+        const variableKey = variableSchema.key;
+        const variableType = variableSchema.type;
+
+        const internalMethodName = `getVariable${
+          variableType === "json" ? "JSON" : getPascalCase(variableType)
+        }`;
+
+        if (variableType === "json" || variableType === "object") {
+          variableMethods += `
+
+  export function get${getPascalCase(variableKey)}<T>(attributes: Attributes = {}) {
+    return getInstance().${internalMethodName}<T>(key, "${variableKey}", attributes);
+  }`;
+        } else {
+          variableMethods += `
+
+  export function get${getPascalCase(variableKey)}(attributes: Attributes = {}) {
+    return getInstance().${internalMethodName}(key, "${variableKey}", attributes);
+  }`;
+        }
+      }
+    }
+
     const featureContent = `
 import { Attributes } from "./Attributes";
 import { getInstance } from "./instance";
@@ -126,9 +181,9 @@ import { getInstance } from "./instance";
 export namespace ${namespaceValue} {
   export const key = "${featureKey}";
 
-  export function getVariation(attributes: Attributes): ${variationType} {
-    return getInstance().getVariation(key, attributes) as ${variationType};
-  }
+  export function getVariation(attributes: Attributes = {}) {
+    return getInstance().getVariation${getPascalCase(variationType)}(key, attributes);
+  }${variableMethods}
 }
 `.trimStart();
 
