@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+
+### Features
+
+* code generation ([#98](https://github.com/fahad19/featurevisor/issues/98)) ([7474443](https://github.com/fahad19/featurevisor/commit/7474443d26fd526f471ef5258cbe39b42c0fad60))
+
+
+
+
+
 ## [0.33.1](https://github.com/fahad19/featurevisor/compare/v0.33.0...v0.33.1) (2023-07-07)
 
 **Note:** Version bump only for package @featurevisor/example-1
