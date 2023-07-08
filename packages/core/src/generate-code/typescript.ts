@@ -139,7 +139,7 @@ export namespace ${namespaceValue} {
 
   // index
   const indexContent =
-    [`export * from "./Attributes";`]
+    [`export * from "./Attributes";`, `export * from "./instance";`]
       .concat(
         featureNamespaces.map((featureNamespace) => {
           return `export * from "./${featureNamespace}";`;
