@@ -10,7 +10,7 @@ export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 
 export interface GenerateCodeCLIOptions {
   language: string;
-  outputPath: string;
+  outDir: string;
 }
 
 export function generateCodeForProject(
@@ -22,11 +22,11 @@ export function generateCodeForProject(
     throw new Error("Option `--language` is required");
   }
 
-  if (!cliOptions.outputPath) {
-    throw new Error("Option `--outputPath` is required");
+  if (!cliOptions.outDir) {
+    throw new Error("Option `--out-dir` is required");
   }
 
-  const absolutePath = path.resolve(rootDirectoryPath, cliOptions.outputPath);
+  const absolutePath = path.resolve(rootDirectoryPath, cliOptions.outDir);
 
   if (!fs.existsSync(absolutePath)) {
     console.log(`Creating output directory: ${absolutePath}`);
