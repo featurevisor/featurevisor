@@ -39,12 +39,31 @@ function getPascalCase(str) {
   return pascalCased;
 }
 
+const instanceSnippet = `
+import { FeaturevisorInstance } from "@featurevisor/sdk";
+
+let _instance: FeaturevisorInstance;
+
+export function setInstance(instance: FeaturevisorInstance) {
+  _instance = instance;
+}
+
+export function getInstance(): FeaturevisorInstance {
+  return _instance as FeaturevisorInstance;
+}
+`.trimStart();
+
 export function generateTypeScriptCodeForProject(
   rootDirectoryPath: string,
   projectConfig: ProjectConfig,
   outputPath: string,
 ) {
   console.log("Generating TypeScript code...");
+
+  // instance
+  const instanceFilePath = path.join(outputPath, "instance.ts");
+  fs.writeFileSync(instanceFilePath, instanceSnippet);
+  console.log(`Instance file written at: ${instanceFilePath}`);
 
   // attributes
   const attributeFiles = getYAMLFiles(projectConfig.attributesDirectoryPath);
@@ -91,15 +110,27 @@ ${attributeProperties}
     const featureKey = path.basename(featureFile, ".yml");
     const parsedFeature = parseYaml(fs.readFileSync(featureFile, "utf8")) as ParsedFeature;
 
+    const variationType = typeof parsedFeature.defaultVariation;
+
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;
     }
 
-    const namespaceValue = getPascalCase(featureKey);
+    const namespaceValue = getPascalCase(featureKey) + "Feature";
     featureNamespaces.push(namespaceValue);
 
-    const featureContent = `export namespace ${namespaceValue} { }
-`;
+    const featureContent = `
+import { Attributes } from "./Attributes";
+import { getInstance } from "./instance";
+
+export namespace ${namespaceValue} {
+  export const key = "${featureKey}";
+
+  export function getVariation(attributes: Attributes): ${variationType} {
+    return getInstance().getVariation(key, attributes) as ${variationType};
+  }
+}
+`.trimStart();
 
     const featureNamespaceFilePath = path.join(outputPath, `${namespaceValue}.ts`);
     fs.writeFileSync(featureNamespaceFilePath, featureContent);
