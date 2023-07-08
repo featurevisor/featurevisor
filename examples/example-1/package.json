@@ -8,7 +8,8 @@
     "build": "featurevisor build",
     "test": "featurevisor test",
     "export": "featurevisor site export",
-    "start": "npm run export && featurevisor site serve"
+    "start": "npm run export && featurevisor site serve",
+    "generate-code": "featurevisor generate-code --language typescript --outputPath ./src"
   },
   "dependencies": {
     "@featurevisor/cli": "^0.33.1"

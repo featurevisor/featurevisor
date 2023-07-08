@@ -91,3 +91,15 @@ $ featurevisor site serve -p 3000
 
 Learn more in [Status site](/docs/status-site).
 
+
+## Generate code
+
+Generate TypeScript code from your YAMLs:
+
+```
+$ featurevisor generate-code --language typescript --out-dir ./src
+```
+
+See output in `./src` directory.
+
+Learn more in [code generation](/docs/code-generation) page.
