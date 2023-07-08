@@ -49,6 +49,7 @@
     "title": "Advanced",
     "links": [
       { "title": "CLI usage", "href": "/docs/cli" },
+      { "title": "Code generation", "href": "/docs/code-generation" },
       { "title": "Bucketing", "href": "/docs/bucketing" }
     ]
   },
