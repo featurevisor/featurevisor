@@ -4,17 +4,27 @@ description: Generate code from your defined features in Featurevisor.
 ogImage: /img/og/docs-code-generation.png
 ---
 
-For additional runtime safety and autocompletion, you can generate code from your already defined features for improved developer experience. {% .lead %}
+For additional compile-time and runtime safety including autocompletion, you can generate code from your already defined features for improved developer experience. {% .lead %}
+
+## Why generate code?
+
+This is an optional step that you may wish to adopt in your workflow. If you do, it will help you avoid some common mistakes:
+
+- any unintentional spelling mistakes in feature and variable keys
+- worrying about the types of your variables
+- worrying about passing attributes in wrong types
+
+All of it done being code-driven, thus reducing overall cognitive load of your team.
 
 ## Supported languages
 
 Currently only TypeScript is supported.
 
-Support for other languages is planned in future.
+Support for other languages is planned in future, as Featurevisor SDK becomes available in more languages.
 
 ## Generate code
 
-Use Featurevisor CLI for generating code in a specified directory:
+From the root of your Featurevisor project directory, use the [CLI](/docs/cli) for generating code in a specified directory:
 
 ```
 $ featurevisor generate-code --language typescript --out-dir ./src
@@ -26,7 +36,7 @@ The generated files can be found in `./src` directory.
 
 You are free to use the generated code in any way you want.
 
-You can choose to:
+You can choose to either:
 
 - copy/paste the code in your applications, or
 - publish the generated code as a private npm package and use it in multiple applications
@@ -40,11 +50,11 @@ The publishing part can be done in the same [deployment](/docs/deployment) proce
 Initialize Featurevisor SDK as usual, and make your newly created package aware of the SDK instance:
 
 ```js
-import { createInstance } from '@featurevisor/sdk';
-import { setInstance } from '@yourorg/features';
+import { createInstance } from "@featurevisor/sdk";
+import { setInstance } from "@yourorg/features";
 
 const sdk = createInstance({
-  datafileUrl: 'https://cdn.yoursite.com/datafile.json',
+  datafileUrl: "https://cdn.yoursite.com/datafile.json",
 });
 
 setInstance(sdk);
@@ -59,7 +69,7 @@ Each feature as defined in our Featurevisor project is made available as an indi
 If our feature was named `foo` (existing as `features/foo.yml` file), we can import it as follows:
 
 ```js
-import { FooFeature } from '@yourorg/features';
+import { FooFeature } from "@yourorg/features";
 ```
 
 The imported feature will have several methods available depending how it's defined.
@@ -95,12 +105,12 @@ Therefore, if you pass an attribute in wrong type for evaluating variation or va
 Assuming we have a `foo` feature defined already, which has `boolean` variations:
 
 ```js
-import { FooFeature } from '@yourorg/features';
+import { FooFeature } from "@yourorg/features";
 
 const attributes = {};
 const fooIsEnabled = FooFeature.getVariation(attributes);
 
-typeof fooIsEnabled === 'boolean'; // true
+typeof fooIsEnabled === "boolean"; // true
 ```
 
 If our defined feature had `string` variations instead, the returned type would of course be `string`:
@@ -108,7 +118,7 @@ If our defined feature had `string` variations instead, the returned type would 
 ```js
 const fooVariation = FooFeature.getVariation();
 
-typeof fooVariation === 'string'; // true
+typeof fooVariation === "string"; // true
 ```
 
 ## Evaluating variable
@@ -116,7 +126,7 @@ typeof fooVariation === 'string'; // true
 If our `foo` feature had a `bar` variable defined, we can evaluate it as follows:
 
 ```js
-import { FooFeature } from '@yourorg/features';
+import { FooFeature } from "@yourorg/features";
 
 const attributes = {};
 const barValue = FooFeature.getBar(attributes);
@@ -133,3 +143,19 @@ interface MyType {
 
 const barValue = FooFeature.getBar<MyType>(attributes);
 ```
+
+## Accessing keys
+
+To access the literal feature key, use the `key` property of imported feature:
+
+```js
+import { FooFeature } from "@yourorg/features";
+
+console.log(FooFeature.key); // "foo"
+```
+
+## Suggestions for package publishing
+
+You are advised to publish the generated code as a private npm package, with support for ES Modules (ESM).
+
+When published as ES Modules, it will enable tree-shaking in your applications, thus reducing the bundle size.
