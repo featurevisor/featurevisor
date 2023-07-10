@@ -1,5 +1,5 @@
 ---
-title: Entitlements
+title: User entitlements
 description: Learn how to manage user entitlements using Featurevisor
 ogImage: /img/og/docs-use-cases-entitlements.png
 ---
