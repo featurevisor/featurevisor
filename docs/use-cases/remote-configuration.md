@@ -1,10 +1,10 @@
 ---
-title: Runtime configuration
-description: Learn how to manage runtime configuration using Featurevisor
-ogImage: /img/og/docs-use-cases-runtime-configuration.png
+title: Remote configuration
+description: Learn how to manage remote configuration using Featurevisor
+ogImage: /img/og/docs-use-cases-remote-configuration.png
 ---
 
-Runtime configuration refers to the ability of modifying the behaviour or settings of an application while it is running, without the need for restarting, redeploying, or making any code changes. Featurevisor can help manage these configurations for your team and organization in a highly maintainable way. {% .lead %}
+Remote configuration refers to the ability of modifying the behaviour or settings of an application while it is running, without the need for restarting, redeploying, or making any code changes. {% .lead %}
 
 This approach allows developers and system administrators to adjust various aspects of an application's behaviour, such as feature availability or other configuration parameters, without requiring downtime or disrupting the application's ongoing operation.
 
@@ -21,7 +21,7 @@ Separating runtime configuration from your application using Featurevisor brings
 
 ## Our application
 
-Let's assume we have an e-commerce web application, where we wish to apply runtime configuration.
+Let's assume we have an e-commerce web application, where we wish to parameterize several aspects of it as configuration.
 
 The application allows its users to:
 
@@ -163,15 +163,15 @@ console.log(paymentMethods);
 // ]
 ```
 
-With this evaluated ordered array of payment methods in the runtime, we can now render the list  ofpayment methods in our checkout flow of the application without having to hardcode this list anywhere.
+With this evaluated ordered array of payment methods in the runtime, we can now render the list of payment methods in our checkout flow of the application without having to hardcode this list anywhere.
 
 ## Overriding variables by rules
 
 From above example, we can see that all our users will be able to use all the payment methods.
 
-But what if we want to restrict some payment methods to some users? Or have more payment methods as well in certain countries for e.g.?
+But what if we want to restrict some payment methods to some users based in certain countries?
 
-We can do that by overriding the variables using our rollout [rules](/docs/features/#rules).
+We can do that by overriding the variables via our rollout [rules](/docs/features/#rules).
 
 Assuming we already have a [segment](/docs/segments) created for targeting users in the Netherlands:
 
@@ -252,7 +252,7 @@ console.log(paymentMethods);
 
 Depending on your needs, it is also possible to override variables:
 
-- at each [variation level](/docs/features/#overriding-variables), and also
+- at each [variation level](/docs/features/#overriding-variables) acting as an experiment, and also
 - at environment level by [forcing it](/docs/features/#force)
 
 You can see two other use cases here detailing these approaches:
@@ -260,7 +260,7 @@ You can see two other use cases here detailing these approaches:
 - [Managing user entitlements](/docs/use-cases/entitlements)
 - [Testing in production](/docs/use-cases/testing-in-production)
 
-## How to notify applications about datafile changes?
+## How do applications get latest configuration?
 
 There are two ways this can happen:
 
