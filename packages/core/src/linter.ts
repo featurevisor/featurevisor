@@ -355,31 +355,55 @@ export function getFeatureJoiSchema(
   return featureJoiSchema;
 }
 
-export function getTestsJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
+export function getTestsJoiSchema(
+  projectConfig: ProjectConfig,
+  availableFeatureKeys: string[],
+  availableSegmentKeys: string[],
+) {
   const testsJoiSchema = Joi.object({
     tests: Joi.array().items(
       Joi.object({
         description: Joi.string().optional(),
-        tag: Joi.string().valid(...projectConfig.tags),
-        environment: Joi.string().valid(...projectConfig.environments),
-        features: Joi.array().items(
+        tag: Joi.string()
+          .valid(...projectConfig.tags)
+          .optional(),
+        environment: Joi.string()
+          .valid(...projectConfig.environments)
+          .optional(),
+        features: Joi.array()
+          .items(
+            Joi.object({
+              key: Joi.string()
+                .valid(...availableFeatureKeys)
+                .required(),
+              assertions: Joi.array().items(
+                Joi.object({
+                  description: Joi.string().optional(),
+                  at: Joi.number().precision(3).min(0).max(100),
+                  attributes: Joi.object(),
+
+                  // @TODO: one or both below
+                  expectedVariation: Joi.alternatives().try(
+                    Joi.string(),
+                    Joi.number(),
+                    Joi.boolean(),
+                  ),
+                  expectedVariables: Joi.object(),
+                }),
+              ),
+            }),
+          )
+          .optional(),
+        segments: Joi.array().items(
           Joi.object({
             key: Joi.string()
-              .valid(...availableFeatureKeys)
+              .valid(...availableSegmentKeys)
               .required(),
             assertions: Joi.array().items(
               Joi.object({
                 description: Joi.string().optional(),
-                at: Joi.number().precision(3).min(0).max(100),
                 attributes: Joi.object(),
-
-                // @TODO: one or both below
-                expectedVariation: Joi.alternatives().try(
-                  Joi.string(),
-                  Joi.number(),
-                  Joi.boolean(),
-                ),
-                expectedVariables: Joi.object(),
+                expected: Joi.boolean(),
               }),
             ),
           }),
@@ -418,11 +442,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableAttributeKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await attributeJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -444,11 +468,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableSegmentKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await segmentJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -468,11 +492,12 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     for (const filePath of groupFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await groupJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {
@@ -500,11 +525,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableFeatureKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await featureJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -519,16 +544,21 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   console.log("\nLinting tests...\n");
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
     const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
-    const testsJoiSchema = getTestsJoiSchema(projectConfig, availableFeatureKeys);
+    const testsJoiSchema = getTestsJoiSchema(
+      projectConfig,
+      availableFeatureKeys,
+      availableSegmentKeys,
+    );
 
     for (const filePath of testFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await testsJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {
