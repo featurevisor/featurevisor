@@ -255,8 +255,9 @@ Depending on your needs, it is also possible to override variables:
 - at each [variation level](/docs/features/#overriding-variables) acting as an experiment, and also
 - at environment level by [forcing it](/docs/features/#force)
 
-You can see two other use cases here detailing these approaches:
+You can see other use cases here detailing these approaches:
 
+- [A/B & Multi-variate testing](/docs/use-cases/experiments)
 - [Managing user entitlements](/docs/use-cases/entitlements)
 - [Testing in production](/docs/use-cases/testing-in-production)
 
@@ -265,7 +266,7 @@ You can see two other use cases here detailing these approaches:
 There are two ways this can happen:
 
 - You can configure your SDK to keep refreshing the datafile at a certain **interval** (like every 30 seconds), or
-- When deploying your Featurevisor datafiles, you can broadcast a notification to all your applications to refresh their datafiles **manually**
+- When deploying your Featurevisor datafiles, you can broadcast a notification to all your applications to refresh their datafiles **manually** enabling over the air updates
 
 You can refer to the SDK guide here for [refreshing datafile](/docs/sdks/#refreshing-datafile).
 
