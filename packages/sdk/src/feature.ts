@@ -6,6 +6,10 @@ import {
   Variation,
   VariableValue,
   Force,
+  FeatureKey,
+  VariableKey,
+  BucketValue,
+  RuleKey,
 } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
@@ -96,18 +100,59 @@ function findForceFromFeature(
   });
 }
 
+export enum VariationEvaluationReason {
+  NOT_FOUND = "not_found",
+  NOT_MATCHED = "not_matched",
+  MATCHED = "matched",
+  FORCED = "forced",
+  NOT_FORCED = "not_forced",
+  INITIAL = "initial",
+  STICKY = "sticky",
+  DEFAULT = "default",
+
+  // should never happen
+  NO_MATCHED_VARIATION = "no_matched_variation",
+}
+
+export interface VariationEvaluation {
+  featureKey: FeatureKey;
+  reason: VariationEvaluationReason;
+  variation?: Variation;
+  variationValue?: VariableValue;
+  bucketValue?: BucketValue;
+  ruleKey?: RuleKey;
+}
+
 export function getForcedVariation(
   feature: Feature,
   attributes: Attributes,
   datafileReader: DatafileReader,
-): Variation | undefined {
+): VariationEvaluation {
   const force = findForceFromFeature(feature, attributes, datafileReader);
 
   if (!force || !force.variation) {
-    return undefined;
+    return {
+      featureKey: feature.key,
+      reason: VariationEvaluationReason.NOT_FORCED,
+    };
   }
 
-  return feature.variations.find((v) => v.value === force.variation);
+  const variation = feature.variations.find((v) => v.value === force.variation);
+
+  if (!variation) {
+    // should never happen
+    return {
+      featureKey: feature.key,
+      reason: VariationEvaluationReason.NOT_FORCED,
+      variationValue: force.variation,
+    };
+  }
+
+  return {
+    featureKey: feature.key,
+    reason: VariationEvaluationReason.FORCED,
+    variation,
+  };
 }
 
 export function getBucketedVariation(
@@ -116,7 +161,7 @@ export function getBucketedVariation(
   bucketValue: number,
   datafileReader: DatafileReader,
   logger: Logger,
-): Variation | undefined {
+): VariationEvaluation {
   const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
     feature.traffic,
     attributes,
@@ -125,13 +170,18 @@ export function getBucketedVariation(
     logger,
   );
 
-  if (!matchedTraffic) {
-    logger.debug("no matched rule found", {
-      featureKey: feature.key,
-      bucketValue,
-    });
+  let evaluation: VariationEvaluation;
 
-    return undefined;
+  if (!matchedTraffic) {
+    evaluation = {
+      featureKey: feature.key,
+      reason: VariationEvaluationReason.NOT_MATCHED,
+      bucketValue,
+    };
+
+    logger.debug("no matched rule found", evaluation);
+
+    return evaluation;
   }
 
   if (matchedTraffic.variation) {
@@ -140,23 +190,30 @@ export function getBucketedVariation(
     });
 
     if (variation) {
-      logger.debug("using variation from rule", {
+      evaluation = {
         featureKey: feature.key,
-        variation: variation.value,
+        reason: VariationEvaluationReason.NOT_MATCHED,
+        variation,
         ruleKey: matchedTraffic.key,
-      });
+        bucketValue,
+      };
 
-      return variation;
+      logger.debug("using variation from rule", evaluation);
+
+      return evaluation;
     }
   }
 
   if (!matchedAllocation) {
-    logger.debug("no matched allocation found", {
+    evaluation = {
       featureKey: feature.key,
+      reason: VariationEvaluationReason.NOT_MATCHED,
       bucketValue,
-    });
+    };
 
-    return undefined;
+    logger.debug("no matched allocation found", evaluation);
+
+    return evaluation;
   }
 
   const variationValue = matchedAllocation.variation;
@@ -167,22 +224,30 @@ export function getBucketedVariation(
 
   if (!variation) {
     // this should never happen
-    logger.debug("no matched variation found", {
+    evaluation = {
       featureKey: feature.key,
-      variation: variationValue,
+      reason: VariationEvaluationReason.NO_MATCHED_VARIATION,
+      variationValue: variationValue,
       bucketValue,
-    });
+    };
 
-    return undefined;
+    logger.debug("no matched variation found", evaluation);
+
+    return evaluation;
   }
 
-  logger.debug("matched variation", {
+  evaluation = {
     featureKey: feature.key,
-    variation: variation.value,
+    reason: VariationEvaluationReason.MATCHED,
+    variation,
+    variationValue: variation.value,
+    ruleKey: matchedTraffic.key,
     bucketValue,
-  });
+  };
 
-  return variation;
+  logger.debug("matched variation", evaluation);
+
+  return evaluation;
 }
 
 export function getForcedVariableValue(
