@@ -12,6 +12,8 @@ import {
   VariableValue,
   VariationType,
   VariationValue,
+  Variation,
+  RuleKey,
 } from "@featurevisor/types";
 
 import { createLogger, Logger } from "./logger";
@@ -19,10 +21,10 @@ import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
 import { getBucketedNumber } from "./bucket";
 import {
-  getBucketedVariation,
   getBucketedVariableValue,
-  getForcedVariation,
   getForcedVariableValue,
+  findForceFromFeature,
+  getMatchedTrafficAndAllocation,
 } from "./feature";
 
 export type ReadyCallback = () => void;
@@ -73,6 +75,33 @@ const emptyDatafile: DatafileContent = {
 
 export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileContent>;
 
+export enum VariationEvaluationReason {
+  NOT_FOUND = "not_found",
+  NOT_MATCHED = "not_matched",
+  MATCHED = "matched",
+  FORCED = "forced",
+  NOT_FORCED = "not_forced",
+  INITIAL = "initial",
+  STICKY = "sticky",
+  RULE = "rule",
+  ALLOCATED = "allocated",
+  DEFAULT = "default",
+  ERROR = "error",
+
+  // should never happen
+  NO_MATCHED_VARIATION = "no_matched_variation",
+}
+
+export interface VariationEvaluation {
+  featureKey: FeatureKey;
+  reason: VariationEvaluationReason;
+  variation?: Variation;
+  variationValue?: VariableValue;
+  bucketValue?: BucketValue;
+  ruleKey?: RuleKey;
+  error?: Error;
+}
+
 function fetchDatafileContent(
   datafileUrl,
   handleDatafileFetch?: DatafileFetchHandler,
@@ -88,26 +117,30 @@ type FieldType = VariationType | VariableType;
 type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
-  if (value === undefined) {
-    return undefined;
-  }
+  try {
+    if (value === undefined) {
+      return undefined;
+    }
 
-  switch (fieldType) {
-    case "string":
-      return typeof value === "string" ? value : undefined;
-    case "integer":
-      return parseInt(value as string, 10);
-    case "double":
-      return parseFloat(value as string);
-    case "boolean":
-      return value === true;
-    case "array":
-      return Array.isArray(value) ? value : undefined;
-    case "object":
-      return typeof value === "object" ? value : undefined;
-    // @NOTE: `json` is not handled here intentionally
-    default:
-      return value;
+    switch (fieldType) {
+      case "string":
+        return typeof value === "string" ? value : undefined;
+      case "integer":
+        return parseInt(value as string, 10);
+      case "double":
+        return parseFloat(value as string);
+      case "boolean":
+        return value === true;
+      case "array":
+        return Array.isArray(value) ? value : undefined;
+      case "object":
+        return typeof value === "object" ? value : undefined;
+      // @NOTE: `json` is not handled here intentionally
+      default:
+        return value;
+    }
+  } catch (e) {
+    return undefined;
   }
 }
 
@@ -382,89 +415,168 @@ export class FeaturevisorInstance {
   /**
    * Variation
    */
-
-  getVariation(
+  evaluateVariation(
     featureKey: FeatureKey | Feature,
     attributes: Attributes = {},
-  ): VariationValue | undefined {
+  ): VariationEvaluation {
+    let evaluation: VariationEvaluation;
+
     try {
       const key = typeof featureKey === "string" ? featureKey : featureKey.key;
-
-      if (this.stickyFeatures && this.stickyFeatures[key]) {
-        const result = this.stickyFeatures[key].variation;
-
-        if (typeof result !== "undefined") {
-          this.logger.debug("using sticky variation", {
-            featureKey: key,
-            variation: result,
-          });
-
-          return result;
-        }
-      }
-
-      if (
-        this.statuses &&
-        !this.statuses.ready &&
-        this.initialFeatures &&
-        this.initialFeatures[key]
-      ) {
-        const result = this.initialFeatures[key].variation;
-
-        if (typeof result !== "undefined") {
-          this.logger.debug("using initial variation", {
-            featureKey: key,
-            variation: result,
-          });
-
-          return result;
-        }
-      }
-
       const feature = this.getFeature(featureKey);
 
+      // not found
       if (!feature) {
-        this.logger.warn("feature not found in datafile", { featureKey });
+        evaluation = {
+          featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
+          reason: VariationEvaluationReason.NOT_FOUND,
+        };
 
-        return undefined;
+        this.logger.warn("feature not found in datafile", evaluation);
+
+        return evaluation;
+      }
+
+      // sticky
+      if (this.stickyFeatures && this.stickyFeatures[key]) {
+        const variationValue = this.stickyFeatures[key].variation;
+
+        if (typeof variationValue !== "undefined") {
+          evaluation = {
+            featureKey: key,
+            reason: VariationEvaluationReason.STICKY,
+            variation: feature.variations.find((v) => v.value === variationValue),
+            variationValue,
+          };
+
+          this.logger.debug("using sticky variation", evaluation);
+
+          return evaluation;
+        }
       }
 
       const finalAttributes = this.interceptAttributes
         ? this.interceptAttributes(attributes)
         : attributes;
 
-      const forcedVariation = getForcedVariation(feature, finalAttributes, this.datafileReader);
+      // forced
+      const force = findForceFromFeature(feature, attributes, this.datafileReader);
 
-      if (forcedVariation) {
-        this.logger.debug("forced variation found", {
-          featureKey,
-          variation: forcedVariation.value,
-        });
+      if (force && force.variation) {
+        const variation = feature.variations.find((v) => v.value === force.variation);
 
-        return forcedVariation.value;
+        if (variation) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: VariationEvaluationReason.FORCED,
+            variation,
+          };
+
+          this.logger.debug("forced variation found", evaluation);
+
+          return evaluation;
+        }
       }
 
+      // bucketing
       const bucketValue = this.getBucketValue(feature, finalAttributes);
 
-      const variation = getBucketedVariation(
-        feature,
+      const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
+        feature.traffic,
         finalAttributes,
         bucketValue,
         this.datafileReader,
         this.logger,
       );
 
-      if (!variation) {
-        this.logger.debug("using default variation", {
-          featureKey,
-          bucketValue,
-          variation: feature.defaultVariation,
-        });
+      if (matchedTraffic) {
+        // override from rule
+        if (matchedTraffic.variation) {
+          const variation = feature.variations.find((v) => v.value === matchedTraffic.variation);
 
-        return feature.defaultVariation;
+          if (variation) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: VariationEvaluationReason.RULE,
+              variation,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+            };
+
+            this.logger.debug("override from rule", evaluation);
+
+            return evaluation;
+          }
+        }
+
+        // regular allocation
+        if (matchedAllocation && matchedAllocation.variation) {
+          const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
+
+          if (variation) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: VariationEvaluationReason.ALLOCATED,
+              bucketValue,
+              variation,
+            };
+
+            this.logger.debug("allocated variation", evaluation);
+
+            return evaluation;
+          }
+        }
       }
 
-      return variation.value;
+      // fall back to default
+      const variation = feature.variations.find((v) => v.value === feature.defaultVariation);
+
+      if (variation) {
+        evaluation = {
+          featureKey: feature.key,
+          reason: VariationEvaluationReason.DEFAULT,
+          bucketValue,
+          variation,
+        };
+
+        this.logger.debug("using default variation", evaluation);
+
+        return evaluation;
+      }
+
+      // nothing matched (this should never happen)
+      evaluation = {
+        featureKey: feature.key,
+        reason: VariationEvaluationReason.ERROR,
+        bucketValue,
+      };
+
+      this.logger.error("no matched variation", evaluation);
+
+      return evaluation;
+    } catch (e) {
+      evaluation = {
+        featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
+        reason: VariationEvaluationReason.ERROR,
+        error: e,
+      };
+
+      return evaluation;
+    }
+  }
+
+  getVariation(
+    featureKey: FeatureKey | Feature,
+    attributes: Attributes = {},
+  ): VariationValue | undefined {
+    try {
+      const evaluation = this.evaluateVariation(featureKey, attributes);
+
+      if (evaluation.variation) {
+        return evaluation.variation.value;
+      }
+
+      return undefined;
     } catch (e) {
       this.logger.error("getVariation", { featureKey, error: e });
 
