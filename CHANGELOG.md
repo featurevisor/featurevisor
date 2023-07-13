@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+
+### Features
+
+* Evaluation details in SDK ([#99](https://github.com/fahad19/featurevisor/issues/99)) ([016c73d](https://github.com/fahad19/featurevisor/commit/016c73d7deb0c5888a4fca88881b2cb9fdf4ac9a))
+
+
+
+
+
 # [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
 
 
