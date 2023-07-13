@@ -509,3 +509,31 @@ If you wish to remove all active listeners of all event types in one go:
 ```js
 sdk.removeAllListeners();
 ```
+
+## Evaluation details
+
+Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given attributes:
+
+```js
+// variation
+const evaluation = sdk.evaluateVariation(featureKey, attributes);
+
+// variable
+const evaluation = sdk.evaluateVariable(featureKey, variableKey, attributes);
+```
+
+The returned object will always contain the following properties:
+
+- `featureKey`: the feature key
+- `reason`: the reason how the value was evaluated
+
+And optionally these properties depending on whether you are evaluating a feature variation or a variable:
+
+- `bucketValue`: the bucket value between 0 and 100,000
+- `ruleKey`: the rule key
+- `error`: the error object
+- `variation`: the variation object
+- `variationValue`: the variation value
+- `variableKey`: the variable key
+- `variableValue`: the variable value
+- `variableSchema`: the variable schema
