@@ -98,7 +98,7 @@ export interface Evaluation {
 
   // variation
   variation?: Variation;
-  variationValue?: VariableValue;
+  variationValue?: VariationValue;
 
   // variable
   variableKey?: VariableKey;
@@ -424,19 +424,6 @@ export class FeaturevisorInstance {
 
     try {
       const key = typeof featureKey === "string" ? featureKey : featureKey.key;
-      const feature = this.getFeature(featureKey);
-
-      // not found
-      if (!feature) {
-        evaluation = {
-          featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
-          reason: EvaluationReason.NOT_FOUND,
-        };
-
-        this.logger.warn("feature not found in datafile", evaluation);
-
-        return evaluation;
-      }
 
       // sticky
       if (this.stickyFeatures && this.stickyFeatures[key]) {
@@ -446,7 +433,6 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: key,
             reason: EvaluationReason.STICKY,
-            variation: feature.variations.find((v) => v.value === variationValue),
             variationValue,
           };
 
@@ -456,7 +442,40 @@ export class FeaturevisorInstance {
         }
       }
 
-      // @TODO: where is initial features?
+      // initial
+      if (
+        this.statuses &&
+        !this.statuses.ready &&
+        this.initialFeatures &&
+        this.initialFeatures[key] &&
+        typeof this.initialFeatures[key].variation !== "undefined"
+      ) {
+        const variationValue = this.initialFeatures[key].variation;
+
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.INITIAL,
+          variationValue,
+        };
+
+        this.logger.debug("using initial variation", evaluation);
+
+        return evaluation;
+      }
+
+      const feature = this.getFeature(featureKey);
+
+      // not found
+      if (!feature) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.NOT_FOUND,
+        };
+
+        this.logger.warn("feature not found in datafile", evaluation);
+
+        return evaluation;
+      }
 
       const finalAttributes = this.interceptAttributes
         ? this.interceptAttributes(attributes)
@@ -575,6 +594,10 @@ export class FeaturevisorInstance {
     try {
       const evaluation = this.evaluateVariation(featureKey, attributes);
 
+      if (typeof evaluation.variationValue !== "undefined") {
+        return evaluation.variationValue;
+      }
+
       if (evaluation.variation) {
         return evaluation.variation.value;
       }
@@ -628,8 +651,10 @@ export class FeaturevisorInstance {
    */
   activate(featureKey: FeatureKey, attributes: Attributes = {}): VariationValue | undefined {
     try {
-      // @TODO: handle evaluation here
-      const variationValue = this.getVariation(featureKey, attributes);
+      const evaluation = this.evaluateVariation(featureKey, attributes);
+      const variationValue = evaluation.variation
+        ? evaluation.variation.value
+        : evaluation.variationValue;
 
       if (typeof variationValue === "undefined") {
         return undefined;
@@ -657,6 +682,7 @@ export class FeaturevisorInstance {
         variationValue,
         finalAttributes,
         captureAttributes,
+        evaluation,
       );
 
       return variationValue;
@@ -728,22 +754,19 @@ export class FeaturevisorInstance {
         !this.statuses.ready &&
         this.initialFeatures &&
         this.initialFeatures[key] &&
-        this.initialFeatures[key].variables
+        this.initialFeatures[key].variables &&
+        typeof this.initialFeatures[key].variables[variableKey] !== "undefined"
       ) {
-        const result = this.initialFeatures[key].variables[variableKey];
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.INITIAL,
+          variableKey,
+          variableValue: this.initialFeatures[key].variables[variableKey],
+        };
 
-        if (typeof result !== "undefined") {
-          evaluation = {
-            featureKey: key,
-            reason: EvaluationReason.INITIAL,
-            variableKey,
-            variableValue: result,
-          };
+        this.logger.debug("using initial variable", evaluation);
 
-          this.logger.debug("using initial variable", evaluation);
-
-          return evaluation;
-        }
+        return evaluation;
       }
 
       const feature = this.getFeature(featureKey);
@@ -786,18 +809,12 @@ export class FeaturevisorInstance {
       const force = findForceFromFeature(feature, attributes, this.datafileReader);
 
       if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
-        let variableValue = force.variables[variableKey];
-
-        if (typeof variableValue === "string" && variableSchema.type === "json") {
-          variableValue = JSON.parse(variableValue);
-        }
-
         evaluation = {
           featureKey: feature.key,
           reason: EvaluationReason.FORCED,
           variableKey,
           variableSchema,
-          variableValue,
+          variableValue: force.variables[variableKey],
         };
 
         this.logger.debug("forced variable", evaluation);
@@ -822,18 +839,12 @@ export class FeaturevisorInstance {
           matchedTraffic.variables &&
           typeof matchedTraffic.variables[variableKey] !== "undefined"
         ) {
-          let variableValue = matchedTraffic.variables[variableKey];
-
-          if (typeof variableValue === "string" && variableSchema.type === "json") {
-            variableValue = JSON.parse(variableValue);
-          }
-
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
             variableKey,
             variableSchema,
-            variableValue,
+            variableValue: matchedTraffic.variables[variableKey],
             bucketValue,
             ruleKey: matchedTraffic.key,
           };
@@ -874,18 +885,12 @@ export class FeaturevisorInstance {
                 });
 
                 if (override) {
-                  let variableValue = override.value;
-
-                  if (typeof variableValue === "string" && variableSchema.type === "json") {
-                    variableValue = JSON.parse(variableValue);
-                  }
-
                   evaluation = {
                     featureKey: feature.key,
                     reason: EvaluationReason.OVERRIDE,
                     variableKey,
                     variableSchema,
-                    variableValue,
+                    variableValue: override.value,
                     bucketValue,
                     ruleKey: matchedTraffic.key,
                   };
@@ -897,23 +902,19 @@ export class FeaturevisorInstance {
               }
 
               if (typeof variableFromVariation.value !== "undefined") {
-                let variableValue = variableFromVariation.value;
-
-                if (typeof variableValue === "string" && variableSchema.type === "json") {
-                  variableValue = JSON.parse(variableValue);
-                }
-
                 evaluation = {
                   featureKey: feature.key,
                   reason: EvaluationReason.ALLOCATED,
                   variableKey,
                   variableSchema,
-                  variableValue,
+                  variableValue: variableFromVariation.value,
                   bucketValue,
                   ruleKey: matchedTraffic.key,
                 };
 
                 this.logger.debug("allocated variable", evaluation);
+
+                return evaluation;
               }
             }
           }
@@ -954,6 +955,14 @@ export class FeaturevisorInstance {
       const evaluation = this.evaluateVariable(featureKey, variableKey, attributes);
 
       if (typeof evaluation.variableValue !== "undefined") {
+        if (
+          evaluation.variableSchema &&
+          evaluation.variableSchema.type === "json" &&
+          typeof evaluation.variableValue === "string"
+        ) {
+          return JSON.parse(evaluation.variableValue);
+        }
+
         return evaluation.variableValue;
       }
 
