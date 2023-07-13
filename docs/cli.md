@@ -69,6 +69,16 @@ $ featurevisor test
 
 Learn more in [Testing](/docs/testing).
 
+## Restore state files
+
+Building datafiles also generates [state files](/docs/state-files).
+
+To restore them to last known state in Git, run:
+
+```
+$ featurevisor restore
+```
+
 ## Generate static site
 
 Build the site:

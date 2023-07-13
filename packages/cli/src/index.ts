@@ -15,6 +15,7 @@ import {
   generateCodeForProject,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
+  restoreProject,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason, p) => {
@@ -88,6 +89,21 @@ async function main() {
       },
     })
     .example("$0 build", "build datafiles")
+
+    .command({
+      command: "restore",
+      handler: function (options) {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        try {
+          restoreProject(rootDirectoryPath, projectConfig);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 restore", "restore state files")
 
     .command({
       command: "test",
