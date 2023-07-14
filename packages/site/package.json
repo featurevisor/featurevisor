@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/site",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {
@@ -56,6 +56,6 @@
     "tailwindcss": "^3.3.0"
   },
   "dependencies": {
-    "@featurevisor/types": "^0.36.0"
+    "@featurevisor/types": "^0.37.0"
   }
 }
