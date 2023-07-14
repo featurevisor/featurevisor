@@ -2,7 +2,7 @@ export type AttributeKey = string;
 
 export type AttributeValue = string | number | boolean | Date | null | undefined;
 
-export interface Attributes {
+export interface Context {
   [key: AttributeKey]: AttributeValue;
 }
 
@@ -331,7 +331,7 @@ export interface ExistingState {
 export interface FeatureAssertion {
   description?: string;
   at: Weight; // bucket weight: 0 to 100
-  attributes: Attributes;
+  context: Context;
   expectedVariation?: VariationValue;
   expectedVariables?: {
     [key: VariableKey]: VariableValue;
@@ -345,7 +345,7 @@ export interface TestFeature {
 
 export interface SegmentAssertion {
   description?: string;
-  attributes: Attributes;
+  context: Context;
   expected: boolean;
 }
 

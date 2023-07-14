@@ -73,7 +73,7 @@ describe("sdk: instance", function () {
         attributes: [],
         segments: [],
       },
-      configureBucketKey: function (feature, attributes, bucketKey) {
+      configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
 
         return bucketKey;
@@ -117,7 +117,7 @@ describe("sdk: instance", function () {
         attributes: [],
         segments: [],
       },
-      configureBucketKey: function (feature, attributes, bucketKey) {
+      configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
 
         return bucketKey;
@@ -162,7 +162,7 @@ describe("sdk: instance", function () {
         attributes: [],
         segments: [],
       },
-      configureBucketKey: function (feature, attributes, bucketKey) {
+      configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
 
         return bucketKey;
@@ -185,7 +185,7 @@ describe("sdk: instance", function () {
     expect(capturedBucketKey).toEqual("456.test");
   });
 
-  it("should intercept attributes", function () {
+  it("should intercept context", function () {
     let intercepted = false;
 
     const sdk = createInstance({
@@ -214,11 +214,11 @@ describe("sdk: instance", function () {
         attributes: [],
         segments: [],
       },
-      interceptAttributes: function (attributes) {
+      interceptContext: function (context) {
         intercepted = true;
 
         return {
-          ...attributes,
+          ...context,
         };
       },
     });

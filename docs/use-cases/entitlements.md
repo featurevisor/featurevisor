@@ -154,12 +154,14 @@ sdk.setStickyFeatures({
 Get available entitlements for the known user:
 
 ```js
-const attributes = {
+const featureKey = "plan";
+const variableKey = "entitlements";
+const context = {
   userId: userProfile.id,
   country: userProfile.country,
 };
 
-const entitlements = sdk.getVariable("plan", "entitlements", attributes);
+const entitlements = sdk.getVariable(featureKey, variableKey, context);
 ```
 
 The `entitlements` variable will contain an array of all entitlements the user should have against their current plan.
@@ -329,7 +331,7 @@ This will then require you to evaluate each entitlement separately in your appli
 const canCreatePosts = sdk.getVariable(
   "plan",
   "canCreatePosts",
-  attributes
+  context
 );
 
 if (canCreatePosts) {
@@ -339,6 +341,6 @@ if (canCreatePosts) {
 
 ## Conclusion
 
-When your application and its architecture grows big, and you have multipe teams working and shipping in a distributed fashion, it can become hard to manage entitlements in one place.
+When your application and its architecture grows big, and you have multiple teams working and shipping in a distributed fashion, it can become hard to manage entitlements in one place.
 
 Having them declared in one place as a single source of truth can help you manage them better, and also help you avoid any accidental entitlements leaks.

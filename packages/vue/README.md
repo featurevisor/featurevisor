@@ -43,7 +43,7 @@ setupApp(app, sdk);
 
 ### `activateFeature`
 
-> activateFeature(featureName, attributes = {}): VariationValue | undefined
+> activateFeature(featureKey, context = {}): VariationValue | undefined
 
 Function for activating feature.
 
@@ -61,13 +61,13 @@ Function for checking if Featurevisor SDK is ready.
 
 ### `useVariation`
 
-> useVariation(featureKey, attributes = {}): VariationValue | undefined
+> useVariation(featureKey, context = {}): VariationValue | undefined
 
 Function for getting variation value.
 
 ### `useVariable`
 
-> useVariable(featureKey, variableKey, attributes = {}): VariableValue | undefined
+> useVariable(featureKey, variableKey, context = {}): VariableValue | undefined
 
 Function for getting variable value.
 

@@ -292,14 +292,14 @@ Evaluate your features:
 
 ```js
 const featureKey = "showMarketingBanner";
-const attributes = {
+const context = {
   deviceId: "...",
 
   // if available
   userId: "...",
 };
 
-const showMarketingBanner = sdk.getVariation(featureKey, attributes);
+const showMarketingBanner = sdk.getVariation(featureKey, context);
 
 if (showMarketingBanner) {
   // render marketing banner

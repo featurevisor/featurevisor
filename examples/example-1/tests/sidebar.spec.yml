@@ -5,17 +5,17 @@ tests:
       - key: sidebar
         assertions:
           - at: 5
-            attributes:
+            context:
               country: nl
             expectedVariation: false
 
           - at: 90
-            attributes:
+            context:
               country: nl
             expectedVariation: true
 
           - at: 90
-            attributes:
+            context:
               country: nl
             expectedVariation: true
             expectedVariables:
@@ -23,7 +23,7 @@ tests:
               color: red
 
           - at: 90
-            attributes:
+            context:
               country: de
             expectedVariation: true
             expectedVariables:
@@ -32,21 +32,21 @@ tests:
               title: Sidebar Title for production
 
           - at: 90
-            attributes:
+            context:
               country: us
             expectedVariation: true
             expectedVariables:
               sections: ["home", "about", "contact"]
 
           - at: 90
-            attributes:
+            context:
               country: de
             expectedVariation: true
             expectedVariables:
               sections: ["home", "about", "contact", "imprint"]
 
           - at: 70
-            attributes:
+            context:
               country: nl
               userId: "123"
             expectedVariation: true

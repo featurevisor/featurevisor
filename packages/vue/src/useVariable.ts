@@ -1,13 +1,13 @@
-import { Attributes, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
+import { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk";
 
 export function useVariable(
   featureKey: FeatureKey,
   variableKey: VariableKey,
-  attributes: Attributes = {},
+  context: Context = {},
 ): VariableValue | undefined {
   const sdk = useSdk();
 
-  return sdk.getVariable(featureKey, variableKey, attributes);
+  return sdk.getVariable(featureKey, variableKey, context);
 }

@@ -289,12 +289,15 @@ const sdk = createInstance({
 Once the SDK is initialized, you can get variations of your features as follows:
 
 ```js
-const showBanner = sdk.getVariation("showBanner". {
+const featureKey = "showBanner";
+const context = {
   userId: "123",
   country: "de",
-});
+};
+
+const showBanner = sdk.getVariation(featureKey, context);
 ```
 
-Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes.
+Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.
 
 Find more examples of SDK usage [here](/docs/sdks).

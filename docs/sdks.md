@@ -76,19 +76,31 @@ const sdk = createInstance({
 });
 ```
 
+## Context
+
+Contexts are a set of attribute values that we pass to SDK for evaluating features.
+
+They are objects where keys are the attribute keys, and values are the attribute values.
+
+```js
+const context = {
+  myAttributeKey: "myAttributeValue",
+  anotherAttributeKey: "anotherAttributeValue",
+};
+```
+
 ## Getting variations
 
 Once the SDK is initialized, you can get variations of your features as follows:
 
 ```js
 const featureKey = "my_feature";
-
-const attributes = {
+const context = {
   userId: "123",
   country: "nl",
 };
 
-const variation = sdk.getVariation(featureKey, attributes);
+const variation = sdk.getVariation(featureKey, context);
 ```
 
 ## Getting variables
@@ -96,7 +108,7 @@ const variation = sdk.getVariation(featureKey, attributes);
 ```js
 const variableKey = "bgColor";
 
-const bgColorValue = sdk.getVariable(featureKey, variableKey, attributes);
+const bgColorValue = sdk.getVariable(featureKey, variableKey, context);
 ```
 
 ## Activation
@@ -113,19 +125,19 @@ const sdk = createInstance({
   onActivation: function (
     featureKey,
     variationValue,
-    allAttributes,
-    capturedAttributes
+    fullContext,
+    captureContext
   ) {
-    // allAttributes (object):
+    // fullContext (object):
     //   - all the attributes used for evaluating
 
-    // capturedAttributes (object):
+    // captureContext (object):
     //   - attributes that you want to capture,
     //   - marked as `capture: true` in Attribute YAMLs
   }
 });
 
-const variation = sdk.activate(featureKey, attributes)
+const variation = sdk.activate(featureKey, context);
 ```
 
 From the `onActivation` handler, you can send the activation event to your analytics service.
@@ -137,56 +149,56 @@ Next to generic `getVariation()`, `activate`, and `getVariable()` methods, there
 ### `boolean`
 
 ```js
-sdk.getVariationBoolean(featureKey, attributes);
-sdk.activateBoolean(featureKey, attributes);
-sdk.getVariableBoolean(featureKey, variableKey, attributes);
+sdk.getVariationBoolean(featureKey, context);
+sdk.activateBoolean(featureKey, context);
+sdk.getVariableBoolean(featureKey, variableKey, context);
 ```
 
 ### `string`
 
 ```js
-sdk.getVariationString(featureKey, attributes);
-sdk.activateString(featureKey, attributes);
-sdk.getVariableString(featureKey, variableKey, attributes);
+sdk.getVariationString(featureKey, context);
+sdk.activateString(featureKey, context);
+sdk.getVariableString(featureKey, variableKey, context);
 ```
 
 ### `integer`
 
 ```js
-sdk.getVariationInteger(featureKey, attributes);
-sdk.activateInteger(featureKey, attributes);
-sdk.getVariableInteger(featureKey, variableKey, attributes);
+sdk.getVariationInteger(featureKey, context);
+sdk.activateInteger(featureKey, context);
+sdk.getVariableInteger(featureKey, variableKey, context);
 ```
 
 ### `double`
 
 ```js
-sdk.getVariationDouble(featureKey, attributes);
-sdk.activateDouble(featureKey, attributes);
-sdk.getVariableDouble(featureKey, variableKey, attributes);
+sdk.getVariationDouble(featureKey, context);
+sdk.activateDouble(featureKey, context);
+sdk.getVariableDouble(featureKey, variableKey, context);
 ```
 
 ### `array`
 
 ```js
-sdk.getVariableArray(featureKey, variableKey, attributes);
+sdk.getVariableArray(featureKey, variableKey, context);
 ```
 
 ### `object`
 
 ```ts
-sdk.getVariableObject<T>(featureKey, variableKey, attributes);
+sdk.getVariableObject<T>(featureKey, variableKey, context);
 ```
 
 ### `json`
 
 ```ts
-sdk.getVariableJSON<T>(featureKey, variableKey, attributes);
+sdk.getVariableJSON<T>(featureKey, variableKey, context);
 ```
 
 ## Initial features
 
-You may want to initialize your SDK with a set of features before SDK has sucessfully fetched the datafile (if using `datafileUrl` option).
+You may want to initialize your SDK with a set of features before SDK has successfully fetched the datafile (if using `datafileUrl` option).
 
 This helps in cases when you fail to fetch the datafile, but you still wish your SDK instance to continue serving a set of sensible default values. And as soon as the datafile is fetched successfully, the SDK will start serving values from there.
 
@@ -309,32 +321,32 @@ const sdk = createInstance({
 });
 ```
 
-Further log levels like `info` and `debug` will help you understand how the feature variations and variables are evaluated in the runtime against given attributes.
+Further log levels like `info` and `debug` will help you understand how the feature variations and variables are evaluated in the runtime against given context.
 
-## Intercepting attributes
+## Intercepting context
 
-You can intercept attributes before they are used for evaluation:
+You can intercept context before they are used for evaluation:
 
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const defaultAttributes = {
+const defaultContext = {
   country: "nl",
 };
 
 const sdk = createInstance({
   // ...
-  interceptAttributes: function (attributes) {
-    // return updated attributes
+  interceptContext: function (context) {
+    // return updated context
     return {
-      ...defaultAttributes,
-      ...attributes,
+      ...defaultContext,
+      ...context,
     };
   }
 });
 ```
 
-This is useful when you wish to add a default set of attributes for all your evaluations, giving you the convenience of not having to pass them in every time.
+This is useful when you wish to add a default set of attributes as context for all your evaluations, giving you the convenience of not having to pass them in every time.
 
 ## Refreshing datafile
 
@@ -444,13 +456,13 @@ When a feature is activated:
 sdk.on("activation", function (
   featureKey,
   variationValue,
-  allAttributes,
-  capturedAttributes
+  fullContext,
+  captureContext
 ) {
-  // allAttributes (object):
+  // fullContext (object):
   //   - all the attributes used for evaluating
 
-  // capturedAttributes (object):
+  // captureContext (object):
   //   - attributes that you want to capture,
   //   - marked as `capture: true` in Attribute YAMLs
 });
@@ -512,14 +524,14 @@ sdk.removeAllListeners();
 
 ## Evaluation details
 
-Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given attributes:
+Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given context:
 
 ```js
 // variation
-const evaluation = sdk.evaluateVariation(featureKey, attributes);
+const evaluation = sdk.evaluateVariation(featureKey, context);
 
 // variable
-const evaluation = sdk.evaluateVariable(featureKey, variableKey, attributes);
+const evaluation = sdk.evaluateVariable(featureKey, variableKey, context);
 ```
 
 The returned object will always contain the following properties:

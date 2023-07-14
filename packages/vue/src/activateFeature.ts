@@ -1,12 +1,12 @@
-import { Attributes, FeatureKey, VariationValue } from "@featurevisor/types";
+import { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk";
 
 export function activateFeature(
   featureKey: FeatureKey,
-  attributes: Attributes = {},
+  context: Context = {},
 ): VariationValue | undefined {
   const sdk = useSdk();
 
-  return sdk.activate(featureKey, attributes);
+  return sdk.activate(featureKey, context);
 }
