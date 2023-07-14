@@ -45,7 +45,7 @@ function Root() {
 
 ### `activateFeature`
 
-> activateFeature(featureName, attributes = {}): VariationValue | undefined
+> activateFeature(featureKey, context = {}): VariationValue | undefined
 
 Hook for activate feature.
 
@@ -78,13 +78,13 @@ function App() {
 
 ### `useVariation`
 
-> useVariation(featureKey, attributes = {}): VariationValue | undefined
+> useVariation(featureKey, context = {}): VariationValue | undefined
 
 Hook for getting variation value.
 
 ### `useVariable`
 
-> useVariable(featureKey, variableKey, attributes = {}): VariableValue | undefined
+> useVariable(featureKey, variableKey, context = {}): VariableValue | undefined
 
 Hook for getting variable value.
 
