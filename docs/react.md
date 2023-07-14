@@ -70,9 +70,9 @@ import { useVariation } from "@featurevisor/react";
 
 function MyComponent(props) {
   const featureKey = "myFeatureKey";
-  const attributes = { userId: "123" };
+  const context = { userId: "123" };
 
-  const variation = useVariation(featureKey, attributes);
+  const variation = useVariation(featureKey, context);
 
   if (variation === "b") {
     return <p>B variation</p>;
@@ -98,9 +98,9 @@ import { useVariable } from "@featurevisor/react";
 function MyComponent(props) {
   const featureKey = "myFeatureKey";
   const variableKey = "color";
-  const attributes = { userId: "123" };
+  const context = { userId: "123" };
 
-  const colorValue = useVariable(featureKey, variableKey, attributes);
+  const colorValue = useVariable(featureKey, variableKey, context);
 
   return <p>Color: {colorValue}</p>;
 };

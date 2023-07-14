@@ -179,13 +179,13 @@ Now we can evaluate the `ctaButton` feature wherever we need to render the CTA b
 
 ```js
 const featureKey = "ctaButton";
-const attributes = {
+const context = {
   deviceId: "device-123",
   country: "nl",
   deviceType: "iphone"
 };
 
-const ctaButtonVariation = sdk.getVariation(featureKey, attributes);
+const ctaButtonVariation = sdk.getVariation(featureKey, context);
 
 if (ctaButtonVariation === "treatment") {
   // render the new CTA button
@@ -287,10 +287,10 @@ In your application, you can access the variables of the `hero` feature as follo
 
 ```js
 const featureKey = "hero";
-const attributes = { deviceId: "device-123" };
+const context = { deviceId: "device-123" };
 
-const headline = sdk.getVariable(featureKey, "headline", attributes);
-const ctaButtonText = sdk.getVariable(featureKey, "ctaButtonText", attributes);
+const headline = sdk.getVariable(featureKey, "headline", context);
+const ctaButtonText = sdk.getVariable(featureKey, "ctaButtonText", context);
 ```
 
 Use the values inside your hero element (component) when you render it.
@@ -311,7 +311,7 @@ const sdk = createInstance({
 
   onReady: () => console.log("Datafile has been fetched and SDK is ready"),
 
-  onActivation: (featureKey, variation, attributes, captureAttributes) => {
+  onActivation: (featureKey, variation, context, captureContext) => {
     // send the event to your analytics platform
     // or any other third-party service
   }
@@ -334,9 +334,9 @@ For example, in the case of our CTA button experiment, we can activate the featu
 
 ```js
 const featureKey = "hero";
-const attributes = { deviceId: "device-123" };
+const context = { deviceId: "device-123" };
 
-sdk.activate(featureKey, attributes);
+sdk.activate(featureKey, context);
 ```
 
 ## Mutually exclusive experiments

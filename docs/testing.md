@@ -21,17 +21,17 @@ tests:
         assertions:
 
           # asserting evaluated variation
-          # against bucketed value and attributes
+          # against bucketed value and context
           - description: Testing variation at 40% in NL
             at: 40
-            attributes:
+            context:
               country: nl
             expectedVariation: false
 
           # asserting evaluated variables
           - description: Testing variables at 90% in NL
             at: 90
-            attributes:
+            context:
               country: nl
             expectedVariables:
               someKey: someValue
@@ -65,12 +65,12 @@ tests:
       - key: netherlands # your segment key
         assertions:
           - description: Testing segment in NL
-            attributes:
+            context:
               country: nl
             expected: true
 
           - description: Testing segment in DE
-            attributes:
+            context:
               country: de
             expected: false
 ```

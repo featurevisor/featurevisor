@@ -139,16 +139,13 @@ const sdk = createInstance({
 });
 
 // Evaluate a feature flag
-const isFeatureEnabled = sdk.getVariation(
-  // feature key
-  "my-feature",
+const featureKey = "my-feature";
+const context = {
+  userId: "user-123",
+  country: "nl",
+};
 
-  // attributes
-  {
-    userId: "user-123",
-    country: "nl",
-  }
-);
+const isFeatureEnabled = sdk.getVariation(featureKey, context);
 ```
 
 Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).

@@ -12,7 +12,7 @@ This is an optional step that you may wish to adopt in your workflow. If you do,
 
 - any unintentional spelling mistakes in feature and variable keys
 - worrying about the types of your variables
-- worrying about passing attributes in wrong types
+- worrying about passing attributes in wrong types in context
 
 All of it done being code-driven, thus reducing overall cognitive load of your team.
 
@@ -77,24 +77,24 @@ The imported feature will have several methods available depending how it's defi
 Method for getting its variation is always available:
 
 ```js
-FooFeature.getVariation(attributes = {});
+FooFeature.getVariation(context = {});
 ```
 
 If variables are also defined in the feature, they would be available as:
 
 ```js
-FooFeature.getMyVariableKey(attributes = {});
+FooFeature.getMyVariableKey(context = {});
 ```
 
-## Passing attributes
+## Passing context
 
-You can access the full generated `Attributes` type as follows:
+You can access the full generated `Context` type as follows:
 
 ```js
-import { Attributes } from "@yourorg/features";
+import { Context } from "@yourorg/features";
 ```
 
-Passing `attributes` in all the methods is optional.
+Passing `context` in all the methods is optional.
 
 The generated code is smart enough to know the types of all your individual attributes as defined in your Featurevisor project as YAMLs.
 
@@ -107,8 +107,10 @@ Assuming we have a `foo` feature defined already, which has `boolean` variations
 ```js
 import { FooFeature } from "@yourorg/features";
 
-const attributes = {};
-const fooIsEnabled = FooFeature.getVariation(attributes);
+const context = {
+  userId: "user-123",
+};
+const fooIsEnabled = FooFeature.getVariation(context);
 
 typeof fooIsEnabled === "boolean"; // true
 ```
@@ -128,8 +130,10 @@ If our `foo` feature had a `bar` variable defined, we can evaluate it as follows
 ```js
 import { FooFeature } from "@yourorg/features";
 
-const attributes = {};
-const barValue = FooFeature.getBar(attributes);
+const context = {
+  userId: "user-123",
+};
+const barValue = FooFeature.getBar(context);
 ```
 
 The returned value will honour the variable type as defined in the feature's schema originally.
@@ -141,7 +145,7 @@ interface MyType {
   someKey: string;
 }
 
-const barValue = FooFeature.getBar<MyType>(attributes);
+const barValue = FooFeature.getBar<MyType>(context);
 ```
 
 ## Accessing keys

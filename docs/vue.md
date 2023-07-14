@@ -70,9 +70,9 @@ Get a feature's evaluated variation:
 import { useVariation } from "@featurevisor/vue";
 
 const featureKey = "myFeatureKey";
-const attributes = { userId: "123" };
+const context = { userId: "123" };
 
-const variation = useVariation(featureKey, attributes);
+const variation = useVariation(featureKey, context);
 </script>
 
 <template>
@@ -98,9 +98,9 @@ import { useVariable } from "@featurevisor/vue";
 
 const featureKey = "myFeatureKey";
 const variableKey = "color";
-const attributes = { userId: "123" };
+const context = { userId: "123" };
 
-const color = useVariable(featureKey, variableKey, attributes);
+const color = useVariable(featureKey, variableKey, context);
 </script>
 
 <template>

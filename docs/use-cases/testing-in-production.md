@@ -188,13 +188,16 @@ const sdk = createInstance({
 });
 ```
 
-Evaluate with the right attributes:
+Evaluate with the right set of attributes as context:
 
 ```js
-const isWishlistEnabled = sdk.getVariation("wishlist", {
+const featureKey = "wishlist";
+const context = {
   userId: "user-id-1",
   deviceId: "device-id-1",
-});
+};
+
+const isWishlistEnabled = sdk.getVariation(featureKey, context);
 
 if (isWishlistEnabled) {
   // render the wishlist feature

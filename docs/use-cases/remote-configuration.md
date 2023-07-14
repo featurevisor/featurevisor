@@ -146,12 +146,12 @@ Now we can evaluate the variable in our application:
 ```js
 const featureKey = "checkout";
 const variableKey = "paymentMethods";
-const attributes = { userId: "user-123", country: "nl" };
+const context = { userId: "user-123", country: "nl" };
 
 const paymentMethods = sdk.getVariable(
   featureKey,
   variableKey,
-  attributes
+  context
 );
 
 console.log(paymentMethods);
@@ -212,12 +212,12 @@ Now when we evaluate our features, we will get different results for users in th
 
 ```js
 // Users in the Netherlands
-const attributes = { userId: "user-234", country: "nl" };
+const context = { userId: "user-234", country: "nl" };
 
 const paymentMethods = sdk.getVariable(
   featureKey,
   variableKey,
-  attributes
+  context
 );
 
 console.log(paymentMethods);
@@ -231,12 +231,12 @@ While rest of the world will still get the same result as before (that is the de
 
 ```js
 // Users in the US
-const attributes = { userId: "user-123", country: "us" };
+const context = { userId: "user-123", country: "us" };
 
 const paymentMethods = sdk.getVariable(
   featureKey,
   variableKey,
-  attributes
+  context
 );
 
 console.log(paymentMethods);
