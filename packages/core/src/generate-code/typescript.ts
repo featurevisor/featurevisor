@@ -112,23 +112,24 @@ export function generateTypeScriptCodeForProject(
       return !attribute.archived;
     });
 
+  // context
   const attributeProperties = attributes
     .map((attribute) => {
       return `  ${attribute.key}?: ${attribute.typescriptType};`;
     })
     .join("\n");
-  const attributesContent = `
+  const contextContent = `
 import { AttributeKey, AttributeValue } from "@featurevisor/types";
 
-export interface Attributes {
+export interface Context {
 ${attributeProperties}
   [key: AttributeKey]: AttributeValue;
 }
 `.trimStart();
 
-  const attributesTypeFilePath = path.join(outputPath, "Attributes.ts");
-  fs.writeFileSync(attributesTypeFilePath, attributesContent);
-  console.log(`Attributes type file written at: ${attributesTypeFilePath}`);
+  const contextTypeFilePath = path.join(outputPath, "Context.ts");
+  fs.writeFileSync(contextTypeFilePath, contextContent);
+  console.log(`Context type file written at: ${contextTypeFilePath}`);
 
   // features
   const featureNamespaces: string[] = [];
@@ -161,28 +162,28 @@ ${attributeProperties}
         if (variableType === "json" || variableType === "object") {
           variableMethods += `
 
-  export function get${getPascalCase(variableKey)}<T>(attributes: Attributes = {}) {
-    return getInstance().${internalMethodName}<T>(key, "${variableKey}", attributes);
+  export function get${getPascalCase(variableKey)}<T>(context: Context = {}) {
+    return getInstance().${internalMethodName}<T>(key, "${variableKey}", context);
   }`;
         } else {
           variableMethods += `
 
-  export function get${getPascalCase(variableKey)}(attributes: Attributes = {}) {
-    return getInstance().${internalMethodName}(key, "${variableKey}", attributes);
+  export function get${getPascalCase(variableKey)}(context: Context = {}) {
+    return getInstance().${internalMethodName}(key, "${variableKey}", context);
   }`;
         }
       }
     }
 
     const featureContent = `
-import { Attributes } from "./Attributes";
+import { Context } from "./Context";
 import { getInstance } from "./instance";
 
 export namespace ${namespaceValue} {
   export const key = "${featureKey}";
 
-  export function getVariation(attributes: Attributes = {}) {
-    return getInstance().getVariation${getPascalCase(variationType)}(key, attributes);
+  export function getVariation(context: Context = {}) {
+    return getInstance().getVariation${getPascalCase(variationType)}(key, context);
   }${variableMethods}
 }
 `.trimStart();
@@ -194,7 +195,7 @@ export namespace ${namespaceValue} {
 
   // index
   const indexContent =
-    [`export * from "./Attributes";`, `export * from "./instance";`]
+    [`export * from "./Context";`, `export * from "./instance";`]
       .concat(
         featureNamespaces.map((featureNamespace) => {
           return `export * from "./${featureNamespace}";`;

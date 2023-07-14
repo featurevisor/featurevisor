@@ -12,7 +12,7 @@ export const OUTPUT_DIRECTORY_NAME = "dist";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
-export const ROOT_DIR_PLACECOLDER = "<rootDir>";
+export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 
 export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
@@ -69,8 +69,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   Object.keys(baseConfig).forEach((key) => {
     finalConfig[key] = customConfig[key] || baseConfig[key];
 
-    if (key.endsWith("Path") && finalConfig[key].indexOf(ROOT_DIR_PLACECOLDER) !== -1) {
-      finalConfig[key] = finalConfig[key].replace(ROOT_DIR_PLACECOLDER, rootDirectoryPath);
+    if (key.endsWith("Path") && finalConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1) {
+      finalConfig[key] = finalConfig[key].replace(ROOT_DIR_PLACEHOLDER, rootDirectoryPath);
     }
   });
 

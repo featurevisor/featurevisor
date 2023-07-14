@@ -5,22 +5,22 @@ tests:
       - key: foo
         assertions:
           - at: 40
-            attributes:
+            context:
               country: de
             expectedVariation: false
 
           - at: 60
-            attributes:
+            context:
               country: ch
             expectedVariation: true
 
           - at: 60
-            attributes:
+            context:
               country: us
             expectedVariation: true
 
           - at: 60
-            attributes:
+            context:
               country: us
             expectedVariation: true
             expectedVariables:
@@ -28,7 +28,7 @@ tests:
               baz: baz_here
 
           - at: 80
-            attributes:
+            context:
               country: de
             expectedVariation: true
             expectedVariables:

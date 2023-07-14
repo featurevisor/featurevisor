@@ -1,5 +1,5 @@
 import {
-  Attributes,
+  Context,
   AttributeValue,
   BucketKey,
   BucketValue,
@@ -31,13 +31,13 @@ export type ReadyCallback = () => void;
 export type ActivationCallback = (
   featureName: string,
   variation: VariationValue,
-  attributes: Attributes,
-  captureAttributes: Attributes,
+  context: Context,
+  captureContext: Context,
 ) => void;
 
-export type ConfigureBucketKey = (feature, attributes, bucketKey: BucketKey) => BucketKey;
+export type ConfigureBucketKey = (feature, context, bucketKey: BucketKey) => BucketKey;
 
-export type ConfigureBucketValue = (feature, attributes, bucketValue: BucketValue) => BucketValue;
+export type ConfigureBucketValue = (feature, context, bucketValue: BucketValue) => BucketValue;
 
 export interface Statuses {
   ready: boolean;
@@ -45,6 +45,8 @@ export interface Statuses {
 }
 
 const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
+
+export type InterceptContext = (context: Context) => Context;
 
 export interface InstanceOptions {
   bucketKeySeparator?: string;
@@ -54,7 +56,7 @@ export interface InstanceOptions {
   datafileUrl?: string;
   handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
   initialFeatures?: InitialFeatures;
-  interceptAttributes?: (attributes: Attributes) => Attributes;
+  interceptContext?: InterceptContext;
   logger?: Logger;
   onActivation?: ActivationCallback;
   onReady?: ReadyCallback;
@@ -156,7 +158,7 @@ export class FeaturevisorInstance {
   private datafileUrl?: string;
   private handleDatafileFetch?: DatafileFetchHandler;
   private initialFeatures?: InitialFeatures;
-  private interceptAttributes?: (attributes: Attributes) => Attributes;
+  private interceptContext?: InterceptContext;
   private logger: Logger;
   private refreshInterval?: number; // seconds
   private stickyFeatures?: StickyFeatures;
@@ -182,7 +184,7 @@ export class FeaturevisorInstance {
     this.datafileUrl = options.datafileUrl;
     this.handleDatafileFetch = options.handleDatafileFetch;
     this.initialFeatures = options.initialFeatures;
-    this.interceptAttributes = options.interceptAttributes;
+    this.interceptContext = options.interceptContext;
     this.logger = options.logger || createLogger();
     this.refreshInterval = options.refreshInterval;
     this.stickyFeatures = options.stickyFeatures;
@@ -281,7 +283,7 @@ export class FeaturevisorInstance {
   /**
    * Bucketing
    */
-  private getBucketKey(feature: Feature, attributes: Attributes): BucketKey {
+  private getBucketKey(feature: Feature, context: Context): BucketKey {
     const featureKey = feature.key;
 
     let type;
@@ -305,7 +307,7 @@ export class FeaturevisorInstance {
     const bucketKey: AttributeValue[] = [];
 
     attributeKeys.forEach((attributeKey) => {
-      const attributeValue = attributes[attributeKey];
+      const attributeValue = context[attributeKey];
 
       if (typeof attributeValue === "undefined") {
         return;
@@ -326,19 +328,19 @@ export class FeaturevisorInstance {
     const result = bucketKey.join(this.bucketKeySeparator);
 
     if (this.configureBucketKey) {
-      return this.configureBucketKey(feature, attributes, result);
+      return this.configureBucketKey(feature, context, result);
     }
 
     return result;
   }
 
-  private getBucketValue(feature: Feature, attributes: Attributes): BucketValue {
-    const bucketKey = this.getBucketKey(feature, attributes);
+  private getBucketValue(feature: Feature, context: Context): BucketValue {
+    const bucketKey = this.getBucketKey(feature, context);
 
     const value = getBucketedNumber(bucketKey);
 
     if (this.configureBucketValue) {
-      return this.configureBucketValue(feature, attributes, value);
+      return this.configureBucketValue(feature, context, value);
     }
 
     return value;
@@ -419,7 +421,7 @@ export class FeaturevisorInstance {
   /**
    * Variation
    */
-  evaluateVariation(featureKey: FeatureKey | Feature, attributes: Attributes = {}): Evaluation {
+  evaluateVariation(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
     let evaluation: Evaluation;
 
     try {
@@ -477,12 +479,10 @@ export class FeaturevisorInstance {
         return evaluation;
       }
 
-      const finalAttributes = this.interceptAttributes
-        ? this.interceptAttributes(attributes)
-        : attributes;
+      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, attributes, this.datafileReader);
+      const force = findForceFromFeature(feature, context, this.datafileReader);
 
       if (force && force.variation) {
         const variation = feature.variations.find((v) => v.value === force.variation);
@@ -501,11 +501,11 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalAttributes);
+      const bucketValue = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
-        finalAttributes,
+        finalContext,
         bucketValue,
         this.datafileReader,
         this.logger,
@@ -589,10 +589,10 @@ export class FeaturevisorInstance {
 
   getVariation(
     featureKey: FeatureKey | Feature,
-    attributes: Attributes = {},
+    context: Context = {},
   ): VariationValue | undefined {
     try {
-      const evaluation = this.evaluateVariation(featureKey, attributes);
+      const evaluation = this.evaluateVariation(featureKey, context);
 
       if (typeof evaluation.variationValue !== "undefined") {
         return evaluation.variationValue;
@@ -612,36 +612,27 @@ export class FeaturevisorInstance {
 
   getVariationBoolean(
     featureKey: FeatureKey | Feature,
-    attributes: Attributes = {},
+    context: Context = {},
   ): boolean | undefined {
-    const variationValue = this.getVariation(featureKey, attributes);
+    const variationValue = this.getVariation(featureKey, context);
 
     return getValueByType(variationValue, "boolean") as boolean | undefined;
   }
 
-  getVariationString(
-    featureKey: FeatureKey | Feature,
-    attributes: Attributes = {},
-  ): string | undefined {
-    const variationValue = this.getVariation(featureKey, attributes);
+  getVariationString(featureKey: FeatureKey | Feature, context: Context = {}): string | undefined {
+    const variationValue = this.getVariation(featureKey, context);
 
     return getValueByType(variationValue, "string") as string | undefined;
   }
 
-  getVariationInteger(
-    featureKey: FeatureKey | Feature,
-    attributes: Attributes = {},
-  ): number | undefined {
-    const variationValue = this.getVariation(featureKey, attributes);
+  getVariationInteger(featureKey: FeatureKey | Feature, context: Context = {}): number | undefined {
+    const variationValue = this.getVariation(featureKey, context);
 
     return getValueByType(variationValue, "integer") as number | undefined;
   }
 
-  getVariationDouble(
-    featureKey: FeatureKey | Feature,
-    attributes: Attributes = {},
-  ): number | undefined {
-    const variationValue = this.getVariation(featureKey, attributes);
+  getVariationDouble(featureKey: FeatureKey | Feature, context: Context = {}): number | undefined {
+    const variationValue = this.getVariation(featureKey, context);
 
     return getValueByType(variationValue, "double") as number | undefined;
   }
@@ -649,9 +640,9 @@ export class FeaturevisorInstance {
   /**
    * Activate
    */
-  activate(featureKey: FeatureKey, attributes: Attributes = {}): VariationValue | undefined {
+  activate(featureKey: FeatureKey, context: Context = {}): VariationValue | undefined {
     try {
-      const evaluation = this.evaluateVariation(featureKey, attributes);
+      const evaluation = this.evaluateVariation(featureKey, context);
       const variationValue = evaluation.variation
         ? evaluation.variation.value
         : evaluation.variationValue;
@@ -660,19 +651,17 @@ export class FeaturevisorInstance {
         return undefined;
       }
 
-      const finalAttributes = this.interceptAttributes
-        ? this.interceptAttributes(attributes)
-        : attributes;
+      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
-      const captureAttributes: Attributes = {};
+      const captureContext: Context = {};
 
       const attributesForCapturing = this.datafileReader
         .getAllAttributes()
         .filter((a) => a.capture === true);
 
       attributesForCapturing.forEach((a) => {
-        if (typeof finalAttributes[a.key] !== "undefined") {
-          captureAttributes[a.key] = attributes[a.key];
+        if (typeof finalContext[a.key] !== "undefined") {
+          captureContext[a.key] = context[a.key];
         }
       });
 
@@ -680,8 +669,8 @@ export class FeaturevisorInstance {
         "activation",
         featureKey,
         variationValue,
-        finalAttributes,
-        captureAttributes,
+        finalContext,
+        captureContext,
         evaluation,
       );
 
@@ -693,26 +682,26 @@ export class FeaturevisorInstance {
     }
   }
 
-  activateBoolean(featureKey: FeatureKey, attributes: Attributes = {}): boolean | undefined {
-    const variationValue = this.activate(featureKey, attributes);
+  activateBoolean(featureKey: FeatureKey, context: Context = {}): boolean | undefined {
+    const variationValue = this.activate(featureKey, context);
 
     return getValueByType(variationValue, "boolean") as boolean | undefined;
   }
 
-  activateString(featureKey: FeatureKey, attributes: Attributes = {}): string | undefined {
-    const variationValue = this.activate(featureKey, attributes);
+  activateString(featureKey: FeatureKey, context: Context = {}): string | undefined {
+    const variationValue = this.activate(featureKey, context);
 
     return getValueByType(variationValue, "string") as string | undefined;
   }
 
-  activateInteger(featureKey: FeatureKey, attributes: Attributes = {}): number | undefined {
-    const variationValue = this.activate(featureKey, attributes);
+  activateInteger(featureKey: FeatureKey, context: Context = {}): number | undefined {
+    const variationValue = this.activate(featureKey, context);
 
     return getValueByType(variationValue, "integer") as number | undefined;
   }
 
-  activateDouble(featureKey: FeatureKey, attributes: Attributes = {}): number | undefined {
-    const variationValue = this.activate(featureKey, attributes);
+  activateDouble(featureKey: FeatureKey, context: Context = {}): number | undefined {
+    const variationValue = this.activate(featureKey, context);
 
     return getValueByType(variationValue, "double") as number | undefined;
   }
@@ -723,7 +712,7 @@ export class FeaturevisorInstance {
   evaluateVariable(
     featureKey: FeatureKey | Feature,
     variableKey: VariableKey,
-    attributes: Attributes = {},
+    context: Context = {},
   ): Evaluation {
     let evaluation: Evaluation;
 
@@ -801,12 +790,10 @@ export class FeaturevisorInstance {
         return evaluation;
       }
 
-      const finalAttributes = this.interceptAttributes
-        ? this.interceptAttributes(attributes)
-        : attributes;
+      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, attributes, this.datafileReader);
+      const force = findForceFromFeature(feature, context, this.datafileReader);
 
       if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
         evaluation = {
@@ -823,11 +810,11 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalAttributes);
+      const bucketValue = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
-        finalAttributes,
+        finalContext,
         bucketValue,
         this.datafileReader,
         this.logger,
@@ -867,7 +854,7 @@ export class FeaturevisorInstance {
                   if (o.conditions) {
                     return allConditionsAreMatched(
                       typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
-                      finalAttributes,
+                      finalContext,
                     );
                   }
 
@@ -876,7 +863,7 @@ export class FeaturevisorInstance {
                       typeof o.segments === "string" && o.segments !== "*"
                         ? JSON.parse(o.segments)
                         : o.segments,
-                      finalAttributes,
+                      finalContext,
                       this.datafileReader,
                     );
                   }
@@ -949,10 +936,10 @@ export class FeaturevisorInstance {
   getVariable(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): VariableValue | undefined {
     try {
-      const evaluation = this.evaluateVariable(featureKey, variableKey, attributes);
+      const evaluation = this.evaluateVariable(featureKey, variableKey, context);
 
       if (typeof evaluation.variableValue !== "undefined") {
         if (
@@ -977,9 +964,9 @@ export class FeaturevisorInstance {
   getVariableBoolean(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): boolean | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "boolean") as boolean | undefined;
   }
@@ -987,9 +974,9 @@ export class FeaturevisorInstance {
   getVariableString(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): string | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "string") as string | undefined;
   }
@@ -997,9 +984,9 @@ export class FeaturevisorInstance {
   getVariableInteger(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): number | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "integer") as number | undefined;
   }
@@ -1007,9 +994,9 @@ export class FeaturevisorInstance {
   getVariableDouble(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): number | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "double") as number | undefined;
   }
@@ -1017,9 +1004,9 @@ export class FeaturevisorInstance {
   getVariableArray(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): string[] | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "array") as string[] | undefined;
   }
@@ -1027,9 +1014,9 @@ export class FeaturevisorInstance {
   getVariableObject<T>(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): T | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "object") as T | undefined;
   }
@@ -1037,9 +1024,9 @@ export class FeaturevisorInstance {
   getVariableJSON<T>(
     featureKey: FeatureKey | Feature,
     variableKey: string,
-    attributes: Attributes = {},
+    context: Context = {},
   ): T | undefined {
-    const variableValue = this.getVariable(featureKey, variableKey, attributes);
+    const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "json") as T | undefined;
   }

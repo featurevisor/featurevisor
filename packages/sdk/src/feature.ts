@@ -1,4 +1,4 @@
-import { Allocation, Attributes, Traffic, Feature, Force } from "@featurevisor/types";
+import { Allocation, Context, Traffic, Feature, Force } from "@featurevisor/types";
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
@@ -26,7 +26,7 @@ export interface MatchedTrafficAndAllocation {
 
 export function getMatchedTrafficAndAllocation(
   traffic: Traffic[],
-  attributes: Attributes,
+  context: Context,
   bucketValue: number,
   datafileReader: DatafileReader,
   logger: Logger,
@@ -37,7 +37,7 @@ export function getMatchedTrafficAndAllocation(
     if (
       !allGroupSegmentsAreMatched(
         typeof t.segments === "string" && t.segments !== "*" ? JSON.parse(t.segments) : t.segments,
-        attributes,
+        context,
         datafileReader,
       )
     ) {
@@ -61,7 +61,7 @@ export function getMatchedTrafficAndAllocation(
 
 export function findForceFromFeature(
   feature: Feature,
-  attributes: Attributes,
+  context: Context,
   datafileReader: DatafileReader,
 ): Force | undefined {
   if (!feature.force) {
@@ -70,11 +70,11 @@ export function findForceFromFeature(
 
   return feature.force.find((f: Force) => {
     if (f.conditions) {
-      return allConditionsAreMatched(f.conditions, attributes);
+      return allConditionsAreMatched(f.conditions, context);
     }
 
     if (f.segments) {
-      return allGroupSegmentsAreMatched(f.segments, attributes, datafileReader);
+      return allGroupSegmentsAreMatched(f.segments, context, datafileReader);
     }
 
     return false;

@@ -5,7 +5,7 @@ tests:
       - key: bar
         assertions:
           - at: 15 # 30 * 0.5
-            attributes:
+            context:
               country: us
             expectedVariation: control
             expectedVariables:
@@ -16,7 +16,7 @@ tests:
                 alignment: center
 
           - at: 20 # 40 * 0.5
-            attributes:
+            context:
               country: us
             expectedVariation: b
             expectedVariables:
@@ -27,7 +27,7 @@ tests:
                 alignment: center for B
 
           - at: 20 # 40 * 0.5
-            attributes:
+            context:
               country: de
             expectedVariation: b
             expectedVariables:

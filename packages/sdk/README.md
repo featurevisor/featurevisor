@@ -14,7 +14,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
   - [`datafileUrl`](#datafileurl)
   - [`handleDatafileFetch`](#handledatafilefetch)
   - [`initialFeatures`](#initialfeatures)
-  - [`interceptAttributes`](#interceptattributes)
+  - [`interceptContext`](#interceptcontext)
   - [`logger`](#logger)
   - [`onActivation`](#onactivation)
   - [`onReady`](#onready)
@@ -70,7 +70,7 @@ Use it to take over bucketing key generation process.
 
 ```js
 const sdk = createInstance({
-  configureBucketKey: (feature, attributes, bucketKey) => {
+  configureBucketKey: (feature, context, bucketKey) => {
     return bucketKey;
   }
 });
@@ -85,7 +85,7 @@ Use it to take over bucketing process.
 
 ```js
 const sdk = createInstance({
-  configureBucketValue: (feature, attributes, bucketValue) => {
+  configureBucketValue: (feature, context, bucketValue) => {
     return bucketValue; // 0 to 100,000
   }
 });
@@ -143,15 +143,15 @@ const sdk = createInstance({
 });
 ```
 
-### `interceptAttributes`
+### `interceptContext`
 
 - Type: `function`
 - Required: no
 
-Intercept given attributes before they are used to bucket the user:
+Intercept given context before they are used to bucket the user:
 
 ```js
-const defaultAttributes = {
+const defaultContext = {
   platform: "web",
   locale: "en-US",
   country: "US",
@@ -160,10 +160,10 @@ const defaultAttributes = {
 };
 
 const sdk = createInstance({
-  interceptAttributes: (attributes) => {
+  interceptContext: (context) => {
     return {
-      ...defaultAttributes,
-      ...attributes,
+      ...defaultContext,
+      ...context,
     };
   }
 });
@@ -198,13 +198,13 @@ Capture activated features along with their evaluated variation:
 
 ```js
 const sdk = createInstance({
-  onActivation: (featureKey, variation, attributes, captureAttributes) => {
+  onActivation: (featureKey, variation, context, captureContext) => {
     // do something with the activated feature
   }
 });
 ```
 
-`captureAttributes` will only contain attributes that are marked as `capture: true` in the Attributes' YAML files.
+`captureContext` will only contain attributes that are marked as `capture: true` in the Attributes' YAML files.
 
 ### `onReady`
 
@@ -296,7 +296,7 @@ These methods are available once the SDK instance is created:
 
 ### `getVariation`
 
-> `getVariation(featureKey: string, attributes: Attributes): VariationValue`
+> `getVariation(featureKey: string, context: Context): VariationValue`
 
 Also supports additional type specific methods:
 
@@ -307,7 +307,7 @@ Also supports additional type specific methods:
 
 ### `getVariable`
 
-> `getVariable(featureKey: string, variableKey: string, attributes: Attributes): VariableValue`
+> `getVariable(featureKey: string, variableKey: string, context: Context): VariableValue`
 
 Also supports additional type specific methods:
 
@@ -321,7 +321,7 @@ Also supports additional type specific methods:
 
 ### `activate`
 
-> `activate(featureKey: string, attributes: Attributes): VariationValue`
+> `activate(featureKey: string, context: Context): VariationValue`
 
 Same as `getVariation`, but also calls the `onActivation` callback.
 

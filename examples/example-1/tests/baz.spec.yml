@@ -6,18 +6,18 @@ tests:
         assertions:
           - at: 10
             description: "At 10%, the feature should be enabled"
-            attributes:
+            context:
               country: nl
             expectedVariation: true
 
           - at: 70
             description: "At 70%, the feature should be enabled"
-            attributes:
+            context:
               country: nl
             expectedVariation: true
 
           - at: 90
             description: "At 90%, the feature should be disabled"
-            attributes:
+            context:
               country: nl
             expectedVariation: false

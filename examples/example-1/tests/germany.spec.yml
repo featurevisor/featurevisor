@@ -2,15 +2,15 @@ tests:
   - segments:
       - key: germany
         assertions:
-          - attributes:
+          - context:
               country: de
             expected: true
 
-          - attributes:
+          - context:
               country: de
               someOtherAttribute: someOtherValue
             expected: true
 
-          - attributes:
+          - context:
               country: notDe
             expected: false

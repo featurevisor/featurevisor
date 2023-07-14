@@ -380,7 +380,7 @@ export function getTestsJoiSchema(
                 Joi.object({
                   description: Joi.string().optional(),
                   at: Joi.number().precision(3).min(0).max(100),
-                  attributes: Joi.object(),
+                  context: Joi.object(),
 
                   // @TODO: one or both below
                   expectedVariation: Joi.alternatives().try(
@@ -402,7 +402,7 @@ export function getTestsJoiSchema(
             assertions: Joi.array().items(
               Joi.object({
                 description: Joi.string().optional(),
-                attributes: Joi.object(),
+                context: Joi.object(),
                 expected: Joi.boolean(),
               }),
             ),

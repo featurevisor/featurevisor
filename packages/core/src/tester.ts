@@ -108,7 +108,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
             let assertionHasError = false;
 
             const expected = assertion.expected;
-            const actual = allConditionsAreMatched(conditions, assertion.attributes);
+            const actual = allConditionsAreMatched(conditions, assertion.context);
 
             if (actual !== expected) {
               hasError = true;
@@ -160,7 +160,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
             // variation
             if ("expectedVariation" in assertion) {
-              const variation = sdk.getVariation(featureKey, assertion.attributes);
+              const variation = sdk.getVariation(featureKey, assertion.context);
 
               if (variation !== assertion.expectedVariation) {
                 hasError = true;
@@ -177,7 +177,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
               Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
                 const expectedValue =
                   assertion.expectedVariables && assertion.expectedVariables[variableKey];
-                const actualValue = sdk.getVariable(featureKey, variableKey, assertion.attributes);
+                const actualValue = sdk.getVariable(featureKey, variableKey, assertion.context);
 
                 let passed;
 

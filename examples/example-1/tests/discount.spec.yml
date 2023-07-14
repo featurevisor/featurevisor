@@ -6,18 +6,18 @@ tests:
         assertions:
           - at: 10
             description: "At 10%, the feature should be disabled on 1st January 2023"
-            attributes:
+            context:
               date: 2023-01-01T00:00:00Z
             expectedVariation: false
 
           - at: 70
             description: "At 70%, the feature should be disabled on 25th December 2023"
-            attributes:
+            context:
               date: 2023-12-25T00:00:00Z
             expectedVariation: false
 
           - at: 90
             description: "At 90%, the feature should be enabled on 25th November 2023"
-            attributes:
+            context:
               date: 2023-11-25T00:00:00Z
             expectedVariation: true
