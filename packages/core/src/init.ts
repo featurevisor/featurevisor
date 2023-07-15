@@ -35,7 +35,7 @@ export function initProject(
         .on("finish", () => {
           console.log(`Project scaffolded in ${directoryPath}`);
           console.log(``);
-          console.log(`Please run "npm ci" in the directory above.`);
+          console.log(`Please run "npm install" in the directory above.`);
 
           resolve(true);
         });
