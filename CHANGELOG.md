@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.1](https://github.com/fahad19/featurevisor/compare/v0.37.0...v0.37.1) (2023-07-15)
+
+
+### Bug Fixes
+
+* "npm ci" → "npm install" message on project setup ([#102](https://github.com/fahad19/featurevisor/issues/102)) ([03b29b1](https://github.com/fahad19/featurevisor/commit/03b29b1ff594f33e5ca813cbbaaa3179b6bab390))
+
+
+
+
+
 # [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
 
 
