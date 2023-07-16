@@ -74,7 +74,13 @@ import { FooFeature } from "@yourorg/features";
 
 The imported feature will have several methods available depending how it's defined.
 
-Method for getting its variation is always available:
+Method for checking if the feature is enabled or not is always available:
+
+```js
+FooFeature.isEnabled(context = {});
+```
+
+If your feature has any defined variations, then `getVariation` method would also be available:
 
 ```js
 FooFeature.getVariation(context = {});

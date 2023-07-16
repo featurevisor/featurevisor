@@ -20,12 +20,6 @@ tags:
 bucketBy: userId
 
 environments:
-  staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
-
   production:
     rules:
       - key: "1"
@@ -33,7 +27,9 @@ environments:
         percentage: 100
 ```
 
-Quite a lot of things are happening there. We will go through each of the properties from the snippet above in the following sections.
+This is the smallest possible definition of a feature.
+
+Quite a few are happening there. We will go through each of the properties from the snippet above and more in the following sections.
 
 ## Description
 
@@ -94,19 +90,17 @@ bucketBy:
 
 ## Variations
 
-A feature can have multiple variations. Each variation must have a different string value.
-
-This is useful for running A/B test experiments.
+A feature can have multiple variations if you wish to run A/B tests. Each variation must have a different string value.
 
 ```yml
 variations:
   - value: control
     weight: 50
 
-  - value: b
+  - value: firstTreatment
     weight: 25
 
-  - value: c
+  - value: secondTreatment
     weight: 25
 ```
 
@@ -570,7 +564,7 @@ environments:
         enabled: true
 
         # forced variation
-        variation: true
+        variation: treatment
 
         # variables can also be forced
         variables:

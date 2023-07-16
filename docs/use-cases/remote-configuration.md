@@ -53,7 +53,7 @@ The [quick start](/docs/quick-start) can be very handy as a summary.
 
 ## Defining our feature
 
-We can start by creating a new feature called `checkout` that has boolean variations only for now:
+We can start by creating a new feature called `checkout`:
 
 ```yml
 # features/checkout.yml
