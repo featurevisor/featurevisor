@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+
+### Features
+
+* drop type specific activate methods ([#105](https://github.com/fahad19/featurevisor/issues/105)) ([5faca24](https://github.com/fahad19/featurevisor/commit/5faca24e29665a03919ebf467bfb6a9c70c8e648))
+
+
+
+
+
 # [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
 
 
