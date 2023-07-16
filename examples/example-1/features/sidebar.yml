@@ -4,8 +4,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
 variablesSchema:
   - key: position
     type: string
@@ -21,9 +19,9 @@ variablesSchema:
     defaultValue: "Sidebar Title"
 
 variations:
-  - value: false
+  - value: control
     weight: 10
-  - value: true
+  - value: treatment
     weight: 90
     variables:
       - key: position

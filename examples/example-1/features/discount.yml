@@ -3,17 +3,7 @@ tags:
   - all
   - checkout
 
-defaultVariation: false
-
 bucketBy: userId
-
-variations:
-  - description: Enabled for all
-    value: true
-    weight: 100
-  - description: Disabled for all
-    value: false
-    weight: 0
 
 environments:
   staging:

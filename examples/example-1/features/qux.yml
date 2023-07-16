@@ -2,8 +2,6 @@ description: Variations with weights having decimal places
 tags:
   - all
 
-defaultVariation: control
-
 bucketBy: userId
 
 variablesSchema:

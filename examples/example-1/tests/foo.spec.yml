@@ -7,22 +7,26 @@ tests:
           - at: 40
             context:
               country: de
-            expectedVariation: false
+            expectedToBeEnabled: true
+            expectedVariation: control
 
           - at: 60
             context:
               country: ch
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
 
           - at: 60
             context:
               country: us
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
 
           - at: 60
             context:
               country: us
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               bar: bar_here
               baz: baz_here
@@ -30,7 +34,8 @@ tests:
           - at: 80
             context:
               country: de
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               bar: bar for DE or CH
               baz: baz_here
