@@ -61,6 +61,30 @@ const { isReady } = useStatus();
 </template>
 ```
 
+### useFlag
+
+Check if feature is enabled or not:
+
+```html
+<script setup>
+import { useFlag } from "@featurevisor/vue";
+
+const featureKey = "myFeatureKey";
+const context = { userId: "123" };
+
+const isEnabled = useFlag(featureKey, context);
+</script>
+
+<template>
+  <div v-if="isEnabled">
+    Feature is enabled
+  </div>
+  <div v-else>
+    Feature is disabled
+  </div>
+</template>
+```
+
 ### useVariation
 
 Get a feature's evaluated variation:
@@ -115,6 +139,22 @@ const color = useVariable(featureKey, variableKey, context);
 Same as `useVariation`, but it will also bubble an activation event up to the SDK for tracking purposes.
 
 This should ideally be only called once per feature, and only when we know the feature has been exposed to the user.
+
+### useSdk
+
+Get the SDK instance:
+
+```html
+<script setup>
+import { useSdk } from "@featurevisor/vue";
+
+const sdk = useSdk();
+</script>
+
+<template>
+  <div>...</div>
+</template>
+```
 
 ## Optimization
 

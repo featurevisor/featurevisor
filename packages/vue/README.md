@@ -7,11 +7,11 @@ Visit [https://featurevisor.com/docs/vue](https://featurevisor.com/docs/vue) for
 - [Installation](#installation)
 - [API](#api)
   - [`setupApp`](#setupapp)
-  - [`activateFeature`](#activatefeature)
-  - [`useSdk`](#usesdk)
   - [`useStatus`](#usestatus)
   - [`useVariation`](#usevariation)
   - [`useVariable`](#usevariable)
+  - [`activateFeature`](#activatefeature)
+  - [`useSdk`](#usesdk)
 
 ## Installation
 
@@ -41,18 +41,6 @@ const app = createApp({
 setupApp(app, sdk);
 ```
 
-### `activateFeature`
-
-> activateFeature(featureKey, context = {}): VariationValue | undefined
-
-Function for activating feature.
-
-### `useSdk`
-
-> useSdk(): FeaturevisorInstance
-
-Function for getting Featurevisor SDK instance.
-
 ### `useStatus`
 
 > useStatus(): { isReady: boolean }
@@ -70,6 +58,18 @@ Function for getting variation value.
 > useVariable(featureKey, variableKey, context = {}): VariableValue | undefined
 
 Function for getting variable value.
+
+### `activateFeature`
+
+> activateFeature(featureKey, context = {}): VariationValue | undefined
+
+Function for activating feature.
+
+### `useSdk`
+
+> useSdk(): FeaturevisorInstance
+
+Function for getting Featurevisor SDK instance.
 
 ## License <!-- omit in toc -->
 

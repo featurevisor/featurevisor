@@ -7,11 +7,12 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 - [Installation](#installation)
 - [API](#api)
   - [`FeaturevisorProvider`](#featurevisorprovider)
-  - [`activateFeature`](#activatefeature)
-  - [`useSdk`](#usesdk)
   - [`useStatus`](#usestatus)
+  - [`useFlag`](#useflag)
   - [`useVariation`](#usevariation)
   - [`useVariable`](#usevariable)
+  - [`activateFeature`](#activatefeature)
+  - [`useSdk`](#usesdk)
 
 ## Installation
 
@@ -43,18 +44,6 @@ function Root() {
 }
 ```
 
-### `activateFeature`
-
-> activateFeature(featureKey, context = {}): VariationValue | undefined
-
-Hook for activate feature.
-
-### `useSdk`
-
-> useSdk(): FeaturevisorInstance
-
-Hook for getting Featurevisor SDK instance.
-
 ### `useStatus`
 
 > useStatus(): { isReady: boolean }
@@ -76,6 +65,12 @@ function App() {
 }
 ```
 
+### `useFlag`
+
+> useFlag(featureKey, context = {}): boolean
+
+Hook for checking if feature is enabled.
+
 ### `useVariation`
 
 > useVariation(featureKey, context = {}): VariationValue | undefined
@@ -87,6 +82,18 @@ Hook for getting variation value.
 > useVariable(featureKey, variableKey, context = {}): VariableValue | undefined
 
 Hook for getting variable value.
+
+### `activateFeature`
+
+> activateFeature(featureKey, context = {}): VariationValue | undefined
+
+Hook for activating feature.
+
+### `useSdk`
+
+> useSdk(): FeaturevisorInstance
+
+Hook for getting Featurevisor SDK instance.
 
 ## License <!-- omit in toc -->
 
