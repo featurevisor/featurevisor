@@ -508,6 +508,26 @@ export class FeaturevisorInstance {
       const matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, this.datafileReader);
 
       if (matchedTraffic) {
+        // check if mutually exclusive
+        if (feature.ranges && feature.ranges.length > 0) {
+          const matchedRange = feature.ranges.find((range) => {
+            return bucketValue >= range[0] && bucketValue < range[1];
+          });
+
+          if (!matchedRange) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: EvaluationReason.ERROR, // no matched range
+              enabled: false,
+              bucketValue,
+            };
+
+            this.logger.debug("not matched", evaluation);
+
+            return evaluation;
+          }
+        }
+
         // override from rule
         if (typeof matchedTraffic.enabled !== "undefined") {
           evaluation = {
@@ -525,16 +545,18 @@ export class FeaturevisorInstance {
         }
 
         // treated as enabled because of matched traffic
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.RULE,
-          enabled: true,
-          bucketValue,
-          ruleKey: matchedTraffic.key,
-          traffic: matchedTraffic,
-        };
+        if (bucketValue < matchedTraffic.percentage) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.RULE,
+            enabled: true,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+          };
 
-        return evaluation;
+          return evaluation;
+        }
       }
 
       // nothing matched
