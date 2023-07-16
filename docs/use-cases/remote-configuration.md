@@ -63,16 +63,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
-# we create a boolean variation for now
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
-
 # rolled out as `true` to 100% of our traffic
 environments:
   production:
@@ -96,8 +86,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
 # we add variable schema for all our parameters here,
 # starting with `paymentMethods` for now
 variablesSchema:
@@ -108,13 +96,6 @@ variablesSchema:
       - paypal
       - applePay
       - googlePay
-
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
 
 environments:
   production:
@@ -282,8 +263,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
 variablesSchema:
   - key: paymentMethods
     type: array
@@ -309,13 +288,6 @@ variablesSchema:
   - key: allowDiscountCode
     type: boolean
     defaultValue: false
-
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
 
 environments:
   production:

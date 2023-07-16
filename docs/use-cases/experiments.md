@@ -92,8 +92,6 @@ tags:
 
 bucketBy: deviceId
 
-defaultVariation: control
-
 variations:
   - value: control
     description: Original CTA button
@@ -226,8 +224,6 @@ tags:
   - all
 
 bucketBy: deviceId
-
-defaultVariation: control
 
 # define a schema of all variables
 # scoped under `hero` feature first

@@ -100,27 +100,26 @@ The generated code is smart enough to know the types of all your individual attr
 
 Therefore, if you pass an attribute in wrong type for evaluating variation or variables, you will get a TypeScript error.
 
-## Getting variation
+## Checking if enabled
 
-Assuming we have a `foo` feature defined already, which has `boolean` variations:
+Assuming we have a `foo` feature defined already in `features/foo.yml` file:
 
 ```js
 import { FooFeature } from "@yourorg/features";
 
-const context = {
-  userId: "user-123",
-};
-const fooIsEnabled = FooFeature.getVariation(context);
-
-typeof fooIsEnabled === "boolean"; // true
+const context = { userId: "user-123" };
+const isFooEnabled = FooFeature.isEnabled(context);
 ```
 
-If our defined feature had `string` variations instead, the returned type would of course be `string`:
+## Getting variation
+
+We can use the same imported feature to get its variation:
 
 ```js
-const fooVariation = FooFeature.getVariation();
+import { FooFeature } from "@yourorg/features";
 
-typeof fooVariation === "string"; // true
+const context = { userId: "user-123" };
+const fooVariation = FooFeature.getVariation(context);
 ```
 
 ## Evaluating variable
@@ -130,9 +129,7 @@ If our `foo` feature had a `bar` variable defined, we can evaluate it as follows
 ```js
 import { FooFeature } from "@yourorg/features";
 
-const context = {
-  userId: "user-123",
-};
+const context = { userId: "user-123" };
 const barValue = FooFeature.getBar(context);
 ```
 

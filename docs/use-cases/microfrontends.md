@@ -160,16 +160,7 @@ description: Shows marketing banner at the bottom of the page
 tags:
   - <your-tag-here> # we will discuss this in next section below
 
-defaultVariation: false
-
 bucketBy: deviceId
-
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
 
 environments:
   staging:
@@ -299,7 +290,7 @@ const context = {
   userId: "...",
 };
 
-const showMarketingBanner = sdk.getVariation(featureKey, context);
+const showMarketingBanner = sdk.isEnabled(featureKey, context);
 
 if (showMarketingBanner) {
   // render marketing banner

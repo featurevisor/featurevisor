@@ -80,9 +80,6 @@ tags:
 
 bucketBy: userId
 
-# when we don't know better, we will always fall back to free plan
-defaultVariation: free
-
 # we define a variable called `entitlements`,
 # that will be an array of strings
 variablesSchema:
@@ -146,6 +143,7 @@ Set sticky features in the SDK for known user:
 // into the same plan (variation) as User Profile service suggests
 sdk.setStickyFeatures({
   plan: {
+    enabled: true,
     variation: userProfile.plan,
   },
 });
@@ -214,6 +212,7 @@ We can then use the `overrideEntitlements` field from User Profile and set it as
 ```js
 sdk.setStickyFeatures({
   plan: {
+    enabled: true,
     variation: userProfile.plan,
     variables: userProfile.overrideEntitlements
       // user overrides
@@ -278,8 +277,6 @@ tags:
   - all
 
 bucketBy: userId
-
-defaultVariation: free
 
 variablesSchema:
   - key: canLikePosts
