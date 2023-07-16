@@ -80,6 +80,7 @@ export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileCont
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
+  DISABLED = "disabled",
   OUT_OF_RANGE = "out_of_range",
   FORCED = "forced",
   INITIAL = "initial",
@@ -614,6 +615,19 @@ export class FeaturevisorInstance {
     try {
       const key = typeof featureKey === "string" ? featureKey : featureKey.key;
 
+      const flag = this.evaluateFlag(featureKey, context);
+
+      if (flag.enabled === false) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.DISABLED,
+        };
+
+        this.logger.debug("feature is disabled", evaluation);
+
+        return evaluation;
+      }
+
       // sticky
       if (this.stickyFeatures && this.stickyFeatures[key]) {
         const variationValue = this.stickyFeatures[key].variation;
@@ -874,6 +888,19 @@ export class FeaturevisorInstance {
 
     try {
       const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+
+      const flag = this.evaluateFlag(featureKey, context);
+
+      if (flag.enabled === false) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.DISABLED,
+        };
+
+        this.logger.debug("feature is disabled", evaluation);
+
+        return evaluation;
+      }
 
       // sticky
       if (this.stickyFeatures && this.stickyFeatures[key]) {
