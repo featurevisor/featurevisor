@@ -107,8 +107,6 @@ Learn more in [Segments](/docs/segments).
 
 We have come to the most interesting part now.
 
-### Boolean flags
-
 We can create a new `showBanner` feature, that controls a banner on our website:
 
 ```yml
@@ -120,17 +118,13 @@ tags:
 # this makes sure the same User ID consistently gets the same variation
 bucketBy: userId
 
-defaultVariation: false
-
-# boolean flags have only two variations: true and false
+# optionally add variations for running a/b tests
 variations:
-  - value: true
-    weight: 100 # out of a total of 100
+  - value: control
+    weight: 50 # out of a total of 100
 
-  # weight is 0 because it's boolean, and
-  # we can control the rollout percentage from environment rules below
-  - value: false
-    weight: 0
+  - value: treatment
+    weight: 50 # total sum of weights has to be 100
 
 environments:
   staging:
@@ -146,52 +140,6 @@ environments:
         segments:
           - "germany"
         percentage: 50
-
-      - key: "2"
-        segments: "*" # everyone
-        percentage: 0 # disabled for everyone else
-```
-
-### A/B test with variations
-
-Unlike boolean flags, A/B tests can have more than 2 variations, and they are of `string` type.
-
-Let's create a feature called `darkMode` which has 3 variations, and we wish to roll it out gradually in Germany first and then rest of the world.
-
-```yml
-# features/darkMode.yml
-description: Dark mode
-tags:
-  - all
-
-bucketBy: userId
-
-defaultVariation: light
-
-# three variations: light, dimmed, and dark.
-# sum of all weights must be 100
-variations:
-  - value: light
-    weight: 33.34
-
-  - value: dimmed
-    weight: 33.33
-
-  - value: dark
-    weight: 33.33
-
-environments:
-  staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
-  production:
-    rules:
-      - key: "1"
-        segments:
-          - "germany"
-        percentage: 100
 
       - key: "2"
         segments: "*" # everyone
@@ -295,7 +243,11 @@ const context = {
   country: "de",
 };
 
-const showBanner = sdk.getVariation(featureKey, context);
+// true or false
+const isBannerEnabled = sdk.isEnabled(featureKey, context);
+
+ // `control` or `treatment`
+const bannerVariation = sdk.getVariation(featureKey, context);
 ```
 
 Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.

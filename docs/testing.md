@@ -26,13 +26,19 @@ tests:
             at: 40
             context:
               country: nl
-            expectedVariation: false
+            expectedToBeEnabled: true
+
+            # if testing variations
+            expectedVariation: control
 
           # asserting evaluated variables
           - description: Testing variables at 90% in NL
             at: 90
             context:
               country: nl
+            expectedToBeEnabled: true
+
+            # if testing variables
             expectedVariables:
               someKey: someValue
 ```

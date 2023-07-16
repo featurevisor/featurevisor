@@ -4,12 +4,16 @@ import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
 export function detectIfVariationsChanged(
-  yamlVariations: Variation[], // as exists in latest YAML
+  yamlVariations: Variation[] | undefined, // as exists in latest YAML
   existingFeature?: ExistingFeature, // from state file
 ): boolean {
-  if (!existingFeature) {
+  if (!existingFeature || typeof existingFeature.variations === "undefined") {
     return false;
   }
+
+  const checkVariations = Array.isArray(yamlVariations)
+    ? JSON.stringify(yamlVariations.map(({ value, weight }) => ({ value, weight })))
+    : undefined;
 
   return (
     JSON.stringify(
@@ -17,7 +21,7 @@ export function detectIfVariationsChanged(
         value,
         weight,
       })),
-    ) !== JSON.stringify(yamlVariations.map(({ value, weight }) => ({ value, weight })))
+    ) !== checkVariations
   );
 }
 
@@ -51,7 +55,7 @@ export function detectIfRangesChanged(
 
 export function getTraffic(
   // from current YAML
-  variations: Variation[],
+  variations: Variation[] | undefined,
   parsedRules: Rule[],
   // from previous release
   existingFeature: ExistingFeature | undefined,
@@ -118,27 +122,29 @@ export function getTraffic(
       updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(availableRanges, existingSum);
     }
 
-    variations.forEach(function (variation) {
-      const weight = variation.weight as number;
-      const percentage = weight * (MAX_BUCKETED_NUMBER / 100);
+    if (Array.isArray(variations)) {
+      variations.forEach(function (variation) {
+        const weight = variation.weight as number;
+        const percentage = weight * (MAX_BUCKETED_NUMBER / 100);
 
-      let toFillValue = needsRebucketing
-        ? percentage * (rulePercentage / 100) // whole value
-        : (weight / 100) * rulePercentageDiff; // incrementing
-      const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
+        let toFillValue = needsRebucketing
+          ? percentage * (rulePercentage / 100) // whole value
+          : (weight / 100) * rulePercentageDiff; // incrementing
+        const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
 
-      rangesToFill.forEach(function (range) {
-        traffic.allocation.push({
-          variation: variation.value,
-          range,
+        rangesToFill.forEach(function (range) {
+          traffic.allocation.push({
+            variation: variation.value,
+            range,
+          });
         });
-      });
 
-      updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
-        updatedAvailableRanges,
-        toFillValue,
-      );
-    });
+        updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
+          updatedAvailableRanges,
+          toFillValue,
+        );
+      });
+    }
 
     traffic.allocation = traffic.allocation.filter((a) => {
       if (a.range && a.range[0] === a.range[1]) {

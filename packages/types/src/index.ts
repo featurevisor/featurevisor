@@ -96,8 +96,7 @@ export type AndOrNotGroupSegment = AndGroupSegment | OrGroupSegment | NotGroupSe
 // group of segment keys with and/or conditions, or just string
 export type GroupSegment = PlainGroupSegment | AndOrNotGroupSegment;
 
-export type VariationType = "boolean" | "string" | "integer" | "double";
-export type VariationValue = boolean | string | number | null | undefined;
+export type VariationValue = string;
 
 export type VariableKey = string;
 export type VariableType =
@@ -174,7 +173,8 @@ export interface Force {
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
 
-  variation: VariationValue;
+  enabled?: boolean;
+  variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };
@@ -210,10 +210,13 @@ export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
   percentage: Percentage;
+
+  enabled?: boolean;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };
+
   allocation: Allocation[];
 }
 
@@ -227,12 +230,12 @@ export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 export interface Feature {
   key: FeatureKey;
   // @TODO: introduce new `parent` key?
-  defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
-  variations: Variation[];
+  variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];
   force?: Force[];
+  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface DatafileContent {
@@ -243,13 +246,16 @@ export interface DatafileContent {
   features: Feature[];
 }
 
-export interface StickyFeatures {
-  [key: FeatureKey]: {
-    variation: VariationValue;
-    variables?: {
-      [key: VariableKey]: VariableValue;
-    };
+export interface OverrideFeature {
+  enabled: boolean;
+  variation?: VariationValue;
+  variables?: {
+    [key: VariableKey]: VariableValue;
   };
+}
+
+export interface StickyFeatures {
+  [key: FeatureKey]: OverrideFeature;
 }
 
 export type InitialFeatures = StickyFeatures;
@@ -267,6 +273,8 @@ export interface Rule {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
+
+  enabled?: boolean;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
@@ -288,9 +296,8 @@ export interface ParsedFeature {
 
   bucketBy: BucketBy;
 
-  defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
-  variations: Variation[];
+  variations?: Variation[];
 
   environments: {
     [key: EnvironmentKey]: Environment;
@@ -303,7 +310,7 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
-  variations: {
+  variations?: {
     // @TODO: use Exclude with Variation?
     value: VariationValue;
     weight: Weight;
@@ -314,7 +321,7 @@ export interface ExistingFeature {
     percentage: Percentage;
     allocation: Allocation[];
   }[];
-  ranges?: Range[]; // if in a Group, these are the available slot ranges
+  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface ExistingFeatures {
@@ -332,6 +339,7 @@ export interface FeatureAssertion {
   description?: string;
   at: Weight; // bucket weight: 0 to 100
   context: Context;
+  expectedToBeEnabled: boolean;
   expectedVariation?: VariationValue;
   expectedVariables?: {
     [key: VariableKey]: VariableValue;

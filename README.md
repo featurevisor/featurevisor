@@ -145,7 +145,9 @@ const context = {
   country: "nl",
 };
 
-const isFeatureEnabled = sdk.getVariation(featureKey, context) === true;
+const isFeatureEnabled = sdk.isEnabled(featureKey, context);
+const variation = sdk.getVariation(featureKey, context);
+const someVariable = sdk.getVariable(featureKey, "someVariableKey", context);
 ```
 
 Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).

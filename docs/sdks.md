@@ -89,9 +89,23 @@ const context = {
 };
 ```
 
+## Checking if enabled
+
+Once the SDK is initialized, you can check if a feature is enabled or not:
+
+```js
+const featureKey = "my_feature";
+const context = {
+  userId: "123",
+  country: "nl",
+};
+
+const isEnabled = sdk.isEnabled(featureKey, context);
+```
+
 ## Getting variations
 
-Once the SDK is initialized, you can get variations of your features as follows:
+If your feature has any variations defined, you can get evaluate them as follows:
 
 ```js
 const featureKey = "my_feature";
@@ -110,6 +124,53 @@ const variableKey = "bgColor";
 
 const bgColorValue = sdk.getVariable(featureKey, variableKey, context);
 ```
+
+## Type specific methods
+
+Next to generic `getVariable()` methods, there are also type specific methods available for convenience:
+
+### `boolean`
+
+```js
+sdk.getVariableBoolean(featureKey, variableKey, context);
+```
+
+### `string`
+
+```js
+sdk.getVariableString(featureKey, variableKey, context);
+```
+
+### `integer`
+
+```js
+sdk.getVariableInteger(featureKey, variableKey, context);
+```
+
+### `double`
+
+```js
+sdk.getVariableDouble(featureKey, variableKey, context);
+```
+
+### `array`
+
+```js
+sdk.getVariableArray(featureKey, variableKey, context);
+```
+
+### `object`
+
+```ts
+sdk.getVariableObject<T>(featureKey, variableKey, context);
+```
+
+### `json`
+
+```ts
+sdk.getVariableJSON<T>(featureKey, variableKey, context);
+```
+
 
 ## Activation
 
@@ -142,60 +203,6 @@ const variation = sdk.activate(featureKey, context);
 
 From the `onActivation` handler, you can send the activation event to your analytics service.
 
-## Type specific methods
-
-Next to generic `getVariation()`, `activate`, and `getVariable()` methods, there are also type specific methods for each of them:
-
-### `boolean`
-
-```js
-sdk.getVariationBoolean(featureKey, context);
-sdk.activateBoolean(featureKey, context);
-sdk.getVariableBoolean(featureKey, variableKey, context);
-```
-
-### `string`
-
-```js
-sdk.getVariationString(featureKey, context);
-sdk.activateString(featureKey, context);
-sdk.getVariableString(featureKey, variableKey, context);
-```
-
-### `integer`
-
-```js
-sdk.getVariationInteger(featureKey, context);
-sdk.activateInteger(featureKey, context);
-sdk.getVariableInteger(featureKey, variableKey, context);
-```
-
-### `double`
-
-```js
-sdk.getVariationDouble(featureKey, context);
-sdk.activateDouble(featureKey, context);
-sdk.getVariableDouble(featureKey, variableKey, context);
-```
-
-### `array`
-
-```js
-sdk.getVariableArray(featureKey, variableKey, context);
-```
-
-### `object`
-
-```ts
-sdk.getVariableObject<T>(featureKey, variableKey, context);
-```
-
-### `json`
-
-```ts
-sdk.getVariableJSON<T>(featureKey, variableKey, context);
-```
-
 ## Initial features
 
 You may want to initialize your SDK with a set of features before SDK has successfully fetched the datafile (if using `datafileUrl` option).
@@ -210,15 +217,16 @@ const sdk = createInstance({
 
   initialFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
 
-      // optional variables
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "myVariableValue",
       }
     },
     anotherFeatureKey: {
-      variation: false,
+      enabled: false,
     },
   },
 });
@@ -240,15 +248,16 @@ const sdk = createInstance({
 
   stickyFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
 
-      // optional variables
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "myVariableValue",
       }
     },
     anotherFeatureKey: {
-      variation: false,
+      enabled: false,
     }
   },
 });
@@ -261,11 +270,12 @@ You can also set sticky features after the SDK is initialized:
 ```js
 sdk.setStickyFeatures({
   myFeatureKey: {
-    variation: true,
+    enabled: true,
+    variation: "treatment",
     variables: {},
   },
   anotherFeatureKey: {
-    variation: false,
+    enabled: false,
   }
 });
 ```
@@ -527,6 +537,9 @@ sdk.removeAllListeners();
 Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given context:
 
 ```js
+// flag
+const evaluation = sdk.evaluateFlag(featureKey, context);
+
 // variation
 const evaluation = sdk.evaluateVariation(featureKey, context);
 
@@ -544,6 +557,7 @@ And optionally these properties depending on whether you are evaluating a featur
 - `bucketValue`: the bucket value between 0 and 100,000
 - `ruleKey`: the rule key
 - `error`: the error object
+- `enabled`: if feature itself is enabled or not
 - `variation`: the variation object
 - `variationValue`: the variation value
 - `variableKey`: the variable key

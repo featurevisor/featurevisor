@@ -8,16 +8,16 @@ tests:
             description: "At 10%, the feature should be enabled"
             context:
               country: nl
-            expectedVariation: true
+            expectedToBeEnabled: true
 
           - at: 70
             description: "At 70%, the feature should be enabled"
             context:
               country: nl
-            expectedVariation: true
+            expectedToBeEnabled: true
 
           - at: 90
             description: "At 90%, the feature should be disabled"
             context:
               country: nl
-            expectedVariation: false
+            expectedToBeEnabled: false

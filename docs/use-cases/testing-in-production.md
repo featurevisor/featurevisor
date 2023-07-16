@@ -66,18 +66,6 @@ tags:
 # because this is only exposed to logged in users
 bucketBy: userId
 
-# by default, we want to disable this feature
-defaultValue: false
-
-variations:
-  - value: true
-    weight: 100
-
-  # boolean feature flags don't need any
-  # weight distribution for falsy value
-  - value: false
-    weight: 0
-
 environments:
   production:
     rules:
@@ -116,7 +104,7 @@ environments:
               - "user-id-3"
               - "user-id-4"
               - "user-id-5"
-        variation: true
+        enabled: true
     rules:
       - key: "1"
         segments: "*"
@@ -163,7 +151,7 @@ environments:
     force:
       - segments:
           - qa
-        variation: true # enabled for QA team members
+        enabled: true # enabled for QA team members
     rules:
       - key: "1"
         segments: "*"
@@ -197,7 +185,7 @@ const context = {
   deviceId: "device-id-1",
 };
 
-const isWishlistEnabled = sdk.getVariation(featureKey, context);
+const isWishlistEnabled = sdk.isEnabled(featureKey, context);
 
 if (isWishlistEnabled) {
   // render the wishlist feature

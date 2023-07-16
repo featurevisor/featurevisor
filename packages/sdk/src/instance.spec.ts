@@ -54,17 +54,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -80,11 +79,13 @@ describe("sdk: instance", function () {
       },
     });
 
-    const variation = sdk.getVariation("test", {
+    const featureKey = "test";
+    const context = {
       userId: "123",
-    });
+    };
 
-    expect(variation).toEqual(true);
+    expect(sdk.isEnabled(featureKey, context)).toEqual(true);
+    expect(sdk.getVariation(featureKey, context)).toEqual("control");
     expect(capturedBucketKey).toEqual("123.test");
   });
 
@@ -98,17 +99,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: ["userId", "organizationId"],
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -124,12 +124,13 @@ describe("sdk: instance", function () {
       },
     });
 
-    const variation = sdk.getVariation("test", {
+    const featureKey = "test";
+    const context = {
       userId: "123",
       organizationId: "456",
-    });
+    };
 
-    expect(variation).toEqual(true);
+    expect(sdk.getVariation(featureKey, context)).toEqual("control");
     expect(capturedBucketKey).toEqual("123.456.test");
   });
 
@@ -143,17 +144,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: { or: ["userId", "deviceId"] },
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -170,18 +170,24 @@ describe("sdk: instance", function () {
     });
 
     expect(
-      sdk.getVariation("test", {
+      sdk.isEnabled("test", {
         userId: "123",
         deviceId: "456",
       }),
     ).toEqual(true);
+    expect(
+      sdk.getVariation("test", {
+        userId: "123",
+        deviceId: "456",
+      }),
+    ).toEqual("control");
     expect(capturedBucketKey).toEqual("123.test");
 
     expect(
       sdk.getVariation("test", {
         deviceId: "456",
       }),
-    ).toEqual(true);
+    ).toEqual("control");
     expect(capturedBucketKey).toEqual("456.test");
   });
 
@@ -195,17 +201,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -227,7 +232,7 @@ describe("sdk: instance", function () {
       userId: "123",
     });
 
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
     expect(intercepted).toEqual(true);
   });
 
@@ -241,17 +246,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -270,14 +274,14 @@ describe("sdk: instance", function () {
     });
 
     expect(activated).toEqual(false);
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
 
     const activatedVariation = sdk.activate("test", {
       userId: "123",
     });
 
     expect(activated).toEqual(true);
-    expect(activatedVariation).toEqual(true);
+    expect(activatedVariation).toEqual("control");
   });
 
   it("should refresh datafile", function (done) {
@@ -292,17 +296,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -351,7 +354,8 @@ describe("sdk: instance", function () {
     const sdk = createInstance({
       stickyFeatures: {
         test: {
-          variation: false,
+          enabled: true,
+          variation: "control",
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -362,17 +366,16 @@ describe("sdk: instance", function () {
           features: [
             {
               key: "test",
-              defaultVariation: false,
               bucketBy: "userId",
-              variations: [{ value: true }, { value: false }],
+              variations: [{ value: "control" }, { value: "treatment" }],
               traffic: [
                 {
                   key: "1",
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: true, range: [0, 100000] },
-                    { variation: false, range: [0, 0] },
+                    { variation: "control", range: [0, 0] },
+                    { variation: "treatment", range: [0, 100000] },
                   ],
                 },
               ],
@@ -390,28 +393,28 @@ describe("sdk: instance", function () {
       },
     });
 
-    // initially false
+    // initially control
     expect(
       sdk.getVariation("test", {
         userId: "123",
       }),
-    ).toEqual(false);
+    ).toEqual("control");
 
     setTimeout(function () {
-      // still false after fetching datafile
+      // still control after fetching datafile
       expect(
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(false);
+      ).toEqual("control");
 
-      // unsetting sticky features will make it true
+      // unsetting sticky features will make it treatment
       sdk.setStickyFeatures({});
       expect(
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(true);
+      ).toEqual("treatment");
 
       done();
     }, 75);
@@ -421,7 +424,8 @@ describe("sdk: instance", function () {
     const sdk = createInstance({
       initialFeatures: {
         test: {
-          variation: false,
+          enabled: true,
+          variation: "control",
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -432,17 +436,16 @@ describe("sdk: instance", function () {
           features: [
             {
               key: "test",
-              defaultVariation: false,
               bucketBy: "userId",
-              variations: [{ value: true }, { value: false }],
+              variations: [{ value: "control" }, { value: "treatment" }],
               traffic: [
                 {
                   key: "1",
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: true, range: [0, 100000] },
-                    { variation: false, range: [0, 0] },
+                    { variation: "control", range: [0, 0] },
+                    { variation: "treatment", range: [0, 100000] },
                   ],
                 },
               ],
@@ -460,20 +463,20 @@ describe("sdk: instance", function () {
       },
     });
 
-    // initially false
+    // initially control
     expect(
       sdk.getVariation("test", {
         userId: "123",
       }),
-    ).toEqual(false);
+    ).toEqual("control");
 
     setTimeout(function () {
-      // true after fetching datafile
+      // treatment after fetching datafile
       expect(
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(true);
+      ).toEqual("treatment");
 
       done();
     }, 75);

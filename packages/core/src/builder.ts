@@ -57,8 +57,16 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
 }
 
-export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, Range[]> {
+export type FeatureRanges = Map<FeatureKey, Range[]>;
+
+interface FeatureRangesResult {
+  featureRanges: FeatureRanges;
+  featureIsInGroup: { [key: string]: boolean };
+}
+
+export function getFeatureRanges(projectConfig: ProjectConfig): FeatureRangesResult {
   const featureRanges = new Map<FeatureKey, Range[]>();
+  const featureIsInGroup = {}; // featureKey => boolean
 
   const groups: Group[] = [];
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
@@ -82,6 +90,11 @@ export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, 
 
         if (slot.feature) {
           const featureKey = slot.feature;
+
+          if (typeof featureKey === "string") {
+            featureIsInGroup[featureKey] = true;
+          }
+
           const featureRangesForFeature = featureRanges.get(featureKey) || [];
 
           const start = isFirstSlot ? accumulatedPercentage : accumulatedPercentage + 1;
@@ -97,7 +110,7 @@ export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, 
     }
   }
 
-  return featureRanges;
+  return { featureRanges, featureIsInGroup };
 }
 
 export function buildDatafile(
@@ -115,7 +128,7 @@ export function buildDatafile(
 
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
-  const featureRanges = getFeatureRanges(projectConfig);
+  const { featureRanges, featureIsInGroup } = getFeatureRanges(projectConfig);
 
   // features
   const features: Feature[] = [];
@@ -148,79 +161,85 @@ export function buildDatafile(
 
       const feature: Feature = {
         key: featureKey,
-        defaultVariation: parsedFeature.defaultVariation,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
-        variations: parsedFeature.variations.map((variation: Variation) => {
-          const mappedVariation: any = {
-            value: variation.value,
-            weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
-          };
+        variations: Array.isArray(parsedFeature.variations)
+          ? parsedFeature.variations.map((variation: Variation) => {
+              const mappedVariation: any = {
+                value: variation.value,
+                weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
+              };
 
-          if (!variation.variables) {
-            return mappedVariation;
-          }
-
-          mappedVariation.variables = variation.variables.map((variable: Variable) => {
-            const mappedVariable: any = {
-              key: variable.key,
-              value: variable.value,
-            };
-
-            if (!variable.overrides) {
-              return mappedVariable;
-            }
-
-            mappedVariable.overrides = variable.overrides.map((override: VariableOverride) => {
-              if (typeof override.conditions !== "undefined") {
-                const extractedAttributeKeys = extractAttributeKeysFromConditions(
-                  override.conditions,
-                );
-                extractedAttributeKeys.forEach((attributeKey) =>
-                  attributeKeysUsedByTag.add(attributeKey),
-                );
-
-                return {
-                  conditions: JSON.stringify(override.conditions),
-                  value: override.value,
-                };
+              if (!variation.variables) {
+                return mappedVariation;
               }
 
-              if (typeof override.segments !== "undefined") {
-                const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
-                  override.segments as GroupSegment | GroupSegment[],
-                );
-                extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
-
-                return {
-                  segments: JSON.stringify(override.segments),
-                  value: override.value,
+              mappedVariation.variables = variation.variables.map((variable: Variable) => {
+                const mappedVariable: any = {
+                  key: variable.key,
+                  value: variable.value,
                 };
-              }
 
-              return override;
-            });
+                if (!variable.overrides) {
+                  return mappedVariable;
+                }
 
-            return mappedVariable;
-          });
+                mappedVariable.overrides = variable.overrides.map((override: VariableOverride) => {
+                  if (typeof override.conditions !== "undefined") {
+                    const extractedAttributeKeys = extractAttributeKeysFromConditions(
+                      override.conditions,
+                    );
+                    extractedAttributeKeys.forEach((attributeKey) =>
+                      attributeKeysUsedByTag.add(attributeKey),
+                    );
 
-          return mappedVariation;
-        }),
+                    return {
+                      conditions: JSON.stringify(override.conditions),
+                      value: override.value,
+                    };
+                  }
+
+                  if (typeof override.segments !== "undefined") {
+                    const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
+                      override.segments as GroupSegment | GroupSegment[],
+                    );
+                    extractedSegmentKeys.forEach((segmentKey) =>
+                      segmentKeysUsedByTag.add(segmentKey),
+                    );
+
+                    return {
+                      segments: JSON.stringify(override.segments),
+                      value: override.value,
+                    };
+                  }
+
+                  return override;
+                });
+
+                return mappedVariable;
+              });
+
+              return mappedVariation;
+            })
+          : undefined,
         traffic: getTraffic(
           parsedFeature.variations,
           parsedFeature.environments[options.environment].rules,
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
         ),
+        ranges: featureRanges.get(featureKey) || undefined,
       };
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
       existingState.features[featureKey] = {
-        variations: feature.variations.map((v: Variation) => {
-          return {
-            value: v.value,
-            weight: v.weight || 0,
-          };
-        }),
+        variations: Array.isArray(feature.variations)
+          ? feature.variations.map((v: Variation) => {
+              return {
+                value: v.value,
+                weight: v.weight || 0,
+              };
+            })
+          : undefined,
         traffic: feature.traffic.map((t: Traffic) => {
           return {
             key: t.key,
@@ -233,8 +252,11 @@ export function buildDatafile(
             }),
           };
         }),
-        ranges: featureRanges.get(feature.key) || undefined,
       };
+
+      if (featureIsInGroup[featureKey] === true) {
+        feature.ranges = featureRanges.get(feature.key);
+      }
 
       if (parsedFeature.variablesSchema) {
         feature.variablesSchema = parsedFeature.variablesSchema;

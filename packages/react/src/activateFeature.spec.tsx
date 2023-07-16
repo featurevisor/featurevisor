@@ -14,17 +14,16 @@ function getNewInstance() {
       features: [
         {
           key: "test",
-          defaultVariation: false,
           bucketBy: "userId",
-          variations: [{ value: true }, { value: false }],
+          variations: [{ value: "control" }, { value: "treatment" }],
           traffic: [
             {
               key: "1",
               segments: "*",
               percentage: 100000,
               allocation: [
-                { variation: true, range: [0, 100000] },
-                { variation: false, range: [0, 0] },
+                { variation: "control", range: [0, 100000] },
+                { variation: "treatment", range: [0, 0] },
               ],
             },
           ],
@@ -47,7 +46,7 @@ describe("react: activateFeature", function () {
     function TestComponent() {
       const variation = activateFeature("test", { userId: "1" });
 
-      return variation === true ? <p>True</p> : <p>False</p>;
+      return variation === "control" ? <p>True</p> : <p>False</p>;
     }
 
     render(

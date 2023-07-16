@@ -4,8 +4,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: control
-
 variablesSchema:
   - key: color
     type: string
