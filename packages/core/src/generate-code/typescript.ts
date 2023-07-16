@@ -182,7 +182,7 @@ import { getInstance } from "./instance";
 export namespace ${namespaceValue} {
   export const key = "${featureKey}";
 
-  export function isEnabled(context: Context {}) {
+  export function isEnabled(context: Context = {}) {
     return getInstance().isEnabled(key, context);
   }
 
