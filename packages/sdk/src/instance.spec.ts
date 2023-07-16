@@ -83,7 +83,7 @@ describe("sdk: instance", function () {
       userId: "123",
     });
 
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
     expect(capturedBucketKey).toEqual("123.test");
   });
 
@@ -127,7 +127,7 @@ describe("sdk: instance", function () {
       organizationId: "456",
     });
 
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
     expect(capturedBucketKey).toEqual("123.456.test");
   });
 
@@ -171,14 +171,14 @@ describe("sdk: instance", function () {
         userId: "123",
         deviceId: "456",
       }),
-    ).toEqual(true);
+    ).toEqual("control");
     expect(capturedBucketKey).toEqual("123.test");
 
     expect(
       sdk.getVariation("test", {
         deviceId: "456",
       }),
-    ).toEqual(true);
+    ).toEqual("control");
     expect(capturedBucketKey).toEqual("456.test");
   });
 
@@ -223,7 +223,7 @@ describe("sdk: instance", function () {
       userId: "123",
     });
 
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
     expect(intercepted).toEqual(true);
   });
 
@@ -265,14 +265,14 @@ describe("sdk: instance", function () {
     });
 
     expect(activated).toEqual(false);
-    expect(variation).toEqual(true);
+    expect(variation).toEqual("control");
 
     const activatedVariation = sdk.activate("test", {
       userId: "123",
     });
 
     expect(activated).toEqual(true);
-    expect(activatedVariation).toEqual(true);
+    expect(activatedVariation).toEqual("control");
   });
 
   it("should refresh datafile", function (done) {
@@ -365,8 +365,8 @@ describe("sdk: instance", function () {
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: "control", range: [0, 100000] },
-                    { variation: "treatment", range: [0, 0] },
+                    { variation: "control", range: [0, 0] },
+                    { variation: "treatment", range: [0, 100000] },
                   ],
                 },
               ],
@@ -389,7 +389,7 @@ describe("sdk: instance", function () {
       sdk.getVariation("test", {
         userId: "123",
       }),
-    ).toEqual(false);
+    ).toEqual("control");
 
     setTimeout(function () {
       // still false after fetching datafile
@@ -397,7 +397,7 @@ describe("sdk: instance", function () {
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(false);
+      ).toEqual("control");
 
       // unsetting sticky features will make it true
       sdk.setStickyFeatures({});
@@ -405,7 +405,7 @@ describe("sdk: instance", function () {
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(true);
+      ).toEqual("treatment");
 
       done();
     }, 75);
@@ -435,8 +435,8 @@ describe("sdk: instance", function () {
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: "control", range: [0, 100000] },
-                    { variation: "treatment", range: [0, 0] },
+                    { variation: "control", range: [0, 0] },
+                    { variation: "treatment", range: [0, 100000] },
                   ],
                 },
               ],
@@ -459,7 +459,7 @@ describe("sdk: instance", function () {
       sdk.getVariation("test", {
         userId: "123",
       }),
-    ).toEqual(false);
+    ).toEqual("control");
 
     setTimeout(function () {
       // true after fetching datafile
@@ -467,7 +467,7 @@ describe("sdk: instance", function () {
         sdk.getVariation("test", {
           userId: "123",
         }),
-      ).toEqual(true);
+      ).toEqual("treatment");
 
       done();
     }, 75);
