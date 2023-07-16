@@ -19,6 +19,26 @@ export function getMatchedAllocation(
   return undefined;
 }
 
+export function getMatchedTraffic(
+  traffic: Traffic[],
+  context: Context,
+  datafileReader: DatafileReader,
+): Traffic | undefined {
+  return traffic.find((t) => {
+    if (
+      !allGroupSegmentsAreMatched(
+        typeof t.segments === "string" && t.segments !== "*" ? JSON.parse(t.segments) : t.segments,
+        context,
+        datafileReader,
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 export interface MatchedTrafficAndAllocation {
   matchedTraffic: Traffic | undefined;
   matchedAllocation: Allocation | undefined;

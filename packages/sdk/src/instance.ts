@@ -7,10 +7,11 @@ import {
   Feature,
   FeatureKey,
   InitialFeatures,
+  OverrideFeature,
   StickyFeatures,
+  Traffic,
   VariableType,
   VariableValue,
-  VariationType,
   VariationValue,
   Variation,
   RuleKey,
@@ -22,7 +23,7 @@ import { createLogger, Logger } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
 import { getBucketedNumber } from "./bucket";
-import { findForceFromFeature, getMatchedTrafficAndAllocation } from "./feature";
+import { findForceFromFeature, getMatchedTraffic, getMatchedTrafficAndAllocation } from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
 
@@ -78,6 +79,7 @@ export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileCont
 
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
+  NO_VARIATIONS = "no_variations",
   FORCED = "forced",
   INITIAL = "initial",
   STICKY = "sticky",
@@ -97,6 +99,10 @@ export interface Evaluation {
   bucketValue?: BucketValue;
   ruleKey?: RuleKey;
   error?: Error;
+  enabled?: boolean;
+  traffic?: Traffic;
+  sticky?: OverrideFeature;
+  initial?: OverrideFeature;
 
   // variation
   variation?: Variation;
@@ -119,7 +125,7 @@ function fetchDatafileContent(
   return fetch(datafileUrl).then((res) => res.json());
 }
 
-type FieldType = VariationType | VariableType;
+type FieldType = string | VariableType;
 type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
@@ -419,6 +425,147 @@ export class FeaturevisorInstance {
   }
 
   /**
+   * Flag
+   */
+  evaluateFlag(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
+    let evaluation: Evaluation;
+
+    try {
+      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+
+      // sticky
+      if (
+        this.stickyFeatures &&
+        this.stickyFeatures[key] &&
+        typeof this.stickyFeatures[key].enabled !== "undefined"
+      ) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.STICKY,
+          enabled: this.stickyFeatures[key].enabled,
+        };
+
+        this.logger.debug("using sticky enabled", evaluation);
+
+        return evaluation;
+      }
+
+      // initial
+      if (
+        this.statuses &&
+        !this.statuses.ready &&
+        this.initialFeatures &&
+        this.initialFeatures[key] &&
+        typeof this.initialFeatures[key].enabled !== "undefined"
+      ) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.INITIAL,
+          enabled: this.initialFeatures[key].enabled,
+        };
+
+        this.logger.debug("using initial enabled", evaluation);
+
+        return evaluation;
+      }
+
+      const feature = this.getFeature(featureKey);
+
+      // not found
+      if (!feature) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.NOT_FOUND,
+        };
+
+        this.logger.warn("feature not found", evaluation);
+
+        return evaluation;
+      }
+
+      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
+
+      // forced
+      const force = findForceFromFeature(feature, context, this.datafileReader);
+
+      if (force && typeof force.enabled !== "undefined") {
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.FORCED,
+          enabled: force.enabled,
+        };
+
+        this.logger.debug("forced enabled found", evaluation);
+
+        return evaluation;
+      }
+
+      // bucketing
+      const bucketValue = this.getBucketValue(feature, finalContext);
+
+      const matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, this.datafileReader);
+
+      if (matchedTraffic) {
+        // override from rule
+        if (typeof matchedTraffic.enabled !== "undefined") {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.OVERRIDE,
+            enabled: matchedTraffic.enabled,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+          };
+
+          this.logger.debug("override from rule", evaluation);
+
+          return evaluation;
+        }
+
+        // treated as enabled because of matched traffic
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.RULE,
+          enabled: true,
+          bucketValue,
+          ruleKey: matchedTraffic.key,
+          traffic: matchedTraffic,
+        };
+      }
+
+      // nothing matched
+      evaluation = {
+        featureKey: feature.key,
+        reason: EvaluationReason.ERROR,
+        enabled: false,
+        bucketValue,
+      };
+
+      return evaluation;
+    } catch (e) {
+      evaluation = {
+        featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
+        reason: EvaluationReason.ERROR,
+        error: e,
+      };
+
+      return evaluation;
+    }
+  }
+
+  isEnabled(featureKey: FeatureKey | Feature, context: Context = {}): boolean {
+    try {
+      const evaluation = this.evaluateFlag(featureKey, context);
+
+      return evaluation.enabled === true;
+    } catch (e) {
+      this.logger.error("isEnabled", { featureKey, error: e });
+
+      return false;
+    }
+  }
+
+  /**
    * Variation
    */
   evaluateVariation(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
@@ -474,7 +621,19 @@ export class FeaturevisorInstance {
           reason: EvaluationReason.NOT_FOUND,
         };
 
-        this.logger.warn("feature not found in datafile", evaluation);
+        this.logger.warn("feature not found", evaluation);
+
+        return evaluation;
+      }
+
+      // no variations
+      if (!feature.variations || feature.variations.length === 0) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.NO_VARIATIONS,
+        };
+
+        this.logger.warn("no variations", evaluation);
 
         return evaluation;
       }
@@ -550,30 +709,14 @@ export class FeaturevisorInstance {
         }
       }
 
-      // fall back to default
-      const variation = feature.variations.find((v) => v.value === feature.defaultVariation);
-
-      if (variation) {
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.DEFAULTED,
-          bucketValue,
-          variation,
-        };
-
-        this.logger.debug("using default variation", evaluation);
-
-        return evaluation;
-      }
-
-      // nothing matched (this should never happen)
+      // nothing matched
       evaluation = {
         featureKey: feature.key,
         reason: EvaluationReason.ERROR,
         bucketValue,
       };
 
-      this.logger.error("no matched variation", evaluation);
+      this.logger.debug("no matched variation", evaluation);
 
       return evaluation;
     } catch (e) {
@@ -608,33 +751,6 @@ export class FeaturevisorInstance {
 
       return undefined;
     }
-  }
-
-  getVariationBoolean(
-    featureKey: FeatureKey | Feature,
-    context: Context = {},
-  ): boolean | undefined {
-    const variationValue = this.getVariation(featureKey, context);
-
-    return getValueByType(variationValue, "boolean") as boolean | undefined;
-  }
-
-  getVariationString(featureKey: FeatureKey | Feature, context: Context = {}): string | undefined {
-    const variationValue = this.getVariation(featureKey, context);
-
-    return getValueByType(variationValue, "string") as string | undefined;
-  }
-
-  getVariationInteger(featureKey: FeatureKey | Feature, context: Context = {}): number | undefined {
-    const variationValue = this.getVariation(featureKey, context);
-
-    return getValueByType(variationValue, "integer") as number | undefined;
-  }
-
-  getVariationDouble(featureKey: FeatureKey | Feature, context: Context = {}): number | undefined {
-    const variationValue = this.getVariation(featureKey, context);
-
-    return getValueByType(variationValue, "double") as number | undefined;
   }
 
   /**

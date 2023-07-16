@@ -173,7 +173,8 @@ export interface Force {
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
 
-  variation: VariationValue;
+  enabled?: boolean;
+  variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };
@@ -209,10 +210,13 @@ export interface Traffic {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[] | "*";
   percentage: Percentage;
+
+  enabled?: boolean;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
   };
+
   allocation: Allocation[];
 }
 
@@ -241,14 +245,16 @@ export interface DatafileContent {
   features: Feature[];
 }
 
-export interface StickyFeatures {
-  [key: FeatureKey]: {
-    enabled: boolean;
-    variation?: VariationValue;
-    variables?: {
-      [key: VariableKey]: VariableValue;
-    };
+export interface OverrideFeature {
+  enabled: boolean;
+  variation?: VariationValue;
+  variables?: {
+    [key: VariableKey]: VariableValue;
   };
+}
+
+export interface StickyFeatures {
+  [key: FeatureKey]: OverrideFeature;
 }
 
 export type InitialFeatures = StickyFeatures;
@@ -266,6 +272,8 @@ export interface Rule {
   key: RuleKey;
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
+
+  enabled?: boolean;
   variation?: VariationValue;
   variables?: {
     [key: string]: VariableValue;
