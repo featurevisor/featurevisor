@@ -330,7 +330,7 @@ export function getFeatureJoiSchema(
         }),
       )
       .custom((value, helpers) => {
-        var total = value.reduce((a, b) => a.weight + b.weight, 0);
+        var total = value.reduce((acc, v) => acc + v.weight, 0);
 
         if (total !== 100) {
           throw new Error(`Sum of all variation weights must be 100, got ${total}`);
