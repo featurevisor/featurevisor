@@ -138,7 +138,7 @@ ${attributeProperties}
     const featureKey = path.basename(featureFile, ".yml");
     const parsedFeature = parseYaml(fs.readFileSync(featureFile, "utf8")) as ParsedFeature;
 
-    const variationType = getFeaturevisorTypeFromValue(parsedFeature.defaultVariation);
+    const variationType = "string";
     const variationTypeScriptType = convertFeaturevisorTypeToTypeScriptType(variationType);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
@@ -182,8 +182,12 @@ import { getInstance } from "./instance";
 export namespace ${namespaceValue} {
   export const key = "${featureKey}";
 
+  export function isEnabled(context: Context {}) {
+    return getInstance().isEnabled(key, context);
+  }
+
   export function getVariation(context: Context = {}) {
-    return getInstance().getVariation${getPascalCase(variationType)}(key, context);
+    return getInstance().getVariation(key, context);
   }${variableMethods}
 }
 `.trimStart();
