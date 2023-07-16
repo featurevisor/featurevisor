@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+
+
+### Features
+
+* Hooks for checking if feature is enabled in React and Vue.js ([#108](https://github.com/fahad19/featurevisor/issues/108)) ([4e2a269](https://github.com/fahad19/featurevisor/commit/4e2a269da923a94055d232ec479e6562dc297120))
+
+
+
+
+
 ## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
 
 
