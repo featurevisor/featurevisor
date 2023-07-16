@@ -57,8 +57,16 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
 }
 
-export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, Range[]> {
+export type FeatureRanges = Map<FeatureKey, Range[]>;
+
+interface FeatureRangesResult {
+  featureRanges: FeatureRanges;
+  featureIsInGroup: { [key: string]: boolean };
+}
+
+export function getFeatureRanges(projectConfig: ProjectConfig): FeatureRangesResult {
   const featureRanges = new Map<FeatureKey, Range[]>();
+  const featureIsInGroup = {}; // featureKey => boolean
 
   const groups: Group[] = [];
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
@@ -82,6 +90,11 @@ export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, 
 
         if (slot.feature) {
           const featureKey = slot.feature;
+
+          if (typeof featureKey === "string") {
+            featureIsInGroup[featureKey] = true;
+          }
+
           const featureRangesForFeature = featureRanges.get(featureKey) || [];
 
           const start = isFirstSlot ? accumulatedPercentage : accumulatedPercentage + 1;
@@ -97,7 +110,7 @@ export function getFeatureRanges(projectConfig: ProjectConfig): Map<FeatureKey, 
     }
   }
 
-  return featureRanges;
+  return { featureRanges, featureIsInGroup };
 }
 
 export function buildDatafile(
@@ -115,7 +128,7 @@ export function buildDatafile(
 
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
-  const featureRanges = getFeatureRanges(projectConfig);
+  const { featureRanges, featureIsInGroup } = getFeatureRanges(projectConfig);
 
   // features
   const features: Feature[] = [];
@@ -214,6 +227,7 @@ export function buildDatafile(
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
         ),
+        ranges: featureRanges.get(featureKey) || undefined,
       };
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
@@ -238,8 +252,11 @@ export function buildDatafile(
             }),
           };
         }),
-        ranges: featureRanges.get(feature.key) || undefined,
       };
+
+      if (featureIsInGroup[featureKey] === true) {
+        feature.ranges = featureRanges.get(feature.key);
+      }
 
       if (parsedFeature.variablesSchema) {
         feature.variablesSchema = parsedFeature.variablesSchema;

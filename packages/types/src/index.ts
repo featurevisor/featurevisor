@@ -235,6 +235,7 @@ export interface Feature {
   bucketBy: BucketBy;
   traffic: Traffic[];
   force?: Force[];
+  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface DatafileContent {
@@ -320,7 +321,7 @@ export interface ExistingFeature {
     percentage: Percentage;
     allocation: Allocation[];
   }[];
-  ranges?: Range[]; // if in a Group, these are the available slot ranges
+  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface ExistingFeatures {
