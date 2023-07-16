@@ -546,6 +546,7 @@ export class FeaturevisorInstance {
 
         // treated as enabled because of matched traffic
         if (bucketValue < matchedTraffic.percentage) {
+          // @TODO: verify if range check should be inclusive or not
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,

@@ -7,17 +7,20 @@ tests:
           - at: 5
             context:
               country: nl
-            expectedToBeEnabled: false
+            expectedToBeEnabled: true
+            expectedVariation: control
 
           - at: 90
             context:
               country: nl
             expectedToBeEnabled: true
+            expectedVariation: treatment
 
           - at: 90
             context:
               country: nl
             expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               position: right
               color: red
@@ -26,6 +29,7 @@ tests:
             context:
               country: de
             expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               position: right
               color: yellow
@@ -35,6 +39,7 @@ tests:
             context:
               country: us
             expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact"]
 
@@ -42,6 +47,7 @@ tests:
             context:
               country: de
             expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact", "imprint"]
 
@@ -50,5 +56,6 @@ tests:
               country: nl
               userId: "123"
             expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact", "bitterballen"]
