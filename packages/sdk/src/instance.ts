@@ -852,30 +852,6 @@ export class FeaturevisorInstance {
     }
   }
 
-  activateBoolean(featureKey: FeatureKey, context: Context = {}): boolean | undefined {
-    const variationValue = this.activate(featureKey, context);
-
-    return getValueByType(variationValue, "boolean") as boolean | undefined;
-  }
-
-  activateString(featureKey: FeatureKey, context: Context = {}): string | undefined {
-    const variationValue = this.activate(featureKey, context);
-
-    return getValueByType(variationValue, "string") as string | undefined;
-  }
-
-  activateInteger(featureKey: FeatureKey, context: Context = {}): number | undefined {
-    const variationValue = this.activate(featureKey, context);
-
-    return getValueByType(variationValue, "integer") as number | undefined;
-  }
-
-  activateDouble(featureKey: FeatureKey, context: Context = {}): number | undefined {
-    const variationValue = this.activate(featureKey, context);
-
-    return getValueByType(variationValue, "double") as number | undefined;
-  }
-
   /**
    * Variable
    */
