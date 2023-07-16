@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
+
+
+### Bug Fixes
+
+* for showing variations tab in generated site ([#107](https://github.com/fahad19/featurevisor/issues/107)) ([55af854](https://github.com/fahad19/featurevisor/commit/55af854c95bbda5eaa0b5d6a8c4f615a59fdecd4))
+
+
+
+
+
 ## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
 
 
