@@ -23,6 +23,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
   - [`refreshInterval`](#refreshinterval)
   - [`stickyFeatures`](#stickyfeatures)
 - [API](#api)
+  - [`isEnabled`](#isenabled)
   - [`getVariation`](#getvariation)
   - [`getVariable`](#getvariable)
   - [`activate`](#activate)
@@ -134,7 +135,10 @@ Pass set of initial features with their variation and (optional) variables that 
 const sdk = createInstance({
   initialFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
+
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "my-variable-value"
       }
@@ -281,7 +285,10 @@ If a feature key is not present in this object, the SDK will continue to evaluat
 const sdk = createInstance({
   stickyFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
+
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "my-variable-value"
       }
@@ -294,16 +301,13 @@ const sdk = createInstance({
 
 These methods are available once the SDK instance is created:
 
+### `isEnabled`
+
+> `isEnabled(featureKey: string, context: Context): boolean`
+
 ### `getVariation`
 
 > `getVariation(featureKey: string, context: Context): VariationValue`
-
-Also supports additional type specific methods:
-
-- `getVariationBoolean`
-- `getVariationString`
-- `getVariationInteger`
-- `getVariationDouble`
 
 ### `getVariable`
 
@@ -326,13 +330,6 @@ Also supports additional type specific methods:
 Same as `getVariation`, but also calls the `onActivation` callback.
 
 This is a convenience method meant to be called when you know the User has been exposed to your Feature, and you also want to track the activation.
-
-Also supports additional type specific methods:
-
-- `activateBoolean`
-- `activateString`
-- `activateInteger`
-- `activateDouble`
 
 ### `isReady`
 
