@@ -443,6 +443,7 @@ export class FeaturevisorInstance {
           featureKey: key,
           reason: EvaluationReason.STICKY,
           enabled: this.stickyFeatures[key].enabled,
+          sticky: this.stickyFeatures[key],
         };
 
         this.logger.debug("using sticky enabled", evaluation);
@@ -462,6 +463,7 @@ export class FeaturevisorInstance {
           featureKey: key,
           reason: EvaluationReason.INITIAL,
           enabled: this.initialFeatures[key].enabled,
+          initial: this.initialFeatures[key],
         };
 
         this.logger.debug("using initial enabled", evaluation);
@@ -836,20 +838,24 @@ export class FeaturevisorInstance {
       const key = typeof featureKey === "string" ? featureKey : featureKey.key;
 
       // sticky
-      if (this.stickyFeatures && this.stickyFeatures[key] && this.stickyFeatures[key].variables) {
-        const result = this.stickyFeatures[key].variables[variableKey];
+      if (this.stickyFeatures && this.stickyFeatures[key]) {
+        const variables = this.stickyFeatures[key].variables;
 
-        if (typeof result !== "undefined") {
-          evaluation = {
-            featureKey: key,
-            reason: EvaluationReason.STICKY,
-            variableKey,
-            variableValue: result,
-          };
+        if (variables) {
+          const result = variables[variableKey];
 
-          this.logger.debug("using sticky variable", evaluation);
+          if (typeof result !== "undefined") {
+            evaluation = {
+              featureKey: key,
+              reason: EvaluationReason.STICKY,
+              variableKey,
+              variableValue: result,
+            };
 
-          return evaluation;
+            this.logger.debug("using sticky variable", evaluation);
+
+            return evaluation;
+          }
         }
       }
 
@@ -858,20 +864,24 @@ export class FeaturevisorInstance {
         this.statuses &&
         !this.statuses.ready &&
         this.initialFeatures &&
-        this.initialFeatures[key] &&
-        this.initialFeatures[key].variables &&
-        typeof this.initialFeatures[key].variables[variableKey] !== "undefined"
+        this.initialFeatures[key]
       ) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          variableKey,
-          variableValue: this.initialFeatures[key].variables[variableKey],
-        };
+        const variables = this.initialFeatures[key].variables;
 
-        this.logger.debug("using initial variable", evaluation);
+        if (variables) {
+          if (typeof variables[variableKey] !== "undefined") {
+            evaluation = {
+              featureKey: key,
+              reason: EvaluationReason.INITIAL,
+              variableKey,
+              variableValue: variables[variableKey],
+            };
 
-        return evaluation;
+            this.logger.debug("using initial variable", evaluation);
+
+            return evaluation;
+          }
+        }
       }
 
       const feature = this.getFeature(featureKey);
@@ -958,7 +968,7 @@ export class FeaturevisorInstance {
         }
 
         // regular allocation
-        if (matchedAllocation && matchedAllocation.variation) {
+        if (matchedAllocation && matchedAllocation.variation && Array.isArray(feature.variations)) {
           const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
 
           if (variation && variation.variables) {

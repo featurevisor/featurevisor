@@ -54,17 +54,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -98,17 +97,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: ["userId", "organizationId"],
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -143,17 +141,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: { or: ["userId", "deviceId"] },
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -195,17 +192,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -241,17 +237,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -292,17 +287,16 @@ describe("sdk: instance", function () {
         features: [
           {
             key: "test",
-            defaultVariation: false,
             bucketBy: "userId",
-            variations: [{ value: true }, { value: false }],
+            variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
-                  { variation: true, range: [0, 100000] },
-                  { variation: false, range: [0, 0] },
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
                 ],
               },
             ],
@@ -351,7 +345,8 @@ describe("sdk: instance", function () {
     const sdk = createInstance({
       stickyFeatures: {
         test: {
-          variation: false,
+          enabled: true,
+          variation: "control",
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -362,17 +357,16 @@ describe("sdk: instance", function () {
           features: [
             {
               key: "test",
-              defaultVariation: false,
               bucketBy: "userId",
-              variations: [{ value: true }, { value: false }],
+              variations: [{ value: "control" }, { value: "treatment" }],
               traffic: [
                 {
                   key: "1",
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: true, range: [0, 100000] },
-                    { variation: false, range: [0, 0] },
+                    { variation: "control", range: [0, 100000] },
+                    { variation: "treatment", range: [0, 0] },
                   ],
                 },
               ],
@@ -421,7 +415,8 @@ describe("sdk: instance", function () {
     const sdk = createInstance({
       initialFeatures: {
         test: {
-          variation: false,
+          enabled: true,
+          variation: "control",
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -432,17 +427,16 @@ describe("sdk: instance", function () {
           features: [
             {
               key: "test",
-              defaultVariation: false,
               bucketBy: "userId",
-              variations: [{ value: true }, { value: false }],
+              variations: [{ value: "control" }, { value: "treatment" }],
               traffic: [
                 {
                   key: "1",
                   segments: "*",
                   percentage: 100000,
                   allocation: [
-                    { variation: true, range: [0, 100000] },
-                    { variation: false, range: [0, 0] },
+                    { variation: "control", range: [0, 100000] },
+                    { variation: "treatment", range: [0, 0] },
                   ],
                 },
               ],
