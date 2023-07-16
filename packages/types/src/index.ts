@@ -96,8 +96,7 @@ export type AndOrNotGroupSegment = AndGroupSegment | OrGroupSegment | NotGroupSe
 // group of segment keys with and/or conditions, or just string
 export type GroupSegment = PlainGroupSegment | AndOrNotGroupSegment;
 
-export type VariationType = "boolean" | "string" | "integer" | "double";
-export type VariationValue = boolean | string | number | null | undefined;
+export type VariationValue = string;
 
 export type VariableKey = string;
 export type VariableType =
@@ -245,7 +244,8 @@ export interface DatafileContent {
 
 export interface StickyFeatures {
   [key: FeatureKey]: {
-    variation: VariationValue;
+    enabled: boolean;
+    variation?: VariationValue;
     variables?: {
       [key: VariableKey]: VariableValue;
     };
@@ -288,9 +288,8 @@ export interface ParsedFeature {
 
   bucketBy: BucketBy;
 
-  defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
-  variations: Variation[];
+  variations?: Variation[];
 
   environments: {
     [key: EnvironmentKey]: Environment;
@@ -303,7 +302,7 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
-  variations: {
+  variations?: {
     // @TODO: use Exclude with Variation?
     value: VariationValue;
     weight: Weight;
@@ -332,6 +331,7 @@ export interface FeatureAssertion {
   description?: string;
   at: Weight; // bucket weight: 0 to 100
   context: Context;
+  expectedToBeEnabled: boolean;
   expectedVariation?: VariationValue;
   expectedVariables?: {
     [key: VariableKey]: VariableValue;

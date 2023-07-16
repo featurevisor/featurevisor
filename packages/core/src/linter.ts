@@ -173,9 +173,10 @@ export function getFeatureJoiSchema(
   conditionsJoiSchema,
   availableSegmentKeys: string[],
 ) {
-  const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
+  const variationValueJoiSchema = Joi.string().required();
   const variableValueJoiSchema = Joi.alternatives()
     .try(
+      // @TODO: make it stricter based on variableSchema.type
       Joi.string(),
       Joi.number(),
       Joi.boolean(),
@@ -269,8 +270,6 @@ export function getFeatureJoiSchema(
       )
       .required(),
 
-    defaultVariation: variationValueJoiSchema,
-
     bucketBy: Joi.alternatives()
       .try(
         // plain
@@ -331,23 +330,15 @@ export function getFeatureJoiSchema(
         }),
       )
       .custom((value, helpers) => {
-        var total = value.reduce((a, b) => a + b.weight, 0);
+        var total = value.reduce((a, b) => a.weight + b.weight, 0);
 
         if (total !== 100) {
           throw new Error(`Sum of all variation weights must be 100, got ${total}`);
         }
 
-        const typeOf = new Set(value.map((v) => typeof v.value));
-
-        if (typeOf.size > 1) {
-          throw new Error(
-            `All variations must have the same type, got ${Array.from(typeOf).join(", ")}`,
-          );
-        }
-
         return value;
       })
-      .required(),
+      .optional(),
 
     environments: allEnvironmentsJoiSchema.required(),
   });
@@ -382,7 +373,8 @@ export function getTestsJoiSchema(
                   at: Joi.number().precision(3).min(0).max(100),
                   context: Joi.object(),
 
-                  // @TODO: one or both below
+                  // @TODO: one or all below
+                  expectedToBeEnabled: Joi.boolean().required(),
                   expectedVariation: Joi.alternatives().try(
                     Joi.string(),
                     Joi.number(),
