@@ -533,6 +533,8 @@ export class FeaturevisorInstance {
           ruleKey: matchedTraffic.key,
           traffic: matchedTraffic,
         };
+
+        return evaluation;
       }
 
       // nothing matched

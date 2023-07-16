@@ -79,11 +79,13 @@ describe("sdk: instance", function () {
       },
     });
 
-    const variation = sdk.getVariation("test", {
+    const featureKey = "test";
+    const context = {
       userId: "123",
-    });
+    };
 
-    expect(variation).toEqual("control");
+    expect(sdk.isEnabled(featureKey, context)).toEqual(true);
+    expect(sdk.getVariation(featureKey, context)).toEqual("control");
     expect(capturedBucketKey).toEqual("123.test");
   });
 
@@ -122,12 +124,13 @@ describe("sdk: instance", function () {
       },
     });
 
-    const variation = sdk.getVariation("test", {
+    const featureKey = "test";
+    const context = {
       userId: "123",
       organizationId: "456",
-    });
+    };
 
-    expect(variation).toEqual("control");
+    expect(sdk.getVariation(featureKey, context)).toEqual("control");
     expect(capturedBucketKey).toEqual("123.456.test");
   });
 
@@ -166,6 +169,12 @@ describe("sdk: instance", function () {
       },
     });
 
+    expect(
+      sdk.isEnabled("test", {
+        userId: "123",
+        deviceId: "456",
+      }),
+    ).toEqual(true);
     expect(
       sdk.getVariation("test", {
         userId: "123",
@@ -384,7 +393,7 @@ describe("sdk: instance", function () {
       },
     });
 
-    // initially false
+    // initially control
     expect(
       sdk.getVariation("test", {
         userId: "123",
@@ -392,14 +401,14 @@ describe("sdk: instance", function () {
     ).toEqual("control");
 
     setTimeout(function () {
-      // still false after fetching datafile
+      // still control after fetching datafile
       expect(
         sdk.getVariation("test", {
           userId: "123",
         }),
       ).toEqual("control");
 
-      // unsetting sticky features will make it true
+      // unsetting sticky features will make it treatment
       sdk.setStickyFeatures({});
       expect(
         sdk.getVariation("test", {
@@ -454,7 +463,7 @@ describe("sdk: instance", function () {
       },
     });
 
-    // initially false
+    // initially control
     expect(
       sdk.getVariation("test", {
         userId: "123",
@@ -462,7 +471,7 @@ describe("sdk: instance", function () {
     ).toEqual("control");
 
     setTimeout(function () {
-      // true after fetching datafile
+      // treatment after fetching datafile
       expect(
         sdk.getVariation("test", {
           userId: "123",
