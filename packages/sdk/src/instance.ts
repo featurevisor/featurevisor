@@ -80,6 +80,7 @@ export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileCont
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
+  OUT_OF_RANGE = "out_of_range",
   FORCED = "forced",
   INITIAL = "initial",
   STICKY = "sticky",
@@ -514,18 +515,30 @@ export class FeaturevisorInstance {
             return bucketValue >= range[0] && bucketValue < range[1];
           });
 
-          if (!matchedRange) {
+          // matched
+          if (matchedRange) {
             evaluation = {
               featureKey: feature.key,
-              reason: EvaluationReason.ERROR, // no matched range
-              enabled: false,
+              reason: EvaluationReason.ALLOCATED,
+              enabled:
+                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
               bucketValue,
             };
 
-            this.logger.debug("not matched", evaluation);
-
             return evaluation;
           }
+
+          // no match
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.OUT_OF_RANGE,
+            enabled: false,
+            bucketValue,
+          };
+
+          this.logger.debug("not matched", evaluation);
+
+          return evaluation;
         }
 
         // override from rule
