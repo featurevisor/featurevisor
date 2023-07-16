@@ -148,63 +148,66 @@ export function buildDatafile(
 
       const feature: Feature = {
         key: featureKey,
-        defaultVariation: parsedFeature.defaultVariation,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
-        variations: parsedFeature.variations.map((variation: Variation) => {
-          const mappedVariation: any = {
-            value: variation.value,
-            weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
-          };
+        variations: Array.isArray(parsedFeature.variations)
+          ? parsedFeature.variations.map((variation: Variation) => {
+              const mappedVariation: any = {
+                value: variation.value,
+                weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
+              };
 
-          if (!variation.variables) {
-            return mappedVariation;
-          }
-
-          mappedVariation.variables = variation.variables.map((variable: Variable) => {
-            const mappedVariable: any = {
-              key: variable.key,
-              value: variable.value,
-            };
-
-            if (!variable.overrides) {
-              return mappedVariable;
-            }
-
-            mappedVariable.overrides = variable.overrides.map((override: VariableOverride) => {
-              if (typeof override.conditions !== "undefined") {
-                const extractedAttributeKeys = extractAttributeKeysFromConditions(
-                  override.conditions,
-                );
-                extractedAttributeKeys.forEach((attributeKey) =>
-                  attributeKeysUsedByTag.add(attributeKey),
-                );
-
-                return {
-                  conditions: JSON.stringify(override.conditions),
-                  value: override.value,
-                };
+              if (!variation.variables) {
+                return mappedVariation;
               }
 
-              if (typeof override.segments !== "undefined") {
-                const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
-                  override.segments as GroupSegment | GroupSegment[],
-                );
-                extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
-
-                return {
-                  segments: JSON.stringify(override.segments),
-                  value: override.value,
+              mappedVariation.variables = variation.variables.map((variable: Variable) => {
+                const mappedVariable: any = {
+                  key: variable.key,
+                  value: variable.value,
                 };
-              }
 
-              return override;
-            });
+                if (!variable.overrides) {
+                  return mappedVariable;
+                }
 
-            return mappedVariable;
-          });
+                mappedVariable.overrides = variable.overrides.map((override: VariableOverride) => {
+                  if (typeof override.conditions !== "undefined") {
+                    const extractedAttributeKeys = extractAttributeKeysFromConditions(
+                      override.conditions,
+                    );
+                    extractedAttributeKeys.forEach((attributeKey) =>
+                      attributeKeysUsedByTag.add(attributeKey),
+                    );
 
-          return mappedVariation;
-        }),
+                    return {
+                      conditions: JSON.stringify(override.conditions),
+                      value: override.value,
+                    };
+                  }
+
+                  if (typeof override.segments !== "undefined") {
+                    const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
+                      override.segments as GroupSegment | GroupSegment[],
+                    );
+                    extractedSegmentKeys.forEach((segmentKey) =>
+                      segmentKeysUsedByTag.add(segmentKey),
+                    );
+
+                    return {
+                      segments: JSON.stringify(override.segments),
+                      value: override.value,
+                    };
+                  }
+
+                  return override;
+                });
+
+                return mappedVariable;
+              });
+
+              return mappedVariation;
+            })
+          : undefined,
         traffic: getTraffic(
           parsedFeature.variations,
           parsedFeature.environments[options.environment].rules,
@@ -215,12 +218,14 @@ export function buildDatafile(
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
       existingState.features[featureKey] = {
-        variations: feature.variations.map((v: Variation) => {
-          return {
-            value: v.value,
-            weight: v.weight || 0,
-          };
-        }),
+        variations: Array.isArray(feature.variations)
+          ? feature.variations.map((v: Variation) => {
+              return {
+                value: v.value,
+                weight: v.weight || 0,
+              };
+            })
+          : undefined,
         traffic: feature.traffic.map((t: Traffic) => {
           return {
             key: t.key,

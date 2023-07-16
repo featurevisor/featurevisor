@@ -231,7 +231,7 @@ export function getFeatureJoiSchema(
           key: Joi.string(),
           segments: groupSegmentsJoiSchema,
           percentage: Joi.number().precision(3).min(0).max(100),
-          variation: variationValueJoiSchema.optional(),
+          variation: variationValueJoiSchema.optional(), // @TODO: only allowed if feature.variations is present
           variables: Joi.object().optional(), // @TODO: make it stricter
         }),
       )

@@ -226,9 +226,8 @@ export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 export interface Feature {
   key: FeatureKey;
   // @TODO: introduce new `parent` key?
-  defaultVariation: VariationValue;
   variablesSchema?: VariableSchema[];
-  variations: Variation[];
+  variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];
   force?: Force[];

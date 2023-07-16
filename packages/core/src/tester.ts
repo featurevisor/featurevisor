@@ -118,7 +118,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
             }
           });
         });
-      } else {
+      } else if (test.environment && test.tag && test.features) {
         // feature testing
         const datafilePath = getDatafilePath(projectConfig, test.environment, test.tag);
 
@@ -157,6 +157,20 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
             let assertionHasError = false;
             currentAt = assertion.at * (MAX_BUCKETED_NUMBER / 100);
+
+            // isEnabled
+            if ("expectedToBeEnabled" in assertion) {
+              const isEnabled = sdk.isEnabled(featureKey, assertion.context);
+
+              if (isEnabled !== assertion.expectedToBeEnabled) {
+                hasError = true;
+                assertionHasError = true;
+
+                console.error(
+                  `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
+                );
+              }
+            }
 
             // variation
             if ("expectedVariation" in assertion) {
@@ -203,6 +217,9 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
             }
           });
         });
+      } else {
+        console.error(`     => Invalid test: ${JSON.stringify(test)}`);
+        hasError = true;
       }
     });
   }
