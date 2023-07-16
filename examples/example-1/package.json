@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-1",
   "private": true,
-  "version": "0.39.0",
+  "version": "0.39.1",
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
@@ -12,6 +12,6 @@
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src"
   },
   "dependencies": {
-    "@featurevisor/cli": "^0.39.0"
+    "@featurevisor/cli": "^0.39.1"
   }
 }
