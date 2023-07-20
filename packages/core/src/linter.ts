@@ -273,6 +273,8 @@ export function getFeatureJoiSchema(
       )
       .required(),
 
+    parents: Joi.array().items(Joi.string()).optional(),
+
     bucketBy: Joi.alternatives()
       .try(
         // plain

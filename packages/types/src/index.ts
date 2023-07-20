@@ -229,7 +229,7 @@ export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 
 export interface Feature {
   key: FeatureKey;
-  // @TODO: introduce new `parent` key?
+  parents?: FeatureKey[];
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
   bucketBy: BucketBy;
@@ -293,6 +293,8 @@ export interface ParsedFeature {
   archived: boolean;
   description: string;
   tags: string[];
+
+  parents?: FeatureKey[];
 
   bucketBy: BucketBy;
 
