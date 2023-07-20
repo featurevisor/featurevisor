@@ -559,7 +559,7 @@ tags:
 bucketBy: userId
 
 parents:
-  - odin
+  - someParent
 ```
 
 This will make sure that `someChild` feature is only evaluated as enabled by the SDKs if `someParent` feature is also enabled with the same context.
