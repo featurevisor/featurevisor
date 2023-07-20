@@ -560,6 +560,8 @@ bucketBy: userId
 
 parents:
   - someParent
+
+# ...
 ```
 
 This will make sure that `someChild` feature is only evaluated as enabled by the SDKs if `someParent` feature is also enabled with the same context.
@@ -581,6 +583,8 @@ parents:
   # require the parent to be evaluated as a specific variation
   - key: someParent
     variation: treatment
+
+# ...
 ```
 
 If both the parents are evaluated as desired, the child feature will be evaluated as enabled.
