@@ -172,6 +172,7 @@ export function getFeatureJoiSchema(
   projectConfig: ProjectConfig,
   conditionsJoiSchema,
   availableSegmentKeys: string[],
+  availableFeatureKeys: string[],
 ) {
   const variationValueJoiSchema = Joi.string().required();
   const variableValueJoiSchema = Joi.alternatives()
@@ -273,7 +274,21 @@ export function getFeatureJoiSchema(
       )
       .required(),
 
-    parents: Joi.array().items(Joi.string()).optional(),
+    parents: Joi.array()
+      .items(
+        Joi.alternatives().try(
+          Joi.string()
+            .required()
+            .valid(...availableFeatureKeys),
+          Joi.object({
+            key: Joi.string()
+              .required()
+              .valid(...availableFeatureKeys),
+            variation: Joi.string().optional(), // @TODO: can be made stricter
+          }),
+        ),
+      )
+      .optional(),
 
     bucketBy: Joi.alternatives()
       .try(
@@ -515,6 +530,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     projectConfig,
     conditionsJoiSchema,
     availableSegmentKeys,
+    availableFeatureKeys,
   );
 
   for (const filePath of featureFilePaths) {

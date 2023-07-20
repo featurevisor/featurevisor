@@ -227,9 +227,16 @@ export interface OrBucketBy {
 }
 export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 
+export interface ParentWithVariation {
+  key: FeatureKey;
+  variation: VariationValue;
+}
+
+export type Parent = FeatureKey | ParentWithVariation;
+
 export interface Feature {
   key: FeatureKey;
-  parents?: FeatureKey[];
+  parents?: Parent[];
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
   bucketBy: BucketBy;
