@@ -81,6 +81,7 @@ export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
   DISABLED = "disabled",
+  PARENT = "parent",
   OUT_OF_RANGE = "out_of_range",
   FORCED = "forced",
   INITIAL = "initial",
@@ -500,6 +501,43 @@ export class FeaturevisorInstance {
         };
 
         this.logger.debug("forced enabled found", evaluation);
+
+        return evaluation;
+      }
+
+      // parents
+      if (feature.parents && feature.parents.length > 0) {
+        const parentsAreEnabled = feature.parents.every((parent) => {
+          let parentKey;
+          let parentVariation;
+
+          if (typeof parent === "string") {
+            parentKey = parent;
+          } else {
+            parentKey = parent.key;
+            parentVariation = parent.variation;
+          }
+
+          const parentIsEnabled = this.isEnabled(parentKey, finalContext);
+
+          if (!parentIsEnabled) {
+            return false;
+          }
+
+          if (typeof parentVariation !== "undefined") {
+            const parentVariationValue = this.getVariation(parentKey, finalContext);
+
+            return parentVariationValue === parentVariation;
+          }
+
+          return true;
+        });
+
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.PARENT,
+          enabled: false,
+        };
 
         return evaluation;
       }

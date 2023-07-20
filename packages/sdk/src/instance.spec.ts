@@ -481,4 +481,85 @@ describe("sdk: instance", function () {
       done();
     }, 75);
   });
+
+  it("should honour parents", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "parentKey",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 0, // parent is disabled
+                allocation: [],
+              },
+            ],
+          },
+
+          {
+            key: "childKey",
+            bucketBy: "userId",
+            parents: ["parentKey"],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    // child should be disabled because parent is disabled
+    expect(sdk.isEnabled("childKey")).toEqual(false);
+
+    // enabling parent should enable the child too
+    const sdk2 = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "parentKey",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000, // parent is enabled
+                allocation: [],
+              },
+            ],
+          },
+
+          {
+            key: "childKey",
+            bucketBy: "userId",
+            parents: ["parentKey"],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+    expect(sdk.isEnabled("childKey")).toEqual(true);
+  });
 });
