@@ -542,6 +542,49 @@ variations:
         value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
 ```
 
+## Parents
+
+The concept of parent-child relationship between your features is useful when you wish to control the evaluation of a feature based on the evaluation of another feature.
+
+For example, you may want to expose a feature named `someChild` only if `someParent` is enabled.
+
+We can express that in YAML as follows:
+
+```yml
+# features/someChild.yml
+description: Child feature
+tags:
+  - all
+
+bucketBy: userId
+
+parents:
+  - odin
+```
+
+This will make sure that `someChild` feature is only evaluated as enabled by the SDKs if `someParent` feature is also enabled with the same context.
+
+It is possible to have multiple parents defined for a feature. Furthermore, you can also require the parent feature to be evaluated as a specific variation for your child feature to be enabled:
+
+```yml
+# features/someChild.yml
+description: Child feature
+tags:
+  - all
+
+bucketBy: userId
+
+parents:
+  # simple, without checking the parent's variation value
+  - someParent
+
+  # require the parent to be evaluated as a specific variation
+  - key: someParent
+    variation: treatment
+```
+
+If both the parents are evaluated as desired, the child feature will be evaluated as enabled.
+
 ## Force
 
 You can force a feature to be enabled or disabled against custom conditions.
