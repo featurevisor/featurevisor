@@ -560,6 +560,6 @@ describe("sdk: instance", function () {
         segments: [],
       },
     });
-    expect(sdk.isEnabled("childKey")).toEqual(true);
+    expect(sdk2.isEnabled("childKey")).toEqual(true);
   });
 });

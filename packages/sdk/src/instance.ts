@@ -533,13 +533,15 @@ export class FeaturevisorInstance {
           return true;
         });
 
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.PARENT,
-          enabled: false,
-        };
+        if (!parentsAreEnabled) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.PARENT,
+            enabled: parentsAreEnabled,
+          };
 
-        return evaluation;
+          return evaluation;
+        }
       }
 
       // bucketing
