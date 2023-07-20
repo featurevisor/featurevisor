@@ -482,7 +482,7 @@ describe("sdk: instance", function () {
     }, 75);
   });
 
-  it("should honour parents", function () {
+  it("should honour simple parents", function () {
     const sdk = createInstance({
       datafile: {
         schemaVersion: "1",
@@ -546,6 +546,105 @@ describe("sdk: instance", function () {
             key: "childKey",
             bucketBy: "userId",
             parents: ["parentKey"],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+    expect(sdk2.isEnabled("childKey")).toEqual(true);
+  });
+
+  it("should honour parents with variation", function () {
+    // child should be disabled because parent has different variation
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "parentKey",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+
+          {
+            key: "childKey",
+            bucketBy: "userId",
+            parents: [
+              {
+                key: "parentKey",
+                variation: "control", // parent has different variation
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    expect(sdk.isEnabled("childKey")).toEqual(false);
+
+    // child should be enabled because parent has desired variation
+    const sdk2 = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "parentKey",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+
+          {
+            key: "childKey",
+            bucketBy: "userId",
+            parents: [
+              {
+                key: "parentKey",
+                variation: "treatment", // parent has desired variation
+              },
+            ],
             traffic: [
               {
                 key: "1",
