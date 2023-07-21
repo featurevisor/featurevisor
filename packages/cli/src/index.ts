@@ -12,7 +12,10 @@ import {
   initProject,
   exportSite,
   serveSite,
+  generateCodeForProject,
   BuildCLIOptions,
+  GenerateCodeCLIOptions,
+  restoreProject,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason, p) => {
@@ -88,6 +91,21 @@ async function main() {
     .example("$0 build", "build datafiles")
 
     .command({
+      command: "restore",
+      handler: function (options) {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        try {
+          restoreProject(rootDirectoryPath, projectConfig);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 restore", "restore state files")
+
+    .command({
       command: "test",
       handler: function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
@@ -134,6 +152,29 @@ async function main() {
     .example("$0 site export", "generate static site with project data")
     .example("$0 site serve", "serve already exported site locally")
     .example("$0 site serve -p 3000", "serve in a specific port")
+
+    /**
+     * Generate code
+     */
+    .command({
+      command: "generate-code",
+      handler: function (options) {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        try {
+          generateCodeForProject(
+            rootDirectoryPath,
+            projectConfig,
+            options as unknown as GenerateCodeCLIOptions,
+          );
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 generate-code", "generate code from YAMLs")
+    .example("$0 generate-code --language typescript --out-dir ./src", "")
 
     /**
      * Options

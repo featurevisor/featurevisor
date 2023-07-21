@@ -3,6 +3,168 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+
+
+### Features
+
+* Hooks for checking if feature is enabled in React and Vue.js ([#108](https://github.com/fahad19/featurevisor/issues/108)) ([4e2a269](https://github.com/fahad19/featurevisor/commit/4e2a269da923a94055d232ec479e6562dc297120))
+
+
+
+
+
+## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
+
+
+### Bug Fixes
+
+* for showing variations tab in generated site ([#107](https://github.com/fahad19/featurevisor/issues/107)) ([55af854](https://github.com/fahad19/featurevisor/commit/55af854c95bbda5eaa0b5d6a8c4f615a59fdecd4))
+
+
+
+
+
+## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
+
+
+### Bug Fixes
+
+* SDK README updates ([#106](https://github.com/fahad19/featurevisor/issues/106)) ([1c6ac53](https://github.com/fahad19/featurevisor/commit/1c6ac5311ac0d8df748cbb67e1e5b426038fee71))
+
+
+
+
+
+# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+
+### Features
+
+* drop type specific activate methods ([#105](https://github.com/fahad19/featurevisor/issues/105)) ([5faca24](https://github.com/fahad19/featurevisor/commit/5faca24e29665a03919ebf467bfb6a9c70c8e648))
+
+
+
+
+
+# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+
+
+### Features
+
+* SDK to support isEnabled() checks ([#104](https://github.com/fahad19/featurevisor/issues/104)) ([4f52136](https://github.com/fahad19/featurevisor/commit/4f521367a3f1ef76833ba614b6a1f4b66abef2e1))
+
+
+
+
+
+## [0.37.1](https://github.com/fahad19/featurevisor/compare/v0.37.0...v0.37.1) (2023-07-15)
+
+
+### Bug Fixes
+
+* "npm ci" → "npm install" message on project setup ([#102](https://github.com/fahad19/featurevisor/issues/102)) ([03b29b1](https://github.com/fahad19/featurevisor/commit/03b29b1ff594f33e5ca813cbbaaa3179b6bab390))
+
+
+
+
+
+# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+
+
+### Features
+
+* renamed Attributes (object) to Context ([#101](https://github.com/fahad19/featurevisor/issues/101)) ([c392ad5](https://github.com/fahad19/featurevisor/commit/c392ad5f1b6100167aa5637b131f08036a7f5a55))
+
+
+
+
+
+# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+
+
+### Features
+
+* restore state files ([#100](https://github.com/fahad19/featurevisor/issues/100)) ([796695d](https://github.com/fahad19/featurevisor/commit/796695d0f645869ec305c3446282fba7e45e2bb5))
+
+
+
+
+
+# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+
+### Features
+
+* Evaluation details in SDK ([#99](https://github.com/fahad19/featurevisor/issues/99)) ([016c73d](https://github.com/fahad19/featurevisor/commit/016c73d7deb0c5888a4fca88881b2cb9fdf4ac9a))
+
+
+
+
+
+# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+
+### Features
+
+* code generation ([#98](https://github.com/fahad19/featurevisor/issues/98)) ([7474443](https://github.com/fahad19/featurevisor/commit/7474443d26fd526f471ef5258cbe39b42c0fad60))
+
+
+
+
+
+## [0.33.1](https://github.com/fahad19/featurevisor/compare/v0.33.0...v0.33.1) (2023-07-07)
+
+**Note:** Version bump only for package featurevisor
+
+
+
+
+
+# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+
+
+### Features
+
+* Vue.js SDK ([#97](https://github.com/fahad19/featurevisor/issues/97)) ([d099adb](https://github.com/fahad19/featurevisor/commit/d099adbb6df923bc10aeb8c0a60c85612669e1a1))
+
+
+
+
+
+## [0.32.1](https://github.com/fahad19/featurevisor/compare/v0.32.0...v0.32.1) (2023-07-03)
+
+
+### Bug Fixes
+
+* show linting error only when it fails ([#96](https://github.com/fahad19/featurevisor/issues/96)) ([f563487](https://github.com/fahad19/featurevisor/commit/f5634870a3b21fdb0078c92328b80aa87490df45))
+
+
+
+
+
+# [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
+
+
+### Features
+
+* make segments testable ([#95](https://github.com/fahad19/featurevisor/issues/95)) ([15eae3c](https://github.com/fahad19/featurevisor/commit/15eae3cdf12a32e376e68ced015a9e697eb61da4))
+
+
+
+
+
+## [0.31.2](https://github.com/fahad19/featurevisor/compare/v0.31.1...v0.31.2) (2023-07-01)
+
+
+### Bug Fixes
+
+* build output in CLI made more readable ([#94](https://github.com/fahad19/featurevisor/issues/94)) ([5dc3ccf](https://github.com/fahad19/featurevisor/commit/5dc3ccf12169d9a996abee6168a470de262b990c))
+
+
+
+
+
 ## [0.31.1](https://github.com/fahad19/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
 
 

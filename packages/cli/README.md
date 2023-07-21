@@ -2,7 +2,7 @@
 
 CLI package of Featurevisor.
 
-Visit [https://featurevisor.com](https://featurevisor.com) for more information.
+Visit [https://featurevisor.com/docs/cli](https://featurevisor.com/docs/cli) for more information.
 
 ## Installation
 

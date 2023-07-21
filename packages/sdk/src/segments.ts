@@ -1,14 +1,14 @@
-import { Attributes, GroupSegment, Segment, Condition } from "@featurevisor/types";
+import { Context, GroupSegment, Segment, Condition } from "@featurevisor/types";
 import { allConditionsAreMatched } from "./conditions";
 import { DatafileReader } from "./datafileReader";
 
-export function segmentIsMatched(segment: Segment, attributes: Attributes): boolean {
-  return allConditionsAreMatched(segment.conditions as Condition | Condition[], attributes);
+export function segmentIsMatched(segment: Segment, context: Context): boolean {
+  return allConditionsAreMatched(segment.conditions as Condition | Condition[], context);
 }
 
 export function allGroupSegmentsAreMatched(
   groupSegments: GroupSegment | GroupSegment[] | "*",
-  attributes: Attributes,
+  context: Context,
   datafileReader: DatafileReader,
 ): boolean {
   if (groupSegments === "*") {
@@ -19,7 +19,7 @@ export function allGroupSegmentsAreMatched(
     const segment = datafileReader.getSegment(groupSegments);
 
     if (segment) {
-      return segmentIsMatched(segment, attributes);
+      return segmentIsMatched(segment, context);
     }
 
     return false;
@@ -28,27 +28,27 @@ export function allGroupSegmentsAreMatched(
   if (typeof groupSegments === "object") {
     if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
       return groupSegments.and.every((groupSegment) =>
-        allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader),
+        allGroupSegmentsAreMatched(groupSegment, context, datafileReader),
       );
     }
 
     if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
       return groupSegments.or.some((groupSegment) =>
-        allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader),
+        allGroupSegmentsAreMatched(groupSegment, context, datafileReader),
       );
     }
 
     if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
       return groupSegments.not.every(
         (groupSegment) =>
-          allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader) === false,
+          allGroupSegmentsAreMatched(groupSegment, context, datafileReader) === false,
       );
     }
   }
 
   if (Array.isArray(groupSegments)) {
     return groupSegments.every((groupSegment) =>
-      allGroupSegmentsAreMatched(groupSegment, attributes, datafileReader),
+      allGroupSegmentsAreMatched(groupSegment, context, datafileReader),
     );
   }
 

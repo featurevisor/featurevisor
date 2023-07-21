@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.esm.json",
+  "compilerOptions": {
+    "outDir": "./lib",
+    "lib": ["es2015", "dom"],
+    "jsx": "preserve",
+    "types": ["jest"],
+    "paths": {
+      "react": ["./stub/types__react"]
+    }
+  },
+  "include": ["./src/**/*.ts"],
+  "exclude": []
+}

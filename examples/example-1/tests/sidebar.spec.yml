@@ -5,50 +5,57 @@ tests:
       - key: sidebar
         assertions:
           - at: 5
-            attributes:
+            context:
               country: nl
-            expectedVariation: false
+            expectedToBeEnabled: true
+            expectedVariation: control
 
           - at: 90
-            attributes:
+            context:
               country: nl
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
 
           - at: 90
-            attributes:
+            context:
               country: nl
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               position: right
               color: red
 
           - at: 90
-            attributes:
+            context:
               country: de
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               position: right
               color: yellow
               title: Sidebar Title for production
 
           - at: 90
-            attributes:
+            context:
               country: us
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact"]
 
           - at: 90
-            attributes:
+            context:
               country: de
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact", "imprint"]
 
           - at: 70
-            attributes:
+            context:
               country: nl
               userId: "123"
-            expectedVariation: true
+            expectedToBeEnabled: true
+            expectedVariation: treatment
             expectedVariables:
               sections: ["home", "about", "contact", "bitterballen"]

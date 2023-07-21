@@ -173,9 +173,10 @@ export function getFeatureJoiSchema(
   conditionsJoiSchema,
   availableSegmentKeys: string[],
 ) {
-  const variationValueJoiSchema = Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean());
+  const variationValueJoiSchema = Joi.string().required();
   const variableValueJoiSchema = Joi.alternatives()
     .try(
+      // @TODO: make it stricter based on variableSchema.type
       Joi.string(),
       Joi.number(),
       Joi.boolean(),
@@ -230,7 +231,9 @@ export function getFeatureJoiSchema(
           key: Joi.string(),
           segments: groupSegmentsJoiSchema,
           percentage: Joi.number().precision(3).min(0).max(100),
-          variation: variationValueJoiSchema.optional(),
+
+          enabled: Joi.boolean().optional(),
+          variation: variationValueJoiSchema.optional(), // @TODO: only allowed if feature.variations is present
           variables: Joi.object().optional(), // @TODO: make it stricter
         }),
       )
@@ -242,7 +245,8 @@ export function getFeatureJoiSchema(
         segments: groupSegmentsJoiSchema.optional(),
         conditions: conditionsJoiSchema.optional(),
 
-        variation: variationValueJoiSchema,
+        enabled: Joi.boolean().optional(),
+        variation: variationValueJoiSchema.optional(),
         variables: Joi.object().optional(), // @TODO: make it stricter
       }),
     ),
@@ -268,8 +272,6 @@ export function getFeatureJoiSchema(
         }),
       )
       .required(),
-
-    defaultVariation: variationValueJoiSchema,
 
     bucketBy: Joi.alternatives()
       .try(
@@ -331,23 +333,15 @@ export function getFeatureJoiSchema(
         }),
       )
       .custom((value, helpers) => {
-        var total = value.reduce((a, b) => a + b.weight, 0);
+        var total = value.reduce((acc, v) => acc + v.weight, 0);
 
         if (total !== 100) {
           throw new Error(`Sum of all variation weights must be 100, got ${total}`);
         }
 
-        const typeOf = new Set(value.map((v) => typeof v.value));
-
-        if (typeOf.size > 1) {
-          throw new Error(
-            `All variations must have the same type, got ${Array.from(typeOf).join(", ")}`,
-          );
-        }
-
         return value;
       })
-      .required(),
+      .optional(),
 
     environments: allEnvironmentsJoiSchema.required(),
   });
@@ -355,31 +349,56 @@ export function getFeatureJoiSchema(
   return featureJoiSchema;
 }
 
-export function getTestsJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
+export function getTestsJoiSchema(
+  projectConfig: ProjectConfig,
+  availableFeatureKeys: string[],
+  availableSegmentKeys: string[],
+) {
   const testsJoiSchema = Joi.object({
     tests: Joi.array().items(
       Joi.object({
         description: Joi.string().optional(),
-        tag: Joi.string().valid(...projectConfig.tags),
-        environment: Joi.string().valid(...projectConfig.environments),
-        features: Joi.array().items(
+        tag: Joi.string()
+          .valid(...projectConfig.tags)
+          .optional(),
+        environment: Joi.string()
+          .valid(...projectConfig.environments)
+          .optional(),
+        features: Joi.array()
+          .items(
+            Joi.object({
+              key: Joi.string()
+                .valid(...availableFeatureKeys)
+                .required(),
+              assertions: Joi.array().items(
+                Joi.object({
+                  description: Joi.string().optional(),
+                  at: Joi.number().precision(3).min(0).max(100),
+                  context: Joi.object(),
+
+                  // @TODO: one or all below
+                  expectedToBeEnabled: Joi.boolean().required(),
+                  expectedVariation: Joi.alternatives().try(
+                    Joi.string(),
+                    Joi.number(),
+                    Joi.boolean(),
+                  ),
+                  expectedVariables: Joi.object(),
+                }),
+              ),
+            }),
+          )
+          .optional(),
+        segments: Joi.array().items(
           Joi.object({
             key: Joi.string()
-              .valid(...availableFeatureKeys)
+              .valid(...availableSegmentKeys)
               .required(),
             assertions: Joi.array().items(
               Joi.object({
                 description: Joi.string().optional(),
-                at: Joi.number().precision(3).min(0).max(100),
-                attributes: Joi.object(),
-
-                // @TODO: one or both below
-                expectedVariation: Joi.alternatives().try(
-                  Joi.string(),
-                  Joi.number(),
-                  Joi.boolean(),
-                ),
-                expectedVariables: Joi.object(),
+                context: Joi.object(),
+                expected: Joi.boolean(),
               }),
             ),
           }),
@@ -418,11 +437,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableAttributeKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await attributeJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -444,11 +463,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableSegmentKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await segmentJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -468,11 +487,12 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     for (const filePath of groupFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await groupJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {
@@ -500,11 +520,11 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
     availableFeatureKeys.push(key);
 
-    console.log("  =>", key);
-
     try {
       await featureJoiSchema.validateAsync(parsed);
     } catch (e) {
+      console.log("  =>", key);
+
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
       } else {
@@ -519,16 +539,21 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   console.log("\nLinting tests...\n");
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
     const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
-    const testsJoiSchema = getTestsJoiSchema(projectConfig, availableFeatureKeys);
+    const testsJoiSchema = getTestsJoiSchema(
+      projectConfig,
+      availableFeatureKeys,
+      availableSegmentKeys,
+    );
 
     for (const filePath of testFilePaths) {
       const key = path.basename(filePath, ".yml");
       const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
-      console.log("  =>", key);
 
       try {
         await testsJoiSchema.validateAsync(parsed);
       } catch (e) {
+        console.log("  =>", key);
+
         if (e instanceof Joi.ValidationError) {
           printJoiError(e);
         } else {

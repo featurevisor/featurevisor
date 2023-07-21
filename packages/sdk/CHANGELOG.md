@@ -3,6 +3,104 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
+
+
+### Bug Fixes
+
+* SDK README updates ([#106](https://github.com/fahad19/featurevisor/issues/106)) ([1c6ac53](https://github.com/fahad19/featurevisor/commit/1c6ac5311ac0d8df748cbb67e1e5b426038fee71))
+
+
+
+
+
+# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+
+### Features
+
+* drop type specific activate methods ([#105](https://github.com/fahad19/featurevisor/issues/105)) ([5faca24](https://github.com/fahad19/featurevisor/commit/5faca24e29665a03919ebf467bfb6a9c70c8e648))
+
+
+
+
+
+# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+
+
+### Features
+
+* SDK to support isEnabled() checks ([#104](https://github.com/fahad19/featurevisor/issues/104)) ([4f52136](https://github.com/fahad19/featurevisor/commit/4f521367a3f1ef76833ba614b6a1f4b66abef2e1))
+
+
+
+
+
+# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+
+
+### Features
+
+* renamed Attributes (object) to Context ([#101](https://github.com/fahad19/featurevisor/issues/101)) ([c392ad5](https://github.com/fahad19/featurevisor/commit/c392ad5f1b6100167aa5637b131f08036a7f5a55))
+
+
+
+
+
+# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+
+### Features
+
+* Evaluation details in SDK ([#99](https://github.com/fahad19/featurevisor/issues/99)) ([016c73d](https://github.com/fahad19/featurevisor/commit/016c73d7deb0c5888a4fca88881b2cb9fdf4ac9a))
+
+
+
+
+
+# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+# [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
+
+
+### Features
+
+* make segments testable ([#95](https://github.com/fahad19/featurevisor/issues/95)) ([15eae3c](https://github.com/fahad19/featurevisor/commit/15eae3cdf12a32e376e68ced015a9e697eb61da4))
+
+
+
+
+
 # [0.31.0](https://github.com/fahad19/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
 
 **Note:** Version bump only for package @featurevisor/sdk

@@ -14,7 +14,6 @@ function getNewInstance() {
       features: [
         {
           key: "test",
-          defaultVariation: "control",
           bucketBy: "userId",
           variations: [{ value: "control" }, { value: "b" }, { value: "c" }],
           traffic: [

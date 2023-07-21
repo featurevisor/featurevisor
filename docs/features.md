@@ -19,22 +19,7 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
-
 environments:
-  staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
-
   production:
     rules:
       - key: "1"
@@ -42,7 +27,9 @@ environments:
         percentage: 100
 ```
 
-Quite a lot of things are happening there. We will go through each of the properties from the snippet above in the following sections.
+This is the smallest possible definition of a feature.
+
+Quite a few are happening there. We will go through each of the properties from the snippet above and more in the following sections.
 
 ## Description
 
@@ -101,48 +88,19 @@ bucketBy:
     - deviceId
 ```
 
-## Default variation
-
-If no rollout rules are matched for the user, Featurevisor SDKs will fall back to the default variation as set in `defaultVariation`.
-
-```yml
-# ...
-defaultVariation: false
-```
-
 ## Variations
 
-A feature can have multiple variations. Each variation must have a different value, but all variations must be of the same type.
-
-### Boolean flags
-
-Here, we have used simple boolean values for the variations:
+A feature can have multiple variations if you wish to run A/B tests. Each variation must have a different string value.
 
 ```yml
-# ...
-variations:
-  - value: true
-    weight: 100
-
-  - value: false
-    weight: 0
-```
-
-### A/B tests
-
-But we could have also used `string` type variations where number of total variations can be more than two:
-
-```yml
-defaultVariation: control
-
 variations:
   - value: control
     weight: 50
 
-  - value: b
+  - value: firstTreatment
     weight: 25
 
-  - value: c
+  - value: secondTreatment
     weight: 25
 ```
 
@@ -151,7 +109,9 @@ The sum of all variations' weights must be 100.
 You can have upto 2 decimal places for each weight.
 
 {% callout type="note" title="Control variation" %}
-In the world of experimentation, the default variation is usually called the `control` variation.
+In the world of experimentation, the default variation is usually called the `control` variation, and the second variation is called `treatment`.
+
+But you are free to name them however you want, and create as many variations as you want.
 {% /callout %}
 
 ## Environments
@@ -361,22 +321,22 @@ variablesSchema:
     defaultValue: red
 ```
 
-Then, we can assign values to the variables inside variations:
+We can assign values to the variables inside variations:
 
 ```yml
 # ...
 variations:
-  - value: true
-    weight: 100
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
     variables:
       - key: bgColor
         value: blue
-
-  - value: false
-    weight: 0
 ```
 
-If users are bucketed in the `true` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the schema.
+If users are bucketed in the `treatment` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the variables schema.
 
 ### Supported types
 
@@ -413,7 +373,7 @@ Or, you can override within variations:
 # ...
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: bgColor
@@ -431,7 +391,7 @@ If you want to embed overriding conditions directly within variations:
 variations:
   # ...
 
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: bgColor
@@ -459,7 +419,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: bgColor
@@ -477,7 +437,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: showSidebar
@@ -495,7 +455,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: position
@@ -513,7 +473,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: amount
@@ -533,7 +493,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: acceptedCards
@@ -555,7 +515,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: hero
@@ -575,7 +535,7 @@ variablesSchema:
 
 variations:
   # ...
-  - value: true
+  - value: treatment
     weight: 100
     variables:
       - key: hero
@@ -584,7 +544,7 @@ variations:
 
 ## Force
 
-You can force a feature to be enabled or disabled (or any another variation) against custom conditions.
+You can force a feature to be enabled or disabled against custom conditions.
 
 This is very useful when you wish to test something out quickly just for yourself in a specific environment without affecting any other users.
 
@@ -600,8 +560,11 @@ environments:
             operator: equals
             value: "123"
 
+        # enable or disable it
+        enabled: true
+
         # forced variation
-        variation: true
+        variation: treatment
 
         # variables can also be forced
         variables:

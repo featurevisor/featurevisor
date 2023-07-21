@@ -25,6 +25,7 @@ These types are supported for attribute values:
 - `string`
 - `integer`
 - `double`
+- `date`
 
 ## Capturing attributes
 

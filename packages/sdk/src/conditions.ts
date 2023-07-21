@@ -1,71 +1,71 @@
 import { compareVersions } from "compare-versions";
 
-import { Attributes, Condition, PlainCondition } from "@featurevisor/types";
+import { Context, Condition, PlainCondition } from "@featurevisor/types";
 
-export function conditionIsMatched(condition: PlainCondition, attributes: Attributes): boolean {
+export function conditionIsMatched(condition: PlainCondition, context: Context): boolean {
   const { attribute, operator, value } = condition;
 
   if (operator === "equals") {
-    return attributes[attribute] === value;
+    return context[attribute] === value;
   } else if (operator === "notEquals") {
-    return attributes[attribute] !== value;
+    return context[attribute] !== value;
   } else if (operator === "before" || operator === "after") {
     // date comparisons
-    const valueInAttributes = attributes[attribute] as string | Date;
+    const valueInContext = context[attribute] as string | Date;
 
-    const dateInAttributes =
-      valueInAttributes instanceof Date ? valueInAttributes : new Date(valueInAttributes);
+    const dateInContext =
+      valueInContext instanceof Date ? valueInContext : new Date(valueInContext);
     const dateInCondition = value instanceof Date ? value : new Date(value as string);
 
     return operator === "before"
-      ? dateInAttributes < dateInCondition
-      : dateInAttributes > dateInCondition;
-  } else if (typeof attributes[attribute] === "string" && Array.isArray(value)) {
+      ? dateInContext < dateInCondition
+      : dateInContext > dateInCondition;
+  } else if (typeof context[attribute] === "string" && Array.isArray(value)) {
     // array
-    const valueInAttributes = attributes[attribute] as string;
+    const valueInContext = context[attribute] as string;
 
     if (operator === "in") {
-      return value.indexOf(valueInAttributes) !== -1;
+      return value.indexOf(valueInContext) !== -1;
     } else if (operator === "notIn") {
-      return value.indexOf(valueInAttributes) === -1;
+      return value.indexOf(valueInContext) === -1;
     }
-  } else if (typeof attributes[attribute] === "string" && typeof value === "string") {
+  } else if (typeof context[attribute] === "string" && typeof value === "string") {
     // string
-    const valueInAttributes = attributes[attribute] as string;
+    const valueInContext = context[attribute] as string;
 
     if (operator === "contains") {
-      return valueInAttributes.indexOf(value) !== -1;
+      return valueInContext.indexOf(value) !== -1;
     } else if (operator === "notContains") {
-      return valueInAttributes.indexOf(value) === -1;
+      return valueInContext.indexOf(value) === -1;
     } else if (operator === "startsWith") {
-      return valueInAttributes.startsWith(value);
+      return valueInContext.startsWith(value);
     } else if (operator === "endsWith") {
-      return valueInAttributes.endsWith(value);
+      return valueInContext.endsWith(value);
     } else if (operator === "semverEquals") {
-      return compareVersions(valueInAttributes, value) === 0;
+      return compareVersions(valueInContext, value) === 0;
     } else if (operator === "semverNotEquals") {
-      return compareVersions(valueInAttributes, value) !== 0;
+      return compareVersions(valueInContext, value) !== 0;
     } else if (operator === "semverGreaterThan") {
-      return compareVersions(valueInAttributes, value) === 1;
+      return compareVersions(valueInContext, value) === 1;
     } else if (operator === "semverGreaterThanOrEquals") {
-      return compareVersions(valueInAttributes, value) >= 0;
+      return compareVersions(valueInContext, value) >= 0;
     } else if (operator === "semverLessThan") {
-      return compareVersions(valueInAttributes, value) === -1;
+      return compareVersions(valueInContext, value) === -1;
     } else if (operator === "semverLessThanOrEquals") {
-      return compareVersions(valueInAttributes, value) <= 0;
+      return compareVersions(valueInContext, value) <= 0;
     }
-  } else if (typeof attributes[attribute] === "number" && typeof value === "number") {
+  } else if (typeof context[attribute] === "number" && typeof value === "number") {
     // numeric
-    const valueInAttributes = attributes[attribute] as number;
+    const valueInContext = context[attribute] as number;
 
     if (operator === "greaterThan") {
-      return valueInAttributes > value;
+      return valueInContext > value;
     } else if (operator === "greaterThanOrEquals") {
-      return valueInAttributes >= value;
+      return valueInContext >= value;
     } else if (operator === "lessThan") {
-      return valueInAttributes < value;
+      return valueInContext < value;
     } else if (operator === "lessThanOrEquals") {
-      return valueInAttributes <= value;
+      return valueInContext <= value;
     }
   }
 
@@ -74,18 +74,18 @@ export function conditionIsMatched(condition: PlainCondition, attributes: Attrib
 
 export function allConditionsAreMatched(
   conditions: Condition[] | Condition,
-  attributes: Attributes,
+  context: Context,
 ): boolean {
   if ("attribute" in conditions) {
-    return conditionIsMatched(conditions, attributes);
+    return conditionIsMatched(conditions, context);
   }
 
   if ("and" in conditions && Array.isArray(conditions.and)) {
-    return conditions.and.every((c) => allConditionsAreMatched(c, attributes));
+    return conditions.and.every((c) => allConditionsAreMatched(c, context));
   }
 
   if ("or" in conditions && Array.isArray(conditions.or)) {
-    return conditions.or.some((c) => allConditionsAreMatched(c, attributes));
+    return conditions.or.some((c) => allConditionsAreMatched(c, context));
   }
 
   if ("not" in conditions && Array.isArray(conditions.not)) {
@@ -95,13 +95,13 @@ export function allConditionsAreMatched(
           {
             and: conditions.not,
           },
-          attributes,
+          context,
         ) === false,
     );
   }
 
   if (Array.isArray(conditions)) {
-    return conditions.every((c) => allConditionsAreMatched(c, attributes));
+    return conditions.every((c) => allConditionsAreMatched(c, context));
   }
 
   return false;

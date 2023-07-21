@@ -1,9 +1,10 @@
 ---
 title: React SDK
 description: Learn how to use Featurevisor SDK with React
+ogImage: /img/og/docs-react.png
 ---
 
-Featureivisor also comes with an additional package for React.js, for ease of integration in your React.js application. {% .lead %}
+Featurevisor also comes with an additional package for React.js, for ease of integration in your React.js application. {% .lead %}
 
 ## Installation
 
@@ -59,6 +60,28 @@ function MyComponent(props) {
 };
 ```
 
+### useFlag
+
+Check if a feature is enabled or not:
+
+```jsx
+import React from "react";
+import { useFlag } from "@featurevisor/react";
+
+function MyComponent(props) {
+  const featureKey = "myFeatureKey";
+  const context = { userId: "123" };
+
+  const isEnabled = useFlag(featureKey, context);
+
+  if (isEnabled) {
+    return <p>Feature is enabled</p>;
+  }
+
+  return <p>Feature is disabled</p>;
+}
+```
+
 ### useVariation
 
 Get a feature's evaluated variation:
@@ -69,9 +92,9 @@ import { useVariation } from "@featurevisor/react";
 
 function MyComponent(props) {
   const featureKey = "myFeatureKey";
-  const attributes = { userId: "123" };
+  const context = { userId: "123" };
 
-  const variation = useVariation(featureKey, attributes);
+  const variation = useVariation(featureKey, context);
 
   if (variation === "b") {
     return <p>B variation</p>;
@@ -97,9 +120,9 @@ import { useVariable } from "@featurevisor/react";
 function MyComponent(props) {
   const featureKey = "myFeatureKey";
   const variableKey = "color";
-  const attributes = { userId: "123" };
+  const context = { userId: "123" };
 
-  const colorValue = useVariable(featureKey, variableKey, attributes);
+  const colorValue = useVariable(featureKey, variableKey, context);
 
   return <p>Color: {colorValue}</p>;
 };
@@ -110,6 +133,21 @@ function MyComponent(props) {
 Same as `useVariation`, but it will also bubble an activation event up to the SDK for tracking purposes.
 
 This should ideally be only called once per feature, and only when we know the feature has been exposed to the user.
+
+### useSdk
+
+Get the SDK instance:
+
+```jsx
+import React from "react":
+import { useSdk } from "@featurevisor/react";
+
+function MyComponent(props) {
+  const sdk = useSdk();
+
+  return <p>...</p>;
+};
+```
 
 ## Optimization
 

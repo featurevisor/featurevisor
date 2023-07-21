@@ -1,0 +1,16 @@
+tests:
+  - segments:
+      - key: germany
+        assertions:
+          - context:
+              country: de
+            expected: true
+
+          - context:
+              country: de
+              someOtherAttribute: someOtherValue
+            expected: true
+
+          - context:
+              country: notDe
+            expected: false

@@ -14,7 +14,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
   - [`datafileUrl`](#datafileurl)
   - [`handleDatafileFetch`](#handledatafilefetch)
   - [`initialFeatures`](#initialfeatures)
-  - [`interceptAttributes`](#interceptattributes)
+  - [`interceptContext`](#interceptcontext)
   - [`logger`](#logger)
   - [`onActivation`](#onactivation)
   - [`onReady`](#onready)
@@ -23,6 +23,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
   - [`refreshInterval`](#refreshinterval)
   - [`stickyFeatures`](#stickyfeatures)
 - [API](#api)
+  - [`isEnabled`](#isenabled)
   - [`getVariation`](#getvariation)
   - [`getVariable`](#getvariable)
   - [`activate`](#activate)
@@ -70,7 +71,7 @@ Use it to take over bucketing key generation process.
 
 ```js
 const sdk = createInstance({
-  configureBucketKey: (feature, attributes, bucketKey) => {
+  configureBucketKey: (feature, context, bucketKey) => {
     return bucketKey;
   }
 });
@@ -85,7 +86,7 @@ Use it to take over bucketing process.
 
 ```js
 const sdk = createInstance({
-  configureBucketValue: (feature, attributes, bucketValue) => {
+  configureBucketValue: (feature, context, bucketValue) => {
     return bucketValue; // 0 to 100,000
   }
 });
@@ -134,7 +135,10 @@ Pass set of initial features with their variation and (optional) variables that 
 const sdk = createInstance({
   initialFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
+
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "my-variable-value"
       }
@@ -143,15 +147,15 @@ const sdk = createInstance({
 });
 ```
 
-### `interceptAttributes`
+### `interceptContext`
 
 - Type: `function`
 - Required: no
 
-Intercept given attributes before they are used to bucket the user:
+Intercept given context before they are used to bucket the user:
 
 ```js
-const defaultAttributes = {
+const defaultContext = {
   platform: "web",
   locale: "en-US",
   country: "US",
@@ -160,10 +164,10 @@ const defaultAttributes = {
 };
 
 const sdk = createInstance({
-  interceptAttributes: (attributes) => {
+  interceptContext: (context) => {
     return {
-      ...defaultAttributes,
-      ...attributes,
+      ...defaultContext,
+      ...context,
     };
   }
 });
@@ -198,13 +202,13 @@ Capture activated features along with their evaluated variation:
 
 ```js
 const sdk = createInstance({
-  onActivation: (featureKey, variation, attributes, captureAttributes) => {
+  onActivation: (featureKey, variation, context, captureContext) => {
     // do something with the activated feature
   }
 });
 ```
 
-`captureAttributes` will only contain attributes that are marked as `capture: true` in the Attributes' YAML files.
+`captureContext` will only contain attributes that are marked as `capture: true` in the Attributes' YAML files.
 
 ### `onReady`
 
@@ -281,7 +285,10 @@ If a feature key is not present in this object, the SDK will continue to evaluat
 const sdk = createInstance({
   stickyFeatures: {
     myFeatureKey: {
-      variation: true,
+      enabled: true,
+
+      // optional
+      variation: "treatment",
       variables: {
         myVariableKey: "my-variable-value"
       }
@@ -294,20 +301,17 @@ const sdk = createInstance({
 
 These methods are available once the SDK instance is created:
 
+### `isEnabled`
+
+> `isEnabled(featureKey: string, context: Context): boolean`
+
 ### `getVariation`
 
-> `getVariation(featureKey: string, attributes: Attributes): VariationValue`
-
-Also supports additional type specific methods:
-
-- `getVariationBoolean`
-- `getVariationString`
-- `getVariationInteger`
-- `getVariationDouble`
+> `getVariation(featureKey: string, context: Context): VariationValue`
 
 ### `getVariable`
 
-> `getVariable(featureKey: string, variableKey: string, attributes: Attributes): VariableValue`
+> `getVariable(featureKey: string, variableKey: string, context: Context): VariableValue`
 
 Also supports additional type specific methods:
 
@@ -321,18 +325,11 @@ Also supports additional type specific methods:
 
 ### `activate`
 
-> `activate(featureKey: string, attributes: Attributes): VariationValue`
+> `activate(featureKey: string, context: Context): VariationValue`
 
 Same as `getVariation`, but also calls the `onActivation` callback.
 
 This is a convenience method meant to be called when you know the User has been exposed to your Feature, and you also want to track the activation.
-
-Also supports additional type specific methods:
-
-- `activateBoolean`
-- `activateString`
-- `activateInteger`
-- `activateDouble`
 
 ### `isReady`
 

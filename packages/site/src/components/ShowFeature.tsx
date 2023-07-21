@@ -32,20 +32,6 @@ export function DisplayFeatureOverview() {
           </dd>
         </div>
         <div>
-          <dt className="text-sm font-medium text-gray-500">Default variation</dt>
-          <dd className="mt-1 text-sm text-gray-900">
-            {typeof feature.defaultVariation === "string" ? (
-              <span>{feature.defaultVariation}</span>
-            ) : (
-              <pre>
-                <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                  {JSON.stringify(feature.defaultVariation)}
-                </code>
-              </pre>
-            )}
-          </dd>
-        </div>
-        <div>
           <dt className="text-sm font-medium text-gray-500">Bucket by</dt>
           <dd className="mt-1 text-sm text-gray-900">
             {typeof feature.bucketBy === "string" ? (
@@ -307,6 +293,10 @@ export function DisplayFeatureRules() {
 
 export function DisplayFeatureVariations() {
   const { feature } = useOutletContext() as any;
+
+  if (!feature.variations || feature.variations.length === 0) {
+    return <p>n/a</p>;
+  }
 
   return (
     <table className="min-w-full divide-y divide-gray-300 border border-gray-200">

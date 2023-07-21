@@ -55,3 +55,9 @@ $ git push origin main --tags
 ```
 
 If any of the steps above fail, the CI/CD pipeline should stop and notify the team.
+
+## Fully functional example
+
+You can refer to the CI/CD guide for [GitHub Actions](/docs/integrations/github-actions) and [Cloudflare Pages](/docs/integrations/cloudflare-pages) if you want a fully functional real-world example of setting up a Featurevisor project.
+
+Repo is available here: [https://github.com/fahad19/featurevisor-example-cloudflare](https://github.com/fahad19/featurevisor-example-cloudflare).

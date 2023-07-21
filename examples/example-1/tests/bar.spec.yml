@@ -5,8 +5,9 @@ tests:
       - key: bar
         assertions:
           - at: 15 # 30 * 0.5
-            attributes:
+            context:
               country: us
+            expectedToBeEnabled: true
             expectedVariation: control
             expectedVariables:
               color: red
@@ -16,8 +17,9 @@ tests:
                 alignment: center
 
           - at: 20 # 40 * 0.5
-            attributes:
+            context:
               country: us
+            expectedToBeEnabled: true
             expectedVariation: b
             expectedVariables:
               color: red
@@ -27,8 +29,9 @@ tests:
                 alignment: center for B
 
           - at: 20 # 40 * 0.5
-            attributes:
+            context:
               country: de
+            expectedToBeEnabled: true
             expectedVariation: b
             expectedVariables:
               color: red

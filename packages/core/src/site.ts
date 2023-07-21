@@ -310,37 +310,39 @@ export function generateSiteSearchIndex(
       const fileContent = fs.readFileSync(filePath, "utf8");
       const parsed = parseYaml(fileContent) as ParsedFeature;
 
-      parsed.variations.forEach((variation) => {
-        if (!variation.variables) {
-          return;
-        }
-
-        variation.variables.forEach((v) => {
-          if (v.overrides) {
-            v.overrides.forEach((o) => {
-              if (o.conditions) {
-                extractAttributeKeysFromConditions(o.conditions).forEach((attributeKey) => {
-                  if (!attributesUsedInFeatures[attributeKey]) {
-                    attributesUsedInFeatures[attributeKey] = new Set();
-                  }
-
-                  attributesUsedInFeatures[attributeKey].add(entityName);
-                });
-              }
-
-              if (o.segments && o.segments !== "*") {
-                extractSegmentKeysFromGroupSegments(o.segments).forEach((segmentKey) => {
-                  if (!segmentsUsedInFeatures[segmentKey]) {
-                    segmentsUsedInFeatures[segmentKey] = new Set();
-                  }
-
-                  segmentsUsedInFeatures[segmentKey].add(entityName);
-                });
-              }
-            });
+      if (Array.isArray(parsed.variations)) {
+        parsed.variations.forEach((variation) => {
+          if (!variation.variables) {
+            return;
           }
+
+          variation.variables.forEach((v) => {
+            if (v.overrides) {
+              v.overrides.forEach((o) => {
+                if (o.conditions) {
+                  extractAttributeKeysFromConditions(o.conditions).forEach((attributeKey) => {
+                    if (!attributesUsedInFeatures[attributeKey]) {
+                      attributesUsedInFeatures[attributeKey] = new Set();
+                    }
+
+                    attributesUsedInFeatures[attributeKey].add(entityName);
+                  });
+                }
+
+                if (o.segments && o.segments !== "*") {
+                  extractSegmentKeysFromGroupSegments(o.segments).forEach((segmentKey) => {
+                    if (!segmentsUsedInFeatures[segmentKey]) {
+                      segmentsUsedInFeatures[segmentKey] = new Set();
+                    }
+
+                    segmentsUsedInFeatures[segmentKey].add(entityName);
+                  });
+                }
+              });
+            }
+          });
         });
-      });
+      }
 
       Object.keys(parsed.environments).forEach((environmentKey) => {
         const env = parsed.environments[environmentKey];

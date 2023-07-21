@@ -139,16 +139,15 @@ const sdk = createInstance({
 });
 
 // Evaluate a feature flag
-const isFeatureEnabled = sdk.getVariation(
-  // feature key
-  "my-feature",
+const featureKey = "my-feature";
+const context = {
+  userId: "user-123",
+  country: "nl",
+};
 
-  // attributes
-  {
-    userId: "user-123",
-    country: "nl",
-  }
-);
+const isFeatureEnabled = sdk.isEnabled(featureKey, context);
+const variation = sdk.getVariation(featureKey, context);
+const someVariable = sdk.getVariable(featureKey, "someVariableKey", context);
 ```
 
 Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).
@@ -159,10 +158,11 @@ Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://f
 |-----------------------------------------|--------------------------------------------|
 | [@featurevisor/cli](./packages/cli)     | CLI package                                |
 | [@featurevisor/core](./packages/core)   | Core package used by CLI                   |
-| [@featurevisor/types](./packages/types) | Common typings                             |
-| [@featurevisor/sdk](./packages/sdk)     | Universal SDK for both Node.js and browser |
 | [@featurevisor/react](./packages/react) | React package                              |
+| [@featurevisor/sdk](./packages/sdk)     | Universal SDK for both Node.js and browser |
 | [@featurevisor/site](./packages/site)   | Static site generator for your project     |
+| [@featurevisor/types](./packages/types) | Common typings                             |
+| [@featurevisor/vue](./packages/vue)     | Vue.js package                             |
 
 # License
 

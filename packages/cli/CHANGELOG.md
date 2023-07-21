@@ -3,6 +3,132 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [0.37.1](https://github.com/fahad19/featurevisor/compare/v0.37.0...v0.37.1) (2023-07-15)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+
+
+### Features
+
+* restore state files ([#100](https://github.com/fahad19/featurevisor/issues/100)) ([796695d](https://github.com/fahad19/featurevisor/commit/796695d0f645869ec305c3446282fba7e45e2bb5))
+
+
+
+
+
+# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+
+### Features
+
+* code generation ([#98](https://github.com/fahad19/featurevisor/issues/98)) ([7474443](https://github.com/fahad19/featurevisor/commit/7474443d26fd526f471ef5258cbe39b42c0fad60))
+
+
+
+
+
+## [0.33.1](https://github.com/fahad19/featurevisor/compare/v0.33.0...v0.33.1) (2023-07-07)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [0.32.1](https://github.com/fahad19/featurevisor/compare/v0.32.0...v0.32.1) (2023-07-03)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [0.31.2](https://github.com/fahad19/featurevisor/compare/v0.31.1...v0.31.2) (2023-07-01)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
 ## [0.31.1](https://github.com/fahad19/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
 
 **Note:** Version bump only for package @featurevisor/cli

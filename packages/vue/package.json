@@ -1,0 +1,54 @@
+{
+  "name": "@featurevisor/vue",
+  "version": "0.40.0",
+  "description": "Vue.js package for Featurevisor",
+  "main": "dist/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "lint": "echo 'not linting in this package yet'",
+    "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
+    "dist": "webpack --config ./webpack.config.js",
+    "build": "npm run transpile && npm run dist",
+    "test": "jest --config jest.config.js --verbose --coverage ./src/*.spec.ts"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "experimentation",
+    "experiment",
+    "experiments",
+    "vue"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fahad19/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/fahad19/featurevisor/issues"
+  },
+  "dependencies": {
+    "@featurevisor/sdk": "^0.40.0",
+    "@featurevisor/types": "^0.40.0",
+    "vue": "^3.3.4"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@vue/cli-plugin-unit-jest": "^5.0.8",
+    "@vue/test-utils": "^2.4.0"
+  }
+}

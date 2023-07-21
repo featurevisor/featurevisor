@@ -3,6 +3,89 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
+
+
+### Bug Fixes
+
+* for showing variations tab in generated site ([#107](https://github.com/fahad19/featurevisor/issues/107)) ([55af854](https://github.com/fahad19/featurevisor/commit/55af854c95bbda5eaa0b5d6a8c4f615a59fdecd4))
+
+
+
+
+
+# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
 # [0.31.0](https://github.com/fahad19/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
 
 **Note:** Version bump only for package @featurevisor/site

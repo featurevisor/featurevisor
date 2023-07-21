@@ -7,8 +7,6 @@ tags:
 
 bucketBy: userId
 
-defaultVariation: false
-
 variablesSchema:
   - key: bar
     type: string
@@ -18,9 +16,9 @@ variablesSchema:
     defaultValue: ""
 
 variations:
-  - value: false
+  - value: control
     weight: 50
-  - value: true
+  - value: treatment
     weight: 50
     variables:
       - key: bar
@@ -36,13 +34,23 @@ variations:
 
 environments:
   staging:
-    expose: true
     rules:
       - key: "1"
         segments: "*"
         percentage: 100
   production:
-    expose: true
+    force:
+      - conditions:
+          and:
+            - attribute: userId
+              operator: equals
+              value: "123"
+            - attribute: device
+              operator: equals
+              value: "mobile"
+        variation: treatment
+        variables:
+          bar: yoooooo
     rules:
       - key: "1"
         segments:
@@ -55,15 +63,3 @@ environments:
       - key: "2"
         segments: "*"
         percentage: 50
-    force:
-      - conditions:
-          and:
-            - attribute: userId
-              operator: equals
-              value: "123"
-            - attribute: device
-              operator: equals
-              value: "mobile"
-        variation: true
-        variables:
-          bar: yoooooo
