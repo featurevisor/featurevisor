@@ -2,7 +2,7 @@
 
 React components and hooks for Featurevisor.
 
-Visit [https://featurevisor.com](https://featurevisor.com) for more information.
+Visit [https://featurevisor.com/docs/react/](https://featurevisor.com/docs/react/) for more information.
 
 - [Installation](#installation)
 - [API](#api)
