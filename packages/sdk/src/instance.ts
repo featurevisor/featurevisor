@@ -505,7 +505,7 @@ export class FeaturevisorInstance {
         return evaluation;
       }
 
-      // parents
+      // required
       if (feature.required && feature.required.length > 0) {
         const requiredFeaturesAreEnabled = feature.required.every((required) => {
           let requiredKey;

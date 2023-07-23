@@ -489,22 +489,22 @@ describe("sdk: instance", function () {
         revision: "1.0",
         features: [
           {
-            key: "parentKey",
+            key: "requiredKey",
             bucketBy: "userId",
             traffic: [
               {
                 key: "1",
                 segments: "*",
-                percentage: 0, // parent is disabled
+                percentage: 0, // disabled
                 allocation: [],
               },
             ],
           },
 
           {
-            key: "childKey",
+            key: "myKey",
             bucketBy: "userId",
-            required: ["parentKey"],
+            required: ["requiredKey"],
             traffic: [
               {
                 key: "1",
@@ -520,32 +520,32 @@ describe("sdk: instance", function () {
       },
     });
 
-    // child should be disabled because parent is disabled
-    expect(sdk.isEnabled("childKey")).toEqual(false);
+    // should be disabled because required is disabled
+    expect(sdk.isEnabled("myKey")).toEqual(false);
 
-    // enabling parent should enable the child too
+    // enabling required should enable the feature too
     const sdk2 = createInstance({
       datafile: {
         schemaVersion: "1",
         revision: "1.0",
         features: [
           {
-            key: "parentKey",
+            key: "requiredKey",
             bucketBy: "userId",
             traffic: [
               {
                 key: "1",
                 segments: "*",
-                percentage: 100000, // parent is enabled
+                percentage: 100000, // enabled
                 allocation: [],
               },
             ],
           },
 
           {
-            key: "childKey",
+            key: "myKey",
             bucketBy: "userId",
-            required: ["parentKey"],
+            required: ["requiredKey"],
             traffic: [
               {
                 key: "1",
@@ -560,18 +560,18 @@ describe("sdk: instance", function () {
         segments: [],
       },
     });
-    expect(sdk2.isEnabled("childKey")).toEqual(true);
+    expect(sdk2.isEnabled("myKey")).toEqual(true);
   });
 
   it("should honour required features with variation", function () {
-    // child should be disabled because parent has different variation
+    // should be disabled because required has different variation
     const sdk = createInstance({
       datafile: {
         schemaVersion: "1",
         revision: "1.0",
         features: [
           {
-            key: "parentKey",
+            key: "requiredKey",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
@@ -588,12 +588,12 @@ describe("sdk: instance", function () {
           },
 
           {
-            key: "childKey",
+            key: "myKey",
             bucketBy: "userId",
             required: [
               {
-                key: "parentKey",
-                variation: "control", // parent has different variation
+                key: "requiredKey",
+                variation: "control", // different variation
               },
             ],
             traffic: [
@@ -611,16 +611,16 @@ describe("sdk: instance", function () {
       },
     });
 
-    expect(sdk.isEnabled("childKey")).toEqual(false);
+    expect(sdk.isEnabled("myKey")).toEqual(false);
 
-    // child should be enabled because parent has desired variation
+    // child should be enabled because required has desired variation
     const sdk2 = createInstance({
       datafile: {
         schemaVersion: "1",
         revision: "1.0",
         features: [
           {
-            key: "parentKey",
+            key: "requiredKey",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
             traffic: [
@@ -637,12 +637,12 @@ describe("sdk: instance", function () {
           },
 
           {
-            key: "childKey",
+            key: "myKey",
             bucketBy: "userId",
             required: [
               {
-                key: "parentKey",
-                variation: "treatment", // parent has desired variation
+                key: "requiredKey",
+                variation: "treatment", // desired variation
               },
             ],
             traffic: [
@@ -659,6 +659,6 @@ describe("sdk: instance", function () {
         segments: [],
       },
     });
-    expect(sdk2.isEnabled("childKey")).toEqual(true);
+    expect(sdk2.isEnabled("myKey")).toEqual(true);
   });
 });
