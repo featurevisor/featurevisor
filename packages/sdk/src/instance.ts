@@ -81,6 +81,7 @@ export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
   DISABLED = "disabled",
+  REQUIRED = "required",
   OUT_OF_RANGE = "out_of_range",
   FORCED = "forced",
   INITIAL = "initial",
@@ -502,6 +503,45 @@ export class FeaturevisorInstance {
         this.logger.debug("forced enabled found", evaluation);
 
         return evaluation;
+      }
+
+      // required
+      if (feature.required && feature.required.length > 0) {
+        const requiredFeaturesAreEnabled = feature.required.every((required) => {
+          let requiredKey;
+          let requiredVariation;
+
+          if (typeof required === "string") {
+            requiredKey = required;
+          } else {
+            requiredKey = required.key;
+            requiredVariation = required.variation;
+          }
+
+          const requiredIsEnabled = this.isEnabled(requiredKey, finalContext);
+
+          if (!requiredIsEnabled) {
+            return false;
+          }
+
+          if (typeof requiredVariation !== "undefined") {
+            const requiredVariationValue = this.getVariation(requiredKey, finalContext);
+
+            return requiredVariationValue === requiredVariation;
+          }
+
+          return true;
+        });
+
+        if (!requiredFeaturesAreEnabled) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.REQUIRED,
+            enabled: requiredFeaturesAreEnabled,
+          };
+
+          return evaluation;
+        }
       }
 
       // bucketing

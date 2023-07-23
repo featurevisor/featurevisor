@@ -7,7 +7,7 @@ import * as Joi from "joi";
 import { getYAMLFiles, parseYaml } from "./utils";
 
 import { ProjectConfig } from "./config";
-import { ParsedFeature } from "@featurevisor/types";
+import { ParsedFeature, FeatureKey, Required } from "@featurevisor/types";
 
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
@@ -172,6 +172,7 @@ export function getFeatureJoiSchema(
   projectConfig: ProjectConfig,
   conditionsJoiSchema,
   availableSegmentKeys: string[],
+  availableFeatureKeys: string[],
 ) {
   const variationValueJoiSchema = Joi.string().required();
   const variableValueJoiSchema = Joi.alternatives()
@@ -272,6 +273,22 @@ export function getFeatureJoiSchema(
         }),
       )
       .required(),
+
+    required: Joi.array()
+      .items(
+        Joi.alternatives().try(
+          Joi.string()
+            .required()
+            .valid(...availableFeatureKeys),
+          Joi.object({
+            key: Joi.string()
+              .required()
+              .valid(...availableFeatureKeys),
+            variation: Joi.string().optional(), // @TODO: can be made stricter
+          }),
+        ),
+      )
+      .optional(),
 
     bucketBy: Joi.alternatives()
       .try(
@@ -420,6 +437,50 @@ export function printJoiError(e: Joi.ValidationError) {
   });
 }
 
+function checkForCircularDependencyInRequired(
+  featuresDirectoryPath: string,
+  featureKey: FeatureKey,
+  required?: Required[],
+  chain: FeatureKey[] = [],
+) {
+  if (!required) {
+    return;
+  }
+
+  const requiredKeys = required.map((r) => (typeof r === "string" ? r : r.key));
+
+  if (requiredKeys.length === 0) {
+    return;
+  }
+
+  for (const requiredKey of requiredKeys) {
+    chain.push(requiredKey);
+
+    if (chain.indexOf(featureKey) > -1) {
+      throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
+    }
+
+    const requiredFeaturePath = path.join(featuresDirectoryPath, `${requiredKey}.yml`);
+
+    if (!fs.existsSync(requiredFeaturePath)) {
+      throw new Error(`required feature "${requiredKey}" not found`);
+    }
+
+    const requiredParsedFeature = parseYaml(
+      fs.readFileSync(requiredFeaturePath, "utf8"),
+    ) as ParsedFeature;
+
+    if (requiredParsedFeature.required) {
+      checkForCircularDependencyInRequired(
+        featuresDirectoryPath,
+        featureKey,
+        requiredParsedFeature.required,
+        chain,
+      );
+    }
+  }
+}
+
 export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
   let hasError = false;
 
@@ -513,6 +574,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     projectConfig,
     conditionsJoiSchema,
     availableSegmentKeys,
+    availableFeatureKeys,
   );
 
   for (const filePath of featureFilePaths) {
@@ -532,6 +594,20 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
       }
 
       hasError = true;
+    }
+
+    if (parsed.required) {
+      try {
+        checkForCircularDependencyInRequired(
+          projectConfig.featuresDirectoryPath,
+          key,
+          parsed.required,
+        );
+      } catch (e) {
+        console.log("  =>", key);
+        console.log("     => Error:", e.message);
+        hasError = true;
+      }
     }
   }
 

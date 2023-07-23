@@ -74,6 +74,7 @@ Read more in [Bucketing](/docs/bucketing).
 
 - A feature can only belong to a maximum of one group at a time
 - A feature cannot repeat in the same group's slots (this will be supported in a future version)
+- Both the required and dependent features cannot coexist in the same group
 
 ## Guides
 

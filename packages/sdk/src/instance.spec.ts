@@ -481,4 +481,184 @@ describe("sdk: instance", function () {
       done();
     }, 75);
   });
+
+  it("should honour simple required features", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "requiredKey",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 0, // disabled
+                allocation: [],
+              },
+            ],
+          },
+
+          {
+            key: "myKey",
+            bucketBy: "userId",
+            required: ["requiredKey"],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    // should be disabled because required is disabled
+    expect(sdk.isEnabled("myKey")).toEqual(false);
+
+    // enabling required should enable the feature too
+    const sdk2 = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "requiredKey",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000, // enabled
+                allocation: [],
+              },
+            ],
+          },
+
+          {
+            key: "myKey",
+            bucketBy: "userId",
+            required: ["requiredKey"],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+    expect(sdk2.isEnabled("myKey")).toEqual(true);
+  });
+
+  it("should honour required features with variation", function () {
+    // should be disabled because required has different variation
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "requiredKey",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+
+          {
+            key: "myKey",
+            bucketBy: "userId",
+            required: [
+              {
+                key: "requiredKey",
+                variation: "control", // different variation
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    expect(sdk.isEnabled("myKey")).toEqual(false);
+
+    // child should be enabled because required has desired variation
+    const sdk2 = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "requiredKey",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+
+          {
+            key: "myKey",
+            bucketBy: "userId",
+            required: [
+              {
+                key: "requiredKey",
+                variation: "treatment", // desired variation
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+    expect(sdk2.isEnabled("myKey")).toEqual(true);
+  });
 });

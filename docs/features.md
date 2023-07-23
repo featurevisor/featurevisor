@@ -542,6 +542,55 @@ variations:
         value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
 ```
 
+## Required
+
+A feature can be dependent on one or more other features. This is useful when you want to make sure that a feature is only allowed to continue its evaluation if the other required features are also evaluated as enabled first.
+
+For example, let's say we have a new feature under development for redesigning the checkout flow of an e-commerce application. We can call it `checkoutRedesign`.
+
+And we have another feature called `checkoutPromo` which is responsible for showing a promo code input field in the new redesigned checkout flow. We can call it `checkoutPromo`.
+
+Given the `checkoutPromo` feature is dependent on the `checkoutRedesign` feature, we can express that in YAML as follows:
+
+```yml
+# features/checkoutPromo.yml
+description: Checkout promo
+tags:
+  - all
+
+bucketBy: userId
+
+required:
+  - checkoutRedesign
+
+# ...
+```
+
+This will make sure that `checkoutPromo` feature can continue its evaluation by the SDKs if `checkoutRedesign` feature is enabled against the same context first.
+
+It is possible to have multiple features defined as required for a feature. Furthermore, you can also require the feature(s) to be evaluated as a specific variation:
+
+```yml
+# features/checkoutPromo.yml
+description: Checkout promo
+tags:
+  - all
+
+bucketBy: userId
+
+required:
+  # checking only if checkoutRedesign is enabled
+  - checkoutRedesign
+
+  # require the feature to be evaluated as a specific variation
+  - key: someOtherFeature
+    variation: treatment
+
+# ...
+```
+
+If both the required features are evaluated as desired, the dependent feature `checkoutPromo` will then continue with its own evaluation.
+
 ## Force
 
 You can force a feature to be enabled or disabled against custom conditions.
