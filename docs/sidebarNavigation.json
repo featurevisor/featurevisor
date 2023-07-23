@@ -56,7 +56,7 @@
   },
   {
     "title": "Tracking guides",
-    "links": [{ "title": "Google Tag Manager", "href": "/docs/tracking/google-tag-manager" }]
+    "links": [{ "title": "Google Analytics", "href": "/docs/tracking/google-analytics" }]
   },
   {
     "title": "CI/CD guides",
