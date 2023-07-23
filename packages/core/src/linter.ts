@@ -7,7 +7,7 @@ import * as Joi from "joi";
 import { getYAMLFiles, parseYaml } from "./utils";
 
 import { ProjectConfig } from "./config";
-import { ParsedFeature } from "@featurevisor/types";
+import { ParsedFeature, FeatureKey, Required } from "@featurevisor/types";
 
 export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
   const attributeJoiSchema = Joi.object({
@@ -437,6 +437,50 @@ export function printJoiError(e: Joi.ValidationError) {
   });
 }
 
+function checkForCyclicalDependencyInRequired(
+  featuresDirectoryPath: string,
+  featureKey: FeatureKey,
+  required?: Required[],
+  chain: FeatureKey[] = [],
+) {
+  if (!required) {
+    return;
+  }
+
+  const requiredKeys = required.map((r) => (typeof r === "string" ? r : r.key));
+
+  if (requiredKeys.length === 0) {
+    return;
+  }
+
+  for (const requiredKey of requiredKeys) {
+    chain.push(requiredKey);
+
+    if (chain.indexOf(featureKey) > -1) {
+      throw new Error(`cyclical dependency found: ${chain.join(" -> ")}`);
+    }
+
+    const requiredFeaturePath = path.join(featuresDirectoryPath, `${requiredKey}.yml`);
+
+    if (!fs.existsSync(requiredFeaturePath)) {
+      throw new Error(`required feature "${requiredKey}" not found`);
+    }
+
+    const requiredParsedFeature = parseYaml(
+      fs.readFileSync(requiredFeaturePath, "utf8"),
+    ) as ParsedFeature;
+
+    if (requiredParsedFeature.required) {
+      checkForCyclicalDependencyInRequired(
+        featuresDirectoryPath,
+        featureKey,
+        requiredParsedFeature.required,
+        chain,
+      );
+    }
+  }
+}
+
 export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
   let hasError = false;
 
@@ -552,7 +596,19 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
       hasError = true;
     }
 
-    // @TODO: if has `required`, make sure they don't form an infinite loop
+    if (parsed.required) {
+      try {
+        checkForCyclicalDependencyInRequired(
+          projectConfig.featuresDirectoryPath,
+          key,
+          parsed.required,
+        );
+      } catch (e) {
+        console.log("  =>", key);
+        console.log("     => Error:", e.message);
+        hasError = true;
+      }
+    }
   }
 
   // lint tests
