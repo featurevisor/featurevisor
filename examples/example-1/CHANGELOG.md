@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.42.0](https://github.com/fahad19/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
+
+
+### Features
+
+* segment testing assertion property updated ([#113](https://github.com/fahad19/featurevisor/issues/113)) ([cbf693e](https://github.com/fahad19/featurevisor/commit/cbf693eb864623f89a04a11220ebfa872097fbee))
+
+
+
+
+
 # [0.41.0](https://github.com/fahad19/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/example-1
