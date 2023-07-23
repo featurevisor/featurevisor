@@ -437,7 +437,7 @@ export function printJoiError(e: Joi.ValidationError) {
   });
 }
 
-function checkForCyclicalDependencyInRequired(
+function checkForCircularDependencyInRequired(
   featuresDirectoryPath: string,
   featureKey: FeatureKey,
   required?: Required[],
@@ -471,7 +471,7 @@ function checkForCyclicalDependencyInRequired(
     ) as ParsedFeature;
 
     if (requiredParsedFeature.required) {
-      checkForCyclicalDependencyInRequired(
+      checkForCircularDependencyInRequired(
         featuresDirectoryPath,
         featureKey,
         requiredParsedFeature.required,
@@ -598,7 +598,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
     if (parsed.required) {
       try {
-        checkForCyclicalDependencyInRequired(
+        checkForCircularDependencyInRequired(
           projectConfig.featuresDirectoryPath,
           key,
           parsed.required,
