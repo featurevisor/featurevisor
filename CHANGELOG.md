@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.41.0](https://github.com/fahad19/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
+
+
+### Features
+
+* required features ([5b1e1c3](https://github.com/fahad19/featurevisor/commit/5b1e1c354f0caac6435547a825d066c2f41d6063))
+* required features ([#112](https://github.com/fahad19/featurevisor/issues/112)) ([797af24](https://github.com/fahad19/featurevisor/commit/797af24b52a385228d9cae165bca8ffdd9977271))
+
+
+
+
+
 ## [0.40.1](https://github.com/fahad19/featurevisor/compare/v0.40.0...v0.40.1) (2023-07-23)
 
 **Note:** Version bump only for package featurevisor
