@@ -544,7 +544,7 @@ variations:
 
 ## Required
 
-A feature can be dependent on one or more other features. This is useful when you want to make sure that a feature is only allowed to be evaluated as enabled if the other required features are also evaluated as enabled first.
+A feature can be dependent on one or more other features. This is useful when you want to make sure that a feature is only allowed to continue its evaluation if the other required features are also evaluated as enabled first.
 
 For example, let's say we have a new feature under development for redesigning the checkout flow of an e-commerce application. We can call it `checkoutRedesign`.
 
@@ -566,7 +566,7 @@ required:
 # ...
 ```
 
-This will make sure that `checkoutPromo` feature can be allowed to be evaluated as enabled by the SDKs if `checkoutRedesign` feature is also enabled against the same context.
+This will make sure that `checkoutPromo` feature can continue its evaluation by the SDKs if `checkoutRedesign` feature is enabled against the same context first.
 
 It is possible to have multiple features defined as required for a feature. Furthermore, you can also require the feature(s) to be evaluated as a specific variation:
 
@@ -579,7 +579,7 @@ tags:
 bucketBy: userId
 
 required:
-  # simple, checking only if checkoutRedesign is enabled
+  # checking only if checkoutRedesign is enabled
   - checkoutRedesign
 
   # require the feature to be evaluated as a specific variation
@@ -589,7 +589,7 @@ required:
 # ...
 ```
 
-If both the required features are evaluated as desired, the dependent feature `checkoutPromo` will be evaluated as enabled.
+If both the required features are evaluated as desired, the dependent feature `checkoutPromo` will then continue with its own evaluation.
 
 ## Force
 
