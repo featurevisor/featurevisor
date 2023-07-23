@@ -415,7 +415,7 @@ export function getTestsJoiSchema(
               Joi.object({
                 description: Joi.string().optional(),
                 context: Joi.object(),
-                expected: Joi.boolean(),
+                expectedToMatch: Joi.boolean(),
               }),
             ),
           }),

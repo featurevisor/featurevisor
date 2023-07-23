@@ -9,7 +9,7 @@ Features and segments can grow into complex configuration very fast, and it's im
 
 You can write test specs in YAML to test your features in great detail.
 
-Create a new test spec in `tests` directory:
+Assuming we already have a `foo` feature in `features/foo.yml`, we can create a new test spec for it in `tests` directory:
 
 ```yml
 # tests/foo.spec.yml
@@ -73,12 +73,12 @@ tests:
           - description: Testing segment in NL
             context:
               country: nl
-            expected: true
+            expectedToMatch: true
 
           - description: Testing segment in DE
             context:
               country: de
-            expected: false
+            expectedToMatch: false
 ```
 
 ## Running tests
