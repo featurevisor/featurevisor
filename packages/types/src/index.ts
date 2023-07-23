@@ -363,7 +363,7 @@ export interface TestFeature {
 export interface SegmentAssertion {
   description?: string;
   context: Context;
-  expected: boolean;
+  expectedToMatch: boolean;
 }
 
 export interface TestSegment {

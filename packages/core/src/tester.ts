@@ -107,7 +107,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
             let assertionHasError = false;
 
-            const expected = assertion.expected;
+            const expected = assertion.expectedToMatch;
             const actual = allConditionsAreMatched(conditions, assertion.context);
 
             if (actual !== expected) {

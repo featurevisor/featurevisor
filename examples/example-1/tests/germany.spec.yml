@@ -4,13 +4,13 @@ tests:
         assertions:
           - context:
               country: de
-            expected: true
+            expectedToMatch: true
 
           - context:
               country: de
               someOtherAttribute: someOtherValue
-            expected: true
+            expectedToMatch: true
 
           - context:
               country: notDe
-            expected: false
+            expectedToMatch: false
