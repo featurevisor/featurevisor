@@ -5,7 +5,7 @@
 </div>
 
 <div align="center">
-  <small>Manage your feature flags and experiments declaratively from the comfort of your git workflow.</small>
+  <small>Manage your feature flags and experiments declaratively from the comfort of your Git workflow.</small>
 </div>
 
 <br />
@@ -55,9 +55,9 @@
 
 - [What is Featurevisor?](#what-is-featurevisor)
 - [Quick start](#quick-start)
-  - [Part 1: Create a Featurevisor project](#part-1-create-a-featurevisor-project)
-  - [Part 2: Build and deploy datafiles](#part-2-build-and-deploy-datafiles)
-  - [Part 3: Consume datafiles with Featurevisor SDKs](#part-3-consume-datafiles-with-featurevisor-sdks)
+  - [Step 1: Create a Featurevisor project](#step-1-create-a-featurevisor-project)
+  - [Step 2: Build and deploy datafiles](#step-2-build-and-deploy-datafiles)
+  - [Step 3: Consume datafiles with Featurevisor SDKs](#step-3-consume-datafiles-with-featurevisor-sdks)
 - [Packages](#packages)
 - [License](#license)
 
@@ -75,9 +75,9 @@ More documentation available at [https://featurevisor.com](https://featurevisor.
 
 You are recommended to see a more detailed quick start guide here: [https://featurevisor.com/docs/quick-start/](https://featurevisor.com/docs/quick-start/).
 
-The whole process can be broken down into 3 parts:
+The whole process can be broken down into 3 steps:
 
-## Part 1: Create a Featurevisor project
+## Step 1: Create a Featurevisor project
 
 Install Featurevisor CLI globally (or use `npx @featurevisor/cli`):
 
@@ -100,7 +100,7 @@ See the building block guides here:
 - [Segments](https://featurevisor.com/docs/segments/): conditions for targeting users
 - [Features](https://featurevisor.com/docs/features/): feature flags and variables with rollout rules
 
-## Part 2: Build and deploy datafiles
+## Step 2: Build and deploy datafiles
 
 Once the project is ready, you can build your datafiles (JSON files containing configuration of your feature flags):
 
@@ -117,7 +117,7 @@ See further guides here:
 
 A fully functioning example for deploying with Cloudflare and GitHub Actions (for free) is available [here](https://github.com/fahad19/featurevisor-example-cloudflare).
 
-## Part 3: Consume datafiles with Featurevisor SDKs
+## Step 3: Consume datafiles with Featurevisor SDKs
 
 You can now consume the datafiles from your CDN in your applications directly using Featurevisor SDKs.
 
@@ -139,15 +139,15 @@ const sdk = createInstance({
 });
 
 // Evaluate a feature flag
-const featureKey = "my-feature";
+const featureKey = "myFeature";
 const context = {
   userId: "user-123",
   country: "nl",
 };
 
-const isFeatureEnabled = sdk.isEnabled(featureKey, context);
+const isEnabled = sdk.isEnabled(featureKey, context);
 const variation = sdk.getVariation(featureKey, context);
-const someVariable = sdk.getVariable(featureKey, "someVariableKey", context);
+const variable  = sdk.getVariable(featureKey, "someVariableKey", context);
 ```
 
 Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).
