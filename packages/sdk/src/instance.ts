@@ -81,7 +81,7 @@ export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
   DISABLED = "disabled",
-  PARENT = "parent",
+  REQUIRED = "required",
   OUT_OF_RANGE = "out_of_range",
   FORCED = "forced",
   INITIAL = "initial",
@@ -506,38 +506,38 @@ export class FeaturevisorInstance {
       }
 
       // parents
-      if (feature.parents && feature.parents.length > 0) {
-        const parentsAreEnabled = feature.parents.every((parent) => {
-          let parentKey;
-          let parentVariation;
+      if (feature.required && feature.required.length > 0) {
+        const requiredFeaturesAreEnabled = feature.required.every((required) => {
+          let requiredKey;
+          let requiredVariation;
 
-          if (typeof parent === "string") {
-            parentKey = parent;
+          if (typeof required === "string") {
+            requiredKey = required;
           } else {
-            parentKey = parent.key;
-            parentVariation = parent.variation;
+            requiredKey = required.key;
+            requiredVariation = required.variation;
           }
 
-          const parentIsEnabled = this.isEnabled(parentKey, finalContext);
+          const requiredIsEnabled = this.isEnabled(requiredKey, finalContext);
 
-          if (!parentIsEnabled) {
+          if (!requiredIsEnabled) {
             return false;
           }
 
-          if (typeof parentVariation !== "undefined") {
-            const parentVariationValue = this.getVariation(parentKey, finalContext);
+          if (typeof requiredVariation !== "undefined") {
+            const requiredVariationValue = this.getVariation(requiredKey, finalContext);
 
-            return parentVariationValue === parentVariation;
+            return requiredVariationValue === requiredVariation;
           }
 
           return true;
         });
 
-        if (!parentsAreEnabled) {
+        if (!requiredFeaturesAreEnabled) {
           evaluation = {
             featureKey: feature.key,
-            reason: EvaluationReason.PARENT,
-            enabled: parentsAreEnabled,
+            reason: EvaluationReason.REQUIRED,
+            enabled: requiredFeaturesAreEnabled,
           };
 
           return evaluation;

@@ -227,16 +227,16 @@ export interface OrBucketBy {
 }
 export type BucketBy = PlainBucketBy | AndBucketBy | OrBucketBy;
 
-export interface ParentWithVariation {
+export interface RequiredWithVariation {
   key: FeatureKey;
   variation: VariationValue;
 }
 
-export type Parent = FeatureKey | ParentWithVariation;
+export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
   key: FeatureKey;
-  parents?: Parent[];
+  required?: Required[];
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
   bucketBy: BucketBy;
@@ -301,7 +301,7 @@ export interface ParsedFeature {
   description: string;
   tags: string[];
 
-  parents?: FeatureKey[];
+  required?: Required[];
 
   bucketBy: BucketBy;
 

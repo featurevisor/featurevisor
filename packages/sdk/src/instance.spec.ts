@@ -482,7 +482,7 @@ describe("sdk: instance", function () {
     }, 75);
   });
 
-  it("should honour simple parents", function () {
+  it("should honour simple required features", function () {
     const sdk = createInstance({
       datafile: {
         schemaVersion: "1",
@@ -504,7 +504,7 @@ describe("sdk: instance", function () {
           {
             key: "childKey",
             bucketBy: "userId",
-            parents: ["parentKey"],
+            required: ["parentKey"],
             traffic: [
               {
                 key: "1",
@@ -545,7 +545,7 @@ describe("sdk: instance", function () {
           {
             key: "childKey",
             bucketBy: "userId",
-            parents: ["parentKey"],
+            required: ["parentKey"],
             traffic: [
               {
                 key: "1",
@@ -563,7 +563,7 @@ describe("sdk: instance", function () {
     expect(sdk2.isEnabled("childKey")).toEqual(true);
   });
 
-  it("should honour parents with variation", function () {
+  it("should honour required features with variation", function () {
     // child should be disabled because parent has different variation
     const sdk = createInstance({
       datafile: {
@@ -590,7 +590,7 @@ describe("sdk: instance", function () {
           {
             key: "childKey",
             bucketBy: "userId",
-            parents: [
+            required: [
               {
                 key: "parentKey",
                 variation: "control", // parent has different variation
@@ -639,7 +639,7 @@ describe("sdk: instance", function () {
           {
             key: "childKey",
             bucketBy: "userId",
-            parents: [
+            required: [
               {
                 key: "parentKey",
                 variation: "treatment", // parent has desired variation

@@ -542,52 +542,54 @@ variations:
         value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
 ```
 
-## Parents
+## Required
 
-The concept of parent-child relationship between your features is useful when you wish to control the evaluation of a feature based on the evaluation of another feature.
+A feature can be dependent on one or more other features. This is useful when you want to make sure that a feature is only allowed to be evaluated as enabled if the other required features are also evaluated as enabled first.
 
-For example, you may want to expose a feature named `someChild` only if `someParent` is enabled.
+For example, let's say we have a new feature under development for redesigning the checkout flow of an e-commerce application. We can call it `checkoutRedesign`.
 
-We can express that in YAML as follows:
+And we have another feature called `checkoutPromo` which is responsible for showing a promo code input field in the new redesigned checkout flow. We can call it `checkoutPromo`.
+
+Given the `checkoutPromo` feature is dependent on the `checkoutRedesign` feature, we can express that in YAML as follows:
 
 ```yml
-# features/someChild.yml
-description: Child feature
+# features/checkoutPromo.yml
+description: Checkout promo
 tags:
   - all
 
 bucketBy: userId
 
-parents:
-  - someParent
+required:
+  - checkoutRedesign
 
 # ...
 ```
 
-This will make sure that `someChild` feature is only evaluated as enabled by the SDKs if `someParent` feature is also enabled with the same context.
+This will make sure that `checkoutPromo` feature can be allowed to be evaluated as enabled by the SDKs if `checkoutRedesign` feature is also enabled against the same context.
 
-It is possible to have multiple parents defined for a feature. Furthermore, you can also require the parent feature to be evaluated as a specific variation for your child feature to be enabled:
+It is possible to have multiple features defined as required for a feature. Furthermore, you can also require the feature(s) to be evaluated as a specific variation:
 
 ```yml
-# features/someChild.yml
-description: Child feature
+# features/checkoutPromo.yml
+description: Checkout promo
 tags:
   - all
 
 bucketBy: userId
 
-parents:
-  # simple, without checking the parent's variation value
-  - someParent
+required:
+  # simple, checking only if checkoutRedesign is enabled
+  - checkoutRedesign
 
-  # require the parent to be evaluated as a specific variation
-  - key: someParent
+  # require the feature to be evaluated as a specific variation
+  - key: someOtherFeature
     variation: treatment
 
 # ...
 ```
 
-If both the parents are evaluated as desired, the child feature will be evaluated as enabled.
+If both the required features are evaluated as desired, the dependent feature `checkoutPromo` will be evaluated as enabled.
 
 ## Force
 

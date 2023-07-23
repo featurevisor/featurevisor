@@ -162,7 +162,7 @@ export function buildDatafile(
       const feature: Feature = {
         key: featureKey,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
-        parents: parsedFeature.parents,
+        required: parsedFeature.required,
         variations: Array.isArray(parsedFeature.variations)
           ? parsedFeature.variations.map((variation: Variation) => {
               const mappedVariation: any = {

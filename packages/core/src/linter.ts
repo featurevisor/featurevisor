@@ -274,7 +274,7 @@ export function getFeatureJoiSchema(
       )
       .required(),
 
-    parents: Joi.array()
+    required: Joi.array()
       .items(
         Joi.alternatives().try(
           Joi.string()
@@ -551,6 +551,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
       hasError = true;
     }
+
+    // @TODO: if has `required`, make sure they don't form an infinite loop
   }
 
   // lint tests
