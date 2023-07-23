@@ -457,7 +457,7 @@ function checkForCyclicalDependencyInRequired(
     chain.push(requiredKey);
 
     if (chain.indexOf(featureKey) > -1) {
-      throw new Error(`cyclical dependency found: ${chain.join(" -> ")}`);
+      throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
     }
 
     const requiredFeaturePath = path.join(featuresDirectoryPath, `${requiredKey}.yml`);
