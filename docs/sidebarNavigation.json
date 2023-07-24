@@ -33,7 +33,8 @@
     "title": "Framework guides",
     "links": [
       { "title": "React", "href": "/docs/react" },
-      { "title": "Vue.js", "href": "/docs/vue" }
+      { "title": "Vue.js", "href": "/docs/vue" },
+      { "title": "Express.js", "href": "/docs/frameworks/express" }
     ]
   },
   {
