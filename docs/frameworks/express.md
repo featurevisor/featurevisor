@@ -140,7 +140,7 @@ If you are using TypeScript, you can extend the `Request` interface to add the `
 Create a new `custom.d.ts` file and make sure to add it in `tsconfig.json`'s `files` section:
 
 ```ts
-import { FeatureInstance } from "@featurevisor/sdk";
+import { FeaturevisorInstance } from "@featurevisor/sdk";
 
 declare namespace Express {
   export interface Request {
@@ -148,3 +148,7 @@ declare namespace Express {
   }
 }
 ```
+
+## Working repository
+
+You can find a fully functional example of this integration on GitHub: [https://github.com/featurevisor/featurevisor-example-expressjs](https://github.com/featurevisor/featurevisor-example-expressjs).
