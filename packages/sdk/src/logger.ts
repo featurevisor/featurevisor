@@ -33,12 +33,16 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
   switch (level) {
     case "debug":
       console.log(loggerPrefix, message, details);
+      break;
     case "info":
       console.info(loggerPrefix, message, details);
+      break;
     case "warn":
       console.warn(loggerPrefix, message, details);
+      break;
     case "error":
       console.error(loggerPrefix, message, details);
+      break;
   }
 };
 
