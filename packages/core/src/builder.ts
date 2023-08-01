@@ -161,6 +161,7 @@ export function buildDatafile(
 
       const feature: Feature = {
         key: featureKey,
+        deprecated: parsedFeature.deprecated === true ? true : undefined,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
         required: parsedFeature.required,
         variations: Array.isArray(parsedFeature.variations)
