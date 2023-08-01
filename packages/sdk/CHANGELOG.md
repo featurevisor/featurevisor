@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.42.1](https://github.com/fahad19/featurevisor/compare/v0.42.0...v0.42.1) (2023-08-01)
+
+
+### Bug Fixes
+
+* break in switch statement of logger handler ([#116](https://github.com/fahad19/featurevisor/issues/116)) ([d836263](https://github.com/fahad19/featurevisor/commit/d83626398cb15ffe02eae215cfebe8d6842f4f9e))
+
+
+
+
+
 # [0.42.0](https://github.com/fahad19/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/sdk
