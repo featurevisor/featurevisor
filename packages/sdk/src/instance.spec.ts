@@ -1,6 +1,7 @@
 import { DatafileContent } from "@featurevisor/types";
 
 import { createInstance } from "./instance";
+import { createLogger } from "./logger";
 
 describe("sdk: instance", function () {
   it("should be a function", function () {
@@ -660,5 +661,71 @@ describe("sdk: instance", function () {
       },
     });
     expect(sdk2.isEnabled("myKey")).toEqual(true);
+  });
+
+  it("should emit warnings for deprecated feature", function () {
+    let deprecatedCount = 0;
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
+                ],
+              },
+            ],
+          },
+          {
+            key: "deprecatedTest",
+            deprecated: true,
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 100000] },
+                  { variation: "treatment", range: [0, 0] },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+      logger: createLogger({
+        handler: function (level, message) {
+          if (level === "warn" && message.indexOf("is deprecated")) {
+            deprecatedCount += 1;
+          }
+        },
+      }),
+    });
+
+    const testVariation = sdk.getVariation("test", {
+      userId: "123",
+    });
+    const deprecatedTestVariation = sdk.getVariation("deprecatedTest", {
+      userId: "123",
+    });
+
+    expect(testVariation).toEqual("control");
+    expect(deprecatedTestVariation).toEqual("control");
+    expect(deprecatedCount).toEqual(1);
   });
 });

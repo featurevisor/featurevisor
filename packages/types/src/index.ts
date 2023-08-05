@@ -236,6 +236,7 @@ export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
   key: FeatureKey;
+  deprecated?: boolean;
   required?: Required[];
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
@@ -297,7 +298,9 @@ export interface Environment {
 export interface ParsedFeature {
   key: FeatureKey;
 
-  archived: boolean;
+  archived?: boolean;
+  deprecated?: boolean;
+
   description: string;
   tags: string[];
 

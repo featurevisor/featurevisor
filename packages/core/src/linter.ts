@@ -260,7 +260,8 @@ export function getFeatureJoiSchema(
   const allEnvironmentsJoiSchema = Joi.object(allEnvironmentsSchema);
 
   const featureJoiSchema = Joi.object({
-    archived: Joi.boolean(),
+    archived: Joi.boolean().optional(),
+    deprecated: Joi.boolean().optional(),
     description: Joi.string().required(),
     tags: Joi.array()
       .items(

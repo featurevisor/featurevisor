@@ -488,6 +488,11 @@ export class FeaturevisorInstance {
         return evaluation;
       }
 
+      // deprecated
+      if (feature.deprecated) {
+        this.logger.warn("feature is deprecated", { featureKey: feature.key });
+      }
+
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
