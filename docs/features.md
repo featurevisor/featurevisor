@@ -93,6 +93,7 @@ bucketBy:
 A feature can have multiple variations if you wish to run A/B tests. Each variation must have a different string value.
 
 ```yml
+# ...
 variations:
   - value: control
     weight: 50
@@ -622,11 +623,28 @@ environments:
 
 Instead of `conditions` above, you can also use `segments` for forcing variations and variables.
 
+## Deprecating
+
+You can deprecate a feature by setting `deprecated: true`:
+
+```yml
+deprecated: true
+
+# ...
+```
+
+Deprecating a feature will still include the feature in generated datafiles and SDKs will still be able to evaluate the feature, but evaluation will lead to showing a warning in the logs.
+
+This is done to help notify the developers to stop using the affected feature without breaking the application.
+
 ## Archiving
 
 You can archive a feature by setting `archived: true`:
 
 ```yml
-# ...
 archived: true
+
+# ...
 ```
+
+Doing so will exclude the feature from generated datafiles and SDKs will not be able to evaluate the feature.
