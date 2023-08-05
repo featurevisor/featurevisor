@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.43.0](https://github.com/fahad19/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
+
+
+### Features
+
+* Support deprecating features ([#117](https://github.com/fahad19/featurevisor/issues/117)) ([992740d](https://github.com/fahad19/featurevisor/commit/992740d5fbdda2bb15cf4a782147f0ed13d9288c))
+
+
+
+
+
 # [0.42.0](https://github.com/fahad19/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
 
 
