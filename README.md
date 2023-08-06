@@ -40,6 +40,10 @@
     <a href="https://featurevisor.com/docs/contributing">
       Contributing
     </a>
+    <span> | </span>
+    <a href="https://github.com/fahad19/featurevisor/blob/main/CHANGELOG.md">
+      Changelog
+    </a>
   </h3>
 </div>
 
