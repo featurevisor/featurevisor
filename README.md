@@ -53,14 +53,6 @@
 
 ---
 
-- [What is Featurevisor?](#what-is-featurevisor)
-- [Quick start](#quick-start)
-  - [Step 1: Create a Featurevisor project](#step-1-create-a-featurevisor-project)
-  - [Step 2: Build and deploy datafiles](#step-2-build-and-deploy-datafiles)
-  - [Step 3: Consume datafiles with Featurevisor SDKs](#step-3-consume-datafiles-with-featurevisor-sdks)
-- [Packages](#packages)
-- [License](#license)
-
 # What is Featurevisor?
 
 Featurevisor is a solution for managing your feature flags, experiments, and remote config. It's built for developers, by developers.
@@ -73,7 +65,7 @@ Workflow can be broken down into 3 steps:
 
 More documentation available at [https://featurevisor.com](https://featurevisor.com).
 
-It supports:
+Supported features:
 
 - 🚩 **Feature flags**: classic on/off switches
 - 🆎 **Experimentation**: a/b and multivariate tests
@@ -84,6 +76,14 @@ It supports:
 - 🌏 **Multiple environments**: Go beyond just staging and production to fit your needs
 - 🏷️ **Tagging**: Load only features relevant to your application, avoiding bloat
 - 👁️ **Tracking**: Track experiment activations with your favourite analytics tool
+
+SDK support:
+
+- [JavaScript](https://featurevisor.com/docs/sdks/) (both Node.js and browser environments)
+- [React](https://featurevisor.com/docs/react/)
+- [Vue.js](https://featurevisor.com/docs/vue/)
+
+Swift and Kotlin SDKs are coming soon for native apps.
 
 # Quick start
 
