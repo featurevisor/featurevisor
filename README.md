@@ -64,7 +64,7 @@ Featurevisor is a solution for managing your feature flags, experiments, and rem
 Workflow can be broken down into 3 steps:
 
 - 1️⃣ Manage feature flags, experiments, and remote config in your Git repository
-- 2️⃣ Trigger CI/CI pipeline to generate and upload datafiles (static JSON files) to your CDN
+- 2️⃣ Trigger CI/CD pipeline to generate and upload datafiles (static JSON files) to your CDN
 - 3️⃣ Fetch and evaluate datafiles in your applications using Featurevisor SDKs
 
 More documentation available at [https://featurevisor.com](https://featurevisor.com).
