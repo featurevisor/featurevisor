@@ -65,22 +65,25 @@
 
 Featurevisor is a solution for managing your feature flags, experiments, and remote config. It's built for developers, by developers.
 
-It introduces a workflow that's fully Git-based, where configuration is stored as YAMLs and changes are reviewed and merged via pull requests.
+Workflow can be broken down into 3 steps:
 
-The workflow results into datafiles (JSON files), that contain your feature configurations. These datafiles can then be fetched by your applications and evaluated using Featurevisor SDKs.
+- 1️⃣ Manage feature flags, experiments, and remote config in your Git repository
+- 2️⃣ Trigger CI/CI pipeline to generate and upload datafiles (static JSON files) to your CDN
+- 3️⃣ Fetch and evaluate datafiles in your applications using Featurevisor SDKs
 
 More documentation available at [https://featurevisor.com](https://featurevisor.com).
 
-# Features
+It supports:
 
 - 🚩 **Feature flags**: classic on/off switches
-- 🆎 **Experimentation**: run a/b and multivariate tests
+- 🆎 **Experimentation**: a/b and multivariate tests
 - 👥 **Segmentation**: reusable conditions for targeting groups of users
 - ↗️ **Gradual rollouts**: avoid big bang releases, and go from 0% to 100% rollout gradually
 - 🔧 **Variables**: store key/value pairs for remote config namespaced under each feature
 - 🎯 **Consistent bucketing**: makes sure same user gets same variation across devices/sessions
 - 🌏 **Multiple environments**: Go beyond just staging and production to fit your needs
 - 🏷️ **Tagging**: Load only features relevant to your application, avoiding bloat
+- 👁️ **Tracking**: Track experiment activations with your favourite analytics tool
 
 # Quick start
 
