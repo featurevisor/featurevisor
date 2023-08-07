@@ -61,6 +61,15 @@ $ featurevisor test
 
 See test specs in YAMLs [here](../../examples/example-1/tests) for inspiration.
 
+### `site`
+
+Start a local server to view your project's site.
+
+```
+$ featurevisor site export
+$ featurevisor site serve
+```
+
 ## License
 
 MIT © [Fahad Heylaal](https://fahad19.com)
