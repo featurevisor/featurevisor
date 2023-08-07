@@ -283,7 +283,7 @@ export class FeaturevisorInstance {
     return this.datafileReader.getRevision();
   }
 
-  private getFeature(featureKey: string | Feature): Feature | undefined {
+  getFeature(featureKey: string | Feature): Feature | undefined {
     return typeof featureKey === "string"
       ? this.datafileReader.getFeature(featureKey) // only key provided
       : featureKey; // full feature provided
