@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.44.0](https://github.com/fahad19/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
+
+
+### Features
+
+* make getFeature() method public ([#122](https://github.com/fahad19/featurevisor/issues/122)) ([e56455e](https://github.com/fahad19/featurevisor/commit/e56455e11ec7895455e2ff22436b7380f67e184d))
+
+
+
+
+
 # [0.43.0](https://github.com/fahad19/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
 
 
