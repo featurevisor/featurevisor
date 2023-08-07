@@ -30,6 +30,7 @@ We install the Featurevisor SDK first:
 ```bash
 $ npm install --save @featurevisor/sdk
 ```
+
 We can now create an instance of the SDK and use it in our application:
 
 ```typescript
@@ -59,7 +60,8 @@ async function bootstrap() {
 }
 bootstrap();
 ```
-## Featurevisor middleware
+
+## middleware
 
 To use the same Featurevisor SDK instance in all of our routes, we can create a custom middleware in Nest.js.
 
@@ -111,6 +113,7 @@ async function bootstrap() {
 }
 bootstrap();
 ```
+
 ## Using Featurevisor in a route
 
 Now you can use the Featurevisor SDK instance in your routes:
@@ -139,11 +142,12 @@ export class CatsController {
   }
 }
 ```
+
 ## TypeScript usage
 
-If you are using TypeScript, you can extend the Request interface to add the f property for Featurevisor SDK's instance.
+If you are using TypeScript, you can extend the `Request` interface to add the `f` property for Featurevisor SDK's instance.
 
-Create a new featurevisor.d.ts file in the src folder and make sure to include it in tsconfig.json:
+Create a new `featurevisor.d.ts` file in the `src` folder and make sure to include it in `tsconfig.json`:
 
 ```typescript
 // src/featurevisor.d.ts
