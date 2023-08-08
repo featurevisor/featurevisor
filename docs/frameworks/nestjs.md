@@ -1,5 +1,5 @@
 ---
-title: Nest.js
+title: NestJS
 description: Learn how to integrate Featurevisor in Nest.js applications
 ogImage: /img/og/docs-frameworks-nest.png
 ---
@@ -37,22 +37,22 @@ We can now create an instance of the SDK and use it in our application:
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { createInstance, FeaturevisorInstance } from '@featurevisor/sdk';
+import { createInstance } from '@featurevisor/sdk';
+
+// Define constants
+const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json';
+const REFRESH_INTERVAL = 60 * 5; // every 5 minutes
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json';
-  const REFRESH_INTERVAL = 60 * 5; // every 5 minutes
-
-  const f: FeaturevisorInstance = createInstance({
+  const f = createInstance({
     datafileUrl: DATAFILE_URL,
     refreshInterval: REFRESH_INTERVAL,
   });
 
   app.use((req, res, next) => {
     req.f = f;
-
     next();
   });
 
@@ -98,7 +98,6 @@ export class FeaturevisorMiddleware implements NestMiddleware {
 And then update the main.ts file to use the middleware:
 
 ```typescript
-Copy code
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -120,19 +119,20 @@ Now you can use the Featurevisor SDK instance in your routes:
 
 ```typescript
 // cats.controller.ts
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { Request } from 'express';
+import { FeaturevisorInstance } from '@featurevisor/sdk';
 
 @Controller('cats')
 export class CatsController {
-  @Get()
-  getCats(@Req() req: Request) {
-    const { f } = req;
+  constructor(@Inject('FeaturevisorInstance') private readonly f: FeaturevisorInstance) {}
 
+  @Get()
+  getCats() {
     const featureKey = 'myFeature';
     const context = { userId: 'user-123' };
 
-    const isEnabled = f.isEnabled(featureKey, context);
+    const isEnabled = this.f.isEnabled(featureKey, context);
 
     if (isEnabled) {
       return 'Hello Cats!';
