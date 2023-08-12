@@ -48,6 +48,14 @@
 </div>
 
 <div align="center">
+  Works with:
+    <img alt="JavaScript" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/javascript.svg" />
+    <img alt="Node.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nodejs-icon.svg" />
+    <img alt="React.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/react.svg" />
+    <img alt="Vue.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/vue.svg" />
+</div>
+
+<div align="center">
   <sub>Built by
   <a href="https://twitter.com/fahad19">@fahad19</a> and
   <a href="https://github.com/fahad19/featurevisor/graphs/contributors">
