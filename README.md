@@ -48,11 +48,12 @@
 </div>
 
 <div align="center">
-  Works with:
-    <img alt="JavaScript" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/javascript.svg" />
-    <img alt="Node.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nodejs-icon.svg" />
-    <img alt="React.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/react.svg" />
-    <img alt="Vue.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/vue.svg" />
+  Works with:&nbsp;
+    <img alt="JavaScript" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/javascript.svg" />&nbsp;
+    <img alt="Node.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nodejs-icon.svg" />&nbsp;
+    <img alt="React.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/react.svg" />&nbsp;
+    <img alt="Vue.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/vue.svg" />&nbsp;
+    <img alt="Browsers" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/chrome.svg" />
 </div>
 
 <div align="center">
