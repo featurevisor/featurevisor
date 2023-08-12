@@ -48,11 +48,11 @@ Know if the SDK is ready to be used:
 <script setup>
 import { useStatus } from "@featurevisor/vue";
 
-const { isReady } = useStatus();
+const status = useStatus();
 </script>
 
 <template>
-  <div v-if="isReady">
+  <div v-if="status.isReady">
     SDK is ready
   </div>
   <div v-else>
@@ -161,6 +161,10 @@ const sdk = useSdk();
 Given the nature of components in Vue.js, they can re-render many times.
 
 You are advised to minimize the number of calls to Featurevisor SDK in your components by using memoization techniques.
+
+## Example repository
+
+You can find a fully functional example of a Vue.js application using Featurevisor SDK here: [https://github.com/featurevisor/featurevisor-example-vue](https://github.com/featurevisor/featurevisor-example-vue).
 
 {% callout type="note" title="Help wanted with tests" %}
 We are looking for help with writing tests for this package. If you are interested, please take a look [here](https://github.com/fahad19/featurevisor/tree/main/packages/vue).
