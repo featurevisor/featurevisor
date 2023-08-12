@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.44.2](https://github.com/fahad19/featurevisor/compare/v0.44.1...v0.44.2) (2023-08-12)
+
+
+### Bug Fixes
+
+* useStatus React hook ([#124](https://github.com/fahad19/featurevisor/issues/124)) ([d042979](https://github.com/fahad19/featurevisor/commit/d042979d4f01d11eff88cfb545fe68fc8d0c8e98))
+
+
+
+
+
 ## [0.44.1](https://github.com/fahad19/featurevisor/compare/v0.44.0...v0.44.1) (2023-08-07)
 
 **Note:** Version bump only for package featurevisor
