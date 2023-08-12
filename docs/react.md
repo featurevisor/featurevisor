@@ -154,3 +154,7 @@ function MyComponent(props) {
 Given the nature of components in React, they can re-render many times.
 
 You are advised to minimize the number of calls to Featurevisor SDK in your components by using memoization techniques.
+
+## Example repository
+
+You can find a fully functional example of a React application using Featurevisor SDK here: [https://github.com/featurevisor/featurevisor-example-react](https://github.com/featurevisor/featurevisor-example-react).
