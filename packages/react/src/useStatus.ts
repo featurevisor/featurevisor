@@ -12,10 +12,6 @@ export function useStatus(): Status {
 
   const [isReady, setIsReady] = React.useState(initialStatus);
 
-  if (isReady) {
-    return { isReady };
-  }
-
   React.useEffect(function () {
     function handleReady() {
       setIsReady(true);
