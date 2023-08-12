@@ -24,6 +24,17 @@
 </div>
 
 <div align="center">
+  Supports:&nbsp;
+  <img alt="JavaScript" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/javascript.svg" />&nbsp;
+  <img alt="Browsers" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/chrome.svg" />&nbsp;
+  <img alt="Node.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nodejs-icon.svg" />&nbsp;
+  <img alt="React.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/react.svg" />&nbsp;
+  <img alt="Next.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nextjs-icon.svg" />&nbsp;
+  <img alt="Vue.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/vue.svg" />&nbsp;
+  <img alt="Nuxt" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nuxt-icon.svg" />&nbsp;
+</div>
+
+<div align="center">
   <h3>
     <a href="https://featurevisor.com">
       Website
@@ -45,15 +56,6 @@
       Changelog
     </a>
   </h3>
-</div>
-
-<div align="center">
-  Works with:&nbsp;
-    <img alt="JavaScript" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/javascript.svg" />&nbsp;
-    <img alt="Node.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/nodejs-icon.svg" />&nbsp;
-    <img alt="React.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/react.svg" />&nbsp;
-    <img alt="Vue.js" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/vue.svg" />&nbsp;
-    <img alt="Browsers" height="24" width="24" align="absmiddle" src="https://cdn.svgporn.com/logos/chrome.svg" />
 </div>
 
 <div align="center">
