@@ -44,6 +44,15 @@ f.refresh();
 
 However, this solution still means that our application will be using the old datafile content as configuration for theoretically maximum 60 seconds before it fetches the latest configuration again.
 
+## Benefits
+
+Having realtime updates in our application(s) can be beneficial in many ways:
+
+- **Immediate adaptation**: Development and product teams can adjust features and see them impact users immediately without needing the users to restart/reload their apps.
+- **Optimized performance**: By pushing updates in realtime, we avoid the overhead of periodic checks or polling, leading to faster application responses and reduced server strain.
+- **Proactive issue mitigation**: If a newly released feature is causing issues, it can be turned off instantly, minimizing the impact on users and potentially saving the organization from negative publicity or user churn.
+- **Increased confidence**: Knowing that features can be quickly adjusted or rolled back in realtime gives teams more confidence to experiment, test, and release.
+
 ## Enter WebSocket
 
 [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) is a communication protocol that provides full-duplex communication channels over a single TCP connection.
@@ -56,7 +65,7 @@ Since WebSocket is a great way to keep a connection alive between the client and
 
 [PartyKit]() is an open source deployment platform for AI agents, multiplayer and local-first apps, games, and websites.
 
-It can help us create a new realtime service that we can send messages to from our CI/CD pipeline whenever there are new changes in our Featurevisor project, and then listen to those messages in our application(s) to trigger a new refresh via our SDK instance.
+It can help us create a new realtime service that we can send messages to from our CI/CD pipeline whenever there are new changes in our Featurevisor project, and then listen to those messages in our application(s) using WebSocket API to trigger a new refresh in our SDK instance.
 
 ## The whole flow in steps
 
