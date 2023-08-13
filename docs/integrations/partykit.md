@@ -1,14 +1,14 @@
 ---
-title: PartyKit
-description: Learn how to integrate Featurevisor with PartyKit via WebSockets for realtime updates.
+title: WebSocket & PartyKit
+description: Learn how to integrate Featurevisor with PartyKit via WebSocket for realtime updates.
 ogImage: /img/og/docs-integrations-partykit.png
 ---
 
-Fetch latest configuration in already running applications using Featurevisor SDK as soon as there are latest datafile changes by listening to events via WebSocket powered by PartyKit. {% .lead %}
+Fetch latest configuration in already running applications using Featurevisor SDK as soon as there are latest datafile changes by listening to messages via [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) powered by [PartyKit](https://partykit.io). {% .lead %}
 
 ## What do we mean by realtime updates?
 
-Featurevisor SDK, once initialized with `datafileUrl` option, will fetch the [datafile](/docs/building-datafiles) containing our configuration from the provided URL. This is a one time operation and SDK will not fetch the latest configuration unless it is reinitialized (meaning until our application restarts or reloads):
+Featurevisor SDK, once initialized with `datafileUrl` option, will fetch the [datafile](/docs/building-datafiles) containing our configuration from the provided URL. This is a one time operation and SDK will not fetch the latest configuration unless it is reinitialized (meaning, until our application restarts or reloads):
 
 ```js
 import { createInstance } from "@featurevisor/sdk";
@@ -30,6 +30,7 @@ const f = createInstance({
 
   refreshInterval: 60, // every 60 seconds
   onRefresh: () => console.log("SDK has fetched the datafile again"),
+  onUpdate: () => console.log("Latest datafile has new content"),
 });
 ```
 
@@ -59,7 +60,7 @@ It can help us create a new realtime service that we can send messages to from o
 
 - We have a Featurevisor project in a Git repository
 - We have a CI/CD pipeline that builds our datafiles and deploys them to a CDN
-  - The CI/CD pipeline with send a message to our PartyKit server whenever there are new changes in our Featurevisor project
+  - The CI/CD pipeline will send a message to our PartyKit server whenever there are new changes in our Featurevisor project
 - Our PartyKit server will receive the message and broadcast it to all connected apps
 - Our application(s) will listen to the message and trigger a new refresh of our SDK instance
 
