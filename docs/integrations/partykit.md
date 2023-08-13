@@ -4,9 +4,9 @@ description: Learn how to integrate Featurevisor with PartyKit via WebSocket for
 ogImage: /img/og/docs-integrations-partykit.png
 ---
 
-Fetch latest configuration in already running applications using Featurevisor SDK as soon as there are latest datafile changes by listening to messages via [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) powered by [PartyKit](https://partykit.io). {% .lead %}
+Fetch latest datafile in already running applications using Featurevisor SDK as soon as there are latest changes by listening to messages via [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) powered by [PartyKit](https://partykit.io). {% .lead %}
 
-## What do we mean by realtime updates?
+## Realtime updates
 
 Featurevisor SDK, once initialized with `datafileUrl` option, will fetch the [datafile](/docs/building-datafiles) containing our configuration from the provided URL. This is a one time operation and SDK will not fetch the latest configuration unless it is reinitialized (meaning, until our application restarts or reloads):
 
@@ -20,6 +20,8 @@ const f = createInstance({
   onReady: () => console.log("SDK has initialized"),
 });
 ```
+
+This means that our application will not be updated with the latest configuration in realtime while it is running.
 
 This issue is partly mitigated by using the `refreshInterval` option, so that once the SDK is initialized, it can keep on fetching the datafile from the same URL every X number of seconds, in case it has new content:
 
@@ -48,7 +50,7 @@ However, this solution still means that our application will be using the old da
 
 By full-duplex, it means both the client and server can send messages to each other independently at the same time by keeping the connection alive.
 
-Since WebSocket is a great way to keep a connection alive between the client and server, we can use this protocol to listen to events from a server that can tell us to trigger a new refresh as soon as there has been any new updates in our Featurevisor project (the Git repository).
+Since WebSocket is a great way to keep a connection alive between the client and server, we can use this protocol to listen to events from a server that can tell us to trigger a new refresh in our SDK instance, as soon as there has been any new updates in our Featurevisor project (the Git repository).
 
 ## What is PartyKit?
 
@@ -56,7 +58,7 @@ Since WebSocket is a great way to keep a connection alive between the client and
 
 It can help us create a new realtime service that we can send messages to from our CI/CD pipeline whenever there are new changes in our Featurevisor project, and then listen to those messages in our application(s) to trigger a new refresh via our SDK instance.
 
-## Visualizing the whole flow in steps
+## The whole flow in steps
 
 - We have a Featurevisor project in a Git repository
 - We have a CI/CD pipeline that builds our datafiles and deploys them to a CDN
@@ -127,7 +129,9 @@ $ npx partykit deploy server.js --name my-party
 
 We can build on top of one of our existing guides on how to setup a CI/CD pipeline and deploy our generated datafiles using [GitHub Actions](/docs/integrations/github-actions) & [Cloudflare Pages](/docs/integrations/cloudflare-pages).
 
-We can add a new step to our workflow that will send a message to our PartyKit server whenever there are new changes in our Featurevisor project:
+This guide uses GitHub Actions, but you are free to choose any other tool of your preference.
+
+We can add a new step in our workflow that will send a message to our PartyKit server whenever there are new changes:
 
 ```yml
 # .github/workflows/publish.yml
@@ -178,5 +182,11 @@ socket.onmessage = (event) => {
   }
 };
 ```
+
+We just did that without even needing any new library, because WebSocket API is natively supported in modern browsers.
+
+{% callout type="note" title="WebSocket support in Node.js" %}
+If you are using Node.js, you can consider using the [ws](https://github.com/websockets/ws) package.
+{% /callout %}
 
 Wish just a few lines of code, we just made our application listen to messages from our PartyKit server and trigger a new refresh of our SDK instance as soon as there are new changes in our Featurevisor project, making every feature update a realtime update.
