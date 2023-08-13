@@ -78,23 +78,17 @@ Then we create a new `server.js` file and add the following code:
 ```js
 // replace with your own secret, and inject via environment variable
 const PARTY_SECRET_VALUE = "party-secret";
-const PARTY_HEADER_NAME = "x-partykit-secret";
+const PARTY_SECRET_HEADER = "x-partykit-secret";
 
 // the event type we will be broadcasting to all connected apps
 const REFRESH_TYPE = "refresh";
 
 export default {
-  onConnect(websocket, room) {
-    websocket.addEventListener("message", (event) => {
-      websocket.send("pong");
-    });
-  },
-
   // handle incoming request coming from our CI/CD pipeline
   async onRequest(request, room) {
     if (request.method === "POST") {
       const body = await request.json();
-      const secretInHeader = request.headers.get(PARTY_HEADER_NAME);
+      const secretInHeader = request.headers.get(PARTY_SECRET_HEADER);
 
       // once we identify the request is coming from our own CI/CD pipeline,
       // we broadcast a message to all connected apps
