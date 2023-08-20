@@ -23,7 +23,7 @@ import { createApp } from "vue";
 import { createInstance } from "@featurevisor/sdk";
 import { setupApp } from "@featurevisor/vue";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json"
 });
 
@@ -31,7 +31,7 @@ const app = createApp({
   /* root component options */
 });
 
-setupApp(app, sdk);
+setupApp(app, f);
 ```
 
 This will set up the SDK instance in your Vue application, and make it available in all components later.
@@ -148,7 +148,7 @@ Get the SDK instance:
 <script setup>
 import { useSdk } from "@featurevisor/vue";
 
-const sdk = useSdk();
+const f = useSdk();
 </script>
 
 <template>

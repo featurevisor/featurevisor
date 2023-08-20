@@ -63,7 +63,7 @@ describe("react: useVariable", function () {
     }
 
     render(
-      <FeaturevisorProvider sdk={getNewInstance()}>
+      <FeaturevisorProvider instance={getNewInstance()}>
         <TestComponent />
       </FeaturevisorProvider>,
     );

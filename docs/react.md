@@ -25,12 +25,12 @@ import ReactDOM from "react-dom";
 import { createInstance } from "@featurevisor/sdk";
 import { FeaturevisorProvider } from "@featurevisor/react";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json"
 });
 
 ReactDOM.render(
-  <FeaturevisorProvider sdk={sdk}>
+  <FeaturevisorProvider instance={f}>
     <App />
   </FeaturevisorProvider>,
   document.getElementById("root")
@@ -143,7 +143,7 @@ import React from "react":
 import { useSdk } from "@featurevisor/react";
 
 function MyComponent(props) {
-  const sdk = useSdk();
+  const f = useSdk();
 
   return <p>...</p>;
 };

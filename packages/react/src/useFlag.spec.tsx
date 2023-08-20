@@ -46,7 +46,7 @@ describe("react: useFlag", function () {
     }
 
     render(
-      <FeaturevisorProvider sdk={getNewInstance()}>
+      <FeaturevisorProvider instance={getNewInstance()}>
         <TestComponent />
       </FeaturevisorProvider>,
     );
@@ -62,7 +62,7 @@ describe("react: useFlag", function () {
     }
 
     render(
-      <FeaturevisorProvider sdk={getNewInstance(false)}>
+      <FeaturevisorProvider instance={getNewInstance(false)}>
         <TestComponent />
       </FeaturevisorProvider>,
     );
