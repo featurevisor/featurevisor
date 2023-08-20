@@ -31,7 +31,7 @@ The SDK integration snippet below provides a guide on how to push the `featurevi
 ```js
 import { createInstance } from '@featurevisor/sdk';
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
 
   onActivation: function (

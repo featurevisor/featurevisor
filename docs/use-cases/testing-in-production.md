@@ -171,7 +171,7 @@ Initialize the SDK first:
 ```js
 import { createInstance } from '@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
 });
 ```
@@ -185,7 +185,7 @@ const context = {
   deviceId: "device-id-1",
 };
 
-const isWishlistEnabled = sdk.isEnabled(featureKey, context);
+const isWishlistEnabled = f.isEnabled(featureKey, context);
 
 if (isWishlistEnabled) {
   // render the wishlist feature

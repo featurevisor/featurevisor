@@ -207,7 +207,7 @@ const datafileUrl =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 const datafileContent = await fetch(datafileUrl).then((res) => res.json());
 
-const sdk = createInstance({
+const f = createInstance({
   datafile: datafileContent,
 });
 ```
@@ -223,7 +223,7 @@ import { createInstance } from "@featurevisor/sdk";
 const datafileUrl =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl,
   onReady: function () {
     // datafile has been fetched successfully,
@@ -244,10 +244,10 @@ const context = {
 };
 
 // true or false
-const isBannerEnabled = sdk.isEnabled(featureKey, context);
+const isBannerEnabled = f.isEnabled(featureKey, context);
 
  // `control` or `treatment`
-const bannerVariation = sdk.getVariation(featureKey, context);
+const bannerVariation = f.getVariation(featureKey, context);
 ```
 
 Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.

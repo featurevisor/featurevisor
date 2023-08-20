@@ -124,7 +124,7 @@ First, initialize the SDK:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
 });
 ```
@@ -141,7 +141,7 @@ Set sticky features in the SDK for known user:
 ```js
 // we want our known user to be always bucketed
 // into the same plan (variation) as User Profile service suggests
-sdk.setStickyFeatures({
+f.setStickyFeatures({
   plan: {
     enabled: true,
     variation: userProfile.plan,
@@ -159,7 +159,7 @@ const context = {
   country: userProfile.country,
 };
 
-const entitlements = sdk.getVariable(featureKey, variableKey, context);
+const entitlements = f.getVariable(featureKey, variableKey, context);
 ```
 
 The `entitlements` variable will contain an array of all entitlements the user should have against their current plan.
@@ -210,7 +210,7 @@ We can expect our User Profile service to optionally provide the override inform
 We can then use the `overrideEntitlements` field from User Profile and set it as a sticky feature in Featurevisor SDK:
 
 ```js
-sdk.setStickyFeatures({
+f.setStickyFeatures({
   plan: {
     enabled: true,
     variation: userProfile.plan,
@@ -325,7 +325,7 @@ environments:
 This will then require you to evaluate each entitlement separately in your application code using Featurevisor SDKs:
 
 ```js
-const canCreatePosts = sdk.getVariable(
+const canCreatePosts = f.getVariable(
   "plan",
   "canCreatePosts",
   context

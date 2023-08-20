@@ -166,7 +166,7 @@ Then, initialize the SDK in your application:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafile: "https://cdn.yoursite.com/datafile.json",
 
   onReady: () => console.log("Datafile has been fetched and SDK is ready")
@@ -183,7 +183,7 @@ const context = {
   deviceType: "iphone"
 };
 
-const ctaButtonVariation = sdk.getVariation(featureKey, context);
+const ctaButtonVariation = f.getVariation(featureKey, context);
 
 if (ctaButtonVariation === "treatment") {
   // render the new CTA button
@@ -285,8 +285,8 @@ In your application, you can access the variables of the `hero` feature as follo
 const featureKey = "hero";
 const context = { deviceId: "device-123" };
 
-const headline = sdk.getVariable(featureKey, "headline", context);
-const ctaButtonText = sdk.getVariable(featureKey, "ctaButtonText", context);
+const headline = f.getVariable(featureKey, "headline", context);
+const ctaButtonText = f.getVariable(featureKey, "ctaButtonText", context);
 ```
 
 Use the values inside your hero element (component) when you render it.
@@ -302,7 +302,7 @@ This is where the `activate()` method of the SDK comes in handy. Before we call 
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafile: "https://cdn.yoursite.com/datafile.json",
 
   onReady: () => console.log("Datafile has been fetched and SDK is ready"),
@@ -332,7 +332,7 @@ For example, in the case of our CTA button experiment, we can activate the featu
 const featureKey = "hero";
 const context = { deviceId: "device-123" };
 
-sdk.activate(featureKey, context);
+f.activate(featureKey, context);
 ```
 
 ## Mutually exclusive experiments
