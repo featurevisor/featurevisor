@@ -4,12 +4,14 @@ import { FeaturevisorInstance } from "@featurevisor/sdk";
 import { FeaturevisorContext } from "./FeaturevisorContext";
 
 export interface FeaturevisorProviderProps {
-  sdk: FeaturevisorInstance;
+  instance: FeaturevisorInstance;
   children: React.ReactNode;
 }
 
 export function FeaturevisorProvider(props: FeaturevisorProviderProps) {
   return (
-    <FeaturevisorContext.Provider value={props.sdk}>{props.children}</FeaturevisorContext.Provider>
+    <FeaturevisorContext.Provider value={props.instance}>
+      {props.children}
+    </FeaturevisorContext.Provider>
   );
 }

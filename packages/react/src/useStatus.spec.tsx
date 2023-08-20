@@ -50,7 +50,7 @@ describe("react: useStatus", function () {
     }
 
     render(
-      <FeaturevisorProvider sdk={getNewInstance()}>
+      <FeaturevisorProvider instance={getNewInstance()}>
         <TestComponent />
       </FeaturevisorProvider>,
     );
