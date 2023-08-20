@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.45.0](https://github.com/fahad19/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
+
+
+### Features
+
+* React provider component prop renamed from sdk to instance ([#129](https://github.com/fahad19/featurevisor/issues/129)) ([9e8015c](https://github.com/fahad19/featurevisor/commit/9e8015c14a0924d25b75f06fd2a6e6ef6c5eee7a))
+
+
+
+
+
 # [0.44.0](https://github.com/fahad19/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
 
 **Note:** Version bump only for package @featurevisor/vue
