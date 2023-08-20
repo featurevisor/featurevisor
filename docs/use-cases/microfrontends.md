@@ -274,7 +274,7 @@ Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment)
 // in `products` microfrontend
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/production/datafile-tag-products.json",
 });
 ```
@@ -290,7 +290,7 @@ const context = {
   userId: "...",
 };
 
-const showMarketingBanner = sdk.isEnabled(featureKey, context);
+const showMarketingBanner = f.isEnabled(featureKey, context);
 
 if (showMarketingBanner) {
   // render marketing banner

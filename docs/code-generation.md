@@ -53,11 +53,11 @@ Initialize Featurevisor SDK as usual, and make your newly created package aware 
 import { createInstance } from "@featurevisor/sdk";
 import { setInstance } from "@yourorg/features";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
 });
 
-setInstance(sdk);
+setInstance(f);
 ```
 
 Afterwards, you can import your features from the generated package and evaluate their variations and variables.

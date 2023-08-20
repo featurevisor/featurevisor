@@ -116,7 +116,7 @@ We initialize the SDK first:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
   onReady: () => console.log("Datafile has been fetched and SDK is ready"),
 });
@@ -129,7 +129,7 @@ const featureKey = "checkout";
 const variableKey = "paymentMethods";
 const context = { userId: "user-123", country: "nl" };
 
-const paymentMethods = sdk.getVariable(
+const paymentMethods = f.getVariable(
   featureKey,
   variableKey,
   context
@@ -195,7 +195,7 @@ Now when we evaluate our features, we will get different results for users in th
 // Users in the Netherlands
 const context = { userId: "user-234", country: "nl" };
 
-const paymentMethods = sdk.getVariable(
+const paymentMethods = f.getVariable(
   featureKey,
   variableKey,
   context
@@ -214,7 +214,7 @@ While rest of the world will still get the same result as before (that is the de
 // Users in the US
 const context = { userId: "user-123", country: "us" };
 
-const paymentMethods = sdk.getVariable(
+const paymentMethods = f.getVariable(
   featureKey,
   variableKey,
   context

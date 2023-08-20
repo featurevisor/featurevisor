@@ -151,7 +151,7 @@ Now you can initialize the SDK with the URL of your datafile, and evaluate your 
 import { createInstance } from "@featurevisor/sdk";
 
 // Initialize the SDK
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "https://cdn.yoursite.com/datafile.json",
   onReady: () => console.log("Datafile has been fetched and SDK is ready"),
 });
@@ -163,9 +163,9 @@ const context = {
   country: "nl",
 };
 
-const isEnabled = sdk.isEnabled(featureKey, context);
-const variation = sdk.getVariation(featureKey, context);
-const variable  = sdk.getVariable(featureKey, "someVariableKey", context);
+const isEnabled = f.isEnabled(featureKey, context);
+const variation = f.getVariation(featureKey, context);
+const variable  = f.getVariable(featureKey, "someVariableKey", context);
 ```
 
 Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).

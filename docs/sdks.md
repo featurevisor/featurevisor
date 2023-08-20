@@ -31,7 +31,7 @@ const datafileUrl =
 
 const datafileContent = await fetch(datafileUrl).then((res) => res.json());
 
-const sdk = createInstance({
+const f = createInstance({
   datafile: datafileContent
 });
 ```
@@ -47,7 +47,7 @@ import { createInstance } from "@featurevisor/sdk";
 const datafileUrl =
   "https://cdn.yoursite.com/production/datafile-tag-all.json";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
 
   onReady: function () {
@@ -60,7 +60,7 @@ const sdk = createInstance({
 If you need to take further control on how the datafile is fetched, you can pass a custom `handleDatafileFetch` function:
 
 ```js
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
 
   onReady: function () {
@@ -100,7 +100,7 @@ const context = {
   country: "nl",
 };
 
-const isEnabled = sdk.isEnabled(featureKey, context);
+const isEnabled = f.isEnabled(featureKey, context);
 ```
 
 ## Getting variations
@@ -114,7 +114,7 @@ const context = {
   country: "nl",
 };
 
-const variation = sdk.getVariation(featureKey, context);
+const variation = f.getVariation(featureKey, context);
 ```
 
 ## Getting variables
@@ -122,7 +122,7 @@ const variation = sdk.getVariation(featureKey, context);
 ```js
 const variableKey = "bgColor";
 
-const bgColorValue = sdk.getVariable(featureKey, variableKey, context);
+const bgColorValue = f.getVariable(featureKey, variableKey, context);
 ```
 
 ## Type specific methods
@@ -132,43 +132,43 @@ Next to generic `getVariable()` methods, there are also type specific methods av
 ### `boolean`
 
 ```js
-sdk.getVariableBoolean(featureKey, variableKey, context);
+f.getVariableBoolean(featureKey, variableKey, context);
 ```
 
 ### `string`
 
 ```js
-sdk.getVariableString(featureKey, variableKey, context);
+f.getVariableString(featureKey, variableKey, context);
 ```
 
 ### `integer`
 
 ```js
-sdk.getVariableInteger(featureKey, variableKey, context);
+f.getVariableInteger(featureKey, variableKey, context);
 ```
 
 ### `double`
 
 ```js
-sdk.getVariableDouble(featureKey, variableKey, context);
+f.getVariableDouble(featureKey, variableKey, context);
 ```
 
 ### `array`
 
 ```js
-sdk.getVariableArray(featureKey, variableKey, context);
+f.getVariableArray(featureKey, variableKey, context);
 ```
 
 ### `object`
 
 ```ts
-sdk.getVariableObject<T>(featureKey, variableKey, context);
+f.getVariableObject<T>(featureKey, variableKey, context);
 ```
 
 ### `json`
 
 ```ts
-sdk.getVariableJSON<T>(featureKey, variableKey, context);
+f.getVariableJSON<T>(featureKey, variableKey, context);
 ```
 
 
@@ -176,10 +176,10 @@ sdk.getVariableJSON<T>(featureKey, variableKey, context);
 
 Activation is useful when you want to track what features and their variations are exposed to your users.
 
-It works the same as `sdk.getVariation()` method, but it will also bubble an event up that you can listen to.
+It works the same as `f.getVariation()` method, but it will also bubble an event up that you can listen to.
 
 ```js
-const sdk = createInstance({
+const f = createInstance({
   datafile: datafileContent,
 
   // handler for activations
@@ -198,7 +198,7 @@ const sdk = createInstance({
   }
 });
 
-const variation = sdk.activate(featureKey, context);
+const variation = f.activate(featureKey, context);
 ```
 
 From the `onActivation` handler, you can send the activation event to your analytics service.
@@ -212,7 +212,7 @@ This helps in cases when you fail to fetch the datafile, but you still wish your
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "...",
 
   initialFeatures: {
@@ -243,7 +243,7 @@ If you have already identified your user in your application, and know what feat
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: "...",
 
   stickyFeatures: {
@@ -268,7 +268,7 @@ Once initialized with sticky features, the SDK will look for values there first 
 You can also set sticky features after the SDK is initialized:
 
 ```js
-sdk.setStickyFeatures({
+f.setStickyFeatures({
   myFeatureKey: {
     enabled: true,
     variation: "treatment",
@@ -296,7 +296,7 @@ You can customize it further:
 ```js
 import { createInstance, createLogger } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   // ...
   logger: createLogger({
     levels: [
@@ -312,7 +312,7 @@ const sdk = createInstance({
 You can also set log levels from instance afterwards:
 
 ```js
-sdk.setLogLevels(["error", "warn"]);
+f.setLogLevels(["error", "warn"]);
 ```
 
 ### Handler
@@ -320,7 +320,7 @@ sdk.setLogLevels(["error", "warn"]);
 You can also pass your own log handler, if you do not wish to print the logs to the console:
 
 ```js
-const sdk = createInstance({
+const f = createInstance({
   // ...
   logger: createLogger({
     levels: ["error", "warn", "info", "debug"],
@@ -344,7 +344,7 @@ const defaultContext = {
   country: "nl",
 };
 
-const sdk = createInstance({
+const f = createInstance({
   // ...
   interceptContext: function (context) {
     // return updated context
@@ -369,11 +369,11 @@ It is only possible to refresh datafile in Featurevisor if you are using the `da
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
 });
 
-sdk.refresh();
+f.refresh();
 ```
 
 ### Refresh by interval
@@ -383,7 +383,7 @@ If you want to refresh your datafile every X number of seconds, you can pass the
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
   refreshInterval: 30, // 30 seconds
 });
@@ -392,13 +392,13 @@ const sdk = createInstance({
 You can stop the interval by calling:
 
 ```js
-sdk.stopRefreshing();
+f.stopRefreshing();
 ```
 
 If you want to resume refreshing:
 
 ```js
-sdk.startRefreshing();
+f.startRefreshing();
 ```
 
 ### Listening for updates
@@ -408,7 +408,7 @@ Every successful refresh will trigger the `onRefresh()` option:
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
   onRefresh: function () {
     // datafile has been refreshed successfully
@@ -421,7 +421,7 @@ Not every refresh is going to be of a new datafile version. If you want to know 
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-const sdk = createInstance({
+const f = createInstance({
   datafileUrl: datafileUrl,
   onUpdate: function () {
     // datafile has been refreshed, and
@@ -443,7 +443,7 @@ You can listen to these events that can occur at various stages in your applicat
 When the SDK is ready to be used if used in an asynchronous way involving `datafileUrl` option:
 
 ```js
-sdk.on("ready", function () {
+f.on("ready", function () {
   // sdk is ready to be used
 });
 ```
@@ -453,7 +453,7 @@ The `ready` event is fired maximum once.
 You can also synchronously check if the SDK is ready:
 
 ```js
-if (sdk.isReady()) {
+if (f.isReady()) {
   // sdk is ready to be used
 }
 ```
@@ -463,7 +463,7 @@ if (sdk.isReady()) {
 When a feature is activated:
 
 ```js
-sdk.on("activation", function (
+f.on("activation", function (
   featureKey,
   variationValue,
   fullContext,
@@ -483,7 +483,7 @@ sdk.on("activation", function (
 When the datafile is refreshed:
 
 ```js
-sdk.on("refresh", function () {
+f.on("refresh", function () {
   // datafile has been refreshed successfully
 });
 ```
@@ -495,7 +495,7 @@ This will only occur if you are using `refreshInterval` option.
 When the datafile is refreshed, and new datafile content is different from the previous one:
 
 ```js
-sdk.on("update", function () {
+f.on("update", function () {
   // datafile has been refreshed, and
   // new datafile content is different from the previous one
 });
@@ -512,9 +512,9 @@ const onReadyHandler = function () {
   // ...
 };
 
-sdk.on("ready", onReadyHandler);
+f.on("ready", onReadyHandler);
 
-sdk.removeListener("ready", onReadyHandler);
+f.removeListener("ready", onReadyHandler);
 ```
 
 ### Remove all listeners
@@ -522,14 +522,14 @@ sdk.removeListener("ready", onReadyHandler);
 If you wish to remove all listeners of any specific event type:
 
 ```js
-sdk.removeAllListeners("ready");
-sdk.removeAllListeners("activation");
+f.removeAllListeners("ready");
+f.removeAllListeners("activation");
 ```
 
 If you wish to remove all active listeners of all event types in one go:
 
 ```js
-sdk.removeAllListeners();
+f.removeAllListeners();
 ```
 
 ## Evaluation details
@@ -538,13 +538,13 @@ Besides logging with debug level enabled, you can also get more details about ho
 
 ```js
 // flag
-const evaluation = sdk.evaluateFlag(featureKey, context);
+const evaluation = f.evaluateFlag(featureKey, context);
 
 // variation
-const evaluation = sdk.evaluateVariation(featureKey, context);
+const evaluation = f.evaluateVariation(featureKey, context);
 
 // variable
-const evaluation = sdk.evaluateVariable(featureKey, variableKey, context);
+const evaluation = f.evaluateVariable(featureKey, variableKey, context);
 ```
 
 The returned object will always contain the following properties:
