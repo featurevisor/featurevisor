@@ -45,7 +45,8 @@
       { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
       { "title": "Experiments", "href": "/docs/use-cases/experiments" },
-      { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" }
+      { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" },
+      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" }
     ]
   },
   {
