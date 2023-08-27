@@ -5,7 +5,10 @@
   },
   {
     "title": "Concepts",
-    "links": [{ "title": "Feature management", "href": "/docs/feature-management" }]
+    "links": [
+      { "title": "Feature management", "href": "/docs/feature-management" },
+      { "title": "GitOps", "href": "/docs/concepts/gitops" }
+    ]
   },
   {
     "title": "Building blocks",

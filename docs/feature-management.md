@@ -1,6 +1,7 @@
 ---
 title: Feature management
 description: Learn what feature management is all about and how to use it to roll out new features safely.
+ogImage: /img/og/docs-feature-management.png
 ---
 
 It is best to consider feature management as a **practice** rather than a **tool**. {% .lead %}
