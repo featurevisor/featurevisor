@@ -45,6 +45,32 @@ describe("sdk: instance", function () {
     }, 0);
   });
 
+  it("should resolve onReady method as Promise", function (done) {
+    let readyCount = 0;
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [],
+        attributes: [],
+        segments: [],
+      },
+      onReady: () => {
+        readyCount += 1;
+      },
+    });
+
+    setTimeout(() => {
+      sdk.onReady().then((f) => {
+        expect(f.isReady()).toEqual(true);
+        expect(readyCount).toEqual(1);
+
+        done();
+      });
+    }, 0);
+  });
+
   it("should configure plain bucketBy", function () {
     let capturedBucketKey = "";
 
