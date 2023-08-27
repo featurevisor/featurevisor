@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/fahad19/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
+
+
+### Features
+
+* onReady method for SDK as Promise ([#133](https://github.com/fahad19/featurevisor/issues/133)) ([e8dd395](https://github.com/fahad19/featurevisor/commit/e8dd39557b60b40d67488647d60f23423bbfbbb9))
+
+
+
+
+
 # [0.45.0](https://github.com/fahad19/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
 
 **Note:** Version bump only for package @featurevisor/sdk

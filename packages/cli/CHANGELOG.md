@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/fahad19/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
 # [0.45.0](https://github.com/fahad19/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
 
 **Note:** Version bump only for package @featurevisor/cli
