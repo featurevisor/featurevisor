@@ -34,6 +34,7 @@
     "links": [
       { "title": "React", "href": "/docs/react" },
       { "title": "React Native", "href": "/docs/react-native" },
+      { "title": "Next.js", "href": "/docs/frameworks/nextjs" },
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Express.js", "href": "/docs/frameworks/express" }
     ]
