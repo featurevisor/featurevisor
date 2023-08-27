@@ -16,6 +16,11 @@
     <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg?style=flat-square"
       alt="NPM version" />
   </a>
+  <!-- Discord -->
+  <a href="https://discord.gg/8mkW89JB">
+    <img src="https://img.shields.io/discord/1141123659663147008?color=7289DA&logo=discord&logoColor=white"
+      alt="Discord" />
+  </a>
   <!-- License -->
   <a href="./LICENSE">
     <img src="https://img.shields.io/npm/l/@featurevisor/sdk.svg?style=flat-square"
