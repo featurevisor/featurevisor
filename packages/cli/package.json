@@ -8,7 +8,6 @@
     "featurevisor": "bin.js"
   },
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",

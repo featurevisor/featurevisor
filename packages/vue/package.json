@@ -6,7 +6,6 @@
   "module": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",

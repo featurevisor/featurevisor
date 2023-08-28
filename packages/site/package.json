@@ -4,7 +4,6 @@
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "echo 'Nothing to transpile in this package'",
     "dist:js": "webpack --config ./webpack.config.js",
     "dist:css": "tailwindcss -i ./src/index.css -o ./dist/index.css",

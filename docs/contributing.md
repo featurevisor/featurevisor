@@ -49,6 +49,26 @@ $ npm run build
 $ npm test
 ```
 
+Apply project-wide code styles:
+
+```
+$ npm run lint
+```
+
+If you wish to override certain Prettier configuration in particular package, add (or edit) following file to the package level:
+
+```js
+const rootConfig = require("../../prettier.config");
+
+/** @type {import('prettier').Config} */
+const config = {
+  ...rootConfig,
+  // Here you can add local Prettier overrides
+};
+
+module.exports = config;
+```
+
 ### Pull Requests
 
 Send Pull Requests against the `main` branch.
