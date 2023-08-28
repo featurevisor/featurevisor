@@ -52,7 +52,19 @@ As engineers, we might say that GitOps is the best thing since sliced bread. But
 
 Featurevisor comes with a [status site generator](/docs/site) as well, so that the current status of all your feature flags, their targeting conditions, and rollout rules can be easily viewed by anyone in your team and organization via a nice and usable website.
 
-With Git hosting providers becoming more usable over time allowing changes to be made directly from your browser (like with [GitHub](https://github.com)), one does not have to be a tech guru to find the YAML files in a Git repository to read and understand them. They can also send changes of their desired feature flags by updating or creating new YAML files straight from the browser.
+With Git hosting providers becoming more usable over time allowing changes to be made directly from your browser (like with [GitHub](https://github.com)), one does not have to be technically too advanced to find the YAML files in a Git repository to read and understand them. They can also send changes of their desired feature flags by updating or creating new YAML files straight from the browser.
+
+## Learning resources
+
+Assuming you are using GitHub, you can refer to these resources to learn how to send changes to your Git repository directly from your browser:
+
+- [About branches](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-branches)
+- [Creating a branch](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-and-deleting-branches-within-your-repository)
+- [Editing files](https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files)
+- [Creating a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
+- [Requesting a review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review)
+- [Comment on a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/commenting-on-a-pull-request)
+- [Merging a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request)
 
 ## Conclusion
 
