@@ -11,8 +11,10 @@
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
-    "lint": "prettier . --check --cache --log-level=warn && eslint . --cache",
-    "lint:fix": "prettier . --write --cache --log-level=warn && eslint . --fix --cache"
+    "format": "prettier . --check --cache --log-level=warn",
+    "lint": "eslint . --cache",
+    "format:fix": "prettier . --write --cache --log-level=warn",
+    "lint:fix": "eslint . --fix --cache"
   },
   "author": {
     "name": "Fahad Heylaal",
