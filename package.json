@@ -11,8 +11,8 @@
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
-    "lint": "prettier . --check --cache --log-level=warn",
-    "lint:fix": "prettier . --write --cache --log-level=warn"
+    "lint": "prettier . --check --cache --log-level=warn && eslint . --cache",
+    "lint:fix": "prettier . --write --cache --log-level=warn && eslint . --fix --cache"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -22,6 +22,10 @@
   "devDependencies": {
     "@types/jest": "^29.4.0",
     "@types/node": "^18.13.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "eslint": "^8.48.0",
+    "eslint-config-prettier": "^9.0.0",
     "jest": "^29.4.2",
     "lerna": "^6.5.0",
     "prettier": "^3.0.2",
