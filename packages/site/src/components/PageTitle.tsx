@@ -1,9 +1,6 @@
 import * as React from "react";
 
-export function PageTitle(props: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+export function PageTitle(props: { children: React.ReactNode; className?: string }) {
   return (
     <h1
       className={[

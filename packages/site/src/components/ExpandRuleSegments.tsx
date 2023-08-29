@@ -10,8 +10,7 @@ export function ExpandRuleSegments(props: ExpandRuleSegmentsProps) {
   if (segments === "*") {
     return (
       <pre>
-        <code className="rounded bg-gray-100 px-2 py-1 text-red-400">*</code>{" "}
-        (everyone)
+        <code className="rounded bg-gray-100 px-2 py-1 text-red-400">*</code> (everyone)
       </pre>
     );
   }
@@ -22,11 +21,7 @@ export function ExpandRuleSegments(props: ExpandRuleSegmentsProps) {
         {segments.map((segment: any, index: number) => {
           return (
             <li key={index} className="py-1">
-              {typeof segment === "string" ? (
-                segment
-              ) : (
-                <ExpandRuleSegments segments={segment} />
-              )}
+              {typeof segment === "string" ? segment : <ExpandRuleSegments segments={segment} />}
             </li>
           );
         })}
@@ -47,9 +42,7 @@ export function ExpandRuleSegments(props: ExpandRuleSegmentsProps) {
 
     return (
       <>
-        <span className={`rounded-full px-2 py-1 text-sm font-bold ${classes}`}>
-          {type}:
-        </span>
+        <span className={`rounded-full px-2 py-1 text-sm font-bold ${classes}`}>{type}:</span>
         <ExpandRuleSegments segments={segments[type]} />
       </>
     );

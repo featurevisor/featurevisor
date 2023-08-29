@@ -5,9 +5,7 @@ function getPrettyDate(props) {
   const date = new Date(props.date);
 
   const day = date.getDate();
-  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(
-    date
-  );
+  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(date);
   const year = date.getFullYear();
 
   const ordinalSuffix = (day: number) => {
@@ -30,9 +28,7 @@ function getPrettyDate(props) {
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? "PM" : "AM";
     const hour12 = hours % 12 || 12;
-    const prettyTime = `${hour12}:${minutes
-      .toString()
-      .padStart(2, "0")}${ampm}`;
+    const prettyTime = `${hour12}:${minutes.toString().padStart(2, "0")}${ampm}`;
 
     return (
       <>
