@@ -13,7 +13,7 @@
 <div align="center">
   <!-- NPM version -->
   <a href="https://npmjs.org/package/@featurevisor/sdk">
-    <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg?style=flat-square"
+    <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg"
       alt="NPM version" />
   </a>
   <!-- Discord -->
@@ -23,7 +23,7 @@
   </a>
   <!-- License -->
   <a href="./LICENSE">
-    <img src="https://img.shields.io/npm/l/@featurevisor/sdk.svg?style=flat-square"
+    <img src="https://img.shields.io/npm/l/@featurevisor/sdk.svg"
       alt="License" />
   </a>
 </div>
