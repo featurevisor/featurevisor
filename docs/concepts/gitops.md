@@ -1,5 +1,5 @@
 ---
-title: GitOps
+title: What is GitOps?
 description: Learn what GitOps mean and how it applies to Featurevisor
 ogImage: /img/og/docs-concepts-gitops.png
 ---
@@ -12,7 +12,7 @@ If you have ever worked on a software project, you are probably familiar with [G
 
 But what if we told you that Git could be used for much more than just that? Enter GitOps, a term that's gaining traction in the software engineering community.
 
-## What is GitOps?
+## GitOps
 
 GitOps is like treating your infrastructure and operational tasks as if they were code.
 
