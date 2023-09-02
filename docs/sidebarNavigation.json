@@ -6,7 +6,8 @@
   {
     "title": "Concepts",
     "links": [
-      { "title": "Feature management", "href": "/docs/feature-management" },
+      { "title": "Feature Management", "href": "/docs/feature-management" },
+      { "title": "Cloud Native Architecture", "href": "/docs/concepts/cloud-native-architecture" },
       { "title": "GitOps", "href": "/docs/concepts/gitops" }
     ]
   },
