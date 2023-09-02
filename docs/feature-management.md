@@ -17,7 +17,7 @@ Feature Management is the practice of controlling the visibility and behavior of
 - **Toggle features**: Turn features on or off without changing the application code.
 - **Rollout control**: Gradually release new features to a subset of users.
 - **A/B & multivariate testing**: [Experiment](/docs/use-cases/experiments) with different variations of a feature to see which performs better.
-- **Remote configuration**: Change the behavior or appearance of features without deploying new application code.
+- **Remote configuration**: Change the [behavior](/docs/use-cases/remote-configuration) or appearance of features without deploying new application code.
 
 ## Challenges with traditional feature management
 
