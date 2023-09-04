@@ -39,6 +39,110 @@ describe("sdk: Conditions", function () {
       expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
     });
 
+    it("should match with operator: startsWith", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "name",
+          operator: "startsWith",
+          value: "Hello",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hello Universe" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
+    });
+
+    it("should match with operator: endsWith", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "name",
+          operator: "endsWith",
+          value: "World",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { name: "Hi Universe" })).toEqual(false);
+    });
+
+    it("should match with operator: contains", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "name",
+          operator: "contains",
+          value: "Hello",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
+    });
+
+    it("should match with operator: notContains", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "name",
+          operator: "notContains",
+          value: "Hello",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(false);
+    });
+
+    it("should match with operator: in", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "browser_type",
+          operator: "in",
+          value: ["chrome", "firefox"],
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(false);
+    });
+
+    it("should match with operator: notIn", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "browser_type",
+          operator: "notIn",
+          value: ["chrome", "firefox"],
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
+    });
+
     it("should match with operator: greaterThan", function () {
       const conditions: Condition[] = [
         {
@@ -55,6 +159,24 @@ describe("sdk: Conditions", function () {
       expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
     });
 
+    it("should match with operator: greaterThanOrEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "age",
+          operator: "greaterThanOrEquals",
+          value: 18,
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 16 })).toEqual(false);
+    });
+
     it("should match with operator: lessThan", function () {
       const conditions: Condition[] = [
         {
@@ -69,6 +191,24 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
+    });
+
+    it("should match with operator: lessThanOrEquals", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "age",
+          operator: "lessThanOrEquals",
+          value: 18,
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 20 })).toEqual(false);
     });
 
     it("should match with operator: semverEquals", function () {

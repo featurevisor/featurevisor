@@ -45,6 +45,32 @@ describe("sdk: instance", function () {
     }, 0);
   });
 
+  it("should resolve onReady method as Promise", function (done) {
+    let readyCount = 0;
+
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [],
+        attributes: [],
+        segments: [],
+      },
+      onReady: () => {
+        readyCount += 1;
+      },
+    });
+
+    setTimeout(() => {
+      sdk.onReady().then((f) => {
+        expect(f.isReady()).toEqual(true);
+        expect(readyCount).toEqual(1);
+
+        done();
+      });
+    }, 0);
+  });
+
   it("should configure plain bucketBy", function () {
     let capturedBucketKey = "";
 
@@ -288,7 +314,8 @@ describe("sdk: instance", function () {
   it("should refresh datafile", function (done) {
     let revision = 1;
     let refreshed = false;
-    let updated = false;
+    let updatedViaOption = false;
+    let updatedViaEventListener = false;
 
     function getDatafileContent(): DatafileContent {
       const content: DatafileContent = {
@@ -333,15 +360,24 @@ describe("sdk: instance", function () {
         refreshed = true;
       },
       onUpdate() {
-        updated = true;
+        updatedViaOption = true;
       },
     });
+
+    const onUpdateCallback = function () {
+      updatedViaEventListener = true;
+    };
+
+    sdk.on("update", onUpdateCallback);
 
     expect(sdk.isReady()).toEqual(false);
 
     setTimeout(function () {
       expect(refreshed).toEqual(true);
-      expect(updated).toEqual(true);
+      expect(updatedViaOption).toEqual(true);
+      expect(updatedViaEventListener).toEqual(true);
+
+      sdk.off("update", onUpdateCallback);
 
       expect(sdk.isReady()).toEqual(true);
 
@@ -727,5 +763,122 @@ describe("sdk: instance", function () {
     expect(testVariation).toEqual("control");
     expect(deprecatedTestVariation).toEqual("control");
     expect(deprecatedCount).toEqual(1);
+  });
+
+  it("should get variable", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            variablesSchema: [
+              {
+                key: "color",
+                type: "string",
+                defaultValue: "red",
+              },
+              {
+                key: "showSidebar",
+                type: "boolean",
+                defaultValue: false,
+              },
+              {
+                key: "count",
+                type: "integer",
+                defaultValue: 0,
+              },
+              {
+                key: "paymentMethods",
+                type: "array",
+                defaultValue: ["paypal", "creditcard"],
+              },
+              {
+                key: "flatConfig",
+                type: "object",
+                defaultValue: {
+                  key: "value",
+                },
+              },
+              {
+                key: "nestedConfig",
+                type: "json",
+                defaultValue: JSON.stringify({
+                  key: {
+                    nested: "value",
+                  },
+                }),
+              },
+            ],
+            variations: [
+              { value: "control" },
+              {
+                value: "treatment",
+                variables: [
+                  {
+                    key: "showSidebar",
+                    value: true,
+                  },
+                ],
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    const context = {
+      userId: "123",
+    };
+
+    expect(sdk.getVariation("test", context)).toEqual("treatment");
+
+    expect(sdk.getVariable("test", "color", context)).toEqual("red");
+    expect(sdk.getVariableString("test", "color", context)).toEqual("red");
+
+    expect(sdk.getVariable("test", "showSidebar", context)).toEqual(true);
+    expect(sdk.getVariableBoolean("test", "showSidebar", context)).toEqual(true);
+
+    expect(sdk.getVariable("test", "count", context)).toEqual(0);
+    expect(sdk.getVariableInteger("test", "count", context)).toEqual(0);
+
+    expect(sdk.getVariable("test", "paymentMethods", context)).toEqual(["paypal", "creditcard"]);
+    expect(sdk.getVariableArray("test", "paymentMethods", context)).toEqual([
+      "paypal",
+      "creditcard",
+    ]);
+
+    expect(sdk.getVariable("test", "flatConfig", context)).toEqual({
+      key: "value",
+    });
+    expect(sdk.getVariableObject("test", "flatConfig", context)).toEqual({
+      key: "value",
+    });
+
+    expect(sdk.getVariable("test", "nestedConfig", context)).toEqual({
+      key: {
+        nested: "value",
+      },
+    });
+    expect(sdk.getVariableJSON("test", "nestedConfig", context)).toEqual({
+      key: {
+        nested: "value",
+      },
+    });
   });
 });

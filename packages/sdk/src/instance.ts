@@ -265,6 +265,22 @@ export class FeaturevisorInstance {
     }
   }
 
+  onReady(): Promise<FeaturevisorInstance> {
+    return new Promise((resolve) => {
+      if (this.statuses.ready) {
+        return resolve(this);
+      }
+
+      const cb = () => {
+        this.emitter.removeListener("ready", cb);
+
+        resolve(this);
+      };
+
+      this.emitter.addListener("ready", cb);
+    });
+  }
+
   setDatafile(datafile: DatafileContent | string) {
     try {
       this.datafileReader = new DatafileReader(

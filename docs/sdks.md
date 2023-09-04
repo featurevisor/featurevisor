@@ -458,6 +458,14 @@ if (f.isReady()) {
 }
 ```
 
+For convenience, you can check the readiness with a Promise-based API as well:
+
+```js
+f.onReady().then(function () {
+  // sdk is ready to be used
+});
+```
+
 #### `activation`
 
 When a feature is activated:

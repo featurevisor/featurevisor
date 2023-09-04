@@ -5,7 +5,11 @@
   },
   {
     "title": "Concepts",
-    "links": [{ "title": "Feature management", "href": "/docs/feature-management" }]
+    "links": [
+      { "title": "Feature Management", "href": "/docs/feature-management" },
+      { "title": "Cloud Native Architecture", "href": "/docs/concepts/cloud-native-architecture" },
+      { "title": "GitOps", "href": "/docs/concepts/gitops" }
+    ]
   },
   {
     "title": "Building blocks",
@@ -34,6 +38,7 @@
     "links": [
       { "title": "React", "href": "/docs/react" },
       { "title": "React Native", "href": "/docs/react-native" },
+      { "title": "Next.js", "href": "/docs/frameworks/nextjs" },
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Express.js", "href": "/docs/frameworks/express" }
     ]
@@ -46,7 +51,8 @@
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
       { "title": "Experiments", "href": "/docs/use-cases/experiments" },
       { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" },
-      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" }
+      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
+      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" }
     ]
   },
   {

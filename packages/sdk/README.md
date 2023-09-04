@@ -35,6 +35,7 @@ Visit [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/)
   - [`off`](#off)
   - [`removeListener`](#removelistener)
   - [`removeAllListeners`](#removealllisteners)
+  - [`onReady`](#onready-1)
 
 ## Installation
 
@@ -375,6 +376,12 @@ Alias for `off` method.
 ### `removeAllListeners`
 
 > `removeAllListeners(event?: string): void`
+
+### `onReady`
+
+Resolves the SDK instance with a promise for convenience when it's ready:
+
+> onReady(): Promise<FeaturevisorInstance>
 
 ## License <!-- omit in toc -->
 
