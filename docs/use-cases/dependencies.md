@@ -6,7 +6,7 @@ ogImage: /img/og/docs-use-cases-dependencies.png
 
 Imagine you're setting up a chain of dominoes. Each domino is set to fall only if the one before it does. In much the same way, Featurevisor introduces the concept of dependent feature flags, where one feature's availability can depend on another. {% .lead %}
 
-This guide will walk you through how this powerful functionality can be a game-changer for e-commerce applications.
+This guide will walk you through how this powerful functionality can be a game-changer for any type of applications.
 
 ## When to use dependent feature flags?
 
@@ -57,7 +57,7 @@ environments:
         percentage: 100
 ```
 
-We can then require the `onceClickCheckout` feature when we defined our "**Express shipping**" feature:
+We can then require the `oneClickCheckout` feature when we defined our "**Express shipping**" feature:
 
 ```yml
 # features/expressShipping.yml
@@ -107,7 +107,7 @@ Above example was very simple since we were only checking if features were enabl
 
 But what if we require a feature to be enabled only if a specific variation of another feature is enabled?
 
-Let's say we want to test two variations of our `oneClickCheckout` feature:
+Let's say we want to test two variations in our `oneClickCheckout` feature:
 
 ```yml
 # features/oneClickCheckout.yml
@@ -118,6 +118,7 @@ bucketBy: userId
 tags:
   - checkout
 
+# new variations introduced here
 variations:
   - value: control
     weight: 50
