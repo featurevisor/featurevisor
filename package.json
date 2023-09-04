@@ -11,8 +11,8 @@
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
-    "format": "prettier . --check --cache --log-level=warn",
-    "lint": "eslint . --cache",
+    "format": "lerna run format",
+    "lint": "lerna run lint",
     "format:fix": "prettier . --write --cache --log-level=warn",
     "lint:fix": "eslint . --fix --cache"
   },

@@ -6,6 +6,10 @@ const config = {
   env: {
     node: true,
   },
+  rules: {
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-var-requires": "off",
+  },
 };
 
 module.exports = config;

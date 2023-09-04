@@ -9,7 +9,11 @@
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",
-    "test": "echo 'Nothing to test in types package'"
+    "test": "echo 'Nothing to test in types package'",
+    "format": "prettier . --check --cache --log-level=warn",
+    "lint": "eslint . --cache",
+    "format:fix": "prettier . --write --cache --log-level=warn",
+    "lint:fix": "eslint . --fix --cache"
   },
   "author": {
     "name": "Fahad Heylaal",
