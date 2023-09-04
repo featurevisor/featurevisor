@@ -6,11 +6,12 @@ const config = {
     ecmaVersion: 2015,
   },
   env: {
-    // node: true,
-    // browser: true,
+    node: true,
+    browser: true,
   },
   plugins: ["@typescript-eslint"],
   extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  ignorePatterns: ["*.config.js", ".*.js"],
 };
 
 module.exports = config;
