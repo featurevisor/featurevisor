@@ -766,7 +766,6 @@ export class FeaturevisorInstance {
         finalContext,
         bucketValue,
         this.datafileReader,
-        this.logger,
       );
 
       if (matchedTraffic) {
@@ -1029,7 +1028,6 @@ export class FeaturevisorInstance {
         finalContext,
         bucketValue,
         this.datafileReader,
-        this.logger,
       );
 
       if (matchedTraffic) {
