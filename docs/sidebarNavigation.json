@@ -51,7 +51,8 @@
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
       { "title": "Experiments", "href": "/docs/use-cases/experiments" },
       { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" },
-      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" }
+      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
+      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" }
     ]
   },
   {
