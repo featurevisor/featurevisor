@@ -103,7 +103,7 @@ export function DisplayAttributeHistory() {
   return <HistoryTimeline entityType="attribute" entityKey={attribute.key} />;
 }
 
-export function ShowAttribute(props) {
+export function ShowAttribute() {
   const { attributeKey } = useParams();
   const { data } = useSearchIndex();
   const links = data?.links;

@@ -59,16 +59,12 @@ export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig)
     const separator = "|";
 
     const cmd = `git log --name-only --pretty=format:"%h${separator}%an${separator}%aI" --no-merges --relative -- ${relativeFeaturesPath} ${relativeSegmentsPath} ${relativeAttributesPath} > ${rawHistoryFilePath}`;
-    const output = execSync(cmd);
+    execSync(cmd);
 
     console.log(`History (raw) generated at: ${rawHistoryFilePath}`);
 
     // structured history
     const rawHistory = fs.readFileSync(rawHistoryFilePath, "utf8");
-
-    let commit;
-    let author;
-    let timestamp;
 
     const fullHistory: HistoryEntry[] = [];
 
@@ -188,7 +184,7 @@ interface RepoDetails {
   topLevelPath: string;
 }
 
-export function getDetailsFromRepo(rootDirectoryPath): RepoDetails | undefined {
+export function getDetailsFromRepo(): RepoDetails | undefined {
   try {
     const topLevelPathOutput = execSync(`git rev-parse --show-toplevel`);
     const topLevelPath = topLevelPathOutput.toString().trim();
@@ -463,7 +459,7 @@ export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConf
   const fullHistory = generateHistory(rootDirectoryPath, projectConfig);
 
   // site search index
-  const repoDetails = getDetailsFromRepo(rootDirectoryPath);
+  const repoDetails = getDetailsFromRepo();
   const searchIndex = generateSiteSearchIndex(
     rootDirectoryPath,
     projectConfig,

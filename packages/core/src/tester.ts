@@ -2,12 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { DatafileContent, Spec, Segment, Condition } from "@featurevisor/types";
-import {
-  createInstance,
-  createLogger,
-  allConditionsAreMatched,
-  MAX_BUCKETED_NUMBER,
-} from "@featurevisor/sdk";
+import { createInstance, allConditionsAreMatched, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { ProjectConfig } from "./config";
 import { parseYaml } from "./utils";
@@ -80,10 +75,10 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
     const parsed = parseYaml(fs.readFileSync(testFilePath, "utf8")) as Spec;
 
-    parsed.tests.forEach(function (test, tIndex) {
+    parsed.tests.forEach(function (test) {
       if (test.segments) {
         // segment testing
-        test.segments.forEach(function (segment, sIndex) {
+        test.segments.forEach(function (segment) {
           const segmentKey = segment.key;
 
           console.log(`     => Segment "${segmentKey}":`);
@@ -105,14 +100,11 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
             console.log(`        => Assertion #${aIndex + 1}: ${description}`);
 
-            let assertionHasError = false;
-
             const expected = assertion.expectedToMatch;
             const actual = allConditionsAreMatched(conditions, assertion.context);
 
             if (actual !== expected) {
               hasError = true;
-              assertionHasError = true;
 
               console.error(`           Segment failed: expected "${expected}", got "${actual}"`);
             }
@@ -135,9 +127,9 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
         let currentAt = 0;
 
-        let sdk = createInstance({
+        const sdk = createInstance({
           datafile: datafileContent,
-          configureBucketValue: (feature, attributes, bucketValue) => {
+          configureBucketValue: () => {
             return currentAt;
           },
           // logger: createLogger({
@@ -145,7 +137,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
           // }),
         });
 
-        test.features.forEach(function (feature, fIndex) {
+        test.features.forEach(function (feature) {
           const featureKey = feature.key;
 
           console.log(`     => Feature "${featureKey}" in environment "${test.environment}":`);
@@ -155,7 +147,6 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
             console.log(`        => Assertion #${aIndex + 1}: ${description}`);
 
-            let assertionHasError = false;
             currentAt = assertion.at * (MAX_BUCKETED_NUMBER / 100);
 
             // isEnabled
@@ -164,7 +155,6 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
               if (isEnabled !== assertion.expectedToBeEnabled) {
                 hasError = true;
-                assertionHasError = true;
 
                 console.error(
                   `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
@@ -178,7 +168,6 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
               if (variation !== assertion.expectedVariation) {
                 hasError = true;
-                assertionHasError = true;
 
                 console.error(
                   `           Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
@@ -205,7 +194,6 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
                 if (!passed) {
                   hasError = true;
-                  assertionHasError = true;
 
                   console.error(
                     `           Variable "${variableKey}" failed: expected ${JSON.stringify(

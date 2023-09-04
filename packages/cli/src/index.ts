@@ -18,7 +18,7 @@ import {
   restoreProject,
 } from "@featurevisor/core";
 
-process.on("unhandledRejection", (reason, p) => {
+process.on("unhandledRejection", (reason) => {
   console.error(reason);
   process.exit(1);
 });
@@ -63,7 +63,7 @@ async function main() {
 
     .command({
       command: "lint",
-      handler: async function (options) {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         const hasError = await lintProject(projectConfig);
@@ -92,7 +92,7 @@ async function main() {
 
     .command({
       command: "restore",
-      handler: function (options) {
+      handler: function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
@@ -107,7 +107,7 @@ async function main() {
 
     .command({
       command: "test",
-      handler: function (options) {
+      handler: function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         const hasError = testProject(rootDirectoryPath, projectConfig);

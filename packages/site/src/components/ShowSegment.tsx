@@ -83,7 +83,7 @@ export function DisplaySegmentHistory() {
   return <HistoryTimeline entityType="segment" entityKey={segment.key} />;
 }
 
-export function ShowSegment(props) {
+export function ShowSegment() {
   const { segmentKey } = useParams();
   const { data } = useSearchIndex();
   const links = data?.links;

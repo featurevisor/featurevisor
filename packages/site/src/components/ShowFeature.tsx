@@ -168,7 +168,7 @@ export function DisplayFeatureForce() {
   const { feature } = useOutletContext() as any;
   const environmentKeys = Object.keys(feature.environments).sort();
 
-  const environmentTabs = environmentKeys.map((environmentKey, index) => {
+  const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
       title: environmentKey,
       to: `/features/${feature.key}/force/${environmentKey}`,
@@ -260,7 +260,7 @@ export function DisplayFeatureRules() {
   const { feature } = useOutletContext() as any;
   const environmentKeys = Object.keys(feature.environments).sort();
 
-  const environmentTabs = environmentKeys.map((environmentKey, index) => {
+  const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
       title: environmentKey,
       to: `/features/${feature.key}/rules/${environmentKey}`,
@@ -425,7 +425,7 @@ export function DisplayFeatureHistory() {
   return <HistoryTimeline entityType="feature" entityKey={feature.key} />;
 }
 
-export function ShowFeature(props) {
+export function ShowFeature() {
   const { featureKey } = useParams();
   const { data } = useSearchIndex();
   const feature = data?.entities.features.find((f) => f.key === featureKey);
@@ -440,7 +440,6 @@ export function ShowFeature(props) {
       title: "Overview",
       to: `/features/${featureKey}`,
     },
-    ,
     {
       title: "Variations",
       to: `/features/${featureKey}/variations`,

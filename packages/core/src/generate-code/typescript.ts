@@ -39,6 +39,7 @@ function getPascalCase(str) {
   return pascalCased;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getFeaturevisorTypeFromValue(value) {
   if (typeof value === "boolean") {
     return "boolean";
@@ -137,9 +138,6 @@ ${attributeProperties}
   for (const featureFile of featureFiles) {
     const featureKey = path.basename(featureFile, ".yml");
     const parsedFeature = parseYaml(fs.readFileSync(featureFile, "utf8")) as ParsedFeature;
-
-    const variationType = "string";
-    const variationTypeScriptType = convertFeaturevisorTypeToTypeScriptType(variationType);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;

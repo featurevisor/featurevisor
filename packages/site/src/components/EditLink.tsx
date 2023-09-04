@@ -3,8 +3,6 @@ import * as React from "react";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid";
 
 export function EditLink(props: any) {
-  const { path } = props;
-
   return (
     <a
       href={props.url}
