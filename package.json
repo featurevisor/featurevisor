@@ -13,8 +13,8 @@
     "test": "lerna run test",
     "format": "lerna run format",
     "lint": "lerna run lint",
-    "format:fix": "prettier . --write --cache --log-level=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "format:fix": "lerna run format:fix",
+    "lint:fix": "lerna run lint:fix"
   },
   "author": {
     "name": "Fahad Heylaal",
