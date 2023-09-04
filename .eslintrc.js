@@ -11,7 +11,7 @@ const config = {
   },
   plugins: ["@typescript-eslint"],
   extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
-  ignorePatterns: ["*.config.js", ".*.js"],
+  ignorePatterns: ["*.config.js", "*.setup.js", ".*.js"],
 };
 
 module.exports = config;
