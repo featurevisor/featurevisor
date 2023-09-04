@@ -55,15 +55,37 @@ Apply project-wide code styles:
 $ npm run lint
 ```
 
-If you wish to override certain Prettier configuration in particular package, add (or edit) following file to the package level:
+If you need to override code style and linter configurations for individual packages, you can do so by adding or changing specific rules in package-level configuration files. For example:
 
 ```js
+// packages/sdk/prettier.config.js
+
 const rootConfig = require("../../prettier.config");
 
 /** @type {import('prettier').Config} */
 const config = {
   ...rootConfig,
-  // Here you can add local Prettier overrides
+  singleQuote: true,
+};
+
+module.exports = config;
+```
+
+```js
+// packages/sdk/.eslintrc.js
+
+const rootConfig = require("../../.eslintrc.js");
+
+/** @type {import("eslint").Linter.Config} */
+  const config = {
+  ...rootConfig,
+  env: {
+    node: true,
+  },
+  rules: {
+    ...rootConfig.rules,
+    "@typescript-eslint/no-explicit-any": "off",
+  },
 };
 
 module.exports = config;
