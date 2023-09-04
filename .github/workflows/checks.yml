@@ -4,6 +4,13 @@ on:
   push:
     branches-ignore:
       - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - review_requested
 
 jobs:
   ci:
