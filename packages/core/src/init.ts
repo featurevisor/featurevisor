@@ -17,7 +17,7 @@ export function initProject(
   directoryPath: string,
   exampleName: string = DEFAULT_EXAMPLE,
 ): Promise<boolean> {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     axios.get(EXAMPLES_TAR_URL, { responseType: "stream" }).then((response) => {
       response.data
         .pipe(

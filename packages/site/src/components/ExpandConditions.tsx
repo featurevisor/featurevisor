@@ -44,9 +44,7 @@ export function ExpandConditions(props: ExpandConditionsProps) {
                   <a href="#" className="text-sm">
                     {condition.attribute}
                   </a>{" "}
-                  <span className="text-sm font-semibold">
-                    {condition.operator}
-                  </span>{" "}
+                  <span className="text-sm font-semibold">{condition.operator}</span>{" "}
                   <ConditionValue value={condition.value} />
                 </>
               ) : (
@@ -72,9 +70,7 @@ export function ExpandConditions(props: ExpandConditionsProps) {
 
     return (
       <>
-        <span className={`rounded-full px-2 py-1 text-sm font-bold ${classes}`}>
-          {type}:
-        </span>
+        <span className={`rounded-full px-2 py-1 text-sm font-bold ${classes}`}>{type}:</span>
         <ExpandConditions conditions={conditions[type]} />
       </>
     );

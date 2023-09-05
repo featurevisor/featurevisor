@@ -8,7 +8,7 @@ export function restoreProject(rootDirectoryPath, projectConfig: ProjectConfig) 
   const cmd = `git checkout -- ${relativeStateDirPath}${path.sep}`;
 
   try {
-    const output = execSync(cmd, {
+    execSync(cmd, {
       cwd: rootDirectoryPath,
     });
 

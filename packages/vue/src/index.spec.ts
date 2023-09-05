@@ -3,7 +3,6 @@ import { createInstance } from "@featurevisor/sdk";
 import { mount } from "@vue/test-utils";
 
 import { setupApp, PROVIDER_NAME } from "./setupApp";
-import { useSdk } from "./useSdk";
 
 describe("vue: index", function () {
   it("can set up sdk in app and then inject the sdk instance", async function () {

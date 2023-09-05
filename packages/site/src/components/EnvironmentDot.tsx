@@ -9,10 +9,7 @@ interface EnvironmentDotProps {
 }
 
 export function EnvironmentDot(props: EnvironmentDotProps) {
-  const enabledInProduction = isEnabledInEnvironment(
-    props.feature,
-    "production"
-  );
+  const enabledInProduction = isEnabledInEnvironment(props.feature, "production");
 
   if (enabledInProduction) {
     return (

@@ -291,7 +291,7 @@ describe("sdk: instance", function () {
         attributes: [],
         segments: [],
       },
-      onActivation: function (featureKey) {
+      onActivation: function () {
         activated = true;
       },
     });
@@ -350,8 +350,8 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function (datafileUrl) {
-        return new Promise(function (resolve, reject) {
+      handleDatafileFetch: function () {
+        return new Promise(function (resolve) {
           resolve(getDatafileContent());
         });
       },
@@ -396,7 +396,7 @@ describe("sdk: instance", function () {
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function (datafileUrl) {
+      handleDatafileFetch: function () {
         const content: DatafileContent = {
           schemaVersion: "1",
           revision: "1.0",
@@ -422,7 +422,7 @@ describe("sdk: instance", function () {
           segments: [],
         };
 
-        return new Promise(function (resolve, reject) {
+        return new Promise(function (resolve) {
           setTimeout(function () {
             resolve(content);
           }, 50);
@@ -466,7 +466,7 @@ describe("sdk: instance", function () {
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function (datafileUrl) {
+      handleDatafileFetch: function () {
         const content: DatafileContent = {
           schemaVersion: "1",
           revision: "1.0",
@@ -492,7 +492,7 @@ describe("sdk: instance", function () {
           segments: [],
         };
 
-        return new Promise(function (resolve, reject) {
+        return new Promise(function (resolve) {
           setTimeout(function () {
             resolve(content);
           }, 50);

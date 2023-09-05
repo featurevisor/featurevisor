@@ -6,11 +6,14 @@
   "module": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",
-    "test": "jest --config jest.config.js --verbose --coverage"
+    "test": "jest --config jest.config.js --verbose --coverage",
+    "format": "prettier . --check --cache --log-level=warn",
+    "lint": "eslint . --cache",
+    "format:fix": "prettier . --write --cache --log-level=warn",
+    "lint:fix": "eslint . --fix --cache"
   },
   "author": {
     "name": "Fahad Heylaal",

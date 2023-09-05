@@ -2,7 +2,6 @@ import { Allocation, Context, Traffic, Feature, Force } from "@featurevisor/type
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
-import { Logger } from "./logger";
 
 export function getMatchedAllocation(
   traffic: Traffic,
@@ -49,7 +48,6 @@ export function getMatchedTrafficAndAllocation(
   context: Context,
   bucketValue: number,
   datafileReader: DatafileReader,
-  logger: Logger,
 ): MatchedTrafficAndAllocation {
   let matchedAllocation: Allocation | undefined;
 

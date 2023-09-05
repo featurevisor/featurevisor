@@ -8,11 +8,14 @@
     "featurevisor": "bin.js"
   },
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "echo 'Nothing to test in this package'"
+    "test": "echo 'Nothing to test in this package'",
+    "format": "prettier . --check --cache --log-level=warn",
+    "lint": "eslint . --cache",
+    "format:fix": "prettier . --write --cache --log-level=warn",
+    "lint:fix": "eslint . --fix --cache"
   },
   "homepage": "https://featurevisor.com",
   "keywords": [

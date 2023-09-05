@@ -4,13 +4,16 @@
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {
-    "lint": "echo 'not linting in this package yet'",
     "transpile": "echo 'Nothing to transpile in this package'",
     "dist:js": "webpack --config ./webpack.config.js",
     "dist:css": "tailwindcss -i ./src/index.css -o ./dist/index.css",
     "dist": "npm run dist:js && npm run dist:css",
     "build": "npm run dist",
-    "test": "echo 'Nothing to test in types package'"
+    "test": "echo 'Nothing to test in types package'",
+    "format": "prettier . --check --cache --log-level=warn",
+    "lint": "eslint . --cache",
+    "format:fix": "prettier . --write --cache --log-level=warn",
+    "lint:fix": "eslint . --fix --cache"
   },
   "author": {
     "name": "Fahad Heylaal",

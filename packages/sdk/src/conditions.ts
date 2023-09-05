@@ -90,7 +90,7 @@ export function allConditionsAreMatched(
 
   if ("not" in conditions && Array.isArray(conditions.not)) {
     return conditions.not.every(
-      (c) =>
+      () =>
         allConditionsAreMatched(
           {
             and: conditions.not,

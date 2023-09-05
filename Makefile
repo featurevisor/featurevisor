@@ -13,6 +13,7 @@ test:
 	npm test
 
 lint:
+	npm run format
 	npm run lint
 
 ##

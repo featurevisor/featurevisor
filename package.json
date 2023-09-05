@@ -11,7 +11,10 @@
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
-    "lint": "lerna run lint"
+    "format": "lerna run format",
+    "lint": "lerna run lint",
+    "format:fix": "lerna run format:fix",
+    "lint:fix": "lerna run lint:fix"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -21,8 +24,13 @@
   "devDependencies": {
     "@types/jest": "^29.4.0",
     "@types/node": "^18.13.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "eslint": "^8.48.0",
+    "eslint-config-prettier": "^9.0.0",
     "jest": "^29.4.2",
     "lerna": "^6.5.0",
+    "prettier": "^3.0.2",
     "rimraf": "^4.1.2",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.4.2",

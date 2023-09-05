@@ -9,7 +9,7 @@ import { getYAMLFiles, parseYaml } from "./utils";
 import { ProjectConfig } from "./config";
 import { ParsedFeature, FeatureKey, Required } from "@featurevisor/types";
 
-export function getAttributeJoiSchema(projectConfig: ProjectConfig) {
+export function getAttributeJoiSchema() {
   const attributeJoiSchema = Joi.object({
     archived: Joi.boolean(),
     type: Joi.string().allow("boolean", "string", "integer", "double", "date").required(),
@@ -122,7 +122,7 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeature
           percentage: Joi.number().precision(3).min(0).max(100),
         }),
       )
-      .custom(function (value, helper) {
+      .custom(function (value) {
         const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
 
         if (totalPercentage !== 100) {
@@ -166,7 +166,7 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeature
   return groupJoiSchema;
 }
 
-const tagRegex = /^[a-z0-9\-]+$/;
+const tagRegex = /^[a-z0-9-]+$/;
 
 export function getFeatureJoiSchema(
   projectConfig: ProjectConfig,
@@ -182,7 +182,7 @@ export function getFeatureJoiSchema(
       Joi.number(),
       Joi.boolean(),
       Joi.array().items(Joi.string()),
-      Joi.object().custom(function (value, helper) {
+      Joi.object().custom(function (value) {
         let isFlat = true;
 
         Object.keys(value).forEach((key) => {
@@ -265,7 +265,7 @@ export function getFeatureJoiSchema(
     description: Joi.string().required(),
     tags: Joi.array()
       .items(
-        Joi.string().custom((value, helpers) => {
+        Joi.string().custom((value) => {
           if (!tagRegex.test(value)) {
             throw new Error("tag must be lower cased and alphanumeric, and may contain hyphens.");
           }
@@ -350,8 +350,8 @@ export function getFeatureJoiSchema(
             .unique("key"),
         }),
       )
-      .custom((value, helpers) => {
-        var total = value.reduce((acc, v) => acc + v.weight, 0);
+      .custom((value) => {
+        const total = value.reduce((acc, v) => acc + v.weight, 0);
 
         if (total !== 100) {
           throw new Error(`Sum of all variation weights must be 100, got ${total}`);
@@ -492,7 +492,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint attributes
   console.log("Linting attributes...\n");
   const attributeFilePaths = getYAMLFiles(path.join(projectConfig.attributesDirectoryPath));
-  const attributeJoiSchema = getAttributeJoiSchema(projectConfig);
+  const attributeJoiSchema = getAttributeJoiSchema();
 
   for (const filePath of attributeFilePaths) {
     const key = path.basename(filePath, ".yml");

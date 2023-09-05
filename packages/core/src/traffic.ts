@@ -127,7 +127,7 @@ export function getTraffic(
         const weight = variation.weight as number;
         const percentage = weight * (MAX_BUCKETED_NUMBER / 100);
 
-        let toFillValue = needsRebucketing
+        const toFillValue = needsRebucketing
           ? percentage * (rulePercentage / 100) // whole value
           : (weight / 100) * rulePercentageDiff; // incrementing
         const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
