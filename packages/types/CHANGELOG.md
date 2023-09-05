@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.47.0](https://github.com/fahad19/featurevisor/compare/v0.46.2...v0.47.0) (2023-09-05)
+
+
+### Features
+
+* use Prettier v2.x ([#143](https://github.com/fahad19/featurevisor/issues/143)) ([ddca499](https://github.com/fahad19/featurevisor/commit/ddca499526f2f8bf10dc340fb55877584501a682))
+
+
+
+
+
 # [0.46.0](https://github.com/fahad19/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
 
 **Note:** Version bump only for package @featurevisor/types
