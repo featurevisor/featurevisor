@@ -176,7 +176,7 @@ conditions:
 # ...
 conditions:
   - attribute: country
-    operator: in
+    operator: notIn
     value:
       - fr
       - gb
