@@ -17,7 +17,7 @@
       alt="NPM version" />
   </a>
   <!-- Discord -->
-  <a href="https://discord.gg/8mkW89JB">
+  <a href="https://discord.gg/8Ka6KZUCX4">
     <img src="https://img.shields.io/discord/1141123659663147008?color=7289DA&logo=discord&logoColor=white"
       alt="Discord" />
   </a>
