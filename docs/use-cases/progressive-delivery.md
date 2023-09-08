@@ -67,7 +67,7 @@ environments:
         percentage: 10
 ```
 
-Here we are defining that the feature should be exposed to only 10% of users in Germany only, and not targeting 10% of all users worldwide like we did in previous example.
+Here we are defining that the feature should be exposed to 10% of users in Germany only, and not targeting 10% of all users worldwide like we did in previous example.
 
 ## Defining experiments
 
