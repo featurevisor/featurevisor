@@ -57,6 +57,8 @@ Each of these are expressed as YAML files:
 
 Once changes are merged into the main or master branch of your Git repository, Featurevisor automates the propagation of these configurations to your live environment via CI/CD pipelines.
 
+Since Featurevisor is [cloud native](/docs/concepts/cloud-native-architecture), it can be integrated with any CI/CD tool of your choice.
+
 ### Modularity
 
 [Feature](/docs/features) configurations in Featurevisor can be modular, meaning you can have separate configurations for different features against different environments.
