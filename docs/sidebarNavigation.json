@@ -53,6 +53,7 @@
       { "title": "User entitlements", "href": "/docs/use-cases/entitlements" },
       { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" },
       { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
+      { "title": "Trunk-based development", "href": "/docs/use-cases/trunk-based-development" },
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
       { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" }
     ]
