@@ -14,7 +14,7 @@ But what if we told you that Git could be used for much more than just that? Ent
 
 ## GitOps
 
-GitOps is like treating your infrastructure and operational tasks as if they were code.
+GitOps is like treating your infrastructure and operational tasks as if they were code. It builds on top of the principles of [Infrastructure as Code (IaC)](/docs/concepts/infrastructure-as-code).
 
 Imagine that you have a recipe book (your Git repository) that contains all the instructions (code) for making a dish (your software).
 

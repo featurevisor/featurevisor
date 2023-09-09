@@ -8,6 +8,7 @@
     "links": [
       { "title": "Feature Management", "href": "/docs/feature-management" },
       { "title": "Cloud Native Architecture", "href": "/docs/concepts/cloud-native-architecture" },
+      { "title": "Infrastructure as Code", "href": "/docs/concepts/infrastructure-as-code" },
       { "title": "GitOps", "href": "/docs/concepts/gitops" }
     ]
   },
