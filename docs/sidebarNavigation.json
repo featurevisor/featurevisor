@@ -47,6 +47,10 @@
   {
     "title": "Use cases",
     "links": [
+      {
+        "title": "Decoupled Releases",
+        "href": "/docs/use-cases/decouple-releases-from-deployments"
+      },
       { "title": "Progressive delivery", "href": "/docs/use-cases/progressive-delivery" },
       { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
       { "title": "Experiments", "href": "/docs/use-cases/experiments" },
