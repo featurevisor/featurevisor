@@ -38,7 +38,7 @@
       Documentation
     </a>
     <span> | </span>
-    <a href="https://github.com/fahad19/featurevisor/issues">
+    <a href="https://github.com/featurevisor/featurevisor/issues">
       Issues
     </a>
     <span> | </span>
@@ -46,7 +46,7 @@
       Contributing
     </a>
     <span> | </span>
-    <a href="https://github.com/fahad19/featurevisor/blob/main/CHANGELOG.md">
+    <a href="https://github.com/featurevisor/featurevisor/blob/main/CHANGELOG.md">
       Changelog
     </a>
   </h3>
@@ -55,7 +55,7 @@
 <div align="center">
   <sub>Built by
   <a href="https://twitter.com/fahad19">@fahad19</a> and
-  <a href="https://github.com/fahad19/featurevisor/graphs/contributors">
+  <a href="https://github.com/featurevisor/featurevisor/graphs/contributors">
     contributors
   </a>
 </div>
@@ -138,7 +138,7 @@ See further guides here:
 - [Building datafiles](https://featurevisor.com/docs/building-datafiles/): how to build datafiles
 - [Deploying datafiles](https://featurevisor.com/docs/deployment/): how to deploy datafiles to your CDN
 
-A fully functioning example for deploying with Cloudflare and GitHub Actions (for free) is available [here](https://github.com/fahad19/featurevisor-example-cloudflare).
+A fully functioning example for deploying with Cloudflare and GitHub Actions (for free) is available [here](https://github.com/featurevisor/featurevisor-example-cloudflare).
 
 ## Step 3: Consume datafiles with Featurevisor SDKs
 

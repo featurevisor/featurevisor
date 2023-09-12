@@ -3,26 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.47.0](https://github.com/fahad19/featurevisor/compare/v0.46.2...v0.47.0) (2023-09-05)
+# [0.47.0](https://github.com/featurevisor/featurevisor/compare/v0.46.2...v0.47.0) (2023-09-05)
 
 
 ### Features
 
-* use Prettier v2.x ([#143](https://github.com/fahad19/featurevisor/issues/143)) ([ddca499](https://github.com/fahad19/featurevisor/commit/ddca499526f2f8bf10dc340fb55877584501a682))
+* use Prettier v2.x ([#143](https://github.com/featurevisor/featurevisor/issues/143)) ([ddca499](https://github.com/featurevisor/featurevisor/commit/ddca499526f2f8bf10dc340fb55877584501a682))
 
 
 
 
 
-## [0.46.2](https://github.com/fahad19/featurevisor/compare/v0.46.1...v0.46.2) (2023-08-31)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-## [0.46.1](https://github.com/fahad19/featurevisor/compare/v0.46.0...v0.46.1) (2023-08-31)
+## [0.46.2](https://github.com/featurevisor/featurevisor/compare/v0.46.1...v0.46.2) (2023-08-31)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -30,7 +22,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.46.0](https://github.com/fahad19/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
+## [0.46.1](https://github.com/featurevisor/featurevisor/compare/v0.46.0...v0.46.1) (2023-08-31)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -38,26 +30,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.45.0](https://github.com/fahad19/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
+# [0.46.0](https://github.com/featurevisor/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.45.0](https://github.com/featurevisor/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
 
 
 ### Features
 
-* React provider component prop renamed from sdk to instance ([#129](https://github.com/fahad19/featurevisor/issues/129)) ([9e8015c](https://github.com/fahad19/featurevisor/commit/9e8015c14a0924d25b75f06fd2a6e6ef6c5eee7a))
+* React provider component prop renamed from sdk to instance ([#129](https://github.com/featurevisor/featurevisor/issues/129)) ([9e8015c](https://github.com/featurevisor/featurevisor/commit/9e8015c14a0924d25b75f06fd2a6e6ef6c5eee7a))
 
 
 
 
 
-# [0.44.0](https://github.com/fahad19/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-# [0.43.0](https://github.com/fahad19/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
+# [0.44.0](https://github.com/featurevisor/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -65,7 +57,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.42.1](https://github.com/fahad19/featurevisor/compare/v0.42.0...v0.42.1) (2023-08-01)
+# [0.43.0](https://github.com/featurevisor/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -73,7 +65,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.42.0](https://github.com/fahad19/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
+## [0.42.1](https://github.com/featurevisor/featurevisor/compare/v0.42.0...v0.42.1) (2023-08-01)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -81,7 +73,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.41.0](https://github.com/fahad19/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
+# [0.42.0](https://github.com/featurevisor/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -89,7 +81,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.40.1](https://github.com/fahad19/featurevisor/compare/v0.40.0...v0.40.1) (2023-07-23)
+# [0.41.0](https://github.com/featurevisor/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -97,26 +89,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+## [0.40.1](https://github.com/featurevisor/featurevisor/compare/v0.40.0...v0.40.1) (2023-07-23)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.40.0](https://github.com/featurevisor/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
 
 
 ### Features
 
-* Hooks for checking if feature is enabled in React and Vue.js ([#108](https://github.com/fahad19/featurevisor/issues/108)) ([4e2a269](https://github.com/fahad19/featurevisor/commit/4e2a269da923a94055d232ec479e6562dc297120))
+* Hooks for checking if feature is enabled in React and Vue.js ([#108](https://github.com/featurevisor/featurevisor/issues/108)) ([4e2a269](https://github.com/featurevisor/featurevisor/commit/4e2a269da923a94055d232ec479e6562dc297120))
 
 
 
 
 
-## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+## [0.39.1](https://github.com/featurevisor/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/vue
 
@@ -124,55 +116,63 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+# [0.39.0](https://github.com/featurevisor/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.38.0](https://github.com/featurevisor/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
 
 
 ### Features
 
-* SDK to support isEnabled() checks ([#104](https://github.com/fahad19/featurevisor/issues/104)) ([4f52136](https://github.com/fahad19/featurevisor/commit/4f521367a3f1ef76833ba614b6a1f4b66abef2e1))
+* SDK to support isEnabled() checks ([#104](https://github.com/featurevisor/featurevisor/issues/104)) ([4f52136](https://github.com/featurevisor/featurevisor/commit/4f521367a3f1ef76833ba614b6a1f4b66abef2e1))
 
 
 
 
 
-# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
-
-
-### Features
-
-* renamed Attributes (object) to Context ([#101](https://github.com/fahad19/featurevisor/issues/101)) ([c392ad5](https://github.com/fahad19/featurevisor/commit/c392ad5f1b6100167aa5637b131f08036a7f5a55))
-
-
-
-
-
-# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
-
-**Note:** Version bump only for package @featurevisor/vue
-
-
-
-
-
-# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+# [0.37.0](https://github.com/featurevisor/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
 
 
 ### Features
 
-* Vue.js SDK ([#97](https://github.com/fahad19/featurevisor/issues/97)) ([d099adb](https://github.com/fahad19/featurevisor/commit/d099adbb6df923bc10aeb8c0a60c85612669e1a1))
+* renamed Attributes (object) to Context ([#101](https://github.com/featurevisor/featurevisor/issues/101)) ([c392ad5](https://github.com/featurevisor/featurevisor/commit/c392ad5f1b6100167aa5637b131f08036a7f5a55))
+
+
+
+
+
+# [0.36.0](https://github.com/featurevisor/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.35.0](https://github.com/featurevisor/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.34.0](https://github.com/featurevisor/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
+# [0.33.0](https://github.com/featurevisor/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+
+
+### Features
+
+* Vue.js SDK ([#97](https://github.com/featurevisor/featurevisor/issues/97)) ([d099adb](https://github.com/featurevisor/featurevisor/commit/d099adbb6df923bc10aeb8c0a60c85612669e1a1))
