@@ -167,5 +167,5 @@ You are advised to minimize the number of calls to Featurevisor SDK in your comp
 You can find a fully functional example of a Vue.js application using Featurevisor SDK here: [https://github.com/featurevisor/featurevisor-example-vue](https://github.com/featurevisor/featurevisor-example-vue).
 
 {% callout type="note" title="Help wanted with tests" %}
-We are looking for help with writing tests for this package. If you are interested, please take a look [here](https://github.com/fahad19/featurevisor/tree/main/packages/vue).
+We are looking for help with writing tests for this package. If you are interested, please take a look [here](https://github.com/featurevisor/featurevisor/tree/main/packages/vue).
 {% /callout %}

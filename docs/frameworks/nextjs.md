@@ -149,7 +149,7 @@ See documentation about `bucketBy` property in feature definitions for further e
 
 ## App Router
 
-We do not have documentation for Featurevisor SDK usage with Next.js App Router yet. If you are interested in contributing, please reach out to us on [GitHub](https://github.com/fahad19/featurevisor).
+We do not have documentation for Featurevisor SDK usage with Next.js App Router yet. If you are interested in contributing, please reach out to us on [GitHub](https://github.com/featurevisor/featurevisor).
 
 ## Working repository
 

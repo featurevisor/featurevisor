@@ -143,4 +143,4 @@ Learn how too consume datafiles from URLs directly using [SDKs](/docs/sdks).
 
 ## Full example
 
-You can find a fully functional repository based on this guide here: [https://github.com/fahad19/featurevisor-example-cloudflare](https://github.com/fahad19/featurevisor-example-cloudflare).
+You can find a fully functional repository based on this guide here: [https://github.com/featurevisor/featurevisor-example-cloudflare](https://github.com/featurevisor/featurevisor-example-cloudflare).

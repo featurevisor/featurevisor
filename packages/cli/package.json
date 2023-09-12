@@ -32,14 +32,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/fahad19/featurevisor.git"
+    "url": "https://github.com/featurevisor/featurevisor.git"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "bugs": {
-    "url": "https://github.com/fahad19/featurevisor/issues"
+    "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "author": {
     "name": "Fahad Heylaal",

@@ -87,31 +87,31 @@
     "links": [
       {
         "title": "@featurevisor/types",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/types"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/types"
       },
       {
         "title": "@featurevisor/core",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/core"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/core"
       },
       {
         "title": "@featurevisor/cli",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/cli"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/cli"
       },
       {
         "title": "@featurevisor/sdk",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/sdk"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/sdk"
       },
       {
         "title": "@featurevisor/site",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/site"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/site"
       },
       {
         "title": "@featurevisor/react",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/react"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/react"
       },
       {
         "title": "@featurevisor/vue",
-        "href": "https://github.com/fahad19/featurevisor/tree/main/packages/vue"
+        "href": "https://github.com/featurevisor/featurevisor/tree/main/packages/vue"
       }
     ]
   },
@@ -122,7 +122,7 @@
       { "title": "FAQ", "href": "/docs/faq" },
       { "title": "Examples", "href": "/docs/examples" },
       { "title": "Contributing", "href": "/docs/contributing" },
-      { "title": "GitHub", "href": "https://github.com/fahad19/featurevisor" }
+      { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }
     ]
   }
 ]

@@ -3,26 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.47.0](https://github.com/fahad19/featurevisor/compare/v0.46.2...v0.47.0) (2023-09-05)
+# [0.47.0](https://github.com/featurevisor/featurevisor/compare/v0.46.2...v0.47.0) (2023-09-05)
 
 
 ### Features
 
-* use Prettier v2.x ([#143](https://github.com/fahad19/featurevisor/issues/143)) ([ddca499](https://github.com/fahad19/featurevisor/commit/ddca499526f2f8bf10dc340fb55877584501a682))
+* use Prettier v2.x ([#143](https://github.com/featurevisor/featurevisor/issues/143)) ([ddca499](https://github.com/featurevisor/featurevisor/commit/ddca499526f2f8bf10dc340fb55877584501a682))
 
 
 
 
 
-## [0.46.2](https://github.com/fahad19/featurevisor/compare/v0.46.1...v0.46.2) (2023-08-31)
-
-**Note:** Version bump only for package @featurevisor/cli
-
-
-
-
-
-## [0.46.1](https://github.com/fahad19/featurevisor/compare/v0.46.0...v0.46.1) (2023-08-31)
+## [0.46.2](https://github.com/featurevisor/featurevisor/compare/v0.46.1...v0.46.2) (2023-08-31)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -30,7 +22,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.46.0](https://github.com/fahad19/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
+## [0.46.1](https://github.com/featurevisor/featurevisor/compare/v0.46.0...v0.46.1) (2023-08-31)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -38,7 +30,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.45.0](https://github.com/fahad19/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
+# [0.46.0](https://github.com/featurevisor/featurevisor/compare/v0.45.0...v0.46.0) (2023-08-27)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -46,7 +38,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.44.1](https://github.com/fahad19/featurevisor/compare/v0.44.0...v0.44.1) (2023-08-07)
+# [0.45.0](https://github.com/featurevisor/featurevisor/compare/v0.44.2...v0.45.0) (2023-08-20)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -54,7 +46,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.44.0](https://github.com/fahad19/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
+## [0.44.1](https://github.com/featurevisor/featurevisor/compare/v0.44.0...v0.44.1) (2023-08-07)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -62,7 +54,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.43.0](https://github.com/fahad19/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
+# [0.44.0](https://github.com/featurevisor/featurevisor/compare/v0.43.0...v0.44.0) (2023-08-07)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -70,7 +62,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.42.1](https://github.com/fahad19/featurevisor/compare/v0.42.0...v0.42.1) (2023-08-01)
+# [0.43.0](https://github.com/featurevisor/featurevisor/compare/v0.42.1...v0.43.0) (2023-08-05)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -78,7 +70,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.42.0](https://github.com/fahad19/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
+## [0.42.1](https://github.com/featurevisor/featurevisor/compare/v0.42.0...v0.42.1) (2023-08-01)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -86,7 +78,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.41.0](https://github.com/fahad19/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
+# [0.42.0](https://github.com/featurevisor/featurevisor/compare/v0.41.0...v0.42.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -94,7 +86,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.40.1](https://github.com/fahad19/featurevisor/compare/v0.40.0...v0.40.1) (2023-07-23)
+# [0.41.0](https://github.com/featurevisor/featurevisor/compare/v0.40.1...v0.41.0) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -102,7 +94,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.40.0](https://github.com/fahad19/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
+## [0.40.1](https://github.com/featurevisor/featurevisor/compare/v0.40.0...v0.40.1) (2023-07-23)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -110,7 +102,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.39.2](https://github.com/fahad19/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
+# [0.40.0](https://github.com/featurevisor/featurevisor/compare/v0.39.2...v0.40.0) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -118,7 +110,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.39.1](https://github.com/fahad19/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
+## [0.39.2](https://github.com/featurevisor/featurevisor/compare/v0.39.1...v0.39.2) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -126,7 +118,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.39.0](https://github.com/fahad19/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
+## [0.39.1](https://github.com/featurevisor/featurevisor/compare/v0.39.0...v0.39.1) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -134,7 +126,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.38.0](https://github.com/fahad19/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
+# [0.39.0](https://github.com/featurevisor/featurevisor/compare/v0.38.0...v0.39.0) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -142,7 +134,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.37.1](https://github.com/fahad19/featurevisor/compare/v0.37.0...v0.37.1) (2023-07-15)
+# [0.38.0](https://github.com/featurevisor/featurevisor/compare/v0.37.1...v0.38.0) (2023-07-16)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -150,7 +142,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.37.0](https://github.com/fahad19/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+## [0.37.1](https://github.com/featurevisor/featurevisor/compare/v0.37.0...v0.37.1) (2023-07-15)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -158,18 +150,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.36.0](https://github.com/fahad19/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
+# [0.37.0](https://github.com/featurevisor/featurevisor/compare/v0.36.0...v0.37.0) (2023-07-14)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.36.0](https://github.com/featurevisor/featurevisor/compare/v0.35.0...v0.36.0) (2023-07-13)
 
 
 ### Features
 
-* restore state files ([#100](https://github.com/fahad19/featurevisor/issues/100)) ([796695d](https://github.com/fahad19/featurevisor/commit/796695d0f645869ec305c3446282fba7e45e2bb5))
+* restore state files ([#100](https://github.com/featurevisor/featurevisor/issues/100)) ([796695d](https://github.com/featurevisor/featurevisor/commit/796695d0f645869ec305c3446282fba7e45e2bb5))
 
 
 
 
 
-# [0.35.0](https://github.com/fahad19/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
+# [0.35.0](https://github.com/featurevisor/featurevisor/compare/v0.34.0...v0.35.0) (2023-07-13)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -177,26 +177,18 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.34.0](https://github.com/fahad19/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
+# [0.34.0](https://github.com/featurevisor/featurevisor/compare/v0.33.1...v0.34.0) (2023-07-08)
 
 
 ### Features
 
-* code generation ([#98](https://github.com/fahad19/featurevisor/issues/98)) ([7474443](https://github.com/fahad19/featurevisor/commit/7474443d26fd526f471ef5258cbe39b42c0fad60))
+* code generation ([#98](https://github.com/featurevisor/featurevisor/issues/98)) ([7474443](https://github.com/featurevisor/featurevisor/commit/7474443d26fd526f471ef5258cbe39b42c0fad60))
 
 
 
 
 
-## [0.33.1](https://github.com/fahad19/featurevisor/compare/v0.33.0...v0.33.1) (2023-07-07)
-
-**Note:** Version bump only for package @featurevisor/cli
-
-
-
-
-
-# [0.33.0](https://github.com/fahad19/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
+## [0.33.1](https://github.com/featurevisor/featurevisor/compare/v0.33.0...v0.33.1) (2023-07-07)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -204,7 +196,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.32.1](https://github.com/fahad19/featurevisor/compare/v0.32.0...v0.32.1) (2023-07-03)
+# [0.33.0](https://github.com/featurevisor/featurevisor/compare/v0.32.1...v0.33.0) (2023-07-06)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -212,7 +204,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.32.0](https://github.com/fahad19/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
+## [0.32.1](https://github.com/featurevisor/featurevisor/compare/v0.32.0...v0.32.1) (2023-07-03)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -220,7 +212,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.31.2](https://github.com/fahad19/featurevisor/compare/v0.31.1...v0.31.2) (2023-07-01)
+# [0.32.0](https://github.com/featurevisor/featurevisor/compare/v0.31.2...v0.32.0) (2023-07-02)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -228,7 +220,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.31.1](https://github.com/fahad19/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
+## [0.31.2](https://github.com/featurevisor/featurevisor/compare/v0.31.1...v0.31.2) (2023-07-01)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -236,7 +228,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.31.0](https://github.com/fahad19/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
+## [0.31.1](https://github.com/featurevisor/featurevisor/compare/v0.31.0...v0.31.1) (2023-06-25)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -244,7 +236,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.30.1](https://github.com/fahad19/featurevisor/compare/v0.30.0...v0.30.1) (2023-06-14)
+# [0.31.0](https://github.com/featurevisor/featurevisor/compare/v0.30.1...v0.31.0) (2023-06-24)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -252,7 +244,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.30.0](https://github.com/fahad19/featurevisor/compare/v0.29.0...v0.30.0) (2023-06-10)
+## [0.30.1](https://github.com/featurevisor/featurevisor/compare/v0.30.0...v0.30.1) (2023-06-14)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -260,7 +252,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.29.0](https://github.com/fahad19/featurevisor/compare/v0.28.1...v0.29.0) (2023-06-10)
+# [0.30.0](https://github.com/featurevisor/featurevisor/compare/v0.29.0...v0.30.0) (2023-06-10)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -268,7 +260,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.28.1](https://github.com/fahad19/featurevisor/compare/v0.28.0...v0.28.1) (2023-06-08)
+# [0.29.0](https://github.com/featurevisor/featurevisor/compare/v0.28.1...v0.29.0) (2023-06-10)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -276,7 +268,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.28.0](https://github.com/fahad19/featurevisor/compare/v0.27.1...v0.28.0) (2023-06-08)
+## [0.28.1](https://github.com/featurevisor/featurevisor/compare/v0.28.0...v0.28.1) (2023-06-08)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -284,7 +276,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.27.1](https://github.com/fahad19/featurevisor/compare/v0.27.0...v0.27.1) (2023-05-25)
+# [0.28.0](https://github.com/featurevisor/featurevisor/compare/v0.27.1...v0.28.0) (2023-06-08)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -292,26 +284,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.27.0](https://github.com/fahad19/featurevisor/compare/v0.26.0...v0.27.0) (2023-05-24)
+## [0.27.1](https://github.com/featurevisor/featurevisor/compare/v0.27.0...v0.27.1) (2023-05-25)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.27.0](https://github.com/featurevisor/featurevisor/compare/v0.26.0...v0.27.0) (2023-05-24)
 
 
 ### Features
 
-* allow building datafiles with custom revision flag in CLI ([#77](https://github.com/fahad19/featurevisor/issues/77)) ([dbcdcce](https://github.com/fahad19/featurevisor/commit/dbcdcce28c9d7791b7b010b3940e033439cc92a2))
+* allow building datafiles with custom revision flag in CLI ([#77](https://github.com/featurevisor/featurevisor/issues/77)) ([dbcdcce](https://github.com/featurevisor/featurevisor/commit/dbcdcce28c9d7791b7b010b3940e033439cc92a2))
 
 
 
 
 
-# [0.26.0](https://github.com/fahad19/featurevisor/compare/v0.25.0...v0.26.0) (2023-05-24)
-
-**Note:** Version bump only for package @featurevisor/cli
-
-
-
-
-
-# [0.25.0](https://github.com/fahad19/featurevisor/compare/v0.24.0...v0.25.0) (2023-05-22)
+# [0.26.0](https://github.com/featurevisor/featurevisor/compare/v0.25.0...v0.26.0) (2023-05-24)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -319,7 +311,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.24.0](https://github.com/fahad19/featurevisor/compare/v0.23.0...v0.24.0) (2023-05-21)
+# [0.25.0](https://github.com/featurevisor/featurevisor/compare/v0.24.0...v0.25.0) (2023-05-22)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -327,7 +319,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.23.0](https://github.com/fahad19/featurevisor/compare/v0.22.0...v0.23.0) (2023-05-20)
+# [0.24.0](https://github.com/featurevisor/featurevisor/compare/v0.23.0...v0.24.0) (2023-05-21)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -335,26 +327,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.22.0](https://github.com/fahad19/featurevisor/compare/v0.21.0...v0.22.0) (2023-05-20)
+# [0.23.0](https://github.com/featurevisor/featurevisor/compare/v0.22.0...v0.23.0) (2023-05-20)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.22.0](https://github.com/featurevisor/featurevisor/compare/v0.21.0...v0.22.0) (2023-05-20)
 
 
 ### Features
 
-* state files are now per environment ([#72](https://github.com/fahad19/featurevisor/issues/72)) ([925f4cf](https://github.com/fahad19/featurevisor/commit/925f4cf980134db60c40c2e27259a3d6142f16aa))
+* state files are now per environment ([#72](https://github.com/featurevisor/featurevisor/issues/72)) ([925f4cf](https://github.com/featurevisor/featurevisor/commit/925f4cf980134db60c40c2e27259a3d6142f16aa))
 
 
 
 
 
-# [0.21.0](https://github.com/fahad19/featurevisor/compare/v0.20.2...v0.21.0) (2023-05-14)
-
-**Note:** Version bump only for package @featurevisor/cli
-
-
-
-
-
-## [0.20.2](https://github.com/fahad19/featurevisor/compare/v0.20.1...v0.20.2) (2023-05-14)
+# [0.21.0](https://github.com/featurevisor/featurevisor/compare/v0.20.2...v0.21.0) (2023-05-14)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -362,7 +354,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.20.1](https://github.com/fahad19/featurevisor/compare/v0.20.0...v0.20.1) (2023-05-13)
+## [0.20.2](https://github.com/featurevisor/featurevisor/compare/v0.20.1...v0.20.2) (2023-05-14)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -370,7 +362,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.20.0](https://github.com/fahad19/featurevisor/compare/v0.19.0...v0.20.0) (2023-05-13)
+## [0.20.1](https://github.com/featurevisor/featurevisor/compare/v0.20.0...v0.20.1) (2023-05-13)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -378,7 +370,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.19.0](https://github.com/fahad19/featurevisor/compare/v0.18.0...v0.19.0) (2023-05-13)
+# [0.20.0](https://github.com/featurevisor/featurevisor/compare/v0.19.0...v0.20.0) (2023-05-13)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -386,7 +378,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.18.0](https://github.com/fahad19/featurevisor/compare/v0.17.0...v0.18.0) (2023-05-12)
+# [0.19.0](https://github.com/featurevisor/featurevisor/compare/v0.18.0...v0.19.0) (2023-05-13)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -394,7 +386,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.17.0](https://github.com/fahad19/featurevisor/compare/v0.16.0...v0.17.0) (2023-05-12)
+# [0.18.0](https://github.com/featurevisor/featurevisor/compare/v0.17.0...v0.18.0) (2023-05-12)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -402,7 +394,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.16.0](https://github.com/fahad19/featurevisor/compare/v0.15.0...v0.16.0) (2023-04-30)
+# [0.17.0](https://github.com/featurevisor/featurevisor/compare/v0.16.0...v0.17.0) (2023-05-12)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -410,7 +402,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.15.0](https://github.com/fahad19/featurevisor/compare/v0.14.1...v0.15.0) (2023-04-23)
+# [0.16.0](https://github.com/featurevisor/featurevisor/compare/v0.15.0...v0.16.0) (2023-04-30)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -418,7 +410,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.14.1](https://github.com/fahad19/featurevisor/compare/v0.14.0...v0.14.1) (2023-04-22)
+# [0.15.0](https://github.com/featurevisor/featurevisor/compare/v0.14.1...v0.15.0) (2023-04-23)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -426,7 +418,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.14.0](https://github.com/fahad19/featurevisor/compare/v0.13.1...v0.14.0) (2023-04-21)
+## [0.14.1](https://github.com/featurevisor/featurevisor/compare/v0.14.0...v0.14.1) (2023-04-22)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -434,7 +426,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.13.0](https://github.com/fahad19/featurevisor/compare/v0.12.1...v0.13.0) (2023-04-19)
+# [0.14.0](https://github.com/featurevisor/featurevisor/compare/v0.13.1...v0.14.0) (2023-04-21)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -442,7 +434,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.12.1](https://github.com/fahad19/featurevisor/compare/v0.12.0...v0.12.1) (2023-04-18)
+# [0.13.0](https://github.com/featurevisor/featurevisor/compare/v0.12.1...v0.13.0) (2023-04-19)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -450,7 +442,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.12.0](https://github.com/fahad19/featurevisor/compare/v0.11.0...v0.12.0) (2023-04-17)
+## [0.12.1](https://github.com/featurevisor/featurevisor/compare/v0.12.0...v0.12.1) (2023-04-18)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -458,7 +450,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.11.0](https://github.com/fahad19/featurevisor/compare/v0.10.1...v0.11.0) (2023-04-17)
+# [0.12.0](https://github.com/featurevisor/featurevisor/compare/v0.11.0...v0.12.0) (2023-04-17)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -466,7 +458,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.10.1](https://github.com/fahad19/featurevisor/compare/v0.10.0...v0.10.1) (2023-04-17)
+# [0.11.0](https://github.com/featurevisor/featurevisor/compare/v0.10.1...v0.11.0) (2023-04-17)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -474,7 +466,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.10.0](https://github.com/fahad19/featurevisor/compare/v0.9.0...v0.10.0) (2023-04-15)
+## [0.10.1](https://github.com/featurevisor/featurevisor/compare/v0.10.0...v0.10.1) (2023-04-17)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -482,7 +474,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.9.0](https://github.com/fahad19/featurevisor/compare/v0.8.1...v0.9.0) (2023-04-15)
+# [0.10.0](https://github.com/featurevisor/featurevisor/compare/v0.9.0...v0.10.0) (2023-04-15)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -490,7 +482,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.8.1](https://github.com/fahad19/featurevisor/compare/v0.8.0...v0.8.1) (2023-04-09)
+# [0.9.0](https://github.com/featurevisor/featurevisor/compare/v0.8.1...v0.9.0) (2023-04-15)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -498,26 +490,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.8.0](https://github.com/fahad19/featurevisor/compare/v0.7.0...v0.8.0) (2023-04-09)
+## [0.8.1](https://github.com/featurevisor/featurevisor/compare/v0.8.0...v0.8.1) (2023-04-09)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.8.0](https://github.com/featurevisor/featurevisor/compare/v0.7.0...v0.8.0) (2023-04-09)
 
 
 ### Features
 
-* Status site generator ([#31](https://github.com/fahad19/featurevisor/issues/31)) ([05749d4](https://github.com/fahad19/featurevisor/commit/05749d4ca2938a0ee7c7b52c7441b078d5f0dee9))
+* Status site generator ([#31](https://github.com/featurevisor/featurevisor/issues/31)) ([05749d4](https://github.com/featurevisor/featurevisor/commit/05749d4ca2938a0ee7c7b52c7441b078d5f0dee9))
 
 
 
 
 
-# [0.7.0](https://github.com/fahad19/featurevisor/compare/v0.6.0...v0.7.0) (2023-03-25)
-
-**Note:** Version bump only for package @featurevisor/cli
-
-
-
-
-
-# [0.6.0](https://github.com/fahad19/featurevisor/compare/v0.5.3...v0.6.0) (2023-03-25)
+# [0.7.0](https://github.com/featurevisor/featurevisor/compare/v0.6.0...v0.7.0) (2023-03-25)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -525,7 +517,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.5.3](https://github.com/fahad19/featurevisor/compare/v0.5.2...v0.5.3) (2023-03-25)
+# [0.6.0](https://github.com/featurevisor/featurevisor/compare/v0.5.3...v0.6.0) (2023-03-25)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -533,7 +525,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.5.2](https://github.com/fahad19/featurevisor/compare/v0.5.1...v0.5.2) (2023-03-25)
+## [0.5.3](https://github.com/featurevisor/featurevisor/compare/v0.5.2...v0.5.3) (2023-03-25)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -541,7 +533,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.5.0](https://github.com/fahad19/featurevisor/compare/v0.4.0...v0.5.0) (2023-03-22)
+## [0.5.2](https://github.com/featurevisor/featurevisor/compare/v0.5.1...v0.5.2) (2023-03-25)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -549,7 +541,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.4.0](https://github.com/fahad19/featurevisor/compare/v0.3.0...v0.4.0) (2023-03-19)
+# [0.5.0](https://github.com/featurevisor/featurevisor/compare/v0.4.0...v0.5.0) (2023-03-22)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -557,7 +549,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.3.0](https://github.com/fahad19/featurevisor/compare/v0.2.0...v0.3.0) (2023-03-17)
+# [0.4.0](https://github.com/featurevisor/featurevisor/compare/v0.3.0...v0.4.0) (2023-03-19)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -565,7 +557,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.2.0](https://github.com/fahad19/featurevisor/compare/v0.1.0...v0.2.0) (2023-03-16)
+# [0.3.0](https://github.com/featurevisor/featurevisor/compare/v0.2.0...v0.3.0) (2023-03-17)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -573,18 +565,26 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-# [0.1.0](https://github.com/fahad19/featurevisor/compare/v0.0.4...v0.1.0) (2023-03-05)
+# [0.2.0](https://github.com/featurevisor/featurevisor/compare/v0.1.0...v0.2.0) (2023-03-16)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [0.1.0](https://github.com/featurevisor/featurevisor/compare/v0.0.4...v0.1.0) (2023-03-05)
 
 
 ### Features
 
-* test PR for triggering minor release ([#2](https://github.com/fahad19/featurevisor/issues/2)) ([1c986f9](https://github.com/fahad19/featurevisor/commit/1c986f9ee4ee4669a118380771cb43fdf66e0137))
+* test PR for triggering minor release ([#2](https://github.com/featurevisor/featurevisor/issues/2)) ([1c986f9](https://github.com/featurevisor/featurevisor/commit/1c986f9ee4ee4669a118380771cb43fdf66e0137))
 
 
 
 
 
-## [0.0.4](https://github.com/fahad19/featurevisor/compare/v0.0.3...v0.0.4) (2023-03-05)
+## [0.0.4](https://github.com/featurevisor/featurevisor/compare/v0.0.3...v0.0.4) (2023-03-05)
 
 **Note:** Version bump only for package @featurevisor/cli
 
@@ -592,23 +592,23 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-## [0.0.3](https://github.com/fahad19/featurevisor/compare/v0.0.2...v0.0.3) (2023-03-05)
+## [0.0.3](https://github.com/featurevisor/featurevisor/compare/v0.0.2...v0.0.3) (2023-03-05)
 
 
 ### Bug Fixes
 
-* publish access ([ea5cd7c](https://github.com/fahad19/featurevisor/commit/ea5cd7cd8554e2def5fdcc1d3488598a08e99bfa))
+* publish access ([ea5cd7c](https://github.com/featurevisor/featurevisor/commit/ea5cd7cd8554e2def5fdcc1d3488598a08e99bfa))
 
 
 
 
 
-## [0.0.2](https://github.com/fahad19/featurevisor/compare/v0.0.1...v0.0.2) (2023-03-05)
+## [0.0.2](https://github.com/featurevisor/featurevisor/compare/v0.0.1...v0.0.2) (2023-03-05)
 
 
 ### Bug Fixes
 
-* cli package ([5aeca09](https://github.com/fahad19/featurevisor/commit/5aeca098a02afcd16c5327dc94a286006f618d60))
+* cli package ([5aeca09](https://github.com/featurevisor/featurevisor/commit/5aeca098a02afcd16c5327dc94a286006f618d60))
 
 
 
@@ -619,4 +619,4 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* linting ([230bfa0](https://github.com/fahad19/featurevisor/commit/230bfa0824f79181581585ccc37c2e78c5aeac42))
+* linting ([230bfa0](https://github.com/featurevisor/featurevisor/commit/230bfa0824f79181581585ccc37c2e78c5aeac42))

@@ -31,7 +31,7 @@ $ mkdir my-project && cd my-project
 $ featurevisor init
 ```
 
-If you wish to initialize a specific example as available in the [monorepo](https://github.com/fahad19/featurevisor/tree/main/examples):
+If you wish to initialize a specific example as available in the [monorepo](https://github.com/featurevisor/featurevisor/tree/main/examples):
 
 ```
 $ featurevisor init --example <name>
