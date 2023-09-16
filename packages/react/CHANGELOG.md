@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.47.4](https://github.com/featurevisor/featurevisor/compare/v0.47.3...v0.47.4) (2023-09-16)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
 ## [0.47.3](https://github.com/featurevisor/featurevisor/compare/v0.47.2...v0.47.3) (2023-09-16)
 
 **Note:** Version bump only for package @featurevisor/react
