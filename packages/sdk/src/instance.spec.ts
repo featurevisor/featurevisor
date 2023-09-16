@@ -393,6 +393,9 @@ describe("sdk: instance", function () {
         test: {
           enabled: true,
           variation: "control",
+          variables: {
+            color: "red",
+          },
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -436,6 +439,11 @@ describe("sdk: instance", function () {
         userId: "123",
       }),
     ).toEqual("control");
+    expect(
+      sdk.getVariable("test", "color", {
+        userId: "123",
+      }),
+    ).toEqual("red");
 
     setTimeout(function () {
       // still control after fetching datafile
@@ -463,6 +471,9 @@ describe("sdk: instance", function () {
         test: {
           enabled: true,
           variation: "control",
+          variables: {
+            color: "red",
+          },
         },
       },
       datafileUrl: "http://localhost:3000/datafile.json",
@@ -506,6 +517,11 @@ describe("sdk: instance", function () {
         userId: "123",
       }),
     ).toEqual("control");
+    expect(
+      sdk.getVariable("test", "color", {
+        userId: "123",
+      }),
+    ).toEqual("red");
 
     setTimeout(function () {
       // treatment after fetching datafile
@@ -765,6 +781,105 @@ describe("sdk: instance", function () {
     expect(deprecatedCount).toEqual(1);
   });
 
+  it("should check if enabled for mutually exclusive features", function () {
+    let bucketValue = 10000;
+
+    const sdk = createInstance({
+      configureBucketValue: function () {
+        return bucketValue;
+      },
+
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "mutex",
+            bucketBy: "userId",
+            ranges: [[0, 50000]],
+            traffic: [{ key: "1", segments: "*", percentage: 50000, allocation: [] }],
+          },
+        ],
+        attributes: [],
+        segments: [],
+      },
+    });
+
+    expect(sdk.isEnabled("test")).toEqual(false);
+    expect(sdk.isEnabled("test", { userId: "123" })).toEqual(false);
+
+    bucketValue = 40000;
+    expect(sdk.isEnabled("mutex", { userId: "123" })).toEqual(true);
+
+    bucketValue = 60000;
+    expect(sdk.isEnabled("mutex", { userId: "123" })).toEqual(false);
+  });
+
+  it("should get variation", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            force: [
+              {
+                conditions: [{ attribute: "userId", operator: "equals", value: "user-gb" }],
+                enabled: false,
+              },
+              {
+                segments: ["netherlands"],
+                enabled: false,
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  { variation: "treatment", range: [0, 100000] },
+                ],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [
+          {
+            key: "netherlands",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "nl",
+              },
+            ]),
+          },
+        ],
+      },
+    });
+
+    const context = {
+      userId: "123",
+    };
+
+    expect(sdk.getVariation("test", context)).toEqual("treatment");
+    expect(sdk.getVariation("test", { userId: "user-ch" })).toEqual("treatment");
+
+    // non existing
+    expect(sdk.getVariation("nonExistingFeature", context)).toEqual(undefined);
+
+    // disabled
+    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
+    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
+    expect(sdk.getVariation("test", { userId: "123", country: "nl" })).toEqual(undefined);
+  });
+
   it("should get variable", function () {
     const sdk = createInstance({
       datafile: {
@@ -789,6 +904,11 @@ describe("sdk: instance", function () {
                 key: "count",
                 type: "integer",
                 defaultValue: 0,
+              },
+              {
+                key: "price",
+                type: "double",
+                defaultValue: 9.99,
               },
               {
                 key: "paymentMethods",
@@ -820,25 +940,101 @@ describe("sdk: instance", function () {
                   {
                     key: "showSidebar",
                     value: true,
+                    overrides: [
+                      {
+                        segments: ["netherlands"],
+                        value: false,
+                      },
+                      {
+                        conditions: [
+                          {
+                            attribute: "country",
+                            operator: "equals",
+                            value: "de",
+                          },
+                        ],
+                        value: false,
+                      },
+                    ],
                   },
                 ],
               },
             ],
+            force: [
+              {
+                conditions: [{ attribute: "userId", operator: "equals", value: "user-ch" }],
+                enabled: true,
+                variation: "control",
+                variables: {
+                  color: "red and white",
+                },
+              },
+              {
+                conditions: [{ attribute: "userId", operator: "equals", value: "user-gb" }],
+                enabled: false,
+              },
+            ],
             traffic: [
+              // belgium
+              {
+                key: "2",
+                segments: ["belgium"],
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 0] },
+                  {
+                    variation: "treatment",
+                    range: [0, 100000],
+                  },
+                ],
+                variation: "control",
+                variables: {
+                  color: "black",
+                },
+              },
+
+              // everyone
               {
                 key: "1",
                 segments: "*",
                 percentage: 100000,
                 allocation: [
                   { variation: "control", range: [0, 0] },
-                  { variation: "treatment", range: [0, 100000] },
+                  {
+                    variation: "treatment",
+                    range: [0, 100000],
+                  },
                 ],
               },
             ],
           },
         ],
-        attributes: [],
-        segments: [],
+        attributes: [
+          { key: "userId", type: "string", capture: true },
+          { key: "country", type: "string" },
+        ],
+        segments: [
+          {
+            key: "netherlands",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "nl",
+              },
+            ]),
+          },
+          {
+            key: "belgium",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "be",
+              },
+            ]),
+          },
+        ],
       },
     });
 
@@ -847,15 +1043,39 @@ describe("sdk: instance", function () {
     };
 
     expect(sdk.getVariation("test", context)).toEqual("treatment");
+    expect(
+      sdk.getVariation("test", {
+        ...context,
+        country: "be",
+      }),
+    ).toEqual("control");
+    expect(sdk.getVariation("test", { userId: "user-ch" })).toEqual("control");
 
     expect(sdk.getVariable("test", "color", context)).toEqual("red");
     expect(sdk.getVariableString("test", "color", context)).toEqual("red");
+    expect(sdk.getVariable("test", "color", { ...context, country: "be" })).toEqual("black");
+    expect(sdk.getVariable("test", "color", { userId: "user-ch" })).toEqual("red and white");
 
     expect(sdk.getVariable("test", "showSidebar", context)).toEqual(true);
     expect(sdk.getVariableBoolean("test", "showSidebar", context)).toEqual(true);
+    expect(
+      sdk.getVariableBoolean("test", "showSidebar", {
+        ...context,
+        country: "nl",
+      }),
+    ).toEqual(false);
+    expect(
+      sdk.getVariableBoolean("test", "showSidebar", {
+        ...context,
+        country: "de",
+      }),
+    ).toEqual(false);
 
     expect(sdk.getVariable("test", "count", context)).toEqual(0);
     expect(sdk.getVariableInteger("test", "count", context)).toEqual(0);
+
+    expect(sdk.getVariable("test", "price", context)).toEqual(9.99);
+    expect(sdk.getVariableDouble("test", "price", context)).toEqual(9.99);
 
     expect(sdk.getVariable("test", "paymentMethods", context)).toEqual(["paypal", "creditcard"]);
     expect(sdk.getVariableArray("test", "paymentMethods", context)).toEqual([
@@ -880,5 +1100,12 @@ describe("sdk: instance", function () {
         nested: "value",
       },
     });
+
+    // non existing
+    expect(sdk.getVariable("test", "nonExisting", context)).toEqual(undefined);
+    expect(sdk.getVariable("nonExistingFeature", "nonExisting", context)).toEqual(undefined);
+
+    // disabled
+    expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
   });
 });
