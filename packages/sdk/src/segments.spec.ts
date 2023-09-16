@@ -41,6 +41,29 @@ describe("sdk: Segments", function () {
           and: ["netherlands", { or: ["mobileUsers", "desktopUsers"] }],
         },
       },
+
+      // german
+      {
+        key: "germanMobileUsers",
+        segments: [
+          {
+            and: ["mobileUsers", "germany"],
+          },
+        ],
+      },
+      {
+        key: "germanNonMobileUsers",
+        segments: [
+          {
+            and: [
+              "germany",
+              {
+                not: ["mobileUsers"],
+              },
+            ],
+          },
+        ],
+      },
     ];
 
     const datafileContent: DatafileContent = {
@@ -188,6 +211,168 @@ describe("sdk: Segments", function () {
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "de", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+    });
+
+    it("should match dutchMobileOrDesktopUsers", function () {
+      const group = groups.find((g) => g.key === "dutchMobileOrDesktopUsers") as Group;
+
+      // match
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "mobile", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "desktop" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "desktop", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+
+      // not match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "desktop" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+    });
+
+    it("should match dutchMobileOrDesktopUsers2", function () {
+      const group = groups.find((g) => g.key === "dutchMobileOrDesktopUsers2") as Group;
+
+      // match
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "mobile", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "desktop" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "desktop", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+
+      // not match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "desktop" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+    });
+
+    it("should match germanMobileUsers", function () {
+      const group = groups.find((g) => g.key === "germanMobileUsers") as Group;
+
+      // match
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "mobile", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+
+      // not match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "mobile" },
+          datafileReader,
+        ),
+      ).toEqual(false);
+    });
+
+    it("should match germanNonMobileUsers", function () {
+      const group = groups.find((g) => g.key === "germanNonMobileUsers") as Group;
+
+      // match
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "desktop" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "de", deviceType: "desktop", browser: "chrome" },
+          datafileReader,
+        ),
+      ).toEqual(true);
+
+      // not match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(
+          group.segments,
+          { country: "nl", deviceType: "desktop" },
           datafileReader,
         ),
       ).toEqual(false);
