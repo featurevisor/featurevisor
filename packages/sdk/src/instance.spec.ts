@@ -45,7 +45,7 @@ describe("sdk: instance", function () {
     }, 0);
   });
 
-  it("should resolve onReady method as Promise", function (done) {
+  it("should resolve onReady method as Promise when initialized synchronously", function (done) {
     let readyCount = 0;
 
     const sdk = createInstance({
@@ -55,6 +55,41 @@ describe("sdk: instance", function () {
         features: [],
         attributes: [],
         segments: [],
+      },
+      onReady: () => {
+        readyCount += 1;
+      },
+    });
+
+    setTimeout(() => {
+      sdk.onReady().then((f) => {
+        expect(f.isReady()).toEqual(true);
+        expect(readyCount).toEqual(1);
+
+        done();
+      });
+    }, 0);
+  });
+
+  it("should resolve onReady method as Promise, when fetching datafile remotely", function (done) {
+    let readyCount = 0;
+
+    const sdk = createInstance({
+      datafileUrl: "http://localhost:3000/datafile.json",
+      handleDatafileFetch: function () {
+        const content: DatafileContent = {
+          schemaVersion: "1",
+          revision: "1.0",
+          features: [],
+          attributes: [],
+          segments: [],
+        };
+
+        return new Promise(function (resolve) {
+          setTimeout(function () {
+            resolve(content);
+          }, 10);
+        });
       },
       onReady: () => {
         readyCount += 1;
@@ -781,6 +816,52 @@ describe("sdk: instance", function () {
     expect(deprecatedCount).toEqual(1);
   });
 
+  it("should check if enabled for overridden flags from rules", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "2",
+                segments: ["netherlands"],
+                percentage: 100000,
+                enabled: false,
+                allocation: [],
+              },
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [
+          {
+            key: "netherlands",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "nl",
+              },
+            ]),
+          },
+        ],
+      },
+    });
+
+    expect(sdk.isEnabled("test", { userId: "user-123", country: "de" })).toEqual(true);
+    expect(sdk.isEnabled("test", { userId: "user-123", country: "nl" })).toEqual(false);
+  });
+
   it("should check if enabled for mutually exclusive features", function () {
     let bucketValue = 10000;
 
@@ -847,6 +928,18 @@ describe("sdk: instance", function () {
               },
             ],
           },
+          {
+            key: "testWithNoVariation",
+            bucketBy: "userId",
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
         ],
         attributes: [],
         segments: [
@@ -878,6 +971,9 @@ describe("sdk: instance", function () {
     expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
     expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
     expect(sdk.getVariation("test", { userId: "123", country: "nl" })).toEqual(undefined);
+
+    // no variation
+    expect(sdk.getVariation("testWithNoVariation", context)).toEqual(undefined);
   });
 
   it("should get variable", function () {
