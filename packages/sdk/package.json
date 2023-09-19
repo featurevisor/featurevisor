@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/sdk",
-  "version": "0.47.6",
+  "version": "0.47.7",
   "description": "Featurevisor SDK for Node.js and the browser",
   "main": "dist/index.js",
   "module": "lib/index.js",
