@@ -41,6 +41,7 @@
       { "title": "React Native", "href": "/docs/react-native" },
       { "title": "Next.js", "href": "/docs/frameworks/nextjs" },
       { "title": "Vue.js", "href": "/docs/vue" },
+      { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
       { "title": "Express.js", "href": "/docs/frameworks/express" }
     ]
   },
