@@ -1,6 +1,7 @@
 ---
 title: Quick start
 description: Quick start guide for Featurevisor
+ogImage: /img/og/docs-quick-start.png
 ---
 
 ## Prerequisites

@@ -1,6 +1,7 @@
 ---
 title: Groups
 description: Learn how to create groups in Featurevisor
+ogImage: /img/og/docs-groups.png
 ---
 
 Groups enable you to run mutually exclusive experiments. {% .lead %}
