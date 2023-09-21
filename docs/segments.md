@@ -1,6 +1,7 @@
 ---
 title: Segments
 description: Learn how to create segments in Featurevisor
+ogImage: /img/og/docs-segments.png
 ---
 
 Segments are made up of conditions against various attributes. They are the groups of users that you can target. {% .lead %}

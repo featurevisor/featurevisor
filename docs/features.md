@@ -1,9 +1,16 @@
 ---
 title: Features
 description: Learn how to create features in Featurevisor
+ogImage: /img/og/docs-features.png
 ---
 
 Features are the building blocks of creating traditional boolean feature flags and more advanced multivariate experiments. {% .lead %}
+
+The goal of creating a feature is to be able to evaluate its values in your application with the provided [SDKs](/docs/sdks). The evaluated values can be either its:
+
+- **flag**: its own on/off status
+- **variation**: a string value if you have a/b tests running
+- **variables**: a set of key/value pairs
 
 ## Create a Feature
 
@@ -27,7 +34,7 @@ environments:
         percentage: 100
 ```
 
-This is the smallest possible definition of a feature.
+This is the smallest possible definition of a feature in Featurevisor.
 
 Quite a few are happening there. We will go through each of the properties from the snippet above and more in the following sections.
 
@@ -44,7 +51,7 @@ description: Some human readable description of this particular feature
 
 Tags are used to group features together. This helps your application load only the features that are relevant to the application itself.
 
-Very useful when you have multiple applications in your organization.
+Very useful when you have multiple applications targeting different platforms (like Web, iOS, Android) in your organization.
 
 Array of tags are defined in the `tags` property:
 
@@ -56,7 +63,7 @@ tags:
   - ios
 ```
 
-Read more about how tags are relevant in [Building datafiles](/docs/building-datafiles).
+Read more about how tags are relevant in [building datafiles](/docs/building-datafiles) per tag.
 
 ## Bucketing
 
@@ -88,6 +95,8 @@ bucketBy:
     - deviceId
 ```
 
+You can read more about bucketing concept [here](/docs/bucketing).
+
 ## Variations
 
 A feature can have multiple variations if you wish to run A/B tests. Each variation must have a different string value.
@@ -114,6 +123,8 @@ In the world of experimentation, the default variation is usually called the `co
 
 But you are free to name them however you want, and create as many variations as you want.
 {% /callout %}
+
+You can read more about experimentation [here](/docs/use-cases/experiments).
 
 ## Environments
 
@@ -338,6 +349,8 @@ variations:
 ```
 
 If users are bucketed in the `treatment` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the variables schema.
+
+You can read more about using Featurevisor for remote configuration needs [here](/docs/use-cases/remote-configuration).
 
 ### Supported types
 
@@ -592,6 +605,8 @@ required:
 
 If both the required features are evaluated as desired, the dependent feature `checkoutPromo` will then continue with its own evaluation.
 
+You can read more about managing feature dependencies [here](/docs/use-cases/dependencies).
+
 ## Force
 
 You can force a feature to be enabled or disabled against custom conditions.
@@ -622,6 +637,8 @@ environments:
 ```
 
 Instead of `conditions` above, you can also use `segments` for forcing variations and variables.
+
+You can see our use case covering this functionality in [testing in production](/docs/use-cases/testing-in-production) guide.
 
 ## Deprecating
 

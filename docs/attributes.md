@@ -1,6 +1,7 @@
 ---
 title: Attributes
 description: Learn how to create attributes in Featurevisor
+ogImage: /img/og/docs-attributes.png
 ---
 
 Attributes are the building blocks of creating segments. They are the properties that you can use to target users. {% .lead %}
