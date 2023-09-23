@@ -4,6 +4,7 @@ import * as path from "path";
 
 import * as Joi from "joi";
 
+import { Datasource } from "./datasource/datasource";
 import { getYAMLFiles, parseYaml } from "./utils";
 
 import { ProjectConfig } from "./config";
@@ -439,7 +440,7 @@ export function printJoiError(e: Joi.ValidationError) {
 }
 
 function checkForCircularDependencyInRequired(
-  featuresDirectoryPath: string,
+  datasource: Datasource,
   featureKey: FeatureKey,
   required?: Required[],
   chain: FeatureKey[] = [],
@@ -461,19 +462,17 @@ function checkForCircularDependencyInRequired(
       throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
     }
 
-    const requiredFeaturePath = path.join(featuresDirectoryPath, `${requiredKey}.yml`);
+    const requiredFeatureExists = datasource.entityExists("feature", requiredKey);
 
-    if (!fs.existsSync(requiredFeaturePath)) {
+    if (!requiredFeatureExists) {
       throw new Error(`required feature "${requiredKey}" not found`);
     }
 
-    const requiredParsedFeature = parseYaml(
-      fs.readFileSync(requiredFeaturePath, "utf8"),
-    ) as ParsedFeature;
+    const requiredParsedFeature = datasource.readFeature(requiredKey);
 
     if (requiredParsedFeature.required) {
       checkForCircularDependencyInRequired(
-        featuresDirectoryPath,
+        datasource,
         featureKey,
         requiredParsedFeature.required,
         chain,
@@ -484,19 +483,20 @@ function checkForCircularDependencyInRequired(
 
 export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
   let hasError = false;
+  const datasource = new Datasource(projectConfig);
 
   const availableAttributeKeys: string[] = [];
   const availableSegmentKeys: string[] = [];
   const availableFeatureKeys: string[] = [];
 
   // lint attributes
-  console.log("Linting attributes...\n");
-  const attributeFilePaths = getYAMLFiles(path.join(projectConfig.attributesDirectoryPath));
+  const attributes = datasource.listAttributes();
+  console.log(`Linting ${attributes.length} attributes...\n`);
+
   const attributeJoiSchema = getAttributeJoiSchema();
 
-  for (const filePath of attributeFilePaths) {
-    const key = path.basename(filePath, ".yml");
-    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+  for (const key of attributes) {
+    const parsed = datasource.readAttribute(key);
     availableAttributeKeys.push(key);
 
     try {
@@ -515,14 +515,14 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   }
 
   // lint segments
-  console.log("\nLinting segments...\n");
-  const segmentFilePaths = getYAMLFiles(path.join(projectConfig.segmentsDirectoryPath));
+  const segments = datasource.listSegments();
+  console.log(`\nLinting ${segments.length} segments...\n`);
+
   const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
-  for (const filePath of segmentFilePaths) {
-    const key = path.basename(filePath, ".yml");
-    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+  for (const key of segments) {
+    const parsed = datasource.readSegment(key);
     availableSegmentKeys.push(key);
 
     try {
@@ -541,14 +541,16 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   }
 
   // lint groups
-  console.log("\nLinting groups...\n");
+
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groupFilePaths = getYAMLFiles(path.join(projectConfig.groupsDirectoryPath));
+    const groups = datasource.listGroups();
+    console.log(`\nLinting ${groups.length} groups...\n`);
+
+    // @TODO: feature it slots can be from availableFeatureKeys only
     const groupJoiSchema = getGroupJoiSchema(projectConfig, availableFeatureKeys);
 
-    for (const filePath of groupFilePaths) {
-      const key = path.basename(filePath, ".yml");
-      const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    for (const key of groups) {
+      const parsed = datasource.readGroup(key);
 
       try {
         await groupJoiSchema.validateAsync(parsed);
@@ -569,8 +571,9 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // @TODO: feature cannot exist in multiple groups
 
   // lint features
-  console.log("\nLinting features...\n");
-  const featureFilePaths = getYAMLFiles(path.join(projectConfig.featuresDirectoryPath));
+  const features = datasource.listFeatures();
+  console.log(`\nLinting ${features.length} features...\n`);
+
   const featureJoiSchema = getFeatureJoiSchema(
     projectConfig,
     conditionsJoiSchema,
@@ -578,9 +581,8 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     availableFeatureKeys,
   );
 
-  for (const filePath of featureFilePaths) {
-    const key = path.basename(filePath, ".yml");
-    const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+  for (const key of features) {
+    const parsed = datasource.readFeature(key);
     availableFeatureKeys.push(key);
 
     try {
@@ -599,11 +601,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
     if (parsed.required) {
       try {
-        checkForCircularDependencyInRequired(
-          projectConfig.featuresDirectoryPath,
-          key,
-          parsed.required,
-        );
+        checkForCircularDependencyInRequired(datasource, key, parsed.required);
       } catch (e) {
         console.log("  =>", key);
         console.log("     => Error:", e.message);
@@ -613,18 +611,18 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   }
 
   // lint tests
-  console.log("\nLinting tests...\n");
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
-    const testFilePaths = getYAMLFiles(path.join(projectConfig.testsDirectoryPath));
+    const tests = datasource.listTests();
+    console.log(`\nLinting ${tests.length} tests...\n`);
+
     const testsJoiSchema = getTestsJoiSchema(
       projectConfig,
       availableFeatureKeys,
       availableSegmentKeys,
     );
 
-    for (const filePath of testFilePaths) {
-      const key = path.basename(filePath, ".yml");
-      const parsed = parseYaml(fs.readFileSync(filePath, "utf8")) as any;
+    for (const key of tests) {
+      const parsed = datasource.readTest(key);
 
       try {
         await testsJoiSchema.validateAsync(parsed);

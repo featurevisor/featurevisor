@@ -23,7 +23,7 @@ export class Datasource {
    * Common methods
    */
   listEntities(entityType: EntityType): string[] {
-    const directoryPath = this.getDirectoryPath(entityType);
+    const directoryPath = this.getEntityDirectoryPath(entityType);
 
     return fs
       .readdirSync(directoryPath)
@@ -31,7 +31,7 @@ export class Datasource {
       .map((fileName) => fileName.replace(`.${this.extension}`, ""));
   }
 
-  getDirectoryPath(entityType: EntityType): string {
+  getEntityDirectoryPath(entityType: EntityType): string {
     if (entityType === "feature") {
       return this.config.featuresDirectoryPath;
     } else if (entityType === "group") {
@@ -45,14 +45,20 @@ export class Datasource {
     return this.config.attributesDirectoryPath;
   }
 
-  getPath(entityType: EntityType, entityKey: string): string {
-    const basePath = this.getDirectoryPath(entityType);
+  getEntityPath(entityType: EntityType, entityKey: string): string {
+    const basePath = this.getEntityDirectoryPath(entityType);
 
     return path.join(basePath, `${entityKey}.${this.extension}`);
   }
 
+  entityExists(entityType: EntityType, entityKey: string): boolean {
+    const entityPath = this.getEntityPath(entityType, entityKey);
+
+    return fs.existsSync(entityPath);
+  }
+
   readEntity(entityType: EntityType, entityKey: string): string {
-    const filePath = this.getPath(entityType, entityKey);
+    const filePath = this.getEntityPath(entityType, entityKey);
 
     return fs.readFileSync(filePath, "utf8");
   }
@@ -84,7 +90,7 @@ export class Datasource {
   }
 
   readFeature(featureKey: string) {
-    return this.parseEntity("feature", featureKey);
+    return this.parseEntity<ParsedFeature>("feature", featureKey);
   }
 
   // segments
@@ -130,6 +136,10 @@ export class Datasource {
         const groupContent = this.parseEntity<Group>("group", group);
 
         return groupContent.slots.some((slot) => {
+          if (!slot.feature) {
+            return false;
+          }
+
           return featuresList.indexOf(slot.feature) !== -1;
         });
       });
