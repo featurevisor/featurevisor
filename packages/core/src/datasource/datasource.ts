@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { Tag } from "@featurevisor/types";
+import { Tag, ParsedFeature, Segment, Attribute, Group, Test } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { parsers } from "./parsers";
@@ -22,7 +22,7 @@ export class Datasource {
   /**
    * Common methods
    */
-  listEntities(entityType: EntityType) {
+  listEntities(entityType: EntityType): string[] {
     const directoryPath = this.getDirectoryPath(entityType);
 
     return fs
@@ -31,7 +31,7 @@ export class Datasource {
       .map((fileName) => fileName.replace(`.${this.extension}`, ""));
   }
 
-  getDirectoryPath(entityType: EntityType) {
+  getDirectoryPath(entityType: EntityType): string {
     if (entityType === "feature") {
       return this.config.featuresDirectoryPath;
     } else if (entityType === "group") {
@@ -45,23 +45,23 @@ export class Datasource {
     return this.config.attributesDirectoryPath;
   }
 
-  getPath(entityType: EntityType, entityKey: string) {
+  getPath(entityType: EntityType, entityKey: string): string {
     const basePath = this.getDirectoryPath(entityType);
 
     return path.join(basePath, `${entityKey}.${this.extension}`);
   }
 
-  readEntity(entityType: EntityType, entityKey: string) {
+  readEntity(entityType: EntityType, entityKey: string): string {
     const filePath = this.getPath(entityType, entityKey);
 
     return fs.readFileSync(filePath, "utf8");
   }
 
-  parseEntity(entityType: EntityType, entityKey: string) {
+  parseEntity<T>(entityType: EntityType, entityKey: string): T {
     const entityContent = this.readEntity(entityType, entityKey);
     const parser = parsers[this.extension];
 
-    return parser(entityContent);
+    return parser(entityContent) as T;
   }
 
   /**
@@ -74,7 +74,7 @@ export class Datasource {
 
     if (tag) {
       return features.filter((feature) => {
-        const featureContent = this.parseEntity("feature", feature);
+        const featureContent = this.parseEntity<ParsedFeature>("feature", feature);
 
         return featureContent.tags.indexOf(tag) !== -1;
       });
@@ -101,7 +101,7 @@ export class Datasource {
   }
 
   readSegment(segmentKey: string) {
-    return this.parseEntity("segment", segmentKey);
+    return this.parseEntity<Segment>("segment", segmentKey);
   }
 
   // attributes
@@ -118,7 +118,7 @@ export class Datasource {
   }
 
   readAttribute(attributeKey: string) {
-    return this.parseEntity("attribute", attributeKey);
+    return this.parseEntity<Attribute>("attribute", attributeKey);
   }
 
   // groups
@@ -127,7 +127,7 @@ export class Datasource {
 
     if (featuresList) {
       return groups.filter((group) => {
-        const groupContent = this.parseEntity("group", group);
+        const groupContent = this.parseEntity<Group>("group", group);
 
         return groupContent.slots.some((slot) => {
           return featuresList.indexOf(slot.feature) !== -1;
@@ -139,7 +139,7 @@ export class Datasource {
   }
 
   readGroup(groupKey: string) {
-    return this.parseEntity("group", groupKey);
+    return this.parseEntity<Group>("group", groupKey);
   }
 
   // tests
@@ -148,6 +148,6 @@ export class Datasource {
   }
 
   readTest(testKey: string) {
-    return this.parseEntity("test", testKey);
+    return this.parseEntity<Test>("test", testKey);
   }
 }

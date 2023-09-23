@@ -2,7 +2,7 @@ import * as path from "path";
 
 import { BucketBy } from "@featurevisor/types";
 
-export type AllowedParser = "yml" | "json";
+import { AllowedParser } from "./datasource/parsers";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";

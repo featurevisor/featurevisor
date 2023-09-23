@@ -1,5 +1,10 @@
 import { parseYaml } from "../utils";
 
+/**
+ * If we want to add more parsers,
+ * add them to this object with new file extension as the key,
+ * and a function that takes file content as string and returns parsed object as the value.
+ */
 export const parsers = {
   // extension => function
   yml(content: string) {
@@ -10,3 +15,5 @@ export const parsers = {
     return JSON.parse(content);
   },
 };
+
+export type AllowedParser = keyof typeof parsers; // keys of parsers object
