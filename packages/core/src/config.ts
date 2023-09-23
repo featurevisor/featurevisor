@@ -2,6 +2,8 @@ import * as path from "path";
 
 import { BucketBy } from "@featurevisor/types";
 
+export type AllowedParser = "yml" | "json";
+
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
@@ -21,6 +23,8 @@ export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 export const DEFAULT_PRETTY_STATE = false;
 export const DEFAULT_PRETTY_DATAFILE = false;
 
+export const DEFAULT_PARSER: AllowedParser = "yml";
+
 export const SCHEMA_VERSION = "1";
 
 export interface ProjectConfig {
@@ -34,6 +38,7 @@ export interface ProjectConfig {
   environments: string[];
   tags: string[];
   defaultBucketBy: BucketBy;
+  parser: AllowedParser;
   prettyState: boolean;
   prettyDatafile: boolean;
   siteExportDirectoryPath: string;
@@ -54,6 +59,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     environments: DEFAULT_ENVIRONMENTS,
     tags: DEFAULT_TAGS,
     defaultBucketBy: "userId",
+
+    parser: DEFAULT_PARSER,
 
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
