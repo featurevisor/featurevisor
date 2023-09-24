@@ -149,13 +149,13 @@ environments:
 
 ## Linting
 
-We can lint the content of all our YAML files to make sure it's all valid:
+We can lint the content of all our files to make sure they are all valid:
 
 ```
 $ featurevisor lint
 ```
 
-Learn more in [Linting YAMLs](/docs/linting-yamls).
+Learn more in [Linting](/docs/linting).
 
 ## Build datafiles
 

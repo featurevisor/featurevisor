@@ -87,7 +87,7 @@ To maintain consistent bucketing, you are advised to:
 - Start with a bigger slot for your feature, even if you do not want to use the full percentage value for your feature's rules. You can slowly increase it at feature's rule level later.
 - You can set `feature: false` if you want to remove a feature from a group's slot without any replacement feature.
 
-Rely on [Linting YAMLs](/docs/linting-yamls) to catch any mistakes.
+Rely on [linting](/docs/linting) to catch any mistakes.
 
 ## Archiving
 
