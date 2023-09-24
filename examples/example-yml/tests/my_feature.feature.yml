@@ -1,0 +1,29 @@
+tests:
+  - tag: all
+    environment: production
+    features:
+      - key: my_feature
+        assertions:
+          - at: 10
+            description: "At 10%, the feature should be enabled"
+            context:
+              country: nl
+            expectedToBeEnabled: true
+
+          - at: 70
+            description: "At 70%, the feature should be enabled"
+            context:
+              country: nl
+            expectedToBeEnabled: true
+
+          - at: 90
+            description: "At 90%, the feature should be disabled"
+            context:
+              country: nl
+            expectedToBeEnabled: false
+
+          - at: 90
+            description: "At 90%, the feature should be disabled for Germany"
+            context:
+              country: de
+            expectedToBeEnabled: false
