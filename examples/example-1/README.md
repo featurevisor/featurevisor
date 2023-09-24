@@ -2,6 +2,10 @@
 
 Basic example showing how Featurevisor works.
 
+This project is mostly used by the Featurevisor team for testing and development.
+
+Visit [https://featurevisor.com](https://featurevisor.com) for more information.
+
 ## Initialize
 
 ```

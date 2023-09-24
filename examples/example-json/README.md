@@ -1,6 +1,6 @@
 # example-1
 
-Basic example showing how Featurevisor works, with all definitions written in YAML.
+Basic example showing how Featurevisor works, with all definitions written in JSON.
 
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
@@ -9,7 +9,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 ```
 $ mkdir my-featurevisor-project
 $ cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-yml
+$ npx @featurevisor/cli init --example example-json
 ```
 
 ## Installation

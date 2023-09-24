@@ -1,0 +1,5 @@
+{
+  "description": "Device ID",
+  "type": "string",
+  "capture": true
+}
