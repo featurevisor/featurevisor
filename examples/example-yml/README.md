@@ -1,6 +1,6 @@
 # example-1
 
-Basic example showing how Featurevisor works.
+Basic example showing how Featurevisor works, with all definitions written in YAML.
 
 ## Initialize
 
