@@ -19,6 +19,10 @@ export class Datasource {
     this.extension = config.parser;
   }
 
+  getExtension() {
+    return this.extension;
+  }
+
   /**
    * Common methods
    */

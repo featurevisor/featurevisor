@@ -98,7 +98,7 @@ export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig)
         const fileName = lineSplit.pop() as string;
         const relativeDir = lineSplit.join(path.sep);
 
-        const key = fileName.replace(".yml", "");
+        const key = fileName.replace("." + projectConfig.parser, "");
 
         let type = "feature" as "attribute" | "segment" | "feature";
 
@@ -262,15 +262,15 @@ export function generateSiteSearchIndex(
     result.links = {
       attribute: repoDetails.blobUrl.replace(
         "{{blobPath}}",
-        prefix + relativeAttributesPath + "/{{key}}.yml",
+        prefix + relativeAttributesPath + "/{{key}}." + datasource.getExtension(),
       ),
       segment: repoDetails.blobUrl.replace(
         "{{blobPath}}",
-        prefix + relativeSegmentsPath + "/{{key}}.yml",
+        prefix + relativeSegmentsPath + "/{{key}}." + datasource.getExtension(),
       ),
       feature: repoDetails.blobUrl.replace(
         "{{blobPath}}",
-        prefix + relativeFeaturesPath + "/{{key}}.yml",
+        prefix + relativeFeaturesPath + "/{{key}}." + datasource.getExtension(),
       ),
       commit: repoDetails.commitUrl,
     };
