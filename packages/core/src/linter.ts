@@ -1,14 +1,12 @@
 // for use in node only
 import * as fs from "fs";
-import * as path from "path";
 
 import * as Joi from "joi";
 
 import { Datasource } from "./datasource/datasource";
-import { getYAMLFiles, parseYaml } from "./utils";
 
 import { ProjectConfig } from "./config";
-import { ParsedFeature, FeatureKey, Required } from "@featurevisor/types";
+import { FeatureKey, Required } from "@featurevisor/types";
 
 export function getAttributeJoiSchema() {
   const attributeJoiSchema = Joi.object({
@@ -113,7 +111,11 @@ export function getSegmentJoiSchema(projectConfig: ProjectConfig, conditionsJoiS
   return segmentJoiSchema;
 }
 
-export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeatureKeys: string[]) {
+export function getGroupJoiSchema(
+  projectConfig: ProjectConfig,
+  datasource: Datasource,
+  availableFeatureKeys: string[],
+) {
   const groupJoiSchema = Joi.object({
     description: Joi.string().required(),
     slots: Joi.array()
@@ -135,12 +137,13 @@ export function getGroupJoiSchema(projectConfig: ProjectConfig, availableFeature
 
           if (slot.feature) {
             const featureKey = slot.feature;
-            const featurePath = path.join(projectConfig.featuresDirectoryPath, `${featureKey}.yml`);
-            const parsedFeature = parseYaml(fs.readFileSync(featurePath, "utf8")) as ParsedFeature;
+            const featureExists = datasource.entityExists("feature", featureKey);
 
-            if (!parsedFeature) {
+            if (!featureExists) {
               throw new Error(`feature ${featureKey} not found`);
             }
+
+            const parsedFeature = datasource.readFeature(featureKey);
 
             const environmentKeys = Object.keys(parsedFeature.environments);
             for (const environmentKey of environmentKeys) {
@@ -547,7 +550,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     console.log(`\nLinting ${groups.length} groups...\n`);
 
     // @TODO: feature it slots can be from availableFeatureKeys only
-    const groupJoiSchema = getGroupJoiSchema(projectConfig, availableFeatureKeys);
+    const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
 
     for (const key of groups) {
       const parsed = datasource.readGroup(key);
