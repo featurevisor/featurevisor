@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { Tag, ParsedFeature, Segment, Attribute, Group, Test } from "@featurevisor/types";
+import { Tag, ParsedFeature, Segment, Attribute, Group, Spec } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { parsers } from "./parsers";
@@ -158,6 +158,6 @@ export class Datasource {
   }
 
   readTest(testKey: string) {
-    return this.parseEntity<Test>("test", testKey);
+    return this.parseEntity<Spec>("test", testKey);
   }
 }
