@@ -1,1 +1,5 @@
-{ "description": "User ID", "type": "string", "capture": true }
+{
+  "description": "User ID",
+  "type": "string",
+  "capture": true
+}
