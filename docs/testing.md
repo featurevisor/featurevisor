@@ -7,12 +7,42 @@ Features and segments can grow into complex configuration very fast, and it's im
 
 ## Testing features
 
-You can write test specs in YAML to test your features in great detail.
+We can write test specs in the same expressive way as we defined our features to test your them in great detail.
 
-Assuming we already have a `foo` feature in `features/foo.yml`, we can create a new test spec for it in `tests` directory:
+Assuming we already have a `foo` feature in `features/foo.yml`:
 
 ```yml
-# tests/foo.spec.yml
+# features/foo.yml
+description: Foo feature
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  - key: someKey
+    type: string
+    defaultValue: someValue
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+
+environments:
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+```
+
+We can create a new test spec for it in `tests` directory:
+
+```yml
+# tests/foo.feature.yml
 tests:
   - tag: all
     environment: production
@@ -49,7 +79,7 @@ Read more in [Bucketing](/docs/bucketing).
 
 ## Testing segments
 
-Similar to features, you can write test specs in YAML to test your segments in great detail.
+Similar to features, you can write test specs to test your segments as well.
 
 Assuming we already have a `netherlands` segment:
 
@@ -65,7 +95,7 @@ conditions:
 We can create a new test spec in `tests` directory:
 
 ```yml
-# tests/netherlands.spec.yml
+# tests/netherlands.segment.yml
 tests:
   - segments:
       - key: netherlands # your segment key

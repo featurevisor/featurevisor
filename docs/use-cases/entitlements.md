@@ -232,7 +232,7 @@ It is possible that you may want to offer a specific entitlement to your users b
 
 For the sake of this guide, let's assume your social media app can legally allow your users to upload videos in the US only in `premium` plan, and nowhere else.
 
-We can declare that config in our feature's YAML as follows:
+We can declare that config in our feature's definition as follows:
 
 ```yml
 # features/plan.yml

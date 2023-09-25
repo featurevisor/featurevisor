@@ -102,7 +102,7 @@ import { Context } from "@yourorg/features";
 
 Passing `context` in all the methods is optional.
 
-The generated code is smart enough to know the types of all your individual attributes as defined in your Featurevisor project as YAMLs.
+The generated code is smart enough to know the types of all your individual attributes as defined in your Featurevisor project.
 
 Therefore, if you pass an attribute in wrong type for evaluating variation or variables, you will get a TypeScript error.
 

@@ -24,9 +24,11 @@ Declarative approach means that you specify the desired state of your infrastruc
 This means you express your desired state from the system as files in (usually) one of these formats, which are human-readable yet machine-parsable:
 
 - [YAML](https://en.wikipedia.org/wiki/YAML) (Featurevisor uses this by default)
-- [JSON](https://en.wikipedia.org/wiki/JSON) (this is also supported via [parser](/docs/configuration/#parser) config)
+- [JSON](https://en.wikipedia.org/wiki/JSON)
 - [TOML](https://toml.io/en/)
 - [HCL](https://github.com/hashicorp/hcl)
+
+Refer to our [custom parser guide](/docs/advanced/custom-parsers) to learn how to use other formats.
 
 ## How does it apply to Featurevisor?
 
@@ -40,12 +42,12 @@ In Featurevisor, all feature configurations are stored in a Git repository and m
 
 ### Declarative configuration
 
-Featurevisor allows you to define all your feature flags, A/B tests, and other configurations in YAML (or JSON) files. This provides a human-readable, yet machine-parsable, way to manage features.
+Featurevisor allows you to define all your feature flags, A/B tests, and other configurations in files written in a language of your choosing (like YAML, JSON, or TOML). This provides a human-readable, yet machine-parsable, way to manage features.
 
 Just like IaC, this is a declarative approach. You specify what you want to happen with your features, and Featurevisor takes care of the rest.
 
 {% callout type="note" title="Featurevisor's building blocks" %}
-Each of these are expressed as YAML files:
+Each of these are expressed as separate files:
 
 - [Attributes](/docs/attributes): building block for conditions
 - [Segments](/docs/segments): reusable conditions for targeting users

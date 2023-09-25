@@ -3,7 +3,7 @@ title: Linting
 description: Lint your Featurevisor definition files
 ---
 
-Featurevisor provides a CLI command to lint your YAML (or JSON) files, making sure they are all valid and won't cause any issues when you build your datafiles. {% .lead %}
+Featurevisor provides a CLI command to lint your definition files, making sure they are all valid and won't cause any issues when you build your datafiles. {% .lead %}
 
 ## Usage
 

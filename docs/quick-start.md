@@ -65,6 +65,8 @@ module.exports = {
 
 Learn more in [Configuration](/docs/configuration).
 
+By default, Featurevisor defines attributes, segments, and features as YAML files. If you want JSON, TOML, or any other language, see [custom parsers](/docs/advanced/custom-parsers) guide.
+
 ## Create an attribute
 
 Attributes are the building blocks of creating segments.
