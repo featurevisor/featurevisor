@@ -47,7 +47,7 @@ Check if the YAML files have any syntax or structural errors:
 $ featurevisor lint
 ```
 
-Lear more in [Linting YAMLs](/docs/linting-yamls).
+Lear more in [Linting](/docs/linting).
 
 ## Building datafiles
 

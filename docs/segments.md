@@ -24,6 +24,7 @@ conditions:
   - attribute: country
     operator: equals
     value: us
+
   - attribute: device
     operator: equals
     value: iPhone
@@ -277,6 +278,7 @@ conditions:
     - attribute: country
       operator: equals
       value: us
+
     - attribute: device
       operator: equals
       value: iPhone
@@ -291,6 +293,7 @@ conditions:
     - attribute: country
       operator: equals
       value: us
+
     - attribute: country
       operator: equals
       value: ca
@@ -318,10 +321,12 @@ conditions:
     - attribute: device
       operator: equals
       value: iPhone
+
   - or:
     - attribute: country
       operator: equals
       value: us
+
     - attribute: country
       operator: equals
       value: ca
@@ -337,6 +342,7 @@ conditions:
       - attribute: country
         operator: equals
         value: us
+
       - attribute: country
         operator: equals
         value: ca
@@ -354,6 +360,7 @@ conditions:
   - attribute: country
     operator: equals
     value: us
+
   - attribute: device
     operator: equals
     value: iPhone

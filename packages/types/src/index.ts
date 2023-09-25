@@ -295,6 +295,8 @@ export interface Environment {
   force?: Force[];
 }
 
+export type Tag = string;
+
 export interface ParsedFeature {
   key: FeatureKey;
 
@@ -302,7 +304,7 @@ export interface ParsedFeature {
   deprecated?: boolean;
 
   description: string;
-  tags: string[];
+  tags: Tag[];
 
   required?: Required[];
 

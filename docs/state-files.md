@@ -9,7 +9,7 @@ When you build your datafiles, Featurevisor generates some additional JSON files
 
 They are located in the `.featurevisor` directory.
 
-You don't have to deal with them directly ever, but they contain valuable rollout information for the next build to maintain consistent bucketing of your users against features.
+You don't have to deal with them directly ever, but they contain valuable rollout information for the next build to maintain [consistent bucketing](/docs/bucketing) of your users against features.
 
 ## Committing state files
 

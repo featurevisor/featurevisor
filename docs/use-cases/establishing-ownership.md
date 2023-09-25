@@ -4,7 +4,7 @@ description: Learn how to handle feature ownership with Featurevisor
 ogImage: /img/og/docs-use-cases-establishing-ownership.png
 ---
 
-With the adoption of Featurevisor, many development teams can face the challenge of managing individual feature ownership. Since all configuration is managed using YAML files in a Git repository, it's essential to ensure that the right teams or individuals are notified and have the authority to approve changes to specific feature flags. {% .lead %}
+With the adoption of Featurevisor, many development teams can face the challenge of managing individual feature ownership. Since all configuration is managed as files in a Git repository, it's essential to ensure that the right teams or individuals are notified and have the authority to approve changes to specific feature flags. {% .lead %}
 
 Without proper management, unintended changes could be introduced, leading to potential issues in the production environment, misaligned business goals, or security vulnerabilities.
 
@@ -21,7 +21,7 @@ This guide assumes we are using GitHub.
 
 ## Benefits
 
-- **Clear ownership**: By specifying who owns which YAML file, there's clear accountability for each feature. This ensures that only the responsible teams or individuals can approve changes, making it easier to track decisions back to specific entities.
+- **Clear ownership**: By specifying who owns which file, there's clear accountability for each feature. This ensures that only the responsible teams or individuals can approve changes, making it easier to track decisions back to specific entities.
 - **Automated review process**: GitHub automatically requests reviews from the appropriate code owners when a pull request changes any files they own. This streamlines the review process and ensures that no changes go unnoticed.
 - **Enhanced security**: If any malicious or unintended changes are introduced to a feature flag, they can't be merged without the consent of the owner. This layer of security is especially crucial for critical features or those that might impact user data or system stability.
 - **Reduced friction**: Teams don't need to manually tag or notify stakeholders when they make changes to feature flags. GitHub's `CODEOWNERS` file automatically takes care of it, reducing the overhead and potential for error.
@@ -60,7 +60,7 @@ features/my_feature.yml @my-team @another-team
 ```
 
 {% callout type="note" title="Same for segments and attributes" %}
-Even though the examples above only mention setting up rules for features, you can do the same for [segments](/docs/segments) and [attributes](/docs/attributes) as well since everything is expressed as YAML files in the Git repository.
+Even though the examples above only mention setting up rules for features, you can do the same for [segments](/docs/segments) and [attributes](/docs/attributes) as well since everything is expressed as files in the Git repository.
 {% /callout %}
 
 ## Note about branch protection
@@ -74,7 +74,7 @@ To ensure that the code owner's review is mandatory, you can set up branch prote
 
 ## How does it differ from tagging?
 
-Featurevisor supports [tagging features](/docs/features/#tags) when defining them as YAMLs.
+Featurevisor supports [tagging features](/docs/features/#tags) when defining them.
 
 This results into smaller [generated datafiles](/docs/building-datafiles), so that applications can load and consume only the relevant configuration with provided SDKs.
 

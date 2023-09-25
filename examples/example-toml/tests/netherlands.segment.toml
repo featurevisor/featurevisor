@@ -1,0 +1,22 @@
+[[tests]]
+[[tests.segments]]
+key = "netherlands"
+
+[[tests.segments.assertions]]
+expectedToMatch = true
+
+[tests.segments.assertions.context]
+country = "nl"
+
+[[tests.segments.assertions]]
+expectedToMatch = false
+
+[tests.segments.assertions.context]
+country = "de"
+someOtherAttribute = "someOtherValue"
+
+[[tests.segments.assertions]]
+expectedToMatch = false
+
+[tests.segments.assertions.context]
+country = "notNl"

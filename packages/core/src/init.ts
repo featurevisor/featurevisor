@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as tar from "tar";
 
-export const DEFAULT_EXAMPLE = "example-1";
+export const DEFAULT_EXAMPLE = "example-yml";
 
 export const EXAMPLES_ORG_NAME = "fahad19";
 export const EXAMPLES_REPO_NAME = "featurevisor";

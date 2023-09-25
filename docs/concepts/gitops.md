@@ -34,11 +34,11 @@ That's essentially what GitOps does for software deployment and operations. It a
 
 Featurevisor is an open-source project that falls perfectly in line with the GitOps model. It [manages your features](/docs/feature-management) which can be either on/off switches, variations for A/B testing, or even variables as remote configuration for specific functionalities in your software including their rollout rules.
 
-These [features](/docs/features) are declared as YAML files in a Git repository.
+These [features](/docs/features) are declared as individual files in a Git repository.
 
 ## How does it work?
 
-- **Declare feature flags**: Developers declare feature flags in [YAML](/docs/features) files and store them in a Git repository.
+- **Declare feature flags**: Developers declare feature flags as [files](/docs/features) and store them in a Git repository.
 - **Review & approve**: Any changes to feature flags must be submitted as Pull Requests in Git, allowing team members to review and approve changes.
 - **Automate with CI/CD**: Featurevisor is tightly integrated with your preferred Continuous Integration/Continuous Deployment (CI/CD) pipeline. When a Pull Request is merged, the pipeline automatically deploys the new configurations.
 
@@ -48,11 +48,13 @@ Once deployed, all the applications that use Featurevisor [SDKs](/docs/sdks) wil
 
 ## Does it limit non-technical users?
 
-As engineers, we might say that GitOps is the best thing since sliced bread. But what about non-technical users like your Product Managers in a team?
+As engineers, we might love the idea of managing all sorts of configuration in a Git repository because it fits our regular workflow without having to learn something new. But what about non-technical users like your Product Managers in a team?
 
-Featurevisor comes with a [status site generator](/docs/site) as well, so that the current status of all your feature flags, their targeting conditions, and rollout rules can be easily viewed by anyone in your team and organization via a nice and usable website.
+If it comes to read-only operations, Featurevisor comes with a [status site generator](/docs/site) so that the current status of all your feature flags, their targeting conditions, and rollout rules can be easily viewed by anyone in your team and organization via a nice and usable website.
 
-With Git hosting providers becoming more usable over time allowing changes to be made directly from your browser (like with [GitHub](https://github.com)), one does not have to be technically too advanced to find the YAML files in a Git repository to read and understand them. They can also send changes of their desired feature flags by updating or creating new YAML files straight from the browser.
+With Git hosting providers becoming more usable over time allowing changes to be made directly from your browser (like with [GitHub](https://github.com)), one does not have to be technically too advanced to find the YAML files in a Git repository to read and understand them. They can also send changes of their desired feature flags by updating or creating new files straight from the browser.
+
+But this does come with an additional learning curve. The list below can help get up to speed with the basics of Git and GitHub:
 
 ## Learning resources
 

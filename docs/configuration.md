@@ -74,3 +74,7 @@ Defaults to `false`.
 Set to `true` or `false` to enable or disable pretty-printing of datafiles.
 
 Defaults to `false`.
+
+### `parser`
+
+By default, Featurevisor expects YAML for all definitions. You can change this to JSON by setting `parser: "json"`.

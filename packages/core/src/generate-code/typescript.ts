@@ -1,10 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { Attribute, ParsedFeature } from "@featurevisor/types";
-
 import { ProjectConfig } from "../config";
-import { getYAMLFiles, parseYaml } from "../utils";
+import { Datasource } from "../datasource/datasource";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
   switch (featurevisorType) {
@@ -81,6 +79,7 @@ export function getInstance(): FeaturevisorInstance {
 export function generateTypeScriptCodeForProject(
   rootDirectoryPath: string,
   projectConfig: ProjectConfig,
+  datasource: Datasource,
   outputPath: string,
 ) {
   console.log("Generating TypeScript code...");
@@ -91,12 +90,10 @@ export function generateTypeScriptCodeForProject(
   console.log(`Instance file written at: ${instanceFilePath}`);
 
   // attributes
-  const attributeFiles = getYAMLFiles(projectConfig.attributesDirectoryPath);
+  const attributeFiles = datasource.listAttributes();
   const attributes = attributeFiles
-    .map((attributeFile) => {
-      const parsedAttribute = parseYaml(fs.readFileSync(attributeFile, "utf8")) as Attribute;
-
-      const attributeKey = path.basename(attributeFile, ".yml");
+    .map((attributeKey) => {
+      const parsedAttribute = datasource.readAttribute(attributeKey);
 
       return {
         archived: parsedAttribute.archived,
@@ -134,10 +131,9 @@ ${attributeProperties}
 
   // features
   const featureNamespaces: string[] = [];
-  const featureFiles = getYAMLFiles(projectConfig.featuresDirectoryPath);
-  for (const featureFile of featureFiles) {
-    const featureKey = path.basename(featureFile, ".yml");
-    const parsedFeature = parseYaml(fs.readFileSync(featureFile, "utf8")) as ParsedFeature;
+  const featureFiles = datasource.listFeatures();
+  for (const featureKey of featureFiles) {
+    const parsedFeature = datasource.readFeature(featureKey);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;

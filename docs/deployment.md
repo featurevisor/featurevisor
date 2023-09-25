@@ -11,7 +11,9 @@ We recommend that you set up a CI/CD pipeline to automate the build and deployme
 
 When a new Pull Request (branch) is merged, the CI/CD pipeline should:
 
-### Lint the YAMLs
+### Lint your files
+
+Lint all the attributes, segments, and feature definitions:
 
 ```
 $ fearurevisor lint

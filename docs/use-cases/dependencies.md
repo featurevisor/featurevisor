@@ -192,7 +192,7 @@ We have several guides helping you understand how experiments work in Featurevis
 
 ## Circular dependencies
 
-Featurevisor's [linting](/docs/linting-yamls) step makes sure that you don't introduce any circular dependencies between your features.
+Featurevisor's [linting](/docs/linting) step makes sure that you don't introduce any circular dependencies between your features.
 
 This will happen if you try to require a feature that requires the current feature. In our case that would be `expressShipping` requiring `oneClickCheckout` which requires `expressShipping`.
 

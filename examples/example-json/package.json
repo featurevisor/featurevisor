@@ -1,0 +1,17 @@
+{
+  "name": "@featurevisor/example-json",
+  "private": true,
+  "version": "0.47.7",
+  "description": "Featurevisor project with JSON definitions",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test",
+    "export": "featurevisor site export",
+    "start": "npm run export && featurevisor site serve",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "^0.47.7"
+  }
+}

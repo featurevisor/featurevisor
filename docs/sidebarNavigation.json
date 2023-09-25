@@ -25,7 +25,7 @@
     "title": "Workflow",
     "links": [
       { "title": "Configuration", "href": "/docs/configuration" },
-      { "title": "Linting YAMLs", "href": "/docs/linting-yamls" },
+      { "title": "Linting", "href": "/docs/linting" },
       { "title": "Building datafiles", "href": "/docs/building-datafiles" },
       { "title": "State files", "href": "/docs/state-files" },
       { "title": "Testing", "href": "/docs/testing" },
@@ -67,6 +67,7 @@
     "title": "Advanced",
     "links": [
       { "title": "CLI usage", "href": "/docs/cli" },
+      { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers" },
       { "title": "Code generation", "href": "/docs/code-generation" },
       { "title": "Bucketing", "href": "/docs/bucketing" }
     ]

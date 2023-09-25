@@ -1,12 +1,11 @@
 import * as fs from "fs";
-import * as path from "path";
 
-import { DatafileContent, Spec, Segment, Condition } from "@featurevisor/types";
+import { DatafileContent, Condition } from "@featurevisor/types";
 import { createInstance, allConditionsAreMatched, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { ProjectConfig } from "./config";
-import { parseYaml } from "./utils";
 import { getDatafilePath } from "./builder";
+import { Datasource } from "./datasource/datasource";
 
 // @TODO: make it better
 export function checkIfArraysAreEqual(a, b) {
@@ -49,6 +48,7 @@ export function checkIfObjectsAreEqual(a, b) {
 
 export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
   let hasError = false;
+  const datasource = new Datasource(projectConfig);
 
   if (!fs.existsSync(projectConfig.testsDirectoryPath)) {
     console.error(`Tests directory does not exist: ${projectConfig.testsDirectoryPath}`);
@@ -57,9 +57,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
     return hasError;
   }
 
-  const testFiles = fs
-    .readdirSync(projectConfig.testsDirectoryPath)
-    .filter((f) => f.endsWith(".yml"));
+  const testFiles = datasource.listTests();
 
   if (testFiles.length === 0) {
     console.error(`No tests found in: ${projectConfig.testsDirectoryPath}`);
@@ -69,11 +67,11 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
   }
 
   for (const testFile of testFiles) {
-    const testFilePath = path.join(projectConfig.testsDirectoryPath, testFile);
+    const testFilePath = datasource.getEntityPath("test", testFile);
 
     console.log(`  => Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
-    const parsed = parseYaml(fs.readFileSync(testFilePath, "utf8")) as Spec;
+    const parsed = datasource.readTest(testFile);
 
     parsed.tests.forEach(function (test) {
       if (test.segments) {
@@ -83,16 +81,16 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
           console.log(`     => Segment "${segmentKey}":`);
 
-          const segmentPath = path.join(projectConfig.segmentsDirectoryPath, `${segmentKey}.yml`);
+          const segmentExists = datasource.entityExists("segment", segmentKey);
 
-          if (!fs.existsSync(segmentPath)) {
-            console.error(`        => Segment does not exist: ${segmentPath}`);
+          if (!segmentExists) {
+            console.error(`        => Segment does not exist: ${segmentKey}`);
             hasError = true;
 
             return;
           }
 
-          const parsedSegment = parseYaml(fs.readFileSync(segmentPath, "utf8")) as Segment;
+          const parsedSegment = datasource.readSegment(segmentKey);
           const conditions = parsedSegment.conditions as Condition | Condition[];
 
           segment.assertions.forEach(function (assertion, aIndex) {

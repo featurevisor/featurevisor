@@ -17,7 +17,6 @@ import {
   GroupSegment,
   Condition,
   ExistingState,
-  ParsedFeature,
   FeatureKey,
   Allocation,
   EnvironmentKey,
@@ -26,12 +25,9 @@ import {
 } from "@featurevisor/types";
 
 import { SCHEMA_VERSION, ProjectConfig } from "./config";
+import { Datasource } from "./datasource/datasource";
 import { getTraffic } from "./traffic";
-import {
-  parseYaml,
-  extractAttributeKeysFromConditions,
-  extractSegmentKeysFromGroupSegments,
-} from "./utils";
+import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "./utils";
 
 export interface BuildOptions {
   schemaVersion: string;
@@ -64,20 +60,19 @@ interface FeatureRangesResult {
   featureIsInGroup: { [key: string]: boolean };
 }
 
-export function getFeatureRanges(projectConfig: ProjectConfig): FeatureRangesResult {
+export function getFeatureRanges(
+  projectConfig: ProjectConfig,
+  datasource: Datasource,
+): FeatureRangesResult {
   const featureRanges = new Map<FeatureKey, Range[]>();
   const featureIsInGroup = {}; // featureKey => boolean
 
   const groups: Group[] = [];
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groupFiles = fs
-      .readdirSync(projectConfig.groupsDirectoryPath)
-      .filter((f) => f.endsWith(".yml"));
+    const groupFiles = datasource.listGroups();
 
-    for (const groupFile of groupFiles) {
-      const groupKey = path.basename(groupFile, ".yml");
-      const groupFilePath = path.join(projectConfig.groupsDirectoryPath, groupFile);
-      const parsedGroup = parseYaml(fs.readFileSync(groupFilePath, "utf8")) as Group;
+    for (const groupKey of groupFiles) {
+      const parsedGroup = datasource.readGroup(groupKey);
 
       groups.push({
         ...parsedGroup,
@@ -115,6 +110,7 @@ export function getFeatureRanges(projectConfig: ProjectConfig): FeatureRangesRes
 
 export function buildDatafile(
   projectConfig: ProjectConfig,
+  datasource: Datasource,
   options: BuildOptions,
   existingState: ExistingState,
 ): DatafileContent {
@@ -128,19 +124,17 @@ export function buildDatafile(
 
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
-  const { featureRanges, featureIsInGroup } = getFeatureRanges(projectConfig);
+  const { featureRanges, featureIsInGroup } = getFeatureRanges(projectConfig, datasource);
 
   // features
   const features: Feature[] = [];
   const featuresDirectory = projectConfig.featuresDirectoryPath;
 
   if (fs.existsSync(featuresDirectory)) {
-    const featureFiles = fs.readdirSync(featuresDirectory).filter((f) => f.endsWith(".yml"));
+    const featureFiles = datasource.listFeatures();
 
-    for (const featureFile of featureFiles) {
-      const featureKey = path.basename(featureFile, ".yml") as FeatureKey;
-      const featureFilePath = path.join(featuresDirectory, featureFile);
-      const parsedFeature = parseYaml(fs.readFileSync(featureFilePath, "utf8")) as ParsedFeature;
+    for (const featureKey of featureFiles) {
+      const parsedFeature = datasource.readFeature(featureKey);
 
       if (parsedFeature.archived === true) {
         continue;
@@ -277,12 +271,10 @@ export function buildDatafile(
   const segmentsDirectory = projectConfig.segmentsDirectoryPath;
 
   if (fs.existsSync(segmentsDirectory)) {
-    const segmentFiles = fs.readdirSync(segmentsDirectory).filter((f) => f.endsWith(".yml"));
+    const segmentFiles = datasource.listSegments();
 
-    for (const segmentFile of segmentFiles) {
-      const segmentKey = path.basename(segmentFile, ".yml");
-      const segmentFilePath = path.join(segmentsDirectory, segmentFile);
-      const parsedSegment = parseYaml(fs.readFileSync(segmentFilePath, "utf8")) as Segment;
+    for (const segmentKey of segmentFiles) {
+      const parsedSegment = datasource.readSegment(segmentKey);
 
       if (parsedSegment.archived === true) {
         continue;
@@ -314,12 +306,10 @@ export function buildDatafile(
   const attributesDirectory = projectConfig.attributesDirectoryPath;
 
   if (fs.existsSync(attributesDirectory)) {
-    const attributeFiles = fs.readdirSync(attributesDirectory).filter((f) => f.endsWith(".yml"));
+    const attributeFiles = datasource.listAttributes();
 
-    for (const attributeFile of attributeFiles) {
-      const attributeKey = path.basename(attributeFile, ".yml");
-      const attributeFilePath = path.join(attributesDirectory, attributeFile);
-      const parsedAttribute = parseYaml(fs.readFileSync(attributeFilePath, "utf8")) as Attribute;
+    for (const attributeKey of attributeFiles) {
+      const parsedAttribute = datasource.readAttribute(attributeKey);
 
       if (parsedAttribute.archived === true) {
         continue;
@@ -362,6 +352,7 @@ export function buildProject(
   const environments = projectConfig.environments;
 
   const pkg = require(path.join(rootDirectoryPath, "package.json"));
+  const datasource = new Datasource(projectConfig);
 
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);
@@ -377,6 +368,7 @@ export function buildProject(
       console.log(`\n  => Tag: ${tag}`);
       const datafileContent = buildDatafile(
         projectConfig,
+        datasource,
         {
           schemaVersion: SCHEMA_VERSION,
           revision: cliOptions.revision || pkg.version,

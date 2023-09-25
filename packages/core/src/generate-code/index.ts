@@ -4,6 +4,7 @@ import * as path from "path";
 import * as mkdirp from "mkdirp";
 
 import { ProjectConfig } from "../config";
+import { Datasource } from "../datasource/datasource";
 import { generateTypeScriptCodeForProject } from "./typescript";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
@@ -26,6 +27,8 @@ export function generateCodeForProject(
     throw new Error("Option `--out-dir` is required");
   }
 
+  const datasource = new Datasource(projectConfig);
+
   const absolutePath = path.resolve(rootDirectoryPath, cliOptions.outDir);
 
   if (!fs.existsSync(absolutePath)) {
@@ -44,7 +47,12 @@ export function generateCodeForProject(
   }
 
   if (cliOptions.language === "typescript") {
-    return generateTypeScriptCodeForProject(rootDirectoryPath, projectConfig, absolutePath);
+    return generateTypeScriptCodeForProject(
+      rootDirectoryPath,
+      projectConfig,
+      datasource,
+      absolutePath,
+    );
   }
 
   throw new Error(`Language ${cliOptions.language} is not supported`);

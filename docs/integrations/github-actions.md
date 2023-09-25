@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint YAMLs
+      - name: Lint
         run: npm run lint
 
       - name: Build
@@ -86,7 +86,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint YAMLs
+      - name: Lint
         run: npm run lint
 
       - name: Git configs
