@@ -10,13 +10,32 @@ export type EntityType = "feature" | "group" | "segment" | "attribute" | "test";
 
 export class Datasource {
   private extension;
+  private parse;
 
   constructor(private config: ProjectConfig) {
-    if (typeof parsers[config.parser] !== "function") {
+    if (typeof config.parser === "string") {
+      // built-in parsers
+      if (typeof parsers[config.parser] !== "function") {
+        throw new Error(`Invalid parser: ${config.parser}`);
+      }
+
+      this.extension = config.parser;
+      this.parse = parsers[config.parser];
+    } else if (typeof config.parser === "object") {
+      // custom parser
+      if (typeof config.parser.extension !== "string") {
+        throw new Error(`Invalid parser extension: ${config.parser.extension}`);
+      }
+
+      if (typeof config.parser.parse !== "function") {
+        throw new Error(`Invalid parser parse function: ${config.parser.parse}`);
+      }
+
+      this.extension = config.parser.extension;
+      this.parse = config.parser.parse;
+    } else {
       throw new Error(`Invalid parser: ${config.parser}`);
     }
-
-    this.extension = config.parser;
   }
 
   getExtension() {
@@ -69,9 +88,8 @@ export class Datasource {
 
   parseEntity<T>(entityType: EntityType, entityKey: string): T {
     const entityContent = this.readEntity(entityType, entityKey);
-    const parser = parsers[this.extension];
 
-    return parser(entityContent) as T;
+    return this.parse(entityContent) as T;
   }
 
   /**

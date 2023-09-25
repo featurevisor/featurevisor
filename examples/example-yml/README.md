@@ -1,4 +1,4 @@
-# example-1
+# example-yml
 
 Basic example showing how Featurevisor works, with all definitions written in YAML.
 

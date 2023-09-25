@@ -1,0 +1,18 @@
+{
+  "name": "@featurevisor/example-toml",
+  "private": true,
+  "version": "0.47.7",
+  "description": "Featurevisor project with TOML definitions",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test",
+    "export": "featurevisor site export",
+    "start": "npm run export && featurevisor site serve",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "^0.47.7",
+    "toml": "^3.0.0"
+  }
+}
