@@ -162,8 +162,7 @@ environments:
   production:
     rules:
       - key: "1"
-        segments:
-          - netherlands
+        segments: netherlands
         percentage: 50
 
       - key: "2"
@@ -185,8 +184,7 @@ environments:
   production:
     rules:
       - key: "1"
-        segments:
-          - netherlands
+        segments: netherlands
         percentage: 100
         variation: b
 ```
@@ -221,8 +219,7 @@ environments:
   production:
     rules:
       - key: "1"
-        segments:
-          - germany
+        segments: germany
         percentage: 100
 ```
 
@@ -374,8 +371,7 @@ environments:
   production:
     rules:
       - key: "1"
-        segments:
-          - netherlands
+        segments: netherlands
         percentage: 100
         variables:
           bgColor: orange
@@ -393,8 +389,7 @@ variations:
       - key: bgColor
         value: blue
         overrides:
-          - segments:
-              - netherlands
+          - segments: netherlands
             value: orange
 ```
 

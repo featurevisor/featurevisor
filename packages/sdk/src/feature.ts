@@ -18,6 +18,14 @@ export function getMatchedAllocation(
   return undefined;
 }
 
+function parseFromStringifiedSegments(value) {
+  if (typeof value === "string" && (value.startsWith("{") || value.startsWith("["))) {
+    return JSON.parse(value);
+  }
+
+  return value;
+}
+
 export function getMatchedTraffic(
   traffic: Traffic[],
   context: Context,
@@ -25,11 +33,7 @@ export function getMatchedTraffic(
 ): Traffic | undefined {
   return traffic.find((t) => {
     if (
-      !allGroupSegmentsAreMatched(
-        typeof t.segments === "string" && t.segments !== "*" ? JSON.parse(t.segments) : t.segments,
-        context,
-        datafileReader,
-      )
+      !allGroupSegmentsAreMatched(parseFromStringifiedSegments(t.segments), context, datafileReader)
     ) {
       return false;
     }
@@ -53,11 +57,7 @@ export function getMatchedTrafficAndAllocation(
 
   const matchedTraffic = traffic.find((t) => {
     if (
-      !allGroupSegmentsAreMatched(
-        typeof t.segments === "string" && t.segments !== "*" ? JSON.parse(t.segments) : t.segments,
-        context,
-        datafileReader,
-      )
+      !allGroupSegmentsAreMatched(parseFromStringifiedSegments(t.segments), context, datafileReader)
     ) {
       return false;
     }
