@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.49.0](https://github.com/featurevisor/featurevisor/compare/v0.48.0...v0.49.0) (2023-09-30)
+
+
+### Features
+
+* allow single segments to be defined without needing arrays ([#159](https://github.com/featurevisor/featurevisor/issues/159)) ([b3ad42c](https://github.com/featurevisor/featurevisor/commit/b3ad42c01584e8dfbe8274273e447bf8c645b3b9))
+
+
+
+
+
 # [0.48.0](https://github.com/featurevisor/featurevisor/compare/v0.47.7...v0.48.0) (2023-09-25)
 
 **Note:** Version bump only for package @featurevisor/sdk
