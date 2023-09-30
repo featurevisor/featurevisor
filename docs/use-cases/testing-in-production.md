@@ -149,8 +149,7 @@ And then use it in the `wishlist` feature flag:
 environments:
   production:
     force:
-      - segments:
-          - qa
+      - segments: qa
         enabled: true # enabled for QA team members
     rules:
       - key: "1"

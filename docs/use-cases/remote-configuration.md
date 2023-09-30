@@ -176,8 +176,7 @@ environments:
   production:
     rules:
       - key: "2"
-        segments:
-          - netherlands
+        segments: netherlands
         percentage: 100
         variables:
           paymentMethods:
@@ -293,8 +292,7 @@ environments:
   production:
     rules:
       - key: "2"
-        segments:
-          - netherlands
+        segments: netherlands
         percentage: 100
         variables:
           paymentMethods:

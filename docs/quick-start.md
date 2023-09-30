@@ -140,8 +140,7 @@ environments:
       # in production, we want to test the feature in Germany first, and
       # it will be `true` variation for 50% of the traffic
       - key: "1"
-        segments:
-          - "germany"
+        segments: germany
         percentage: 50
 
       - key: "2"
