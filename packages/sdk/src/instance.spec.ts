@@ -1214,7 +1214,6 @@ describe("sdk: instance", function () {
           {
             key: "test",
             bucketBy: "userId",
-            ranges: [[0, 50000]],
             traffic: [
               { key: "1", segments: "netherlands", percentage: 100000, allocation: [] },
               {
