@@ -1204,4 +1204,70 @@ describe("sdk: instance", function () {
     // disabled
     expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
   });
+
+  it("should check if enabled for individually named segments", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            ranges: [[0, 50000]],
+            traffic: [
+              { key: "1", segments: "netherlands", percentage: 100000, allocation: [] },
+              {
+                key: "2",
+                segments: JSON.stringify(["iphone", "unitedStates"]),
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+        attributes: [],
+        segments: [
+          {
+            key: "netherlands",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "nl",
+              },
+            ]),
+          },
+          {
+            key: "iphone",
+            conditions: JSON.stringify([
+              {
+                attribute: "device",
+                operator: "equals",
+                value: "iphone",
+              },
+            ]),
+          },
+          {
+            key: "unitedStates",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "us",
+              },
+            ]),
+          },
+        ],
+      },
+    });
+
+    expect(sdk.isEnabled("test")).toEqual(false);
+    expect(sdk.isEnabled("test", { userId: "123" })).toEqual(false);
+    expect(sdk.isEnabled("test", { userId: "123", country: "de" })).toEqual(false);
+    expect(sdk.isEnabled("test", { userId: "123", country: "us" })).toEqual(false);
+
+    expect(sdk.isEnabled("test", { userId: "123", country: "nl" })).toEqual(true);
+    expect(sdk.isEnabled("test", { userId: "123", country: "us", device: "iphone" })).toEqual(true);
+  });
 });

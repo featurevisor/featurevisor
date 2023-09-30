@@ -1,0 +1,18 @@
+description: Enable new design
+tags:
+  - all
+
+bucketBy: userId
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+
+  production:
+    rules:
+      - key: "1"
+        segments: netherlands
+        percentage: 100
