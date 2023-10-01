@@ -1,6 +1,7 @@
 ---
 title: Testing
-description: Learn how to test your features and segments in Featurevisor with YAML specs
+description: Learn how to test your features and segments in Featurevisor with declarative specs
+ogImage: /img/og/docs-testing.png
 ---
 
 Features and segments can grow into complex configuration very fast, and it's important that you have the confidence they are working as expected. {% .lead %}
@@ -43,34 +44,32 @@ We can create a new test spec for it in `tests` directory:
 
 ```yml
 # tests/foo.feature.yml
-tests:
-  - tag: all
+feature: foo # your feature key
+assertions:
+
+  # asserting evaluated variation
+  # against bucketed value and context
+  - description: Testing variation at 40% in NL
     environment: production
-    features:
-      - key: foo # your feature key
-        assertions:
+    at: 40
+    context:
+      country: nl
+    expectedToBeEnabled: true
 
-          # asserting evaluated variation
-          # against bucketed value and context
-          - description: Testing variation at 40% in NL
-            at: 40
-            context:
-              country: nl
-            expectedToBeEnabled: true
+    # if testing variations
+    expectedVariation: control
 
-            # if testing variations
-            expectedVariation: control
+  # asserting evaluated variables
+  - description: Testing variables at 90% in NL
+    environment: production
+    at: 90
+    context:
+      country: nl
+    expectedToBeEnabled: true
 
-          # asserting evaluated variables
-          - description: Testing variables at 90% in NL
-            at: 90
-            context:
-              country: nl
-            expectedToBeEnabled: true
-
-            # if testing variables
-            expectedVariables:
-              someKey: someValue
+    # if testing variables
+    expectedVariables:
+      someKey: someValue
 ```
 
 The `at` property is the bucketed value (in percentage form ranging from 0 to 100) that assertions will be run against.
@@ -96,24 +95,22 @@ We can create a new test spec in `tests` directory:
 
 ```yml
 # tests/netherlands.segment.yml
-tests:
-  - segments:
-      - key: netherlands # your segment key
-        assertions:
-          - description: Testing segment in NL
-            context:
-              country: nl
-            expectedToMatch: true
+segment: netherlands # your segment key
+assertions:
+  - description: Testing segment in NL
+    context:
+      country: nl
+    expectedToMatch: true
 
-          - description: Testing segment in DE
-            context:
-              country: de
-            expectedToMatch: false
+  - description: Testing segment in DE
+    context:
+      country: de
+    expectedToMatch: false
 ```
 
 ## Running tests
 
-After [building datafiles](/docs/building-datafiles), use the Featurevisor CLI to run your tests:
+Use the Featurevisor CLI to run your tests:
 
 ```
 $ featurevisor test
