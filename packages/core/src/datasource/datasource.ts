@@ -1,7 +1,15 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { Tag, ParsedFeature, Segment, Attribute, Group, Spec } from "@featurevisor/types";
+import {
+  Tag,
+  ParsedFeature,
+  Segment,
+  Attribute,
+  Group,
+  FeatureKey,
+  Test,
+} from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { parsers } from "./parsers";
@@ -115,6 +123,34 @@ export class Datasource {
     return this.parseEntity<ParsedFeature>("feature", featureKey);
   }
 
+  getRequiredFeaturesChain(featureKey: FeatureKey, chain = new Set<FeatureKey>()): Set<FeatureKey> {
+    if (chain.size === 0) {
+      chain.add(featureKey);
+    }
+
+    if (!this.entityExists("feature", featureKey)) {
+      throw new Error(`Feature not found: ${featureKey}`);
+    }
+
+    const feature = this.readFeature(featureKey);
+
+    if (!feature.required) {
+      return chain;
+    }
+
+    feature.required.forEach((r) => {
+      const requiredKey = typeof r === "string" ? r : r.key;
+
+      if (chain.has(requiredKey)) {
+        throw new Error(`Circular dependency detected: ${chain.toString()}`);
+      }
+
+      this.getRequiredFeaturesChain(requiredKey, chain);
+    });
+
+    return chain;
+  }
+
   // segments
   listSegments(segmentsList?: string[]) {
     const segments = this.listEntities("segment");
@@ -180,6 +216,6 @@ export class Datasource {
   }
 
   readTest(testKey: string) {
-    return this.parseEntity<Spec>("test", testKey);
+    return this.parseEntity<Test>("test", testKey);
   }
 }

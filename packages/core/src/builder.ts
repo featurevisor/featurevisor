@@ -33,7 +33,8 @@ export interface BuildOptions {
   schemaVersion: string;
   revision: string;
   environment: string;
-  tag: string;
+  tag?: string;
+  features?: FeatureKey[];
 }
 
 export function getDatafilePath(
@@ -140,7 +141,11 @@ export function buildDatafile(
         continue;
       }
 
-      if (parsedFeature.tags.indexOf(options.tag) === -1) {
+      if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
+        continue;
+      }
+
+      if (options.features && options.features.indexOf(featureKey) === -1) {
         continue;
       }
 
