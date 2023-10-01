@@ -1,16 +1,14 @@
-tests:
-  - segments:
-      - key: netherlands
-        assertions:
-          - context:
-              country: nl
-            expectedToMatch: true
+segment: netherlands
+assertions:
+  - context:
+      country: nl
+    expectedToMatch: true
 
-          - context:
-              country: de
-              someOtherAttribute: someOtherValue
-            expectedToMatch: false
+  - context:
+      country: de
+      someOtherAttribute: someOtherValue
+    expectedToMatch: false
 
-          - context:
-              country: notNl
-            expectedToMatch: false
+  - context:
+      country: notNl
+    expectedToMatch: false

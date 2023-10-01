@@ -1,38 +1,33 @@
-[[tests]]
-environment = "production"
-tag = "all"
+feature = "showCookieBanner"
 
-[[tests.features]]
-key = "showCookieBanner"
-
-[[tests.features.assertions]]
+[[assertions]]
 at = 10
 description = "At 10%, the feature should be enabled for NL"
+environment = "production"
+[assertions.context]
+country = "nl"
 expectedToBeEnabled = true
 
-[tests.features.assertions.context]
-country = "nl"
-
-[[tests.features.assertions]]
+[[assertions]]
 at = 70
 description = "At 70%, the feature should be enabled for NL"
+environment = "production"
+[assertions.context]
+country = "nl"
 expectedToBeEnabled = true
 
-[tests.features.assertions.context]
-country = "nl"
-
-[[tests.features.assertions]]
+[[assertions]]
 at = 90
 description = "At 90%, the feature should be disabled for US"
+environment = "production"
+[assertions.context]
+country = "us"
 expectedToBeEnabled = false
 
-[tests.features.assertions.context]
-country = "us"
-
-[[tests.features.assertions]]
+[[assertions]]
 at = 90
 description = "At 90%, the feature should be disabled for Canada"
-expectedToBeEnabled = false
-
-[tests.features.assertions.context]
+environment = "production"
+[assertions.context]
 country = "ca"
+expectedToBeEnabled = false

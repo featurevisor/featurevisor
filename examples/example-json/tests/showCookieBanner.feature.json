@@ -1,47 +1,41 @@
 {
-  "tests": [
+  "feature": "showCookieBanner",
+  "assertions": [
     {
-      "tag": "all",
+      "at": 10,
+      "description": "At 10%, the feature should be enabled for NL",
       "environment": "production",
-      "features": [
-        {
-          "key": "showCookieBanner",
-          "assertions": [
-            {
-              "at": 10,
-              "description": "At 10%, the feature should be enabled for NL",
-              "context": {
-                "country": "nl"
-              },
-              "expectedToBeEnabled": true
-            },
-            {
-              "at": 70,
-              "description": "At 70%, the feature should be enabled for NL",
-              "context": {
-                "country": "nl"
-              },
-              "expectedToBeEnabled": true
-            },
-            {
-              "at": 90,
-              "description": "At 90%, the feature should be disabled for US",
-              "context": {
-                "country": "us"
-              },
-              "expectedToBeEnabled": false
-            },
-            {
-              "at": 90,
-              "description": "At 90%, the feature should be disabled for Canada",
-              "context": {
-                "country": "ca"
-              },
-              "expectedToBeEnabled": false
-            }
-          ]
-        }
-      ]
+      "context": {
+        "country": "nl"
+      },
+      "expectedToBeEnabled": true
+    },
+    {
+      "at": 70,
+      "description": "At 70%, the feature should be enabled for NL",
+      "environment": "production",
+      "context": {
+        "country": "nl"
+      },
+      "expectedToBeEnabled": true
+    },
+    {
+      "at": 90,
+      "description": "At 90%, the feature should be disabled for US",
+      "environment": "production",
+      "context": {
+        "country": "us"
+      },
+      "expectedToBeEnabled": false
+    },
+    {
+      "at": 90,
+      "description": "At 90%, the feature should be disabled for Canada",
+      "environment": "production",
+      "context": {
+        "country": "ca"
+      },
+      "expectedToBeEnabled": false
     }
   ]
 }

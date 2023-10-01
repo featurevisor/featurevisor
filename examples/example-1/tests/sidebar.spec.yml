@@ -1,61 +1,64 @@
-tests:
-  - tag: all
+feature: sidebar
+assertions:
+  - at: 5
     environment: production
-    features:
-      - key: sidebar
-        assertions:
-          - at: 5
-            context:
-              country: nl
-            expectedToBeEnabled: true
-            expectedVariation: control
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
 
-          - at: 90
-            context:
-              country: nl
-            expectedToBeEnabled: true
-            expectedVariation: treatment
+  - at: 90
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
 
-          - at: 90
-            context:
-              country: nl
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              position: right
-              color: red
+  - at: 90
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      position: right
+      color: red
 
-          - at: 90
-            context:
-              country: de
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              position: right
-              color: yellow
-              title: Sidebar Title for production
+  - at: 90
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      position: right
+      color: yellow
+      title: Sidebar Title for production
 
-          - at: 90
-            context:
-              country: us
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              sections: ["home", "about", "contact"]
+  - at: 90
+    environment: production
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections: ["home", "about", "contact"]
 
-          - at: 90
-            context:
-              country: de
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              sections: ["home", "about", "contact", "imprint"]
+  - at: 90
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections: ["home", "about", "contact", "imprint"]
 
-          - at: 70
-            context:
-              country: nl
-              userId: "123"
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              sections: ["home", "about", "contact", "bitterballen"]
+  - at: 70
+    environment: production
+    context:
+      country: nl
+      userId: "123"
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections: ["home", "about", "contact", "bitterballen"]
