@@ -6,9 +6,9 @@ ogImage: /img/og/docs-testing.png
 
 Features and segments can grow into complex configuration very fast, and it's important that you have the confidence they are working as expected. {% .lead %}
 
-## Testing features
+We can write test specs in the same expressive way as we defined our features to test them in great detail.
 
-We can write test specs in the same expressive way as we defined our features to test your them in great detail.
+## Testing features
 
 Assuming we already have a `foo` feature in `features/foo.yml`:
 
@@ -72,13 +72,13 @@ assertions:
       someKey: someValue
 ```
 
-The `at` property is the bucketed value (in percentage form ranging from 0 to 100) that assertions will be run against.
+The `at` property is the bucketed value (in percentage form ranging from 0 to 100) that assertions will be run against. Read more in [Bucketing](/docs/bucketing).
 
-Read more in [Bucketing](/docs/bucketing).
+File names of test specs are not important, but we recommend using the same name as the feature key.
 
 ## Testing segments
 
-Similar to features, you can write test specs to test your segments as well.
+Similar to features, we can write test specs to test our segments as well.
 
 Assuming we already have a `netherlands` segment:
 
