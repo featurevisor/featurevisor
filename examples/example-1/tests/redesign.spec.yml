@@ -1,15 +1,13 @@
-tests:
-  - tag: all
+feature: redesign
+assertions:
+  - at: 40
     environment: production
-    features:
-      - key: redesign
-        assertions:
-          - at: 40
-            context:
-              country: nl
-            expectedToBeEnabled: true
+    context:
+      country: nl
+    expectedToBeEnabled: true
 
-          - at: 40
-            context:
-              country: de
-            expectedToBeEnabled: false
+  - at: 40
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: false

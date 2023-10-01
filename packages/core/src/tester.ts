@@ -1,10 +1,10 @@
 import * as fs from "fs";
 
-import { DatafileContent, Condition } from "@featurevisor/types";
+import { Condition, ExistingState, TestSegment, TestFeature } from "@featurevisor/types";
 import { createInstance, allConditionsAreMatched, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
-import { ProjectConfig } from "./config";
-import { getDatafilePath } from "./builder";
+import { ProjectConfig, SCHEMA_VERSION } from "./config";
+import { getExistingStateFilePath, buildDatafile } from "./builder";
 import { Datasource } from "./datasource/datasource";
 
 // @TODO: make it better
@@ -71,143 +71,142 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
     console.log(`  => Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
-    const parsed = datasource.readTest(testFile);
+    const test = datasource.readTest(testFile);
 
-    parsed.tests.forEach(function (test) {
-      if (test.segments) {
-        // segment testing
-        test.segments.forEach(function (segment) {
-          const segmentKey = segment.key;
+    if ((test as TestSegment).segment) {
+      // segment testing
+      const testSegment = test as TestSegment;
+      const segmentKey = testSegment.segment;
 
-          console.log(`     => Segment "${segmentKey}":`);
+      console.log(`     => Segment "${segmentKey}":`);
 
-          const segmentExists = datasource.entityExists("segment", segmentKey);
+      const segmentExists = datasource.entityExists("segment", segmentKey);
 
-          if (!segmentExists) {
-            console.error(`        => Segment does not exist: ${segmentKey}`);
-            hasError = true;
+      if (!segmentExists) {
+        console.error(`        => Segment does not exist: ${segmentKey}`);
+        hasError = true;
 
-            return;
-          }
+        continue;
+      }
 
-          const parsedSegment = datasource.readSegment(segmentKey);
-          const conditions = parsedSegment.conditions as Condition | Condition[];
+      const parsedSegment = datasource.readSegment(segmentKey);
+      const conditions = parsedSegment.conditions as Condition | Condition[];
 
-          segment.assertions.forEach(function (assertion, aIndex) {
-            const description = assertion.description || `#${aIndex + 1}`;
+      testSegment.assertions.forEach(function (assertion, aIndex) {
+        const description = assertion.description || `#${aIndex + 1}`;
 
-            console.log(`        => Assertion #${aIndex + 1}: ${description}`);
+        console.log(`        => Assertion #${aIndex + 1}: ${description}`);
 
-            const expected = assertion.expectedToMatch;
-            const actual = allConditionsAreMatched(conditions, assertion.context);
+        const expected = assertion.expectedToMatch;
+        const actual = allConditionsAreMatched(conditions, assertion.context);
 
-            if (actual !== expected) {
-              hasError = true;
-
-              console.error(`           Segment failed: expected "${expected}", got "${actual}"`);
-            }
-          });
-        });
-      } else if (test.environment && test.tag && test.features) {
-        // feature testing
-        const datafilePath = getDatafilePath(projectConfig, test.environment, test.tag);
-
-        if (!fs.existsSync(datafilePath)) {
-          console.error(`     => Datafile does not exist: ${datafilePath}`);
+        if (actual !== expected) {
           hasError = true;
 
-          return;
+          console.error(`           Segment failed: expected "${expected}", got "${actual}"`);
         }
+      });
+    } else if ((test as TestFeature).feature) {
+      // feature testing
+      const testFeature = test as TestFeature;
+      const featureKey = testFeature.feature;
 
-        const datafileContent = JSON.parse(
-          fs.readFileSync(datafilePath, "utf8"),
-        ) as DatafileContent;
+      console.log(`     => Feature "${featureKey}":`);
 
-        let currentAt = 0;
+      testFeature.assertions.forEach(function (assertion, aIndex) {
+        const description = assertion.description || `at ${assertion.at}%`;
+
+        console.log(
+          `        => Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`,
+        );
+
+        const featuresToInclude = Array.from(
+          datasource.getRequiredFeaturesChain(testFeature.feature),
+        );
+
+        const datafileContent = buildDatafile(
+          projectConfig,
+          datasource,
+          {
+            schemaVersion: SCHEMA_VERSION,
+            revision: "testing",
+            environment: assertion.environment,
+            features: featuresToInclude,
+          },
+          JSON.parse(
+            fs.readFileSync(getExistingStateFilePath(projectConfig, assertion.environment), "utf8"),
+          ) as ExistingState,
+        );
 
         const sdk = createInstance({
           datafile: datafileContent,
           configureBucketValue: () => {
-            return currentAt;
+            return assertion.at * (MAX_BUCKETED_NUMBER / 100);
           },
           // logger: createLogger({
           //   levels: ["debug", "info", "warn", "error"],
           // }),
         });
 
-        test.features.forEach(function (feature) {
-          const featureKey = feature.key;
+        // isEnabled
+        if ("expectedToBeEnabled" in assertion) {
+          const isEnabled = sdk.isEnabled(featureKey, assertion.context);
 
-          console.log(`     => Feature "${featureKey}" in environment "${test.environment}":`);
+          if (isEnabled !== assertion.expectedToBeEnabled) {
+            hasError = true;
 
-          feature.assertions.forEach(function (assertion, aIndex) {
-            const description = assertion.description || `at ${assertion.at}%`;
+            console.error(
+              `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
+            );
+          }
+        }
 
-            console.log(`        => Assertion #${aIndex + 1}: ${description}`);
+        // variation
+        if ("expectedVariation" in assertion) {
+          const variation = sdk.getVariation(featureKey, assertion.context);
 
-            currentAt = assertion.at * (MAX_BUCKETED_NUMBER / 100);
+          if (variation !== assertion.expectedVariation) {
+            hasError = true;
 
-            // isEnabled
-            if ("expectedToBeEnabled" in assertion) {
-              const isEnabled = sdk.isEnabled(featureKey, assertion.context);
+            console.error(
+              `           Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
+            );
+          }
+        }
 
-              if (isEnabled !== assertion.expectedToBeEnabled) {
-                hasError = true;
+        // variables
+        if (typeof assertion.expectedVariables === "object") {
+          Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
+            const expectedValue =
+              assertion.expectedVariables && assertion.expectedVariables[variableKey];
+            const actualValue = sdk.getVariable(featureKey, variableKey, assertion.context);
 
-                console.error(
-                  `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
-                );
-              }
+            let passed;
+
+            if (typeof expectedValue === "object") {
+              passed = checkIfObjectsAreEqual(expectedValue, actualValue);
+            } else if (Array.isArray(expectedValue)) {
+              passed = checkIfArraysAreEqual(expectedValue, actualValue);
+            } else {
+              passed = expectedValue === actualValue;
             }
 
-            // variation
-            if ("expectedVariation" in assertion) {
-              const variation = sdk.getVariation(featureKey, assertion.context);
+            if (!passed) {
+              hasError = true;
 
-              if (variation !== assertion.expectedVariation) {
-                hasError = true;
-
-                console.error(
-                  `           Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
-                );
-              }
-            }
-
-            // variables
-            if (typeof assertion.expectedVariables === "object") {
-              Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
-                const expectedValue =
-                  assertion.expectedVariables && assertion.expectedVariables[variableKey];
-                const actualValue = sdk.getVariable(featureKey, variableKey, assertion.context);
-
-                let passed;
-
-                if (typeof expectedValue === "object") {
-                  passed = checkIfObjectsAreEqual(expectedValue, actualValue);
-                } else if (Array.isArray(expectedValue)) {
-                  passed = checkIfArraysAreEqual(expectedValue, actualValue);
-                } else {
-                  passed = expectedValue === actualValue;
-                }
-
-                if (!passed) {
-                  hasError = true;
-
-                  console.error(
-                    `           Variable "${variableKey}" failed: expected ${JSON.stringify(
-                      expectedValue,
-                    )}, got "${JSON.stringify(actualValue)}"`,
-                  );
-                }
-              });
+              console.error(
+                `           Variable "${variableKey}" failed: expected ${JSON.stringify(
+                  expectedValue,
+                )}, got "${JSON.stringify(actualValue)}"`,
+              );
             }
           });
-        });
-      } else {
-        console.error(`     => Invalid test: ${JSON.stringify(test)}`);
-        hasError = true;
-      }
-    });
+        }
+      });
+    } else {
+      console.error(`     => Invalid test: ${JSON.stringify(test)}`);
+      hasError = true;
+    }
   }
 
   return hasError;

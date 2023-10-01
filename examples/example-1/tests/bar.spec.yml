@@ -1,41 +1,40 @@
-tests:
-  - tag: all
+feature: bar
+assertions:
+  - at: 15 # 30 * 0.5
     environment: staging
-    features:
-      - key: bar
-        assertions:
-          - at: 15 # 30 * 0.5
-            context:
-              country: us
-            expectedToBeEnabled: true
-            expectedVariation: control
-            expectedVariables:
-              color: red
-              hero:
-                title: Hero Title
-                subtitle: Hero Subtitle
-                alignment: center
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title
+        subtitle: Hero Subtitle
+        alignment: center
 
-          - at: 20 # 40 * 0.5
-            context:
-              country: us
-            expectedToBeEnabled: true
-            expectedVariation: b
-            expectedVariables:
-              color: red
-              hero:
-                title: Hero Title for B
-                subtitle: Hero Subtitle for B
-                alignment: center for B
+  - at: 20 # 40 * 0.5
+    environment: staging
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title for B
+        subtitle: Hero Subtitle for B
+        alignment: center for B
 
-          - at: 20 # 40 * 0.5
-            context:
-              country: de
-            expectedToBeEnabled: true
-            expectedVariation: b
-            expectedVariables:
-              color: red
-              hero:
-                title: Hero Title for B in DE or CH
-                subtitle: Hero Subtitle for B in DE of CH
-                alignment: center for B in DE or CH
+  - at: 20 # 40 * 0.5
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title for B in DE or CH
+        subtitle: Hero Subtitle for B in DE of CH
+        alignment: center for B in DE or CH

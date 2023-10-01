@@ -1,41 +1,42 @@
-tests:
-  - tag: all
+feature: foo
+assertions:
+  - at: 40
     environment: staging
-    features:
-      - key: foo
-        assertions:
-          - at: 40
-            context:
-              country: de
-            expectedToBeEnabled: true
-            expectedVariation: control
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: control
 
-          - at: 60
-            context:
-              country: ch
-            expectedToBeEnabled: true
-            expectedVariation: treatment
+  - at: 60
+    environment: staging
+    context:
+      country: ch
+    expectedToBeEnabled: true
+    expectedVariation: treatment
 
-          - at: 60
-            context:
-              country: us
-            expectedToBeEnabled: true
-            expectedVariation: treatment
+  - at: 60
+    environment: staging
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
 
-          - at: 60
-            context:
-              country: us
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              bar: bar_here
-              baz: baz_here
+  - at: 60
+    environment: staging
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar_here
+      baz: baz_here
 
-          - at: 80
-            context:
-              country: de
-            expectedToBeEnabled: true
-            expectedVariation: treatment
-            expectedVariables:
-              bar: bar for DE or CH
-              baz: baz_here
+  - at: 80
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar for DE or CH
+      baz: baz_here

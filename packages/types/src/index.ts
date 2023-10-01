@@ -351,6 +351,7 @@ export interface ExistingState {
  */
 export interface FeatureAssertion {
   description?: string;
+  environment: EnvironmentKey;
   at: Weight; // bucket weight: 0 to 100
   context: Context;
   expectedToBeEnabled: boolean;
@@ -361,7 +362,7 @@ export interface FeatureAssertion {
 }
 
 export interface TestFeature {
-  key: FeatureKey;
+  feature: FeatureKey;
   assertions: FeatureAssertion[];
 }
 
@@ -372,25 +373,11 @@ export interface SegmentAssertion {
 }
 
 export interface TestSegment {
-  key: SegmentKey;
+  segment: SegmentKey;
   assertions: SegmentAssertion[];
 }
 
-export interface Test {
-  description?: string;
-
-  // needed for feature testing
-  tag?: string;
-  environment?: string;
-  features?: TestFeature[];
-
-  // needed for segment testing
-  segments?: TestSegment[];
-}
-
-export interface Spec {
-  tests: Test[];
-}
+export type Test = TestSegment | TestFeature;
 
 /**
  * Site index and history
