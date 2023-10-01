@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.50.0](https://github.com/featurevisor/featurevisor/compare/v0.49.0...v0.50.0) (2023-10-01)
+
+
+### Features
+
+* test specs improvements ([#160](https://github.com/featurevisor/featurevisor/issues/160)) ([fd8fa01](https://github.com/featurevisor/featurevisor/commit/fd8fa01f517bcfd5dfde80f311a9c546dd481ff1))
+
+
+
+
+
 # [0.49.0](https://github.com/featurevisor/featurevisor/compare/v0.48.0...v0.49.0) (2023-09-30)
 
 **Note:** Version bump only for package @featurevisor/example-json
