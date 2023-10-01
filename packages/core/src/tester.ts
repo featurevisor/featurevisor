@@ -120,6 +120,10 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
           `        => Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`,
         );
 
+        const featuresToInclude = Array.from(
+          datasource.getRequiredFeaturesChain(testFeature.feature),
+        );
+
         const datafileContent = buildDatafile(
           projectConfig,
           datasource,
@@ -127,7 +131,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
             schemaVersion: SCHEMA_VERSION,
             revision: "testing",
             environment: assertion.environment,
-            features: Array.from(datasource.getRequiredFeaturesChain(testFeature.feature)),
+            features: featuresToInclude,
           },
           JSON.parse(
             fs.readFileSync(getExistingStateFilePath(projectConfig, assertion.environment), "utf8"),

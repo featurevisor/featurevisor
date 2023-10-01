@@ -124,9 +124,7 @@ export class Datasource {
   }
 
   getRequiredFeaturesChain(featureKey: FeatureKey, chain = new Set<FeatureKey>()): Set<FeatureKey> {
-    if (chain.size === 0) {
-      chain.add(featureKey);
-    }
+    chain.add(featureKey);
 
     if (!this.entityExists("feature", featureKey)) {
       throw new Error(`Feature not found: ${featureKey}`);
