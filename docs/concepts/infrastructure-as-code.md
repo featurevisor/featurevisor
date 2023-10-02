@@ -4,13 +4,27 @@ description: Learn what Infrastructure as Code (IaC) means and how it applies to
 ogImage: /img/og/docs-concepts-iac.png
 ---
 
-Infrastructure as Code (IaC) is the practice of managing and provisioning computing resources through human-readable yet machine-parsable files in a declarative format. {% .lead %}
+Infrastructure as Code (IaC) is the practice of managing and provisioning computing resources through human-readable yet machine-parsable files written in a declarative format. {% .lead %}
 
 Instead of manually configuring your infrastructure or using one-off scripts, IaC allows you to apply consistent settings across multiple environments, making the setup reproducible and easily versioned.
 
-To put it simpler, IaC enables you to manage your IT infrastructure using the same principles as software development, such as version control, code review and approval, and automation.
+## Understanding infrastructure
 
-## Key concepts
+Before diving further into how Featurevisor adopts IaC principles, it's essential to understand what "**infrastructure**" means in the context of IaC.
+
+It refers to the various components that together form the operational environment where your software runs. This infrastructure may include:
+
+- **Compute resources**: servers and containers
+- **Networking components**: network configuration, load balancers, firewalls
+- **Storage elements**: databases and file storage
+- **Software & applications**: operating systems, dependencies, and applications
+- **Security mechanisms**: access control and encryption tools
+- **Management & monitoring**: configuration, monitoring and alerting systems
+- **Deployment tools**: CI/CD pipelines and automation tools
+
+These components, when managed and provisioned as (declarative) code, enhance automation, consistency, and scalability, streamlining the development and deployment processes.
+
+## Key characteristics
 
 - **Declarative syntax**: IaC uses a declarative approach, meaning you specify "**what**" you want to achieve, not "**how**" to achieve it. The system interprets the code to bring the environment to the desired state.
 - **Version control**: All configurations are stored in a version control system like [Git](/docs/concepts/gitops), providing a historical record and enabling rollback capabilities.
@@ -71,7 +85,7 @@ This promotes reusability and makes it easier to manage complex systems.
 
 ## Other examples
 
-These are some popular open source projects that adopt IaC principles:
+These are various popular open source projects that adopt IaC principles:
 
 - [Terraform](https://www.terraform.io/): Infrastructure provisioning
 - [Kubernetes](https://kubernetes.io/): Container orchestration
