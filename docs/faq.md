@@ -9,13 +9,13 @@ It is an Open Source project, released under the MIT license. You can use it for
 
 ## Why is it free? Where's the catch?
 
-There's none really. The tool's author is a developer, and he wanted to see how far he can stretch the limits of declarative files in a git repository for feature management.
+There's none really. The tool's author is a developer, and he wanted to see how far he can stretch the limits of declarative files in a Git repository for [feature management](/docs/feature-management).
 
 The tool started as an experiment itself, but after several releases and iterations, it is increasingly becoming a stable tool that can be used in production.
 
 ## Is there any UI for managing features?
 
-Featurevisor is a tool aimed at developers, and its entire workflow is based on working with a Git repository.
+Featurevisor is a tool aimed at developers, and its entire workflow is based on working with a [Git repository](/docs/concepts/gitops).
 
 Therefore there is no UI involved when it comes to changing anything. You will be editing files in your repository, and committing them to Git.
 

@@ -8,6 +8,21 @@ Set up continuous integration and deployment of your Featurevisor project with G
 
 Find more info about GitHub Actions [here](https://github.com/features/actions).
 
+## Creating a new project
+
+This guide assumes you have created a new Featurevisor project using the CLI:
+
+```
+$ mkdir my-featurevisor-project && cd my-featurevisor-project
+$ npx @featurevisor/cli init
+```
+
+The initialized project will already contain the npm scripts for linting, building, and testing your project:
+
+- `lint`: `featurevisor lint`
+- `build`: `featurevisor build`
+- `test`: `featurevisor test`
+
 ## Repository settings
 
 Make sure you have `Read and write permissions` enabled in your GitHub repository's `Settings > Actions > General > Workflow permissions` section.
