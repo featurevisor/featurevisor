@@ -61,7 +61,7 @@ Learn more in [Building datafiles](/docs/building-datafiles).
 
 ## Testing
 
-Test your features and segments against built datafiles:
+Test your features and segments:
 
 ```
 $ featurevisor test

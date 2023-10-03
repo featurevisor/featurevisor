@@ -8,6 +8,21 @@ Set up continuous integration and deployment of your Feaurevisor project with Gi
 
 See more about GitHub Actions set up in previous guide [here](/docs/integrations/github-actions).
 
+## Creating a new project
+
+This guide assumes you have created a new Featurevisor project using the CLI:
+
+```
+$ mkdir my-featurevisor-project && cd my-featurevisor-project
+$ npx @featurevisor/cli init
+```
+
+The initialized project will already contain the npm scripts for linting, building, and testing your project:
+
+- `lint`: `featurevisor lint`
+- `build`: `featurevisor build`
+- `test`: `featurevisor test`
+
 ## Cloudflare Pages
 
 We are going to be uploading to and serving our datafiles from [Cloudflare Pages](https://pages.cloudflare.com/).
