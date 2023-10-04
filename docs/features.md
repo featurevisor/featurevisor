@@ -660,3 +660,37 @@ archived: true
 ```
 
 Doing so will exclude the feature from generated datafiles and SDKs will not be able to evaluate the feature.
+
+## Expose
+
+In some cases, you may not want to expose a certain feature's configuration in a specific environment when generating the [datafiles](/docs/building-datafiles).
+
+This is different than:
+
+- **Archiving**: because you only want to control the exposure of the feature's configuration in a specific environment, not all environments.
+- **Deprecating**: because deprecating a feature will still expose the configuration in all environments
+- **0% rollout**: because this will evaluate the feature
+as disabled as intended, but still expose the configuration in the datafiles which we do not want
+
+To achieve that, we can use the `expose` property when defining an environment's rules:
+
+```yml
+# ...
+
+environments:
+  production:
+    # this optional property tells Featurevisor
+    # to not include this feature config
+    # when generating datafiles
+    # for this specific environment
+    expose: false
+
+    # even though we have rules defined here,
+    # the feature won't end up in production datafiles
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+```
+
+This technique is useful if you wish to test things out in a specific environment (like staging) without affecting rest of the environments (like production).
