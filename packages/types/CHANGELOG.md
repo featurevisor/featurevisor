@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.51.0](https://github.com/featurevisor/featurevisor/compare/v0.50.0...v0.51.0) (2023-10-05)
+
+
+### Features
+
+* let variables have descriptions ([#165](https://github.com/featurevisor/featurevisor/issues/165)) ([2a1b73d](https://github.com/featurevisor/featurevisor/commit/2a1b73d274ae10184db024ca41aa73011b8e8532))
+
+
+
+
+
 # [0.50.0](https://github.com/featurevisor/featurevisor/compare/v0.49.0...v0.50.0) (2023-10-01)
 
 

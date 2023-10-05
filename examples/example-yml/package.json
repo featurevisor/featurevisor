@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-yml",
   "private": true,
-  "version": "0.50.0",
+  "version": "0.51.0",
   "description": "Featurevisor project with YAML definitions",
   "scripts": {
     "lint": "featurevisor lint",
@@ -12,6 +12,6 @@
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src"
   },
   "dependencies": {
-    "@featurevisor/cli": "^0.50.0"
+    "@featurevisor/cli": "^0.51.0"
   }
 }
