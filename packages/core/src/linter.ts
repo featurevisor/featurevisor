@@ -323,6 +323,7 @@ export function getFeatureJoiSchema(
             "object",
             "json",
           ),
+          description: Joi.string().optional(),
           defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
         }),
       )
