@@ -347,6 +347,8 @@ variations:
 
 If users are bucketed in the `treatment` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the variables schema.
 
+Like variations, variables can also have a `description` property for documentation purposes.
+
 You can read more about using Featurevisor for remote configuration needs [here](/docs/use-cases/remote-configuration).
 
 ### Supported types
