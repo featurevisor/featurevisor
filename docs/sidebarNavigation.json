@@ -42,6 +42,7 @@
       { "title": "Next.js", "href": "/docs/frameworks/nextjs" },
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
+      { "title": "Astro", "href": "/docs/frameworks/astro" },
       { "title": "Express.js", "href": "/docs/frameworks/express" }
     ]
   },
