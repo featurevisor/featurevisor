@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource/datasource";
+import { Datasource } from "../datasource";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
   switch (featurevisorType) {

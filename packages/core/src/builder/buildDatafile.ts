@@ -1,7 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
-
-import * as mkdirp from "mkdirp";
 
 import {
   Segment,
@@ -19,15 +16,14 @@ import {
   ExistingState,
   FeatureKey,
   Allocation,
-  EnvironmentKey,
-  Group,
-  Range,
 } from "@featurevisor/types";
 
-import { SCHEMA_VERSION, ProjectConfig } from "./config";
-import { Datasource } from "./datasource/datasource";
+import { ProjectConfig } from "../config";
+import { Datasource } from "../datasource";
+import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
+
 import { getTraffic } from "./traffic";
-import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "./utils";
+import { getFeatureRanges } from "./getFeatureRanges";
 
 export interface BuildOptions {
   schemaVersion: string;
@@ -35,78 +31,6 @@ export interface BuildOptions {
   environment: string;
   tag?: string;
   features?: FeatureKey[];
-}
-
-export function getDatafilePath(
-  projectConfig: ProjectConfig,
-  environment: EnvironmentKey,
-  tag: string,
-): string {
-  const fileName = `datafile-tag-${tag}.json`;
-
-  return path.join(projectConfig.outputDirectoryPath, environment, fileName);
-}
-
-export function getExistingStateFilePath(
-  projectConfig: ProjectConfig,
-  environment: EnvironmentKey,
-): string {
-  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
-}
-
-export type FeatureRanges = Map<FeatureKey, Range[]>;
-
-interface FeatureRangesResult {
-  featureRanges: FeatureRanges;
-  featureIsInGroup: { [key: string]: boolean };
-}
-
-export function getFeatureRanges(
-  projectConfig: ProjectConfig,
-  datasource: Datasource,
-): FeatureRangesResult {
-  const featureRanges = new Map<FeatureKey, Range[]>();
-  const featureIsInGroup = {}; // featureKey => boolean
-
-  const groups: Group[] = [];
-  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groupFiles = datasource.listGroups();
-
-    for (const groupKey of groupFiles) {
-      const parsedGroup = datasource.readGroup(groupKey);
-
-      groups.push({
-        ...parsedGroup,
-        key: groupKey,
-      });
-
-      let accumulatedPercentage = 0;
-      parsedGroup.slots.forEach(function (slot, slotIndex) {
-        const isFirstSlot = slotIndex === 0;
-
-        if (slot.feature) {
-          const featureKey = slot.feature;
-
-          if (typeof featureKey === "string") {
-            featureIsInGroup[featureKey] = true;
-          }
-
-          const featureRangesForFeature = featureRanges.get(featureKey) || [];
-
-          const start = isFirstSlot ? accumulatedPercentage : accumulatedPercentage + 1;
-          const end = accumulatedPercentage + slot.percentage * 1000;
-
-          featureRangesForFeature.push([start, end]);
-
-          featureRanges.set(slot.feature, featureRangesForFeature);
-        }
-
-        accumulatedPercentage += slot.percentage * 1000;
-      });
-    }
-  }
-
-  return { featureRanges, featureIsInGroup };
 }
 
 export function buildDatafile(
@@ -342,71 +266,4 @@ export function buildDatafile(
   datafileContent.features = features;
 
   return datafileContent;
-}
-
-export interface BuildCLIOptions {
-  revision?: string;
-}
-
-export function buildProject(
-  rootDirectoryPath,
-  projectConfig: ProjectConfig,
-  cliOptions: BuildCLIOptions = {},
-) {
-  const tags = projectConfig.tags;
-  const environments = projectConfig.environments;
-
-  const pkg = require(path.join(rootDirectoryPath, "package.json"));
-  const datasource = new Datasource(projectConfig);
-
-  for (const environment of environments) {
-    console.log(`\nBuilding datafiles for environment: ${environment}`);
-
-    const existingStateFilePath = getExistingStateFilePath(projectConfig, environment);
-    const existingState: ExistingState = fs.existsSync(existingStateFilePath)
-      ? require(existingStateFilePath)
-      : {
-          features: {},
-        };
-
-    for (const tag of tags) {
-      console.log(`\n  => Tag: ${tag}`);
-      const datafileContent = buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: cliOptions.revision || pkg.version,
-          environment: environment,
-          tag: tag,
-        },
-        existingState,
-      );
-
-      // write datafile for environment/tag
-      const outputEnvironmentDirPath = path.join(projectConfig.outputDirectoryPath, environment);
-      mkdirp.sync(outputEnvironmentDirPath);
-
-      const outputFilePath = getDatafilePath(projectConfig, environment, tag);
-      fs.writeFileSync(
-        outputFilePath,
-        projectConfig.prettyDatafile
-          ? JSON.stringify(datafileContent, null, 2)
-          : JSON.stringify(datafileContent),
-      );
-      const shortPath = outputFilePath.replace(rootDirectoryPath + path.sep, "");
-      console.log(`     Datafile generated: ${shortPath}`);
-    }
-
-    // write state for environment
-    if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
-      mkdirp.sync(projectConfig.stateDirectoryPath);
-    }
-    fs.writeFileSync(
-      existingStateFilePath,
-      projectConfig.prettyState
-        ? JSON.stringify(existingState, null, 2)
-        : JSON.stringify(existingState),
-    );
-  }
 }

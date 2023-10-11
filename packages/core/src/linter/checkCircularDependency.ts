@@ -1,6 +1,6 @@
 import { FeatureKey, Required } from "@featurevisor/types";
 
-import { Datasource } from "../datasource/datasource";
+import { Datasource } from "../datasource";
 
 export function checkForCircularDependencyInRequired(
   datasource: Datasource,

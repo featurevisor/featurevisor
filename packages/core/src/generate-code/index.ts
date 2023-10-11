@@ -4,7 +4,7 @@ import * as path from "path";
 import * as mkdirp from "mkdirp";
 
 import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource/datasource";
+import { Datasource } from "../datasource";
 import { generateTypeScriptCodeForProject } from "./typescript";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
