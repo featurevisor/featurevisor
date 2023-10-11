@@ -1,6 +1,6 @@
 ---
 title: Nuxt
-description: Learn how to integrate Featurevisor in Nuxt applications
+description: Learn how to integrate Featurevisor in Nuxt applications for evaluating feature flags
 ogImage: /img/og/docs-frameworks-nuxt.png
 ---
 

@@ -1,10 +1,10 @@
 ---
 title: Vue.js SDK
-description: Learn how to use Featurevisor SDK with Vue.js
+description: Learn how to use Featurevisor SDK with Vue.js for evaluating feature flags
 ogImage: /img/og/docs-vue.png
 ---
 
-Featurevisor comes with an additional package for Vue.js, for ease of integration in your Vue.js application. {% .lead %}
+Featurevisor comes with an additional package for Vue.js, for ease of integration in your Vue.js application for evaluating feature flags. {% .lead %}
 
 ## Installation
 

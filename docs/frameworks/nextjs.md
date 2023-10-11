@@ -1,10 +1,10 @@
 ---
 title: Next.js
-description: Learn how to integrate Featurevisor in Next.js applications
+description: Learn how to integrate Featurevisor in Next.js applications for evaluating feature flags
 ogImage: /img/og/docs-frameworks-nextjs.png
 ---
 
-Set up Featurevisor SDK in a Next.js application for static site generation (SSG) and server-side rendering (SSR). {% .lead %}
+Set up Featurevisor SDK in a Next.js application for evaluating feature flags targeting static site generation (SSG) and server-side rendering (SSR) strategies. {% .lead %}
 
 ## Rendering strategies
 
