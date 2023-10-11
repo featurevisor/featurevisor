@@ -5,7 +5,7 @@ import { createInstance, allConditionsAreMatched, MAX_BUCKETED_NUMBER } from "@f
 
 import { ProjectConfig, SCHEMA_VERSION } from "./config";
 import { getExistingStateFilePath, buildDatafile } from "./builder";
-import { Datasource } from "./datasource/datasource";
+import { Datasource } from "./datasource";
 
 // @TODO: make it better
 export function checkIfArraysAreEqual(a, b) {

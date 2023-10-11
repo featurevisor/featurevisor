@@ -1,7 +1,7 @@
 import * as Joi from "joi";
 
 import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource/datasource";
+import { Datasource } from "../datasource";
 
 export function getGroupJoiSchema(
   projectConfig: ProjectConfig,

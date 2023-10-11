@@ -16,7 +16,7 @@ import {
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "./config";
-import { Datasource } from "./datasource/datasource";
+import { Datasource } from "./datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "./utils";
 
 function getRelativePaths(rootDirectoryPath, projectConfig: ProjectConfig) {
