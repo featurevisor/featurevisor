@@ -1,10 +1,10 @@
 ---
 title: React Native SDK
-description: Learn how to use Featurevisor SDK with React Native for building iOS and Android apps
+description: Learn how to use Featurevisor SDK with React Native for evaluating feature flags when building iOS and Android apps
 ogImage: /img/og/docs-react.png
 ---
 
-Featurevisor SDK can also be used with React Native for building iOS and Android applications. {% .lead %}
+Featurevisor SDK can be used with React Native for evaluating feature flags when building iOS and Android applications. {% .lead %}
 
 ## Installation
 

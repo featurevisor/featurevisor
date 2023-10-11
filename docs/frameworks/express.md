@@ -1,10 +1,10 @@
 ---
 title: Express.js
-description: Learn how to integrate Featurevisor in Express.js applications
+description: Learn how to integrate Featurevisor in Express.js applications for evaluating feature flags
 ogImage: /img/og/docs-frameworks-express.png
 ---
 
-Set up Featurevisor SDK instance in an Express.js application using a custom middleware, including TypeScript integration. {% .lead %}
+Set up Featurevisor SDK instance in an Express.js application using a custom middleware, including TypeScript integration for evaluating feature flags. {% .lead %}
 
 ## Hello World application
 

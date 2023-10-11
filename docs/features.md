@@ -1,6 +1,6 @@
 ---
 title: Features
-description: Learn how to create features in Featurevisor
+description: Learn how to create feature flags in Featurevisor
 ogImage: /img/og/docs-features.png
 ---
 

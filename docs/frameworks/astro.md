@@ -1,6 +1,6 @@
 ---
 title: Astro
-description: Learn how to integrate Featurevisor in Astro applications
+description: Learn how to integrate Featurevisor in Astro applications for evaluating feature flags
 ogImage: /img/og/docs-frameworks-astro.png
 ---
 
