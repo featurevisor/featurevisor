@@ -44,16 +44,45 @@ export function getConditionsJoiSchema(
         "notIn",
       )
       .required(),
-    value: Joi.alternatives()
-      .try(
-        // @TODO: make them more specific
-        Joi.string(),
-        Joi.number(),
-        Joi.boolean(),
-        Joi.date(),
-        Joi.array().items(Joi.string()),
-      )
-      .required(),
+    value: Joi.when("operator", {
+      is: Joi.string().valid("equals", "notEquals"),
+      then: Joi.alternatives()
+        .try(Joi.string(), Joi.number(), Joi.boolean(), Joi.date())
+        .allow(null)
+        .required(),
+    })
+      .when("operator", {
+        is: Joi.string().valid(
+          "greaterThan",
+          "greaterThanOrEquals",
+          "lessThan",
+          "lessThanOrEquals",
+        ),
+        then: Joi.number().required(),
+      })
+      .when("operator", {
+        is: Joi.string().valid("contains", "notContains", "startsWith", "endsWith"),
+        then: Joi.string().required(),
+      })
+      .when("operator", {
+        is: Joi.string().valid(
+          "semverEquals",
+          "semverNotEquals",
+          "semverGreaterThan",
+          "semverGreaterThanOrEquals",
+          "semverLessThan",
+          "semverLessThanOrEquals",
+        ),
+        then: Joi.string().required(),
+      })
+      .when("operator", {
+        is: Joi.string().valid("before", "after"),
+        then: Joi.alternatives(Joi.date(), Joi.string()).required(),
+      })
+      .when("operator", {
+        is: Joi.string().valid("in", "notIn"),
+        then: Joi.array().items(Joi.string()).required(),
+      }),
   });
 
   const andOrNotConditionJoiSchema = Joi.alternatives()

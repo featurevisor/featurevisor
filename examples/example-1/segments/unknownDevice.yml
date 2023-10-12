@@ -1,0 +1,6 @@
+archived: false
+description: users with unknown device
+conditions:
+  - attribute: device
+    operator: equals
+    value: null
