@@ -10,9 +10,9 @@
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",
     "test": "echo 'Nothing to test in types package'",
-    "format": "prettier . --check --cache --log-level=warn",
+    "format": "prettier . --check --cache --loglevel=warn",
     "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --log-level=warn",
+    "format:fix": "prettier . --write --cache --loglevel=warn",
     "lint:fix": "eslint . --fix --cache"
   },
   "author": {
