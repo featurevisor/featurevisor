@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.52.0](https://github.com/featurevisor/featurevisor/compare/v0.51.2...v0.52.0) (2023-10-12)
+
+
+### Features
+
+* add support for null, more specific validation of value type in segment ([#170](https://github.com/featurevisor/featurevisor/issues/170)) ([16a47c5](https://github.com/featurevisor/featurevisor/commit/16a47c5eec4fda07dd161eeb2e468b0ac736c18c))
+
+
+
+
+
 ## [0.51.2](https://github.com/featurevisor/featurevisor/compare/v0.51.1...v0.51.2) (2023-10-11)
 
 **Note:** Version bump only for package @featurevisor/cli
