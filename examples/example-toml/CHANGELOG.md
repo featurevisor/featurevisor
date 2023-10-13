@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.53.0](https://github.com/featurevisor/featurevisor/compare/v0.52.1...v0.53.0) (2023-10-13)
+
+
+### Features
+
+* find duplicate segments from CLI ([#172](https://github.com/featurevisor/featurevisor/issues/172)) ([ac7fa9f](https://github.com/featurevisor/featurevisor/commit/ac7fa9fa66350c82d2f8208364563fa67d309e85))
+
+
+
+
+
 ## [0.52.1](https://github.com/featurevisor/featurevisor/compare/v0.52.0...v0.52.1) (2023-10-12)
 
 **Note:** Version bump only for package @featurevisor/example-toml
