@@ -9,7 +9,8 @@
     "test": "featurevisor test",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
-    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src"
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
+    "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
     "@featurevisor/cli": "^0.52.1"

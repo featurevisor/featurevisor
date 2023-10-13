@@ -13,6 +13,7 @@ import {
   exportSite,
   serveSite,
   generateCodeForProject,
+  findDuplicateSegmentsInProject,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
   restoreProject,
@@ -175,6 +176,24 @@ async function main() {
     })
     .example("$0 generate-code", "generate code from YAMLs")
     .example("$0 generate-code --language typescript --out-dir ./src", "")
+
+    /**
+     * Find duplicate segments
+     */
+    .command({
+      command: "find-duplicate-segments",
+      handler: function () {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        try {
+          findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 generate-code", "generate code from YAMLs")
 
     /**
      * Options

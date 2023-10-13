@@ -113,3 +113,13 @@ $ featurevisor generate-code --language typescript --out-dir ./src
 See output in `./src` directory.
 
 Learn more in [code generation](/docs/code-generation) page.
+
+## Find duplicate segments
+
+It is possible to end up with multiple segments having same conditions in larger projects. This is not a problem per se, but we should be aware of it.
+
+We can find these duplicates early on by running:
+
+```
+$ featurevisor find-duplicate-segments
+```
