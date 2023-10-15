@@ -1,50 +1,15 @@
 import * as fs from "fs";
 
-import { Condition, ExistingState, TestSegment, TestFeature } from "@featurevisor/types";
-import { createInstance, allConditionsAreMatched, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { ExistingState, TestSegment, TestFeature } from "@featurevisor/types";
+import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
-import { ProjectConfig, SCHEMA_VERSION } from "./config";
-import { getExistingStateFilePath, buildDatafile } from "./builder";
-import { Datasource } from "./datasource";
+import { ProjectConfig, SCHEMA_VERSION } from "../config";
+import { getExistingStateFilePath, buildDatafile } from "../builder";
+import { Datasource } from "../datasource";
 
-// @TODO: make it better
-export function checkIfArraysAreEqual(a, b) {
-  if (!Array.isArray(a) || !Array.isArray(b)) {
-    return false;
-  }
-
-  if (a.length !== b.length) return false;
-
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-export function checkIfObjectsAreEqual(a, b) {
-  if (typeof a !== "object" || typeof b !== "object") {
-    return false;
-  }
-
-  if (a === null || b === null) {
-    return false;
-  }
-
-  if (Object.keys(a).length !== Object.keys(b).length) {
-    return false;
-  }
-
-  for (const key in a) {
-    if (a[key] !== b[key]) {
-      return false;
-    }
-  }
-
-  return true;
-}
+import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
+import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
+import { testSegment } from "./testSegment";
 
 export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
   let hasError = false;
@@ -71,44 +36,20 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
 
     console.log(`  => Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
-    const test = datasource.readTest(testFile);
+    const t = datasource.readTest(testFile);
 
-    if ((test as TestSegment).segment) {
+    if ((t as TestSegment).segment) {
       // segment testing
-      const testSegment = test as TestSegment;
-      const segmentKey = testSegment.segment;
+      const test = t as TestSegment;
 
-      console.log(`     => Segment "${segmentKey}":`);
+      const segmentHasError = testSegment(datasource, test);
 
-      const segmentExists = datasource.entityExists("segment", segmentKey);
-
-      if (!segmentExists) {
-        console.error(`        => Segment does not exist: ${segmentKey}`);
+      if (segmentHasError) {
         hasError = true;
-
-        continue;
       }
-
-      const parsedSegment = datasource.readSegment(segmentKey);
-      const conditions = parsedSegment.conditions as Condition | Condition[];
-
-      testSegment.assertions.forEach(function (assertion, aIndex) {
-        const description = assertion.description || `#${aIndex + 1}`;
-
-        console.log(`        => Assertion #${aIndex + 1}: ${description}`);
-
-        const expected = assertion.expectedToMatch;
-        const actual = allConditionsAreMatched(conditions, assertion.context);
-
-        if (actual !== expected) {
-          hasError = true;
-
-          console.error(`           Segment failed: expected "${expected}", got "${actual}"`);
-        }
-      });
-    } else if ((test as TestFeature).feature) {
+    } else if ((t as TestFeature).feature) {
       // feature testing
-      const testFeature = test as TestFeature;
+      const testFeature = t as TestFeature;
       const featureKey = testFeature.feature;
 
       console.log(`     => Feature "${featureKey}":`);
