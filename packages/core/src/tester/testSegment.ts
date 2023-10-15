@@ -3,19 +3,19 @@ import { allConditionsAreMatched } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
-import { CLI_FORMAT_RED } from "./cliFormat";
+import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 
 export function testSegment(datasource: Datasource, test: TestSegment): boolean {
   let hasError = false;
 
   const segmentKey = test.segment;
 
-  console.log(`     => Segment "${segmentKey}":`);
+  console.log(CLI_FORMAT_BOLD, `  Segment "${segmentKey}":`);
 
   const segmentExists = datasource.entityExists("segment", segmentKey);
 
   if (!segmentExists) {
-    console.error(`        => Segment does not exist: ${segmentKey}`);
+    console.error(CLI_FORMAT_RED, `  Segment does not exist: ${segmentKey}`);
     hasError = true;
 
     return hasError;
@@ -27,7 +27,7 @@ export function testSegment(datasource: Datasource, test: TestSegment): boolean 
   test.assertions.forEach(function (assertion, aIndex) {
     const description = assertion.description || `#${aIndex + 1}`;
 
-    console.log(`        => Assertion #${aIndex + 1}: ${description}`);
+    console.log(`  Assertion #${aIndex + 1}: ${description}`);
 
     const expected = assertion.expectedToMatch;
     const actual = allConditionsAreMatched(conditions, assertion.context);
@@ -35,10 +35,7 @@ export function testSegment(datasource: Datasource, test: TestSegment): boolean 
     if (actual !== expected) {
       hasError = true;
 
-      console.error(
-        CLI_FORMAT_RED,
-        `           Segment failed: expected "${expected}", got "${actual}"`,
-      );
+      console.error(CLI_FORMAT_RED, `    Segment failed: expected "${expected}", got "${actual}"`);
     }
   });
 

@@ -10,7 +10,7 @@ import { SCHEMA_VERSION } from "../config";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
-import { CLI_FORMAT_RED } from "./cliFormat";
+import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 
 export function testFeature(
   datasource: Datasource,
@@ -20,12 +20,12 @@ export function testFeature(
   let hasError = false;
   const featureKey = test.feature;
 
-  console.log(`     => Feature "${featureKey}":`);
+  console.log(CLI_FORMAT_BOLD, `  Feature "${featureKey}":`);
 
   test.assertions.forEach(function (assertion, aIndex) {
     const description = assertion.description || `at ${assertion.at}%`;
 
-    console.log(`        => Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`);
+    console.log(`  Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`);
 
     const featuresToInclude = Array.from(datasource.getRequiredFeaturesChain(test.feature));
 
@@ -62,7 +62,7 @@ export function testFeature(
 
         console.error(
           CLI_FORMAT_RED,
-          `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
+          `    isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
         );
       }
     }
@@ -76,7 +76,7 @@ export function testFeature(
 
         console.error(
           CLI_FORMAT_RED,
-          `           Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
+          `    Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
         );
       }
     }
@@ -103,7 +103,7 @@ export function testFeature(
 
           console.error(
             CLI_FORMAT_RED,
-            `           Variable "${variableKey}" failed: expected ${JSON.stringify(
+            `    Variable "${variableKey}" failed: expected ${JSON.stringify(
               expectedValue,
             )}, got "${JSON.stringify(actualValue)}"`,
           );
