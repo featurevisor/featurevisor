@@ -3,6 +3,8 @@ import { allConditionsAreMatched } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
+import { CLI_FORMAT_RED } from "./cliFormat";
+
 export function testSegment(datasource: Datasource, test: TestSegment): boolean {
   let hasError = false;
 
@@ -33,7 +35,10 @@ export function testSegment(datasource: Datasource, test: TestSegment): boolean 
     if (actual !== expected) {
       hasError = true;
 
-      console.error(`           Segment failed: expected "${expected}", got "${actual}"`);
+      console.error(
+        CLI_FORMAT_RED,
+        `           Segment failed: expected "${expected}", got "${actual}"`,
+      );
     }
   });
 

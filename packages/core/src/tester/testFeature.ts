@@ -10,6 +10,7 @@ import { SCHEMA_VERSION } from "../config";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
+import { CLI_FORMAT_RED } from "./cliFormat";
 
 export function testFeature(
   datasource: Datasource,
@@ -60,6 +61,7 @@ export function testFeature(
         hasError = true;
 
         console.error(
+          CLI_FORMAT_RED,
           `           isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
         );
       }
@@ -73,6 +75,7 @@ export function testFeature(
         hasError = true;
 
         console.error(
+          CLI_FORMAT_RED,
           `           Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
         );
       }
@@ -99,6 +102,7 @@ export function testFeature(
           hasError = true;
 
           console.error(
+            CLI_FORMAT_RED,
             `           Variable "${variableKey}" failed: expected ${JSON.stringify(
               expectedValue,
             )}, got "${JSON.stringify(actualValue)}"`,

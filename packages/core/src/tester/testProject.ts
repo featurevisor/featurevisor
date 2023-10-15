@@ -7,6 +7,7 @@ import { Datasource } from "../datasource";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
+import { CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 
 export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
   let hasError = false;
@@ -58,6 +59,14 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
       hasError = true;
     }
   }
+
+  console.log("");
+  if (hasError) {
+    console.log(CLI_FORMAT_RED, `Some tests failed`);
+  } else {
+    console.log(CLI_FORMAT_GREEN, `All tests passed`);
+  }
+  console.log("");
 
   return hasError;
 }
