@@ -7,6 +7,7 @@ import { Datasource } from "../datasource";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
+import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 
 export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
   let hasError = false;
@@ -31,7 +32,8 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
   for (const testFile of testFiles) {
     const testFilePath = datasource.getEntityPath("test", testFile);
 
-    console.log(`  => Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
+    console.log("");
+    console.log(CLI_FORMAT_BOLD, `Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
     const t = datasource.readTest(testFile);
 
@@ -54,10 +56,18 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
         hasError = true;
       }
     } else {
-      console.error(`     => Invalid test: ${JSON.stringify(test)}`);
+      console.error(`  => Invalid test: ${JSON.stringify(test)}`);
       hasError = true;
     }
   }
+
+  console.log("");
+  if (hasError) {
+    console.log(CLI_FORMAT_RED, `Some tests failed`);
+  } else {
+    console.log(CLI_FORMAT_GREEN, `All tests passed`);
+  }
+  console.log("");
 
   return hasError;
 }
