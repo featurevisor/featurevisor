@@ -87,7 +87,7 @@ export class Datasource {
   }
 
   async parseEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
-    const entityContent = this.readEntity(entityType, entityKey);
+    const entityContent = await this.readEntity(entityType, entityKey);
 
     return this.parse(entityContent) as T;
   }

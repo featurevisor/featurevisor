@@ -31,7 +31,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   const attributeJoiSchema = getAttributeJoiSchema();
 
   for (const key of attributes) {
-    const parsed = datasource.readAttribute(key);
+    const parsed = await datasource.readAttribute(key);
     availableAttributeKeys.push(key);
 
     try {
@@ -57,7 +57,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
   for (const key of segments) {
-    const parsed = datasource.readSegment(key);
+    const parsed = await datasource.readSegment(key);
     availableSegmentKeys.push(key);
 
     try {
@@ -74,36 +74,6 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
       hasError = true;
     }
   }
-
-  // lint groups
-
-  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groups = await datasource.listGroups();
-    console.log(`\nLinting ${groups.length} groups...\n`);
-
-    // @TODO: feature it slots can be from availableFeatureKeys only
-    const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
-
-    for (const key of groups) {
-      const parsed = datasource.readGroup(key);
-
-      try {
-        await groupJoiSchema.validateAsync(parsed);
-      } catch (e) {
-        console.log("  =>", key);
-
-        if (e instanceof Joi.ValidationError) {
-          printJoiError(e);
-        } else {
-          console.log(e);
-        }
-
-        hasError = true;
-      }
-    }
-  }
-
-  // @TODO: feature cannot exist in multiple groups
 
   // lint features
   const features = await datasource.listFeatures();
@@ -145,6 +115,36 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     }
   }
 
+  // lint groups
+
+  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
+    const groups = await datasource.listGroups();
+    console.log(`\nLinting ${groups.length} groups...\n`);
+
+    // @TODO: feature it slots can be from availableFeatureKeys only
+    const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
+
+    for (const key of groups) {
+      const parsed = await datasource.readGroup(key);
+
+      try {
+        await groupJoiSchema.validateAsync(parsed);
+      } catch (e) {
+        console.log("  =>", key);
+
+        if (e instanceof Joi.ValidationError) {
+          printJoiError(e);
+        } else {
+          console.log(e);
+        }
+
+        hasError = true;
+      }
+    }
+  }
+
+  // @TODO: feature cannot exist in multiple groups
+
   // lint tests
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
     const tests = await datasource.listTests();
@@ -157,7 +157,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
     );
 
     for (const key of tests) {
-      const parsed = datasource.readTest(key);
+      const parsed = await datasource.readTest(key);
 
       try {
         await testsJoiSchema.validateAsync(parsed);
