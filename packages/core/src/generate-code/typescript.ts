@@ -3,6 +3,7 @@ import * as path from "path";
 
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { Attribute } from "@featurevisor/types";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
   switch (featurevisorType) {
@@ -76,7 +77,7 @@ export function getInstance(): FeaturevisorInstance {
 }
 `.trimStart();
 
-export function generateTypeScriptCodeForProject(
+export async function generateTypeScriptCodeForProject(
   rootDirectoryPath: string,
   projectConfig: ProjectConfig,
   datasource: Datasource,
@@ -90,25 +91,23 @@ export function generateTypeScriptCodeForProject(
   console.log(`Instance file written at: ${instanceFilePath}`);
 
   // attributes
-  const attributeFiles = datasource.listAttributes();
-  const attributes = attributeFiles
-    .map((attributeKey) => {
-      const parsedAttribute = datasource.readAttribute(attributeKey);
+  const attributeFiles = await datasource.listAttributes();
+  const attributes: (Attribute & { typescriptType })[] = [];
 
-      return {
-        archived: parsedAttribute.archived,
-        key: attributeKey,
-        type: parsedAttribute.type,
-        typescriptType: convertFeaturevisorTypeToTypeScriptType(parsedAttribute.type),
-      };
-    })
-    .filter((attribute) => {
-      if (typeof attribute.archived === "undefined") {
-        return true;
-      }
+  for (const attributeKey of attributeFiles) {
+    const parsedAttribute = await datasource.readAttribute(attributeKey);
 
-      return !attribute.archived;
+    if (typeof parsedAttribute.archived === "undefined") {
+      continue;
+    }
+
+    attributes.push({
+      archived: parsedAttribute.archived,
+      key: attributeKey,
+      type: parsedAttribute.type,
+      typescriptType: convertFeaturevisorTypeToTypeScriptType(parsedAttribute.type),
     });
+  }
 
   // context
   const attributeProperties = attributes
@@ -131,9 +130,10 @@ ${attributeProperties}
 
   // features
   const featureNamespaces: string[] = [];
-  const featureFiles = datasource.listFeatures();
+  const featureFiles = await datasource.listFeatures();
+
   for (const featureKey of featureFiles) {
-    const parsedFeature = datasource.readFeature(featureKey);
+    const parsedFeature = await datasource.readFeature(featureKey);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;

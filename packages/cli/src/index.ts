@@ -78,11 +78,11 @@ async function main() {
 
     .command({
       command: "build",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
+          await buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
         } catch (e) {
           console.error(e);
           process.exit(1);
@@ -108,10 +108,10 @@ async function main() {
 
     .command({
       command: "test",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
-        const hasError = testProject(rootDirectoryPath, projectConfig);
+        const hasError = await testProject(rootDirectoryPath, projectConfig);
 
         if (hasError) {
           process.exit(1);
@@ -125,7 +125,7 @@ async function main() {
      */
     .command({
       command: "site [subcommand]",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         const allowedSubcommands = ["export", "serve"];
@@ -137,7 +137,7 @@ async function main() {
 
         // export
         if (options.subcommand === "export") {
-          const hasError = exportSite(rootDirectoryPath, projectConfig);
+          const hasError = await exportSite(rootDirectoryPath, projectConfig);
 
           if (hasError) {
             process.exit(1);
@@ -159,11 +159,11 @@ async function main() {
      */
     .command({
       command: "generate-code",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          generateCodeForProject(
+          await generateCodeForProject(
             rootDirectoryPath,
             projectConfig,
             options as unknown as GenerateCodeCLIOptions,
@@ -182,11 +182,11 @@ async function main() {
      */
     .command({
       command: "find-duplicate-segments",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
+          await findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
         } catch (e) {
           console.error(e.message);
           process.exit(1);

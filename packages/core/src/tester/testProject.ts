@@ -9,7 +9,10 @@ import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 
-export function testProject(rootDirectoryPath: string, projectConfig: ProjectConfig): boolean {
+export async function testProject(
+  rootDirectoryPath: string,
+  projectConfig: ProjectConfig,
+): Promise<boolean> {
   let hasError = false;
   const datasource = new Datasource(projectConfig);
 
@@ -20,7 +23,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
     return hasError;
   }
 
-  const testFiles = datasource.listTests();
+  const testFiles = await datasource.listTests();
 
   if (testFiles.length === 0) {
     console.error(`No tests found in: ${projectConfig.testsDirectoryPath}`);
@@ -35,13 +38,13 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
     console.log("");
     console.log(CLI_FORMAT_BOLD, `Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
-    const t = datasource.readTest(testFile);
+    const t = await datasource.readTest(testFile);
 
     if ((t as TestSegment).segment) {
       // segment testing
       const test = t as TestSegment;
 
-      const segmentHasError = testSegment(datasource, test);
+      const segmentHasError = await testSegment(datasource, test);
 
       if (segmentHasError) {
         hasError = true;
@@ -50,7 +53,7 @@ export function testProject(rootDirectoryPath: string, projectConfig: ProjectCon
       // feature testing
       const test = t as TestFeature;
 
-      const featureHasError = testFeature(datasource, projectConfig, test);
+      const featureHasError = await testFeature(datasource, projectConfig, test);
 
       if (featureHasError) {
         hasError = true;

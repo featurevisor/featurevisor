@@ -25,7 +25,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   const availableFeatureKeys: string[] = [];
 
   // lint attributes
-  const attributes = datasource.listAttributes();
+  const attributes = await datasource.listAttributes();
   console.log(`Linting ${attributes.length} attributes...\n`);
 
   const attributeJoiSchema = getAttributeJoiSchema();
@@ -50,7 +50,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   }
 
   // lint segments
-  const segments = datasource.listSegments();
+  const segments = await datasource.listSegments();
   console.log(`\nLinting ${segments.length} segments...\n`);
 
   const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
@@ -78,7 +78,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // lint groups
 
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groups = datasource.listGroups();
+    const groups = await datasource.listGroups();
     console.log(`\nLinting ${groups.length} groups...\n`);
 
     // @TODO: feature it slots can be from availableFeatureKeys only
@@ -106,7 +106,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   // @TODO: feature cannot exist in multiple groups
 
   // lint features
-  const features = datasource.listFeatures();
+  const features = await datasource.listFeatures();
   console.log(`\nLinting ${features.length} features...\n`);
 
   const featureJoiSchema = getFeatureJoiSchema(
@@ -117,7 +117,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   );
 
   for (const key of features) {
-    const parsed = datasource.readFeature(key);
+    const parsed = await datasource.readFeature(key);
     availableFeatureKeys.push(key);
 
     try {
@@ -136,7 +136,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
     if (parsed.required) {
       try {
-        checkForCircularDependencyInRequired(datasource, key, parsed.required);
+        await checkForCircularDependencyInRequired(datasource, key, parsed.required);
       } catch (e) {
         console.log("  =>", key);
         console.log("     => Error:", e.message);
@@ -147,7 +147,7 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
 
   // lint tests
   if (fs.existsSync(projectConfig.testsDirectoryPath)) {
-    const tests = datasource.listTests();
+    const tests = await datasource.listTests();
     console.log(`\nLinting ${tests.length} tests...\n`);
 
     const testsJoiSchema = getTestsJoiSchema(

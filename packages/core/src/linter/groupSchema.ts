@@ -17,7 +17,7 @@ export function getGroupJoiSchema(
           percentage: Joi.number().precision(3).min(0).max(100),
         }),
       )
-      .custom(function (value) {
+      .custom(async function (value) {
         const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
 
         if (totalPercentage !== 100) {
@@ -29,13 +29,13 @@ export function getGroupJoiSchema(
 
           if (slot.feature) {
             const featureKey = slot.feature;
-            const featureExists = datasource.entityExists("feature", featureKey);
+            const featureExists = availableFeatureKeys.indexOf(featureKey) > -1;
 
             if (!featureExists) {
               throw new Error(`feature ${featureKey} not found`);
             }
 
-            const parsedFeature = datasource.readFeature(featureKey);
+            const parsedFeature = await datasource.readFeature(featureKey);
 
             const environmentKeys = Object.keys(parsedFeature.environments);
             for (const environmentKey of environmentKeys) {

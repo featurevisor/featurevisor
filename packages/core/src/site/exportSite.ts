@@ -9,7 +9,7 @@ import { generateHistory } from "./generateHistory";
 import { getRepoDetails } from "./getRepoDetails";
 import { generateSiteSearchIndex } from "./generateSiteSearchIndex";
 
-export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
+export async function exportSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
   const hasError = false;
 
   mkdirp.sync(projectConfig.siteExportDirectoryPath);
@@ -30,7 +30,7 @@ export function exportSite(rootDirectoryPath: string, projectConfig: ProjectConf
 
   // site search index
   const repoDetails = getRepoDetails();
-  const searchIndex = generateSiteSearchIndex(
+  const searchIndex = await generateSiteSearchIndex(
     rootDirectoryPath,
     projectConfig,
     fullHistory,

@@ -33,12 +33,12 @@ export interface BuildOptions {
   features?: FeatureKey[];
 }
 
-export function buildDatafile(
+export async function buildDatafile(
   projectConfig: ProjectConfig,
   datasource: Datasource,
   options: BuildOptions,
   existingState: ExistingState,
-): DatafileContent {
+): Promise<DatafileContent> {
   const datafileContent: DatafileContent = {
     schemaVersion: options.schemaVersion,
     revision: options.revision,
@@ -49,17 +49,17 @@ export function buildDatafile(
 
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
-  const { featureRanges, featureIsInGroup } = getFeatureRanges(projectConfig, datasource);
+  const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
 
   // features
   const features: Feature[] = [];
   const featuresDirectory = projectConfig.featuresDirectoryPath;
 
   if (fs.existsSync(featuresDirectory)) {
-    const featureFiles = datasource.listFeatures();
+    const featureFiles = await datasource.listFeatures();
 
     for (const featureKey of featureFiles) {
-      const parsedFeature = datasource.readFeature(featureKey);
+      const parsedFeature = await datasource.readFeature(featureKey);
 
       if (parsedFeature.archived === true) {
         continue;
@@ -200,10 +200,10 @@ export function buildDatafile(
   const segmentsDirectory = projectConfig.segmentsDirectoryPath;
 
   if (fs.existsSync(segmentsDirectory)) {
-    const segmentFiles = datasource.listSegments();
+    const segmentFiles = await datasource.listSegments();
 
     for (const segmentKey of segmentFiles) {
-      const parsedSegment = datasource.readSegment(segmentKey);
+      const parsedSegment = await datasource.readSegment(segmentKey);
 
       if (parsedSegment.archived === true) {
         continue;
@@ -235,10 +235,10 @@ export function buildDatafile(
   const attributesDirectory = projectConfig.attributesDirectoryPath;
 
   if (fs.existsSync(attributesDirectory)) {
-    const attributeFiles = datasource.listAttributes();
+    const attributeFiles = await datasource.listAttributes();
 
     for (const attributeKey of attributeFiles) {
-      const parsedAttribute = datasource.readAttribute(attributeKey);
+      const parsedAttribute = await datasource.readAttribute(attributeKey);
 
       if (parsedAttribute.archived === true) {
         continue;
