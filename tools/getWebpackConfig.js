@@ -11,11 +11,17 @@ module.exports = function getWebpackConfig(options) {
     // optional
     outputFileName,
     outputLibraryTarget,
-    mode,
-    devtool,
     tsConfigFilePath,
     enableCssModules,
+    enablePostCss,
+    enableAssets,
+
+    // webpack specific
+    mode,
+    devtool,
     externals,
+    devServer,
+    plugins,
   } = options;
 
   const entry = {};
@@ -30,10 +36,10 @@ module.exports = function getWebpackConfig(options) {
       libraryTarget: outputLibraryTarget || "umd",
       globalObject: "this",
     },
-    externals: {},
+    devServer,
     mode: mode || "production",
     devtool: devtool || "source-map",
-    plugins: [],
+    plugins: plugins || [],
     performance: {
       hints: false,
     },
@@ -71,7 +77,17 @@ module.exports = function getWebpackConfig(options) {
             modules: true,
           },
         },
-      ],
+        enablePostCss && {
+          loader: "postcss-loader",
+        },
+      ].filter(Boolean),
+    });
+  }
+
+  if (enableAssets) {
+    config.module.rules.push({
+      test: /\.(eot|svg|ttf|woff|woff2|png|jpg|jpeg|gif)$/i,
+      type: "asset/resource",
     });
   }
 

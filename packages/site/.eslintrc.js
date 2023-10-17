@@ -6,6 +6,7 @@ const config = {
   rules: {
     ...rootConfig.rules,
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-var-requires": "off",
   },
 };
 

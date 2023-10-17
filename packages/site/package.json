@@ -5,10 +5,8 @@
   "main": "dist",
   "scripts": {
     "transpile": "echo 'Nothing to transpile in this package'",
-    "dist:js": "webpack --config ./webpack.config.js",
-    "dist:css": "tailwindcss -i ./src/index.css -o ./dist/index.css",
-    "dist": "npm run dist:js && npm run dist:css",
-    "build": "npm run dist",
+    "build": "webpack --mode production --config ./webpack.prod.js",
+    "dev": "webpack serve --mode development --config ./webpack.dev.js",
     "test": "echo 'Nothing to test in types package'",
     "format": "prettier . --check --cache --loglevel=warn",
     "lint": "eslint . --cache",
@@ -50,13 +48,20 @@
     "@tailwindcss/typography": "^0.5.9",
     "@types/react": "^18.0.29",
     "@types/react-dom": "^18.0.11",
+    "autoprefixer": "^10.4.16",
+    "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.3",
+    "postcss": "^8.4.31",
+    "postcss-loader": "^7.3.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^8.0.6",
     "react-router-dom": "^6.10.0",
     "style-loader": "^3.3.2",
-    "tailwindcss": "^3.3.0"
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.0.2",
+    "webpack-merge": "^5.10.0"
   },
   "dependencies": {
     "@featurevisor/types": "^0.54.0"

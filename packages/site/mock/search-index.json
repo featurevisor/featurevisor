@@ -1,0 +1,278 @@
+{
+  "entities": {
+    "attributes": [
+      {
+        "archived": false,
+        "description": "country code in lower case (two lettered)",
+        "type": "string",
+        "key": "country",
+        "usedInFeatures": [],
+        "usedInSegments": ["germany", "netherlands", "switzerland"]
+      },
+      {
+        "archived": false,
+        "description": "device type",
+        "type": "string",
+        "key": "device",
+        "usedInFeatures": [],
+        "usedInSegments": ["mobile"]
+      },
+      {
+        "archived": false,
+        "description": "is the user already logged in?",
+        "type": "boolean",
+        "key": "loggedIn",
+        "usedInFeatures": [],
+        "usedInSegments": []
+      },
+      {
+        "archived": false,
+        "description": "User ID",
+        "type": "string",
+        "capture": true,
+        "key": "userId",
+        "usedInFeatures": ["foo"],
+        "usedInSegments": []
+      }
+    ],
+    "segments": [
+      {
+        "archived": false,
+        "description": "users from Germany",
+        "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "de" }] },
+        "key": "germany",
+        "usedInFeatures": ["bar", "foo", "sidebar"]
+      },
+      {
+        "archived": false,
+        "description": "mobile users",
+        "conditions": {
+          "and": [{ "attribute": "device", "operator": "equals", "value": "mobile" }]
+        },
+        "key": "mobile",
+        "usedInFeatures": ["foo"]
+      },
+      {
+        "archived": false,
+        "description": "The Netherlands",
+        "conditions": [{ "attribute": "country", "operator": "equals", "value": "nl" }],
+        "key": "netherlands",
+        "usedInFeatures": ["sidebar"]
+      },
+      {
+        "archived": false,
+        "description": "users from Switzerland",
+        "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "ch" }] },
+        "key": "switzerland",
+        "usedInFeatures": ["bar", "foo"]
+      }
+    ],
+    "features": [
+      {
+        "tags": ["all"],
+        "bucketBy": "userId",
+        "defaultVariation": "control",
+        "variablesSchema": [
+          { "key": "color", "type": "string", "defaultValue": "red" },
+          {
+            "key": "hero",
+            "type": "object",
+            "defaultValue": {
+              "title": "Hero Title",
+              "subtitle": "Hero Subtitle",
+              "alignment": "center"
+            }
+          }
+        ],
+        "variations": [
+          { "type": "string", "value": "control", "weight": 33 },
+          {
+            "type": "string",
+            "value": "b",
+            "weight": 33,
+            "variables": [
+              {
+                "key": "hero",
+                "value": {
+                  "title": "Hero Title for B",
+                  "subtitle": "Hero Subtitle for B",
+                  "alignment": "center for B"
+                },
+                "overrides": [
+                  {
+                    "segments": { "or": ["germany", "switzerland"] },
+                    "value": {
+                      "title": "Hero Title for B in DE or CH",
+                      "subtitle": "Hero Subtitle for B in DE of CH",
+                      "alignment": "center for B in DE or CH"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          { "type": "string", "value": "c", "weight": 34 }
+        ],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] }
+        },
+        "key": "bar"
+      },
+      {
+        "description": "Classic on/off switch",
+        "tags": ["all"],
+        "defaultVariation": false,
+        "bucketBy": "userId",
+        "variations": [
+          { "description": "Enabled for all", "type": "boolean", "value": true, "weight": 100 },
+          { "description": "Disabled for all", "type": "boolean", "value": false, "weight": 0 }
+        ],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 80 }] }
+        },
+        "key": "baz"
+      },
+      {
+        "archived": false,
+        "description": "blah",
+        "tags": ["all", "signIn", "signUp"],
+        "bucketBy": "userId",
+        "defaultVariation": false,
+        "variablesSchema": [
+          { "key": "bar", "type": "string", "defaultValue": "" },
+          { "key": "baz", "type": "string", "defaultValue": "" }
+        ],
+        "variations": [
+          { "type": "boolean", "value": false, "weight": 50 },
+          {
+            "type": "boolean",
+            "value": true,
+            "weight": 50,
+            "variables": [
+              {
+                "key": "bar",
+                "value": "bar_here",
+                "overrides": [
+                  { "segments": { "or": ["germany", "switzerland"] }, "value": "bar for DE or CH" }
+                ]
+              },
+              { "key": "baz", "value": "baz_here" }
+            ]
+          }
+        ],
+        "environments": {
+          "staging": {
+            "expose": true,
+            "rules": [{ "key": "1", "segments": "*", "percentage": 100 }]
+          },
+          "production": {
+            "expose": true,
+            "rules": [
+              {
+                "key": "1",
+                "segments": { "and": ["mobile", { "or": ["germany", "switzerland"] }] },
+                "percentage": 80
+              },
+              { "key": "2", "segments": "*", "percentage": 50 }
+            ],
+            "force": [
+              {
+                "conditions": {
+                  "and": [
+                    { "attribute": "userId", "operator": "equals", "value": "123" },
+                    { "attribute": "deviceId", "operator": "equals", "value": "234" }
+                  ]
+                },
+                "variation": true,
+                "variables": { "bar": "yoooooo" }
+              }
+            ]
+          }
+        },
+        "key": "foo"
+      },
+      {
+        "description": "Variations with weights having decimal places",
+        "tags": ["all"],
+        "defaultVariation": "control",
+        "bucketBy": "userId",
+        "variablesSchema": [
+          { "type": "json", "key": "fooConfig", "defaultValue": "{\"foo\": \"bar\"}" }
+        ],
+        "variations": [
+          { "type": "string", "value": "control", "weight": 33.34 },
+          {
+            "type": "string",
+            "value": "b",
+            "weight": 33.33,
+            "variables": [{ "key": "fooConfig", "value": "{\"foo\": \"bar b\"}" }]
+          },
+          { "type": "string", "value": "c", "weight": 33.33 }
+        ],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] }
+        },
+        "key": "qux"
+      },
+      {
+        "description": "Show sidebar or not",
+        "tags": ["all"],
+        "bucketBy": "userId",
+        "defaultVariation": false,
+        "variablesSchema": [
+          { "key": "position", "type": "string", "defaultValue": "left" },
+          { "key": "color", "type": "string", "defaultValue": "red" },
+          { "key": "sections", "type": "array", "defaultValue": [] },
+          { "key": "title", "type": "string", "defaultValue": "Sidebar Title" }
+        ],
+        "variations": [
+          { "type": "boolean", "value": false, "weight": 10 },
+          {
+            "type": "boolean",
+            "value": true,
+            "weight": 90,
+            "variables": [
+              { "key": "position", "value": "right" },
+              {
+                "key": "color",
+                "value": "red",
+                "overrides": [
+                  { "segments": "germany", "value": "yellow" },
+                  { "segments": "japan", "value": "white" }
+                ]
+              },
+              {
+                "key": "sections",
+                "value": ["home", "about", "contact"],
+                "overrides": [
+                  { "segments": "germany", "value": ["home", "about", "contact", "imprint"] },
+                  {
+                    "segments": "netherlands",
+                    "value": ["home", "about", "contact", "bitterballen"]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": {
+            "rules": [
+              {
+                "key": "1",
+                "segments": "*",
+                "percentage": 100,
+                "variables": { "title": "Sidebar Title for production" }
+              }
+            ]
+          }
+        },
+        "key": "sidebar"
+      }
+    ]
+  }
+}
