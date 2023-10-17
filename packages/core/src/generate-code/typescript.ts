@@ -1,9 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource";
 import { Attribute } from "@featurevisor/types";
+import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
   switch (featurevisorType) {
@@ -87,12 +86,9 @@ export function getInstance(): FeaturevisorInstance {
 }
 `.trimStart();
 
-export async function generateTypeScriptCodeForProject(
-  rootDirectoryPath: string,
-  projectConfig: ProjectConfig,
-  datasource: Datasource,
-  outputPath: string,
-) {
+export async function generateTypeScriptCodeForProject(deps: Dependencies, outputPath: string) {
+  const { rootDirectoryPath, datasource } = deps;
+
   console.log("\nGenerating TypeScript code...\n");
 
   // instance

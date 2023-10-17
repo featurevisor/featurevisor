@@ -6,9 +6,9 @@ import * as mkdirp from "mkdirp";
 import { ExistingState, EnvironmentKey } from "@featurevisor/types";
 
 import { SCHEMA_VERSION, ProjectConfig } from "../config";
-import { Datasource } from "../datasource";
 
 import { buildDatafile } from "./buildDatafile";
+import { Dependencies } from "../dependencies";
 
 export function getDatafilePath(
   projectConfig: ProjectConfig,
@@ -24,16 +24,13 @@ export interface BuildCLIOptions {
   revision?: string;
 }
 
-export async function buildProject(
-  rootDirectoryPath,
-  projectConfig: ProjectConfig,
-  cliOptions: BuildCLIOptions = {},
-) {
+export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
+  const { rootDirectoryPath, projectConfig, datasource } = deps;
+
   const tags = projectConfig.tags;
   const environments = projectConfig.environments;
 
   const pkg = require(path.join(rootDirectoryPath, "package.json"));
-  const datasource = new Datasource(projectConfig);
 
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);

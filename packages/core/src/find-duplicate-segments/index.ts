@@ -1,13 +1,8 @@
-import { Datasource } from "../datasource";
-import { ProjectConfig } from "../config";
-
 import { findDuplicateSegments } from "./findDuplicateSegments";
+import { Dependencies } from "../dependencies";
 
-export async function findDuplicateSegmentsInProject(
-  rootDirectoryPath,
-  projectConfig: ProjectConfig,
-) {
-  const datasource = new Datasource(projectConfig);
+export async function findDuplicateSegmentsInProject(deps: Dependencies) {
+  const { datasource } = deps;
 
   const duplicates = await findDuplicateSegments(datasource);
 

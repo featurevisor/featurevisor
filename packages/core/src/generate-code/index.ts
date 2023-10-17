@@ -3,9 +3,8 @@ import * as path from "path";
 
 import * as mkdirp from "mkdirp";
 
-import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource";
 import { generateTypeScriptCodeForProject } from "./typescript";
+import { Dependencies } from "../dependencies";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 
@@ -15,10 +14,11 @@ export interface GenerateCodeCLIOptions {
 }
 
 export async function generateCodeForProject(
-  rootDirectoryPath,
-  projectConfig: ProjectConfig,
+  deps: Dependencies,
   cliOptions: GenerateCodeCLIOptions,
 ) {
+  const { rootDirectoryPath } = deps;
+
   if (!cliOptions.language) {
     throw new Error("Option `--language` is required");
   }
@@ -26,8 +26,6 @@ export async function generateCodeForProject(
   if (!cliOptions.outDir) {
     throw new Error("Option `--out-dir` is required");
   }
-
-  const datasource = new Datasource(projectConfig);
 
   const absolutePath = path.resolve(rootDirectoryPath, cliOptions.outDir);
 
@@ -47,12 +45,7 @@ export async function generateCodeForProject(
   }
 
   if (cliOptions.language === "typescript") {
-    return await generateTypeScriptCodeForProject(
-      rootDirectoryPath,
-      projectConfig,
-      datasource,
-      absolutePath,
-    );
+    return await generateTypeScriptCodeForProject(deps, absolutePath);
   }
 
   throw new Error(`Language ${cliOptions.language} is not supported`);

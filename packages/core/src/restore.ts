@@ -1,9 +1,11 @@
 import * as path from "path";
 import { execSync } from "child_process";
 
-import { ProjectConfig } from "./config";
+import { Dependencies } from "./dependencies";
 
-export async function restoreProject(rootDirectoryPath, projectConfig: ProjectConfig) {
+export async function restoreProject(deps: Dependencies) {
+  const { rootDirectoryPath, projectConfig } = deps;
+
   const relativeStateDirPath = path.relative(rootDirectoryPath, projectConfig.stateDirectoryPath);
   const cmd = `git checkout -- ${relativeStateDirPath}${path.sep}`;
 

@@ -2,13 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import { ProjectConfig } from "../config";
+import { Dependencies } from "../dependencies";
 
-export function serveSite(
-  rootDirectoryPath: string,
-  projectConfig: ProjectConfig,
-  options: any = {},
-) {
+export function serveSite(deps: Dependencies) {
+  const { projectConfig, options } = deps;
+
   const port = options.p || 3000;
 
   http
