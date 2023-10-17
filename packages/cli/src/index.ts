@@ -47,7 +47,7 @@ async function main() {
     .usage("Usage: <command> [options]")
 
     /**
-     * Commands
+     * Init
      */
     .command({
       command: "init",
@@ -62,6 +62,9 @@ async function main() {
     .example("$0 init", "scaffold a new project")
     .example("$0 init --example=exampleName", "scaffold a new project from known example")
 
+    /**
+     * Lint
+     */
     .command({
       command: "lint",
       handler: async function () {
@@ -76,6 +79,9 @@ async function main() {
     })
     .example("$0 lint", "lint all YAML file content")
 
+    /**
+     * Build
+     */
     .command({
       command: "build",
       handler: async function (options) {
@@ -91,13 +97,16 @@ async function main() {
     })
     .example("$0 build", "build datafiles")
 
+    /**
+     * Restore
+     */
     .command({
       command: "restore",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          restoreProject(rootDirectoryPath, projectConfig);
+          await restoreProject(rootDirectoryPath, projectConfig);
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -106,6 +115,9 @@ async function main() {
     })
     .example("$0 restore", "restore state files")
 
+    /**
+     * Test
+     */
     .command({
       command: "test",
       handler: async function () {
