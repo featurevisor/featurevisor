@@ -2,7 +2,8 @@ import * as path from "path";
 
 import { BucketBy } from "@featurevisor/types";
 
-import { Parser } from "./datasource/parsers";
+import { Parser, parsers } from "./parsers";
+import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -42,6 +43,7 @@ export interface ProjectConfig {
   prettyState: boolean;
   prettyDatafile: boolean;
   siteExportDirectoryPath: string;
+  adapter: any; // @TODO: type this properly later
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
@@ -66,20 +68,33 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
 
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
+
+    adapter: FilesystemAdapter,
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
   const customConfig = require(configModulePath);
 
-  const finalConfig = {};
+  const mergedConfig = {};
 
   Object.keys(baseConfig).forEach((key) => {
-    finalConfig[key] = customConfig[key] || baseConfig[key];
+    mergedConfig[key] = customConfig[key] || baseConfig[key];
 
-    if (key.endsWith("Path") && finalConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1) {
-      finalConfig[key] = finalConfig[key].replace(ROOT_DIR_PLACEHOLDER, rootDirectoryPath);
+    if (key.endsWith("Path") && mergedConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1) {
+      mergedConfig[key] = mergedConfig[key].replace(ROOT_DIR_PLACEHOLDER, rootDirectoryPath);
     }
   });
+
+  const finalConfig = mergedConfig as ProjectConfig;
+
+  if (typeof finalConfig.parser === "string") {
+    const allowedParsers = Object.keys(parsers);
+    if (allowedParsers.indexOf(finalConfig.parser) === -1) {
+      throw new Error(`Invalid parser: ${finalConfig.parser}`);
+    }
+
+    finalConfig.parser = parsers[finalConfig.parser];
+  }
 
   return finalConfig as ProjectConfig;
 }

@@ -29,7 +29,7 @@ export async function testProject(deps: Dependencies): Promise<boolean> {
   }
 
   for (const testFile of testFiles) {
-    const testFilePath = datasource.getEntityPath("test", testFile);
+    const testFilePath = datasource.getTestSpecName(testFile);
 
     console.log("");
     console.log(CLI_FORMAT_BOLD, `Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
