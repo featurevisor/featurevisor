@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.54.0](https://github.com/featurevisor/featurevisor/compare/v0.53.5...v0.54.0) (2023-10-17)
+
+
+### Features
+
+* adapter based datasource ([#178](https://github.com/featurevisor/featurevisor/issues/178)) ([554f68b](https://github.com/featurevisor/featurevisor/commit/554f68bcb3ca1a781043cc12cf26444c10d43d0f))
+
+
+
+
+
 ## [0.53.5](https://github.com/featurevisor/featurevisor/compare/v0.53.4...v0.53.5) (2023-10-17)
 
 **Note:** Version bump only for package @featurevisor/core
