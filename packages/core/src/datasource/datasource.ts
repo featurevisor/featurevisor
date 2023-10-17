@@ -1,15 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import {
-  Tag,
-  ParsedFeature,
-  Segment,
-  Attribute,
-  Group,
-  FeatureKey,
-  Test,
-} from "@featurevisor/types";
+import { ParsedFeature, Segment, Attribute, Group, FeatureKey, Test } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { parsers } from "./parsers";
@@ -53,7 +45,7 @@ export class Datasource {
   /**
    * Common methods
    */
-  listEntities(entityType: EntityType): string[] {
+  async listEntities(entityType: EntityType): Promise<string[]> {
     const directoryPath = this.getEntityDirectoryPath(entityType);
 
     return fs
@@ -82,20 +74,20 @@ export class Datasource {
     return path.join(basePath, `${entityKey}.${this.extension}`);
   }
 
-  entityExists(entityType: EntityType, entityKey: string): boolean {
+  async entityExists(entityType: EntityType, entityKey: string): Promise<boolean> {
     const entityPath = this.getEntityPath(entityType, entityKey);
 
     return fs.existsSync(entityPath);
   }
 
-  readEntity(entityType: EntityType, entityKey: string): string {
+  async readEntity(entityType: EntityType, entityKey: string): Promise<string> {
     const filePath = this.getEntityPath(entityType, entityKey);
 
     return fs.readFileSync(filePath, "utf8");
   }
 
-  parseEntity<T>(entityType: EntityType, entityKey: string): T {
-    const entityContent = this.readEntity(entityType, entityKey);
+  async parseEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
+    const entityContent = await this.readEntity(entityType, entityKey);
 
     return this.parse(entityContent) as T;
   }
@@ -105,61 +97,46 @@ export class Datasource {
    */
 
   // features
-  listFeatures(tag?: Tag) {
-    const features = this.listEntities("feature");
-
-    if (tag) {
-      return features.filter((feature) => {
-        const featureContent = this.parseEntity<ParsedFeature>("feature", feature);
-
-        return featureContent.tags.indexOf(tag) !== -1;
-      });
-    }
-
-    return features;
+  async listFeatures() {
+    return await this.listEntities("feature");
   }
 
   readFeature(featureKey: string) {
     return this.parseEntity<ParsedFeature>("feature", featureKey);
   }
 
-  getRequiredFeaturesChain(featureKey: FeatureKey, chain = new Set<FeatureKey>()): Set<FeatureKey> {
+  async getRequiredFeaturesChain(
+    featureKey: FeatureKey,
+    chain = new Set<FeatureKey>(),
+  ): Promise<Set<FeatureKey>> {
     chain.add(featureKey);
 
     if (!this.entityExists("feature", featureKey)) {
       throw new Error(`Feature not found: ${featureKey}`);
     }
 
-    const feature = this.readFeature(featureKey);
+    const feature = await this.readFeature(featureKey);
 
     if (!feature.required) {
       return chain;
     }
 
-    feature.required.forEach((r) => {
+    for (const r of feature.required) {
       const requiredKey = typeof r === "string" ? r : r.key;
 
       if (chain.has(requiredKey)) {
         throw new Error(`Circular dependency detected: ${chain.toString()}`);
       }
 
-      this.getRequiredFeaturesChain(requiredKey, chain);
-    });
+      await this.getRequiredFeaturesChain(requiredKey, chain);
+    }
 
     return chain;
   }
 
   // segments
-  listSegments(segmentsList?: string[]) {
-    const segments = this.listEntities("segment");
-
-    if (segmentsList) {
-      return segments.filter((segment) => {
-        return segmentsList.indexOf(segment) !== -1;
-      });
-    }
-
-    return segments;
+  listSegments() {
+    return this.listEntities("segment");
   }
 
   readSegment(segmentKey: string) {
@@ -167,16 +144,8 @@ export class Datasource {
   }
 
   // attributes
-  listAttributes(attributesList?: string[]) {
-    const attributes = this.listEntities("attribute");
-
-    if (attributesList) {
-      return attributes.filter((segment) => {
-        return attributesList.indexOf(segment) !== -1;
-      });
-    }
-
-    return attributes;
+  listAttributes() {
+    return this.listEntities("attribute");
   }
 
   readAttribute(attributeKey: string) {
@@ -184,24 +153,8 @@ export class Datasource {
   }
 
   // groups
-  listGroups(featuresList?: string[]) {
-    const groups = this.listEntities("group");
-
-    if (featuresList) {
-      return groups.filter((group) => {
-        const groupContent = this.parseEntity<Group>("group", group);
-
-        return groupContent.slots.some((slot) => {
-          if (!slot.feature) {
-            return false;
-          }
-
-          return featuresList.indexOf(slot.feature) !== -1;
-        });
-      });
-    }
-
-    return groups;
+  async listGroups() {
+    return this.listEntities("group");
   }
 
   readGroup(groupKey: string) {

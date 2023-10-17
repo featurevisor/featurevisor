@@ -12,19 +12,19 @@ export interface FeatureRangesResult {
   featureIsInGroup: { [key: string]: boolean };
 }
 
-export function getFeatureRanges(
+export async function getFeatureRanges(
   projectConfig: ProjectConfig,
   datasource: Datasource,
-): FeatureRangesResult {
+): Promise<FeatureRangesResult> {
   const featureRanges = new Map<FeatureKey, Range[]>();
   const featureIsInGroup = {}; // featureKey => boolean
 
   const groups: Group[] = [];
   if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groupFiles = datasource.listGroups();
+    const groupFiles = await datasource.listGroups();
 
     for (const groupKey of groupFiles) {
-      const parsedGroup = datasource.readGroup(groupKey);
+      const parsedGroup = await datasource.readGroup(groupKey);
 
       groups.push({
         ...parsedGroup,

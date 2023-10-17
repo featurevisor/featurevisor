@@ -14,7 +14,7 @@ export interface GenerateCodeCLIOptions {
   outDir: string;
 }
 
-export function generateCodeForProject(
+export async function generateCodeForProject(
   rootDirectoryPath,
   projectConfig: ProjectConfig,
   cliOptions: GenerateCodeCLIOptions,
@@ -47,7 +47,7 @@ export function generateCodeForProject(
   }
 
   if (cliOptions.language === "typescript") {
-    return generateTypeScriptCodeForProject(
+    return await generateTypeScriptCodeForProject(
       rootDirectoryPath,
       projectConfig,
       datasource,

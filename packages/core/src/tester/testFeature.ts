@@ -12,24 +12,26 @@ import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 
-export function testFeature(
+export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
-): boolean {
+): Promise<boolean> {
   let hasError = false;
   const featureKey = test.feature;
 
   console.log(CLI_FORMAT_BOLD, `  Feature "${featureKey}":`);
 
-  test.assertions.forEach(function (assertion, aIndex) {
+  for (let aIndex = 0; aIndex < test.assertions.length; aIndex++) {
+    const assertion = test.assertions[aIndex];
     const description = assertion.description || `at ${assertion.at}%`;
 
     console.log(`  Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`);
 
-    const featuresToInclude = Array.from(datasource.getRequiredFeaturesChain(test.feature));
+    const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
+    const featuresToInclude = Array.from(requiredChain);
 
-    const datafileContent = buildDatafile(
+    const datafileContent = await buildDatafile(
       projectConfig,
       datasource,
       {
@@ -110,7 +112,7 @@ export function testFeature(
         }
       });
     }
-  });
+  }
 
   return hasError;
 }

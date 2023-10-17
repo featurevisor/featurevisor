@@ -31,7 +31,7 @@ export interface BuildCLIOptions {
   revision?: string;
 }
 
-export function buildProject(
+export async function buildProject(
   rootDirectoryPath,
   projectConfig: ProjectConfig,
   cliOptions: BuildCLIOptions = {},
@@ -54,7 +54,7 @@ export function buildProject(
 
     for (const tag of tags) {
       console.log(`\n  => Tag: ${tag}`);
-      const datafileContent = buildDatafile(
+      const datafileContent = await buildDatafile(
         projectConfig,
         datasource,
         {

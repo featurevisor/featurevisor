@@ -3,6 +3,7 @@ import * as path from "path";
 
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { Attribute } from "@featurevisor/types";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
   switch (featurevisorType) {
@@ -35,6 +36,16 @@ function getPascalCase(str) {
   const pascalCased = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
 
   return pascalCased;
+}
+
+function getRelativePath(from, to) {
+  const relativePath = path.relative(from, to);
+
+  if (relativePath.startsWith("..")) {
+    return path.join(".", relativePath);
+  }
+
+  return relativePath;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -76,39 +87,37 @@ export function getInstance(): FeaturevisorInstance {
 }
 `.trimStart();
 
-export function generateTypeScriptCodeForProject(
+export async function generateTypeScriptCodeForProject(
   rootDirectoryPath: string,
   projectConfig: ProjectConfig,
   datasource: Datasource,
   outputPath: string,
 ) {
-  console.log("Generating TypeScript code...");
+  console.log("\nGenerating TypeScript code...\n");
 
   // instance
   const instanceFilePath = path.join(outputPath, "instance.ts");
   fs.writeFileSync(instanceFilePath, instanceSnippet);
-  console.log(`Instance file written at: ${instanceFilePath}`);
+  console.log(`Instance file written at: ${getRelativePath(rootDirectoryPath, instanceFilePath)}`);
 
   // attributes
-  const attributeFiles = datasource.listAttributes();
-  const attributes = attributeFiles
-    .map((attributeKey) => {
-      const parsedAttribute = datasource.readAttribute(attributeKey);
+  const attributeFiles = await datasource.listAttributes();
+  const attributes: (Attribute & { typescriptType })[] = [];
 
-      return {
-        archived: parsedAttribute.archived,
-        key: attributeKey,
-        type: parsedAttribute.type,
-        typescriptType: convertFeaturevisorTypeToTypeScriptType(parsedAttribute.type),
-      };
-    })
-    .filter((attribute) => {
-      if (typeof attribute.archived === "undefined") {
-        return true;
-      }
+  for (const attributeKey of attributeFiles) {
+    const parsedAttribute = await datasource.readAttribute(attributeKey);
 
-      return !attribute.archived;
+    if (typeof parsedAttribute.archived === "undefined") {
+      continue;
+    }
+
+    attributes.push({
+      archived: parsedAttribute.archived,
+      key: attributeKey,
+      type: parsedAttribute.type,
+      typescriptType: convertFeaturevisorTypeToTypeScriptType(parsedAttribute.type),
     });
+  }
 
   // context
   const attributeProperties = attributes
@@ -127,13 +136,16 @@ ${attributeProperties}
 
   const contextTypeFilePath = path.join(outputPath, "Context.ts");
   fs.writeFileSync(contextTypeFilePath, contextContent);
-  console.log(`Context type file written at: ${contextTypeFilePath}`);
+  console.log(
+    `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
+  );
 
   // features
   const featureNamespaces: string[] = [];
-  const featureFiles = datasource.listFeatures();
+  const featureFiles = await datasource.listFeatures();
+
   for (const featureKey of featureFiles) {
-    const parsedFeature = datasource.readFeature(featureKey);
+    const parsedFeature = await datasource.readFeature(featureKey);
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;
@@ -188,7 +200,12 @@ export namespace ${namespaceValue} {
 
     const featureNamespaceFilePath = path.join(outputPath, `${namespaceValue}.ts`);
     fs.writeFileSync(featureNamespaceFilePath, featureContent);
-    console.log(`Feature ${featureKey} file written at: ${featureNamespaceFilePath}`);
+    console.log(
+      `Feature ${featureKey} file written at: ${getRelativePath(
+        rootDirectoryPath,
+        featureNamespaceFilePath,
+      )}`,
+    );
   }
 
   // index
@@ -202,5 +219,5 @@ export namespace ${namespaceValue} {
       .join("\n") + "\n";
   const indexFilePath = path.join(outputPath, "index.ts");
   fs.writeFileSync(indexFilePath, indexContent);
-  console.log(`Index file written at: ${indexFilePath}`);
+  console.log(`Index file written at: ${getRelativePath(rootDirectoryPath, indexFilePath)}`);
 }

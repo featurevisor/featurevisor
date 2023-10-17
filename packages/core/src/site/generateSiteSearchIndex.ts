@@ -15,12 +15,12 @@ import { getRelativePaths } from "./getRelativePaths";
 import { getLastModifiedFromHistory } from "./getLastModifiedFromHistory";
 import { RepoDetails } from "./getRepoDetails";
 
-export function generateSiteSearchIndex(
+export async function generateSiteSearchIndex(
   rootDirectoryPath: string,
   projectConfig: ProjectConfig,
   fullHistory: HistoryEntry[],
   repoDetails: RepoDetails | undefined,
-): SearchIndex {
+): Promise<SearchIndex> {
   const result: SearchIndex = {
     links: undefined,
     entities: {
@@ -77,9 +77,9 @@ export function generateSiteSearchIndex(
   } = {};
 
   // features
-  const featureFiles = datasource.listFeatures();
-  featureFiles.forEach((entityName) => {
-    const parsed = datasource.readFeature(entityName);
+  const featureFiles = await datasource.listFeatures();
+  for (const entityName of featureFiles) {
+    const parsed = await datasource.readFeature(entityName);
 
     if (Array.isArray(parsed.variations)) {
       parsed.variations.forEach((variation) => {
@@ -160,12 +160,12 @@ export function generateSiteSearchIndex(
       key: entityName,
       lastModified: getLastModifiedFromHistory(fullHistory, "feature", entityName),
     });
-  });
+  }
 
   // segments
-  const segmentFiles = datasource.listSegments();
-  segmentFiles.forEach((entityName) => {
-    const parsed = datasource.readSegment(entityName);
+  const segmentFiles = await datasource.listSegments();
+  for (const entityName of segmentFiles) {
+    const parsed = await datasource.readSegment(entityName);
 
     extractAttributeKeysFromConditions(parsed.conditions as Condition | Condition[]).forEach(
       (attributeKey) => {
@@ -183,12 +183,12 @@ export function generateSiteSearchIndex(
       lastModified: getLastModifiedFromHistory(fullHistory, "segment", entityName),
       usedInFeatures: Array.from(segmentsUsedInFeatures[entityName] || []),
     });
-  });
+  }
 
   // attributes
-  const attributeFiles = datasource.listAttributes();
-  attributeFiles.forEach((entityName) => {
-    const parsed = datasource.readAttribute(entityName);
+  const attributeFiles = await datasource.listAttributes();
+  for (const entityName of attributeFiles) {
+    const parsed = await datasource.readAttribute(entityName);
 
     result.entities.attributes.push({
       ...parsed,
@@ -197,7 +197,7 @@ export function generateSiteSearchIndex(
       usedInFeatures: Array.from(attributesUsedInFeatures[entityName] || []),
       usedInSegments: Array.from(attributesUsedInSegments[entityName] || []),
     });
-  });
+  }
 
   return result;
 }

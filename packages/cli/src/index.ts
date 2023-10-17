@@ -47,7 +47,7 @@ async function main() {
     .usage("Usage: <command> [options]")
 
     /**
-     * Commands
+     * Init
      */
     .command({
       command: "init",
@@ -62,6 +62,9 @@ async function main() {
     .example("$0 init", "scaffold a new project")
     .example("$0 init --example=exampleName", "scaffold a new project from known example")
 
+    /**
+     * Lint
+     */
     .command({
       command: "lint",
       handler: async function () {
@@ -76,13 +79,16 @@ async function main() {
     })
     .example("$0 lint", "lint all YAML file content")
 
+    /**
+     * Build
+     */
     .command({
       command: "build",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
+          await buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
         } catch (e) {
           console.error(e);
           process.exit(1);
@@ -91,13 +97,16 @@ async function main() {
     })
     .example("$0 build", "build datafiles")
 
+    /**
+     * Restore
+     */
     .command({
       command: "restore",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          restoreProject(rootDirectoryPath, projectConfig);
+          await restoreProject(rootDirectoryPath, projectConfig);
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -106,12 +115,15 @@ async function main() {
     })
     .example("$0 restore", "restore state files")
 
+    /**
+     * Test
+     */
     .command({
       command: "test",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
-        const hasError = testProject(rootDirectoryPath, projectConfig);
+        const hasError = await testProject(rootDirectoryPath, projectConfig);
 
         if (hasError) {
           process.exit(1);
@@ -125,7 +137,7 @@ async function main() {
      */
     .command({
       command: "site [subcommand]",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         const allowedSubcommands = ["export", "serve"];
@@ -137,7 +149,7 @@ async function main() {
 
         // export
         if (options.subcommand === "export") {
-          const hasError = exportSite(rootDirectoryPath, projectConfig);
+          const hasError = await exportSite(rootDirectoryPath, projectConfig);
 
           if (hasError) {
             process.exit(1);
@@ -159,11 +171,11 @@ async function main() {
      */
     .command({
       command: "generate-code",
-      handler: function (options) {
+      handler: async function (options) {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          generateCodeForProject(
+          await generateCodeForProject(
             rootDirectoryPath,
             projectConfig,
             options as unknown as GenerateCodeCLIOptions,
@@ -182,11 +194,11 @@ async function main() {
      */
     .command({
       command: "find-duplicate-segments",
-      handler: function () {
+      handler: async function () {
         const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
 
         try {
-          findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
+          await findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
         } catch (e) {
           console.error(e.message);
           process.exit(1);

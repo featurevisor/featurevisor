@@ -2,7 +2,7 @@ import { FeatureKey, Required } from "@featurevisor/types";
 
 import { Datasource } from "../datasource";
 
-export function checkForCircularDependencyInRequired(
+export async function checkForCircularDependencyInRequired(
   datasource: Datasource,
   featureKey: FeatureKey,
   required?: Required[],
@@ -25,16 +25,16 @@ export function checkForCircularDependencyInRequired(
       throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
     }
 
-    const requiredFeatureExists = datasource.entityExists("feature", requiredKey);
+    const requiredFeatureExists = await datasource.entityExists("feature", requiredKey);
 
     if (!requiredFeatureExists) {
       throw new Error(`required feature "${requiredKey}" not found`);
     }
 
-    const requiredParsedFeature = datasource.readFeature(requiredKey);
+    const requiredParsedFeature = await datasource.readFeature(requiredKey);
 
     if (requiredParsedFeature.required) {
-      checkForCircularDependencyInRequired(
+      await checkForCircularDependencyInRequired(
         datasource,
         featureKey,
         requiredParsedFeature.required,
