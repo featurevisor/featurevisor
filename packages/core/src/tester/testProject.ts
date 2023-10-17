@@ -2,19 +2,15 @@ import * as fs from "fs";
 
 import { TestSegment, TestFeature } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource";
-
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
+import { Dependencies } from "../dependencies";
 
-export async function testProject(
-  rootDirectoryPath: string,
-  projectConfig: ProjectConfig,
-): Promise<boolean> {
+export async function testProject(deps: Dependencies): Promise<boolean> {
+  const { rootDirectoryPath, projectConfig, datasource } = deps;
+
   let hasError = false;
-  const datasource = new Datasource(projectConfig);
 
   if (!fs.existsSync(projectConfig.testsDirectoryPath)) {
     console.error(`Tests directory does not exist: ${projectConfig.testsDirectoryPath}`);

@@ -7,20 +7,20 @@ import {
   Condition,
 } from "@featurevisor/types";
 
-import { Datasource } from "../datasource";
-import { ProjectConfig } from "../config";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
 import { getRelativePaths } from "./getRelativePaths";
 import { getLastModifiedFromHistory } from "./getLastModifiedFromHistory";
 import { RepoDetails } from "./getRepoDetails";
+import { Dependencies } from "../dependencies";
 
 export async function generateSiteSearchIndex(
-  rootDirectoryPath: string,
-  projectConfig: ProjectConfig,
+  deps: Dependencies,
   fullHistory: HistoryEntry[],
   repoDetails: RepoDetails | undefined,
 ): Promise<SearchIndex> {
+  const { rootDirectoryPath, projectConfig, datasource } = deps;
+
   const result: SearchIndex = {
     links: undefined,
     entities: {
@@ -29,7 +29,6 @@ export async function generateSiteSearchIndex(
       features: [],
     },
   };
-  const datasource = new Datasource(projectConfig);
 
   /**
    * Links

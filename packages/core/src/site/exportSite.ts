@@ -3,13 +3,14 @@ import * as path from "path";
 
 import * as mkdirp from "mkdirp";
 
-import { ProjectConfig } from "../config";
-
 import { generateHistory } from "./generateHistory";
 import { getRepoDetails } from "./getRepoDetails";
 import { generateSiteSearchIndex } from "./generateSiteSearchIndex";
+import { Dependencies } from "../dependencies";
 
-export async function exportSite(rootDirectoryPath: string, projectConfig: ProjectConfig) {
+export async function exportSite(deps: Dependencies) {
+  const { rootDirectoryPath, projectConfig } = deps;
+
   const hasError = false;
 
   mkdirp.sync(projectConfig.siteExportDirectoryPath);
@@ -30,12 +31,7 @@ export async function exportSite(rootDirectoryPath: string, projectConfig: Proje
 
   // site search index
   const repoDetails = getRepoDetails();
-  const searchIndex = await generateSiteSearchIndex(
-    rootDirectoryPath,
-    projectConfig,
-    fullHistory,
-    repoDetails,
-  );
+  const searchIndex = await generateSiteSearchIndex(deps, fullHistory, repoDetails);
   const searchIndexFilePath = path.join(projectConfig.siteExportDirectoryPath, "search-index.json");
   fs.writeFileSync(searchIndexFilePath, JSON.stringify(searchIndex));
   console.log(`Site search index written at: ${searchIndexFilePath}`);

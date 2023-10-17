@@ -17,6 +17,8 @@ import {
   BuildCLIOptions,
   GenerateCodeCLIOptions,
   restoreProject,
+  Dependencies,
+  Datasource,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -40,9 +42,20 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
   return getProjectConfig(rootDirectoryPath);
 }
 
-async function main() {
+async function getDependencies(options): Promise<Dependencies> {
   const rootDirectoryPath = process.cwd();
+  const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+  const datasource = new Datasource(projectConfig);
 
+  return {
+    rootDirectoryPath,
+    projectConfig,
+    datasource,
+    options,
+  };
+}
+
+async function main() {
   yargs(process.argv.slice(2))
     .usage("Usage: <command> [options]")
 
@@ -52,7 +65,8 @@ async function main() {
     .command({
       command: "init",
       handler: async function (options) {
-        const hasError = await initProject(rootDirectoryPath, options.example);
+        const deps = await getDependencies(options);
+        const hasError = await initProject(deps.rootDirectoryPath, options.example);
 
         if (hasError) {
           process.exit(1);
@@ -67,10 +81,10 @@ async function main() {
      */
     .command({
       command: "lint",
-      handler: async function () {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+      handler: async function (options) {
+        const deps = await getDependencies(options);
 
-        const hasError = await lintProject(projectConfig);
+        const hasError = await lintProject(deps);
 
         if (hasError) {
           process.exit(1);
@@ -85,10 +99,10 @@ async function main() {
     .command({
       command: "build",
       handler: async function (options) {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+        const deps = await getDependencies(options);
 
         try {
-          await buildProject(rootDirectoryPath, projectConfig, options as BuildCLIOptions);
+          await buildProject(deps, options as BuildCLIOptions);
         } catch (e) {
           console.error(e);
           process.exit(1);
@@ -102,11 +116,11 @@ async function main() {
      */
     .command({
       command: "restore",
-      handler: async function () {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+      handler: async function (options) {
+        const deps = await getDependencies(options);
 
         try {
-          await restoreProject(rootDirectoryPath, projectConfig);
+          await restoreProject(deps);
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -120,10 +134,10 @@ async function main() {
      */
     .command({
       command: "test",
-      handler: async function () {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+      handler: async function (options) {
+        const deps = await getDependencies(options);
 
-        const hasError = await testProject(rootDirectoryPath, projectConfig);
+        const hasError = await testProject(deps);
 
         if (hasError) {
           process.exit(1);
@@ -138,7 +152,7 @@ async function main() {
     .command({
       command: "site [subcommand]",
       handler: async function (options) {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+        const deps = await getDependencies(options);
 
         const allowedSubcommands = ["export", "serve"];
 
@@ -149,7 +163,7 @@ async function main() {
 
         // export
         if (options.subcommand === "export") {
-          const hasError = await exportSite(rootDirectoryPath, projectConfig);
+          const hasError = await exportSite(deps);
 
           if (hasError) {
             process.exit(1);
@@ -158,7 +172,7 @@ async function main() {
 
         // serve
         if (options.subcommand === "serve") {
-          serveSite(rootDirectoryPath, projectConfig);
+          serveSite(deps);
         }
       },
     })
@@ -172,14 +186,10 @@ async function main() {
     .command({
       command: "generate-code",
       handler: async function (options) {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+        const deps = await getDependencies(options);
 
         try {
-          await generateCodeForProject(
-            rootDirectoryPath,
-            projectConfig,
-            options as unknown as GenerateCodeCLIOptions,
-          );
+          await generateCodeForProject(deps, options as unknown as GenerateCodeCLIOptions);
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -194,11 +204,11 @@ async function main() {
      */
     .command({
       command: "find-duplicate-segments",
-      handler: async function () {
-        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+      handler: async function (options) {
+        const deps = await getDependencies(options);
 
         try {
-          await findDuplicateSegmentsInProject(rootDirectoryPath, projectConfig);
+          await findDuplicateSegmentsInProject(deps);
         } catch (e) {
           console.error(e.message);
           process.exit(1);

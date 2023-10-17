@@ -1,9 +1,6 @@
 // for use in node only
 import * as Joi from "joi";
 
-import { Datasource } from "../datasource";
-import { ProjectConfig } from "../config";
-
 import { getAttributeJoiSchema } from "./attributeSchema";
 import { getConditionsJoiSchema } from "./conditionSchema";
 import { getSegmentJoiSchema } from "./segmentSchema";
@@ -13,10 +10,12 @@ import { getTestsJoiSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { printJoiError } from "./printJoiError";
+import { Dependencies } from "../dependencies";
 
-export async function lintProject(projectConfig: ProjectConfig): Promise<boolean> {
+export async function lintProject(deps: Dependencies): Promise<boolean> {
+  const { projectConfig, datasource } = deps;
+
   let hasError = false;
-  const datasource = new Datasource(projectConfig);
 
   const availableAttributeKeys: string[] = [];
   const availableSegmentKeys: string[] = [];
