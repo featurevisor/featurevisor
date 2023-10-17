@@ -1,11 +1,9 @@
-import * as fs from "fs";
-
-import { TestFeature, ExistingState } from "@featurevisor/types";
+import { TestFeature } from "@featurevisor/types";
 import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
-import { buildDatafile, getExistingStateFilePath } from "../builder";
+import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
@@ -31,6 +29,7 @@ export async function testFeature(
     const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
     const featuresToInclude = Array.from(requiredChain);
 
+    const existingState = await datasource.readState(assertion.environment);
     const datafileContent = await buildDatafile(
       projectConfig,
       datasource,
@@ -40,9 +39,7 @@ export async function testFeature(
         environment: assertion.environment,
         features: featuresToInclude,
       },
-      JSON.parse(
-        fs.readFileSync(getExistingStateFilePath(projectConfig, assertion.environment), "utf8"),
-      ) as ExistingState,
+      existingState,
     );
 
     const sdk = createInstance({

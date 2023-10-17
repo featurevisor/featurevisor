@@ -1,6 +1,4 @@
 // for use in node only
-import * as fs from "fs";
-
 import * as Joi from "joi";
 
 import { Datasource } from "../datasource";
@@ -116,62 +114,57 @@ export async function lintProject(projectConfig: ProjectConfig): Promise<boolean
   }
 
   // lint groups
+  const groups = await datasource.listGroups();
+  console.log(`\nLinting ${groups.length} groups...\n`);
 
-  if (fs.existsSync(projectConfig.groupsDirectoryPath)) {
-    const groups = await datasource.listGroups();
-    console.log(`\nLinting ${groups.length} groups...\n`);
+  // @TODO: feature it slots can be from availableFeatureKeys only
+  const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
 
-    // @TODO: feature it slots can be from availableFeatureKeys only
-    const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
+  for (const key of groups) {
+    const parsed = await datasource.readGroup(key);
 
-    for (const key of groups) {
-      const parsed = await datasource.readGroup(key);
+    try {
+      await groupJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      console.log("  =>", key);
 
-      try {
-        await groupJoiSchema.validateAsync(parsed);
-      } catch (e) {
-        console.log("  =>", key);
-
-        if (e instanceof Joi.ValidationError) {
-          printJoiError(e);
-        } else {
-          console.log(e);
-        }
-
-        hasError = true;
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
       }
+
+      hasError = true;
     }
   }
 
   // @TODO: feature cannot exist in multiple groups
 
   // lint tests
-  if (fs.existsSync(projectConfig.testsDirectoryPath)) {
-    const tests = await datasource.listTests();
-    console.log(`\nLinting ${tests.length} tests...\n`);
+  const tests = await datasource.listTests();
+  console.log(`\nLinting ${tests.length} tests...\n`);
 
-    const testsJoiSchema = getTestsJoiSchema(
-      projectConfig,
-      availableFeatureKeys,
-      availableSegmentKeys,
-    );
+  const testsJoiSchema = getTestsJoiSchema(
+    projectConfig,
+    availableFeatureKeys,
+    availableSegmentKeys,
+  );
 
-    for (const key of tests) {
-      const parsed = await datasource.readTest(key);
+  for (const key of tests) {
+    const parsed = await datasource.readTest(key);
 
-      try {
-        await testsJoiSchema.validateAsync(parsed);
-      } catch (e) {
-        console.log("  =>", key);
+    try {
+      await testsJoiSchema.validateAsync(parsed);
+    } catch (e) {
+      console.log("  =>", key);
 
-        if (e instanceof Joi.ValidationError) {
-          printJoiError(e);
-        } else {
-          console.log(e);
-        }
-
-        hasError = true;
+      if (e instanceof Joi.ValidationError) {
+        printJoiError(e);
+      } else {
+        console.log(e);
       }
+
+      hasError = true;
     }
   }
 

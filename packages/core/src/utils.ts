@@ -1,22 +1,4 @@
-import * as fs from "fs";
-import * as path from "path";
-
-import * as yaml from "js-yaml";
-
 import { Condition, AttributeKey, GroupSegment, SegmentKey } from "@featurevisor/types";
-
-export function getYAMLFiles(directoryPath: string) {
-  const files = fs.readdirSync(directoryPath);
-  const yamlFiles = files.filter((file) => file.endsWith(".yml"));
-
-  return yamlFiles.map((file) => path.join(directoryPath, file));
-}
-
-export function parseYaml(content: string) {
-  const parsed = yaml.load(content);
-
-  return parsed;
-}
 
 export function extractSegmentKeysFromGroupSegments(
   segments: GroupSegment | GroupSegment[],
