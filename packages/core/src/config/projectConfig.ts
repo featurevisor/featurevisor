@@ -2,8 +2,8 @@ import * as path from "path";
 
 import { BucketBy } from "@featurevisor/types";
 
-import { Parser, parsers } from "./datasource/parsers";
-import { FilesystemAdapter } from "./datasource/filesystemAdapter";
+import { Parser, parsers } from "./parsers";
+import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";

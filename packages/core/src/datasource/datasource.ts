@@ -11,8 +11,7 @@ import {
   AttributeKey,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
-import { CustomParser } from "./parsers";
+import { ProjectConfig, CustomParser } from "../config";
 
 import { Adapter } from "./adapter";
 

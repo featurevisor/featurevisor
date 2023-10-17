@@ -1,7 +1,7 @@
 import * as path from "path";
 import { execSync } from "child_process";
 
-import { Dependencies } from "./dependencies";
+import { Dependencies } from "../dependencies";
 
 export async function restoreProject(deps: Dependencies) {
   const { rootDirectoryPath, projectConfig } = deps;

@@ -6,8 +6,7 @@ import * as mkdirp from "mkdirp";
 import { ExistingState, EnvironmentKey } from "@featurevisor/types";
 
 import { Adapter, EntityType } from "./adapter";
-import { ProjectConfig } from "../config";
-import { CustomParser } from "./parsers";
+import { ProjectConfig, CustomParser } from "../config";
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
