@@ -12,7 +12,7 @@ export async function testSegment(datasource: Datasource, test: TestSegment): Pr
 
   console.log(CLI_FORMAT_BOLD, `  Segment "${segmentKey}":`);
 
-  const segmentExists = await datasource.entityExists("segment", segmentKey);
+  const segmentExists = await datasource.segmentExists(segmentKey);
 
   if (!segmentExists) {
     console.error(CLI_FORMAT_RED, `  Segment does not exist: ${segmentKey}`);

@@ -25,7 +25,7 @@ export async function checkForCircularDependencyInRequired(
       throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
     }
 
-    const requiredFeatureExists = await datasource.entityExists("feature", requiredKey);
+    const requiredFeatureExists = await datasource.featureExists(featureKey);
 
     if (!requiredFeatureExists) {
       throw new Error(`required feature "${requiredKey}" not found`);
