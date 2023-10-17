@@ -5,7 +5,8 @@
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
-    "build": "featurevisor build",
+    "build": "npm run build:datafiles && npm run export && npm run find-duplicate-segments && npm run generate-code",
+    "build:datafiles": "featurevisor build",
     "test": "featurevisor test",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
