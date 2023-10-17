@@ -1,4 +1,4 @@
-import { parseYaml } from "../utils";
+import * as YAML from "js-yaml";
 
 /**
  * If we want to add more built-in parsers,
@@ -8,7 +8,7 @@ import { parseYaml } from "../utils";
 export const parsers = {
   // extension => function
   yml(content: string) {
-    return parseYaml(content);
+    return YAML.load(content);
   },
 
   json(content: string) {

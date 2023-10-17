@@ -20,13 +20,6 @@ export function getDatafilePath(
   return path.join(projectConfig.outputDirectoryPath, environment, fileName);
 }
 
-export function getExistingStateFilePath(
-  projectConfig: ProjectConfig,
-  environment: EnvironmentKey,
-): string {
-  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
-}
-
 export interface BuildCLIOptions {
   revision?: string;
 }
@@ -45,12 +38,7 @@ export async function buildProject(
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);
 
-    const existingStateFilePath = getExistingStateFilePath(projectConfig, environment);
-    const existingState: ExistingState = fs.existsSync(existingStateFilePath)
-      ? require(existingStateFilePath)
-      : {
-          features: {},
-        };
+    const existingState: ExistingState = await datasource.readState(environment);
 
     for (const tag of tags) {
       console.log(`\n  => Tag: ${tag}`);
@@ -82,14 +70,6 @@ export async function buildProject(
     }
 
     // write state for environment
-    if (!fs.existsSync(projectConfig.stateDirectoryPath)) {
-      mkdirp.sync(projectConfig.stateDirectoryPath);
-    }
-    fs.writeFileSync(
-      existingStateFilePath,
-      projectConfig.prettyState
-        ? JSON.stringify(existingState, null, 2)
-        : JSON.stringify(existingState),
-    );
+    await datasource.writeState(environment, existingState);
   }
 }
