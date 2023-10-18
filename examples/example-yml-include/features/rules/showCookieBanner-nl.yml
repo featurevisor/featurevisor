@@ -1,4 +1,4 @@
-- key: "nl"
-  segments:
-    - netherlands
-  percentage: 100
+key: "nl"
+segments:
+  - netherlands
+percentage: 100

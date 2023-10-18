@@ -7,9 +7,9 @@ bucketBy: userId
 environments:
   staging:
     rules:
-      !include rules/showCookieBanner-everyone.yml
+      - !include rules/showCookieBanner-everyone.yml
 
   production:
     rules:
-      !include rules/showCookieBanner-nl.yml
-      !include rules/showCookieBanner-everyone.yml
+      - !include rules/showCookieBanner-nl.yml
+      - !include rules/showCookieBanner-everyone.yml
