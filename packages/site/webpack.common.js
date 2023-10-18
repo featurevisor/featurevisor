@@ -10,7 +10,7 @@ const webpackConfig = getWebpackConfig({
   outputLibrary: "FeaturevisorSite",
   tsConfigFilePath: path.join(__dirname, "tsconfig.cjs.json"),
   enableCssModules: true,
-  enablePostCss: true,
+  enableTailwind: true,
   enableAssets: true,
   plugins: [
     new HtmlWebpackPlugin({

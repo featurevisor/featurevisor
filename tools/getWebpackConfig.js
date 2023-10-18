@@ -13,7 +13,7 @@ module.exports = function getWebpackConfig(options) {
     outputLibraryTarget,
     tsConfigFilePath,
     enableCssModules,
-    enablePostCss,
+    enableTailwind,
     enableAssets,
 
     // webpack specific
@@ -62,10 +62,10 @@ module.exports = function getWebpackConfig(options) {
   };
 
   if (enableCssModules) {
-    config.resolve.extensions.push(".css");
+    config.resolve.extensions = [...config.resolve.extensions, ".css"];
 
     config.module.rules.push({
-      test: /\.css$/,
+      test: /\.module.css$/,
       use: [
         {
           loader: "style-loader",
@@ -77,10 +77,17 @@ module.exports = function getWebpackConfig(options) {
             modules: true,
           },
         },
-        enablePostCss && {
-          loader: "postcss-loader",
-        },
-      ].filter(Boolean),
+      ],
+    });
+  }
+
+  if (enableTailwind) {
+    config.resolve.extensions = [...config.resolve.extensions, ".css"];
+
+    config.module.rules.push({
+      test: /\.css$/,
+      exclude: /\.module.css$/,
+      use: ["style-loader", "css-loader", "postcss-loader"],
     });
   }
 
