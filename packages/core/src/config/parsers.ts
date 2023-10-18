@@ -33,7 +33,7 @@ export type BuiltInParser = keyof typeof parsers; // keys of parsers object
 
 export interface CustomParser {
   extension: string;
-  parse: <T>(content: string) => T;
+  parse: <T>(content: string, filePath?: string) => T;
   stringify: (content: any) => string;
 }
 

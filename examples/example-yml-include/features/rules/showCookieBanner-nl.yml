@@ -1,0 +1,4 @@
+- key: "nl"
+  segments:
+    - netherlands # enabled in prod for NL only
+  percentage: 100
