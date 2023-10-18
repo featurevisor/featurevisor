@@ -2,21 +2,22 @@ const fs = require("fs");
 const path = require("path");
 const YAML = require("js-yaml");
 
-function includeLoader(content, filePath) {
-  const basePath = path.dirname(filePath);
+let baseDir;
+const includeTag = "!include";
 
-  const includeRegex = /^!include\s+(.+)$/gm;
-  let match;
-  while ((match = includeRegex.exec(content))) {
-    const includePath = match[1];
-    const includeFilePath = path.resolve(basePath, includePath);
-    const includeContent = fs.readFileSync(includeFilePath, "utf8");
-    content = content.replace(match[0], includeContent);
-  }
+const includeYamlType = new YAML.Type(includeTag, {
+  kind: "scalar",
+  resolve: function (data) {
+    return data !== null && typeof data === "string";
+  },
+  construct: function (data) {
+    const fullPath = path.join(baseDir, data).split(" " + includeTag + " ")[0];
 
-  // Parse the modified YAML content.
-  return YAML.load(content);
-}
+    return YAML.load(fs.readFileSync(fullPath, "utf8"));
+  },
+});
+
+const SCHEMA = YAML.DEFAULT_SCHEMA.extend([includeYamlType]);
 
 module.exports = {
   environments: ["staging", "production"],
@@ -25,7 +26,9 @@ module.exports = {
   parser: {
     extension: "yml",
     parse: function (content, filePath) {
-      return includeLoader(content, filePath);
+      baseDir = path.dirname(filePath);
+
+      return YAML.load(content, { schema: SCHEMA, filePath: filePath });
     },
   },
 };
