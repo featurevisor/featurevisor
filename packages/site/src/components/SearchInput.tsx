@@ -27,7 +27,7 @@ export function SearchInput(props: SearchInputProps) {
         onChange={(e) => props.onChange(e)}
         placeholder="Type to search..."
         autoComplete="off"
-        className="mb-4 mt-2 w-full rounded-full border-slate-300 indent-8 text-xl text-gray-700 placeholder:text-gray-400"
+        className="mb-4 mt-2 p-2 w-full rounded-full border border-slate-300 indent-8 text-xl text-gray-700 placeholder:text-gray-400"
       />
     </div>
   );

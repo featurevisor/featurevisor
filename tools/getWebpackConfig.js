@@ -11,11 +11,17 @@ module.exports = function getWebpackConfig(options) {
     // optional
     outputFileName,
     outputLibraryTarget,
-    mode,
-    devtool,
     tsConfigFilePath,
     enableCssModules,
+    enableTailwind,
+    enableAssets,
+
+    // webpack specific
+    mode,
+    devtool,
     externals,
+    devServer,
+    plugins,
   } = options;
 
   const entry = {};
@@ -30,10 +36,10 @@ module.exports = function getWebpackConfig(options) {
       libraryTarget: outputLibraryTarget || "umd",
       globalObject: "this",
     },
-    externals: {},
+    devServer,
     mode: mode || "production",
     devtool: devtool || "source-map",
-    plugins: [],
+    plugins: plugins || [],
     performance: {
       hints: false,
     },
@@ -56,10 +62,10 @@ module.exports = function getWebpackConfig(options) {
   };
 
   if (enableCssModules) {
-    config.resolve.extensions.push(".css");
+    config.resolve.extensions = [...config.resolve.extensions, ".css"];
 
     config.module.rules.push({
-      test: /\.css$/,
+      test: /\.module.css$/,
       use: [
         {
           loader: "style-loader",
@@ -72,6 +78,23 @@ module.exports = function getWebpackConfig(options) {
           },
         },
       ],
+    });
+  }
+
+  if (enableTailwind) {
+    config.resolve.extensions = [...config.resolve.extensions, ".css"];
+
+    config.module.rules.push({
+      test: /\.css$/,
+      exclude: /\.module.css$/,
+      use: ["style-loader", "css-loader", "postcss-loader"],
+    });
+  }
+
+  if (enableAssets) {
+    config.module.rules.push({
+      test: /\.(eot|svg|ttf|woff|woff2|png|jpg|jpeg|gif)$/i,
+      type: "asset/resource",
     });
   }
 
