@@ -70,9 +70,10 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async parseEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
-    const entityContent = await this.readEntity(entityType, entityKey);
+    const filePath = this.getEntityPath(entityType, entityKey);
+    const entityContent = fs.readFileSync(filePath, "utf8");
 
-    return this.parser.parse<T>(entityContent);
+    return this.parser.parse<T>(entityContent, filePath);
   }
 
   /**
