@@ -8,7 +8,7 @@ export interface Query {
   capture?: boolean;
 }
 
-export function getQueryFromString(q: string) {
+export function parseSearchQuery(queryString: string) {
   const query: Query = {
     keyword: "",
     tags: [],
@@ -17,7 +17,7 @@ export function getQueryFromString(q: string) {
     capture: undefined,
   };
 
-  const parts = q.split(" ");
+  const parts = queryString.split(" ");
 
   for (const part of parts) {
     if (part.startsWith("tag:")) {

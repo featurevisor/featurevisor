@@ -4,7 +4,7 @@ import { UserCircleIcon } from "@heroicons/react/20/solid";
 
 import { Alert } from "./Alert";
 import { PrettyDate } from "./PrettyDate";
-import { useSearchIndex } from "../hooks/searchIndexHook";
+import { useSearchIndex } from "../hooks/useSearchIndex";
 
 const entriesPerPage = 50;
 const initialMaxEntitiesCount = 10;

@@ -5,7 +5,7 @@ import { PageContent } from "./PageContent";
 import { PageTitle } from "./PageTitle";
 import { Tabs } from "./Tabs";
 import { EditLink } from "./EditLink";
-import { useSearchIndex } from "../hooks/searchIndexHook";
+import { useSearchIndex } from "../hooks/useSearchIndex";
 import { Markdown } from "./Markdown";
 import { HistoryTimeline } from "./HistoryTimeline";
 

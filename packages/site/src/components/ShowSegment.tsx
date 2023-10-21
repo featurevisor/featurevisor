@@ -7,7 +7,7 @@ import { Tabs } from "./Tabs";
 import { HistoryTimeline } from "./HistoryTimeline";
 import { ExpandConditions } from "./ExpandConditions";
 import { EditLink } from "./EditLink";
-import { useSearchIndex } from "../hooks/searchIndexHook";
+import { useSearchIndex } from "../hooks/useSearchIndex";
 import { Markdown } from "./Markdown";
 
 export function DisplaySegmentOverview() {
