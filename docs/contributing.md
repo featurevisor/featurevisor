@@ -91,6 +91,21 @@ const rootConfig = require("../../.eslintrc.js");
 module.exports = config;
 ```
 
+### Testing
+
+You are advised to test your changes locally before submitting a pull request.
+
+The core team uses the `example-1` project as a playground for testing new features and changes.
+
+```
+$ cd examples/example-1
+
+$ npm run lint
+$ npm run build
+$ npm test
+$ npm start
+```
+
 ### Pull Requests
 
 Send Pull Requests against the `main` branch.
