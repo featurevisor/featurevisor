@@ -9,11 +9,12 @@ import {
   ExistingState,
   SegmentKey,
   AttributeKey,
+  DatafileContent,
 } from "@featurevisor/types";
 
 import { ProjectConfig, CustomParser } from "../config";
 
-import { Adapter } from "./adapter";
+import { Adapter, DatafileOptions } from "./adapter";
 
 export class Datasource {
   private adapter: Adapter;
@@ -30,12 +31,23 @@ export class Datasource {
   /**
    * State
    */
-  async readState(environment: EnvironmentKey): Promise<ExistingState> {
+  readState(environment: EnvironmentKey): Promise<ExistingState> {
     return this.adapter.readState(environment);
   }
 
-  async writeState(environment: EnvironmentKey, existingState: ExistingState) {
+  writeState(environment: EnvironmentKey, existingState: ExistingState) {
     return this.adapter.writeState(environment, existingState);
+  }
+
+  /**
+   * Datafile
+   */
+  readDatafile(options: DatafileOptions) {
+    return this.adapter.readDatafile(options);
+  }
+
+  writeDatafile(datafileContent: DatafileContent, options: DatafileOptions) {
+    return this.adapter.writeDatafile(datafileContent, options);
   }
 
   /**
@@ -43,8 +55,8 @@ export class Datasource {
    */
 
   // features
-  async listFeatures() {
-    return await this.adapter.listEntities("feature");
+  listFeatures() {
+    return this.adapter.listEntities("feature");
   }
 
   featureExists(featureKey: FeatureKey) {
@@ -111,7 +123,7 @@ export class Datasource {
   }
 
   // groups
-  async listGroups() {
+  listGroups() {
     return this.adapter.listEntities("group");
   }
 
