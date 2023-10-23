@@ -1,6 +1,11 @@
-import { EnvironmentKey, ExistingState } from "@featurevisor/types";
+import { DatafileContent, EnvironmentKey, ExistingState } from "@featurevisor/types";
 
 export type EntityType = "feature" | "group" | "segment" | "attribute" | "test";
+
+export interface DatafileOptions {
+  environment: EnvironmentKey;
+  tag: string;
+}
 
 export abstract class Adapter {
   // entities
@@ -12,4 +17,8 @@ export abstract class Adapter {
   // state
   abstract readState(environment: EnvironmentKey): Promise<ExistingState>;
   abstract writeState(environment: EnvironmentKey, existingState: ExistingState): Promise<void>;
+
+  // datafile
+  abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
+  abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 }

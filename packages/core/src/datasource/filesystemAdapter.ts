@@ -3,9 +3,9 @@ import * as path from "path";
 
 import * as mkdirp from "mkdirp";
 
-import { ExistingState, EnvironmentKey } from "@featurevisor/types";
+import { ExistingState, EnvironmentKey, DatafileContent } from "@featurevisor/types";
 
-import { Adapter, EntityType } from "./adapter";
+import { Adapter, EntityType, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 
 export function getExistingStateFilePath(
@@ -105,5 +105,44 @@ export class FilesystemAdapter extends Adapter {
     );
 
     fs.writeFileSync(filePath, JSON.stringify(existingState, null, 2));
+  }
+
+  /**
+   * Datafile
+   */
+  getDatafilePath(options: DatafileOptions): string {
+    const fileName = `datafile-tag-${options.tag}.json`;
+
+    return path.join(this.config.outputDirectoryPath, options.environment, fileName);
+  }
+
+  async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
+    const filePath = this.getDatafilePath(options);
+    const content = fs.readFileSync(filePath, "utf8");
+    const datafileContent = JSON.parse(content);
+
+    return datafileContent;
+  }
+
+  async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
+    const outputEnvironmentDirPath = path.join(
+      this.config.outputDirectoryPath,
+      options.environment,
+    );
+    mkdirp.sync(outputEnvironmentDirPath);
+
+    const outputFilePath = this.getDatafilePath(options);
+
+    fs.writeFileSync(
+      outputFilePath,
+      this.config.prettyDatafile
+        ? JSON.stringify(datafileContent, null, 2)
+        : JSON.stringify(datafileContent),
+    );
+
+    const root = path.resolve(this.config.outputDirectoryPath, "..");
+
+    const shortPath = outputFilePath.replace(root + path.sep, "");
+    console.log(`     Datafile generated: ${shortPath}`);
   }
 }
