@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.55.4](https://github.com/featurevisor/featurevisor/compare/v0.55.3...v0.55.4) (2023-10-24)
+
+
+### Bug Fixes
+
+* do not include variable description in datafiles ([#186](https://github.com/featurevisor/featurevisor/issues/186)) ([ad06c3e](https://github.com/featurevisor/featurevisor/commit/ad06c3e1db7233a5a4c92de32683059a1cb596f8))
+
+
+
+
+
 ## [0.55.3](https://github.com/featurevisor/featurevisor/compare/v0.55.2...v0.55.3) (2023-10-23)
 
 **Note:** Version bump only for package featurevisor
