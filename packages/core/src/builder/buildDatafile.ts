@@ -16,6 +16,7 @@ import {
   ExistingState,
   FeatureKey,
   Allocation,
+  VariableSchema,
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
@@ -184,7 +185,13 @@ export async function buildDatafile(
       }
 
       if (parsedFeature.variablesSchema) {
-        feature.variablesSchema = parsedFeature.variablesSchema;
+        feature.variablesSchema = parsedFeature.variablesSchema.map(function (v: VariableSchema) {
+          return {
+            key: v.key,
+            type: v.type,
+            defaultValue: v.defaultValue,
+          };
+        });
       }
 
       if (parsedFeature.environments[options.environment].force) {
