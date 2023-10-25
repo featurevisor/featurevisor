@@ -7,23 +7,24 @@ bucketBy: userId
 variablesSchema:
   - key: showPayments
     type: boolean
-    default: false
+    defaultValue: false
 
   - key: showShipping
     type: boolean
-    default: false
+    defaultValue: false
 
   - key: paymentMethods
     type: array
-    default:
+    defaultValue:
       - visa
       - mastercard
 
 environments:
   staging:
-    - key: "1"
-      segments: "*"
-      percentage: 100
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
 
   production:
     rules:
