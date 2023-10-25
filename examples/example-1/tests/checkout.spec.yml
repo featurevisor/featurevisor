@@ -1,0 +1,13 @@
+feature: checkout
+assertions:
+  - at: 60
+    environment: production
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariables:
+      showPayments: false
+      showShipping: false
+      paymentMethods:
+        - visa
+        - mastercard
