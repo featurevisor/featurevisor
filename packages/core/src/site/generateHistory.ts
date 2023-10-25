@@ -4,11 +4,12 @@ import { execSync } from "child_process";
 
 import { HistoryEntry } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
-
 import { getRelativePaths } from "./getRelativePaths";
+import { Dependencies } from "../dependencies";
 
-export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig): HistoryEntry[] {
+export function generateHistory(deps: Dependencies): HistoryEntry[] {
+  const { rootDirectoryPath, projectConfig, datasource } = deps;
+
   try {
     // raw history
     const rawHistoryFilePath = path.join(projectConfig.siteExportDirectoryPath, "history-raw.txt");
@@ -66,7 +67,7 @@ export function generateHistory(rootDirectoryPath, projectConfig: ProjectConfig)
         const fileName = lineSplit.pop() as string;
         const relativeDir = lineSplit.join(path.sep);
 
-        const key = fileName.replace("." + projectConfig.parser, "");
+        const key = fileName.replace("." + datasource.getExtension(), "");
 
         let type = "feature" as "attribute" | "segment" | "feature";
 
