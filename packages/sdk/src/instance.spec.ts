@@ -1104,6 +1104,35 @@ describe("sdk: instance", function () {
               },
             ],
           },
+          {
+            key: "test2",
+            bucketBy: "userId",
+            variablesSchema: [
+              {
+                key: "color",
+                type: "string",
+                defaultValue: "red",
+              },
+            ],
+            variations: [],
+            traffic: [
+              {
+                key: "1",
+                segments: ["belgium"],
+                percentage: 100000,
+                allocation: [],
+                variables: {
+                  color: "black",
+                },
+              },
+              {
+                key: "2",
+                segments: ["netherlands"],
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
         ],
         attributes: [
           { key: "userId", type: "string", capture: true },
@@ -1203,6 +1232,20 @@ describe("sdk: instance", function () {
 
     // disabled
     expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
+
+    // no variations
+    expect(
+      sdk.getVariable("test2", "color", {
+        ...context,
+        country: "be",
+      }),
+    ).toEqual("black");
+    expect(
+      sdk.getVariable("test2", "color", {
+        ...context,
+        country: "nl",
+      }),
+    ).toEqual("red");
   });
 
   it("should check if enabled for individually named segments", function () {

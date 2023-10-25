@@ -1,0 +1,40 @@
+archived: false
+description: blah
+tags:
+  - all
+  - sign-in
+  - sign-up
+
+bucketBy: userId
+
+variablesSchema:
+  - key: bar
+    type: string
+    defaultValue: ""
+  - key: baz
+    type: string
+    defaultValue: ""
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+        variables:
+          bar: "bar_here"
+  production:
+    rules:
+      - key: "1"
+        segments:
+          and:
+            - mobile
+            - or:
+                - germany
+                - switzerland
+        percentage: 80
+        variables:
+          baz: "baz_here"
+      - key: "2"
+        segments: "*"
+        percentage: 50

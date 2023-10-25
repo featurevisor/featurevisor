@@ -1,0 +1,39 @@
+feature: fooNoVariations
+assertions:
+  - at: 40
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      bar: bar_here
+      baz: ""
+
+  - at: 60
+    environment: staging
+    context:
+      country: ch
+    expectedToBeEnabled: true
+    expectedVariables:
+      bar: bar_here
+      baz: ""
+
+  - at: 70
+    environment: production
+    context:
+      country: de
+      device: mobile
+    expectedToBeEnabled: true
+    expectedVariables:
+      bar: ""
+      baz: baz_here
+
+  - at: 40
+    environment: production
+    context:
+      country: it
+      device: desktop
+    expectedToBeEnabled: true
+    expectedVariables:
+      bar: ""
+      baz: ""
