@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.56.0](https://github.com/featurevisor/featurevisor/compare/v0.55.4...v0.56.0) (2023-10-25)
+
+
+### Features
+
+* add deep linking, persist search in url ([#188](https://github.com/featurevisor/featurevisor/issues/188)) ([0f2225d](https://github.com/featurevisor/featurevisor/commit/0f2225d27f85b88cb0ee70715ddf5071c7ca8802))
+
+
+
+
+
 ## [0.55.4](https://github.com/featurevisor/featurevisor/compare/v0.55.3...v0.55.4) (2023-10-24)
 
 
