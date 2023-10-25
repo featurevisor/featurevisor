@@ -9,7 +9,7 @@ import { generateSiteSearchIndex } from "./generateSiteSearchIndex";
 import { Dependencies } from "../dependencies";
 
 export async function exportSite(deps: Dependencies) {
-  const { rootDirectoryPath, projectConfig } = deps;
+  const { projectConfig } = deps;
 
   const hasError = false;
 
@@ -24,7 +24,7 @@ export async function exportSite(deps: Dependencies) {
   console.log("Site dist copied to:", projectConfig.siteExportDirectoryPath);
 
   // generate history
-  const fullHistory = generateHistory(rootDirectoryPath, projectConfig);
+  const fullHistory = generateHistory(deps);
 
   // site search index
   const repoDetails = getRepoDetails();

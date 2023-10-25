@@ -77,6 +77,7 @@ export async function generateSiteSearchIndex(
 
   // features
   const featureFiles = await datasource.listFeatures();
+
   for (const entityName of featureFiles) {
     const parsed = await datasource.readFeature(entityName);
 
