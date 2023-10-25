@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 
 import { TagIcon } from "@heroicons/react/20/solid";
 
-import { SearchIndex } from "@featurevisor/types";
-import { useSearchIndex } from "../hooks/searchIndexHook";
-import { getQueryFromString, getFeaturesByQuery } from "../utils";
 import { EnvironmentDot } from "./EnvironmentDot";
 import { Tag } from "./Tag";
 import { Alert } from "./Alert";
@@ -13,21 +10,16 @@ import { SearchInput } from "./SearchInput";
 import { PageTitle } from "./PageTitle";
 import { PageContent } from "./PageContent";
 import { LastModified } from "./LastModified";
+import { useSearch } from "../hooks/useSearch";
 
 export function ListFeatures() {
-  const [q, setQ] = React.useState("");
-
-  const contextValue = useSearchIndex();
-  const data = contextValue.data as SearchIndex;
-
-  const query = getQueryFromString(q);
-  const features = getFeaturesByQuery(query, data);
+  const { features } = useSearch();
 
   return (
     <PageContent>
       <PageTitle>Features</PageTitle>
 
-      <SearchInput value={q} onChange={(e: any) => setQ(e.target.value)} />
+      <SearchInput />
 
       {features.length === 0 && <Alert type="warning">No results found</Alert>}
 

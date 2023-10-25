@@ -6,7 +6,7 @@ import { PageTitle } from "./PageTitle";
 import { Tabs } from "./Tabs";
 import { HistoryTimeline } from "./HistoryTimeline";
 import { Tag } from "./Tag";
-import { useSearchIndex } from "../hooks/searchIndexHook";
+import { useSearchIndex } from "../hooks/useSearchIndex";
 import { isEnabledInEnvironment } from "../utils";
 import { ExpandRuleSegments } from "./ExpandRuleSegments";
 import { ExpandConditions } from "./ExpandConditions";

@@ -1,11 +1,9 @@
 import * as React from "react";
+import { useSearch } from "../hooks/useSearch";
 
-interface SearchInputProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+export function SearchInput() {
+  const { searchQuery, setSearchQuery } = useSearch();
 
-export function SearchInput(props: SearchInputProps) {
   return (
     <div className="relative px-6 pt-3.5">
       <div className="pointer-events-none absolute">
@@ -23,8 +21,8 @@ export function SearchInput(props: SearchInputProps) {
       </div>
       <input
         type="text"
-        value={props.value}
-        onChange={(e) => props.onChange(e)}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Type to search..."
         autoComplete="off"
         className="mb-4 mt-2 p-2 w-full rounded-full border border-slate-300 indent-8 text-xl text-gray-700 placeholder:text-gray-400"

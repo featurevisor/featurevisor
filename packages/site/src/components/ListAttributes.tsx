@@ -1,30 +1,22 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
 
-import { SearchIndex } from "@featurevisor/types";
-import { useSearchIndex } from "../hooks/searchIndexHook";
-import { getQueryFromString, getAttributesByQuery } from "../utils";
 import { Tag } from "./Tag";
 import { Alert } from "./Alert";
 import { SearchInput } from "./SearchInput";
 import { PageTitle } from "./PageTitle";
 import { PageContent } from "./PageContent";
 import { LastModified } from "./LastModified";
+import { useSearch } from "../hooks/useSearch";
 
 export function ListAttributes() {
-  const [q, setQ] = React.useState("");
-
-  const contextValue = useSearchIndex();
-  const data = contextValue.data as SearchIndex;
-
-  const query = getQueryFromString(q);
-  const attributes = getAttributesByQuery(query, data);
+  const { attributes } = useSearch();
 
   return (
     <PageContent>
       <PageTitle>Attributes</PageTitle>
 
-      <SearchInput value={q} onChange={(e: any) => setQ(e.target.value)} />
+      <SearchInput />
 
       {attributes.length === 0 && <Alert type="warning">No results found</Alert>}
 
