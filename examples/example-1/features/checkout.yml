@@ -39,7 +39,7 @@ environments:
         segments: germany
         percentage: 100
         variables:
-          paymentMethods: true
+          paymentMethods:
             - sofort
             - paypal
 
@@ -49,7 +49,7 @@ environments:
         variables:
           showPayments: true
           showShipping: true
-          paymentMethods: true
+          paymentMethods:
             - visa
             - mastercard
             - paypal
