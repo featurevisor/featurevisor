@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 interface Tab {
   title: string;
   to: string;
+  end?: boolean;
 }
 
 interface TabsProps {
@@ -20,7 +21,7 @@ export function Tabs(props: TabsProps) {
           <NavLink
             key={tab.title}
             to={tab.to}
-            end
+            end={Boolean(tab.end)}
             className={({ isActive }) =>
               [
                 "w-1/4",
