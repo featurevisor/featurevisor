@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.57.0](https://github.com/featurevisor/featurevisor/compare/v0.56.2...v0.57.0) (2023-10-26)
+
+
+### Features
+
+* small site navigation improvements ([#191](https://github.com/featurevisor/featurevisor/issues/191)) ([a4df1b3](https://github.com/featurevisor/featurevisor/commit/a4df1b37d28cf5fb03eb3c0d27451a6ede8132f4))
+
+
+
+
+
 # [0.56.0](https://github.com/featurevisor/featurevisor/compare/v0.55.4...v0.56.0) (2023-10-25)
 
 
