@@ -72,11 +72,11 @@ export function App() {
                   <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
                   <Route path="rules" element={<DisplayFeatureRules />}>
                     <Route path=":environmentKey" element={<DisplayFeatureRulesTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace/>} />
+                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
                   </Route>
                   <Route path="force" element={<DisplayFeatureForce />}>
                     <Route path=":environmentKey" element={<DisplayFeatureForceTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace/>} />
+                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
                   </Route>
                   <Route path="history" element={<DisplayFeatureHistory />} />
                 </Route>
@@ -103,7 +103,7 @@ export function App() {
               </Route>
 
               <Route path="history" element={<ListHistory />} />
-              <Route index element={<Navigate to="features" replace/>} />
+              <Route index element={<Navigate to="features" replace />} />
             </Routes>
           </SearchIndexContext.Provider>
         )}
