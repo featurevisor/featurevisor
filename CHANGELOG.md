@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.56.2](https://github.com/featurevisor/featurevisor/compare/v0.56.1...v0.56.2) (2023-10-26)
+
+
+### Bug Fixes
+
+* evaluate variables overridden from rules with no variations ([#189](https://github.com/featurevisor/featurevisor/issues/189)) ([3144f20](https://github.com/featurevisor/featurevisor/commit/3144f20f9c50b998acaa5cf8a666c5f6b1e82f26))
+
+
+
+
+
 ## [0.56.1](https://github.com/featurevisor/featurevisor/compare/v0.56.0...v0.56.1) (2023-10-25)
 
 
