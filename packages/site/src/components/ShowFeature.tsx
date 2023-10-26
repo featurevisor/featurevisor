@@ -439,6 +439,7 @@ export function ShowFeature() {
     {
       title: "Overview",
       to: `/features/${featureKey}`,
+      end: true,
     },
     {
       title: "Variations",
