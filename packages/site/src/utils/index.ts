@@ -67,7 +67,7 @@ export function isEnabledInEnvironment(feature: any, environment: string) {
     return false;
   }
 
-  if (feature.environments[environment].exposed === false) {
+  if (feature.environments[environment].expose === false) {
     return false;
   }
 

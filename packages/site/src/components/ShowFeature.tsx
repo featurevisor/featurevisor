@@ -208,51 +208,62 @@ export function DisplayFeatureRulesTable() {
   }
 
   return (
-    <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-            Percentage
-          </th>
-          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">Segments</th>
-          <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
-            Variables
-          </th>
-        </tr>
-      </thead>
+    <div>
+      {feature.environments[environmentKey].expose === false && (
+        <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
+          Rules are not <a href="https://featurevisor.com/docs/features/#expose">exposed</a> in this
+          environment.
+        </p>
+      )}
 
-      <tbody>
-        {feature.environments[environmentKey].rules.map((rule, index) => {
-          return (
-            <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">{rule.percentage}%</td>
-              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                <ExpandRuleSegments segments={rule.segments} />
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
-                {rule.variables && (
-                  <ul className="list-inside list-disc">
-                    {Object.keys(rule.variables).map((k) => {
-                      return (
-                        <li key={k}>
-                          <span className="font-semibold">{k}</span>:{" "}
-                          {typeof rule.variables[k] === "string" && rule.variables[k]}
-                          {typeof rule.variables[k] !== "string" && (
-                            <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                              {rule.variables[k]}
-                            </code>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+      <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+              Percentage
+            </th>
+            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+              Segments
+            </th>
+            <th className="py-4 pl-4 pr-3 text-left text-sm font-semibold text-gray-500">
+              Variables
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {feature.environments[environmentKey].rules.map((rule, index) => {
+            return (
+              <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">{rule.percentage}%</td>
+                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                  <ExpandRuleSegments segments={rule.segments} />
+                </td>
+                <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
+                  {rule.variables && (
+                    <ul className="list-inside list-disc">
+                      {Object.keys(rule.variables).map((k) => {
+                        return (
+                          <li key={k}>
+                            <span className="font-semibold">{k}</span>:{" "}
+                            {typeof rule.variables[k] === "string" && rule.variables[k]}
+                            {typeof rule.variables[k] !== "string" && (
+                              <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                                {rule.variables[k]}
+                              </code>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
