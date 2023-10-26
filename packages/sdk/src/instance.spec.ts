@@ -1205,6 +1205,80 @@ describe("sdk: instance", function () {
     expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
   });
 
+  it("should get variables without any variations", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "1",
+        revision: "1.0",
+        attributes: [
+          { key: "userId", type: "string", capture: true },
+          { key: "country", type: "string" },
+        ],
+        segments: [
+          {
+            key: "netherlands",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "nl",
+              },
+            ]),
+          },
+        ],
+        features: [
+          {
+            key: "test",
+            bucketBy: "userId",
+            variablesSchema: [
+              {
+                key: "color",
+                type: "string",
+                defaultValue: "red",
+              },
+            ],
+            traffic: [
+              {
+                key: "1",
+                segments: "netherlands",
+                percentage: 100000,
+                variables: {
+                  color: "orange",
+                },
+                allocation: [],
+              },
+              {
+                key: "2",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const defaultContext = {
+      userId: "123",
+    };
+
+    // test default value
+    expect(
+      sdk.getVariable("test", "color", {
+        ...defaultContext,
+      }),
+    ).toEqual("red");
+
+    // test override
+    expect(
+      sdk.getVariable("test", "color", {
+        ...defaultContext,
+        country: "nl",
+      }),
+    ).toEqual("orange");
+  });
+
   it("should check if enabled for individually named segments", function () {
     const sdk = createInstance({
       datafile: {

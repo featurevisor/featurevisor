@@ -53,23 +53,22 @@ export function getMatchedTrafficAndAllocation(
   bucketValue: number,
   datafileReader: DatafileReader,
 ): MatchedTrafficAndAllocation {
-  let matchedAllocation: Allocation | undefined;
-
   const matchedTraffic = traffic.find((t) => {
-    if (
-      !allGroupSegmentsAreMatched(parseFromStringifiedSegments(t.segments), context, datafileReader)
-    ) {
-      return false;
-    }
-
-    matchedAllocation = getMatchedAllocation(t, bucketValue);
-
-    if (matchedAllocation) {
-      return true;
-    }
-
-    return false;
+    return allGroupSegmentsAreMatched(
+      parseFromStringifiedSegments(t.segments),
+      context,
+      datafileReader,
+    );
   });
+
+  if (!matchedTraffic) {
+    return {
+      matchedTraffic: undefined,
+      matchedAllocation: undefined,
+    };
+  }
+
+  const matchedAllocation = getMatchedAllocation(matchedTraffic, bucketValue);
 
   return {
     matchedTraffic,
