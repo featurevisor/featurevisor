@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.58.0](https://github.com/featurevisor/featurevisor/compare/v0.57.1...v0.58.0) (2023-10-29)
+
+
+### Features
+
+* datasource adapters now handling full CRUD ([#194](https://github.com/featurevisor/featurevisor/issues/194)) ([dd3accf](https://github.com/featurevisor/featurevisor/commit/dd3accfd955cbc14fec5eec166efa0223685ed33))
+
+
+
+
+
 ## [0.57.1](https://github.com/featurevisor/featurevisor/compare/v0.57.0...v0.57.1) (2023-10-26)
 
 **Note:** Version bump only for package @featurevisor/core
