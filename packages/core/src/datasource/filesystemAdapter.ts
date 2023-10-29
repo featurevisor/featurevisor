@@ -63,17 +63,23 @@ export class FilesystemAdapter extends Adapter {
     return fs.existsSync(entityPath);
   }
 
-  async readEntity(entityType: EntityType, entityKey: string): Promise<string> {
-    const filePath = this.getEntityPath(entityType, entityKey);
-
-    return fs.readFileSync(filePath, "utf8");
-  }
-
-  async parseEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
+  async readEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
     const filePath = this.getEntityPath(entityType, entityKey);
     const entityContent = fs.readFileSync(filePath, "utf8");
 
     return this.parser.parse<T>(entityContent, filePath);
+  }
+
+  async writeEntity<T>(entityType: EntityType, entityKey: string, entity: T): Promise<T> {
+    const filePath = this.getEntityPath(entityType, entityKey);
+
+    if (!fs.existsSync(this.getEntityDirectoryPath(entityType))) {
+      mkdirp.sync(this.getEntityDirectoryPath(entityType));
+    }
+
+    fs.writeFileSync(filePath, this.parser.stringify(entity));
+
+    return entity;
   }
 
   /**

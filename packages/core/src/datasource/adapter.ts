@@ -11,8 +11,8 @@ export abstract class Adapter {
   // entities
   abstract listEntities(entityType: EntityType): Promise<string[]>;
   abstract entityExists(entityType: EntityType, entityKey: string): Promise<boolean>;
-  abstract readEntity(entityType: EntityType, entityKey: string): Promise<string>;
-  abstract parseEntity<T>(entityType: EntityType, entityKey: string): Promise<T>;
+  abstract readEntity<T>(entityType: EntityType, entityKey: string): Promise<T>;
+  abstract writeEntity<T>(entityType: EntityType, entityKey: string, entity: T): Promise<T>;
 
   // state
   abstract readState(environment: EnvironmentKey): Promise<ExistingState>;
