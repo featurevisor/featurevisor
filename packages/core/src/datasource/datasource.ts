@@ -64,7 +64,11 @@ export class Datasource {
   }
 
   readFeature(featureKey: FeatureKey) {
-    return this.adapter.parseEntity<ParsedFeature>("feature", featureKey);
+    return this.adapter.readEntity<ParsedFeature>("feature", featureKey);
+  }
+
+  writeFeature(featureKey: FeatureKey, feature: ParsedFeature) {
+    return this.adapter.writeEntity<ParsedFeature>("feature", featureKey, feature);
   }
 
   async getRequiredFeaturesChain(
@@ -106,7 +110,11 @@ export class Datasource {
   }
 
   readSegment(segmentKey: SegmentKey) {
-    return this.adapter.parseEntity<Segment>("segment", segmentKey);
+    return this.adapter.readEntity<Segment>("segment", segmentKey);
+  }
+
+  writeSegment(segmentKey: SegmentKey, segment: Segment) {
+    return this.adapter.writeEntity<Segment>("segment", segmentKey, segment);
   }
 
   // attributes
@@ -119,7 +127,11 @@ export class Datasource {
   }
 
   readAttribute(attributeKey: AttributeKey) {
-    return this.adapter.parseEntity<Attribute>("attribute", attributeKey);
+    return this.adapter.readEntity<Attribute>("attribute", attributeKey);
+  }
+
+  writeAttribute(attributeKey: AttributeKey, attribute: Attribute) {
+    return this.adapter.writeEntity<Attribute>("attribute", attributeKey, attribute);
   }
 
   // groups
@@ -132,7 +144,11 @@ export class Datasource {
   }
 
   readGroup(groupKey: string) {
-    return this.adapter.parseEntity<Group>("group", groupKey);
+    return this.adapter.readEntity<Group>("group", groupKey);
+  }
+
+  writeGroup(groupKey: string, group: Group) {
+    return this.adapter.writeEntity<Group>("group", groupKey, group);
   }
 
   // tests
@@ -141,7 +157,11 @@ export class Datasource {
   }
 
   readTest(testKey: string) {
-    return this.adapter.parseEntity<Test>("test", testKey);
+    return this.adapter.readEntity<Test>("test", testKey);
+  }
+
+  writeTest(testKey: string, test: Test) {
+    return this.adapter.writeEntity<Test>("test", testKey, test);
   }
 
   getTestSpecName(testKey: string) {
