@@ -13,6 +13,7 @@ export abstract class Adapter {
   abstract entityExists(entityType: EntityType, entityKey: string): Promise<boolean>;
   abstract readEntity<T>(entityType: EntityType, entityKey: string): Promise<T>;
   abstract writeEntity<T>(entityType: EntityType, entityKey: string, entity: T): Promise<T>;
+  abstract deleteEntity(entityType: EntityType, entityKey: string): Promise<void>;
 
   // state
   abstract readState(environment: EnvironmentKey): Promise<ExistingState>;

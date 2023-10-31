@@ -82,6 +82,16 @@ export class FilesystemAdapter extends Adapter {
     return entity;
   }
 
+  async deleteEntity(entityType: EntityType, entityKey: string): Promise<void> {
+    const filePath = this.getEntityPath(entityType, entityKey);
+
+    if (!fs.existsSync(filePath)) {
+      return;
+    }
+
+    fs.unlinkSync(filePath);
+  }
+
   /**
    * State
    */
