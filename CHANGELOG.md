@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.59.0](https://github.com/featurevisor/featurevisor/compare/v0.58.0...v0.59.0) (2023-10-31)
+
+
+### Features
+
+* the D of CRUD ([#195](https://github.com/featurevisor/featurevisor/issues/195)) ([c1a0242](https://github.com/featurevisor/featurevisor/commit/c1a02420d758eb1f711aa375eeb1a9ff4e91eee3))
+
+
+
+
+
 # [0.58.0](https://github.com/featurevisor/featurevisor/compare/v0.57.1...v0.58.0) (2023-10-29)
 
 
