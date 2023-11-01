@@ -1,0 +1,6 @@
+dist/
+lib/
+public/
+coverage/
+
+**/*.md
