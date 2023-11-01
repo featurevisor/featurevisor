@@ -7,8 +7,6 @@ const Fastify = require("fastify");
 const fastifyStatic = require("@fastify/static");
 
 export async function openGui(deps: Dependencies) {
-  const { projectConfig } = deps;
-
   const guiPackagePath = path.dirname(require.resolve("@featurevisor/gui/package.json"));
   const guiDistPath = path.join(guiPackagePath, "dist");
 
