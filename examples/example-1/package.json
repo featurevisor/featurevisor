@@ -10,6 +10,7 @@
     "test": "featurevisor test",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
+    "gui": "featurevisor gui",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },

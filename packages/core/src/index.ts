@@ -9,3 +9,4 @@ export * from "./restore";
 export * from "./find-duplicate-segments";
 export * from "./dependencies";
 export * from "./datasource";
+export * from "./gui";

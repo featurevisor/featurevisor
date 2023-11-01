@@ -19,6 +19,7 @@ import {
   restoreProject,
   Dependencies,
   Datasource,
+  openGui,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -216,6 +217,24 @@ async function main() {
       },
     })
     .example("$0 generate-code", "generate code from YAMLs")
+
+    /**
+     * GUI
+     */
+    .command({
+      command: "gui",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          openGui(deps);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 gui", "Open GUI")
 
     /**
      * Options
