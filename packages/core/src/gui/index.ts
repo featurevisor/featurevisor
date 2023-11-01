@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import { Dependencies } from "../dependencies";
+import { setApiRoutes } from "./setApiRoutes";
 
 const Fastify = require("fastify");
 const fastifyStatic = require("@fastify/static");
@@ -22,7 +23,8 @@ export async function openGui(deps: Dependencies) {
     prefix: "/",
   });
 
-  // @TODO: /api routes
+  // /api routes
+  setApiRoutes(deps, fastify);
 
   // run
   fastify.listen({ port: 3000 }, (err, address) => {
