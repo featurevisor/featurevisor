@@ -16,6 +16,9 @@ const webpackConfig = merge(webpackCommon, {
       {
         directory: path.join(__dirname, "public"),
       },
+      {
+        directory: path.join(__dirname, "mock"),
+      },
     ],
     hot: true,
   },
