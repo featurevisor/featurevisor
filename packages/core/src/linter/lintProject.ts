@@ -1,7 +1,7 @@
 // for use in node only
 import * as Joi from "joi";
 
-import { getAttributeJoiSchema } from "./attributeSchema";
+import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsJoiSchema } from "./conditionSchema";
 import { getSegmentJoiSchema } from "./segmentSchema";
 import { getGroupJoiSchema } from "./groupSchema";
@@ -9,7 +9,7 @@ import { getFeatureJoiSchema } from "./featureSchema";
 import { getTestsJoiSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
-import { printJoiError } from "./printJoiError";
+import { printJoiError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 
 export async function lintProject(deps: Dependencies): Promise<boolean> {
@@ -25,21 +25,19 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const attributes = await datasource.listAttributes();
   console.log(`Linting ${attributes.length} attributes...\n`);
 
-  const attributeJoiSchema = getAttributeJoiSchema();
+  const attributeZodSchema = getAttributeZodSchema();
 
   for (const key of attributes) {
     const parsed = await datasource.readAttribute(key);
     availableAttributeKeys.push(key);
 
-    try {
-      await attributeJoiSchema.validateAsync(parsed);
-    } catch (e) {
+    const result = attributeZodSchema.safeParse(parsed);
+
+    if (!result.success) {
       console.log("  =>", key);
 
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+      if ("error" in result) {
+        printZodError(result.error);
       }
 
       hasError = true;
