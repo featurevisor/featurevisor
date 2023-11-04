@@ -1,12 +1,12 @@
 import * as React from "react";
-
+import { Link } from "react-router-dom";
 import { UserCircleIcon } from "@heroicons/react/20/solid";
 
 import { Alert } from "./Alert";
 import { PrettyDate } from "./PrettyDate";
 import { useSearchIndex } from "../hooks/useSearchIndex";
 
-const entriesPerPage = 50;
+const entriesPerPage = 5;
 const initialMaxEntitiesCount = 10;
 
 function Activity(props) {
@@ -23,9 +23,12 @@ function Activity(props) {
       {entry.entities.length === 1 ? (
         <>
           {entry.entities[0].type}{" "}
-          <a href="#" className="font-semibold text-gray-600">
+          <Link
+            to={`/${entry.entities[0].type}s/${entry.entities[0].key}`}
+            className="font-semibold text-gray-600"
+          >
             {entry.entities[0].key}
-          </a>
+          </Link>
         </>
       ) : (
         ""
@@ -46,16 +49,25 @@ function Activity(props) {
               return (
                 <li key={index}>
                   <span className="text-gray-400">{entity.type}</span>{" "}
-                  <a href="#" className="font-semibold text-gray-500">
+                  <Link
+                    to={`/${entity.type}s/${entity.key}`}
+                    className="font-semibold text-gray-500"
+                  >
                     {entity.key}
-                  </a>
+                  </Link>
                 </li>
               );
             })}
 
             {!showAll && entry.entities.length > initialMaxEntitiesCount && (
               <li key="show-all">
-                <a href="#" className="font-bold underline" onClick={() => setShowAll(true)}>
+                <a
+                  href="javascript:void(0)"
+                  className="font-bold underline"
+                  onClick={() => {
+                    setShowAll(true);
+                  }}
+                >
                   Show all
                 </a>
               </li>
@@ -146,9 +158,11 @@ export function HistoryTimeline(props: HistoryTimelineProps) {
 
           {historyEntries.length > entriesToRender.length && (
             <a
-              href="#"
+              href="javascript:void(0)"
               className="text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
-              onClick={() => setPage(page + 1)}
+              onClick={() => {
+                setPage(page + 1);
+              }}
             >
               Load more
             </a>
