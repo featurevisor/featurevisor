@@ -61,7 +61,7 @@ export async function testFeature(
 
         console.error(
           CLI_FORMAT_RED,
-          `    isEnabled failed: expected "${assertion.expectedToBeEnabled}", got "${isEnabled}"`,
+          `    isEnabled failed: expected "${assertion.expectedToBeEnabled}", received "${isEnabled}"`,
         );
       }
     }
@@ -75,12 +75,22 @@ export async function testFeature(
 
         console.error(
           CLI_FORMAT_RED,
-          `    Variation failed: expected "${assertion.expectedVariation}", got "${variation}"`,
+          `    Variation failed: expected "${assertion.expectedVariation}", received "${variation}"`,
         );
       }
     }
 
     // variables
+    const feature = await datasource.readFeature(featureKey);
+
+    if (!feature) {
+      hasError = true;
+
+      console.error(CLI_FORMAT_RED, `    Feature "${featureKey}" failed: feature not found`);
+
+      continue;
+    }
+
     if (typeof assertion.expectedVariables === "object") {
       Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
         const expectedValue =
@@ -89,23 +99,56 @@ export async function testFeature(
 
         let passed;
 
-        if (typeof expectedValue === "object") {
-          passed = checkIfObjectsAreEqual(expectedValue, actualValue);
-        } else if (Array.isArray(expectedValue)) {
-          passed = checkIfArraysAreEqual(expectedValue, actualValue);
-        } else {
-          passed = expectedValue === actualValue;
-        }
+        const variableSchema = feature.variablesSchema?.find((v) => v.key === variableKey);
 
-        if (!passed) {
+        if (!variableSchema) {
           hasError = true;
 
           console.error(
             CLI_FORMAT_RED,
-            `    Variable "${variableKey}" failed: expected ${JSON.stringify(
-              expectedValue,
-            )}, got "${JSON.stringify(actualValue)}"`,
+            `    Variable "${variableKey}" failed: variable schema not found in feature`,
           );
+
+          return;
+        }
+
+        if (variableSchema.type === "json") {
+          // JSON type
+          const parsedExpectedValue =
+            typeof expectedValue === "string" ? JSON.parse(expectedValue as string) : expectedValue;
+
+          if (Array.isArray(actualValue)) {
+            passed = checkIfArraysAreEqual(parsedExpectedValue, actualValue);
+          } else if (typeof actualValue === "object") {
+            passed = checkIfObjectsAreEqual(parsedExpectedValue, actualValue);
+          } else {
+            passed = JSON.stringify(parsedExpectedValue) === JSON.stringify(actualValue);
+          }
+
+          if (!passed) {
+            console.error(CLI_FORMAT_RED, `    Variable "${variableKey}" failed:`);
+            console.error(CLI_FORMAT_RED, `      expected: ${JSON.stringify(parsedExpectedValue)}`);
+            console.error(CLI_FORMAT_RED, `      received: ${JSON.stringify(actualValue)}`);
+          }
+        } else {
+          // other types
+          if (typeof expectedValue === "object") {
+            passed = checkIfObjectsAreEqual(expectedValue, actualValue);
+          } else if (Array.isArray(expectedValue)) {
+            passed = checkIfArraysAreEqual(expectedValue, actualValue);
+          } else {
+            passed = expectedValue === actualValue;
+          }
+
+          if (!passed) {
+            console.error(CLI_FORMAT_RED, `    Variable "${variableKey}" failed:`);
+            console.error(CLI_FORMAT_RED, `      expected: ${JSON.stringify(expectedValue)}`);
+            console.error(CLI_FORMAT_RED, `      received: ${JSON.stringify(actualValue)}`);
+          }
+        }
+
+        if (!passed) {
+          hasError = true;
         }
       });
     }

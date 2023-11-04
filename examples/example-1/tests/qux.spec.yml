@@ -31,8 +31,7 @@ assertions:
     expectedToBeEnabled: true
     expectedVariation: b
     expectedVariables:
-      fooConfig:
-        foo: bar b
+      fooConfig: '{ "foo": "bar b" }' # stringified
 
   - at: 67 # (42 * 0.5) + 50
     environment: production
