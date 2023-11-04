@@ -6,7 +6,7 @@ import { Alert } from "./Alert";
 import { PrettyDate } from "./PrettyDate";
 import { useSearchIndex } from "../hooks/useSearchIndex";
 
-const entriesPerPage = 5;
+const entriesPerPage = 50;
 const initialMaxEntitiesCount = 10;
 
 function Activity(props) {
