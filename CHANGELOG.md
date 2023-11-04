@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.59.2](https://github.com/featurevisor/featurevisor/compare/v0.59.1...v0.59.2) (2023-11-04)
+
+
+### Bug Fixes
+
+* entity links from history timeline ([#202](https://github.com/featurevisor/featurevisor/issues/202)) ([3465438](https://github.com/featurevisor/featurevisor/commit/346543801ec301210e9263aae0936993cc6ffc7d))
+
+
+
+
+
 ## [0.59.1](https://github.com/featurevisor/featurevisor/compare/v0.59.0...v0.59.1) (2023-11-04)
 
 
