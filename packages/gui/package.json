@@ -49,9 +49,12 @@
     "@types/react": "^18.0.29",
     "@types/react-dom": "^18.0.11",
     "autoprefixer": "^10.4.16",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.3",
     "html-webpack-plugin": "^5.5.3",
+    "lucide-react": "^0.292.0",
     "postcss": "^8.4.31",
     "postcss-loader": "^7.3.3",
     "react": "^18.2.0",
@@ -59,7 +62,9 @@
     "react-markdown": "^8.0.6",
     "react-router-dom": "^6.10.0",
     "style-loader": "^3.3.2",
+    "tailwind-merge": "^2.0.0",
     "tailwindcss": "^3.3.3",
+    "tailwindcss-animate": "^1.0.7",
     "webpack-merge": "^5.10.0"
   },
   "dependencies": {
