@@ -1,10 +1,10 @@
 // for use in node only
 import * as Joi from "joi";
 
-import { getAttributeZodSchema } from "./attributeSchema";
+import { getAttributeJoiSchema, getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsJoiSchema } from "./conditionSchema";
 import { getSegmentJoiSchema } from "./segmentSchema";
-import { getGroupJoiSchema } from "./groupSchema";
+import { getGroupJoiSchema, getGroupZodSchema } from "./groupSchema";
 import { getFeatureJoiSchema } from "./featureSchema";
 import { getTestsJoiSchema } from "./testSchema";
 
@@ -25,20 +25,42 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const attributes = await datasource.listAttributes();
   console.log(`Linting ${attributes.length} attributes...\n`);
 
+  // const attributeJoiSchema = getAttributeJoiSchema();
   const attributeZodSchema = getAttributeZodSchema();
 
   for (const key of attributes) {
     const parsed = await datasource.readAttribute(key);
     availableAttributeKeys.push(key);
 
-    const result = attributeZodSchema.safeParse(parsed);
+    // try {
+    //   await attributeJoiSchema.validateAsync(parsed);
+    // } catch (e) {
+    //   console.log("  =>", key);
 
-    if (!result.success) {
-      console.log("  =>", key);
+    //   if (e instanceof Joi.ValidationError) {
+    //     printJoiError(e);
+    //   } else {
+    //     console.log(e);
+    //   }
 
-      if ("error" in result) {
-        printZodError(result.error);
+    //   hasError = true;
+    // }
+
+    try {
+      const result = attributeZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        console.log("  =>", key);
+
+        if ("error" in result) {
+          printZodError(result.error);
+        }
+
+        hasError = true;
       }
+    } catch (e) {
+      console.log("  =>", key);
+      printZodError(e);
 
       hasError = true;
     }
@@ -115,21 +137,41 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   console.log(`\nLinting ${groups.length} groups...\n`);
 
   // @TODO: feature it slots can be from availableFeatureKeys only
-  const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
+  // const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
+  const groupZodSchema = getGroupZodSchema(projectConfig, datasource, availableFeatureKeys);
 
   for (const key of groups) {
     const parsed = await datasource.readGroup(key);
 
+    // try {
+    //   await groupJoiSchema.validateAsync(parsed);
+    // } catch (e) {
+    //   console.log("  =>", key);
+
+    //   if (e instanceof Joi.ValidationError) {
+    //     printJoiError(e);
+    //   } else {
+    //     console.log(e);
+    //   }
+
+    //   hasError = true;
+    // }
+
     try {
-      await groupJoiSchema.validateAsync(parsed);
+      const result = groupZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        console.log("  =>", key);
+
+        if ("error" in result) {
+          printZodError(result.error);
+        }
+
+        hasError = true;
+      }
     } catch (e) {
       console.log("  =>", key);
-
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
-      }
+      printZodError(e);
 
       hasError = true;
     }

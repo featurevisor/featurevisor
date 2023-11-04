@@ -1,4 +1,5 @@
 import * as Joi from "joi";
+import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
@@ -60,4 +61,57 @@ export function getGroupJoiSchema(
   });
 
   return groupJoiSchema;
+}
+
+export function getGroupZodSchema(
+  projectConfig: ProjectConfig,
+  datasource: Datasource,
+  availableFeatureKeys: string[],
+) {
+  const groupZodSchema = z.object({
+    description: z.string(),
+    slots: z
+      .array(
+        z.object({
+          feature: z
+            .string()
+            .optional()
+            .refine((value) => {
+              if (value && availableFeatureKeys.indexOf(value) === -1) {
+                // return { message: `feature ${value} not found` };
+
+                throw new z.ZodError([
+                  {
+                    code: z.ZodIssueCode.custom,
+                    message: `feature ${value} not found`,
+                    path: ["slots.{n}.feature"],
+                    params: { value },
+                  },
+                ]);
+              }
+
+              return true;
+            }),
+          percentage: z.number().min(0).max(100),
+        }),
+      )
+      .refine((value) => {
+        const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
+
+        if (totalPercentage !== 100) {
+          throw new z.ZodError([
+            {
+              code: z.ZodIssueCode.custom,
+              message: `Total percentage of all slots should be 100`,
+              path: ["slots"],
+              params: { value },
+            },
+          ]);
+        }
+
+        return true;
+      }),
+  });
+
+  return groupZodSchema;
 }

@@ -37,7 +37,7 @@ environments:
             - paypal
 
       - key: "2"
-        segments: germany
+        segments: germany123
         percentage: 100
         variables:
           paymentMethods:
