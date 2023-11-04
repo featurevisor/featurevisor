@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.59.1](https://github.com/featurevisor/featurevisor/compare/v0.59.0...v0.59.1) (2023-11-04)
+
+
+### Bug Fixes
+
+* testing JSON variables in both object and stringified form ([#201](https://github.com/featurevisor/featurevisor/issues/201)) ([c6473da](https://github.com/featurevisor/featurevisor/commit/c6473da1613539ff5d24ed5c0dce587530cd1fc2))
+
+
+
+
+
 # [0.59.0](https://github.com/featurevisor/featurevisor/compare/v0.58.0...v0.59.0) (2023-10-31)
 
 
