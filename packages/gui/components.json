@@ -8,7 +8,7 @@
     "cssVariables": false
   },
   "aliases": {
-    "utils": "../../utils",
-    "components": "../../components"
+    "utils": "src/utils",
+    "components": "src/components"
   }
 }
