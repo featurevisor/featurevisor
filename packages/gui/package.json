@@ -70,6 +70,7 @@
   "dependencies": {
     "@featurevisor/types": "^0.59.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-slot": "^1.0.2"
   }
 }
