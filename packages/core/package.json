@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "0.59.2",
+  "version": "0.59.3",
   "description": "Core package of Featurevisor for Node.js usage",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

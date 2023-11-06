@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.59.3](https://github.com/featurevisor/featurevisor/compare/v0.59.2...v0.59.3) (2023-11-06)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
 ## [0.59.2](https://github.com/featurevisor/featurevisor/compare/v0.59.1...v0.59.2) (2023-11-04)
 
 **Note:** Version bump only for package @featurevisor/example-toml

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.59.3](https://github.com/featurevisor/featurevisor/compare/v0.59.2...v0.59.3) (2023-11-06)
+
+
+### Bug Fixes
+
+* testing nested objects equality ([#204](https://github.com/featurevisor/featurevisor/issues/204)) ([b71d54a](https://github.com/featurevisor/featurevisor/commit/b71d54ab8043b63f010721a9e9afd7d9579d3c75))
+
+
+
+
+
 ## [0.59.2](https://github.com/featurevisor/featurevisor/compare/v0.59.1...v0.59.2) (2023-11-04)
 
 
