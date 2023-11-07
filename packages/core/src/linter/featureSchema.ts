@@ -65,7 +65,8 @@ export function getFeatureJoiSchema(
     rules: Joi.array()
       .items(
         Joi.object({
-          key: Joi.string(),
+          key: Joi.string().required(),
+          description: Joi.string().optional(),
           segments: groupSegmentsJoiSchema,
           percentage: Joi.number().precision(3).min(0).max(100),
 
