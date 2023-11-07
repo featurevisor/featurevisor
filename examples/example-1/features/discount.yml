@@ -17,6 +17,7 @@ environments:
   production:
     rules:
       - key: "2"
+        description: "Black Friday Weekend rule here"
         segments:
           - blackFridayWeekend
         percentage: 100
