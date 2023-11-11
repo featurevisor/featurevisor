@@ -21,6 +21,10 @@ const items = [
     title: "Attributes",
     href: "/attributes",
   },
+  {
+    title: "History",
+    href: "/history",
+  },
 ];
 
 export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
