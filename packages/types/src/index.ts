@@ -280,6 +280,7 @@ export type RuleKey = string;
 
 export interface Rule {
   key: RuleKey;
+  description?: string; // only available in YAML
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
 
