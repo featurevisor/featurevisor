@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { cn } from "../../utils";
 
+// @TODO: make it a prop
 const items = [
   {
     title: "Overview",

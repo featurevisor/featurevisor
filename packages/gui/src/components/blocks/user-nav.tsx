@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
+// @TODO: make it a prop
 const user = {
   avatarImageSrc: "/avatars/01.png",
   name: "Fahad Heylaal",
