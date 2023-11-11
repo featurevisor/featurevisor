@@ -1,23 +1,19 @@
 import * as React from "react";
-import { Terminal } from "lucide-react";
 
-import { Button } from "./ui/button";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { MainNav } from "./blocks/main-nav";
+import { UserNav } from "./blocks/user-nav";
 
 export function App() {
   return (
     <div>
-      <h1>App here...</h1>
-
-      <Button variant="outline">Button</Button>
-
-      <Alert>
-        <Terminal className="h-4 w-4" />
-        <AlertTitle>Heads up!</AlertTitle>
-        <AlertDescription>
-          You can add components and dependencies to your app using the cli.
-        </AlertDescription>
-      </Alert>
+      <div className="border-b">
+        <div className="flex h-16 items-center px-4">
+          <MainNav className="mx-6" />
+          <div className="ml-auto flex items-center space-x-4">
+            <UserNav />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
