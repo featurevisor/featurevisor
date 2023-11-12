@@ -38,8 +38,10 @@ export function UserNav({ user }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <Link to="profile">Update profile</Link>
+          <DropdownMenuItem className="block">
+            <Link className="block" to="settings">
+              Settings
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

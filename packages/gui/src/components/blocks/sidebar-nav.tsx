@@ -12,7 +12,7 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
-  const pathname = window.location.pathname; // @TODO: fix it
+  const pathname = window.location.hash.replace(/^#/, "");
 
   return (
     <nav
