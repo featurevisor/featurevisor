@@ -1,24 +1,13 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
-
-import { Separator } from "./ui/separator";
+import { Link, Routes, Route } from "react-router-dom";
 
 import { MainNav } from "./blocks/main-nav";
 import { UserNav } from "./blocks/user-nav";
-import { SidebarNav } from "./blocks/sidebar-nav";
+
+import { DashboardPage } from "./routes/dashboard-page";
+import { ProfilePage } from "./routes/profile-page";
 
 const { useState, useEffect } = React;
-
-const sidebarNavItems = [
-  {
-    title: "Primary",
-    href: "/",
-  },
-  {
-    title: "Secondary",
-    href: "/secondary",
-  },
-];
 
 function Loading() {
   return (
@@ -66,7 +55,12 @@ export function App() {
 
       <div className="max-w-5xl mx-auto">
         <div className="space-y-6 px-4 py-10 pb-16">
-          <div className="space-y-0.5">
+          <Routes>
+            <Route index element={<DashboardPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Routes>
+
+          {/* <div className="space-y-0.5">
             <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
 
             <p className="text-muted-foreground">
@@ -84,7 +78,7 @@ export function App() {
             <div className="flex-1 lg:max-w-2xl">
               <p>Children here...</p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
