@@ -8,7 +8,7 @@ const { useEffect } = React;
 
 const sidebarNavItems = [
   {
-    href: "/settings",
+    href: "/settings/profile",
     title: "Profile",
   },
 ];
