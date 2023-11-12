@@ -15,6 +15,7 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { useToast } from "../ui/use-toast";
 
 const profileFormSchema = z.object({
   name: z
@@ -27,6 +28,7 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 function ProfileForm({ initialUser }) {
+  const { toast } = useToast();
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: initialUser,
@@ -42,9 +44,20 @@ function ProfileForm({ initialUser }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
-    }).then(() => {
-      console.log("success");
-    });
+    })
+      .then(() => {
+        toast({
+          title: "Success!",
+          description: "Your profile has been updated.",
+        });
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          title: "Failed to update :(",
+          description: "An error occurred while updating your profile.",
+        });
+      });
   }
 
   return (
