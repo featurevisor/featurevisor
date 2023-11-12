@@ -1,12 +1,12 @@
 import * as React from "react";
 import { Routes, Route } from "react-router-dom";
 
-import { Loading } from "./blocks/loading";
-import { Header } from "./blocks/header";
+import { Loading } from "../blocks/loading";
+import { Header } from "../blocks/header";
 
-import { DashboardPage } from "./routes/dashboard-page";
-import { SettingsPage } from "./routes/settings-page";
-import { SettingsPageProfile } from "./routes/settings-page-profile";
+import { DashboardPage } from "./dashboard-page";
+import { SettingsPage } from "./settings-page";
+import { SettingsPageProfile } from "./settings-page-profile";
 
 const { useState, useEffect } = React;
 
