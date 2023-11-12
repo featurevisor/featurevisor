@@ -1,25 +1,13 @@
 import * as React from "react";
-import { Link, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
-import { MainNav } from "./blocks/main-nav";
-import { UserNav } from "./blocks/user-nav";
+import { Loading } from "./blocks/loading";
+import { Header } from "./blocks/header";
 
 import { DashboardPage } from "./routes/dashboard-page";
 import { ProfilePage } from "./routes/profile-page";
 
 const { useState, useEffect } = React;
-
-function Loading() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <img
-        src="/favicon-128.png"
-        alt="Featurevisor"
-        className="h-16 transform transition-transform duration-500 animate-pulse"
-      />
-    </div>
-  );
-}
 
 export function App() {
   const [user, setUser] = useState(null);
@@ -36,22 +24,8 @@ export function App() {
   }
 
   return (
-    <div className="">
-      <div className="border-b">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex h-16 items-center px-4">
-            <Link to="/">
-              <img src="/favicon-128.png" alt="Featurevisor" className="h-8" />
-            </Link>
-
-            <MainNav className="mx-6" />
-
-            <div className="ml-auto flex items-center space-x-4">
-              <UserNav user={user} />
-            </div>
-          </div>
-        </div>
-      </div>
+    <div>
+      <Header user={user} />
 
       <div className="max-w-5xl mx-auto">
         <div className="space-y-6 px-4 py-10 pb-16">
