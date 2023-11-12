@@ -1,3 +1,5 @@
+const express = require("express");
+
 /**
  * Stateful data
  */
@@ -10,6 +12,8 @@ let user = {
  * Function setting up dev server for /api endpoints
  */
 module.exports = function setupMockServer(devServer) {
+  devServer.app.use(express.json());
+
   /**
    * Root
    */
