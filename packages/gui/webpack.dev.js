@@ -3,6 +3,7 @@ const { merge } = require("webpack-merge");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const webpackCommon = require("./webpack.common");
+const setupMockServer = require("./mock/setupMockServer");
 
 const webpackConfig = merge(webpackCommon, {
   devtool: "eval-source-map",
@@ -16,11 +17,11 @@ const webpackConfig = merge(webpackCommon, {
       {
         directory: path.join(__dirname, "public"),
       },
-      {
-        directory: path.join(__dirname, "mock"),
-      },
     ],
     hot: true,
+    onBeforeSetupMiddleware: function (devServer) {
+      setupMockServer(devServer);
+    },
   },
 });
 

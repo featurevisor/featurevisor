@@ -7,6 +7,8 @@ import { MainNav } from "./blocks/main-nav";
 import { UserNav } from "./blocks/user-nav";
 import { SidebarNav } from "./blocks/sidebar-nav";
 
+const { useState, useEffect } = React;
+
 const sidebarNavItems = [
   {
     title: "Primary",
@@ -18,7 +20,32 @@ const sidebarNavItems = [
   },
 ];
 
+function Loading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <img
+        src="/favicon-128.png"
+        alt="Featurevisor"
+        className="h-16 transform transition-transform duration-500 animate-pulse"
+      />
+    </div>
+  );
+}
+
 export function App() {
+  const [user, setUser] = useState(null);
+
+  // fetch user
+  useEffect(() => {
+    fetch("/api/user")
+      .then((res) => res.json())
+      .then((data) => setUser(data.data));
+  }, []);
+
+  if (!user) {
+    return <Loading />;
+  }
+
   return (
     <div className="">
       <div className="border-b">
@@ -31,7 +58,7 @@ export function App() {
             <MainNav className="mx-6" />
 
             <div className="ml-auto flex items-center space-x-4">
-              <UserNav />
+              <UserNav user={user} />
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -12,26 +12,18 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-// @TODO: make it a prop
-const user = {
-  avatarImageSrc: "/avatars/01.png",
-  name: "Fahad Heylaal",
-  email: "fh@example.com",
-};
-
 function getInitials(name: string) {
   const [first, last] = name.split(" ");
 
   return `${first[0]}${last[0]}`;
 }
 
-export function UserNav() {
+export function UserNav({ user }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="/avatars/01.png" alt={user.name} />
             <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
           </Avatar>
         </Button>
