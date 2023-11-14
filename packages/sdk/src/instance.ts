@@ -19,7 +19,7 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { createLogger, Logger } from "./logger";
+import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
 import { getBucketedNumber } from "./bucket";
@@ -263,6 +263,10 @@ export class FeaturevisorInstance {
         "Featurevisor SDK instance cannot be created without both `datafile` and `datafileUrl` options",
       );
     }
+  }
+
+  setLogLevels(levels: LogLevel[]) {
+    this.logger.setLevels(levels);
   }
 
   onReady(): Promise<FeaturevisorInstance> {

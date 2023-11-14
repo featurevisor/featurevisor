@@ -25,6 +25,12 @@ export function extractSegmentKeysFromGroupSegments(
         result.add(segmentKey);
       });
     }
+
+    if ("not" in segments) {
+      extractSegmentKeysFromGroupSegments(segments.not).forEach((segmentKey) => {
+        result.add(segmentKey);
+      });
+    }
   }
 
   if (typeof segments === "string") {
@@ -59,6 +65,12 @@ export function extractAttributeKeysFromConditions(
 
   if ("or" in conditions) {
     extractAttributeKeysFromConditions(conditions.or).forEach((attributeKey) => {
+      result.add(attributeKey);
+    });
+  }
+
+  if ("not" in conditions) {
+    extractAttributeKeysFromConditions(conditions.not).forEach((attributeKey) => {
       result.add(attributeKey);
     });
   }
