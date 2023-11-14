@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.61.0](https://github.com/featurevisor/featurevisor/compare/v0.60.1...v0.61.0) (2023-11-14)
+
+
+### Features
+
+* filter tests and support verbosity for debugging ([#212](https://github.com/featurevisor/featurevisor/issues/212)) ([414ef6d](https://github.com/featurevisor/featurevisor/commit/414ef6dd7ad47d287a91088aab474216361ee6c6))
+
+
+
+
+
 ## [0.60.1](https://github.com/featurevisor/featurevisor/compare/v0.60.0...v0.60.1) (2023-11-14)
 
 
