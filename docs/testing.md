@@ -133,7 +133,7 @@ $ featurevisor test --keyPattern="myKeyHere"
 If you are writing assertion descriptions, then you can filter them further using regex patterns:
 
 ```
-$ feature test --keyPattern="myKeyHere" --assertionPattern="text..."
+$ featurevisor test --keyPattern="myKeyHere" --assertionPattern="text..."
 ```
 
 ### `verbose`
