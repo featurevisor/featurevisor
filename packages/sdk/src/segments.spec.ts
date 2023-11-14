@@ -64,6 +64,16 @@ describe("sdk: Segments", function () {
           },
         ],
       },
+
+      // version
+      {
+        key: "notVersion5.5",
+        segments: [
+          {
+            not: ["version_5.5"],
+          },
+        ],
+      },
     ];
 
     const datafileContent: DatafileContent = {
@@ -135,6 +145,27 @@ describe("sdk: Segments", function () {
               attribute: "country",
               operator: "equals",
               value: "de",
+            },
+          ],
+        },
+
+        // version
+        {
+          key: "version_5.5",
+          conditions: [
+            {
+              or: [
+                {
+                  attribute: "version",
+                  operator: "equals",
+                  value: "5.5",
+                },
+                {
+                  attribute: "version",
+                  operator: "equals",
+                  value: 5.5,
+                },
+              ],
             },
           ],
         },
@@ -376,6 +407,33 @@ describe("sdk: Segments", function () {
           datafileReader,
         ),
       ).toEqual(false);
+    });
+
+    it("should match notVersion5.5", function () {
+      const group = groups.find((g) => g.key === "notVersion5.5") as Group;
+
+      // match
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: "5.6" }, datafileReader),
+      ).toEqual(true);
+      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.6 }, datafileReader)).toEqual(
+        true,
+      );
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: "5.7" }, datafileReader),
+      ).toEqual(true);
+      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.7 }, datafileReader)).toEqual(
+        true,
+      );
+
+      // not match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: "5.5" }, datafileReader),
+      ).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.5 }, datafileReader)).toEqual(
+        false,
+      );
     });
   });
 });
