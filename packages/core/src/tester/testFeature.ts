@@ -14,6 +14,7 @@ export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
+  options: { verbose?: boolean } = {},
   patterns,
 ): Promise<boolean> {
   let hasError = false;
@@ -54,10 +55,11 @@ export async function testFeature(
       configureBucketValue: () => {
         return assertion.at * (MAX_BUCKETED_NUMBER / 100);
       },
-      // logger: createLogger({
-      //   levels: ["debug", "info", "warn", "error"],
-      // }),
     });
+
+    if (options.verbose) {
+      sdk.setLogLevels(["debug", "info", "warn", "error"]);
+    }
 
     // isEnabled
     if ("expectedToBeEnabled" in assertion) {

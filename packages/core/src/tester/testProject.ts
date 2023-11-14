@@ -10,6 +10,7 @@ import { Dependencies } from "../dependencies";
 export interface TestProjectOptions {
   keyPattern?: string;
   assertionPattern?: string;
+  verbose?: boolean;
 }
 
 export async function testProject(
@@ -71,7 +72,7 @@ export async function testProject(
 
       console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
-      const featureHasError = await testFeature(datasource, projectConfig, test, patterns);
+      const featureHasError = await testFeature(datasource, projectConfig, test, options, patterns);
 
       if (featureHasError) {
         hasError = true;

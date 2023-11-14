@@ -141,6 +141,7 @@ async function main() {
         const testOptions: TestProjectOptions = {
           keyPattern: options.keyPattern,
           assertionPattern: options.assertionPattern,
+          verbose: options.verbose || false,
         };
 
         const hasError = await testProject(deps, testOptions);
