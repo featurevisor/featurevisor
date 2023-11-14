@@ -16,6 +16,7 @@ import {
   findDuplicateSegmentsInProject,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
+  TestProjectOptions,
   restoreProject,
   Dependencies,
   Datasource,
@@ -137,7 +138,13 @@ async function main() {
       handler: async function (options) {
         const deps = await getDependencies(options);
 
-        const hasError = await testProject(deps);
+        const testOptions: TestProjectOptions = {
+          keyPattern: options.keyPattern,
+          assertionPattern: options.assertionPattern,
+          verbose: options.verbose || false,
+        };
+
+        const hasError = await testProject(deps, testOptions);
 
         if (hasError) {
           process.exit(1);

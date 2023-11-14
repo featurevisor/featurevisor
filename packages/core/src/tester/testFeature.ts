@@ -14,6 +14,8 @@ export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
+  options: { verbose?: boolean } = {},
+  patterns,
 ): Promise<boolean> {
   let hasError = false;
   const featureKey = test.feature;
@@ -22,9 +24,15 @@ export async function testFeature(
 
   for (let aIndex = 0; aIndex < test.assertions.length; aIndex++) {
     const assertion = test.assertions[aIndex];
-    const description = assertion.description || `at ${assertion.at}%`;
+    const description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
+      assertion.description || `at ${assertion.at}%`
+    }`;
 
-    console.log(`  Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`);
+    if (patterns.assertionPattern && !patterns.assertionPattern.test(description)) {
+      continue;
+    }
+
+    console.log(description);
 
     const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
     const featuresToInclude = Array.from(requiredChain);
@@ -47,10 +55,11 @@ export async function testFeature(
       configureBucketValue: () => {
         return assertion.at * (MAX_BUCKETED_NUMBER / 100);
       },
-      // logger: createLogger({
-      //   levels: ["debug", "info", "warn", "error"],
-      // }),
     });
+
+    if (options.verbose) {
+      sdk.setLogLevels(["debug", "info", "warn", "error"]);
+    }
 
     // isEnabled
     if ("expectedToBeEnabled" in assertion) {

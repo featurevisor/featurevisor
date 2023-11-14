@@ -5,7 +5,11 @@ import { Datasource } from "../datasource";
 
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 
-export async function testSegment(datasource: Datasource, test: TestSegment): Promise<boolean> {
+export async function testSegment(
+  datasource: Datasource,
+  test: TestSegment,
+  patterns,
+): Promise<boolean> {
   let hasError = false;
 
   const segmentKey = test.segment;
@@ -25,9 +29,13 @@ export async function testSegment(datasource: Datasource, test: TestSegment): Pr
   const conditions = parsedSegment.conditions as Condition | Condition[];
 
   test.assertions.forEach(function (assertion, aIndex) {
-    const description = assertion.description || `#${aIndex + 1}`;
+    const description = `  Assertion #${aIndex + 1}: ${assertion.description || `#${aIndex + 1}`}`;
 
-    console.log(`  Assertion #${aIndex + 1}: ${description}`);
+    if (patterns.assertionPattern && !patterns.assertionPattern.test(description)) {
+      return;
+    }
+
+    console.log(description);
 
     const expected = assertion.expectedToMatch;
     const actual = allConditionsAreMatched(conditions, assertion.context);

@@ -117,3 +117,49 @@ $ featurevisor test
 ```
 
 If any of your assertions fail in any test specs, it will terminate with a non-zero exit code.
+
+## CLI options
+
+### `keyPattern`
+
+You can also filter tests by feature or segment keys using regex patterns:
+
+```
+$ featurevisor test --keyPattern="myKeyHere"
+```
+
+### `assertionPattern`
+
+If you are writing assertion descriptions, then you can filter them further using regex patterns:
+
+```
+$ featurevisor test --keyPattern="myKeyHere" --assertionPattern="text..."
+```
+
+### `verbose`
+
+For debugging purposes, you can enable verbose mode to see more details of your assertion evaluations
+
+```
+$ featurevisor test --verbose
+```
+
+## NPM scripts
+
+If you are using npm scripts for testing your Featurevisor project like this:
+
+```js
+// package.json
+
+{
+  "scripts": {
+    "test": "featurevisor test"
+  }
+}
+```
+
+You can then pass your options in CLI after `--`:
+
+```
+$ npm test -- --keyPattern="myKeyHere"
+```
