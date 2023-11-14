@@ -14,6 +14,7 @@ export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
+  patterns,
 ): Promise<boolean> {
   let hasError = false;
   const featureKey = test.feature;
@@ -22,9 +23,15 @@ export async function testFeature(
 
   for (let aIndex = 0; aIndex < test.assertions.length; aIndex++) {
     const assertion = test.assertions[aIndex];
-    const description = assertion.description || `at ${assertion.at}%`;
+    const description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
+      assertion.description || `at ${assertion.at}%`
+    }`;
 
-    console.log(`  Assertion #${aIndex + 1}: (${assertion.environment}) ${description}`);
+    if (patterns.assertionPattern && !patterns.assertionPattern.test(description)) {
+      continue;
+    }
+
+    console.log(description);
 
     const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
     const featuresToInclude = Array.from(requiredChain);

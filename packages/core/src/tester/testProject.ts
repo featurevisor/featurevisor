@@ -7,7 +7,15 @@ import { testFeature } from "./testFeature";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
 
-export async function testProject(deps: Dependencies): Promise<boolean> {
+export interface TestProjectOptions {
+  keyPattern?: string;
+  assertionPattern?: string;
+}
+
+export async function testProject(
+  deps: Dependencies,
+  options: TestProjectOptions = {},
+): Promise<boolean> {
   const { rootDirectoryPath, projectConfig, datasource } = deps;
 
   let hasError = false;
@@ -28,11 +36,13 @@ export async function testProject(deps: Dependencies): Promise<boolean> {
     return hasError;
   }
 
+  const patterns = {
+    keyPattern: options.keyPattern ? new RegExp(options.keyPattern) : undefined,
+    assertionPattern: options.assertionPattern ? new RegExp(options.assertionPattern) : undefined,
+  };
+
   for (const testFile of testFiles) {
     const testFilePath = datasource.getTestSpecName(testFile);
-
-    console.log("");
-    console.log(CLI_FORMAT_BOLD, `Testing: ${testFilePath.replace(rootDirectoryPath, "")}`);
 
     const t = await datasource.readTest(testFile);
 
@@ -40,7 +50,13 @@ export async function testProject(deps: Dependencies): Promise<boolean> {
       // segment testing
       const test = t as TestSegment;
 
-      const segmentHasError = await testSegment(datasource, test);
+      if (patterns.keyPattern && !patterns.keyPattern.test(test.segment)) {
+        continue;
+      }
+
+      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+
+      const segmentHasError = await testSegment(datasource, test, patterns);
 
       if (segmentHasError) {
         hasError = true;
@@ -49,7 +65,13 @@ export async function testProject(deps: Dependencies): Promise<boolean> {
       // feature testing
       const test = t as TestFeature;
 
-      const featureHasError = await testFeature(datasource, projectConfig, test);
+      if (patterns.keyPattern && !patterns.keyPattern.test(test.feature)) {
+        continue;
+      }
+
+      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+
+      const featureHasError = await testFeature(datasource, projectConfig, test, patterns);
 
       if (featureHasError) {
         hasError = true;
