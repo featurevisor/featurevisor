@@ -1,0 +1,19 @@
+description: Checks `not` operator in segments
+tags:
+  - all
+
+bucketBy: userId
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments:
+          - not:
+              - version_5.5
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 80
