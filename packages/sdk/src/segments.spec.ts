@@ -413,6 +413,8 @@ describe("sdk: Segments", function () {
       const group = groups.find((g) => g.key === "notVersion5.5") as Group;
 
       // match
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(true);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(true);
       expect(
         allGroupSegmentsAreMatched(group.segments, { version: "5.6" }, datafileReader),
       ).toEqual(true);
@@ -427,7 +429,6 @@ describe("sdk: Segments", function () {
       );
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(group.segments, { version: "5.5" }, datafileReader),
       ).toEqual(false);

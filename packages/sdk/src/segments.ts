@@ -39,9 +39,8 @@ export function allGroupSegmentsAreMatched(
     }
 
     if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
-      return groupSegments.not.every(
-        (groupSegment) =>
-          allGroupSegmentsAreMatched(groupSegment, context, datafileReader) === false,
+      return (
+        allGroupSegmentsAreMatched({ and: groupSegments.not }, context, datafileReader) === false
       );
     }
   }
