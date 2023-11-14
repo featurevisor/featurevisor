@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.60.1](https://github.com/featurevisor/featurevisor/compare/v0.60.0...v0.60.1) (2023-11-14)
+
+
+### Bug Fixes
+
+* using not operator in feature rules ([#211](https://github.com/featurevisor/featurevisor/issues/211)) ([dd7fda3](https://github.com/featurevisor/featurevisor/commit/dd7fda38d87181a06d9dbfe08676dfd99afab539))
+
+
+
+
+
 # [0.60.0](https://github.com/featurevisor/featurevisor/compare/v0.59.3...v0.60.0) (2023-11-07)
 
 
