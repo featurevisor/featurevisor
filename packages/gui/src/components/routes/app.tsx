@@ -32,7 +32,7 @@ export function App() {
       <Header user={user} />
 
       <div className="max-w-4xl mx-auto">
-        <div className="space-y-6 px-4 py-10 pb-16">
+        <div className="space-y-6 px-4 py-10 pb-32">
           <Routes>
             {/* Dashboard */}
             <Route index element={<DashboardPage />} />
@@ -48,6 +48,15 @@ export function App() {
             </Route>
           </Routes>
         </div>
+      </div>
+
+      <div className="text-center text-xs border-t pt-8 text-gray-500 fixed inset-x-0 bottom-8 bg-white">
+        <p>
+          Built with{" "}
+          <a href="https://featurevisor.com" className="underline" target="_blank">
+            Featurevisor
+          </a>
+        </p>
       </div>
 
       <Toaster />

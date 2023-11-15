@@ -36,6 +36,8 @@ module.exports = function setupMockServer(devServer) {
   let isReady = false;
 
   devServer.app.use(async function (req, res, next) {
+    console.log(`[${req.method}]`, req.url);
+
     if (isReady) {
       return next();
     }
@@ -47,7 +49,7 @@ module.exports = function setupMockServer(devServer) {
     for (const attributeKey of attributesList) {
       const attribute = await datasource.readAttribute(attributeKey);
       entities.attributes.push({
-        key: attributeKey,
+        key: attributeKey, // @TODO: verify that datasource is returning `key` property
         ...attribute,
       });
     }
