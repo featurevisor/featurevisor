@@ -146,6 +146,98 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  devServer.app.put("/api/attributes/:key", function (req, res) {
+    const index = entities.attributes.findIndex((attribute) => attribute.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: "Attribute not found",
+        },
+      });
+    }
+
+    const attribute = entities.attributes[index];
+    entities.attributes[index] = {
+      ...attribute,
+      ...req.body,
+    };
+
+    res.json({
+      data: {
+        ...entities.attributes[index],
+        key: req.params.key,
+      },
+    });
+  });
+
+  devServer.app.post("/api/attributes", function (req, res) {
+    const attribute = req.body;
+
+    entities.attributes.push(attribute);
+
+    res.json({
+      data: attribute,
+    });
+  });
+
+  devServer.app.patch("/api/attributes/:key/rename", function (req, res) {
+    const index = entities.attributes.findIndex((attribute) => attribute.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: "Attribute not found",
+        },
+      });
+    }
+
+    const newKeyAlreadyExists = entities.attributes.some(
+      (attribute) => attribute.key === req.body.key,
+    );
+
+    if (newKeyAlreadyExists) {
+      return res.status(400).json({
+        error: {
+          message: "Attribute with new key already exists",
+        },
+      });
+    }
+
+    const attribute = entities.attributes[index];
+    entities.attributes[index] = {
+      ...attribute,
+      key: req.body.key,
+    };
+
+    // @TODO: update all references to this attribute in segments and features
+
+    res.json({
+      data: {
+        ...entities.attributes[index],
+        key: req.body.key,
+      },
+    });
+  });
+
+  devServer.app.delete("/api/attributes/:key", function (req, res) {
+    const index = entities.attributes.findIndex((attribute) => attribute.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: "Attribute not found",
+        },
+      });
+    }
+
+    entities.attributes.splice(index, 1);
+
+    res.json({
+      data: {},
+    });
+  });
+
   /**
    * Segments
    */
