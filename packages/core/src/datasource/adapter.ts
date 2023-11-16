@@ -30,9 +30,10 @@ export abstract class Adapter {
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 
   // history
-  abstract listHistoryEntries(
-    enitityType?: EntityType,
+  abstract listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]>;
+  abstract readCommit(
+    commit: CommitHash,
+    entityType?: EntityType,
     entityKey?: string,
-  ): Promise<HistoryEntry[]>;
-  abstract readCommit(commit: CommitHash): Promise<Commit>;
+  ): Promise<Commit>;
 }

@@ -19,6 +19,10 @@ import {
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
+const fileDiffRegex =
+  /^diff --git a\/(.+) b\/.+\n((?:new file mode \d+\n)?index .+\n)?((?:--- \/dev\/null\n\+\+\+ b\/.+\n)?@@ -\d+,\d+ \+\d+,\d+ @@\n)?((?:.+\n)*)/gm;
+
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
   environment: EnvironmentKey,
@@ -185,11 +189,11 @@ export class FilesystemAdapter extends Adapter {
     return execSync(fullCommand, { encoding: "utf8" }).toString();
   }
 
-  async listHistoryEntries(entityType?: EntityType, enitityKey?: string): Promise<HistoryEntry[]> {
+  getPathPatterns(entityType?: EntityType, entityKey?: string): string[] {
     let pathPatterns: string[] = [];
 
-    if (entityType && enitityKey) {
-      pathPatterns = [this.getEntityPath(entityType, enitityKey)];
+    if (entityType && entityKey) {
+      pathPatterns = [this.getEntityPath(entityType, entityKey)];
     } else if (entityType) {
       if (entityType === "attribute") {
         pathPatterns = [this.config.attributesDirectoryPath];
@@ -212,6 +216,11 @@ export class FilesystemAdapter extends Adapter {
       ];
     }
 
+    return pathPatterns.map((p) => p.replace((this.rootDirectoryPath as string) + path.sep, ""));
+  }
+
+  async listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]> {
+    const pathPatterns = this.getPathPatterns(entityType, entityKey);
     const rawHistory = this.getRawHistory(pathPatterns);
 
     const fullHistory: HistoryEntry[] = [];
@@ -231,9 +240,9 @@ export class FilesystemAdapter extends Adapter {
 
       const entities: HistoryEntity[] = [];
 
-      const filePathlines = lines.slice(1);
-      for (let j = 0; j < filePathlines.length; j++) {
-        const relativePath = filePathlines[j];
+      const filePathLines = lines.slice(1);
+      for (let j = 0; j < filePathLines.length; j++) {
+        const relativePath = filePathLines[j];
         const absolutePath = path.join(this.rootDirectoryPath as string, relativePath);
         const fileName = absolutePath.split(path.sep).pop() as string;
         const relativeDir = path.dirname(absolutePath);
@@ -276,7 +285,85 @@ export class FilesystemAdapter extends Adapter {
     return fullHistory;
   }
 
-  readCommit(commit: CommitHash): Promise<Commit> {
-    throw new Error("Method not implemented.");
+  async readCommit(
+    commitHash: CommitHash,
+    entityType?: EntityType,
+    entityKey?: string,
+  ): Promise<Commit> {
+    const pathPatterns = this.getPathPatterns(entityType, entityKey);
+    const gitPaths = pathPatterns.join(" ");
+    const logCommand = `git show ${commitHash} --relative -- ${gitPaths}`;
+    const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
+
+    console.log("fullCommand", fullCommand);
+
+    const diffContent = execSync(fullCommand, { encoding: "utf8" }).toString();
+
+    console.log("===============");
+    console.log(diffContent);
+    console.log("===============\n\n");
+
+    const commit: Commit = {
+      hash: commitHash,
+      author: "...",
+      timestamp: "...",
+      entities: [],
+    };
+
+    const parsedDiffs: any[] = [];
+    let commitMatch;
+    while ((commitMatch = commitRegex.exec(diffContent)) !== null) {
+      const [_, _commitHash, authorName, authorEmail, timestamp, description] = commitMatch; // eslint-disable-line
+      let fileDiffMatch;
+      while ((fileDiffMatch = fileDiffRegex.exec(diffContent)) !== null) {
+        const [__, filePath, newFileMode, index, diffLines] = fileDiffMatch; // eslint-disable-line
+
+        let changeType;
+        if (newFileMode) {
+          changeType = "created";
+        } else if (!diffLines) {
+          changeType = "deleted";
+        } else {
+          changeType = "updated";
+        }
+
+        console.log({ filePath });
+        const absolutePath = path.join(this.rootDirectoryPath as string, filePath);
+        let type;
+        if (absolutePath.startsWith(this.config.attributesDirectoryPath)) {
+          type = "attribute";
+        } else if (absolutePath.startsWith(this.config.segmentsDirectoryPath)) {
+          type = "segment";
+        } else if (absolutePath.startsWith(this.config.featuresDirectoryPath)) {
+          type = "feature";
+        } else if (absolutePath.startsWith(this.config.groupsDirectoryPath)) {
+          type = "group";
+        } else if (absolutePath.startsWith(this.config.testsDirectoryPath)) {
+          type = "test";
+        } else {
+          continue;
+        }
+
+        const key = (filePath.split(path.sep).pop() as string).replace(
+          `.${this.parser.extension}`,
+          "",
+        );
+
+        const entityDiff: EntityDiff = {
+          type,
+          key,
+          created: changeType === "created",
+          deleted: changeType === "deleted",
+          updated: changeType === "updated",
+          content: diffLines,
+        };
+
+        commit.entities.push(entityDiff);
+      }
+    }
+
+    console.log(parsedDiffs);
+
+    return commit;
   }
 }

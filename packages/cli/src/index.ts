@@ -225,6 +225,29 @@ async function main() {
     .example("$0 history --type=group", "list all group changes")
     .example("$0 history --type=feature --key=someKey", "list specific feature changes")
 
+    .command({
+      command: "show-commit",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          const { datasource } = deps;
+
+          const commit = await datasource.readCommit(options.hash, options.type, options.key);
+
+          console.log(commit);
+
+          console.log("\n\n\n======\n\n\n");
+
+          console.log(JSON.stringify(commit, null, 2));
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 show-commit --hash=...", "show diff of a commit")
+
     /**
      * Generate code
      */

@@ -190,11 +190,11 @@ export class Datasource {
   }
 
   // history
-  listHistoryEntries(enitityType?: EntityType, entityKey?: string) {
-    return this.adapter.listHistoryEntries(enitityType, entityKey);
+  listHistoryEntries(entityType?: EntityType, entityKey?: string) {
+    return this.adapter.listHistoryEntries(entityType, entityKey);
   }
 
-  readCommit(commit: string) {
-    return this.adapter.readCommit(commit);
+  readCommit(commitHash: string, entityType?: EntityType, entityKey?: string) {
+    return this.adapter.readCommit(commitHash, entityType, entityKey);
   }
 }
