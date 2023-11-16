@@ -384,20 +384,24 @@ export type Test = TestSegment | TestFeature;
 /**
  * Site index and history
  */
+export type EntityType = "attribute" | "segment" | "feature" | "group" | "test";
+
+export type CommitHash = string;
+
 export interface HistoryEntity {
-  type: "attribute" | "segment" | "feature";
+  type: EntityType;
   key: string;
 }
 
 export interface HistoryEntry {
-  commit: string;
+  commit: CommitHash;
   author: string;
   timestamp: string;
   entities: HistoryEntity[];
 }
 
 export interface LastModified {
-  commit: string;
+  commit: CommitHash;
   timestamp: string;
   author: string;
 }
@@ -407,7 +411,7 @@ export interface SearchIndex {
     feature: string;
     segment: string;
     attribute: string;
-    commit: string;
+    commit: CommitHash;
   };
   entities: {
     attributes: (Attribute & {
@@ -423,4 +427,20 @@ export interface SearchIndex {
       lastModified?: LastModified;
     })[];
   };
+}
+
+export interface EntityDiff {
+  type: EntityType;
+  key: string;
+  created?: boolean;
+  deleted?: boolean;
+  updated?: boolean;
+  content?: string;
+}
+
+export interface Commit {
+  hash: CommitHash;
+  author: string;
+  timestamp: string;
+  entities: EntityDiff[];
 }

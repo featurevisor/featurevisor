@@ -123,3 +123,20 @@ We can find these duplicates early on by running:
 ```
 $ featurevisor find-duplicate-segments
 ```
+
+## History
+
+Show history of changes from Git:
+
+```
+$ featurevisor history
+$ featurevisor history --type=feature
+$ featurevisor history --type=feature --key=someKey
+```
+
+`--type` can be either:
+
+- `feature`
+- `segment`
+- `attribute
+- `group`

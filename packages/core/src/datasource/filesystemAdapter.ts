@@ -1,11 +1,22 @@
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
-import { ExistingState, EnvironmentKey, DatafileContent } from "@featurevisor/types";
+import {
+  ExistingState,
+  EnvironmentKey,
+  DatafileContent,
+  EntityType,
+  HistoryEntry,
+  Commit,
+  CommitHash,
+  EntityDiff,
+  HistoryEntity,
+} from "@featurevisor/types";
 
-import { Adapter, EntityType, DatafileOptions } from "./adapter";
+import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 
 export function getExistingStateFilePath(
@@ -18,7 +29,7 @@ export function getExistingStateFilePath(
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig) {
+  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
     super();
 
     this.parser = config.parser as CustomParser;
@@ -160,5 +171,112 @@ export class FilesystemAdapter extends Adapter {
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
     console.log(`     Datafile generated: ${shortPath}`);
+  }
+
+  /**
+   * History
+   */
+  getRawHistory(pathPatterns: string[]) {
+    const gitPaths = pathPatterns.join(" ");
+
+    const logCommand = `git log --name-only --pretty=format:"%h|%an|%aI" --relative --no-merges -- ${gitPaths}`;
+    const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
+
+    return execSync(fullCommand, { encoding: "utf8" }).toString();
+  }
+
+  async listHistoryEntries(entityType?: EntityType, enitityKey?: string): Promise<HistoryEntry[]> {
+    let pathPatterns: string[] = [];
+
+    if (entityType && enitityKey) {
+      pathPatterns = [this.getEntityPath(entityType, enitityKey)];
+    } else if (entityType) {
+      if (entityType === "attribute") {
+        pathPatterns = [this.config.attributesDirectoryPath];
+      } else if (entityType === "segment") {
+        pathPatterns = [this.config.segmentsDirectoryPath];
+      } else if (entityType === "feature") {
+        pathPatterns = [this.config.featuresDirectoryPath];
+      } else if (entityType === "group") {
+        pathPatterns = [this.config.groupsDirectoryPath];
+      } else if (entityType === "test") {
+        pathPatterns = [this.config.testsDirectoryPath];
+      }
+    } else {
+      pathPatterns = [
+        this.config.featuresDirectoryPath,
+        this.config.attributesDirectoryPath,
+        this.config.segmentsDirectoryPath,
+        this.config.groupsDirectoryPath,
+        this.config.testsDirectoryPath,
+      ];
+    }
+
+    const rawHistory = this.getRawHistory(pathPatterns);
+
+    const fullHistory: HistoryEntry[] = [];
+    const blocks = rawHistory.split("\n\n");
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+
+      if (block.length === 0) {
+        continue;
+      }
+
+      const lines = block.split("\n");
+
+      const commitLine = lines[0];
+      const [commitHash, author, timestamp] = commitLine.split("|");
+
+      const entities: HistoryEntity[] = [];
+
+      const filePathlines = lines.slice(1);
+      for (let j = 0; j < filePathlines.length; j++) {
+        const relativePath = filePathlines[j];
+        const absolutePath = path.join(this.rootDirectoryPath as string, relativePath);
+        const fileName = absolutePath.split(path.sep).pop() as string;
+        const relativeDir = path.dirname(absolutePath);
+
+        const key = fileName.replace("." + this.parser.extension, "");
+
+        let type: EntityType = "attribute";
+        if (relativeDir === this.config.attributesDirectoryPath) {
+          type = "attribute";
+        } else if (relativeDir === this.config.segmentsDirectoryPath) {
+          type = "segment";
+        } else if (relativeDir === this.config.featuresDirectoryPath) {
+          type = "feature";
+        } else if (relativeDir === this.config.groupsDirectoryPath) {
+          type = "group";
+        } else if (relativeDir === this.config.testsDirectoryPath) {
+          type = "test";
+        } else {
+          continue;
+        }
+
+        entities.push({
+          type,
+          key,
+        });
+      }
+
+      if (entities.length === 0) {
+        continue;
+      }
+
+      fullHistory.push({
+        commit: commitHash,
+        author,
+        timestamp,
+        entities,
+      });
+    }
+
+    return fullHistory;
+  }
+
+  readCommit(commit: CommitHash): Promise<Commit> {
+    throw new Error("Method not implemented.");
   }
 }
