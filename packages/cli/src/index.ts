@@ -46,7 +46,7 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
 async function getDependencies(options): Promise<Dependencies> {
   const rootDirectoryPath = process.cwd();
   const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
-  const datasource = new Datasource(projectConfig);
+  const datasource = new Datasource(projectConfig, rootDirectoryPath);
 
   return {
     rootDirectoryPath,

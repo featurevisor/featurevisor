@@ -1,12 +1,25 @@
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
-import { ExistingState, EnvironmentKey, DatafileContent } from "@featurevisor/types";
+import {
+  ExistingState,
+  EnvironmentKey,
+  DatafileContent,
+  EntityType,
+  HistoryEntry,
+  Commit,
+  CommitHash,
+  HistoryEntity,
+} from "@featurevisor/types";
 
-import { Adapter, EntityType, DatafileOptions } from "./adapter";
+import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
+import { getCommit } from "../utils/git";
+
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -18,7 +31,7 @@ export function getExistingStateFilePath(
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig) {
+  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
     super();
 
     this.parser = config.parser as CustomParser;
@@ -160,5 +173,132 @@ export class FilesystemAdapter extends Adapter {
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
     console.log(`     Datafile generated: ${shortPath}`);
+  }
+
+  /**
+   * History
+   */
+  getRawHistory(pathPatterns: string[]) {
+    const gitPaths = pathPatterns.join(" ");
+
+    const logCommand = `git log --name-only --pretty=format:"%h|%an|%aI" --relative --no-merges -- ${gitPaths}`;
+    const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
+
+    return execSync(fullCommand, { encoding: "utf8" }).toString();
+  }
+
+  getPathPatterns(entityType?: EntityType, entityKey?: string): string[] {
+    let pathPatterns: string[] = [];
+
+    if (entityType && entityKey) {
+      pathPatterns = [this.getEntityPath(entityType, entityKey)];
+    } else if (entityType) {
+      if (entityType === "attribute") {
+        pathPatterns = [this.config.attributesDirectoryPath];
+      } else if (entityType === "segment") {
+        pathPatterns = [this.config.segmentsDirectoryPath];
+      } else if (entityType === "feature") {
+        pathPatterns = [this.config.featuresDirectoryPath];
+      } else if (entityType === "group") {
+        pathPatterns = [this.config.groupsDirectoryPath];
+      } else if (entityType === "test") {
+        pathPatterns = [this.config.testsDirectoryPath];
+      }
+    } else {
+      pathPatterns = [
+        this.config.featuresDirectoryPath,
+        this.config.attributesDirectoryPath,
+        this.config.segmentsDirectoryPath,
+        this.config.groupsDirectoryPath,
+        this.config.testsDirectoryPath,
+      ];
+    }
+
+    return pathPatterns.map((p) => p.replace((this.rootDirectoryPath as string) + path.sep, ""));
+  }
+
+  async listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]> {
+    const pathPatterns = this.getPathPatterns(entityType, entityKey);
+    const rawHistory = this.getRawHistory(pathPatterns);
+
+    const fullHistory: HistoryEntry[] = [];
+    const blocks = rawHistory.split("\n\n");
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+
+      if (block.length === 0) {
+        continue;
+      }
+
+      const lines = block.split("\n");
+
+      const commitLine = lines[0];
+      const [commitHash, author, timestamp] = commitLine.split("|");
+
+      const entities: HistoryEntity[] = [];
+
+      const filePathLines = lines.slice(1);
+      for (let j = 0; j < filePathLines.length; j++) {
+        const relativePath = filePathLines[j];
+        const absolutePath = path.join(this.rootDirectoryPath as string, relativePath);
+        const fileName = absolutePath.split(path.sep).pop() as string;
+        const relativeDir = path.dirname(absolutePath);
+
+        const key = fileName.replace("." + this.parser.extension, "");
+
+        let type: EntityType = "attribute";
+        if (relativeDir === this.config.attributesDirectoryPath) {
+          type = "attribute";
+        } else if (relativeDir === this.config.segmentsDirectoryPath) {
+          type = "segment";
+        } else if (relativeDir === this.config.featuresDirectoryPath) {
+          type = "feature";
+        } else if (relativeDir === this.config.groupsDirectoryPath) {
+          type = "group";
+        } else if (relativeDir === this.config.testsDirectoryPath) {
+          type = "test";
+        } else {
+          continue;
+        }
+
+        entities.push({
+          type,
+          key,
+        });
+      }
+
+      if (entities.length === 0) {
+        continue;
+      }
+
+      fullHistory.push({
+        commit: commitHash,
+        author,
+        timestamp,
+        entities,
+      });
+    }
+
+    return fullHistory;
+  }
+
+  async readCommit(
+    commitHash: CommitHash,
+    entityType?: EntityType,
+    entityKey?: string,
+  ): Promise<Commit> {
+    const pathPatterns = this.getPathPatterns(entityType, entityKey);
+    const gitPaths = pathPatterns.join(" ");
+    const logCommand = `git show ${commitHash} --relative -- ${gitPaths}`;
+    const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
+
+    const gitShowOutput = execSync(fullCommand, { encoding: "utf8" }).toString();
+    const commit = getCommit(gitShowOutput, {
+      rootDirectoryPath: this.rootDirectoryPath as string,
+      projectConfig: this.config,
+    });
+
+    return commit;
   }
 }

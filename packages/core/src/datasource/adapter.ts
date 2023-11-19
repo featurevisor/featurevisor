@@ -1,6 +1,12 @@
-import { DatafileContent, EnvironmentKey, ExistingState } from "@featurevisor/types";
-
-export type EntityType = "feature" | "group" | "segment" | "attribute" | "test";
+import {
+  DatafileContent,
+  EnvironmentKey,
+  ExistingState,
+  HistoryEntry,
+  Commit,
+  CommitHash,
+  EntityType,
+} from "@featurevisor/types";
 
 export interface DatafileOptions {
   environment: EnvironmentKey;
@@ -22,4 +28,12 @@ export abstract class Adapter {
   // datafile
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
+
+  // history
+  abstract listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]>;
+  abstract readCommit(
+    commit: CommitHash,
+    entityType?: EntityType,
+    entityKey?: string,
+  ): Promise<Commit>;
 }
