@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Link } from "react-router-dom";
+import { PersonIcon } from "@radix-ui/react-icons";
 
 import { Alert } from "../ui/alert";
 import { PrettyDate } from "./pretty-date";
@@ -113,7 +114,7 @@ export function HistoryTimeline(props: HistoryTimelineProps) {
                       <div>
                         <div className="relative">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 ring-4 ring-white">
-                            icon
+                            <PersonIcon className="h-4 w-4" />
                           </div>
                         </div>
                       </div>

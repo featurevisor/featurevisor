@@ -348,4 +348,15 @@ module.exports = function setupMockServer(devServer) {
       data: group,
     });
   });
+
+  /**
+   * History
+   */
+  devServer.app.get("/api/history", async function (req, res) {
+    const historyEntries = await datasource.listHistoryEntries(req.query.type, req.query.key);
+
+    res.json({
+      data: historyEntries,
+    });
+  });
 };

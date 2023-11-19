@@ -16,6 +16,8 @@ import { AttributePage } from "./attribute-page";
 import { AttributePageView } from "./attribute-page-view";
 import { AttributePageHistory } from "./attribute-page-history";
 
+import { HistoryPage } from "./history-page";
+
 const { useState, useEffect } = React;
 
 export function App() {
@@ -56,11 +58,16 @@ export function App() {
                 <Route path="history" element={<AttributePageHistory />} />
               </Route>
             </Route>
+
+            {/* History */}
+            <Route path="history">
+              <Route index element={<HistoryPage />} />
+            </Route>
           </Routes>
         </div>
       </div>
 
-      <div className="text-center text-xs border-t pt-8 text-gray-500 fixed inset-x-0 bottom-8 bg-white">
+      <div className="text-center text-xs border-t pt-8 pb-8 text-gray-500 fixed inset-x-0 bottom-0 bg-white">
         <p>
           Built with{" "}
           <a href="https://featurevisor.com" className="underline" target="_blank">
