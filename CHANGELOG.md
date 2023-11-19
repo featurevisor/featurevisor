@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.62.1](https://github.com/featurevisor/featurevisor/compare/v0.62.0...v0.62.1) (2023-11-19)
+
+
+### Bug Fixes
+
+* do not show test spec history entries in generated site ([#214](https://github.com/featurevisor/featurevisor/issues/214)) ([f608f92](https://github.com/featurevisor/featurevisor/commit/f608f92922f3a533780d258162430f5864e5c6f3))
+
+
+
+
+
+# [0.62.0](https://github.com/featurevisor/featurevisor/compare/v0.61.0...v0.62.0) (2023-11-19)
+
+
+### Features
+
+* get history info from datasource ([#213](https://github.com/featurevisor/featurevisor/issues/213)) ([6107a6b](https://github.com/featurevisor/featurevisor/commit/6107a6bee14708114413e4e59cb7ebeb061a79bd))
+
+
+
+
+
 # [0.61.0](https://github.com/featurevisor/featurevisor/compare/v0.60.1...v0.61.0) (2023-11-14)
 
 
