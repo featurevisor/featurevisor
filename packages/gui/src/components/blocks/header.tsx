@@ -6,7 +6,7 @@ import { UserNav } from "./user-nav";
 
 export function Header({ user }) {
   return (
-    <div className="border-b">
+    <div className="border-b bg-gray-800">
       <div className="max-w-4xl mx-auto">
         <div className="flex h-16 items-center px-4">
           <Link to="/">

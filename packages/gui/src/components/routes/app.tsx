@@ -39,35 +39,37 @@ export function App() {
       <Header user={user} />
 
       <div className="max-w-4xl mx-auto">
-        <div className="space-y-6 px-4 py-10 pb-32">
-          <Routes>
-            {/* Dashboard */}
-            <Route index element={<DashboardPage />} />
+        <div className="m-8 mx-auto max-w-4xl rounded-lg bg-white shadow">
+          <div className="space-y-6 px-6 py-6 pb-32">
+            <Routes>
+              {/* Dashboard */}
+              <Route index element={<DashboardPage />} />
 
-            {/* Settings */}
-            <Route path="settings" element={<SettingsPage />}>
-              <Route path="profile" element={<SettingsPageProfile />} />
-            </Route>
-
-            {/* Attributes */}
-            <Route path="attributes">
-              <Route index element={<AttributesListPage />} />
-
-              <Route path=":key" element={<AttributePage />}>
-                <Route index element={<AttributePageView />} />
-                <Route path="history" element={<AttributePageHistory />} />
+              {/* Settings */}
+              <Route path="settings" element={<SettingsPage />}>
+                <Route path="profile" element={<SettingsPageProfile />} />
               </Route>
-            </Route>
 
-            {/* History */}
-            <Route path="history">
-              <Route index element={<HistoryPage />} />
-            </Route>
-          </Routes>
+              {/* Attributes */}
+              <Route path="attributes">
+                <Route index element={<AttributesListPage />} />
+
+                <Route path=":key" element={<AttributePage />}>
+                  <Route index element={<AttributePageView />} />
+                  <Route path="history" element={<AttributePageHistory />} />
+                </Route>
+              </Route>
+
+              {/* History */}
+              <Route path="history">
+                <Route index element={<HistoryPage />} />
+              </Route>
+            </Routes>
+          </div>
         </div>
       </div>
 
-      <div className="text-center text-xs border-t pt-8 pb-8 text-gray-500 fixed inset-x-0 bottom-0 bg-white">
+      <div className="text-center text-xs pb-8 text-gray-500">
         <p>
           Built with{" "}
           <a href="https://featurevisor.com" className="underline" target="_blank">

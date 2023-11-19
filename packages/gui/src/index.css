@@ -83,3 +83,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+body {
+  background: #e5e7eb;
+}
