@@ -7,9 +7,14 @@ import { Loading } from "../blocks/loading";
 import { Header } from "../blocks/header";
 
 import { DashboardPage } from "./dashboard-page";
+
 import { SettingsPage } from "./settings-page";
 import { SettingsPageProfile } from "./settings-page-profile";
+
 import { AttributesListPage } from "./attributes-list-page";
+import { AttributePage } from "./attribute-page";
+import { AttributePageView } from "./attribute-page-view";
+import { AttributePageHistory } from "./attribute-page-history";
 
 const { useState, useEffect } = React;
 
@@ -45,6 +50,11 @@ export function App() {
             {/* Attributes */}
             <Route path="attributes">
               <Route index element={<AttributesListPage />} />
+
+              <Route path=":key" element={<AttributePage />}>
+                <Route index element={<AttributePageView />} />
+                <Route path="history" element={<AttributePageHistory />} />
+              </Route>
             </Route>
           </Routes>
         </div>

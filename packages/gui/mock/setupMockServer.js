@@ -31,7 +31,7 @@ module.exports = function setupMockServer(devServer) {
    * Start with an example project's data in memory
    */
   const projectConfig = getProjectConfig(EXAMPLE_1_PATH);
-  const datasource = new Datasource(projectConfig);
+  const datasource = new Datasource(projectConfig, EXAMPLE_1_PATH);
 
   let isReady = false;
 
@@ -235,6 +235,24 @@ module.exports = function setupMockServer(devServer) {
 
     res.json({
       data: {},
+    });
+  });
+
+  devServer.app.get("/api/attributes/:key/history", async function (req, res) {
+    const index = entities.attributes.findIndex((attribute) => attribute.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: "Attribute not found",
+        },
+      });
+    }
+
+    const historyEntries = await datasource.listHistoryEntries("attribute", req.params.key);
+
+    res.json({
+      data: historyEntries,
     });
   });
 

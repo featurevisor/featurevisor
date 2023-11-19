@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
@@ -34,7 +35,10 @@ function EntitiesTable() {
         {entities.map((entity) => (
           <TableRow key={entity.key}>
             <TableCell className="font-medium">
-              <code>{entity.key}</code> {entity.capture && <Badge variant="default">capture</Badge>}{" "}
+              <Link className="underline" to={`/attributes/${entity.key}`}>
+                <code>{entity.key}</code>
+              </Link>{" "}
+              {entity.capture && <Badge variant="default">capture</Badge>}{" "}
               {entity.archived && <Badge variant="secondary">archived</Badge>}
             </TableCell>
             <TableCell>{entity.type}</TableCell>
