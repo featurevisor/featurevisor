@@ -24,7 +24,7 @@ export async function exportSite(deps: Dependencies) {
   console.log("Site dist copied to:", projectConfig.siteExportDirectoryPath);
 
   // generate history
-  const fullHistory = generateHistory(deps);
+  const fullHistory = await generateHistory(deps);
 
   // site search index
   const repoDetails = getRepoDetails();
@@ -39,8 +39,6 @@ export async function exportSite(deps: Dependencies) {
     path.join(projectConfig.siteExportDirectoryPath, "datafiles"),
     { recursive: true },
   );
-
-  // @TODO: replace placeoholders in index.html
 
   return hasError;
 }
