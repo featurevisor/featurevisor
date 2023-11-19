@@ -10,14 +10,26 @@ export async function generateHistory(deps: Dependencies): Promise<HistoryEntry[
   try {
     const fullHistory = await datasource.listHistoryEntries();
 
+    const filteredHistory = fullHistory
+      .map((historyEntry) => {
+        return {
+          ...historyEntry,
+          entities: historyEntry.entities.filter((entity) => {
+            // ignore test specs
+            return entity.type !== "test";
+          }),
+        };
+      })
+      .filter((historyEntry) => historyEntry.entities.length > 0);
+
     const fullHistoryFilePath = path.join(
       projectConfig.siteExportDirectoryPath,
       "history-full.json",
     );
-    fs.writeFileSync(fullHistoryFilePath, JSON.stringify(fullHistory));
+    fs.writeFileSync(fullHistoryFilePath, JSON.stringify(filteredHistory));
     console.log(`History (full) generated at: ${fullHistoryFilePath}`);
 
-    return fullHistory;
+    return filteredHistory;
   } catch (error) {
     console.error(
       `Error when generating history from git: ${error.status}\n${error.stderr.toString()}`,
