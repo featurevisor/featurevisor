@@ -1,6 +1,10 @@
-import { Commit, EntityDiff } from "@featurevisor/types";
+import * as path from "path";
 
-function parseGitCommitDiff(output: string) {
+import { Commit, EntityDiff, EntityType } from "@featurevisor/types";
+
+import { CustomParser, ProjectConfig } from "../config";
+
+function parseGitCommitShowOutput(gitShowOutput: string) {
   const result = {
     hash: "",
     author: "",
@@ -9,7 +13,7 @@ function parseGitCommitDiff(output: string) {
     diffs: {},
   };
 
-  const lines = output.split("\n");
+  const lines = gitShowOutput.split("\n");
   let currentFile = "";
   let parsingDiffs = false;
   let parsingMessage = false;
@@ -55,8 +59,12 @@ function analyzeFileChange(diff) {
   return status;
 }
 
-export function getCommitFromFullDiff(fullDiff): Commit {
-  const parsed = parseGitCommitDiff(fullDiff);
+export function getCommit(
+  gitShowOutput: string,
+  options: { rootDirectoryPath: string; projectConfig: ProjectConfig },
+): Commit {
+  const parsed = parseGitCommitShowOutput(gitShowOutput);
+  const { rootDirectoryPath, projectConfig } = options;
 
   const commit: Commit = {
     hash: parsed.hash,
@@ -69,9 +77,40 @@ export function getCommitFromFullDiff(fullDiff): Commit {
     const diff = parsed.diffs[file];
     const status = analyzeFileChange(diff);
 
+    const absolutePath = path.join(rootDirectoryPath, file);
+    const relativeDir = path.dirname(absolutePath);
+
+    // get entity type
+    let type: EntityType = "attribute";
+    if (relativeDir === projectConfig.attributesDirectoryPath) {
+      type = "attribute";
+    } else if (relativeDir === projectConfig.segmentsDirectoryPath) {
+      type = "segment";
+    } else if (relativeDir === projectConfig.featuresDirectoryPath) {
+      type = "feature";
+    } else if (relativeDir === projectConfig.groupsDirectoryPath) {
+      type = "group";
+    } else if (relativeDir === projectConfig.testsDirectoryPath) {
+      type = "test";
+    } else {
+      // unknown type
+      return;
+    }
+
+    // get entity key
+    const fileName = absolutePath.split(path.sep).pop() as string;
+    const extensionWithDot = "." + (projectConfig.parser as CustomParser).extension;
+
+    if (!fileName.endsWith(extensionWithDot)) {
+      // unknown extension
+      return;
+    }
+
+    const key = fileName.replace(extensionWithDot, "");
+
     const entityDiff: EntityDiff = {
-      type: "feature", // @TODO
-      key: file.replace(".yml", ""), // @TODO
+      type,
+      key,
       content: diff,
     };
 

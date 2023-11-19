@@ -188,67 +188,6 @@ async function main() {
     .example("$0 site serve -p 3000", "serve in a specific port")
 
     /**
-     * History
-     */
-    .command({
-      command: "history",
-      handler: async function (options) {
-        const deps = await getDependencies(options);
-
-        try {
-          const { datasource } = deps;
-
-          const historyEntries = await datasource.listHistoryEntries(options.type, options.key);
-
-          if (historyEntries.length === 0) {
-            console.log("No history found.");
-            return;
-          }
-
-          for (const entry of historyEntries) {
-            console.log(`\n\nCommit: ${entry.commit} by ${entry.author} at ${entry.timestamp}`);
-
-            for (const entity of entry.entities) {
-              console.log(`  - ${entity.type}: ${entity.key}`);
-            }
-          }
-        } catch (e) {
-          console.error(e.message);
-          process.exit(1);
-        }
-      },
-    })
-    .example("$0 history", "list all changes")
-    .example("$0 history --type=attribute", "list all attribute changes")
-    .example("$0 history --type=segment", "list all segment changes")
-    .example("$0 history --type=feature", "list all feature changes")
-    .example("$0 history --type=group", "list all group changes")
-    .example("$0 history --type=feature --key=someKey", "list specific feature changes")
-
-    .command({
-      command: "show-commit",
-      handler: async function (options) {
-        const deps = await getDependencies(options);
-
-        try {
-          const { datasource } = deps;
-
-          const commit = await datasource.readCommit(options.hash, options.type, options.key);
-
-          console.log(commit);
-
-          console.log("\n\n\n======\n\n\n");
-
-          console.log(JSON.stringify(commit, null, 2));
-        } catch (e) {
-          console.error(e.message);
-          process.exit(1);
-        }
-      },
-    })
-    .example("$0 show-commit --hash=...", "show diff of a commit")
-
-    /**
      * Generate code
      */
     .command({

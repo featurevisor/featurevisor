@@ -12,16 +12,14 @@ import {
   HistoryEntry,
   Commit,
   CommitHash,
-  EntityDiff,
   HistoryEntity,
 } from "@featurevisor/types";
 
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
+import { getCommit } from "../utils/git";
 
 const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
-const fileDiffRegex =
-  /^diff --git a\/(.+) b\/.+\n((?:new file mode \d+\n)?index .+\n)?((?:--- \/dev\/null\n\+\+\+ b\/.+\n)?@@ -\d+,\d+ \+\d+,\d+ @@\n)?((?:.+\n)*)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -295,74 +293,11 @@ export class FilesystemAdapter extends Adapter {
     const logCommand = `git show ${commitHash} --relative -- ${gitPaths}`;
     const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
 
-    console.log("fullCommand", fullCommand);
-
-    const diffContent = execSync(fullCommand, { encoding: "utf8" }).toString();
-
-    console.log("===============");
-    console.log(diffContent);
-    console.log("===============\n\n");
-
-    const commit: Commit = {
-      hash: commitHash,
-      author: "...",
-      timestamp: "...",
-      entities: [],
-    };
-
-    const parsedDiffs: any[] = [];
-    let commitMatch;
-    while ((commitMatch = commitRegex.exec(diffContent)) !== null) {
-      const [_, _commitHash, authorName, authorEmail, timestamp, description] = commitMatch; // eslint-disable-line
-      let fileDiffMatch;
-      while ((fileDiffMatch = fileDiffRegex.exec(diffContent)) !== null) {
-        const [__, filePath, newFileMode, index, diffLines] = fileDiffMatch; // eslint-disable-line
-
-        let changeType;
-        if (newFileMode) {
-          changeType = "created";
-        } else if (!diffLines) {
-          changeType = "deleted";
-        } else {
-          changeType = "updated";
-        }
-
-        console.log({ filePath });
-        const absolutePath = path.join(this.rootDirectoryPath as string, filePath);
-        let type;
-        if (absolutePath.startsWith(this.config.attributesDirectoryPath)) {
-          type = "attribute";
-        } else if (absolutePath.startsWith(this.config.segmentsDirectoryPath)) {
-          type = "segment";
-        } else if (absolutePath.startsWith(this.config.featuresDirectoryPath)) {
-          type = "feature";
-        } else if (absolutePath.startsWith(this.config.groupsDirectoryPath)) {
-          type = "group";
-        } else if (absolutePath.startsWith(this.config.testsDirectoryPath)) {
-          type = "test";
-        } else {
-          continue;
-        }
-
-        const key = (filePath.split(path.sep).pop() as string).replace(
-          `.${this.parser.extension}`,
-          "",
-        );
-
-        const entityDiff: EntityDiff = {
-          type,
-          key,
-          created: changeType === "created",
-          deleted: changeType === "deleted",
-          updated: changeType === "updated",
-          content: diffLines,
-        };
-
-        commit.entities.push(entityDiff);
-      }
-    }
-
-    console.log(parsedDiffs);
+    const gitShowOutput = execSync(fullCommand, { encoding: "utf8" }).toString();
+    const commit = getCommit(gitShowOutput, {
+      rootDirectoryPath: this.rootDirectoryPath as string,
+      projectConfig: this.config,
+    });
 
     return commit;
   }
