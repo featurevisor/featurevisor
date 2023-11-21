@@ -9,6 +9,12 @@ environments:
     force:
       - segments: qa
         enabled: true
+
+      - conditions:
+          - attribute: userId
+            operator: equals
+            value: user-3
+        enabled: true
     rules:
       - key: "1"
         segments: "*"

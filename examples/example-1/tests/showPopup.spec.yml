@@ -15,5 +15,11 @@ assertions:
   - at: 40
     environment: staging
     context:
+      userId: "user-3"
+    expectedToBeEnabled: true
+
+  - at: 40
+    environment: staging
+    context:
       userId: "user-6"
     expectedToBeEnabled: false
