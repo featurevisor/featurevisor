@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.62.2](https://github.com/featurevisor/featurevisor/compare/v0.62.1...v0.62.2) (2023-11-21)
+
+
+### Bug Fixes
+
+* extract segment keys from forced rules ([#217](https://github.com/featurevisor/featurevisor/issues/217)) ([a2aebe6](https://github.com/featurevisor/featurevisor/commit/a2aebe6ee7a6ecb811e9b1f8410b3bb54cb22ad0))
+
+
+
+
+
 ## [0.62.1](https://github.com/featurevisor/featurevisor/compare/v0.62.0...v0.62.1) (2023-11-19)
 
 
