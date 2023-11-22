@@ -15,6 +15,7 @@ import { AttributesListPage } from "./attributes-list-page";
 import { AttributePage } from "./attribute-page";
 import { AttributePageView } from "./attribute-page-view";
 import { AttributePageHistory } from "./attribute-page-history";
+import { AttributePageEdit } from "./attribute-page-edit";
 
 import { HistoryPage } from "./history-page";
 
@@ -56,6 +57,7 @@ export function App() {
 
                 <Route path=":key" element={<AttributePage />}>
                   <Route index element={<AttributePageView />} />
+                  <Route path="edit" element={<AttributePageEdit />} />
                   <Route path="history" element={<AttributePageHistory />} />
                 </Route>
               </Route>
