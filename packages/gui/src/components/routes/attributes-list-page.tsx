@@ -17,7 +17,7 @@ import { Input } from "../ui/input";
 
 import { parseSearchQuery, Query } from "../../utils";
 
-function getAttributesByQuery(query: Query, entities) {
+function getEntitiesByQuery(query: Query, entities) {
   const attributes = entities
     .filter((a) => {
       let matched = true;
@@ -75,26 +75,28 @@ function EntitiesTable() {
   }
 
   const parsedSearchQuery = parseSearchQuery(searchQuery);
-  const filteredEntities = getAttributesByQuery(parsedSearchQuery, entities);
+  const filteredEntities = getEntitiesByQuery(parsedSearchQuery, entities);
 
   return (
     <div>
       <Input
         type="search"
         autoComplete="off"
-        placeholder="search..."
+        placeholder="Search attributes..."
         onChange={(e) => setSearchQuery(e.target.value)}
       />
 
       <Table>
         <TableCaption className="pt-4">{filteredEntities.length} records found.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Key</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Description</TableHead>
-          </TableRow>
-        </TableHeader>
+        {filteredEntities.length > 0 && (
+          <TableHeader>
+            <TableRow>
+              <TableHead>Key</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Description</TableHead>
+            </TableRow>
+          </TableHeader>
+        )}
         <TableBody>
           {filteredEntities.map((entity) => (
             <TableRow key={entity.key}>
