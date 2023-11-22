@@ -2,6 +2,8 @@ import * as React from "react";
 import { Outlet, useParams } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
+import { H2, InlineCode } from "../ui/typography";
+
 import { SidebarNav } from "../blocks/sidebar-nav";
 
 export function AttributePage() {
@@ -21,7 +23,9 @@ export function AttributePage() {
   return (
     <>
       <div className="space-y-0.5">
-        <h2 className="text-2xl font-bold tracking-tight">Attribute: {key}</h2>
+        <H2 className="border-none">
+          Attribute: <InlineCode>{key}</InlineCode>
+        </H2>
 
         <p className="text-muted-foreground">Manage your attribute information.</p>
       </div>

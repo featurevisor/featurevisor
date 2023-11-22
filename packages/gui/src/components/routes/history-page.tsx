@@ -1,6 +1,8 @@
 import * as React from "react";
 
 import { Separator } from "../ui/separator";
+import { H2 } from "../ui/typography";
+
 import { HistoryTimeline } from "../blocks/history-timeline";
 
 export function HistoryPage() {
@@ -15,7 +17,7 @@ export function HistoryPage() {
   return (
     <>
       <div className="space-y-0.5">
-        <h2 className="text-2xl font-bold tracking-tight">History</h2>
+        <H2 className="border-none">History</H2>
 
         <p className="text-muted-foreground">Timeline of all changes in the project.</p>
       </div>

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Separator } from "../ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
+import { H2, InlineCode } from "../ui/typography";
 
 function EntitiesTable() {
   const [entities, setEntities] = React.useState(null);
@@ -35,8 +36,8 @@ function EntitiesTable() {
         {entities.map((entity) => (
           <TableRow key={entity.key}>
             <TableCell className="font-medium">
-              <Link className="underline" to={`/attributes/${entity.key}`}>
-                <code>{entity.key}</code>
+              <Link className="hover:underline" to={`/attributes/${entity.key}`}>
+                <InlineCode>{entity.key}</InlineCode>
               </Link>{" "}
               {entity.capture && <Badge variant="default">capture</Badge>}{" "}
               {entity.archived && <Badge variant="secondary">archived</Badge>}
@@ -54,7 +55,9 @@ export function AttributesListPage() {
   return (
     <>
       <div className="space-y-0.5">
-        <h2 className="text-2xl font-bold tracking-tight">Attributes</h2>
+        <h2 className="text-2xl font-bold tracking-tight hidden">Attributes</h2>
+
+        <H2 className="border-none">Attributes</H2>
 
         <p className="text-muted-foreground">List of all attributes in the project.</p>
       </div>

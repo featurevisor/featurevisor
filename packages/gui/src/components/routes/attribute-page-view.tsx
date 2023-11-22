@@ -2,6 +2,8 @@ import * as React from "react";
 import { useParams } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
+import { InlineCode } from "../ui/typography";
+
 import { Markdown } from "../blocks/markdown";
 
 export function AttributePageView() {
@@ -29,7 +31,7 @@ export function AttributePageView() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Key</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                <code>{attribute.key}</code>
+                <InlineCode>{attribute.key}</InlineCode>
               </dd>
             </div>
 
