@@ -40,7 +40,7 @@ export function App() {
 
       <div className="max-w-4xl mx-auto">
         <div className="m-8 mx-auto max-w-4xl rounded-lg bg-white shadow">
-          <div className="space-y-6 px-6 py-6 pb-32">
+          <div className="space-y-6 px-6 py-6 pb-12">
             <Routes>
               {/* Dashboard */}
               <Route index element={<DashboardPage />} />

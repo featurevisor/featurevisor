@@ -20,7 +20,7 @@ export function AttributePageView() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">Overview</h3>
-        <p className="text-sm text-muted-foreground hidden">Overview of your attribute</p>
+        <p className="text-sm text-muted-foreground">Overview of your attribute</p>
       </div>
 
       <Separator />
