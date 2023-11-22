@@ -196,6 +196,13 @@ export async function buildDatafile(
 
       if (parsedFeature.environments[options.environment].force) {
         feature.force = parsedFeature.environments[options.environment].force;
+
+        feature.force?.forEach((f) => {
+          if (f.segments) {
+            const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(f.segments);
+            extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
+          }
+        });
       }
 
       features.push(feature);
