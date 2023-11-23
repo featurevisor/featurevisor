@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ExternalLinkIcon } from "@radix-ui/react-icons";
 
 import { Separator } from "../ui/separator";
 import {
@@ -19,18 +20,24 @@ import { Textarea } from "../ui/textarea";
 import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select";
 
 const attributeFormSchema = z.object({
+  key: z.string().min(1, { message: "Key must be at least 1 character long" }),
   description: z.string().min(2, { message: "Description must be at least 2 characters long" }),
-  type: z.enum(["string", "integer", "double", "boolean", "date"]),
-  capture: z.boolean(),
-  archived: z.boolean(),
+  type: z.enum(["string", "integer", "double", "boolean", "date"], {
+    required_error: "You need to select a type",
+  }),
+  capture: z.boolean().default(false).optional(),
+  archived: z.boolean().default(false).optional(),
 });
 
 type AttributeFormValues = z.infer<typeof attributeFormSchema>;
 
-function AttributeForm({ initialAttribute }) {
+function AttributeForm({ initialAttribute = undefined }) {
   const { toast } = useToast();
+  const mode = initialAttribute === undefined ? "create" : "edit";
+
   const form = useForm<AttributeFormValues>({
     resolver: zodResolver(attributeFormSchema),
     defaultValues: initialAttribute,
@@ -38,7 +45,7 @@ function AttributeForm({ initialAttribute }) {
   });
 
   function onSubmit(data: AttributeFormValues) {
-    console.log(data);
+    console.log(mode, data);
 
     // fetch("/api/user", {
     //   method: "PUT",
@@ -65,6 +72,26 @@ function AttributeForm({ initialAttribute }) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Key */}
+        {mode === "create" && (
+          <FormField
+            control={form.control}
+            name="key"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Key</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormDescription>
+                  This your unique attribute key, that will be used in segments.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         {/* Type */}
         <FormField
           control={form.control}
@@ -72,13 +99,27 @@ function AttributeForm({ initialAttribute }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type</FormLabel>
-
-              <FormControl>
-                <Input placeholder="" {...field} />
-              </FormControl>
-
-              <FormDescription>Type of your attribute</FormDescription>
-
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {["string", "integer", "double", "boolean", "date"].map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Learn more about attribute types{" "}
+                <a href="https://featurevisor.com/docs/attributes/#types" className="underline">
+                  here <ExternalLinkIcon className="inline w-4 h-4" />
+                </a>
+                .
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -103,19 +144,56 @@ function AttributeForm({ initialAttribute }) {
           )}
         />
 
+        {/* Capture */}
+        <FormField
+          control={form.control}
+          name="capture"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Capture this attribute?</FormLabel>
+                <FormDescription>
+                  Learn more about capturing{" "}
+                  <a
+                    href="https://featurevisor.com/docs/attributes/#capturing-attributes"
+                    className="underline"
+                    target="_blank"
+                  >
+                    here <ExternalLinkIcon className="inline w-4 h-4" />
+                  </a>
+                  .
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+
         {/* Archived */}
         <FormField
           control={form.control}
-          name="description"
+          name="archived"
           render={({ field }) => (
-            <FormItem className="flex items-center space-y-0 space-x-1">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
               <FormControl>
-                <Checkbox id="archived" placeholder="" {...field} />
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
-
-              <FormLabel htmlFor="archived">Archive this attribute?</FormLabel>
-
-              <FormMessage />
+              <div className="space-y-1 leading-none">
+                <FormLabel>Archive this attribute?</FormLabel>
+                <FormDescription>
+                  Learn more about archiving{" "}
+                  <a
+                    href="https://featurevisor.com/docs/attributes/#archiving"
+                    className="underline"
+                    target="_blank"
+                  >
+                    here <ExternalLinkIcon className="inline w-4 h-4" />
+                  </a>
+                  .
+                </FormDescription>
+              </div>
             </FormItem>
           )}
         />
