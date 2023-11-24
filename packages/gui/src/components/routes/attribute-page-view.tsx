@@ -1,19 +1,35 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
 import { InlineCode } from "../ui/typography";
+import { useToast } from "../ui/use-toast";
 
 import { Markdown } from "../blocks/markdown";
 
 export function AttributePageView() {
   const { key } = useParams();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [attribute, setAttribute] = React.useState(null);
 
   React.useEffect(() => {
     fetch(`/api/attributes/${key}`)
       .then((res) => res.json())
-      .then((data) => setAttribute(data.data));
+      .then((data) => {
+        if (data.error) {
+          toast({
+            title: `Error`,
+            description: data.error.message,
+          });
+
+          navigate("/attributes");
+
+          return;
+        }
+
+        setAttribute(data.data);
+      });
   }, []);
 
   return (

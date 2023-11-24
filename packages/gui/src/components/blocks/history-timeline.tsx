@@ -104,7 +104,7 @@ export function HistoryTimeline(props: HistoryTimelineProps) {
                 const isNotLast = entriesToRender.length !== index + 1;
 
                 return (
-                  <div className="relative pb-8">
+                  <div className="relative pb-8" key={index}>
                     {isNotLast ? (
                       <span className="absolute left-4 top-5 -ml-px h-full w-0.5 bg-gray-200" />
                     ) : (

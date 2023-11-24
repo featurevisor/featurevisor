@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -208,11 +208,28 @@ function AttributeForm({ initialAttribute = undefined }) {
 export function AttributePageEdit() {
   const [initialAttribute, setInitialAttribute] = React.useState(null);
   const { key } = useParams();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
-    fetch(`/api/attributes/${key}`)
-      .then((res) => res.json())
-      .then((data) => setInitialAttribute(data.data));
+    if (key) {
+      fetch(`/api/attributes/${key}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) {
+            toast({
+              title: `Error`,
+              description: data.error.message,
+            });
+
+            navigate("/attributes");
+
+            return;
+          }
+
+          setInitialAttribute(data.data);
+        });
+    }
   }, []);
 
   return (

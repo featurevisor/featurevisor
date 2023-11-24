@@ -136,7 +136,7 @@ module.exports = function setupMockServer(devServer) {
     if (!attribute) {
       return res.status(404).json({
         error: {
-          message: "Attribute not found",
+          message: `Attribute "${req.params.key}" not found`,
         },
       });
     }
@@ -152,7 +152,7 @@ module.exports = function setupMockServer(devServer) {
     if (index === -1) {
       return res.status(404).json({
         error: {
-          message: "Attribute not found",
+          message: `Attribute "${req.params.key}" not found`,
         },
       });
     }
@@ -187,7 +187,7 @@ module.exports = function setupMockServer(devServer) {
     if (index === -1) {
       return res.status(404).json({
         error: {
-          message: "Attribute not found",
+          message: `Attribute "${req.params.key}" not found`,
         },
       });
     }
@@ -226,7 +226,7 @@ module.exports = function setupMockServer(devServer) {
     if (index === -1) {
       return res.status(404).json({
         error: {
-          message: "Attribute not found",
+          message: `Attribute "${req.params.key}" not found`,
         },
       });
     }
@@ -244,7 +244,7 @@ module.exports = function setupMockServer(devServer) {
     if (index === -1) {
       return res.status(404).json({
         error: {
-          message: "Attribute not found",
+          message: `Attribute "${req.params.key}" not found`,
         },
       });
     }
