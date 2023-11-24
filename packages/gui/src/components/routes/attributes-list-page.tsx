@@ -14,6 +14,7 @@ import {
 import { Badge } from "../ui/badge";
 import { H2, InlineCode } from "../ui/typography";
 import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 
 import { parseSearchQuery, Query } from "../../utils";
 
@@ -120,12 +121,16 @@ function EntitiesTable() {
 export function AttributesListPage() {
   return (
     <>
-      <div className="space-y-0.5">
-        <h2 className="text-2xl font-bold tracking-tight hidden">Attributes</h2>
-
+      <div className="space-y-0.5 relative">
         <H2 className="border-none">Attributes</H2>
 
         <p className="text-muted-foreground">List of all attributes in the project.</p>
+
+        <div className="absolute right-0 top-0">
+          <Link to="/create/attribute">
+            <Button>Create</Button>
+          </Link>
+        </div>
       </div>
 
       <Separator className="my-6" />

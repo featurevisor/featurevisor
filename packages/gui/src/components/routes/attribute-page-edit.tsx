@@ -34,7 +34,7 @@ const attributeFormSchema = z.object({
 
 type AttributeFormValues = z.infer<typeof attributeFormSchema>;
 
-function AttributeForm({ initialAttribute = undefined }) {
+export function AttributeForm({ initialAttribute = undefined }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const mode = initialAttribute === undefined ? "create" : "edit";
@@ -231,7 +231,7 @@ function AttributeForm({ initialAttribute = undefined }) {
         />
 
         {/* Submit */}
-        <Button type="submit">Update attribute</Button>
+        <Button type="submit">Submit</Button>
       </form>
     </Form>
   );

@@ -16,6 +16,7 @@ import { AttributePage } from "./attribute-page";
 import { AttributePageView } from "./attribute-page-view";
 import { AttributePageHistory } from "./attribute-page-history";
 import { AttributePageEdit } from "./attribute-page-edit";
+import { AttributesCreate } from "./attributes-create-page";
 
 import { HistoryPage } from "./history-page";
 
@@ -61,6 +62,7 @@ export function App() {
                   <Route path="history" element={<AttributePageHistory />} />
                 </Route>
               </Route>
+              <Route path="create/attribute" element={<AttributesCreate />} />
 
               {/* History */}
               <Route path="history">
