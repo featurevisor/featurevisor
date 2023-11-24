@@ -172,6 +172,16 @@ module.exports = function setupMockServer(devServer) {
   });
 
   devServer.app.post("/api/attributes", function (req, res) {
+    const index = entities.attributes.findIndex((attribute) => attribute.key === req.body.key);
+
+    if (index !== -1) {
+      return res.status(400).json({
+        error: {
+          message: "Attribute with this key already exists",
+        },
+      });
+    }
+
     const attribute = req.body;
 
     entities.attributes.push(attribute);
