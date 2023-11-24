@@ -36,6 +36,7 @@ type AttributeFormValues = z.infer<typeof attributeFormSchema>;
 
 function AttributeForm({ initialAttribute = undefined }) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const mode = initialAttribute === undefined ? "create" : "edit";
 
   const form = useForm<AttributeFormValues>({
@@ -45,28 +46,59 @@ function AttributeForm({ initialAttribute = undefined }) {
   });
 
   function onSubmit(data: AttributeFormValues) {
-    console.log(mode, data);
+    if (mode === "edit") {
+      const { key, ...body } = data;
 
-    // fetch("/api/user", {
-    //   method: "PUT",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify(data),
-    // })
-    //   .then(() => {
-    //     toast({
-    //       title: "Success!",
-    //       description: "Your profile has been updated.",
-    //     });
-    //   })
-    //   .catch(() => {
-    //     toast({
-    //       variant: "destructive",
-    //       title: "Failed to update :(",
-    //       description: "An error occurred while updating your profile.",
-    //     });
-    //   });
+      fetch(`/api/attributes/${key}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.error) {
+            toast({
+              title: "Failed to update :(",
+              description: res.error.message,
+            });
+
+            return;
+          }
+
+          toast({
+            title: "Success!",
+            description: "Attribute has been updated.",
+          });
+        });
+    } else if (mode === "create") {
+      fetch(`/api/attributes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.error) {
+            toast({
+              title: "Failed to create :(",
+              description: res.error.message,
+            });
+
+            return;
+          }
+
+          toast({
+            title: "Success!",
+            description: "Attribute has been created.",
+          });
+
+          navigate(`/attributes/${data.key}`);
+        });
+    }
   }
 
   return (
