@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -230,8 +230,28 @@ export function AttributeForm({ initialAttribute = undefined }) {
           )}
         />
 
-        {/* Submit */}
-        <Button type="submit">Submit</Button>
+        {/* Buttons */}
+        <div className="flex space-x-4">
+          <Button size="sm" type="submit">
+            Submit
+          </Button>
+
+          {mode === "edit" && (
+            <Link to={`/attributes/${initialAttribute.key}`}>
+              <Button size="sm" variant="secondary">
+                Cancel
+              </Button>
+            </Link>
+          )}
+
+          {mode === "create" && (
+            <Link to={`/attributes`}>
+              <Button size="sm" variant="secondary">
+                Cancel
+              </Button>
+            </Link>
+          )}
+        </div>
       </form>
     </Form>
   );

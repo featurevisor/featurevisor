@@ -1,8 +1,10 @@
 import * as React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { Pencil1Icon } from "@radix-ui/react-icons";
 
 import { Separator } from "../ui/separator";
 import { InlineCode } from "../ui/typography";
+import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 
 import { Markdown } from "../blocks/markdown";
@@ -34,9 +36,17 @@ export function AttributePageView() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="relative">
         <h3 className="text-lg font-medium">Overview</h3>
         <p className="text-sm text-muted-foreground">Overview of your attribute</p>
+
+        <div className="absolute right-0 top-0">
+          <Link to={`/attributes/${key}/edit`}>
+            <Button size="sm">
+              <Pencil1Icon className="inline w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Separator />

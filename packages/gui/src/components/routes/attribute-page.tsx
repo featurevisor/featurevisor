@@ -15,10 +15,6 @@ export function AttributePage() {
       title: "Overview",
     },
     {
-      href: `/attributes/${key}/edit`,
-      title: "Edit",
-    },
-    {
       href: `/attributes/${key}/history`,
       title: "History",
     },

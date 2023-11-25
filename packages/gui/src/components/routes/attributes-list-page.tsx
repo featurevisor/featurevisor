@@ -16,6 +16,8 @@ import { H2, InlineCode } from "../ui/typography";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
+import { Truncate } from "../blocks/truncate";
+
 import { parseSearchQuery, Query } from "../../utils";
 
 function getEntitiesByQuery(query: Query, entities) {
@@ -109,7 +111,9 @@ function EntitiesTable() {
                 {entity.archived && <Badge variant="secondary">archived</Badge>}
               </TableCell>
               <TableCell>{entity.type}</TableCell>
-              <TableCell>{entity.description}</TableCell>
+              <TableCell>
+                <Truncate text={entity.description} length={160} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -128,7 +132,7 @@ export function AttributesListPage() {
 
         <div className="absolute right-0 top-0">
           <Link to="/create/attribute">
-            <Button>Create</Button>
+            <Button size="sm">Create</Button>
           </Link>
         </div>
       </div>
