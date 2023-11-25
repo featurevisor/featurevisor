@@ -1,0 +1,34 @@
+description: An example of a complex segment
+conditions:
+  - and:
+      - or:
+          - attribute: country
+            operator: equals
+            value: nl
+          - attribute: country
+            operator: equals
+            value: fr
+          - attribute: country
+            operator: in
+            value:
+              - de
+              - at
+              - ch
+      - and:
+          - attribute: date
+            operator: after
+            value: 2024-11-24T00:00:00Z
+          - attribute: date
+            operator: before
+            value: 2024-11-27T00:00:00Z
+      - not:
+          - attribute: device
+            operator: equals
+            value: mobile
+          - or:
+              - attribute: version
+                operator: semverEquals
+                value: 1.0.0
+              - attribute: version
+                operator: semverEquals
+                value: 2.0.0

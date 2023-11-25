@@ -15,10 +15,15 @@ export function H2({ className = "", children }) {
   );
 }
 
-export function InlineCode(props) {
+export function InlineCode({ children, className = "" }) {
   return (
-    <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono font-semibold">
-      {props.children}
+    <code
+      className={cn(
+        `relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono font-semibold`,
+        className,
+      )}
+    >
+      {children}
     </code>
   );
 }
