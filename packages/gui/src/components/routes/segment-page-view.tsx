@@ -21,23 +21,38 @@ function getAndOrNotColor(andOrNot) {
   }
 }
 
-function SegmentConditions({ conditions = undefined, depth = 0 }) {
+function ConditionValue({ condition }) {
+  if (Array.isArray(condition.value)) {
+    return (
+      <ul className="list-disc list-inside mt-2">
+        {condition.value.map((v) => (
+          <li key={v} className="ml-8 py-1">
+            <InlineCode>{v}</InlineCode>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (condition.value === null) {
+    return (
+      <>
+        `<InlineCode>null</InlineCode>`
+      </>
+    );
+  }
+
+  return <InlineCode>{condition.value}</InlineCode>;
+}
+
+function SegmentConditions({ conditions = undefined, depth = 0, className = "" }) {
   if (typeof conditions === "object" && typeof conditions.attribute === "string") {
     // plain
     return (
       <div className="ml-2">
-        <span className="font-bold">•</span> <InlineCode>{conditions.attribute}</InlineCode>{" "}
-        <span>{conditions.operator}</span>{" "}
-        {Array.isArray(conditions.value) && (
-          <ul className="list-disc list-inside mt-2">
-            {conditions.value.map((v) => (
-              <li key={v} className="ml-8 my-1">
-                <InlineCode>{v}</InlineCode>
-              </li>
-            ))}
-          </ul>
-        )}
-        {!Array.isArray(conditions.value) && <InlineCode>{conditions.value}</InlineCode>}
+        <span className="font-extrabold">•</span> <InlineCode>{conditions.attribute}</InlineCode>{" "}
+        <span>{conditions.operator === "in" ? "in:" : conditions.operator}</span>{" "}
+        <ConditionValue condition={conditions} />
       </div>
     );
   }
@@ -45,7 +60,7 @@ function SegmentConditions({ conditions = undefined, depth = 0 }) {
   if (Array.isArray(conditions)) {
     // array
     return (
-      <ul className="">
+      <ul className={cn(className)}>
         {conditions.map((condition, index) => {
           return (
             <li key={index} className="px-1 py-2">
@@ -64,8 +79,10 @@ function SegmentConditions({ conditions = undefined, depth = 0 }) {
     <div
       className={cn(
         "rounded p-2 m-2 relative",
-        depth > 0 ? "border" : "",
+        "border",
+        // depth > 0 ? "border" : "",
         `${getAndOrNotColor(andOrNot).border}`,
+        className,
       )}
     >
       <div
@@ -154,7 +171,7 @@ export function SegmentPageView() {
             <div className="col-span-2">
               <dt className="text-sm font-medium text-gray-800">Conditions</dt>
               <dd className="mt-1 text-sm text-gray-500">
-                <SegmentConditions conditions={segment.conditions} />
+                <SegmentConditions className="m-0" conditions={segment.conditions} />
               </dd>
             </div>
           </dl>
