@@ -18,6 +18,8 @@ import { AttributePageHistory } from "./attribute-page-history";
 import { AttributePageEdit } from "./attribute-page-edit";
 import { AttributesCreate } from "./attributes-create-page";
 
+import { SegmentsListPage } from "./segments-list-page";
+
 import { HistoryPage } from "./history-page";
 
 const { useState, useEffect } = React;
@@ -63,6 +65,11 @@ export function App() {
                 </Route>
               </Route>
               <Route path="create/attribute" element={<AttributesCreate />} />
+
+              {/* Segments */}
+              <Route path="segments">
+                <Route index element={<SegmentsListPage />} />
+              </Route>
 
               {/* History */}
               <Route path="history">
