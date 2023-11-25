@@ -9,14 +9,14 @@ import { useToast } from "../ui/use-toast";
 
 import { Markdown } from "../blocks/markdown";
 
-export function AttributePageView() {
+export function SegmentPageView() {
   const { key } = useParams();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [attribute, setAttribute] = React.useState(null);
+  const [segment, setSegment] = React.useState(null);
 
   React.useEffect(() => {
-    fetch(`/api/attributes/${key}`)
+    fetch(`/api/segments/${key}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -25,12 +25,12 @@ export function AttributePageView() {
             description: data.error.message,
           });
 
-          navigate("/attributes");
+          navigate("/segments");
 
           return;
         }
 
-        setAttribute(data.data);
+        setSegment(data.data);
       });
   }, []);
 
@@ -38,10 +38,10 @@ export function AttributePageView() {
     <div className="space-y-6">
       <div className="relative">
         <h3 className="text-lg font-medium">Overview</h3>
-        <p className="text-sm text-muted-foreground">Overview of your attribute</p>
+        <p className="text-sm text-muted-foreground">Overview of your segment</p>
 
         <div className="absolute right-0 top-0">
-          <Link to={`/attributes/${key}/edit`}>
+          <Link to={`/segments/${key}/edit`}>
             <Button size="sm">
               <Pencil1Icon className="inline w-4 h-4" />
             </Button>
@@ -51,43 +51,40 @@ export function AttributePageView() {
 
       <Separator />
 
-      {attribute ? (
+      {segment ? (
         <div className="border-gray-200">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
             <div>
               <dt className="text-sm font-medium text-gray-800">Key</dt>
               <dd className="mt-1 text-sm text-gray-500">
-                <InlineCode>{attribute.key}</InlineCode>
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-sm font-medium text-gray-800">Type</dt>
-              <dd className="mt-1 text-sm text-gray-500">{attribute.type}</dd>
-            </div>
-
-            <div>
-              <dt className="text-sm font-medium text-gray-800">Capture</dt>
-              <dd className="mt-1 text-sm text-gray-500">
-                {attribute.capture === true ? <span>Yes</span> : <span>No</span>}
+                <InlineCode>{segment.key}</InlineCode>
               </dd>
             </div>
 
             <div>
               <dt className="text-sm font-medium text-gray-800">Archived</dt>
               <dd className="mt-1 text-sm text-gray-500">
-                {attribute.archived === true ? <span>Yes</span> : <span>No</span>}
+                {segment.archived === true ? <span>Yes</span> : <span>No</span>}
               </dd>
             </div>
 
             <div className="col-span-2">
               <dt className="text-sm font-medium text-gray-800">Description</dt>
               <dd className="mt-1 text-sm text-gray-500">
-                {attribute.description.trim().length > 0 ? (
-                  <Markdown children={attribute.description} />
+                {segment.description.trim().length > 0 ? (
+                  <Markdown children={segment.description} />
                 ) : (
                   "n/a"
                 )}
+              </dd>
+            </div>
+
+            <div className="col-span-2">
+              <dt className="text-sm font-medium text-gray-800">Conditions</dt>
+              <dd className="mt-1 text-sm text-gray-500">
+                <pre>
+                  <code>{JSON.stringify(segment.conditions, null, 2)}</code>
+                </pre>
               </dd>
             </div>
           </dl>

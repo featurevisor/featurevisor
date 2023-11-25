@@ -111,7 +111,7 @@ function EntitiesTable() {
                 {entity.archived && <Badge variant="secondary">archived</Badge>}
               </TableCell>
               <TableCell>{entity.type}</TableCell>
-              <TableCell>
+              <TableCell className="text-gray-600">
                 <Truncate text={entity.description} length={160} />
               </TableCell>
             </TableRow>

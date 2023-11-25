@@ -19,6 +19,9 @@ import { AttributePageEdit } from "./attribute-page-edit";
 import { AttributesCreate } from "./attributes-create-page";
 
 import { SegmentsListPage } from "./segments-list-page";
+import { SegmentPage } from "./segment-page";
+import { SegmentPageView } from "./segment-page-view";
+import { SegmentPageHistory } from "./segment-page-history";
 
 import { HistoryPage } from "./history-page";
 
@@ -69,6 +72,11 @@ export function App() {
               {/* Segments */}
               <Route path="segments">
                 <Route index element={<SegmentsListPage />} />
+
+                <Route path=":key" element={<SegmentPage />}>
+                  <Route index element={<SegmentPageView />} />
+                  <Route path="history" element={<SegmentPageHistory />} />
+                </Route>
               </Route>
 
               {/* History */}
