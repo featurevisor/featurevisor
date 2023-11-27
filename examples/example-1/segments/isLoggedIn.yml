@@ -1,0 +1,5 @@
+description: User is logged in
+conditions:
+  - attribute: loggedIn
+    operator: equals
+    value: true

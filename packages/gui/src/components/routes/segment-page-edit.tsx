@@ -24,11 +24,134 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from ".
 
 import { cn } from "../../utils";
 
+const ATTRIBUTE_VALUE_TYPES = ["string", "number", "boolean", "date", "semver"];
+
+const ATTRIBUTE_FORM_TYPES = [
+  {
+    key: "string",
+    inputType: "text",
+  },
+  {
+    key: "number",
+    inputType: "number",
+  },
+  {
+    key: "boolean",
+  },
+  {
+    key: "date",
+  },
+  {
+    key: "semver",
+    inputType: "text",
+  },
+];
+
+const OPERATORS = [
+  // all
+  {
+    key: "equals",
+    types: ["string", "number", "boolean", "date"],
+  },
+  {
+    key: "notEquals",
+    types: ["string", "number", "boolean", "date"],
+  },
+
+  // numeric
+  {
+    key: "greaterThan",
+    types: ["number"],
+  },
+  {
+    key: "lessThan",
+    types: ["number"],
+  },
+  {
+    key: "greaterThanOrEquals",
+    types: ["number"],
+  },
+  {
+    key: "lessThanOrEquals",
+    types: ["number"],
+  },
+
+  // string
+  {
+    key: "contains",
+    types: ["string"],
+  },
+  {
+    key: "notContains",
+    types: ["string"],
+  },
+  {
+    key: "startsWith",
+    types: ["string"],
+  },
+  {
+    key: "endsWith",
+    types: ["string"],
+  },
+
+  // semver
+  {
+    key: "semverEquals",
+    types: ["semver"],
+  },
+  {
+    key: "semverNotEquals",
+    types: ["semver"],
+  },
+  {
+    key: "semverGreaterThan",
+    types: ["semver"],
+  },
+  {
+    key: "semverLessThan",
+    types: ["semver"],
+  },
+  {
+    key: "semverGreaterThanOrEquals",
+    types: ["semver"],
+  },
+  {
+    key: "semverLessThanOrEquals",
+    types: ["semver"],
+  },
+
+  // date
+  {
+    key: "before",
+    types: ["date"],
+  },
+  {
+    key: "after",
+    types: ["date"],
+  },
+
+  // array of strings
+  {
+    key: "in",
+    types: ["string"],
+  },
+  {
+    key: "notIn",
+    types: ["string"],
+  },
+];
+
 const plainConditionSchema = z.object({
   attribute: z.string(),
   operator: z.string(),
   value: z.union([z.string(), z.array(z.string()), z.boolean(), z.number(), z.date(), z.null()]),
+
+  // form specific
+  _as: z.string(),
+  id: z.string(),
 });
+
+type PlainCondition = z.infer<typeof plainConditionSchema>;
 
 const andConditionSchema = z.lazy(() =>
   z.object({
@@ -61,12 +184,10 @@ const segmentFormSchema = z.object({
 
 type SegmentFormValues = z.infer<typeof segmentFormSchema>;
 
-export function SegmentForm({ initialSegment = undefined }) {
+export function SegmentForm({ initialSegment = undefined, attributesList = [] }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const mode = initialSegment === undefined ? "create" : "edit";
-
-  console.log("initialSegment", initialSegment);
 
   const form = useForm<SegmentFormValues>({
     resolver: zodResolver(segmentFormSchema),
@@ -201,22 +322,33 @@ export function SegmentForm({ initialSegment = undefined }) {
         />
 
         {/* Conditions */}
-        {fields.map((field, index) => {
-          console.log({ index, field });
+        {fields.map((condition: PlainCondition, index) => {
+          console.log({ index, condition });
+          const watchedAsValue = form.watch(`conditions.${index}._as`);
 
           return (
             <div key={index} className="flex space-x-2">
               <FormField
                 control={form.control}
-                key={field.id}
                 name={`conditions.${index}.attribute`}
                 render={({ field }) => {
                   return (
                     <FormItem className="">
                       <FormLabel>Attribute</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="choose" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {attributesList.map((attribute) => (
+                            <SelectItem key={attribute.key} value={attribute.key}>
+                              {attribute.key}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   );
@@ -225,15 +357,62 @@ export function SegmentForm({ initialSegment = undefined }) {
 
               <FormField
                 control={form.control}
-                key={field.id}
+                name={`conditions.${index}._as`}
+                render={({ field }) => {
+                  return (
+                    <FormItem className="">
+                      <FormLabel>As</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ATTRIBUTE_VALUE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
                 name={`conditions.${index}.operator`}
                 render={({ field }) => {
                   return (
                     <FormItem className="">
                       <FormLabel>Operator</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="operator" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {OPERATORS.filter((op) => {
+                            if (!watchedAsValue) {
+                              return true;
+                            }
+
+                            if (op.types.indexOf(watchedAsValue) > -1) {
+                              return true;
+                            }
+
+                            return false;
+                          }).map((op) => (
+                            <SelectItem key={op.key} value={op.key}>
+                              {op.key}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   );
@@ -242,15 +421,33 @@ export function SegmentForm({ initialSegment = undefined }) {
 
               <FormField
                 control={form.control}
-                key={field.id}
                 name={`conditions.${index}.value`}
                 render={({ field }) => {
                   return (
                     <FormItem className="">
                       <FormLabel>Value</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
+
+                      {(watchedAsValue === "string" ||
+                        watchedAsValue === "date" ||
+                        watchedAsValue === "semver" ||
+                        !watchedAsValue) && (
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      )}
+
+                      {watchedAsValue === "number" && (
+                        <FormControl>
+                          <Input {...field} type="number" />
+                        </FormControl>
+                      )}
+
+                      {watchedAsValue === "boolean" && (
+                        <FormControl className="block">
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      )}
+
                       <FormMessage />
                     </FormItem>
                   );
@@ -299,41 +496,66 @@ export function SegmentForm({ initialSegment = undefined }) {
 
 export function SegmentPageEdit() {
   const [initialSegment, setInitialSegment] = React.useState(null);
+  const [attributesList, setAttributesList] = React.useState(null);
+
   const { key } = useParams();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   React.useEffect(() => {
+    // attributes list
+    const attributesPromise = fetch(`/api/attributes`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAttributesList(data.data);
+
+        return data.data;
+      });
+
+    // initial segment
     if (key) {
-      fetch(`/api/segments/${key}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.error) {
-            toast({
-              title: `Error`,
-              description: data.error.message,
-            });
+      attributesPromise.then((attributesList) => {
+        return fetch(`/api/segments/${key}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              toast({
+                title: `Error`,
+                description: data.error.message,
+              });
 
-            navigate("/segments");
+              navigate("/segments");
 
-            return;
-          }
+              return;
+            }
 
-          const segment = data.data;
-
-          if (!Array.isArray(segment.conditions)) {
-            const andOrNot = Object.keys(segment.conditions)[0];
+            const segment = data.data;
 
             // turn object in root level into array for ease of form handling
-            segment.conditions = [
-              {
-                [andOrNot]: segment.conditions[andOrNot],
-              },
-            ];
-          }
+            if (!Array.isArray(segment.conditions)) {
+              const andOrNot = Object.keys(segment.conditions)[0];
 
-          setInitialSegment(data.data);
-        });
+              // turn object in root level into array for ease of form handling
+              segment.conditions = [
+                {
+                  [andOrNot]: segment.conditions[andOrNot],
+                },
+              ];
+            }
+
+            // set _as properties for this form only
+            segment.conditions.forEach((condition) => {
+              const attributeKey = condition.attribute;
+              const fullAttribute = attributesList.find((a) => a.key === attributeKey);
+
+              if (fullAttribute) {
+                condition._as = fullAttribute.type;
+              }
+            });
+
+            setInitialSegment(data.data);
+          });
+      });
     }
   }, []);
 
@@ -346,7 +568,11 @@ export function SegmentPageEdit() {
 
       <Separator />
 
-      {initialSegment ? <SegmentForm initialSegment={initialSegment} /> : <p>Loading...</p>}
+      {initialSegment && attributesList ? (
+        <SegmentForm initialSegment={initialSegment} attributesList={attributesList} />
+      ) : (
+        <p>Loading...</p>
+      )}
     </div>
   );
 }
