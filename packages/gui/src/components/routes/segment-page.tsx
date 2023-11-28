@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet, useParams, useLocation } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
 import { H2, InlineCode } from "../ui/typography";
@@ -8,6 +8,9 @@ import { SidebarNav } from "../blocks/sidebar-nav";
 
 export function SegmentPage() {
   const { key } = useParams();
+  const location = useLocation();
+
+  const isEdit = location.pathname.endsWith("/edit");
 
   const sidebarNavItems = [
     {
@@ -33,11 +36,13 @@ export function SegmentPage() {
       <Separator className="my-6" />
 
       <div className="flex flex-row space-x-12 space-y-0">
-        <aside className="w-1/4">
-          <SidebarNav items={sidebarNavItems} />
-        </aside>
+        {!isEdit && (
+          <aside className="w-1/6">
+            <SidebarNav items={sidebarNavItems} />
+          </aside>
+        )}
 
-        <div className="flex-1 lg:max-w-2xl">
+        <div className="flex-1 lg:max-w-5xl">
           <Outlet />
         </div>
       </div>

@@ -147,8 +147,8 @@ const plainConditionSchema = z.object({
   value: z.union([z.string(), z.array(z.string()), z.boolean(), z.number(), z.date(), z.null()]),
 
   // form specific
-  _as: z.string(),
-  id: z.string(),
+  _as: z.string().optional(),
+  id: z.string().optional(),
 });
 
 type PlainCondition = z.infer<typeof plainConditionSchema>;
@@ -184,6 +184,49 @@ const segmentFormSchema = z.object({
 
 type SegmentFormValues = z.infer<typeof segmentFormSchema>;
 
+function transformFormConditionsData(conditions) {
+  if (Array.isArray(conditions)) {
+    return conditions.map((condition) => {
+      return transformFormConditionsData(condition);
+    });
+  }
+
+  if (typeof conditions.attribute !== "undefined") {
+    const { _as, id, ...rest } = conditions; // eslint-disable-line
+    let value: any = String(conditions.value);
+
+    if (_as === "boolean") {
+      value = value.toLowerCase() === "true" || value === "1";
+    } else if (_as === "number") {
+      value = Number(value);
+    } else if (_as === "date") {
+      value = new Date(value);
+    }
+
+    return {
+      ...rest,
+      value,
+    };
+  }
+
+  const andOrNot = Object.keys(conditions)[0];
+
+  return {
+    [andOrNot]: transformFormConditionsData(conditions[andOrNot]),
+  };
+}
+
+function transformFormData(data: SegmentFormValues) {
+  const { conditions, ...rest } = data;
+
+  const transformedConditions = transformFormConditionsData(conditions);
+
+  return {
+    ...rest,
+    conditions: transformedConditions,
+  };
+}
+
 export function SegmentForm({ initialSegment = undefined, attributesList = [] }) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -195,13 +238,14 @@ export function SegmentForm({ initialSegment = undefined, attributesList = [] })
     mode: "onChange",
   });
 
-  const { fields, append } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     name: "conditions",
     control: form.control,
   });
 
   function onSubmit(data: SegmentFormValues) {
-    console.log(mode, data);
+    const transformedData = transformFormData(data);
+    console.log(mode, data, JSON.stringify(transformedData, null, 2));
 
     if (mode === "edit") {
       // const { key, ...body } = data;
@@ -322,150 +366,178 @@ export function SegmentForm({ initialSegment = undefined, attributesList = [] })
         />
 
         {/* Conditions */}
-        {fields.map((condition: PlainCondition, index) => {
-          console.log({ index, condition });
-          const watchedAsValue = form.watch(`conditions.${index}._as`);
+        <div className="bg-gray-200 rounded-md p-2">
+          {fields.map((condition: PlainCondition, index) => {
+            const watchedAsValue = form.watch(`conditions.${index}._as`);
 
-          return (
-            <div key={index} className="flex space-x-2">
-              <FormField
-                control={form.control}
-                name={`conditions.${index}.attribute`}
-                render={({ field }) => {
-                  return (
-                    <FormItem className="">
-                      <FormLabel>Attribute</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="choose" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {attributesList.map((attribute) => (
-                            <SelectItem key={attribute.key} value={attribute.key}>
-                              {attribute.key}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
+            return (
+              <div key={index} className="group flex flex-row space-x-2 relative">
+                <FormField
+                  control={form.control}
+                  name={`conditions.${index}.attribute`}
+                  render={({ field }) => {
+                    return (
+                      <FormItem className="basis-3/12">
+                        <FormLabel className="hidden">Attribute</FormLabel>
+                        <Select
+                          onValueChange={(v) => {
+                            // based on attribute, set _as automatically
+                            let newAs = "string";
+                            const attribute = attributesList.find((a) => a.key === v);
 
-              <FormField
-                control={form.control}
-                name={`conditions.${index}._as`}
-                render={({ field }) => {
-                  return (
-                    <FormItem className="">
-                      <FormLabel>As</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {ATTRIBUTE_VALUE_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <FormField
-                control={form.control}
-                name={`conditions.${index}.operator`}
-                render={({ field }) => {
-                  return (
-                    <FormItem className="">
-                      <FormLabel>Operator</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="operator" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {OPERATORS.filter((op) => {
-                            if (!watchedAsValue) {
-                              return true;
+                            if (attribute) {
+                              if (attribute.type === "integer" || attribute.type === "double") {
+                                newAs = "number";
+                              } else {
+                                newAs = attribute.type;
+                              }
                             }
 
-                            if (op.types.indexOf(watchedAsValue) > -1) {
-                              return true;
-                            }
+                            const keyPath: `conditions.${string}` = `conditions.${index}._as`;
 
-                            return false;
-                          }).map((op) => (
-                            <SelectItem key={op.key} value={op.key}>
-                              {op.key}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
+                            // @TODO: _as is not re-rendering
+                            form.setValue(keyPath, newAs, {
+                              shouldDirty: true,
+                            });
 
-              <FormField
-                control={form.control}
-                name={`conditions.${index}.value`}
-                render={({ field }) => {
-                  return (
-                    <FormItem className="">
-                      <FormLabel>Value</FormLabel>
+                            return field.onChange(v);
+                          }}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="select attribute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {attributesList.map((attribute) => (
+                              <SelectItem key={attribute.key} value={attribute.key}>
+                                {attribute.key}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-                      {(watchedAsValue === "string" ||
-                        watchedAsValue === "date" ||
-                        watchedAsValue === "semver" ||
-                        !watchedAsValue) && (
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      )}
+                <FormField
+                  control={form.control}
+                  name={`conditions.${index}._as`}
+                  render={({ field }) => {
+                    return (
+                      <FormItem className="basis-2/12">
+                        <FormLabel className="hidden">As</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ATTRIBUTE_VALUE_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-                      {watchedAsValue === "number" && (
-                        <FormControl>
-                          <Input {...field} type="number" />
-                        </FormControl>
-                      )}
+                <FormField
+                  control={form.control}
+                  name={`conditions.${index}.operator`}
+                  render={({ field }) => {
+                    return (
+                      <FormItem className="basis-4/12">
+                        <FormLabel className="hidden">Operator</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="select operator" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {OPERATORS.filter((op) => {
+                              if (!watchedAsValue) {
+                                return true;
+                              }
 
-                      {watchedAsValue === "boolean" && (
-                        <FormControl className="block">
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      )}
+                              if (op.types.indexOf(watchedAsValue) > -1) {
+                                return true;
+                              }
 
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-            </div>
-          );
-        })}
+                              return false;
+                            }).map((op) => (
+                              <SelectItem key={op.key} value={op.key}>
+                                {op.key}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-2"
-          onClick={() => append({ attribute: "country", operator: "equals", value: "" })}
-        >
-          Add
-        </Button>
+                <FormField
+                  control={form.control}
+                  name={`conditions.${index}.value`}
+                  render={({ field }) => {
+                    return (
+                      <FormItem className="basis-3/12">
+                        <FormLabel className="hidden">Value</FormLabel>
+
+                        {(watchedAsValue === "string" ||
+                          watchedAsValue === "date" ||
+                          watchedAsValue === "semver" ||
+                          watchedAsValue === "number" ||
+                          !watchedAsValue) && (
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        )}
+
+                        {watchedAsValue === "boolean" && (
+                          <FormControl className="block">
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        )}
+
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <div className="hidden group-hover:inline-block absolute right-0 top-2.5">
+                  <Button size="sm" onClick={() => remove(index)}>
+                    x
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="text-right">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => append({ attribute: "", operator: "", value: "" })}
+            >
+              Add
+            </Button>
+          </div>
+        </div>
 
         {/* Buttons */}
         <div className="flex space-x-4">
@@ -563,7 +635,7 @@ export function SegmentPageEdit() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">Edit Segment</h3>
-        <p className="text-sm text-muted-foreground">Update your attribute via this form.</p>
+        <p className="text-sm text-muted-foreground">Update your segment via this form.</p>
       </div>
 
       <Separator />

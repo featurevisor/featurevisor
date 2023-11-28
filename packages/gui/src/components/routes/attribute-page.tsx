@@ -33,7 +33,7 @@ export function AttributePage() {
       <Separator className="my-6" />
 
       <div className="flex flex-row space-x-12 space-y-0">
-        <aside className="w-1/4">
+        <aside className="w-1/6">
           <SidebarNav items={sidebarNavItems} />
         </aside>
 
