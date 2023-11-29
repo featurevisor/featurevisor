@@ -11,7 +11,7 @@ export type AttributeType = "boolean" | "string" | "integer" | "double" | "date"
 export interface Attribute {
   archived?: boolean; // only available in YAML
   key: AttributeKey;
-  type: string;
+  type: AttributeType;
   capture?: boolean;
 }
 
