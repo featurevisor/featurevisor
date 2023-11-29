@@ -6,6 +6,8 @@ export interface Context {
   [key: AttributeKey]: AttributeValue;
 }
 
+export type AttributeType = "boolean" | "string" | "integer" | "double" | "date" | "semver";
+
 export interface Attribute {
   archived?: boolean; // only available in YAML
   key: AttributeKey;
