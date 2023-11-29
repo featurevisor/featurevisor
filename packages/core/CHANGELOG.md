@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+
+### Features
+
+* attribute type for semver ([#221](https://github.com/featurevisor/featurevisor/issues/221)) ([278e366](https://github.com/featurevisor/featurevisor/commit/278e366d76b3f6ed5b6aae1b96f8ca1149276574))
+
+
+
+
+
 ## [0.62.2](https://github.com/featurevisor/featurevisor/compare/v0.62.1...v0.62.2) (2023-11-21)
 
 
