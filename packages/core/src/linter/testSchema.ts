@@ -27,11 +27,11 @@ export function getTestsJoiSchema(
     assertions: Joi.array().items(
       Joi.object({
         description: Joi.string().optional(),
-        at: Joi.number().precision(3).min(0).max(100),
-        environment: Joi.string().valid(...projectConfig.environments),
-        context: Joi.object(),
-
-        // @TODO: one or all below
+        at: Joi.number().precision(3).min(0).max(100).required(),
+        environment: Joi.string()
+          .valid(...projectConfig.environments)
+          .required(),
+        context: Joi.object().required(),
         expectedToBeEnabled: Joi.boolean().required(),
         expectedVariation: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean()),
         expectedVariables: Joi.object(),
