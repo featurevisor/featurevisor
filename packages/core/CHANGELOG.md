@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+
+### Features
+
+* require certain fields in features and tests when linting ([#222](https://github.com/featurevisor/featurevisor/issues/222)) ([5d8ed18](https://github.com/featurevisor/featurevisor/commit/5d8ed183573a23fd418a5ee6b74dc9e8f51064a3))
+
+
+
+
+
 # [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
 
 
