@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.64.1](https://github.com/featurevisor/featurevisor/compare/v0.64.0...v0.64.1) (2023-12-10)
+
+**Note:** Version bump only for package @featurevisor/example-yml-include
+
+
+
+
+
 # [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
 
 **Note:** Version bump only for package @featurevisor/example-yml-include
