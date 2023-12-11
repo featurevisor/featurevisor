@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.64.2](https://github.com/featurevisor/featurevisor/compare/v0.64.1...v0.64.2) (2023-12-11)
+
+
+### Bug Fixes
+
+* include variation allocations when introduced later ([#229](https://github.com/featurevisor/featurevisor/issues/229)) ([1e3f7fb](https://github.com/featurevisor/featurevisor/commit/1e3f7fbde2fc95e8e4dab12d86bb6a76bab410b3))
+
+
+
+
+
 ## [0.64.1](https://github.com/featurevisor/featurevisor/compare/v0.64.0...v0.64.1) (2023-12-10)
 
 **Note:** Version bump only for package @featurevisor/core
