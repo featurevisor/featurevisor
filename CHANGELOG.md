@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+
+### Features
+
+* v1 ([0113baf](https://github.com/featurevisor/featurevisor/commit/0113baf657866c5b49a6924b74baca25cc5d42a1))
+* v1 release ([#233](https://github.com/featurevisor/featurevisor/issues/233)) ([97ba8e2](https://github.com/featurevisor/featurevisor/commit/97ba8e25b01fe35efaaec352c27d584374b07035))
+* v1\ ([7e2a188](https://github.com/featurevisor/featurevisor/commit/7e2a18806631122956c6bdd2fbc7771634fa054d))
+
+
+### BREAKING CHANGES
+
+* trigger release
+* trigger stable release
+* trigger stable release
+
+
+
+
+
 # [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
 
 
