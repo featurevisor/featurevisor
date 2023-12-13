@@ -74,7 +74,7 @@ export type Condition = PlainCondition | AndOrNotCondition;
 export type SegmentKey = string;
 
 export interface Segment {
-  archived?: boolean; // only available in YAML
+  archived?: boolean; // only available in YAML files
   key: SegmentKey;
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
 }
