@@ -151,7 +151,7 @@ export interface VariableOverride {
 export interface Variable {
   key: VariableKey;
   value: VariableValue;
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   overrides?: VariableOverride[];
 }
 
