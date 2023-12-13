@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+
+* feat!: publish with conventional commits preset using Lerna (#234) ([0b550e1](https://github.com/featurevisor/featurevisor/commit/0b550e10117eaf40a02793caec2f539f52bbaaba)), closes [#234](https://github.com/featurevisor/featurevisor/issues/234)
+
+
+### BREAKING CHANGES
+
+* trigger stable release
+
+
+
+
+
 # [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
 
 

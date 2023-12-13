@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
 # [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
 
 **Note:** Version bump only for package @featurevisor/sdk
