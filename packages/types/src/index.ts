@@ -142,7 +142,7 @@ export type VariableOverrideSegmentsOrConditions =
 export interface VariableOverride {
   value: VariableValue;
 
-  // one of the below must be present in YAML
+  // one of the below must be present in YAML files
   // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
