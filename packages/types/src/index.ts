@@ -156,7 +156,7 @@ export interface Variable {
 }
 
 export interface Variation {
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   value: VariationValue;
   weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
   variables?: Variable[];
