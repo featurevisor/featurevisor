@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+
+* feat!: trigger v1 release (#232) ([2165101](https://github.com/featurevisor/featurevisor/commit/2165101081dc28280b6de00cd20b4b5b62919948)), closes [#232](https://github.com/featurevisor/featurevisor/issues/232)
+
+
+### BREAKING CHANGES
+
+* triggering v1 release
+
+
+
+
+
 # [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
 
 **Note:** Version bump only for package @featurevisor/types
