@@ -146,16 +146,10 @@ export function getFeatureJoiSchema(
     variablesSchema: Joi.array()
       .items(
         Joi.object({
-          key: Joi.string().disallow("variation"),
-          type: Joi.string().valid(
-            "string",
-            "integer",
-            "boolean",
-            "double",
-            "array",
-            "object",
-            "json",
-          ),
+          key: Joi.string().disallow("variation").required(),
+          type: Joi.string()
+            .valid("string", "integer", "boolean", "double", "array", "object", "json")
+            .required(),
           description: Joi.string().optional(),
           defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
         }),
