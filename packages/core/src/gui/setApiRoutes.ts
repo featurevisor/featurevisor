@@ -1,6 +1,6 @@
-export function setApiRoutes(deps, fastify) {
-  fastify.get("/api", async () => {
-    return { hello: "world" };
+export function setApiRoutes(deps, app) {
+  app.get("/api", (req, res) => {
+    res.json({ hello: "world" });
   });
 
   /**

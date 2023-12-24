@@ -3,33 +3,28 @@ import * as path from "path";
 import { Dependencies } from "../dependencies";
 import { setApiRoutes } from "./setApiRoutes";
 
-const Fastify = require("fastify");
-const fastifyStatic = require("@fastify/static");
+const express = require("express");
 
 export async function openGui(deps: Dependencies) {
   const guiPackagePath = path.dirname(require.resolve("@featurevisor/gui/package.json"));
   const guiDistPath = path.join(guiPackagePath, "dist");
 
-  // server
-  const fastify = Fastify({
-    logger: true,
+  const app = express();
+
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
   });
 
-  // static
-  fastify.register(fastifyStatic, {
-    root: guiDistPath,
-    prefix: "/",
-  });
+  app.use(express.json());
 
-  // /api routes
-  setApiRoutes(deps, fastify);
+  // routes
+  setApiRoutes(deps, app);
+  app.use(express.static(guiDistPath));
 
   // run
-  fastify.listen({ port: 3000 }, (err, address) => {
-    if (err) {
-      throw err;
-    }
-
-    console.log(`Server is now listening on ${address}`);
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`GUI running at http://localhost:${port}`);
   });
 }

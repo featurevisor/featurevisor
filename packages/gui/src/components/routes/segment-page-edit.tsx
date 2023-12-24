@@ -22,30 +22,7 @@ import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select";
 
-import { cn } from "../../utils";
-
 const ATTRIBUTE_VALUE_TYPES = ["string", "number", "boolean", "date", "semver"];
-
-const ATTRIBUTE_FORM_TYPES = [
-  {
-    key: "string",
-    inputType: "text",
-  },
-  {
-    key: "number",
-    inputType: "number",
-  },
-  {
-    key: "boolean",
-  },
-  {
-    key: "date",
-  },
-  {
-    key: "semver",
-    inputType: "text",
-  },
-];
 
 const OPERATORS = [
   // all
@@ -228,8 +205,6 @@ function transformFormData(data: SegmentFormValues) {
 }
 
 export function SegmentForm({ initialSegment = undefined, attributesList = [] }) {
-  const { toast } = useToast();
-  const navigate = useNavigate();
   const mode = initialSegment === undefined ? "create" : "edit";
 
   const form = useForm<SegmentFormValues>({
