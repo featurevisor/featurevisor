@@ -67,8 +67,8 @@ export function getFeatureJoiSchema(
         Joi.object({
           key: Joi.string().required(),
           description: Joi.string().optional(),
-          segments: groupSegmentsJoiSchema,
-          percentage: Joi.number().precision(3).min(0).max(100),
+          segments: groupSegmentsJoiSchema.required(),
+          percentage: Joi.number().precision(3).min(0).max(100).required(),
 
           enabled: Joi.boolean().optional(),
           variation: variationValueJoiSchema.optional(), // @TODO: only allowed if feature.variations is present
@@ -79,7 +79,7 @@ export function getFeatureJoiSchema(
       .required(),
     force: Joi.array().items(
       Joi.object({
-        // @TODO: either of the two below
+        // @TODO: either of the two below should be required
         segments: groupSegmentsJoiSchema.optional(),
         conditions: conditionsJoiSchema.optional(),
 
@@ -146,16 +146,10 @@ export function getFeatureJoiSchema(
     variablesSchema: Joi.array()
       .items(
         Joi.object({
-          key: Joi.string().disallow("variation"),
-          type: Joi.string().valid(
-            "string",
-            "integer",
-            "boolean",
-            "double",
-            "array",
-            "object",
-            "json",
-          ),
+          key: Joi.string().disallow("variation").required(),
+          type: Joi.string()
+            .valid("string", "integer", "boolean", "double", "array", "object", "json")
+            .required(),
           description: Joi.string().optional(),
           defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
         }),

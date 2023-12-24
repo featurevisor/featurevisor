@@ -6,10 +6,12 @@ export interface Context {
   [key: AttributeKey]: AttributeValue;
 }
 
+export type AttributeType = "boolean" | "string" | "integer" | "double" | "date" | "semver";
+
 export interface Attribute {
-  archived?: boolean; // only available in YAML
+  archived?: boolean; // only available in YAML files
   key: AttributeKey;
-  type: string;
+  type: AttributeType;
   capture?: boolean;
 }
 
@@ -72,7 +74,7 @@ export type Condition = PlainCondition | AndOrNotCondition;
 export type SegmentKey = string;
 
 export interface Segment {
-  archived?: boolean; // only available in YAML
+  archived?: boolean; // only available in YAML files
   key: SegmentKey;
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
 }
@@ -140,7 +142,7 @@ export type VariableOverrideSegmentsOrConditions =
 export interface VariableOverride {
   value: VariableValue;
 
-  // one of the below must be present in YAML
+  // one of the below must be present in YAML files
   // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
@@ -149,12 +151,12 @@ export interface VariableOverride {
 export interface Variable {
   key: VariableKey;
   value: VariableValue;
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   overrides?: VariableOverride[];
 }
 
 export interface Variation {
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   value: VariationValue;
   weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
   variables?: Variable[];

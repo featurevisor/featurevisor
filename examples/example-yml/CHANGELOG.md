@@ -3,6 +3,86 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.69.0](https://github.com/featurevisor/featurevisor/compare/v0.68.0...v0.69.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.68.0](https://github.com/featurevisor/featurevisor/compare/v0.67.0...v0.68.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+## [0.64.3](https://github.com/featurevisor/featurevisor/compare/v0.64.2...v0.64.3) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+## [0.64.2](https://github.com/featurevisor/featurevisor/compare/v0.64.1...v0.64.2) (2023-12-11)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+## [0.64.1](https://github.com/featurevisor/featurevisor/compare/v0.64.0...v0.64.1) (2023-12-10)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+**Note:** Version bump only for package @featurevisor/example-yml
+
+
+
+
+
 ## [0.62.2](https://github.com/featurevisor/featurevisor/compare/v0.62.1...v0.62.2) (2023-11-21)
 
 **Note:** Version bump only for package @featurevisor/example-yml

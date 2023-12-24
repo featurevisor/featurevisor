@@ -3,6 +3,95 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.69.0](https://github.com/featurevisor/featurevisor/compare/v0.68.0...v0.69.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.68.0](https://github.com/featurevisor/featurevisor/compare/v0.67.0...v0.68.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [0.64.3](https://github.com/featurevisor/featurevisor/compare/v0.64.2...v0.64.3) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [0.64.2](https://github.com/featurevisor/featurevisor/compare/v0.64.1...v0.64.2) (2023-12-11)
+
+
+### Bug Fixes
+
+* include variation allocations when introduced later ([#229](https://github.com/featurevisor/featurevisor/issues/229)) ([1e3f7fb](https://github.com/featurevisor/featurevisor/commit/1e3f7fbde2fc95e8e4dab12d86bb6a76bab410b3))
+
+
+
+
+
+## [0.64.1](https://github.com/featurevisor/featurevisor/compare/v0.64.0...v0.64.1) (2023-12-10)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+
+### Features
+
+* require certain fields in features and tests when linting ([#222](https://github.com/featurevisor/featurevisor/issues/222)) ([5d8ed18](https://github.com/featurevisor/featurevisor/commit/5d8ed183573a23fd418a5ee6b74dc9e8f51064a3))
+
+
+
+
+
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+
+### Features
+
+* attribute type for semver ([#221](https://github.com/featurevisor/featurevisor/issues/221)) ([278e366](https://github.com/featurevisor/featurevisor/commit/278e366d76b3f6ed5b6aae1b96f8ca1149276574))
+
+
+
+
+
 ## [0.62.2](https://github.com/featurevisor/featurevisor/compare/v0.62.1...v0.62.2) (2023-11-21)
 
 

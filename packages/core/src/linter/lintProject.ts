@@ -28,13 +28,13 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const attributeJoiSchema = getAttributeJoiSchema();
 
   for (const key of attributes) {
-    const parsed = await datasource.readAttribute(key);
-    availableAttributeKeys.push(key);
-
     try {
+      const parsed = await datasource.readAttribute(key);
+      availableAttributeKeys.push(key);
       await attributeJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -54,13 +54,13 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
   for (const key of segments) {
-    const parsed = await datasource.readSegment(key);
-    availableSegmentKeys.push(key);
-
     try {
+      const parsed = await datasource.readSegment(key);
+      availableSegmentKeys.push(key);
       await segmentJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -84,13 +84,16 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of features) {
-    const parsed = await datasource.readFeature(key);
-    availableFeatureKeys.push(key);
+    let parsed;
 
     try {
+      parsed = await datasource.readFeature(key);
+      availableFeatureKeys.push(key);
+
       await featureJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -101,7 +104,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       hasError = true;
     }
 
-    if (parsed.required) {
+    if (parsed && parsed.required) {
       try {
         await checkForCircularDependencyInRequired(datasource, key, parsed.required);
       } catch (e) {
@@ -120,12 +123,12 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
 
   for (const key of groups) {
-    const parsed = await datasource.readGroup(key);
-
     try {
+      const parsed = await datasource.readGroup(key);
       await groupJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -150,12 +153,12 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of tests) {
-    const parsed = await datasource.readTest(key);
-
     try {
+      const parsed = await datasource.readTest(key);
       await testsJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);

@@ -14,7 +14,7 @@ export function getGroupJoiSchema(
       .items(
         Joi.object({
           feature: Joi.string().valid(...availableFeatureKeys),
-          percentage: Joi.number().precision(3).min(0).max(100),
+          percentage: Joi.number().precision(3).min(0).max(100).required(),
         }),
       )
       .custom(async function (value) {
