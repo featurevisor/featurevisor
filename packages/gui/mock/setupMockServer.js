@@ -297,6 +297,31 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  devServer.app.put("/api/segments/:key", function (req, res) {
+    const index = entities.segments.findIndex((segment) => segment.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: `Segment "${req.params.key}" not found`,
+        },
+      });
+    }
+
+    const segment = entities.segments[index];
+    entities.segments[index] = {
+      ...segment,
+      ...req.body,
+    };
+
+    res.json({
+      data: {
+        ...entities.segments[index],
+        key: req.params.key,
+      },
+    });
+  });
+
   devServer.app.get("/api/segments/:key/history", async function (req, res) {
     const index = entities.segments.findIndex((segment) => segment.key === req.params.key);
 
