@@ -297,6 +297,26 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  devServer.app.post("/api/segments", function (req, res) {
+    const index = entities.segments.findIndex((segment) => segment.key === req.body.key);
+
+    if (index !== -1) {
+      return res.status(400).json({
+        error: {
+          message: "Segment with this key already exists",
+        },
+      });
+    }
+
+    const segment = req.body;
+
+    entities.segments.push(segment);
+
+    res.json({
+      data: segment,
+    });
+  });
+
   devServer.app.put("/api/segments/:key", function (req, res) {
     const index = entities.segments.findIndex((segment) => segment.key === req.params.key);
 

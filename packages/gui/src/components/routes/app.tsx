@@ -23,6 +23,7 @@ import { SegmentPage } from "./segment-page";
 import { SegmentPageView } from "./segment-page-view";
 import { SegmentPageHistory } from "./segment-page-history";
 import { SegmentPageEdit } from "./segment-page-edit";
+import { SegmentsCreate } from "./segments-create-page";
 
 import { HistoryPage } from "./history-page";
 
@@ -80,6 +81,7 @@ export function App() {
                   <Route path="history" element={<SegmentPageHistory />} />
                 </Route>
               </Route>
+              <Route path="create/segment" element={<SegmentsCreate />} />
 
               {/* History */}
               <Route path="history">

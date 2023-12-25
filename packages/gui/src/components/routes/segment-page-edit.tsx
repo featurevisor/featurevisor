@@ -65,7 +65,6 @@ export function SegmentForm({ initialSegment = undefined }) {
 
   function onSubmit(data: SegmentFormValues) {
     const transformedData = transformFormData(data);
-    console.log(mode, data, JSON.stringify(transformedData, null, 2));
 
     if (mode === "edit") {
       const { key, ...body } = transformedData;
@@ -168,7 +167,7 @@ export function SegmentForm({ initialSegment = undefined }) {
               <FormLabel>Conditions</FormLabel>
 
               <FormControl>
-                <Textarea placeholder="[]" {...field} />
+                <Textarea placeholder="" {...field} />
               </FormControl>
 
               <FormDescription>Your conditions in stringified form.</FormDescription>
