@@ -18,7 +18,7 @@ export function getMatchedAllocation(
   return undefined;
 }
 
-function parseFromStringifiedSegments(value) {
+export function parseFromStringifiedSegments(value) {
   if (typeof value === "string" && (value.startsWith("{") || value.startsWith("["))) {
     return JSON.parse(value);
   }

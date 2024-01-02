@@ -23,7 +23,12 @@ import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
 import { getBucketedNumber } from "./bucket";
-import { findForceFromFeature, getMatchedTraffic, getMatchedTrafficAndAllocation } from "./feature";
+import {
+  findForceFromFeature,
+  getMatchedTraffic,
+  getMatchedTrafficAndAllocation,
+  parseFromStringifiedSegments,
+} from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
 
@@ -1072,8 +1077,16 @@ export class FeaturevisorInstance {
         }
 
         // regular allocation
-        if (matchedAllocation && matchedAllocation.variation && Array.isArray(feature.variations)) {
-          const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
+        let variationValue;
+
+        if (force && force.variation) {
+          variationValue = force.variation;
+        } else if (matchedAllocation && matchedAllocation.variation) {
+          variationValue = matchedAllocation.variation;
+        }
+
+        if (variationValue && Array.isArray(feature.variations)) {
+          const variation = feature.variations.find((v) => v.value === variationValue);
 
           if (variation && variation.variables) {
             const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
@@ -1090,9 +1103,7 @@ export class FeaturevisorInstance {
 
                   if (o.segments) {
                     return allGroupSegmentsAreMatched(
-                      typeof o.segments === "string" && o.segments !== "*"
-                        ? JSON.parse(o.segments)
-                        : o.segments,
+                      parseFromStringifiedSegments(o.segments),
                       finalContext,
                       this.datafileReader,
                     );
