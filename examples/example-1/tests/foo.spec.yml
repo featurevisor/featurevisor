@@ -40,3 +40,14 @@ assertions:
     expectedVariables:
       bar: bar for DE or CH
       baz: baz_here
+
+  - at: 20
+    environment: staging
+    context:
+      country: de
+      userId: test-force-id
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar for DE or CH
+      baz: baz_here
