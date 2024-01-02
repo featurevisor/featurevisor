@@ -50,4 +50,4 @@ assertions:
     expectedVariation: treatment
     expectedVariables:
       bar: bar for DE or CH
-      # baz: baz_here
+      baz: baz_here
