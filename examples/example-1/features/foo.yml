@@ -34,6 +34,12 @@ variations:
 
 environments:
   staging:
+    force:
+      - conditions:
+          - attribute: userId
+            operator: equals
+            value: "test-force-id"
+        variation: treatment
     rules:
       - key: "1"
         segments: "*"
