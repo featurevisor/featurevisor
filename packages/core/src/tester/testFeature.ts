@@ -14,7 +14,7 @@ export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
-  options: { verbose?: boolean } = {},
+  options: { verbose?: boolean; showDatafile?: boolean } = {},
   patterns,
 ): Promise<boolean> {
   let hasError = false;
@@ -49,6 +49,12 @@ export async function testFeature(
       },
       existingState,
     );
+
+    if (options.showDatafile) {
+      console.log("");
+      console.log(JSON.stringify(datafileContent, null, 2));
+      console.log("");
+    }
 
     const sdk = createInstance({
       datafile: datafileContent,

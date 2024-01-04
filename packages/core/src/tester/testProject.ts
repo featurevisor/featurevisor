@@ -11,6 +11,7 @@ export interface TestProjectOptions {
   keyPattern?: string;
   assertionPattern?: string;
   verbose?: boolean;
+  showDatafile?: boolean;
 }
 
 export async function testProject(
