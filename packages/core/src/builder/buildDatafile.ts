@@ -133,7 +133,10 @@ export async function buildDatafile(
                     );
 
                     return {
-                      segments: JSON.stringify(override.segments),
+                      segments:
+                        typeof override.segments === "string"
+                          ? override.segments
+                          : JSON.stringify(override.segments),
                       value: override.value,
                     };
                   }
