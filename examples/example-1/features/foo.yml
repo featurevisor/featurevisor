@@ -31,6 +31,9 @@ variations:
             value: bar for DE or CH
       - key: baz
         value: baz_here
+        overrides:
+          - segments: netherlands
+            value: baz for NL
 
 environments:
   staging:
