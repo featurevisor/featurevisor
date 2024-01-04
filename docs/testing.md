@@ -144,6 +144,16 @@ For debugging purposes, you can enable verbose mode to see more details of your 
 $ featurevisor test --verbose
 ```
 
+### `showDatafile`
+
+For more advanced debugging, you can print the datafile content used by test runner:
+
+```
+$ featurevisor test --showDatafile
+```
+
+Printing datafile content for each and every tested feature can be very verbose, so we recommend using this option with `--keyPattern` to filter tests.
+
 ## NPM scripts
 
 If you are using npm scripts for testing your Featurevisor project like this:
