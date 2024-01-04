@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.3](https://github.com/featurevisor/featurevisor/compare/v1.0.2...v1.0.3) (2024-01-04)
+
+
+### Bug Fixes
+
+* stringify segments in variable overrides correctly ([#241](https://github.com/featurevisor/featurevisor/issues/241)) ([986fc2f](https://github.com/featurevisor/featurevisor/commit/986fc2fb814a0be091250d63b3cd08a9901dc5cd))
+
+
+
+
+
 ## [1.0.2](https://github.com/featurevisor/featurevisor/compare/v1.0.1...v1.0.2) (2024-01-04)
 
 **Note:** Version bump only for package featurevisor
