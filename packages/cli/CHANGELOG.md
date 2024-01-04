@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://github.com/featurevisor/featurevisor/compare/v1.0.3...v1.1.0) (2024-01-04)
+
+
+### Features
+
+* showDatafile option when running tests ([#242](https://github.com/featurevisor/featurevisor/issues/242)) ([6c9561f](https://github.com/featurevisor/featurevisor/commit/6c9561f6253c94750817737c3e09162e4a904f8a))
+
+
+
+
+
 ## [1.0.3](https://github.com/featurevisor/featurevisor/compare/v1.0.2...v1.0.3) (2024-01-04)
 
 **Note:** Version bump only for package @featurevisor/cli
