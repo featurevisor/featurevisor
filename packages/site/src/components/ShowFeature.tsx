@@ -147,7 +147,7 @@ export function DisplayFeatureForceTable() {
                           {typeof force.variables[k] === "string" && force.variables[k]}
                           {typeof force.variables[k] !== "string" && (
                             <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                              {force.variables[k]}
+                              {JSON.stringify(force.variables[k], null, 2)}
                             </code>
                           )}
                         </li>
@@ -249,7 +249,7 @@ export function DisplayFeatureRulesTable() {
                             {typeof rule.variables[k] === "string" && rule.variables[k]}
                             {typeof rule.variables[k] !== "string" && (
                               <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                {rule.variables[k]}
+                                {JSON.stringify(rule.variables[k], null, 2)}
                               </code>
                             )}
                           </li>
