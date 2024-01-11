@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.1](https://github.com/featurevisor/featurevisor/compare/v1.1.0...v1.1.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* stringify variable value when rendering in generated site ([#243](https://github.com/featurevisor/featurevisor/issues/243)) ([9daf95b](https://github.com/featurevisor/featurevisor/commit/9daf95b47885775a4151139a69d8b85720f1da0a))
+
+
+
+
+
 # [1.1.0](https://github.com/featurevisor/featurevisor/compare/v1.0.3...v1.1.0) (2024-01-04)
 
 
