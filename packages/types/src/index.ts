@@ -353,7 +353,12 @@ export interface ExistingState {
 /**
  * Tests
  */
+export interface AssertionMatrix {
+  [key: string]: AttributeValue[];
+}
+
 export interface FeatureAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
   at: Weight; // bucket weight: 0 to 100

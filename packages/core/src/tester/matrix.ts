@@ -30,5 +30,36 @@ export function getMatrixCombinations(matrix: AssertionMatrix) {
 
   const combinations: any[] = [];
   generateCombinations(keys, matrix, 0, {}, combinations);
+
   return combinations;
+}
+
+function getFeatureAssertionsFromMatrix(
+  aIndex,
+  assertionWithMatrix: FeatureAssertion,
+): FeatureAssertion[] {
+  if (!assertionWithMatrix.matrix) {
+    const assertion = { ...assertionWithMatrix };
+    assertion.description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
+      assertion.description || `at ${assertion.at}%`
+    }`;
+
+    return [assertion];
+  }
+
+  const assertions = [];
+  const combinations = getMatrixCombinations(assertionWithMatrix.matrix);
+
+  for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
+    const combination = combinations[cIndex];
+    const assertion = { ...assertionWithMatrix };
+    assertion.context = { ...assertion.context, ...combination };
+    assertion.description = `  Assertion #${aIndex + 1}.${cIndex + 1}: (${assertion.environment}) ${
+      assertion.description || `at ${assertion.at}%`
+    }`;
+
+    assertions.push(assertion);
+  }
+
+  return assertions;
 }
