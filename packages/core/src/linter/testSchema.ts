@@ -35,22 +35,21 @@ export function getTestsJoiSchema(
           // because of supporting matrix
           Joi.string().required(),
         ),
-        // environment: Joi.string()
-        //   .valid(...projectConfig.environments)
-        //   .required(),
-        environment: Joi.string().custom((value, helpers) => {
-          if (value.indexOf("${{") === 0) {
-            // allow unknown strings for matrix
-            return value;
-          }
+        environment: Joi.string()
+          .custom((value, helpers) => {
+            if (value.indexOf("${{") === 0) {
+              // allow unknown strings for matrix
+              return value;
+            }
 
-          // otherwise only known environments should be passed
-          if (projectConfig.environments.includes(value)) {
-            return value;
-          }
+            // otherwise only known environments should be passed
+            if (projectConfig.environments.includes(value)) {
+              return value;
+            }
 
-          return helpers.error("any.invalid");
-        }),
+            return helpers.error("any.invalid");
+          })
+          .required(),
         context: Joi.object().required(),
         expectedToBeEnabled: Joi.boolean().required(),
         expectedVariation: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean()),
