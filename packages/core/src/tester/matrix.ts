@@ -1,4 +1,4 @@
-import { AssertionMatrix } from "@featurevisor/types";
+import { AssertionMatrix, FeatureAssertion } from "@featurevisor/types";
 
 function generateCombinations(
   keys: string[],
@@ -34,7 +34,69 @@ export function getMatrixCombinations(matrix: AssertionMatrix) {
   return combinations;
 }
 
-function getFeatureAssertionsFromMatrix(
+export function applyCombinationToValue(value: any, combination: any) {
+  if (typeof value === "string") {
+    const variableKeysInValue = value.match(/\${{(.+?)}}/g);
+
+    // no variables found
+    if (!variableKeysInValue) {
+      return value;
+    }
+
+    // only 1 variable found, so we can insert the value directly
+    if (variableKeysInValue.length === 1 && value.startsWith("${{") && value.endsWith("}}")) {
+      const key = value.replace("${{", "").replace("}}", "").trim();
+
+      return combination[key];
+    }
+
+    // multiple variables found, so we can replace each as a whole string
+    return value.replace(/\${{(.+?)}}/g, (_, key) => combination[key.trim()]);
+  }
+
+  return value;
+}
+
+export function applyCombinationToFeatureAssertion(
+  combination: any,
+  assertion: FeatureAssertion,
+): FeatureAssertion {
+  const flattenedAssertion = { ...assertion };
+
+  // environment
+  flattenedAssertion.environment = applyCombinationToValue(
+    flattenedAssertion.environment,
+    combination,
+  );
+
+  // context
+  flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
+    acc[key] = applyCombinationToValue(flattenedAssertion.context[key], combination);
+
+    return acc;
+  }, {});
+
+  // at
+  flattenedAssertion.at = applyCombinationToValue(flattenedAssertion.at, combination);
+  if (typeof flattenedAssertion.at === "string") {
+    flattenedAssertion.at =
+      (flattenedAssertion.at as string).indexOf(".") > -1
+        ? parseFloat(flattenedAssertion.at)
+        : parseInt(flattenedAssertion.at, 10);
+  }
+
+  // description
+  if (flattenedAssertion.description) {
+    flattenedAssertion.description = applyCombinationToValue(
+      flattenedAssertion.description,
+      combination,
+    );
+  }
+
+  return flattenedAssertion;
+}
+
+export function getFeatureAssertionsFromMatrix(
   aIndex,
   assertionWithMatrix: FeatureAssertion,
 ): FeatureAssertion[] {
@@ -47,14 +109,13 @@ function getFeatureAssertionsFromMatrix(
     return [assertion];
   }
 
-  const assertions = [];
+  const assertions: FeatureAssertion[] = [];
   const combinations = getMatrixCombinations(assertionWithMatrix.matrix);
 
   for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
     const combination = combinations[cIndex];
-    const assertion = { ...assertionWithMatrix };
-    assertion.context = { ...assertion.context, ...combination };
-    assertion.description = `  Assertion #${aIndex + 1}.${cIndex + 1}: (${assertion.environment}) ${
+    const assertion = applyCombinationToFeatureAssertion(combination, assertionWithMatrix);
+    assertion.description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
       assertion.description || `at ${assertion.at}%`
     }`;
 
