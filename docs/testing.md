@@ -110,7 +110,7 @@ assertions:
 
 ## Matrix
 
-To make things more convenient when testing against a lof of different combinations of values, you can optionally make use ot `matrix` property in your assertions.
+To make things more convenient when testing against a lof of different combinations of values, you can optionally make use of `matrix` property in your assertions.
 
 For example, in a feature test spec:
 
