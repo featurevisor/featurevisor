@@ -13,6 +13,7 @@ export function getTestsJoiSchema(
       .required(),
     assertions: Joi.array().items(
       Joi.object({
+        matrix: Joi.object().optional(), // @TODO: make it stricter
         description: Joi.string().optional(),
         context: Joi.object(),
         expectedToMatch: Joi.boolean(),

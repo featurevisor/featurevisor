@@ -1,4 +1,4 @@
-import { AssertionMatrix, FeatureAssertion } from "@featurevisor/types";
+import { AssertionMatrix, FeatureAssertion, SegmentAssertion } from "@featurevisor/types";
 
 function generateCombinations(
   keys: string[],
@@ -57,6 +57,9 @@ export function applyCombinationToValue(value: any, combination: any) {
   return value;
 }
 
+/**
+ * Features
+ */
 export function applyCombinationToFeatureAssertion(
   combination: any,
   assertion: FeatureAssertion,
@@ -117,6 +120,62 @@ export function getFeatureAssertionsFromMatrix(
     const assertion = applyCombinationToFeatureAssertion(combination, assertionWithMatrix);
     assertion.description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
       assertion.description || `at ${assertion.at}%`
+    }`;
+
+    assertions.push(assertion);
+  }
+
+  return assertions;
+}
+
+/**
+ * Segments
+ */
+export function applyCombinationToSegmentAssertion(
+  combination: any,
+  assertion: SegmentAssertion,
+): SegmentAssertion {
+  const flattenedAssertion = { ...assertion };
+
+  // context
+  flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
+    acc[key] = applyCombinationToValue(flattenedAssertion.context[key], combination);
+
+    return acc;
+  }, {});
+
+  // description
+  if (flattenedAssertion.description) {
+    flattenedAssertion.description = applyCombinationToValue(
+      flattenedAssertion.description,
+      combination,
+    );
+  }
+
+  return flattenedAssertion;
+}
+
+export function getSegmentAssertionsFromMatrix(
+  aIndex,
+  assertionWithMatrix: SegmentAssertion,
+): SegmentAssertion[] {
+  if (!assertionWithMatrix.matrix) {
+    const assertion = { ...assertionWithMatrix };
+    assertion.description = `  Assertion #${aIndex + 1}: ${
+      assertion.description || `#${aIndex + 1}`
+    }`;
+
+    return [assertion];
+  }
+
+  const assertions: SegmentAssertion[] = [];
+  const combinations = getMatrixCombinations(assertionWithMatrix.matrix);
+
+  for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
+    const combination = combinations[cIndex];
+    const assertion = applyCombinationToSegmentAssertion(combination, assertionWithMatrix);
+    assertion.description = `  Assertion #${aIndex + 1}: ${
+      assertion.description || `#${aIndex + 1}`
     }`;
 
     assertions.push(assertion);

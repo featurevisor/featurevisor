@@ -376,6 +376,7 @@ export interface TestFeature {
 }
 
 export interface SegmentAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   context: Context;
   expectedToMatch: boolean;

@@ -12,3 +12,12 @@ assertions:
   - context:
       country: notDe
     expectedToMatch: false
+
+  - matrix:
+      country: [nl]
+      city: [amsterdam, utrecht]
+    description: Testing in country ${{ country }} in city ${{ city }}
+    context:
+      country: ${{ country }}
+      city: ${{ city }}
+    expectedToMatch: false

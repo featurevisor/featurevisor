@@ -4,6 +4,7 @@ import { allConditionsAreMatched } from "@featurevisor/sdk";
 import { Datasource } from "../datasource";
 
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
+import { getSegmentAssertionsFromMatrix } from "./matrix";
 
 export async function testSegment(
   datasource: Datasource,
@@ -29,22 +30,27 @@ export async function testSegment(
   const conditions = parsedSegment.conditions as Condition | Condition[];
 
   test.assertions.forEach(function (assertion, aIndex) {
-    const description = `  Assertion #${aIndex + 1}: ${assertion.description || `#${aIndex + 1}`}`;
+    const assertions = getSegmentAssertionsFromMatrix(aIndex, assertion);
 
-    if (patterns.assertionPattern && !patterns.assertionPattern.test(description)) {
-      return;
-    }
+    assertions.forEach(function (assertion) {
+      if (patterns.assertionPattern && !patterns.assertionPattern.test(assertion.description)) {
+        return;
+      }
 
-    console.log(description);
+      console.log(assertion.description);
 
-    const expected = assertion.expectedToMatch;
-    const actual = allConditionsAreMatched(conditions, assertion.context);
+      const expected = assertion.expectedToMatch;
+      const actual = allConditionsAreMatched(conditions, assertion.context);
 
-    if (actual !== expected) {
-      hasError = true;
+      if (actual !== expected) {
+        hasError = true;
 
-      console.error(CLI_FORMAT_RED, `    Segment failed: expected "${expected}", got "${actual}"`);
-    }
+        console.error(
+          CLI_FORMAT_RED,
+          `    Segment failed: expected "${expected}", got "${actual}"`,
+        );
+      }
+    });
   });
 
   return hasError;
