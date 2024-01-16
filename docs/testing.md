@@ -108,6 +108,56 @@ assertions:
     expectedToMatch: false
 ```
 
+## Matrix
+
+To make things more convenient when testing against a lof of different combinations of values, you can optionally make use of `matrix` property in your assertions.
+
+For example, in a feature test spec:
+
+```yml
+# tests/foo.feature.yml
+feature: foo
+assertions:
+  - matrix:
+      at: [40, 60]
+      environment: [production]
+      country: [nl, de, us]
+      plan: [free, premium]
+    description: At ${{ at }}%, in ${{ country }} against ${{ plan }}
+    environment: ${{ environment }}
+    at: ${{ at }}
+    context:
+      country: ${{ country }}
+      plan: ${{ plan }}
+    expectedToBeEnabled: true
+```
+
+This will then run the assertion against all combinations of the values in the matrix.
+
+{% callout type="note" title="Note about variables" %}
+The example above uses variables in the format `${{ variableName }}`, and there quite a few of them.
+
+Just because a lot of variables are used in above example, it doesn't mean you have to do the same. You can mix static values for some properties and use variables for others as it fits your requirements.
+{% /callout %}
+
+You can do the same for segment test specs as well:
+
+```yml
+# tests/netherlands.segment.yml
+segment: netherlands # your segment key
+assertions:
+  - matrix:
+      country: [nl]
+      city: [amsterdam, rotterdam]
+    description: Testing in ${{ city }}, ${{ country }}
+    context:
+      country: ${{ country }}
+      city: ${{ city }}
+    expectedToMatch: true
+```
+
+This helps us cover more scenarios by having to write less code in our specs.
+
 ## Running tests
 
 Use the Featurevisor CLI to run your tests:

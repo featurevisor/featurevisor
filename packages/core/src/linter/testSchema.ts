@@ -13,6 +13,7 @@ export function getTestsJoiSchema(
       .required(),
     assertions: Joi.array().items(
       Joi.object({
+        matrix: Joi.object().optional(), // @TODO: make it stricter
         description: Joi.string().optional(),
         context: Joi.object(),
         expectedToMatch: Joi.boolean(),
@@ -26,10 +27,28 @@ export function getTestsJoiSchema(
       .required(),
     assertions: Joi.array().items(
       Joi.object({
+        matrix: Joi.object().optional(), // @TODO: make it stricter
         description: Joi.string().optional(),
-        at: Joi.number().precision(3).min(0).max(100).required(),
+        at: Joi.alternatives().try(
+          Joi.number().precision(3).min(0).max(100).required(),
+
+          // because of supporting matrix
+          Joi.string().required(),
+        ),
         environment: Joi.string()
-          .valid(...projectConfig.environments)
+          .custom((value, helpers) => {
+            if (value.indexOf("${{") === 0) {
+              // allow unknown strings for matrix
+              return value;
+            }
+
+            // otherwise only known environments should be passed
+            if (projectConfig.environments.includes(value)) {
+              return value;
+            }
+
+            return helpers.error("any.invalid");
+          })
           .required(),
         context: Joi.object().required(),
         expectedToBeEnabled: Joi.boolean().required(),
