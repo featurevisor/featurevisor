@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
+
+
+### Bug Fixes
+
+* show string segments in generated site ([#246](https://github.com/featurevisor/featurevisor/issues/246)) ([e22e122](https://github.com/featurevisor/featurevisor/commit/e22e12231304a7eaeb389b8e32dce141429df47b))
+
+
+
+
+
 # [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
 
 **Note:** Version bump only for package @featurevisor/site
