@@ -177,15 +177,15 @@ Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://f
 
 # Packages
 
-| Package                                 | Description                                |
-|-----------------------------------------|--------------------------------------------|
-| [@featurevisor/cli](./packages/cli)     | CLI package                                |
-| [@featurevisor/core](./packages/core)   | Core package used by CLI                   |
-| [@featurevisor/react](./packages/react) | React package                              |
-| [@featurevisor/sdk](./packages/sdk)     | Universal SDK for both Node.js and browser |
-| [@featurevisor/site](./packages/site)   | Static site generator for your project     |
-| [@featurevisor/types](./packages/types) | Common typings                             |
-| [@featurevisor/vue](./packages/vue)     | Vue.js package                             |
+| Package                                 | Version                                                            | Description                                |
+| --------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| [@featurevisor/cli](./packages/cli)     | <img src="https://img.shields.io/npm/v/@featurevisor/cli.svg" />   | CLI package                                |
+| [@featurevisor/core](./packages/core)   | <img src="https://img.shields.io/npm/v/@featurevisor/core.svg" />  | Core package used by CLI                   |
+| [@featurevisor/react](./packages/react) | <img src="https://img.shields.io/npm/v/@featurevisor/react.svg" /> | React package                              |
+| [@featurevisor/sdk](./packages/sdk)     | <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg" />   | Universal SDK for both Node.js and browser |
+| [@featurevisor/site](./packages/site)   | <img src="https://img.shields.io/npm/v/@featurevisor/site.svg" />  | Static site generator for your project     |
+| [@featurevisor/types](./packages/types) | <img src="https://img.shields.io/npm/v/@featurevisor/types.svg" /> | Common typings                             |
+| [@featurevisor/vue](./packages/vue)     | <img src="https://img.shields.io/npm/v/@featurevisor/vue.svg" />   | Vue.js package                             |
 
 # License
 
