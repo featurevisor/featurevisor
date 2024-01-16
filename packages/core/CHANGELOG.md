@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
+
+
+### Features
+
+* Matrix for test specs ([#244](https://github.com/featurevisor/featurevisor/issues/244)) ([bfcb9c2](https://github.com/featurevisor/featurevisor/commit/bfcb9c21703e182bf5cadd58f371935df4bef3d4))
+
+
+
+
+
 ## [1.1.1](https://github.com/featurevisor/featurevisor/compare/v1.1.0...v1.1.1) (2024-01-11)
 
 **Note:** Version bump only for package @featurevisor/core

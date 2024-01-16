@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/types",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Common Typescript types for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",
