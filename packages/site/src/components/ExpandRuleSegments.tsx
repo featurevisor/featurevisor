@@ -7,10 +7,10 @@ interface ExpandRuleSegmentsProps {
 export function ExpandRuleSegments(props: ExpandRuleSegmentsProps) {
   const { segments } = props;
 
-  if (segments === "*") {
+  if (typeof segments === "string") {
     return (
       <pre>
-        <code className="rounded bg-gray-100 px-2 py-1 text-red-400">*</code> (everyone)
+        <code className="rounded bg-gray-100 px-2 py-1 text-red-400">{segments}</code>
       </pre>
     );
   }
