@@ -6,6 +6,8 @@ import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
+import { prettyDuration } from "./prettyDuration";
+import { printTestResult } from "./printTestResult";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -38,10 +40,18 @@ export async function testProject(
     return hasError;
   }
 
+  const startTime = Date.now();
+
   const patterns = {
     keyPattern: options.keyPattern ? new RegExp(options.keyPattern) : undefined,
     assertionPattern: options.assertionPattern ? new RegExp(options.assertionPattern) : undefined,
   };
+
+  let passedTestsCount = 0;
+  let failedTestsCount = 0;
+
+  let passedAssertionsCount = 0;
+  let failedAssertionsCount = 0;
 
   for (const testFile of testFiles) {
     const testFilePath = datasource.getTestSpecName(testFile);
@@ -56,12 +66,19 @@ export async function testProject(
         continue;
       }
 
-      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+      const testResult = await testSegment(datasource, test, patterns);
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
 
-      const segmentHasError = await testSegment(datasource, test, patterns);
-
-      if (segmentHasError) {
+      if (!testResult.passed) {
         hasError = true;
+        failedTestsCount++;
+
+        failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+        passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
+      } else {
+        passedTestsCount++;
+
+        passedAssertionsCount += testResult.assertions.length;
       }
     } else if ((t as TestFeature).feature) {
       // feature testing
@@ -71,12 +88,19 @@ export async function testProject(
         continue;
       }
 
-      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+      const testResult = await testFeature(datasource, projectConfig, test, options, patterns);
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
 
-      const featureHasError = await testFeature(datasource, projectConfig, test, options, patterns);
-
-      if (featureHasError) {
+      if (!testResult.passed) {
         hasError = true;
+        failedTestsCount++;
+
+        failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+        passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
+      } else {
+        passedTestsCount++;
+
+        passedAssertionsCount += testResult.assertions.length;
       }
     } else {
       console.error(`  => Invalid test: ${JSON.stringify(test)}`);
@@ -84,13 +108,21 @@ export async function testProject(
     }
   }
 
-  console.log("");
+  const diffInMs = Date.now() - startTime;
+
+  console.log("\n---\n");
+
+  const testSpecsMessage = `Test specs: ${passedTestsCount} passed, ${failedTestsCount} failed`;
+  const testAssertionsMessage = `Assertions: ${passedAssertionsCount} passed, ${failedAssertionsCount} failed`;
   if (hasError) {
-    console.log(CLI_FORMAT_RED, `Some tests failed`);
+    console.log(CLI_FORMAT_RED, testSpecsMessage);
+    console.log(CLI_FORMAT_RED, testAssertionsMessage);
   } else {
-    console.log(CLI_FORMAT_GREEN, `All tests passed`);
+    console.log(CLI_FORMAT_GREEN, testSpecsMessage);
+    console.log(CLI_FORMAT_GREEN, testAssertionsMessage);
   }
-  console.log("");
+
+  console.log(CLI_FORMAT_BOLD, `Time:       ${prettyDuration(diffInMs)}`);
 
   return hasError;
 }
