@@ -1,6 +1,10 @@
 export function prettyDuration(diffInMs) {
   let diff = Math.abs(diffInMs);
 
+  if (diff === 0) {
+    return `0ms`;
+  }
+
   const ms = diff % 1000;
   diff = (diff - ms) / 1000;
   const secs = diff % 60;

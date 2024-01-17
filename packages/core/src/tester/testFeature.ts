@@ -146,7 +146,7 @@ export async function testFeature(
               type: "variable",
               expected: assertion.expectedVariation,
               actual: undefined,
-              message: `schema for variable ${variableKey} not found in feature`,
+              message: `schema for variable "${variableKey}" not found in feature`,
             });
 
             return;
@@ -176,6 +176,9 @@ export async function testFeature(
                 expected:
                   typeof expectedValue !== "string" ? JSON.stringify(expectedValue) : expectedValue,
                 actual: typeof actualValue !== "string" ? JSON.stringify(actualValue) : actualValue,
+                details: {
+                  variableKey,
+                },
               });
             }
           } else {
@@ -196,6 +199,9 @@ export async function testFeature(
                 type: "variable",
                 expected: expectedValue as string,
                 actual: actualValue as string,
+                details: {
+                  variableKey,
+                },
               });
             }
           }
