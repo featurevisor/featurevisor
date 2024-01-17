@@ -4,7 +4,7 @@ import { TestSegment, TestFeature } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
-import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
+import { CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
@@ -80,11 +80,10 @@ export async function testProject(
         continue;
       }
 
-      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+      const testResult = await testFeature(datasource, projectConfig, test, options, patterns);
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
 
-      const featureHasError = await testFeature(datasource, projectConfig, test, options, patterns);
-
-      if (featureHasError) {
+      if (!testResult.passed) {
         hasError = true;
         failedCount++;
       } else {

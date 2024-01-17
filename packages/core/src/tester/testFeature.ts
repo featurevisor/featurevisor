@@ -1,4 +1,9 @@
-import { TestFeature } from "@featurevisor/types";
+import {
+  TestFeature,
+  TestResult,
+  TestResultAssertion,
+  TestResultAssertionError,
+} from "@featurevisor/types";
 import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
@@ -8,7 +13,6 @@ import { SCHEMA_VERSION } from "../config";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
-import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 import { getFeatureAssertionsFromMatrix } from "./matrix";
 
 export async function testFeature(
@@ -17,23 +21,38 @@ export async function testFeature(
   test: TestFeature,
   options: { verbose?: boolean; showDatafile?: boolean } = {},
   patterns,
-): Promise<boolean> {
-  let hasError = false;
+): Promise<TestResult> {
+  const testStartTime = Date.now();
   const featureKey = test.feature;
 
-  console.log(CLI_FORMAT_BOLD, `  Feature "${featureKey}":`);
+  const testResult: TestResult = {
+    type: "feature",
+    key: featureKey,
+
+    // to be updated later
+    notFound: false,
+    duration: 0,
+    passed: true,
+    assertions: [],
+  };
 
   for (let aIndex = 0; aIndex < test.assertions.length; aIndex++) {
     const assertions = getFeatureAssertionsFromMatrix(aIndex, test.assertions[aIndex]);
 
     for (let bIndex = 0; bIndex < assertions.length; bIndex++) {
+      const assertionStartTime = Date.now();
       const assertion = assertions[bIndex];
+
+      const testResultAssertion: TestResultAssertion = {
+        description: assertion.description as string,
+        duration: 0,
+        passed: true,
+        errors: [],
+      };
 
       if (patterns.assertionPattern && !patterns.assertionPattern.test(assertion.description)) {
         continue;
       }
-
-      console.log(assertion.description);
 
       const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
       const featuresToInclude = Array.from(requiredChain);
@@ -68,17 +87,27 @@ export async function testFeature(
         sdk.setLogLevels(["debug", "info", "warn", "error"]);
       }
 
+      const feature = await datasource.readFeature(featureKey);
+      if (!feature) {
+        testResult.notFound = true;
+        testResult.passed = false;
+
+        return testResult;
+      }
+
       // isEnabled
       if ("expectedToBeEnabled" in assertion) {
         const isEnabled = sdk.isEnabled(featureKey, assertion.context);
 
         if (isEnabled !== assertion.expectedToBeEnabled) {
-          hasError = true;
+          testResult.passed = false;
+          testResultAssertion.passed = false;
 
-          console.error(
-            CLI_FORMAT_RED,
-            `    isEnabled failed: expected "${assertion.expectedToBeEnabled}", received "${isEnabled}"`,
-          );
+          (testResultAssertion.errors as TestResultAssertionError[]).push({
+            type: "flag",
+            expected: assertion.expectedToBeEnabled,
+            actual: isEnabled,
+          });
         }
       }
 
@@ -87,26 +116,18 @@ export async function testFeature(
         const variation = sdk.getVariation(featureKey, assertion.context);
 
         if (variation !== assertion.expectedVariation) {
-          hasError = true;
+          testResult.passed = false;
+          testResultAssertion.passed = false;
 
-          console.error(
-            CLI_FORMAT_RED,
-            `    Variation failed: expected "${assertion.expectedVariation}", received "${variation}"`,
-          );
+          (testResultAssertion.errors as TestResultAssertionError[]).push({
+            type: "variation",
+            expected: assertion.expectedVariation,
+            actual: variation,
+          });
         }
       }
 
       // variables
-      const feature = await datasource.readFeature(featureKey);
-
-      if (!feature) {
-        hasError = true;
-
-        console.error(CLI_FORMAT_RED, `    Feature "${featureKey}" failed: feature not found`);
-
-        continue;
-      }
-
       if (typeof assertion.expectedVariables === "object") {
         Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
           const expectedValue =
@@ -118,12 +139,15 @@ export async function testFeature(
           const variableSchema = feature.variablesSchema?.find((v) => v.key === variableKey);
 
           if (!variableSchema) {
-            hasError = true;
+            testResult.passed = false;
+            testResultAssertion.passed = false;
 
-            console.error(
-              CLI_FORMAT_RED,
-              `    Variable "${variableKey}" failed: variable schema not found in feature`,
-            );
+            (testResultAssertion.errors as TestResultAssertionError[]).push({
+              type: "variable",
+              expected: assertion.expectedVariation,
+              actual: undefined,
+              message: `schema for variable ${variableKey} not found in feature`,
+            });
 
             return;
           }
@@ -144,12 +168,15 @@ export async function testFeature(
             }
 
             if (!passed) {
-              console.error(CLI_FORMAT_RED, `    Variable "${variableKey}" failed:`);
-              console.error(
-                CLI_FORMAT_RED,
-                `      expected: ${JSON.stringify(parsedExpectedValue)}`,
-              );
-              console.error(CLI_FORMAT_RED, `      received: ${JSON.stringify(actualValue)}`);
+              testResult.passed = false;
+              testResultAssertion.passed = false;
+
+              (testResultAssertion.errors as TestResultAssertionError[]).push({
+                type: "variable",
+                expected:
+                  typeof expectedValue !== "string" ? JSON.stringify(expectedValue) : expectedValue,
+                actual: typeof actualValue !== "string" ? JSON.stringify(actualValue) : actualValue,
+              });
             }
           } else {
             // other types
@@ -162,19 +189,25 @@ export async function testFeature(
             }
 
             if (!passed) {
-              console.error(CLI_FORMAT_RED, `    Variable "${variableKey}" failed:`);
-              console.error(CLI_FORMAT_RED, `      expected: ${JSON.stringify(expectedValue)}`);
-              console.error(CLI_FORMAT_RED, `      received: ${JSON.stringify(actualValue)}`);
-            }
-          }
+              testResult.passed = false;
+              testResultAssertion.passed = false;
 
-          if (!passed) {
-            hasError = true;
+              (testResultAssertion.errors as TestResultAssertionError[]).push({
+                type: "variable",
+                expected: expectedValue as string,
+                actual: actualValue as string,
+              });
+            }
           }
         });
       }
+
+      testResultAssertion.duration = Date.now() - assertionStartTime;
+      testResult.assertions.push(testResultAssertion);
     }
   }
 
-  return hasError;
+  testResult.duration = Date.now() - testStartTime;
+
+  return testResult;
 }

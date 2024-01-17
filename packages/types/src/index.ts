@@ -393,6 +393,7 @@ export interface TestResultAssertionError {
   type: "flag" | "variation" | "variable" | "segment";
   expected: string | number | boolean | Date | null | undefined;
   actual: string | number | boolean | Date | null | undefined;
+  message?: string;
   details?: object;
 }
 

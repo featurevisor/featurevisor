@@ -16,6 +16,7 @@ export async function testSegment(
   test: TestSegment,
   patterns,
 ): Promise<TestResult> {
+  const testStartTime = Date.now();
   const segmentKey = test.segment;
 
   const testResult: TestResult = {
@@ -41,8 +42,6 @@ export async function testSegment(
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
 
-  const testStartTime = Date.now();
-
   test.assertions.forEach(function (assertion, aIndex) {
     const assertions = getSegmentAssertionsFromMatrix(aIndex, assertion);
 
@@ -63,8 +62,6 @@ export async function testSegment(
       const actual = allConditionsAreMatched(conditions, assertion.context);
       const passed = actual === expected;
 
-      testResultAssertion.passed = passed;
-
       if (!passed) {
         const testResultAssertionError: TestResultAssertionError = {
           type: "segment",
@@ -73,6 +70,8 @@ export async function testSegment(
         };
 
         (testResultAssertion.errors as TestResultAssertionError[]).push(testResultAssertionError);
+        testResult.passed = false;
+        testResultAssertion.passed = passed;
       }
 
       testResult.assertions.push(testResultAssertion);
