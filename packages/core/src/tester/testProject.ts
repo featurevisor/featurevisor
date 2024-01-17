@@ -4,7 +4,7 @@ import { TestSegment, TestFeature } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
-import { CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
+import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
@@ -47,8 +47,11 @@ export async function testProject(
     assertionPattern: options.assertionPattern ? new RegExp(options.assertionPattern) : undefined,
   };
 
-  let passedCount = 0;
-  let failedCount = 0;
+  let passedTestsCount = 0;
+  let failedTestsCount = 0;
+
+  let passedAssertionsCount = 0;
+  let failedAssertionsCount = 0;
 
   for (const testFile of testFiles) {
     const testFilePath = datasource.getTestSpecName(testFile);
@@ -68,9 +71,14 @@ export async function testProject(
 
       if (!testResult.passed) {
         hasError = true;
-        failedCount++;
+        failedTestsCount++;
+
+        failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+        passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
       } else {
-        passedCount++;
+        passedTestsCount++;
+
+        passedAssertionsCount += testResult.assertions.length;
       }
     } else if ((t as TestFeature).feature) {
       // feature testing
@@ -85,9 +93,14 @@ export async function testProject(
 
       if (!testResult.passed) {
         hasError = true;
-        failedCount++;
+        failedTestsCount++;
+
+        failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+        passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
       } else {
-        passedCount++;
+        passedTestsCount++;
+
+        passedAssertionsCount += testResult.assertions.length;
       }
     } else {
       console.error(`  => Invalid test: ${JSON.stringify(test)}`);
@@ -99,14 +112,17 @@ export async function testProject(
 
   console.log("\n---\n");
 
-  const testsMessage = `Tests:\t${passedCount} passed, ${failedCount} failed`;
+  const testSpecsMessage = `Test specs: ${passedTestsCount} passed, ${failedTestsCount} failed`;
+  const testAssertionsMessage = `Assertions: ${passedAssertionsCount} passed, ${failedAssertionsCount} failed`;
   if (hasError) {
-    console.log(CLI_FORMAT_RED, testsMessage);
+    console.log(CLI_FORMAT_RED, testSpecsMessage);
+    console.log(CLI_FORMAT_RED, testAssertionsMessage);
   } else {
-    console.log(CLI_FORMAT_GREEN, testsMessage);
+    console.log(CLI_FORMAT_GREEN, testSpecsMessage);
+    console.log(CLI_FORMAT_GREEN, testAssertionsMessage);
   }
 
-  console.log(`Time:\t${prettyDuration(diffInMs)}`);
+  console.log(CLI_FORMAT_BOLD, `Time:       ${prettyDuration(diffInMs)}`);
 
   return hasError;
 }
