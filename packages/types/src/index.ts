@@ -389,6 +389,29 @@ export interface TestSegment {
 
 export type Test = TestSegment | TestFeature;
 
+export interface TestResultAssertionError {
+  type: "flag" | "variation" | "variable" | "segment";
+  expected: string | number | boolean | Date | null | undefined;
+  actual: string | number | boolean | Date | null | undefined;
+  details?: object;
+}
+
+export interface TestResultAssertion {
+  description: string;
+  duration: number;
+  passed: boolean;
+  errors?: TestResultAssertionError[];
+}
+
+export interface TestResult {
+  type: "feature" | "segment";
+  key: string;
+  notFound?: boolean;
+  passed: boolean;
+  duration: number;
+  assertions: TestResultAssertion[];
+}
+
 /**
  * Site index and history
  */

@@ -6,6 +6,8 @@ import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
+import { prettyDuration } from "./prettyDuration";
+import { printTestResult } from "./printTestResult";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -38,10 +40,15 @@ export async function testProject(
     return hasError;
   }
 
+  const startTime = Date.now();
+
   const patterns = {
     keyPattern: options.keyPattern ? new RegExp(options.keyPattern) : undefined,
     assertionPattern: options.assertionPattern ? new RegExp(options.assertionPattern) : undefined,
   };
+
+  let passedCount = 0;
+  let failedCount = 0;
 
   for (const testFile of testFiles) {
     const testFilePath = datasource.getTestSpecName(testFile);
@@ -56,12 +63,14 @@ export async function testProject(
         continue;
       }
 
-      console.log(CLI_FORMAT_BOLD, `\nTesting: ${testFilePath.replace(rootDirectoryPath, "")}`);
+      const testResult = await testSegment(datasource, test, patterns);
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
 
-      const segmentHasError = await testSegment(datasource, test, patterns);
-
-      if (segmentHasError) {
+      if (!testResult.passed) {
         hasError = true;
+        failedCount++;
+      } else {
+        passedCount++;
       }
     } else if ((t as TestFeature).feature) {
       // feature testing
@@ -77,6 +86,9 @@ export async function testProject(
 
       if (featureHasError) {
         hasError = true;
+        failedCount++;
+      } else {
+        passedCount++;
       }
     } else {
       console.error(`  => Invalid test: ${JSON.stringify(test)}`);
@@ -84,13 +96,18 @@ export async function testProject(
     }
   }
 
-  console.log("");
+  const diffInMs = Date.now() - startTime;
+
+  console.log("\n---\n");
+
+  const testsMessage = `Tests:\t${passedCount} passed, ${failedCount} failed`;
   if (hasError) {
-    console.log(CLI_FORMAT_RED, `Some tests failed`);
+    console.log(CLI_FORMAT_RED, testsMessage);
   } else {
-    console.log(CLI_FORMAT_GREEN, `All tests passed`);
+    console.log(CLI_FORMAT_GREEN, testsMessage);
   }
-  console.log("");
+
+  console.log(`Time:\t${prettyDuration(diffInMs)}`);
 
   return hasError;
 }
