@@ -58,37 +58,24 @@ export async function testProject(
 
     const t = await datasource.readTest(testFile);
 
-    if ((t as TestSegment).segment) {
-      // segment testing
-      const test = t as TestSegment;
+    const tAsSegment = t as TestSegment;
+    const tAsFeature = t as TestFeature;
+    const key = tAsSegment.segment || tAsFeature.feature;
+    const type = tAsSegment.segment ? "segment" : "feature";
 
-      if (patterns.keyPattern && !patterns.keyPattern.test(test.segment)) {
+    // new code
+    if (key) {
+      if (patterns.keyPattern && !patterns.keyPattern.test(key)) {
         continue;
       }
 
-      const testResult = await testSegment(datasource, test, patterns);
-      printTestResult(testResult, testFilePath, rootDirectoryPath);
-
-      if (!testResult.passed) {
-        hasError = true;
-        failedTestsCount++;
-
-        failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
-        passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
+      let testResult;
+      if (type === "segment") {
+        testResult = await testSegment(datasource, tAsSegment, patterns);
       } else {
-        passedTestsCount++;
-
-        passedAssertionsCount += testResult.assertions.length;
-      }
-    } else if ((t as TestFeature).feature) {
-      // feature testing
-      const test = t as TestFeature;
-
-      if (patterns.keyPattern && !patterns.keyPattern.test(test.feature)) {
-        continue;
+        testResult = await testFeature(datasource, projectConfig, tAsFeature, options, patterns);
       }
 
-      const testResult = await testFeature(datasource, projectConfig, test, options, patterns);
       printTestResult(testResult, testFilePath, rootDirectoryPath);
 
       if (!testResult.passed) {
@@ -103,9 +90,61 @@ export async function testProject(
         passedAssertionsCount += testResult.assertions.length;
       }
     } else {
-      console.error(`  => Invalid test: ${JSON.stringify(test)}`);
+      console.error(`  => Invalid test: ${JSON.stringify(t)}`);
       hasError = true;
+
+      continue;
     }
+
+    // old code
+    // if ((t as TestSegment).segment) {
+    //   // segment testing
+    //   const test = t as TestSegment;
+
+    //   if (patterns.keyPattern && !patterns.keyPattern.test(test.segment)) {
+    //     continue;
+    //   }
+
+    //   const testResult = await testSegment(datasource, test, patterns);
+    //   printTestResult(testResult, testFilePath, rootDirectoryPath);
+
+    //   if (!testResult.passed) {
+    //     hasError = true;
+    //     failedTestsCount++;
+
+    //     failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+    //     passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
+    //   } else {
+    //     passedTestsCount++;
+
+    //     passedAssertionsCount += testResult.assertions.length;
+    //   }
+    // } else if ((t as TestFeature).feature) {
+    //   // feature testing
+    //   const test = t as TestFeature;
+
+    //   if (patterns.keyPattern && !patterns.keyPattern.test(test.feature)) {
+    //     continue;
+    //   }
+
+    //   const testResult = await testFeature(datasource, projectConfig, test, options, patterns);
+    //   printTestResult(testResult, testFilePath, rootDirectoryPath);
+
+    //   if (!testResult.passed) {
+    //     hasError = true;
+    //     failedTestsCount++;
+
+    //     failedAssertionsCount += testResult.assertions.filter((a) => !a.passed).length;
+    //     passedAssertionsCount += testResult.assertions.length - failedAssertionsCount;
+    //   } else {
+    //     passedTestsCount++;
+
+    //     passedAssertionsCount += testResult.assertions.length;
+    //   }
+    // } else {
+    //   console.error(`  => Invalid test: ${JSON.stringify(test)}`);
+    //   hasError = true;
+    // }
   }
 
   const diffInMs = Date.now() - startTime;
