@@ -61,7 +61,7 @@ export function getFeatureJoiSchema(
   );
 
   const environmentJoiSchema = Joi.object({
-    export: Joi.alternatives().try(
+    expose: Joi.alternatives().try(
       Joi.boolean(),
       Joi.array().items(Joi.string().valid(...projectConfig.tags)),
     ),
