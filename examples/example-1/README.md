@@ -40,6 +40,12 @@ $ npm run build
 $ npm test
 ```
 
+Additional tests for verifying datafile generation involving `expose` property:
+
+```
+$ make test-datafiles
+```
+
 ### Start local server
 
 Generates and serves status site:

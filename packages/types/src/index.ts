@@ -293,13 +293,13 @@ export interface Rule {
   };
 }
 
+export type Tag = string;
+
 export interface Environment {
-  expose?: boolean;
+  expose?: boolean | Tag[];
   rules: Rule[];
   force?: Force[];
 }
-
-export type Tag = string;
 
 export interface ParsedFeature {
   key: FeatureKey;
