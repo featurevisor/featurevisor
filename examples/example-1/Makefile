@@ -1,17 +1,25 @@
+define check_string
+	@[ "$$(cat $(2) | grep -o $(1))" = "$(3)" ] && echo "Test passed" || (echo "Expose test for $(1) in $(2) failed" && exit 1)
+endef
+
+define exists
+	$(call check_string,$(1),$(2),$(1))
+endef
+
+define notExists
+	$(call check_string,$(1),$(2),"")
+endef
+
 test-datafiles:
 	@echo "Testing staging datafiles"
-
-	@[ "$$(cat ./dist/staging/datafile-tag-all.json | grep -o 'showBanner')" = "" ] && echo "Test passed" || (echo "Expose test for showBanner in staging/datafile-tag-all.json failed" && exit 1)
-	@[ "$$(cat ./dist/staging/datafile-tag-checkout.json | grep -o 'showBanner')" = "showBanner" ] && echo "Test passed" || (echo "Expose test for showBanner in staging/datafile-tag-checkout.json failed" && exit 1)
-
-	@[ "$$(cat ./dist/staging/datafile-tag-all.json | grep -o 'hidden')" = "hidden" ] && echo "Test passed" || (echo "Expose test for hidden in staging/datafile-tag-all.json failed" && exit 1)
+	$(call notExists,showBanner,./dist/staging/datafile-tag-all.json)
+	$(call exists,showBanner,./dist/staging/datafile-tag-checkout.json)
+	$(call exists,hidden,./dist/staging/datafile-tag-all.json)
 
 	@echo "\nTesting production datafiles"
-
-	@[ "$$(cat ./dist/production/datafile-tag-all.json | grep -o 'showBanner')" = "showBanner" ] && echo "Test passed" || (echo "Expose test for showBanner in production/datafile-tag-all.json failed" && exit 1)
-	@[ "$$(cat ./dist/production/datafile-tag-checkout.json | grep -o 'showBanner')" = "showBanner" ] && echo "Test passed" || (echo "Expose test for showBanner in production/datafile-tag-checkout.json failed" && exit 1)
-
-	@[ "$$(cat ./dist/production/datafile-tag-all.json | grep -o 'hidden')" = "" ] && echo "Test passed" || (echo "Expose test for hidden in production/datafile-tag-all.json failed" && exit 1)
+	$(call exists,showBanner,./dist/production/datafile-tag-all.json)
+	$(call exists,showBanner,./dist/production/datafile-tag-checkout.json)
+	$(call notExists,hidden,./dist/production/datafile-tag-all.json)
 
 test:
 	npx featurevisor test
