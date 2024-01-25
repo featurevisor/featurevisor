@@ -94,7 +94,7 @@ They can be based on a variety of factors, such as:
 - Device attributes (e.g. browser, screen size, OS etc.)
 - And more...
 
-In Featurevisor, targeting conditions are expressed as [segments](/docs/segments) which contain a set of conditions that must be met for a user to be included in the segment. Those conditions are defined against [attributes](/docs/attributes), and evaluated against provided [context](/docs/sdks/#context).
+In Featurevisor, targeting conditions are expressed as [segments](/docs/segments) which contain a set of conditions that must be met for a user to be included in the segment. Those conditions are defined against [attributes](/docs/attributes), and evaluated against provided [context](/docs/sdks/javascript/#context).
 
 ### Bucketing
 

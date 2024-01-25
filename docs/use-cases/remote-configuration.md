@@ -248,7 +248,7 @@ There are two ways this can happen:
 - You can configure your SDK to keep refreshing the datafile at a certain **interval** (like every 30 seconds), or
 - When deploying your Featurevisor datafiles, you can broadcast a notification to all your applications to refresh their datafiles **manually** enabling over the air updates
 
-You can refer to the SDK guide here for [refreshing datafile](/docs/sdks/#refreshing-datafile).
+You can refer to the SDK guide here for [refreshing datafile](/docs/sdks/javascript/#refreshing-datafile).
 
 ## Full feature example
 

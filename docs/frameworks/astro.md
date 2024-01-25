@@ -68,7 +68,7 @@ To understand how the datafiles are generated and deployed, please refer to thes
 
 We created a very simple instance of the SDK, but we can also configure it further for fetching latest datafile without restarting our server:
 
-- periodically (see [refreshing datafile](/docs/sdks/#refreshing-datafile))
+- periodically (see [refreshing datafile](/docs/sdks/javascript/#refreshing-datafile))
 - as soon as they happen (see [websockets guide](/docs/integrations/partykit))
 
 ## Accessing SDK in components
