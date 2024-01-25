@@ -4,7 +4,7 @@ description: Learn how to use Featurevisor SDK in browser environments
 ogImage: /img/og/docs-sdks-browser.png
 ---
 
-You can use the same Featurevisor JavaScript SDK in browser environments as well. {% .lead %}
+You can use the same Featurevisor [JavaScript SDK](/docs/sdks/javascript) in browser environments as well. {% .lead %}
 
 ## Installation
 

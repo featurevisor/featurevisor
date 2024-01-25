@@ -4,7 +4,7 @@ description: Learn how to use Featurevisor SDK in Node.js
 ogImage: /img/og/docs-sdks-nodejs.png
 ---
 
-You can use the same Featurevisor JavaScript SDK in Node.js as well. {% .lead %}
+You can use the same Featurevisor [JavaScript SDK](/docs/sdks/javascript) in Node.js as well. {% .lead %}
 
 ## Installation
 
