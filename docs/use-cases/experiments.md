@@ -40,15 +40,15 @@ Unlike A/B testing, which focuses on comparing two or more variants of a single 
 
 Often times, A/B tests with 3 or more variations are referred to as A/B/n tests. We are considering them both as A/B tests in this guide.
 
-|                          | A/B Tests                                                      | Multivariate Tests                                                                             |
-|--------------------------|----------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| Purpose                  | Compare two or more variants of a single element               | Simultaneously test multiple elements and variations                                           |
-| Variants                 | Two or more variants (Control and Treatment)                   | Multiple variants for each element being tested                                                |
-| Scope                    | Focuses on one element at a time                               | Tests combinations of elements and their variations                                            |
-| Complexity               | Relatively simpler to set up and analyze                       | and analyze	More complex to set up and analyze                                                 |
-| Statistical Significance | Typically requires fewer samples to achieve significance       | Requires larger sample sizes to achieve significance                                           |
-| Insights                 | Provides insights into the impact of individual changes        | Provides insights into the interaction between changes                                         |
-| Test Duration            | Generally shorter duration                                     | Often requires longer duration to obtain reliable results                                      |
+|                          | A/B Tests                                                          | Multivariate Tests                                                                                 |
+| ------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Purpose                  | Compare two or more variants of a single element                   | Simultaneously test multiple elements and variations                                               |
+| Variants                 | Two or more variants (Control and Treatment)                       | Multiple variants for each element being tested                                                    |
+| Scope                    | Focuses on one element at a time                                   | Tests combinations of elements and their variations                                                |
+| Complexity               | Relatively simpler to set up and analyze                           | and analyze	More complex to set up and analyze                                                     |
+| Statistical Significance | Typically requires fewer samples to achieve significance           | Requires larger sample sizes to achieve significance                                               |
+| Insights                 | Provides insights into the impact of individual changes            | Provides insights into the interaction between changes                                             |
+| Test Duration            | Generally shorter duration                                         | Often requires longer duration to obtain reliable results                                          |
 | Examples                 | Ideal for testing isolated changes like UI tweaks, copy variations | Useful for testing multi-factor changes like page redesigns, interaction between multiple elements |
 
 ## Our application
@@ -203,7 +203,7 @@ Let's say we want to run a Multivariate Test on the Hero section of your landing
 Previously we only ran an A/B test on the CTA button's text, but now we want to run a Multivariate Test on the Hero section affecting some or all its elements. We can map our requirements in a table below:
 
 | Variation  | Headline    | CTA button text |
-|------------|-------------|-----------------|
+| ---------- | ----------- | --------------- |
 | control    | Welcome     | Sign up         |
 | treatment1 | Welcome     | Get started     |
 | treatment2 | Hello there | Sign up         |
@@ -297,7 +297,7 @@ We understood how to create features for defining simple A/B tests and also more
 
 But we also need to track the performance of our experiments to understand which variation is doing better than others.
 
-This is where the `activate()` method of the SDK comes in handy. Before we call the method, let's first set up our [activation](/docs/sdks/#activation) event handler in the SDK initialization:
+This is where the `activate()` method of the SDK comes in handy. Before we call the method, let's first set up our [activation](/docs/sdks/javascript/#activation) event handler in the SDK initialization:
 
 ```js
 import { createInstance } from "@featurevisor/sdk";
