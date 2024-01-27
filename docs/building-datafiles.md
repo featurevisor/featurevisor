@@ -51,3 +51,15 @@ You can optionally customize the `revision` value in datafiles by passing a `--r
 ```
 $ featurevisor build --revision 1.2.3
 ```
+
+## Printing
+
+You can print the contents of a datafile for a single feature without writing anything to disk by passing these flags:
+
+```
+$ featurevisor build --feature=foo --environment=production --print --pretty
+```
+
+This is useful primarily for debugging and testing purposes.
+
+If you are an SDK developer in other languages besides JavaScript, you may want to use this handy command to get the generated datafile content in JSON format that you can use in your own [test runner](/docs/testing).
