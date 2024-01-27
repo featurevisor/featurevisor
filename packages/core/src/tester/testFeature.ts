@@ -1,4 +1,5 @@
 import {
+  DatafileContent,
   TestFeature,
   TestResult,
   TestResultAssertion,
@@ -14,6 +15,32 @@ import { SCHEMA_VERSION } from "../config";
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
 import { getFeatureAssertionsFromMatrix } from "./matrix";
+
+export async function getDatafileForFeature(
+  featureKey: string,
+  environment: string,
+  projectConfig: ProjectConfig,
+  datasource: Datasource,
+  revision: string = "testing",
+): Promise<DatafileContent> {
+  const requiredChain = await datasource.getRequiredFeaturesChain(featureKey);
+  const featuresToInclude = Array.from(requiredChain);
+
+  const existingState = await datasource.readState(environment);
+  const datafileContent = await buildDatafile(
+    projectConfig,
+    datasource,
+    {
+      schemaVersion: SCHEMA_VERSION,
+      revision,
+      environment: environment,
+      features: featuresToInclude,
+    },
+    existingState,
+  );
+
+  return datafileContent;
+}
 
 export async function testFeature(
   datasource: Datasource,
@@ -54,20 +81,11 @@ export async function testFeature(
         continue;
       }
 
-      const requiredChain = await datasource.getRequiredFeaturesChain(test.feature);
-      const featuresToInclude = Array.from(requiredChain);
-
-      const existingState = await datasource.readState(assertion.environment);
-      const datafileContent = await buildDatafile(
+      const datafileContent = await getDatafileForFeature(
+        test.feature,
+        assertion.environment,
         projectConfig,
         datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: "testing",
-          environment: assertion.environment,
-          features: featuresToInclude,
-        },
-        existingState,
       );
 
       if (options.showDatafile) {
