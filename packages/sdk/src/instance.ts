@@ -570,6 +570,8 @@ export class FeaturevisorInstance {
             enabled: requiredFeaturesAreEnabled,
           };
 
+          this.logger.debug("required features not enabled", evaluation);
+
           return evaluation;
         }
       }
@@ -595,6 +597,8 @@ export class FeaturevisorInstance {
                 typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
               bucketValue,
             };
+
+            this.logger.debug("matched", evaluation);
 
             return evaluation;
           }
@@ -629,8 +633,7 @@ export class FeaturevisorInstance {
         }
 
         // treated as enabled because of matched traffic
-        if (bucketValue < matchedTraffic.percentage) {
-          // @TODO: verify if range check should be inclusive or not
+        if (bucketValue <= matchedTraffic.percentage) {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
@@ -639,6 +642,8 @@ export class FeaturevisorInstance {
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
           };
+
+          this.logger.debug("matched traffic", evaluation);
 
           return evaluation;
         }
@@ -652,6 +657,8 @@ export class FeaturevisorInstance {
         bucketValue,
       };
 
+      this.logger.debug("nothing matched", evaluation);
+
       return evaluation;
     } catch (e) {
       evaluation = {
@@ -659,6 +666,8 @@ export class FeaturevisorInstance {
         reason: EvaluationReason.ERROR,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }
@@ -848,6 +857,8 @@ export class FeaturevisorInstance {
         reason: EvaluationReason.ERROR,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }
@@ -1169,6 +1180,8 @@ export class FeaturevisorInstance {
         variableKey,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }

@@ -3,6 +3,109 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/featurevisor/featurevisor/compare/v1.3.0...v1.4.0) (2024-01-27)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+
+### Features
+
+* allow exposing features with tags + environment combination ([#254](https://github.com/featurevisor/featurevisor/issues/254)) ([1ae08e7](https://github.com/featurevisor/featurevisor/commit/1ae08e71393b620f98f7080aff18033a3e3b7192))
+
+
+
+
+
+## [1.2.4](https://github.com/featurevisor/featurevisor/compare/v1.2.3...v1.2.4) (2024-01-20)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+
+### Bug Fixes
+
+* rule percentage checks are now inclusive of end range ([#248](https://github.com/featurevisor/featurevisor/issues/248)) ([339231c](https://github.com/featurevisor/featurevisor/commit/339231c66391288e0e831f02b9407453938385d1))
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
+
+
+### Features
+
+* Matrix for test specs ([#244](https://github.com/featurevisor/featurevisor/issues/244)) ([bfcb9c2](https://github.com/featurevisor/featurevisor/commit/bfcb9c21703e182bf5cadd58f371935df4bef3d4))
+
+
+
+
+
+## [1.1.1](https://github.com/featurevisor/featurevisor/compare/v1.1.0...v1.1.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* stringify variable value when rendering in generated site ([#243](https://github.com/featurevisor/featurevisor/issues/243)) ([9daf95b](https://github.com/featurevisor/featurevisor/commit/9daf95b47885775a4151139a69d8b85720f1da0a))
+
+
+
+
+
+# [1.1.0](https://github.com/featurevisor/featurevisor/compare/v1.0.3...v1.1.0) (2024-01-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.0.3](https://github.com/featurevisor/featurevisor/compare/v1.0.2...v1.0.3) (2024-01-04)
+
+
+### Bug Fixes
+
+* stringify segments in variable overrides correctly ([#241](https://github.com/featurevisor/featurevisor/issues/241)) ([986fc2f](https://github.com/featurevisor/featurevisor/commit/986fc2fb814a0be091250d63b3cd08a9901dc5cd))
+
+
+
+
+
+## [1.0.2](https://github.com/featurevisor/featurevisor/compare/v1.0.1...v1.0.2) (2024-01-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
 ## [1.0.1](https://github.com/featurevisor/featurevisor/compare/v1.0.0...v1.0.1) (2024-01-02)
 
 

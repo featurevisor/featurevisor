@@ -665,11 +665,13 @@ Doing so will exclude the feature from generated datafiles and SDKs will not be 
 
 ## Expose
 
-In some cases, you may not want to expose a certain feature's configuration in a specific environment when generating the [datafiles](/docs/building-datafiles).
+In some cases, you may not want to expose a certain feature's configuration only in specific environments when generating the [datafiles](/docs/building-datafiles).
+
+Exposure here means the inclusion of the feature's configuration in the generated datafile, irrespective of whether the feature is later evaluated as enabled or disabled.
 
 This is different than:
 
-- **Archiving**: because you only want to control the exposure of the feature's configuration in a specific environment, not all environments.
+- **Archiving**: because you only want to control the exposure of the feature's configuration in a specific environment, not all environments
 - **Deprecating**: because deprecating a feature will still expose the configuration in all environments
 - **0% rollout**: because this will evaluate the feature
 as disabled as intended, but still expose the configuration in the datafiles which we do not want
@@ -696,3 +698,33 @@ environments:
 ```
 
 This technique is useful if you wish to test things out in a specific environment (like staging) without affecting rest of the environments (like production).
+
+You can take things a bit further if you wish to expose the feature only for certain tags in an environment:
+
+```yml
+# ...
+
+# imagine you already had these tags
+tags:
+  - web
+  - ios
+  - android
+
+environments:
+  production:
+    # this optional property tells Featurevisor
+    # to include this feature config
+    # when generating datafiles
+    # for only these specific tags
+    expose:
+      - web
+      - ios
+      # skipping `android` here
+
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+```
+
+Ideally we never wish to keep `expose` property in our definitions, and it is only meant to serve our short term needs.

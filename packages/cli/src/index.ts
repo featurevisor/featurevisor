@@ -143,6 +143,7 @@ async function main() {
           keyPattern: options.keyPattern,
           assertionPattern: options.assertionPattern,
           verbose: options.verbose || false,
+          showDatafile: options.showDatafile || false,
         };
 
         const hasError = await testProject(deps, testOptions);

@@ -293,13 +293,13 @@ export interface Rule {
   };
 }
 
+export type Tag = string;
+
 export interface Environment {
-  expose?: boolean;
+  expose?: boolean | Tag[];
   rules: Rule[];
   force?: Force[];
 }
-
-export type Tag = string;
 
 export interface ParsedFeature {
   key: FeatureKey;
@@ -353,7 +353,12 @@ export interface ExistingState {
 /**
  * Tests
  */
+export interface AssertionMatrix {
+  [key: string]: AttributeValue[];
+}
+
 export interface FeatureAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
   at: Weight; // bucket weight: 0 to 100
@@ -371,6 +376,7 @@ export interface TestFeature {
 }
 
 export interface SegmentAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   context: Context;
   expectedToMatch: boolean;
@@ -382,6 +388,30 @@ export interface TestSegment {
 }
 
 export type Test = TestSegment | TestFeature;
+
+export interface TestResultAssertionError {
+  type: "flag" | "variation" | "variable" | "segment";
+  expected: string | number | boolean | Date | null | undefined;
+  actual: string | number | boolean | Date | null | undefined;
+  message?: string;
+  details?: object;
+}
+
+export interface TestResultAssertion {
+  description: string;
+  duration: number;
+  passed: boolean;
+  errors?: TestResultAssertionError[];
+}
+
+export interface TestResult {
+  type: "feature" | "segment";
+  key: string;
+  notFound?: boolean;
+  passed: boolean;
+  duration: number;
+  assertions: TestResultAssertion[];
+}
 
 /**
  * Site index and history
