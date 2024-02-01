@@ -64,6 +64,8 @@ Examples:
 - `in:production`: search features by environment
 - `archived:true` or `archived:false`
 - `capture:true` or `capture:false`: for filtering attributes
+- `with:variations` or `without:variations`: for filtering features with/without variations
+- `with:variables` or `without:variables`: for filtering features with/without variables
 
 ## Read-only mode
 
