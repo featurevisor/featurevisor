@@ -8,6 +8,8 @@ export interface Query {
   capture?: boolean;
   hasVariations?: boolean;
   hasVariables?: boolean;
+  variableKeys?: string[];
+  variationValues?: string[];
 }
 
 export function parseSearchQuery(queryString: string) {
@@ -49,6 +51,26 @@ export function parseSearchQuery(queryString: string) {
         query.capture = true;
       } else if (capture === "false") {
         query.capture = false;
+      }
+    } else if (part.startsWith("variable")) {
+      const variableKey = part.replace("variable:", "");
+
+      if (typeof query.variableKeys === "undefined") {
+        query.variableKeys = [];
+      }
+
+      if (variableKey.length > 0) {
+        query.variableKeys.push(variableKey);
+      }
+    } else if (part.startsWith("variation")) {
+      const variationValue = part.replace("variation:", "");
+
+      if (typeof query.variationValues === "undefined") {
+        query.variationValues = [];
+      }
+
+      if (variationValue.length > 0) {
+        query.variationValues.push(variationValue);
       }
     } else if (part === "with:variations") {
       query.hasVariations = true;
@@ -144,6 +166,30 @@ export function getFeaturesByQuery(query: Query, data: SearchIndex) {
 
         if (!query.hasVariations && feature.variations) {
           matched = false;
+        }
+      }
+
+      if (typeof query.variationValues !== "undefined") {
+        if (!feature.variations) {
+          matched = false;
+        } else {
+          const valuesFromFeature = feature.variations.map((v: any) => v.value);
+
+          if (query.variationValues.some((v) => valuesFromFeature.indexOf(v) === -1)) {
+            matched = false;
+          }
+        }
+      }
+
+      if (typeof query.variableKeys !== "undefined") {
+        if (!feature.variablesSchema) {
+          matched = false;
+        } else {
+          const keysFromFeature = feature.variablesSchema.map((v: any) => v.key);
+
+          if (query.variableKeys.some((k) => keysFromFeature.indexOf(k) === -1)) {
+            matched = false;
+          }
         }
       }
 

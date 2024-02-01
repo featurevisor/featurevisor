@@ -65,7 +65,9 @@ Examples:
 - `archived:true` or `archived:false`
 - `capture:true` or `capture:false`: for filtering attributes
 - `with:variations` or `without:variations`: for filtering features with/without variations
+- `variation:variation-value`: for filtering features by variation value
 - `with:variables` or `without:variables`: for filtering features with/without variables
+- `variable:variable-key`: for filtering features by variable key
 
 ## Read-only mode
 
