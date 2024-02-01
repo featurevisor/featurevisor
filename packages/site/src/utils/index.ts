@@ -6,6 +6,8 @@ export interface Query {
   environments: string[];
   archived?: boolean;
   capture?: boolean;
+  hasVariations?: boolean;
+  hasVariables?: boolean;
 }
 
 export function parseSearchQuery(queryString: string) {
@@ -48,6 +50,14 @@ export function parseSearchQuery(queryString: string) {
       } else if (capture === "false") {
         query.capture = false;
       }
+    } else if (part === "with:variations") {
+      query.hasVariations = true;
+    } else if (part === "without:variations") {
+      query.hasVariations = false;
+    } else if (part === "with:variables") {
+      query.hasVariables = true;
+    } else if (part === "without:variables") {
+      query.hasVariables = false;
     } else {
       if (part.length > 0) {
         query.keyword = part;
@@ -123,6 +133,26 @@ export function getFeaturesByQuery(query: Query, data: SearchIndex) {
         }
 
         if (!query.archived && feature.archived === true) {
+          matched = false;
+        }
+      }
+
+      if (typeof query.hasVariations !== "undefined") {
+        if (query.hasVariations && !feature.variations) {
+          matched = false;
+        }
+
+        if (!query.hasVariations && feature.variations) {
+          matched = false;
+        }
+      }
+
+      if (typeof query.hasVariables !== "undefined") {
+        if (query.hasVariables && !feature.variablesSchema) {
+          matched = false;
+        }
+
+        if (!query.hasVariables && feature.variablesSchema) {
           matched = false;
         }
       }
