@@ -52,7 +52,7 @@ export function parseSearchQuery(queryString: string) {
       } else if (capture === "false") {
         query.capture = false;
       }
-    } else if (part.startsWith("variable")) {
+    } else if (part.startsWith("variable:")) {
       const variableKey = part.replace("variable:", "");
 
       if (typeof query.variableKeys === "undefined") {
@@ -62,7 +62,7 @@ export function parseSearchQuery(queryString: string) {
       if (variableKey.length > 0) {
         query.variableKeys.push(variableKey);
       }
-    } else if (part.startsWith("variation")) {
+    } else if (part.startsWith("variation:")) {
       const variationValue = part.replace("variation:", "");
 
       if (typeof query.variationValues === "undefined") {
