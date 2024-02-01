@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+
+### Features
+
+* additional advanced search options in generated site ([#257](https://github.com/featurevisor/featurevisor/issues/257)) ([6e0b34a](https://github.com/featurevisor/featurevisor/commit/6e0b34a150119b990c10d8c882d99f8aba4bff66))
+
+
+
+
+
 # [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
 
 **Note:** Version bump only for package @featurevisor/site
