@@ -216,6 +216,13 @@ export function DisplayFeatureRulesTable() {
         </p>
       )}
 
+      {Array.isArray(feature.environments[environmentKey].expose) && (
+        <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
+          Rules are <a href="https://featurevisor.com/docs/features/#expose">exposed</a> for these
+          tags only: {feature.environments[environmentKey].expose.join(", ")}.
+        </p>
+      )}
+
       <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
         <thead className="bg-gray-50">
           <tr>
