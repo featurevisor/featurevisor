@@ -1,9 +1,9 @@
 {
   "links": {
-    "attribute": "https://github.com/fahad19/featurevisor/blob/site-variable-show/examples/example-1/attributes/{{key}}.yml",
-    "segment": "https://github.com/fahad19/featurevisor/blob/site-variable-show/examples/example-1/segments/{{key}}.yml",
-    "feature": "https://github.com/fahad19/featurevisor/blob/site-variable-show/examples/example-1/features/{{key}}.yml",
-    "commit": "https://github.com/fahad19/featurevisor/commit/{{hash}}"
+    "attribute": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/attributes/{{key}}.yml",
+    "segment": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/segments/{{key}}.yml",
+    "feature": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/features/{{key}}.yml",
+    "commit": "https://github.com/featurevisor/featurevisor/commit/{{hash}}"
   },
   "entities": {
     "attributes": [
@@ -70,7 +70,7 @@
           "timestamp": "2023-03-05T18:38:34+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["foo", "showPopup"],
+        "usedInFeatures": ["foo", "showBanner", "showPopup"],
         "usedInSegments": ["qa"]
       },
       {
@@ -151,7 +151,7 @@
           "timestamp": "2023-11-21T17:50:37+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["showPopup"]
+        "usedInFeatures": ["showBanner", "showPopup"]
       },
       {
         "archived": false,
@@ -407,8 +407,8 @@
         },
         "key": "foo",
         "lastModified": {
-          "commit": "986fc2f",
-          "timestamp": "2024-01-04T19:17:05+01:00",
+          "commit": "9daf95b",
+          "timestamp": "2024-01-11T20:17:34+01:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -491,6 +491,31 @@
         "lastModified": {
           "commit": "b3ad42c",
           "timestamp": "2023-09-30T21:56:55+02:00",
+          "author": "Fahad Heylaal"
+        }
+      },
+      {
+        "description": "for testing expose property with tags",
+        "tags": ["all", "checkout"],
+        "bucketBy": "userId",
+        "environments": {
+          "staging": {
+            "expose": ["checkout"],
+            "force": [
+              { "segments": "qa", "enabled": true },
+              {
+                "conditions": [{ "attribute": "userId", "operator": "equals", "value": "user-3" }],
+                "enabled": true
+              }
+            ],
+            "rules": [{ "key": "1", "segments": "*", "percentage": 0 }]
+          },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 0 }] }
+        },
+        "key": "showBanner",
+        "lastModified": {
+          "commit": "1ae08e7",
+          "timestamp": "2024-01-23T22:36:30+01:00",
           "author": "Fahad Heylaal"
         }
       },
