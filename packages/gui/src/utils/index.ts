@@ -11,6 +11,10 @@ export interface Query {
   environments: string[];
   archived?: boolean;
   capture?: boolean;
+  hasVariations?: boolean;
+  hasVariables?: boolean;
+  variableKeys?: string[];
+  variationValues?: string[];
 }
 
 export function parseSearchQuery(queryString: string) {
@@ -53,6 +57,34 @@ export function parseSearchQuery(queryString: string) {
       } else if (capture === "false") {
         query.capture = false;
       }
+    } else if (part.startsWith("variable:")) {
+      const variableKey = part.replace("variable:", "");
+
+      if (typeof query.variableKeys === "undefined") {
+        query.variableKeys = [];
+      }
+
+      if (variableKey.length > 0) {
+        query.variableKeys.push(variableKey);
+      }
+    } else if (part.startsWith("variation:")) {
+      const variationValue = part.replace("variation:", "");
+
+      if (typeof query.variationValues === "undefined") {
+        query.variationValues = [];
+      }
+
+      if (variationValue.length > 0) {
+        query.variationValues.push(variationValue);
+      }
+    } else if (part === "with:variations") {
+      query.hasVariations = true;
+    } else if (part === "without:variations") {
+      query.hasVariations = false;
+    } else if (part === "with:variables") {
+      query.hasVariables = true;
+    } else if (part === "without:variables") {
+      query.hasVariables = false;
     } else {
       if (part.length > 0) {
         query.keyword = part;
