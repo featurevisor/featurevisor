@@ -94,3 +94,37 @@ export function parseSearchQuery(queryString: string) {
 
   return query;
 }
+
+export function isEnabledInEnvironment(feature: any, environment: string) {
+  if (feature.archived === true) {
+    return false;
+  }
+
+  if (!feature.environments[environment]) {
+    return false;
+  }
+
+  if (feature.environments[environment].expose === false) {
+    return false;
+  }
+
+  if (feature.environments[environment].rules.some((rule: any) => rule.percentage > 0)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isEnabledInAnyEnvironment(feature: any) {
+  const environments = Object.keys(feature.environments);
+
+  for (const environment of environments) {
+    const isEnabled = isEnabledInEnvironment(feature, environment);
+
+    if (isEnabled) {
+      return true;
+    }
+  }
+
+  return false;
+}

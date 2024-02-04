@@ -18,27 +18,8 @@ import { Button } from "../ui/button";
 
 import { Truncate } from "../blocks/truncate";
 
-import { parseSearchQuery, Query } from "../../utils";
-
-export function isEnabledInEnvironment(feature: any, environment: string) {
-  if (feature.archived === true) {
-    return false;
-  }
-
-  if (!feature.environments[environment]) {
-    return false;
-  }
-
-  if (feature.environments[environment].expose === false) {
-    return false;
-  }
-
-  if (feature.environments[environment].rules.some((rule: any) => rule.percentage > 0)) {
-    return true;
-  }
-
-  return false;
-}
+import { parseSearchQuery, Query, isEnabledInEnvironment } from "../../utils";
+import { EnvironmentDot } from "../blocks/environment-dot";
 
 function getEntitiesByQuery(query: Query, entities) {
   const features = entities
@@ -161,6 +142,7 @@ function EntitiesTable() {
         {filteredEntities.length > 0 && (
           <TableHeader>
             <TableRow>
+              <TableHead className="w-1"> </TableHead>
               <TableHead>Key</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
@@ -169,11 +151,14 @@ function EntitiesTable() {
         <TableBody>
           {filteredEntities.map((entity) => (
             <TableRow key={entity.key}>
+              <TableCell>
+                <EnvironmentDot feature={entity} />
+              </TableCell>
               <TableCell className="font-medium">
-                <Link className="hover:underline" to={`/attributes/${entity.key}`}>
+                <Link className="hover:underline" to={`/features/${entity.key}`}>
                   <InlineCode>{entity.key}</InlineCode>
                 </Link>{" "}
-                {entity.capture && <Badge variant="default">capture</Badge>}{" "}
+                {entity.deprecated && <Badge variant="secondary">deprecated</Badge>}
                 {entity.archived && <Badge variant="secondary">archived</Badge>}
               </TableCell>
               <TableCell className="text-gray-600">
