@@ -391,6 +391,24 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  devServer.app.get("/api/features/:key/history", async function (req, res) {
+    const index = entities.features.findIndex((segment) => segment.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: `Feature "${req.params.key}" not found`,
+        },
+      });
+    }
+
+    const historyEntries = await datasource.listHistoryEntries("feature", req.params.key);
+
+    res.json({
+      data: historyEntries,
+    });
+  });
+
   /**
    * Groups
    */

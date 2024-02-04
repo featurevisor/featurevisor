@@ -28,6 +28,7 @@ import { SegmentsCreate } from "./segments-create-page";
 import { FeaturesListPage } from "./features-list-page";
 import { FeaturePage } from "./feature-page";
 import { FeaturePageView } from "./feature-page-view";
+import { FeaturePageHistory } from "./feature-page-history";
 
 import { HistoryPage } from "./history-page";
 
@@ -94,7 +95,7 @@ export function App() {
                 <Route path=":key" element={<FeaturePage />}>
                   <Route index element={<FeaturePageView />} />
                   {/* <Route path="edit" element={<FeaturePageEdit />} /> */}
-                  {/* <Route path="history" element={<SegmentPageHistory />} /> */}
+                  <Route path="history" element={<FeaturePageHistory />} />
                 </Route>
               </Route>
 
