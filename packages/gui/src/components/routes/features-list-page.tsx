@@ -2,21 +2,10 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableCaption,
-} from "../ui/table";
 import { Badge } from "../ui/badge";
-import { H2, InlineCode } from "../ui/typography";
+import { H2 } from "../ui/typography";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-
-import { Truncate } from "../blocks/truncate";
 
 import { parseSearchQuery, Query, isEnabledInEnvironment } from "../../utils";
 import { EnvironmentDot } from "../blocks/environment-dot";
@@ -137,37 +126,64 @@ function EntitiesTable() {
         onChange={(e) => setSearchQuery(e.target.value)}
       />
 
-      <Table>
-        <TableCaption className="pt-4">{filteredEntities.length} records found.</TableCaption>
-        {filteredEntities.length > 0 && (
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-1"> </TableHead>
-              <TableHead>Key</TableHead>
-              <TableHead>Description</TableHead>
-            </TableRow>
-          </TableHeader>
-        )}
-        <TableBody>
-          {filteredEntities.map((entity) => (
-            <TableRow key={entity.key}>
-              <TableCell>
-                <EnvironmentDot feature={entity} />
-              </TableCell>
-              <TableCell className="font-medium">
-                <Link className="hover:underline" to={`/features/${entity.key}`}>
-                  <InlineCode>{entity.key}</InlineCode>
-                </Link>{" "}
-                {entity.deprecated && <Badge variant="secondary">deprecated</Badge>}
-                {entity.archived && <Badge variant="secondary">archived</Badge>}
-              </TableCell>
-              <TableCell className="text-gray-600">
-                <Truncate text={entity.description} length={160} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {filteredEntities.length > 0 && (
+        <div>
+          <ul className="diving-gray-200 divide-y">
+            {filteredEntities.map((feature: any) => (
+              <li key={feature.key}>
+                <Link to={`/features/${feature.key}`}>
+                  <div className="block hover:bg-gray-50">
+                    <div className="px-1 py-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-md relative font-bold text-slate-600">
+                          <EnvironmentDot
+                            feature={feature}
+                            className="relative top-[0.5px] inline-block pr-2"
+                          />{" "}
+                          <a href="#" className="font-bold">
+                            {feature.key}
+                          </a>{" "}
+                          {feature.archived && (
+                            <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                              archived
+                            </span>
+                          )}
+                        </p>
+
+                        <div className="ml-2 flex flex-shrink-0">
+                          <div>
+                            {feature.tags.map((tag: string) => (
+                              <Badge key={tag} variant="secondary">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex justify-between">
+                        <div className="flex">
+                          <p className="line-clamp-3 max-w-md items-center pl-6 text-sm text-gray-500">
+                            {feature.description && feature.description.trim().length > 0
+                              ? feature.description
+                              : "n/a"}
+                          </p>
+                        </div>
+
+                        <div className="items-top mt-2 flex text-xs text-gray-500 sm:mt-0"></div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            A total of <span className="font-bold">{filteredEntities.length}</span> results found.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
