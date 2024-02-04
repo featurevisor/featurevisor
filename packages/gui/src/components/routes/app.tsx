@@ -25,6 +25,8 @@ import { SegmentPageHistory } from "./segment-page-history";
 import { SegmentPageEdit } from "./segment-page-edit";
 import { SegmentsCreate } from "./segments-create-page";
 
+import { FeaturesListPage } from "./features-list-page";
+
 import { HistoryPage } from "./history-page";
 
 const { useState, useEffect } = React;
@@ -82,6 +84,11 @@ export function App() {
                 </Route>
               </Route>
               <Route path="create/segment" element={<SegmentsCreate />} />
+
+              {/* Features */}
+              <Route path="features">
+                <Route index element={<FeaturesListPage />} />
+              </Route>
 
               {/* History */}
               <Route path="history">
