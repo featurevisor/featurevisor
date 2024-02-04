@@ -140,9 +140,7 @@ function EntitiesTable() {
                             feature={feature}
                             className="relative top-[0.5px] inline-block pr-2"
                           />{" "}
-                          <a href="#" className="font-bold">
-                            {feature.key}
-                          </a>{" "}
+                          <span className="font-bold">{feature.key}</span>{" "}
                           {feature.archived && (
                             <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
                               archived
@@ -152,7 +150,7 @@ function EntitiesTable() {
 
                         <div className="ml-2 flex flex-shrink-0">
                           <div>
-                            {feature.tags.map((tag: string) => (
+                            {feature.tags.sort().map((tag: string) => (
                               <Badge key={tag} variant="secondary">
                                 {tag}
                               </Badge>

@@ -128,3 +128,29 @@ export function isEnabledInAnyEnvironment(feature: any) {
 
   return false;
 }
+
+export function sortEnvironmentNames(envNames: string[]): string[] {
+  const devNames: string[] = [];
+  const testNames: string[] = [];
+  const prodNames: string[] = [];
+  const otherNames: string[] = [];
+
+  for (const name of envNames) {
+    if (name.startsWith("dev")) {
+      devNames.push(name);
+    } else if (name.startsWith("test")) {
+      testNames.push(name);
+    } else if (name.startsWith("prod")) {
+      prodNames.push(name);
+    } else {
+      otherNames.push(name);
+    }
+  }
+
+  devNames.sort();
+  testNames.sort();
+  prodNames.sort();
+  otherNames.sort();
+
+  return [...devNames, ...testNames, ...otherNames, ...prodNames];
+}
