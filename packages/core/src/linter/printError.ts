@@ -17,5 +17,6 @@ export function printZodError(e: ZodError) {
   issues.forEach((issue) => {
     console.error("     => Error:", issue.message);
     console.error("     => Path:", issue.path.join("."));
+    console.error("     => Value:", (issue as any).received);
   });
 }
