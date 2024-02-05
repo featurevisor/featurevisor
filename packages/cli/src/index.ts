@@ -16,6 +16,7 @@ import {
   findDuplicateSegmentsInProject,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
+  TestProjectOptions,
   restoreProject,
   Dependencies,
   Datasource,
@@ -45,7 +46,7 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
 async function getDependencies(options): Promise<Dependencies> {
   const rootDirectoryPath = process.cwd();
   const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
-  const datasource = new Datasource(projectConfig);
+  const datasource = new Datasource(projectConfig, rootDirectoryPath);
 
   return {
     rootDirectoryPath,
@@ -137,7 +138,14 @@ async function main() {
       handler: async function (options) {
         const deps = await getDependencies(options);
 
-        const hasError = await testProject(deps);
+        const testOptions: TestProjectOptions = {
+          keyPattern: options.keyPattern,
+          assertionPattern: options.assertionPattern,
+          verbose: options.verbose || false,
+          showDatafile: options.showDatafile || false,
+        };
+
+        const hasError = await testProject(deps, testOptions);
 
         if (hasError) {
           process.exit(1);

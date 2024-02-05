@@ -78,6 +78,14 @@ export async function buildDatafile(
         continue;
       }
 
+      if (Array.isArray(parsedFeature.environments[options.environment].expose)) {
+        const exposeTags = parsedFeature.environments[options.environment].expose as string[];
+
+        if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+          continue;
+        }
+      }
+
       for (const parsedRule of parsedFeature.environments[options.environment].rules) {
         const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
         extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
@@ -133,7 +141,10 @@ export async function buildDatafile(
                     );
 
                     return {
-                      segments: JSON.stringify(override.segments),
+                      segments:
+                        typeof override.segments === "string"
+                          ? override.segments
+                          : JSON.stringify(override.segments),
                       value: override.value,
                     };
                   }
@@ -196,6 +207,13 @@ export async function buildDatafile(
 
       if (parsedFeature.environments[options.environment].force) {
         feature.force = parsedFeature.environments[options.environment].force;
+
+        feature.force?.forEach((f) => {
+          if (f.segments) {
+            const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(f.segments);
+            extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
+          }
+        });
       }
 
       features.push(feature);

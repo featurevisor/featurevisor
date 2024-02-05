@@ -3,6 +3,166 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+
+### Features
+
+* allow exposing features with tags + environment combination ([#254](https://github.com/featurevisor/featurevisor/issues/254)) ([1ae08e7](https://github.com/featurevisor/featurevisor/commit/1ae08e71393b620f98f7080aff18033a3e3b7192))
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
+# [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
+
+
+### Features
+
+* Matrix for test specs ([#244](https://github.com/featurevisor/featurevisor/issues/244)) ([bfcb9c2](https://github.com/featurevisor/featurevisor/commit/bfcb9c21703e182bf5cadd58f371935df4bef3d4))
+
+
+
+
+
+# [0.69.0](https://github.com/featurevisor/featurevisor/compare/v0.68.0...v0.69.0) (2023-12-13)
+
+
+### Features
+
+* v1 ([252c5c7](https://github.com/featurevisor/featurevisor/commit/252c5c797be3c9d210ff7d272e7338658ecba8d1))
+
+
+### BREAKING CHANGES
+
+* stable
+
+
+
+
+
+# [0.68.0](https://github.com/featurevisor/featurevisor/compare/v0.67.0...v0.68.0) (2023-12-13)
+
+
+### Features
+
+* v1 ([8771956](https://github.com/featurevisor/featurevisor/commit/87719569da36bf0e92ddb9bffbbf69bdf7f001c1))
+* v1BREAKING CHANGE: stable release ([174be4c](https://github.com/featurevisor/featurevisor/commit/174be4cc5a5582e5eafd75e89b1513578d1c7641))
+
+
+### BREAKING CHANGES
+
+* stable release
+
+
+
+
+
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+
+* feat!: publish with conventional commits preset using Lerna (#234) ([0b550e1](https://github.com/featurevisor/featurevisor/commit/0b550e10117eaf40a02793caec2f539f52bbaaba)), closes [#234](https://github.com/featurevisor/featurevisor/issues/234)
+
+
+### BREAKING CHANGES
+
+* trigger stable release
+
+
+
+
+
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+
+### Features
+
+* v1 ([0113baf](https://github.com/featurevisor/featurevisor/commit/0113baf657866c5b49a6924b74baca25cc5d42a1))
+* v1 release ([#233](https://github.com/featurevisor/featurevisor/issues/233)) ([97ba8e2](https://github.com/featurevisor/featurevisor/commit/97ba8e25b01fe35efaaec352c27d584374b07035))
+* v1\ ([7e2a188](https://github.com/featurevisor/featurevisor/commit/7e2a18806631122956c6bdd2fbc7771634fa054d))
+
+
+### BREAKING CHANGES
+
+* trigger release
+* trigger stable release
+* trigger stable release
+
+
+
+
+
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+
+* feat!: trigger v1 release (#232) ([2165101](https://github.com/featurevisor/featurevisor/commit/2165101081dc28280b6de00cd20b4b5b62919948)), closes [#232](https://github.com/featurevisor/featurevisor/issues/232)
+
+
+### BREAKING CHANGES
+
+* triggering v1 release
+
+
+
+
+
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+
+### Features
+
+* attribute type for semver ([#221](https://github.com/featurevisor/featurevisor/issues/221)) ([278e366](https://github.com/featurevisor/featurevisor/commit/278e366d76b3f6ed5b6aae1b96f8ca1149276574))
+
+
+
+
+
+# [0.62.0](https://github.com/featurevisor/featurevisor/compare/v0.61.0...v0.62.0) (2023-11-19)
+
+
+### Features
+
+* get history info from datasource ([#213](https://github.com/featurevisor/featurevisor/issues/213)) ([6107a6b](https://github.com/featurevisor/featurevisor/commit/6107a6bee14708114413e4e59cb7ebeb061a79bd))
+
+
+
+
+
+# [0.61.0](https://github.com/featurevisor/featurevisor/compare/v0.60.1...v0.61.0) (2023-11-14)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
+# [0.60.0](https://github.com/featurevisor/featurevisor/compare/v0.59.3...v0.60.0) (2023-11-07)
+
+
+### Features
+
+* allow rules to have description ([#206](https://github.com/featurevisor/featurevisor/issues/206)) ([7d4db28](https://github.com/featurevisor/featurevisor/commit/7d4db28dda51db35e2000828b0974f05e9cc5757))
+
+
+
+
+
 # [0.59.0](https://github.com/featurevisor/featurevisor/compare/v0.58.0...v0.59.0) (2023-10-31)
 
 **Note:** Version bump only for package @featurevisor/types

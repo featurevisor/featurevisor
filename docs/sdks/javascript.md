@@ -1,11 +1,9 @@
 ---
-title: SDKs
-description: Learn how to use Featurevisor SDKs
+title: JavaScript SDK
+description: Learn how to use Featurevisor JavaScript SDK
 ---
 
-SDKs are meant to be used in your own applications, where you want to evaluate features in the runtime. {% .lead %}
-
-At the moment, we have an SDK for JavaScript only covering Node.js and browser environments. More languages are planned for the future as Featurevisor nears a stable release.
+JavaScript SDK is universal, meaning it works in both [Node.js](/docs/sdks/nodejs) and [browser](/docs/sdks/browser) environments. {% .lead %}
 
 ## Installation
 
@@ -18,6 +16,10 @@ $ npm install --save @featurevisor/sdk
 ## Initialization
 
 The SDK can be initialized in two different ways depending on your needs.
+
+{% callout type="note" title="Understanding datafiles" %}
+You are recommended to learn more about [building datafiles](/docs/building-datafiles) before proceeding further.
+{% /callout %}
 
 ### Synchronous
 
@@ -78,7 +80,7 @@ const f = createInstance({
 
 ## Context
 
-Contexts are a set of attribute values that we pass to SDK for evaluating features.
+Contexts are [attribute](/docs/attributes) values that we pass to SDK for evaluating [features](/docs/features).
 
 They are objects where keys are the attribute keys, and values are the attribute values.
 
@@ -105,7 +107,7 @@ const isEnabled = f.isEnabled(featureKey, context);
 
 ## Getting variations
 
-If your feature has any variations defined, you can get evaluate them as follows:
+If your feature has any [variations](/docs/features/#variations) defined, you can get evaluate them as follows:
 
 ```js
 const featureKey = "my_feature";
@@ -118,6 +120,8 @@ const variation = f.getVariation(featureKey, context);
 ```
 
 ## Getting variables
+
+Your features may also include [variables](/docs/features/#variables):
 
 ```js
 const variableKey = "bgColor";
@@ -461,9 +465,13 @@ if (f.isReady()) {
 For convenience, you can check the readiness with a Promise-based API as well:
 
 ```js
+// using Promise
 f.onReady().then(function () {
   // sdk is ready to be used
 });
+
+// using async/await
+await f.onReady();
 ```
 
 #### `activation`

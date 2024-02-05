@@ -1,18 +1,21 @@
 export function checkIfObjectsAreEqual(a, b) {
-  if (typeof a !== "object" || typeof b !== "object") {
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
     return false;
   }
 
-  if (a === null || b === null) {
+  const keysA = Object.keys(a),
+    keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) {
     return false;
   }
 
-  if (Object.keys(a).length !== Object.keys(b).length) {
-    return false;
-  }
-
-  for (const key in a) {
-    if (a[key] !== b[key]) {
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !checkIfObjectsAreEqual(a[key], b[key])) {
       return false;
     }
   }

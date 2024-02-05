@@ -14,6 +14,9 @@ variablesSchema:
   - key: baz
     type: string
     defaultValue: ""
+  - key: qux
+    type: boolean
+    defaultValue: false
 
 variations:
   - value: control
@@ -31,9 +34,18 @@ variations:
             value: bar for DE or CH
       - key: baz
         value: baz_here
+        overrides:
+          - segments: netherlands
+            value: baz for NL
 
 environments:
   staging:
+    force:
+      - conditions:
+          - attribute: userId
+            operator: equals
+            value: "test-force-id"
+        variation: treatment
     rules:
       - key: "1"
         segments: "*"
@@ -60,6 +72,8 @@ environments:
                 - germany
                 - switzerland
         percentage: 80
+        variables:
+          qux: true
       - key: "2"
         segments: "*"
         percentage: 50

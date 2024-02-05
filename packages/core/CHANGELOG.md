@@ -3,6 +3,318 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.4.0](https://github.com/featurevisor/featurevisor/compare/v1.3.0...v1.4.0) (2024-01-27)
+
+
+### Features
+
+* print feature datafile ([#256](https://github.com/featurevisor/featurevisor/issues/256)) ([b24d8ab](https://github.com/featurevisor/featurevisor/commit/b24d8ab4d4b4ffd403a380ed7d6d2acb016e2805))
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+
+### Features
+
+* allow exposing features with tags + environment combination ([#254](https://github.com/featurevisor/featurevisor/issues/254)) ([1ae08e7](https://github.com/featurevisor/featurevisor/commit/1ae08e71393b620f98f7080aff18033a3e3b7192))
+
+
+
+
+
+## [1.2.4](https://github.com/featurevisor/featurevisor/compare/v1.2.3...v1.2.4) (2024-01-20)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
+
+
+### Features
+
+* Matrix for test specs ([#244](https://github.com/featurevisor/featurevisor/issues/244)) ([bfcb9c2](https://github.com/featurevisor/featurevisor/commit/bfcb9c21703e182bf5cadd58f371935df4bef3d4))
+
+
+
+
+
+## [1.1.1](https://github.com/featurevisor/featurevisor/compare/v1.1.0...v1.1.1) (2024-01-11)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.1.0](https://github.com/featurevisor/featurevisor/compare/v1.0.3...v1.1.0) (2024-01-04)
+
+
+### Features
+
+* showDatafile option when running tests ([#242](https://github.com/featurevisor/featurevisor/issues/242)) ([6c9561f](https://github.com/featurevisor/featurevisor/commit/6c9561f6253c94750817737c3e09162e4a904f8a))
+
+
+
+
+
+## [1.0.3](https://github.com/featurevisor/featurevisor/compare/v1.0.2...v1.0.3) (2024-01-04)
+
+
+### Bug Fixes
+
+* stringify segments in variable overrides correctly ([#241](https://github.com/featurevisor/featurevisor/issues/241)) ([986fc2f](https://github.com/featurevisor/featurevisor/commit/986fc2fb814a0be091250d63b3cd08a9901dc5cd))
+
+
+
+
+
+## [1.0.2](https://github.com/featurevisor/featurevisor/compare/v1.0.1...v1.0.2) (2024-01-04)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.0.1](https://github.com/featurevisor/featurevisor/compare/v1.0.0...v1.0.1) (2024-01-02)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.69.0](https://github.com/featurevisor/featurevisor/compare/v0.68.0...v0.69.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.68.0](https://github.com/featurevisor/featurevisor/compare/v0.67.0...v0.68.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [0.64.3](https://github.com/featurevisor/featurevisor/compare/v0.64.2...v0.64.3) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [0.64.2](https://github.com/featurevisor/featurevisor/compare/v0.64.1...v0.64.2) (2023-12-11)
+
+
+### Bug Fixes
+
+* include variation allocations when introduced later ([#229](https://github.com/featurevisor/featurevisor/issues/229)) ([1e3f7fb](https://github.com/featurevisor/featurevisor/commit/1e3f7fbde2fc95e8e4dab12d86bb6a76bab410b3))
+
+
+
+
+
+## [0.64.1](https://github.com/featurevisor/featurevisor/compare/v0.64.0...v0.64.1) (2023-12-10)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+
+### Features
+
+* require certain fields in features and tests when linting ([#222](https://github.com/featurevisor/featurevisor/issues/222)) ([5d8ed18](https://github.com/featurevisor/featurevisor/commit/5d8ed183573a23fd418a5ee6b74dc9e8f51064a3))
+
+
+
+
+
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+
+### Features
+
+* attribute type for semver ([#221](https://github.com/featurevisor/featurevisor/issues/221)) ([278e366](https://github.com/featurevisor/featurevisor/commit/278e366d76b3f6ed5b6aae1b96f8ca1149276574))
+
+
+
+
+
+## [0.62.2](https://github.com/featurevisor/featurevisor/compare/v0.62.1...v0.62.2) (2023-11-21)
+
+
+### Bug Fixes
+
+* extract segment keys from forced rules ([#217](https://github.com/featurevisor/featurevisor/issues/217)) ([a2aebe6](https://github.com/featurevisor/featurevisor/commit/a2aebe6ee7a6ecb811e9b1f8410b3bb54cb22ad0))
+
+
+
+
+
+## [0.62.1](https://github.com/featurevisor/featurevisor/compare/v0.62.0...v0.62.1) (2023-11-19)
+
+
+### Bug Fixes
+
+* do not show test spec history entries in generated site ([#214](https://github.com/featurevisor/featurevisor/issues/214)) ([f608f92](https://github.com/featurevisor/featurevisor/commit/f608f92922f3a533780d258162430f5864e5c6f3))
+
+
+
+
+
+# [0.62.0](https://github.com/featurevisor/featurevisor/compare/v0.61.0...v0.62.0) (2023-11-19)
+
+
+### Features
+
+* get history info from datasource ([#213](https://github.com/featurevisor/featurevisor/issues/213)) ([6107a6b](https://github.com/featurevisor/featurevisor/commit/6107a6bee14708114413e4e59cb7ebeb061a79bd))
+
+
+
+
+
+# [0.61.0](https://github.com/featurevisor/featurevisor/compare/v0.60.1...v0.61.0) (2023-11-14)
+
+
+### Features
+
+* filter tests and support verbosity for debugging ([#212](https://github.com/featurevisor/featurevisor/issues/212)) ([414ef6d](https://github.com/featurevisor/featurevisor/commit/414ef6dd7ad47d287a91088aab474216361ee6c6))
+
+
+
+
+
+## [0.60.1](https://github.com/featurevisor/featurevisor/compare/v0.60.0...v0.60.1) (2023-11-14)
+
+
+### Bug Fixes
+
+* using not operator in feature rules ([#211](https://github.com/featurevisor/featurevisor/issues/211)) ([dd7fda3](https://github.com/featurevisor/featurevisor/commit/dd7fda38d87181a06d9dbfe08676dfd99afab539))
+
+
+
+
+
+# [0.60.0](https://github.com/featurevisor/featurevisor/compare/v0.59.3...v0.60.0) (2023-11-07)
+
+
+### Features
+
+* allow rules to have description ([#206](https://github.com/featurevisor/featurevisor/issues/206)) ([7d4db28](https://github.com/featurevisor/featurevisor/commit/7d4db28dda51db35e2000828b0974f05e9cc5757))
+
+
+
+
+
+## [0.59.3](https://github.com/featurevisor/featurevisor/compare/v0.59.2...v0.59.3) (2023-11-06)
+
+
+### Bug Fixes
+
+* testing nested objects equality ([#204](https://github.com/featurevisor/featurevisor/issues/204)) ([b71d54a](https://github.com/featurevisor/featurevisor/commit/b71d54ab8043b63f010721a9e9afd7d9579d3c75))
+
+
+
+
+
+## [0.59.2](https://github.com/featurevisor/featurevisor/compare/v0.59.1...v0.59.2) (2023-11-04)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [0.59.1](https://github.com/featurevisor/featurevisor/compare/v0.59.0...v0.59.1) (2023-11-04)
+
+
+### Bug Fixes
+
+* testing JSON variables in both object and stringified form ([#201](https://github.com/featurevisor/featurevisor/issues/201)) ([c6473da](https://github.com/featurevisor/featurevisor/commit/c6473da1613539ff5d24ed5c0dce587530cd1fc2))
+
+
+
+
+
 # [0.59.0](https://github.com/featurevisor/featurevisor/compare/v0.58.0...v0.59.0) (2023-10-31)
 
 

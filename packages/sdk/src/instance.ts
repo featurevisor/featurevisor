@@ -19,11 +19,16 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { createLogger, Logger } from "./logger";
+import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
 import { getBucketedNumber } from "./bucket";
-import { findForceFromFeature, getMatchedTraffic, getMatchedTrafficAndAllocation } from "./feature";
+import {
+  findForceFromFeature,
+  getMatchedTraffic,
+  getMatchedTrafficAndAllocation,
+  parseFromStringifiedSegments,
+} from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
 
@@ -263,6 +268,10 @@ export class FeaturevisorInstance {
         "Featurevisor SDK instance cannot be created without both `datafile` and `datafileUrl` options",
       );
     }
+  }
+
+  setLogLevels(levels: LogLevel[]) {
+    this.logger.setLevels(levels);
   }
 
   onReady(): Promise<FeaturevisorInstance> {
@@ -561,6 +570,8 @@ export class FeaturevisorInstance {
             enabled: requiredFeaturesAreEnabled,
           };
 
+          this.logger.debug("required features not enabled", evaluation);
+
           return evaluation;
         }
       }
@@ -586,6 +597,8 @@ export class FeaturevisorInstance {
                 typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
               bucketValue,
             };
+
+            this.logger.debug("matched", evaluation);
 
             return evaluation;
           }
@@ -620,8 +633,7 @@ export class FeaturevisorInstance {
         }
 
         // treated as enabled because of matched traffic
-        if (bucketValue < matchedTraffic.percentage) {
-          // @TODO: verify if range check should be inclusive or not
+        if (bucketValue <= matchedTraffic.percentage) {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
@@ -630,6 +642,8 @@ export class FeaturevisorInstance {
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
           };
+
+          this.logger.debug("matched traffic", evaluation);
 
           return evaluation;
         }
@@ -643,6 +657,8 @@ export class FeaturevisorInstance {
         bucketValue,
       };
 
+      this.logger.debug("nothing matched", evaluation);
+
       return evaluation;
     } catch (e) {
       evaluation = {
@@ -650,6 +666,8 @@ export class FeaturevisorInstance {
         reason: EvaluationReason.ERROR,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }
@@ -839,6 +857,8 @@ export class FeaturevisorInstance {
         reason: EvaluationReason.ERROR,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }
@@ -1068,8 +1088,16 @@ export class FeaturevisorInstance {
         }
 
         // regular allocation
-        if (matchedAllocation && matchedAllocation.variation && Array.isArray(feature.variations)) {
-          const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
+        let variationValue;
+
+        if (force && force.variation) {
+          variationValue = force.variation;
+        } else if (matchedAllocation && matchedAllocation.variation) {
+          variationValue = matchedAllocation.variation;
+        }
+
+        if (variationValue && Array.isArray(feature.variations)) {
+          const variation = feature.variations.find((v) => v.value === variationValue);
 
           if (variation && variation.variables) {
             const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
@@ -1086,9 +1114,7 @@ export class FeaturevisorInstance {
 
                   if (o.segments) {
                     return allGroupSegmentsAreMatched(
-                      typeof o.segments === "string" && o.segments !== "*"
-                        ? JSON.parse(o.segments)
-                        : o.segments,
+                      parseFromStringifiedSegments(o.segments),
                       finalContext,
                       this.datafileReader,
                     );
@@ -1154,6 +1180,8 @@ export class FeaturevisorInstance {
         variableKey,
         error: e,
       };
+
+      this.logger.error("error", evaluation);
 
       return evaluation;
     }

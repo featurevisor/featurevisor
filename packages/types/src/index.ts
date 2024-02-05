@@ -6,10 +6,12 @@ export interface Context {
   [key: AttributeKey]: AttributeValue;
 }
 
+export type AttributeType = "boolean" | "string" | "integer" | "double" | "date" | "semver";
+
 export interface Attribute {
-  archived?: boolean; // only available in YAML
+  archived?: boolean; // only available in YAML files
   key: AttributeKey;
-  type: string;
+  type: AttributeType;
   capture?: boolean;
 }
 
@@ -72,7 +74,7 @@ export type Condition = PlainCondition | AndOrNotCondition;
 export type SegmentKey = string;
 
 export interface Segment {
-  archived?: boolean; // only available in YAML
+  archived?: boolean; // only available in YAML files
   key: SegmentKey;
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
 }
@@ -140,7 +142,7 @@ export type VariableOverrideSegmentsOrConditions =
 export interface VariableOverride {
   value: VariableValue;
 
-  // one of the below must be present in YAML
+  // one of the below must be present in YAML files
   // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
@@ -149,12 +151,12 @@ export interface VariableOverride {
 export interface Variable {
   key: VariableKey;
   value: VariableValue;
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   overrides?: VariableOverride[];
 }
 
 export interface Variation {
-  description?: string; // only available in YAML
+  description?: string; // only available in YAML files
   value: VariationValue;
   weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
   variables?: Variable[];
@@ -280,6 +282,7 @@ export type RuleKey = string;
 
 export interface Rule {
   key: RuleKey;
+  description?: string; // only available in YAML
   segments: GroupSegment | GroupSegment[];
   percentage: Weight;
 
@@ -290,13 +293,13 @@ export interface Rule {
   };
 }
 
+export type Tag = string;
+
 export interface Environment {
-  expose?: boolean;
+  expose?: boolean | Tag[];
   rules: Rule[];
   force?: Force[];
 }
-
-export type Tag = string;
 
 export interface ParsedFeature {
   key: FeatureKey;
@@ -350,7 +353,12 @@ export interface ExistingState {
 /**
  * Tests
  */
+export interface AssertionMatrix {
+  [key: string]: AttributeValue[];
+}
+
 export interface FeatureAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
   at: Weight; // bucket weight: 0 to 100
@@ -368,6 +376,7 @@ export interface TestFeature {
 }
 
 export interface SegmentAssertion {
+  matrix?: AssertionMatrix;
   description?: string;
   context: Context;
   expectedToMatch: boolean;
@@ -380,23 +389,51 @@ export interface TestSegment {
 
 export type Test = TestSegment | TestFeature;
 
+export interface TestResultAssertionError {
+  type: "flag" | "variation" | "variable" | "segment";
+  expected: string | number | boolean | Date | null | undefined;
+  actual: string | number | boolean | Date | null | undefined;
+  message?: string;
+  details?: object;
+}
+
+export interface TestResultAssertion {
+  description: string;
+  duration: number;
+  passed: boolean;
+  errors?: TestResultAssertionError[];
+}
+
+export interface TestResult {
+  type: "feature" | "segment";
+  key: string;
+  notFound?: boolean;
+  passed: boolean;
+  duration: number;
+  assertions: TestResultAssertion[];
+}
+
 /**
  * Site index and history
  */
+export type EntityType = "attribute" | "segment" | "feature" | "group" | "test";
+
+export type CommitHash = string;
+
 export interface HistoryEntity {
-  type: "attribute" | "segment" | "feature";
+  type: EntityType;
   key: string;
 }
 
 export interface HistoryEntry {
-  commit: string;
+  commit: CommitHash;
   author: string;
   timestamp: string;
   entities: HistoryEntity[];
 }
 
 export interface LastModified {
-  commit: string;
+  commit: CommitHash;
   timestamp: string;
   author: string;
 }
@@ -406,7 +443,7 @@ export interface SearchIndex {
     feature: string;
     segment: string;
     attribute: string;
-    commit: string;
+    commit: CommitHash;
   };
   entities: {
     attributes: (Attribute & {
@@ -422,4 +459,20 @@ export interface SearchIndex {
       lastModified?: LastModified;
     })[];
   };
+}
+
+export interface EntityDiff {
+  type: EntityType;
+  key: string;
+  created?: boolean;
+  deleted?: boolean;
+  updated?: boolean;
+  content?: string;
+}
+
+export interface Commit {
+  hash: CommitHash;
+  author: string;
+  timestamp: string;
+  entities: EntityDiff[];
 }

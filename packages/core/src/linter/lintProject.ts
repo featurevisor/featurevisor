@@ -1,10 +1,10 @@
 // for use in node only
 import * as Joi from "joi";
 
-import { getAttributeJoiSchema, getAttributeZodSchema } from "./attributeSchema";
+import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsJoiSchema } from "./conditionSchema";
 import { getSegmentJoiSchema } from "./segmentSchema";
-import { getGroupJoiSchema, getGroupZodSchema } from "./groupSchema";
+import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureJoiSchema } from "./featureSchema";
 import { getTestsJoiSchema } from "./testSchema";
 
@@ -25,28 +25,13 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const attributes = await datasource.listAttributes();
   console.log(`Linting ${attributes.length} attributes...\n`);
 
-  // const attributeJoiSchema = getAttributeJoiSchema();
   const attributeZodSchema = getAttributeZodSchema();
 
   for (const key of attributes) {
-    const parsed = await datasource.readAttribute(key);
-    availableAttributeKeys.push(key);
-
-    // try {
-    //   await attributeJoiSchema.validateAsync(parsed);
-    // } catch (e) {
-    //   console.log("  =>", key);
-
-    //   if (e instanceof Joi.ValidationError) {
-    //     printJoiError(e);
-    //   } else {
-    //     console.log(e);
-    //   }
-
-    //   hasError = true;
-    // }
-
     try {
+      const parsed = await datasource.readAttribute(key);
+      availableAttributeKeys.push(key);
+
       const result = attributeZodSchema.safeParse(parsed);
 
       if (!result.success) {
@@ -60,7 +45,8 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       }
     } catch (e) {
       console.log("  =>", key);
-      printZodError(e);
+      console.log("");
+      console.log(e);
 
       hasError = true;
     }
@@ -74,13 +60,13 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
 
   for (const key of segments) {
-    const parsed = await datasource.readSegment(key);
-    availableSegmentKeys.push(key);
-
     try {
+      const parsed = await datasource.readSegment(key);
+      availableSegmentKeys.push(key);
       await segmentJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -104,13 +90,16 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of features) {
-    const parsed = await datasource.readFeature(key);
-    availableFeatureKeys.push(key);
+    let parsed;
 
     try {
+      parsed = await datasource.readFeature(key);
+      availableFeatureKeys.push(key);
+
       await featureJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);
@@ -121,7 +110,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       hasError = true;
     }
 
-    if (parsed.required) {
+    if (parsed && parsed.required) {
       try {
         await checkForCircularDependencyInRequired(datasource, key, parsed.required);
       } catch (e) {
@@ -137,27 +126,12 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   console.log(`\nLinting ${groups.length} groups...\n`);
 
   // @TODO: feature it slots can be from availableFeatureKeys only
-  // const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
   const groupZodSchema = getGroupZodSchema(projectConfig, datasource, availableFeatureKeys);
 
   for (const key of groups) {
-    const parsed = await datasource.readGroup(key);
-
-    // try {
-    //   await groupJoiSchema.validateAsync(parsed);
-    // } catch (e) {
-    //   console.log("  =>", key);
-
-    //   if (e instanceof Joi.ValidationError) {
-    //     printJoiError(e);
-    //   } else {
-    //     console.log(e);
-    //   }
-
-    //   hasError = true;
-    // }
-
     try {
+      const parsed = await datasource.readGroup(key);
+
       const result = groupZodSchema.safeParse(parsed);
 
       if (!result.success) {
@@ -171,7 +145,8 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       }
     } catch (e) {
       console.log("  =>", key);
-      printZodError(e);
+      console.log("");
+      console.log(e);
 
       hasError = true;
     }
@@ -190,12 +165,12 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of tests) {
-    const parsed = await datasource.readTest(key);
-
     try {
+      const parsed = await datasource.readTest(key);
       await testsJoiSchema.validateAsync(parsed);
     } catch (e) {
       console.log("  =>", key);
+      console.log("");
 
       if (e instanceof Joi.ValidationError) {
         printJoiError(e);

@@ -10,6 +10,7 @@ import {
   SegmentKey,
   AttributeKey,
   DatafileContent,
+  EntityType,
 } from "@featurevisor/types";
 
 import { ProjectConfig, CustomParser } from "../config";
@@ -19,8 +20,8 @@ import { Adapter, DatafileOptions } from "./adapter";
 export class Datasource {
   private adapter: Adapter;
 
-  constructor(private config: ProjectConfig) {
-    this.adapter = new config.adapter(config);
+  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+    this.adapter = new config.adapter(config, rootDirectoryPath);
   }
 
   // @TODO: only site generator needs it, find a way to get it out of here later
@@ -186,5 +187,14 @@ export class Datasource {
 
   getTestSpecName(testKey: string) {
     return `${testKey}.${this.getExtension()}`;
+  }
+
+  // history
+  listHistoryEntries(entityType?: EntityType, entityKey?: string) {
+    return this.adapter.listHistoryEntries(entityType, entityKey);
+  }
+
+  readCommit(commitHash: string, entityType?: EntityType, entityKey?: string) {
+    return this.adapter.readCommit(commitHash, entityType, entityKey);
   }
 }

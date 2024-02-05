@@ -147,7 +147,7 @@ export function DisplayFeatureForceTable() {
                           {typeof force.variables[k] === "string" && force.variables[k]}
                           {typeof force.variables[k] !== "string" && (
                             <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                              {force.variables[k]}
+                              {JSON.stringify(force.variables[k], null, 2)}
                             </code>
                           )}
                         </li>
@@ -216,6 +216,13 @@ export function DisplayFeatureRulesTable() {
         </p>
       )}
 
+      {Array.isArray(feature.environments[environmentKey].expose) && (
+        <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
+          Rules are <a href="https://featurevisor.com/docs/features/#expose">exposed</a> for these
+          tags only: {feature.environments[environmentKey].expose.join(", ")}.
+        </p>
+      )}
+
       <table className="mt-3 min-w-full divide-y divide-gray-300 border border-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -249,7 +256,7 @@ export function DisplayFeatureRulesTable() {
                             {typeof rule.variables[k] === "string" && rule.variables[k]}
                             {typeof rule.variables[k] !== "string" && (
                               <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                {rule.variables[k]}
+                                {JSON.stringify(rule.variables[k], null, 2)}
                               </code>
                             )}
                           </li>

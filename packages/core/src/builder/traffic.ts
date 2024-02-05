@@ -8,6 +8,13 @@ export function detectIfVariationsChanged(
   existingFeature?: ExistingFeature, // from state file
 ): boolean {
   if (!existingFeature || typeof existingFeature.variations === "undefined") {
+    if (Array.isArray(yamlVariations) && yamlVariations.length > 0) {
+      // feature did not previously have any variations,
+      // but now variations have been added
+      return true;
+    }
+
+    // variations didn't exist before, and not even now
     return false;
   }
 

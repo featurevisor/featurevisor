@@ -3,6 +3,162 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+
+### Features
+
+* additional advanced search options in generated site ([#257](https://github.com/featurevisor/featurevisor/issues/257)) ([6e0b34a](https://github.com/featurevisor/featurevisor/commit/6e0b34a150119b990c10d8c882d99f8aba4bff66))
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
+
+
+### Bug Fixes
+
+* show string segments in generated site ([#246](https://github.com/featurevisor/featurevisor/issues/246)) ([e22e122](https://github.com/featurevisor/featurevisor/commit/e22e12231304a7eaeb389b8e32dce141429df47b))
+
+
+
+
+
+# [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.1.1](https://github.com/featurevisor/featurevisor/compare/v1.1.0...v1.1.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* stringify variable value when rendering in generated site ([#243](https://github.com/featurevisor/featurevisor/issues/243)) ([9daf95b](https://github.com/featurevisor/featurevisor/commit/9daf95b47885775a4151139a69d8b85720f1da0a))
+
+
+
+
+
+# [0.69.0](https://github.com/featurevisor/featurevisor/compare/v0.68.0...v0.69.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.68.0](https://github.com/featurevisor/featurevisor/compare/v0.67.0...v0.68.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.67.0](https://github.com/featurevisor/featurevisor/compare/v0.66.0...v0.67.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.66.0](https://github.com/featurevisor/featurevisor/compare/v0.65.0...v0.66.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.65.0](https://github.com/featurevisor/featurevisor/compare/v0.64.3...v0.65.0) (2023-12-13)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.64.0](https://github.com/featurevisor/featurevisor/compare/v0.63.0...v0.64.0) (2023-11-29)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.63.0](https://github.com/featurevisor/featurevisor/compare/v0.62.2...v0.63.0) (2023-11-29)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.62.0](https://github.com/featurevisor/featurevisor/compare/v0.61.0...v0.62.0) (2023-11-19)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.61.0](https://github.com/featurevisor/featurevisor/compare/v0.60.1...v0.61.0) (2023-11-14)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [0.60.0](https://github.com/featurevisor/featurevisor/compare/v0.59.3...v0.60.0) (2023-11-07)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [0.59.2](https://github.com/featurevisor/featurevisor/compare/v0.59.1...v0.59.2) (2023-11-04)
+
+
+### Bug Fixes
+
+* entity links from history timeline ([#202](https://github.com/featurevisor/featurevisor/issues/202)) ([3465438](https://github.com/featurevisor/featurevisor/commit/346543801ec301210e9263aae0936993cc6ffc7d))
+
+
+
+
+
 # [0.59.0](https://github.com/featurevisor/featurevisor/compare/v0.58.0...v0.59.0) (2023-10-31)
 
 **Note:** Version bump only for package @featurevisor/site

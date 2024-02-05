@@ -1,0 +1,10 @@
+description: Version equals to 5.5
+conditions:
+  - or:
+      - attribute: version
+        operator: equals
+        value: 5.5
+
+      - attribute: version
+        operator: equals
+        value: "5.5"

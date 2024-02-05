@@ -997,6 +997,11 @@ describe("sdk: instance", function () {
                 defaultValue: false,
               },
               {
+                key: "sidebarTitle",
+                type: "string",
+                defaultValue: "sidebar title",
+              },
+              {
                 key: "count",
                 type: "integer",
                 defaultValue: 0,
@@ -1053,6 +1058,26 @@ describe("sdk: instance", function () {
                       },
                     ],
                   },
+                  {
+                    key: "sidebarTitle",
+                    value: "sidebar title from variation",
+                    overrides: [
+                      {
+                        segments: ["netherlands"],
+                        value: "Dutch title",
+                      },
+                      {
+                        conditions: [
+                          {
+                            attribute: "country",
+                            operator: "equals",
+                            value: "de",
+                          },
+                        ],
+                        value: "German title",
+                      },
+                    ],
+                  },
                 ],
               },
             ],
@@ -1068,6 +1093,13 @@ describe("sdk: instance", function () {
               {
                 conditions: [{ attribute: "userId", operator: "equals", value: "user-gb" }],
                 enabled: false,
+              },
+              {
+                conditions: [
+                  { attribute: "userId", operator: "equals", value: "user-forced-variation" },
+                ],
+                enabled: true,
+                variation: "treatment",
               },
             ],
             traffic: [
@@ -1166,6 +1198,25 @@ describe("sdk: instance", function () {
         country: "de",
       }),
     ).toEqual(false);
+
+    expect(
+      sdk.getVariableString("test", "sidebarTitle", {
+        userId: "user-forced-variation",
+        country: "de",
+      }),
+    ).toEqual("German title");
+    expect(
+      sdk.getVariableString("test", "sidebarTitle", {
+        userId: "user-forced-variation",
+        country: "nl",
+      }),
+    ).toEqual("Dutch title");
+    expect(
+      sdk.getVariableString("test", "sidebarTitle", {
+        userId: "user-forced-variation",
+        country: "be",
+      }),
+    ).toEqual("sidebar title from variation");
 
     expect(sdk.getVariable("test", "count", context)).toEqual(0);
     expect(sdk.getVariableInteger("test", "count", context)).toEqual(0);
