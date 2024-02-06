@@ -157,13 +157,13 @@ export function getConditionsZodSchema(
 
   const andOrNotConditionZodSchema = z.union([
     z.object({
-      and: z.array(z.lazy(() => andOrNotConditionZodSchema)),
+      and: z.array(z.lazy(() => conditionZodSchema)),
     }),
     z.object({
-      or: z.array(z.lazy(() => andOrNotConditionZodSchema)),
+      or: z.array(z.lazy(() => conditionZodSchema)),
     }),
     z.object({
-      not: z.array(z.lazy(() => andOrNotConditionZodSchema)),
+      not: z.array(z.lazy(() => conditionZodSchema)),
     }),
   ]);
 

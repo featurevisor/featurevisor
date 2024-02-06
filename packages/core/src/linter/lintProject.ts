@@ -2,8 +2,8 @@
 import * as Joi from "joi";
 
 import { getAttributeZodSchema } from "./attributeSchema";
-import { getConditionsJoiSchema } from "./conditionSchema";
-import { getSegmentJoiSchema } from "./segmentSchema";
+import { getConditionsZodSchema, getConditionsJoiSchema } from "./conditionSchema";
+import { getSegmentZodSchema } from "./segmentSchema";
 import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureJoiSchema } from "./featureSchema";
 import { getTestsJoiSchema } from "./testSchema";
@@ -56,23 +56,34 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const segments = await datasource.listSegments();
   console.log(`\nLinting ${segments.length} segments...\n`);
 
-  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
-  const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
+  const conditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    availableAttributeKeys as [string, ...string[]],
+  );
+  const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
   for (const key of segments) {
     try {
       const parsed = await datasource.readSegment(key);
       availableSegmentKeys.push(key);
-      await segmentJoiSchema.validateAsync(parsed);
+
+      const result = segmentZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        console.log("  =>", key);
+
+        if ("error" in result) {
+          printZodError(result.error);
+
+          process.exit(1);
+        }
+
+        hasError = true;
+      }
     } catch (e) {
       console.log("  =>", key);
       console.log("");
-
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
-      }
+      console.log(e);
 
       hasError = true;
     }
@@ -82,6 +93,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const features = await datasource.listFeatures();
   console.log(`\nLinting ${features.length} features...\n`);
 
+  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
   const featureJoiSchema = getFeatureJoiSchema(
     projectConfig,
     conditionsJoiSchema,
