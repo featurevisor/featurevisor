@@ -1,4 +1,5 @@
 import * as Joi from "joi";
+import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 
@@ -59,4 +60,56 @@ export function getTestsJoiSchema(
   });
 
   return Joi.alternatives().try(segmentTestJoiSchema, featureTestJoiSchema);
+}
+
+export function getTestsZodSchema(
+  projectConfig: ProjectConfig,
+  availableFeatureKeys: [string, ...string[]],
+  availableSegmentKeys: [string, ...string[]],
+) {
+  const segmentTestZodSchema = z.object({
+    segment: z.string().refine((value) => availableSegmentKeys.includes(value), {
+      message: "Invalid segment key",
+    }),
+    assertions: z.array(
+      z.object({
+        matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
+        description: z.string().optional(),
+        context: z.record(z.unknown()),
+        expectedToMatch: z.boolean(),
+      }),
+    ),
+  });
+
+  const featureTestZodSchema = z.object({
+    feature: z.string().refine((value) => availableFeatureKeys.includes(value), {
+      message: "Invalid feature key",
+    }),
+    assertions: z.array(
+      z.object({
+        matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
+        description: z.string().optional(),
+        at: z.union([z.number().int().min(0).max(100), z.string()]),
+        environment: z.string().refine((value) => {
+          if (value.indexOf("${{") === 0) {
+            // allow unknown strings for matrix
+            return true;
+          }
+
+          // otherwise only known environments should be passed
+          if (projectConfig.environments.includes(value)) {
+            return true;
+          }
+
+          return false;
+        }),
+        context: z.record(z.unknown()),
+        expectedToBeEnabled: z.boolean(),
+        expectedVariation: z.union([z.string(), z.number(), z.boolean()]),
+        expectedVariables: z.record(z.unknown()),
+      }),
+    ),
+  });
+
+  return z.union([segmentTestZodSchema, featureTestZodSchema]);
 }
