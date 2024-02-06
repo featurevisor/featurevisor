@@ -152,7 +152,7 @@ export function getConditionsZodSchema(
       "in",
       "notIn",
     ]),
-    value: z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]),
+    value: z.union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()]),
   });
 
   const andOrNotConditionZodSchema = z.union([
