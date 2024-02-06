@@ -6,7 +6,7 @@ import { getConditionsZodSchema, getConditionsJoiSchema } from "./conditionSchem
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureJoiSchema } from "./featureSchema";
-import { getTestsJoiSchema } from "./testSchema";
+import { getTestsZodSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { printJoiError, printZodError } from "./printError";
@@ -74,8 +74,6 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
 
         if ("error" in result) {
           printZodError(result.error);
-
-          process.exit(1);
         }
 
         hasError = true;
@@ -170,25 +168,33 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const tests = await datasource.listTests();
   console.log(`\nLinting ${tests.length} tests...\n`);
 
-  const testsJoiSchema = getTestsJoiSchema(
+  const testsZodSchema = getTestsZodSchema(
     projectConfig,
-    availableFeatureKeys,
-    availableSegmentKeys,
+    availableFeatureKeys as [string, ...string[]],
+    availableSegmentKeys as [string, ...string[]],
   );
 
   for (const key of tests) {
     try {
       const parsed = await datasource.readTest(key);
-      await testsJoiSchema.validateAsync(parsed);
+
+      const result = testsZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        console.log("  =>", key);
+
+        if ("error" in result) {
+          printZodError(result.error);
+
+          process.exit(1);
+        }
+
+        hasError = true;
+      }
     } catch (e) {
       console.log("  =>", key);
       console.log("");
-
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
-      }
+      console.log(e);
 
       hasError = true;
     }
