@@ -215,28 +215,30 @@ export function getFeatureZodSchema(
     z.number(),
     z.boolean(),
     z.array(z.string()),
-    z.record(z.unknown()).refine((value) => {
-      let isFlat = true;
+    z.record(z.unknown()).refine(
+      (value) => {
+        let isFlat = true;
 
-      Object.keys(value).forEach((key) => {
-        if (typeof value[key] === "object") {
-          isFlat = false;
-        }
-      });
+        Object.keys(value).forEach((key) => {
+          if (typeof value[key] === "object") {
+            isFlat = false;
+          }
+        });
 
-      if (!isFlat) {
-        throw new Error("object is not flat");
-      }
-
-      return value;
-    }),
+        return isFlat;
+      },
+      {
+        message: "object is not flat",
+      },
+    ),
   ]);
 
-  const plainGroupSegment = z
-    .string()
-    .refine((value) => value === "*" || availableSegmentKeys.includes(value), {
-      message: "Invalid segment key",
-    });
+  const plainGroupSegment = z.string().refine(
+    (value) => value === "*" || availableSegmentKeys.includes(value),
+    (value) => ({
+      message: `Invalid segment key "${value}"`,
+    }),
+  );
 
   const andOrNotGroupSegment = z.union([
     z.object({
