@@ -12,7 +12,6 @@ export function printJoiError(e: Joi.ValidationError) {
 }
 
 export function printZodError(e: ZodError) {
-  console.log("ZodError", e);
   const { issues } = e;
 
   issues.forEach((issue) => {

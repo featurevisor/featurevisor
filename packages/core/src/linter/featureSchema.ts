@@ -1,4 +1,5 @@
 import * as Joi from "joi";
+import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 
@@ -200,4 +201,159 @@ export function getFeatureJoiSchema(
   });
 
   return featureJoiSchema;
+}
+
+export function getFeatureZodSchema(
+  projectConfig: ProjectConfig,
+  conditionsZodSchema,
+  availableSegmentKeys: [string, ...string[]],
+  availableFeatureKeys: [string, ...string[]],
+) {
+  const variationValueZodSchema = z.string().min(1);
+  const variableValueZodSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.record(z.unknown()).refine((value) => {
+      let isFlat = true;
+
+      Object.keys(value).forEach((key) => {
+        if (typeof value[key] === "object") {
+          isFlat = false;
+        }
+      });
+
+      if (!isFlat) {
+        throw new Error("object is not flat");
+      }
+
+      return value;
+    }),
+  ]);
+
+  const plainGroupSegment = z
+    .string()
+    .refine((value) => value === "*" || availableSegmentKeys.includes(value), {
+      message: "Invalid segment key",
+    });
+
+  const andOrNotGroupSegment = z.union([
+    z.object({
+      and: z.array(z.lazy(() => groupSegmentZodSchema)),
+    }),
+    z.object({
+      or: z.array(z.lazy(() => groupSegmentZodSchema)),
+    }),
+    z.object({
+      not: z.array(z.lazy(() => groupSegmentZodSchema)),
+    }),
+  ]);
+
+  const groupSegmentZodSchema = z.union([andOrNotGroupSegment, plainGroupSegment]);
+
+  const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
+
+  const environmentZodSchema = z.object({
+    expose: z
+      .union([
+        z.boolean(),
+        z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
+      ])
+      .optional(),
+    rules: z.array(
+      z.object({
+        key: z.string(),
+        description: z.string().optional(),
+        segments: groupSegmentsZodSchema,
+        percentage: z.number().min(0).max(100),
+
+        enabled: z.boolean().optional(),
+        variation: variationValueZodSchema.optional(),
+        variables: z.record(variableValueZodSchema).optional(),
+      }),
+    ),
+    force: z
+      .array(
+        z.object({
+          segments: groupSegmentsZodSchema.optional(),
+          conditions: conditionsZodSchema.optional(),
+
+          enabled: z.boolean().optional(),
+          variation: variationValueZodSchema.optional(),
+          variables: z.record(variableValueZodSchema).optional(),
+        }),
+      )
+      .optional(),
+  });
+
+  const allEnvironmentsSchema = {};
+  projectConfig.environments.forEach((environmentKey) => {
+    allEnvironmentsSchema[environmentKey] = environmentZodSchema;
+  });
+  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema);
+
+  const featureZodSchema = z.object({
+    archived: z.boolean().optional(),
+    deprecated: z.boolean().optional(),
+    description: z.string(),
+    tags: z.array(z.string().refine((value) => tagRegex.test(value))),
+    required: z
+      .array(
+        z.union([
+          z.string().refine((value) => availableFeatureKeys.includes(value)),
+          z.object({
+            key: z.string().refine((value) => availableFeatureKeys.includes(value)),
+            variation: z.string().optional(),
+          }),
+        ]),
+      )
+      .optional(),
+    bucketBy: z.union([z.string(), z.array(z.string()), z.object({ or: z.array(z.string()) })]),
+    variablesSchema: z
+      .array(
+        z.object({
+          key: z.string().refine((value) => value !== "variation"),
+          type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
+          description: z.string().optional(),
+          defaultValue: variableValueZodSchema.optional(),
+        }),
+      )
+      .optional(),
+    variations: z
+      .array(
+        z.object({
+          description: z.string().optional(),
+          value: variationValueZodSchema,
+          weight: z.number().min(0).max(100),
+          variables: z
+            .array(
+              z.object({
+                key: z.string(),
+                value: variableValueZodSchema,
+                overrides: z
+                  .array(
+                    z.union([
+                      z.object({
+                        segments: groupSegmentsZodSchema.optional(),
+                        conditions: conditionsZodSchema.optional(),
+                        value: variableValueZodSchema,
+                      }),
+                      z.object({
+                        segments: groupSegmentsZodSchema.optional(),
+                        value: variableValueZodSchema,
+                      }),
+                    ]),
+                  )
+                  .optional(),
+              }),
+            )
+            .optional(),
+        }),
+      )
+      .optional(),
+    environments: allEnvironmentsZodSchema,
+  });
+
+  return featureZodSchema;
 }

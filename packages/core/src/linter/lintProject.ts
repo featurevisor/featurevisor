@@ -5,11 +5,11 @@ import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema, getConditionsJoiSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getGroupZodSchema } from "./groupSchema";
-import { getFeatureJoiSchema } from "./featureSchema";
+import { getFeatureZodSchema } from "./featureSchema";
 import { getTestsZodSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
-import { printJoiError, printZodError } from "./printError";
+import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 
 export async function lintProject(deps: Dependencies): Promise<boolean> {
@@ -91,12 +91,11 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const features = await datasource.listFeatures();
   console.log(`\nLinting ${features.length} features...\n`);
 
-  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
-  const featureJoiSchema = getFeatureJoiSchema(
+  const featureZodSchema = getFeatureZodSchema(
     projectConfig,
-    conditionsJoiSchema,
-    availableSegmentKeys,
-    availableFeatureKeys,
+    conditionsZodSchema,
+    availableSegmentKeys as [string, ...string[]],
+    availableFeatureKeys as [string, ...string[]],
   );
 
   for (const key of features) {
@@ -106,16 +105,21 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       parsed = await datasource.readFeature(key);
       availableFeatureKeys.push(key);
 
-      await featureJoiSchema.validateAsync(parsed);
+      const result = featureZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        console.log("  =>", key);
+
+        if ("error" in result) {
+          printZodError(result.error);
+        }
+
+        hasError = true;
+      }
     } catch (e) {
       console.log("  =>", key);
       console.log("");
-
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
-      }
+      console.log(e);
 
       hasError = true;
     }
