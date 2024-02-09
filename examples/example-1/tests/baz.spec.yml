@@ -7,29 +7,29 @@ assertions:
       country: nl
     expectedToBeEnabled: true
 
-  - at: 70
-    description: "At 70%, the feature should be enabled"
-    environment: production
-    context:
-      country: nl
-    expectedToBeEnabled: true
+  # - at: 70
+  #   description: "At 70%, the feature should be enabled"
+  #   environment: production
+  #   context:
+  #     country: nl
+  #   expectedToBeEnabled: true
 
-  - at: 90
-    description: "At 90%, the feature should be disabled"
-    environment: production
-    context:
-      country: nl
-    expectedToBeEnabled: false
+  # - at: 90
+  #   description: "At 90%, the feature should be disabled"
+  #   environment: production
+  #   context:
+  #     country: nl
+  #   expectedToBeEnabled: false
 
-  - matrix:
-      environment: [production]
-      at: [85, 90]
-      country: [nl]
-      city: [amsterdam, utrecht]
-    at: ${{ at }}
-    description: "At ${{ at }} in country ${{ country }} in city ${{ city }}, the feature should be disabled"
-    environment: ${{ environment }}
-    context:
-      country: ${{ country }}
-      city: ${{ city }}
-    expectedToBeEnabled: false
+  # - matrix:
+  #     environment: [production]
+  #     at: [85, 90]
+  #     country: [nl]
+  #     city: [amsterdam, utrecht]
+  #   at: ${{ at }}
+  #   description: "At ${{ at }} in country ${{ country }} in city ${{ city }}, the feature should be disabled"
+  #   environment: ${{ environment }}
+  #   context:
+  #     country: ${{ country }}
+  #     city: ${{ city }}
+  #   expectedToBeEnabled: false

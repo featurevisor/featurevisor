@@ -89,7 +89,7 @@ export function getTestsZodSchema(
       z.object({
         matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
         description: z.string().optional(),
-        at: z.union([z.number().int().min(0).max(100), z.string()]), // @TODO: allow float
+        at: z.union([z.number().min(0).max(100), z.string()]),
         environment: z.string().refine((value) => {
           if (value.indexOf("${{") === 0) {
             // allow unknown strings for matrix
@@ -105,8 +105,8 @@ export function getTestsZodSchema(
         }),
         context: z.record(z.unknown()),
         expectedToBeEnabled: z.boolean(),
-        expectedVariation: z.string(),
-        expectedVariables: z.record(z.unknown()),
+        expectedVariation: z.string().optional(),
+        expectedVariables: z.record(z.unknown()).optional(),
       }),
     ),
   });
