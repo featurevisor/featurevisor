@@ -19,7 +19,7 @@ export function printZodError(e: ZodError) {
     console.error("        Path:", issue.path.join("."));
 
     const receivedValue = (issue as any).received;
-    if (receivedValue !== undefined) {
+    if (typeof receivedValue !== "undefined" && receivedValue !== "undefined") {
       console.error("        Value:", receivedValue);
     }
 

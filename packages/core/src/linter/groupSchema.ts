@@ -68,36 +68,40 @@ export function getGroupZodSchema(
   datasource: Datasource,
   availableFeatureKeys: string[],
 ) {
-  const groupZodSchema = z.object({
-    description: z.string(),
-    slots: z
-      .array(
-        z.object({
-          feature: z
-            .string()
-            .optional()
-            .refine(
-              (value) => {
-                if (value && availableFeatureKeys.indexOf(value) === -1) {
-                  return false;
-                }
+  const groupZodSchema = z
+    .object({
+      description: z.string(),
+      slots: z
+        .array(
+          z
+            .object({
+              feature: z
+                .string()
+                .optional()
+                .refine(
+                  (value) => {
+                    if (value && availableFeatureKeys.indexOf(value) === -1) {
+                      return false;
+                    }
 
-                return true;
-              },
-              (value) => ({ message: `Unknown feature "${value}"` }),
-            ),
-          percentage: z.number().min(0).max(100),
-        }),
-      )
-      .refine(
-        (value) => {
-          const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
+                    return true;
+                  },
+                  (value) => ({ message: `Unknown feature "${value}"` }),
+                ),
+              percentage: z.number().min(0).max(100),
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
 
-          return totalPercentage === 100;
-        },
-        { message: "Total percentage is not 100" },
-      ),
-  });
+            return totalPercentage === 100;
+          },
+          { message: "Total percentage is not 100" },
+        ),
+    })
+    .strict();
 
   return groupZodSchema;
 }

@@ -242,69 +242,89 @@ export function getFeatureZodSchema(
   );
 
   const andOrNotGroupSegment = z.union([
-    z.object({
-      and: z.array(z.lazy(() => groupSegmentZodSchema)),
-    }),
-    z.object({
-      or: z.array(z.lazy(() => groupSegmentZodSchema)),
-    }),
-    z.object({
-      not: z.array(z.lazy(() => groupSegmentZodSchema)),
-    }),
+    z
+      .object({
+        and: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
+    z
+      .object({
+        or: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
+    z
+      .object({
+        not: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
   ]);
 
   const groupSegmentZodSchema = z.union([andOrNotGroupSegment, plainGroupSegment]);
 
   const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
 
-  const environmentZodSchema = z.object({
-    expose: z
-      .union([
-        z.boolean(),
-        z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
-      ])
-      .optional(),
-    rules: z
-      .array(
-        z.object({
-          key: z.string(),
-          description: z.string().optional(),
-          segments: groupSegmentsZodSchema,
-          percentage: z.number().min(0).max(100),
+  const environmentZodSchema = z
+    .object({
+      expose: z
+        .union([
+          z.boolean(),
+          z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
+        ])
+        .optional(),
+      rules: z
+        .array(
+          z
+            .object({
+              key: z.string(),
+              description: z.string().optional(),
+              segments: groupSegmentsZodSchema,
+              percentage: z.number().min(0).max(100),
 
-          enabled: z.boolean().optional(),
-          variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(),
-        }),
-      )
-      .refine(
-        (value) => {
-          const keys = value.map((v) => v.key);
-          return keys.length === new Set(keys).size;
-        },
-        (value) => ({
-          message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
-        }),
-      ),
-    force: z
-      .array(
-        z.object({
-          segments: groupSegmentsZodSchema.optional(),
-          conditions: conditionsZodSchema.optional(),
-
-          enabled: z.boolean().optional(),
-          variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(),
-        }),
-      )
-      .optional(),
-  });
+              enabled: z.boolean().optional(),
+              variation: variationValueZodSchema.optional(),
+              variables: z.record(variableValueZodSchema).optional(),
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const keys = value.map((v) => v.key);
+            return keys.length === new Set(keys).size;
+          },
+          (value) => ({
+            message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+          }),
+        ),
+      force: z
+        .array(
+          z.union([
+            z
+              .object({
+                segments: groupSegmentsZodSchema,
+                enabled: z.boolean().optional(),
+                variation: variationValueZodSchema.optional(),
+                variables: z.record(variableValueZodSchema).optional(),
+              })
+              .strict(),
+            z
+              .object({
+                conditions: conditionsZodSchema,
+                enabled: z.boolean().optional(),
+                variation: variationValueZodSchema.optional(),
+                variables: z.record(variableValueZodSchema).optional(),
+              })
+              .strict(),
+          ]),
+        )
+        .optional(),
+    })
+    .strict();
 
   const allEnvironmentsSchema = {};
   projectConfig.environments.forEach((environmentKey) => {
     allEnvironmentsSchema[environmentKey] = environmentZodSchema;
   });
-  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema);
+  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
 
   const attributeKeyZodSchema = z.string().refine(
     (value) => value === "*" || availableAttributeKeys.includes(value),
@@ -320,109 +340,125 @@ export function getFeatureZodSchema(
     }),
   );
 
-  const featureZodSchema = z.object({
-    archived: z.boolean().optional(),
-    deprecated: z.boolean().optional(),
-    description: z.string(),
-    tags: z
-      .array(
-        z.string().refine(
-          (value) => tagRegex.test(value),
+  const featureZodSchema = z
+    .object({
+      archived: z.boolean().optional(),
+      deprecated: z.boolean().optional(),
+      description: z.string(),
+      tags: z
+        .array(
+          z.string().refine(
+            (value) => tagRegex.test(value),
+            (value) => ({
+              message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+            }),
+          ),
+        )
+        .refine(
+          (value) => {
+            return value.length === new Set(value).size;
+          },
           (value) => ({
-            message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+            message: "Duplicate tags found: " + value.join(", "),
           }),
         ),
-      )
-      .refine(
-        (value) => {
-          return value.length === new Set(value).size;
-        },
-        (value) => ({
-          message: "Duplicate tags found: " + value.join(", "),
-        }),
-      ),
-    required: z
-      .array(
-        z.union([
-          featureKeyZodSchema,
-          z.object({
-            key: featureKeyZodSchema,
-            variation: z.string().optional(),
+      required: z
+        .array(
+          z.union([
+            featureKeyZodSchema,
+            z
+              .object({
+                key: featureKeyZodSchema,
+                variation: z.string().optional(),
+              })
+              .strict(),
+          ]),
+        )
+        .optional(),
+      bucketBy: z.union([
+        attributeKeyZodSchema,
+        z.array(attributeKeyZodSchema),
+        z
+          .object({
+            or: z.array(attributeKeyZodSchema),
+          })
+          .strict(),
+      ]),
+      variablesSchema: z
+        .array(
+          z
+            .object({
+              key: z
+                .string()
+                .min(1)
+                .refine((value) => value !== "variation"),
+              type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
+              description: z.string().optional(),
+              defaultValue: variableValueZodSchema.optional(),
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const keys = value.map((v) => v.key);
+            return keys.length === new Set(keys).size;
+          },
+          (value) => ({
+            message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
           }),
-        ]),
-      )
-      .optional(),
-    bucketBy: z.union([
-      attributeKeyZodSchema,
-      z.array(attributeKeyZodSchema),
-      z.object({
-        or: z.array(attributeKeyZodSchema),
-      }),
-    ]),
-    variablesSchema: z
-      .array(
-        z.object({
-          key: z
-            .string()
-            .min(1)
-            .refine((value) => value !== "variation"),
-          type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
-          description: z.string().optional(),
-          defaultValue: variableValueZodSchema.optional(),
-        }),
-      )
-      .refine(
-        (value) => {
-          const keys = value.map((v) => v.key);
-          return keys.length === new Set(keys).size;
-        },
-        (value) => ({
-          message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
-        }),
-      )
-      .optional(),
-    variations: z
-      .array(
-        z.object({
-          description: z.string().optional(),
-          value: variationValueZodSchema,
-          weight: z.number().min(0).max(100),
-          variables: z
-            .array(
-              z.object({
-                key: z.string().min(1),
-                value: variableValueZodSchema,
-                overrides: z
-                  .array(
-                    z.union([
-                      z.object({
-                        conditions: conditionsZodSchema,
-                        value: variableValueZodSchema,
-                      }),
-                      z.object({
-                        segments: groupSegmentsZodSchema,
-                        value: variableValueZodSchema,
-                      }),
-                    ]),
-                  )
-                  .optional(),
-              }),
-            )
-            .optional(),
-        }),
-      )
-      .refine(
-        (value) => {
-          const variationValues = value.map((v) => v.value);
-          return variationValues.length === new Set(variationValues).size;
-        },
-        (value) => ({
-          message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
-        }),
-      )
-      .optional(),
-    environments: allEnvironmentsZodSchema,
-  });
+        )
+        .optional(),
+      variations: z
+        .array(
+          z
+            .object({
+              description: z.string().optional(),
+              value: variationValueZodSchema,
+              weight: z.number().min(0).max(100),
+              variables: z
+                .array(
+                  z
+                    .object({
+                      key: z.string().min(1),
+                      value: variableValueZodSchema,
+                      overrides: z
+                        .array(
+                          z.union([
+                            z
+                              .object({
+                                conditions: conditionsZodSchema,
+                                value: variableValueZodSchema,
+                              })
+                              .strict(),
+                            z
+                              .object({
+                                segments: groupSegmentsZodSchema,
+                                value: variableValueZodSchema,
+                              })
+                              .strict(),
+                          ]),
+                        )
+                        .optional(),
+                    })
+                    .strict(),
+                )
+                .optional(),
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const variationValues = value.map((v) => v.value);
+            return variationValues.length === new Set(variationValues).size;
+          },
+          (value) => ({
+            message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
+          }),
+        )
+        .optional(),
+      environments: allEnvironmentsZodSchema,
+    })
+    .strict();
 
   return featureZodSchema;
 }
