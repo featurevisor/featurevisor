@@ -15,7 +15,7 @@ export function getAttributeJoiSchema() {
 export function getAttributeZodSchema() {
   const attributeZodSchema = z.object({
     archived: z.boolean().optional(),
-    type: z.enum(["boolean", "string", "integer", "double", "date"]),
+    type: z.enum(["boolean", "string", "integer", "double", "date", "semver"]),
     description: z.string(),
     capture: z.boolean().optional(),
   });

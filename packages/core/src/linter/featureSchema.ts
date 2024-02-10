@@ -237,7 +237,7 @@ export function getFeatureZodSchema(
   const plainGroupSegment = z.string().refine(
     (value) => value === "*" || availableSegmentKeys.includes(value),
     (value) => ({
-      message: `Invalid segment key "${value}"`,
+      message: `Unknown segment key "${value}"`,
     }),
   );
 
@@ -309,14 +309,14 @@ export function getFeatureZodSchema(
   const attributeKeyZodSchema = z.string().refine(
     (value) => value === "*" || availableAttributeKeys.includes(value),
     (value) => ({
-      message: `Invalid attribute "${value}"`,
+      message: `Unknown attribute "${value}"`,
     }),
   );
 
   const featureKeyZodSchema = z.string().refine(
     (value) => availableFeatureKeys.includes(value),
     (value) => ({
-      message: `Invalid feature key "${value}"`,
+      message: `Unknown feature "${value}"`,
     }),
   );
 

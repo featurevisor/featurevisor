@@ -68,9 +68,12 @@ export function getTestsZodSchema(
   availableSegmentKeys: [string, ...string[]],
 ) {
   const segmentTestZodSchema = z.object({
-    segment: z.string().refine((value) => availableSegmentKeys.includes(value), {
-      message: "Invalid segment key",
-    }),
+    segment: z.string().refine(
+      (value) => availableSegmentKeys.includes(value),
+      (value) => ({
+        message: `Unknown segment "${value}"`,
+      }),
+    ),
     assertions: z.array(
       z.object({
         matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
@@ -82,27 +85,35 @@ export function getTestsZodSchema(
   });
 
   const featureTestZodSchema = z.object({
-    feature: z.string().refine((value) => availableFeatureKeys.includes(value), {
-      message: "Invalid feature key",
-    }),
+    feature: z.string().refine(
+      (value) => availableFeatureKeys.includes(value),
+      (value) => ({
+        message: `Unknown feature "${value}"`,
+      }),
+    ),
     assertions: z.array(
       z.object({
         matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
         description: z.string().optional(),
         at: z.union([z.number().min(0).max(100), z.string()]),
-        environment: z.string().refine((value) => {
-          if (value.indexOf("${{") === 0) {
-            // allow unknown strings for matrix
-            return true;
-          }
+        environment: z.string().refine(
+          (value) => {
+            if (value.indexOf("${{") === 0) {
+              // allow unknown strings for matrix
+              return true;
+            }
 
-          // otherwise only known environments should be passed
-          if (projectConfig.environments.includes(value)) {
-            return true;
-          }
+            // otherwise only known environments should be passed
+            if (projectConfig.environments.includes(value)) {
+              return true;
+            }
 
-          return false;
-        }),
+            return false;
+          },
+          (value) => ({
+            message: `Unknown environment "${value}"`,
+          }),
+        ),
         context: z.record(z.unknown()),
         expectedToBeEnabled: z.boolean(),
         expectedVariation: z.string().optional(),

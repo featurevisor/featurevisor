@@ -137,7 +137,7 @@ export function getConditionsZodSchema(
       attribute: z.string().refine(
         (value) => availableAttributeKeys.includes(value),
         (value) => ({
-          message: `Invalid attribute "${value}"`,
+          message: `Unknown attribute "${value}"`,
         }),
       ),
       operator: z.enum([

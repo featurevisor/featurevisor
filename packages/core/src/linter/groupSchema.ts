@@ -84,7 +84,7 @@ export function getGroupZodSchema(
 
                 return true;
               },
-              (value) => ({ message: `feature "${value}" not found` }),
+              (value) => ({ message: `Unknown feature "${value}"` }),
             ),
           percentage: z.number().min(0).max(100),
         }),
@@ -95,7 +95,7 @@ export function getGroupZodSchema(
 
           return totalPercentage === 100;
         },
-        { message: "total percentage is not 100" },
+        { message: "Total percentage is not 100" },
       ),
   });
 
