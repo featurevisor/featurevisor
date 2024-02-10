@@ -95,7 +95,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
     projectConfig,
     conditionsZodSchema,
     availableSegmentKeys as [string, ...string[]],
-    availableFeatureKeys as [string, ...string[]],
+    features as [string, ...string[]],
   );
 
   for (const key of features) {

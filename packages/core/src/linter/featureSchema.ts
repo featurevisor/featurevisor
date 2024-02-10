@@ -299,13 +299,30 @@ export function getFeatureZodSchema(
     archived: z.boolean().optional(),
     deprecated: z.boolean().optional(),
     description: z.string(),
-    tags: z.array(z.string().refine((value) => tagRegex.test(value))),
+    tags: z.array(
+      z.string().refine(
+        (value) => tagRegex.test(value),
+        (value) => ({
+          message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+        }),
+      ),
+    ),
     required: z
       .array(
         z.union([
-          z.string().refine((value) => availableFeatureKeys.includes(value)),
+          z.string().refine(
+            (value) => availableFeatureKeys.includes(value),
+            (value) => ({
+              message: `Invalid feature key "${value}"`,
+            }),
+          ),
           z.object({
-            key: z.string().refine((value) => availableFeatureKeys.includes(value)),
+            key: z.string().refine(
+              (value) => availableFeatureKeys.includes(value),
+              (value) => ({
+                message: `Invalid feature key "${value}"`,
+              }),
+            ),
             variation: z.string().optional(),
           }),
         ]),
