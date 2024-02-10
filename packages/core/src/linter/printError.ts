@@ -16,11 +16,15 @@ export function printZodError(e: ZodError) {
 
   issues.forEach((issue) => {
     console.error("     => Error:", issue.message);
-    console.error("     => Path:", issue.path.join("."));
+    console.error("        Path:", issue.path.join("."));
 
     const receivedValue = (issue as any).received;
     if (receivedValue !== undefined) {
-      console.error("     => Value:", receivedValue);
+      console.error("        Value:", receivedValue);
+    }
+
+    if (issues.length > 1) {
+      console.error("");
     }
   });
 }
