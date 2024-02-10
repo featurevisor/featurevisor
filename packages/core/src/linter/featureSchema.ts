@@ -263,18 +263,28 @@ export function getFeatureZodSchema(
         z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
       ])
       .optional(),
-    rules: z.array(
-      z.object({
-        key: z.string(),
-        description: z.string().optional(),
-        segments: groupSegmentsZodSchema,
-        percentage: z.number().min(0).max(100),
+    rules: z
+      .array(
+        z.object({
+          key: z.string(),
+          description: z.string().optional(),
+          segments: groupSegmentsZodSchema,
+          percentage: z.number().min(0).max(100),
 
-        enabled: z.boolean().optional(),
-        variation: variationValueZodSchema.optional(),
-        variables: z.record(variableValueZodSchema).optional(),
-      }),
-    ),
+          enabled: z.boolean().optional(),
+          variation: variationValueZodSchema.optional(),
+          variables: z.record(variableValueZodSchema).optional(),
+        }),
+      )
+      .refine(
+        (value) => {
+          const keys = value.map((v) => v.key);
+          return keys.length === new Set(keys).size;
+        },
+        (value) => ({
+          message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+        }),
+      ),
     force: z
       .array(
         z.object({
@@ -299,14 +309,23 @@ export function getFeatureZodSchema(
     archived: z.boolean().optional(),
     deprecated: z.boolean().optional(),
     description: z.string(),
-    tags: z.array(
-      z.string().refine(
-        (value) => tagRegex.test(value),
+    tags: z
+      .array(
+        z.string().refine(
+          (value) => tagRegex.test(value),
+          (value) => ({
+            message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+          }),
+        ),
+      )
+      .refine(
+        (value) => {
+          return value.length === new Set(value).size;
+        },
         (value) => ({
-          message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+          message: "Duplicate tags found: " + value.join(", "),
         }),
       ),
-    ),
     required: z
       .array(
         z.union([
@@ -336,6 +355,15 @@ export function getFeatureZodSchema(
           type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
           description: z.string().optional(),
           defaultValue: variableValueZodSchema.optional(),
+        }),
+      )
+      .refine(
+        (value) => {
+          const keys = value.map((v) => v.key);
+          return keys.length === new Set(keys).size;
+        },
+        (value) => ({
+          message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
         }),
       )
       .optional(),
@@ -368,6 +396,15 @@ export function getFeatureZodSchema(
               }),
             )
             .optional(),
+        }),
+      )
+      .refine(
+        (value) => {
+          const variationValues = value.map((v) => v.value);
+          return variationValues.length === new Set(variationValues).size;
+        },
+        (value) => ({
+          message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
         }),
       )
       .optional(),
