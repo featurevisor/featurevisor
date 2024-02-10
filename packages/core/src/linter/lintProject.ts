@@ -94,6 +94,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const featureZodSchema = getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
+    availableAttributeKeys as [string, ...string[]],
     availableSegmentKeys as [string, ...string[]],
     features as [string, ...string[]],
   );

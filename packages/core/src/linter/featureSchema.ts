@@ -206,6 +206,7 @@ export function getFeatureJoiSchema(
 export function getFeatureZodSchema(
   projectConfig: ProjectConfig,
   conditionsZodSchema,
+  availableAttributeKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
 ) {
@@ -305,6 +306,20 @@ export function getFeatureZodSchema(
   });
   const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema);
 
+  const attributeKeyZodSchema = z.string().refine(
+    (value) => value === "*" || availableAttributeKeys.includes(value),
+    (value) => ({
+      message: `Invalid attribute "${value}"`,
+    }),
+  );
+
+  const featureKeyZodSchema = z.string().refine(
+    (value) => availableFeatureKeys.includes(value),
+    (value) => ({
+      message: `Invalid feature key "${value}"`,
+    }),
+  );
+
   const featureZodSchema = z.object({
     archived: z.boolean().optional(),
     deprecated: z.boolean().optional(),
@@ -329,29 +344,28 @@ export function getFeatureZodSchema(
     required: z
       .array(
         z.union([
-          z.string().refine(
-            (value) => availableFeatureKeys.includes(value),
-            (value) => ({
-              message: `Invalid feature key "${value}"`,
-            }),
-          ),
+          featureKeyZodSchema,
           z.object({
-            key: z.string().refine(
-              (value) => availableFeatureKeys.includes(value),
-              (value) => ({
-                message: `Invalid feature key "${value}"`,
-              }),
-            ),
+            key: featureKeyZodSchema,
             variation: z.string().optional(),
           }),
         ]),
       )
       .optional(),
-    bucketBy: z.union([z.string(), z.array(z.string()), z.object({ or: z.array(z.string()) })]),
+    bucketBy: z.union([
+      attributeKeyZodSchema,
+      z.array(attributeKeyZodSchema),
+      z.object({
+        or: z.array(attributeKeyZodSchema),
+      }),
+    ]),
     variablesSchema: z
       .array(
         z.object({
-          key: z.string().refine((value) => value !== "variation"),
+          key: z
+            .string()
+            .min(1)
+            .refine((value) => value !== "variation"),
           type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
           description: z.string().optional(),
           defaultValue: variableValueZodSchema.optional(),
@@ -376,18 +390,17 @@ export function getFeatureZodSchema(
           variables: z
             .array(
               z.object({
-                key: z.string(),
+                key: z.string().min(1),
                 value: variableValueZodSchema,
                 overrides: z
                   .array(
                     z.union([
                       z.object({
-                        segments: groupSegmentsZodSchema.optional(),
-                        conditions: conditionsZodSchema.optional(),
+                        conditions: conditionsZodSchema,
                         value: variableValueZodSchema,
                       }),
                       z.object({
-                        segments: groupSegmentsZodSchema.optional(),
+                        segments: groupSegmentsZodSchema,
                         value: variableValueZodSchema,
                       }),
                     ]),

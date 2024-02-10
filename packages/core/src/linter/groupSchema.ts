@@ -76,41 +76,27 @@ export function getGroupZodSchema(
           feature: z
             .string()
             .optional()
-            .refine((value) => {
-              if (value && availableFeatureKeys.indexOf(value) === -1) {
-                // return { message: `feature ${value} not found` };
+            .refine(
+              (value) => {
+                if (value && availableFeatureKeys.indexOf(value) === -1) {
+                  return false;
+                }
 
-                throw new z.ZodError([
-                  {
-                    code: z.ZodIssueCode.custom,
-                    message: `feature ${value} not found`,
-                    path: ["slots.{n}.feature"],
-                    params: { value },
-                  },
-                ]);
-              }
-
-              return true;
-            }),
+                return true;
+              },
+              (value) => ({ message: `feature "${value}" not found` }),
+            ),
           percentage: z.number().min(0).max(100),
         }),
       )
-      .refine((value) => {
-        const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
+      .refine(
+        (value) => {
+          const totalPercentage = value.reduce((acc, slot) => acc + slot.percentage, 0);
 
-        if (totalPercentage !== 100) {
-          throw new z.ZodError([
-            {
-              code: z.ZodIssueCode.custom,
-              message: `Total percentage of all slots should be 100`,
-              path: ["slots"],
-              params: { value },
-            },
-          ]);
-        }
-
-        return true;
-      }),
+          return totalPercentage === 100;
+        },
+        { message: "total percentage is not 100" },
+      ),
   });
 
   return groupZodSchema;

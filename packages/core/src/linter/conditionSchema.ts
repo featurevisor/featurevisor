@@ -114,46 +114,113 @@ export function getConditionsJoiSchema(
   return conditionsJoiSchema;
 }
 
+const commonOperators: [string, ...string[]] = ["equals", "notEquals"];
+const numericOperators = ["greaterThan", "greaterThanOrEquals", "lessThan", "lessThanOrEquals"];
+const stringOperators = ["contains", "notContains", "startsWith", "endsWith"];
+const semverOperators = [
+  "semverEquals",
+  "semverNotEquals",
+  "semverGreaterThan",
+  "semverGreaterThanOrEquals",
+  "semverLessThan",
+  "semverLessThanOrEquals",
+];
+const dateOperators = ["before", "after"];
+const arrayOperators = ["in", "notIn"];
+
 export function getConditionsZodSchema(
   projectConfig: ProjectConfig,
   availableAttributeKeys: [string, ...string[]],
 ) {
-  const plainConditionZodSchema = z.object({
-    attribute: z.enum(availableAttributeKeys),
-    operator: z.enum([
-      "equals",
-      "notEquals",
+  const plainConditionZodSchema = z
+    .object({
+      attribute: z.string().refine(
+        (value) => availableAttributeKeys.includes(value),
+        (value) => ({
+          message: `Invalid attribute "${value}"`,
+        }),
+      ),
+      operator: z.enum([
+        ...commonOperators,
+        ...numericOperators,
+        ...stringOperators,
+        ...semverOperators,
+        ...dateOperators,
+        ...arrayOperators,
+      ]),
+      value: z.union([
+        z.string(),
+        z.array(z.string()),
+        z.number(),
+        z.boolean(),
+        z.date(),
+        z.null(),
+      ]),
+    })
+    .superRefine((data, context) => {
+      // common
+      if (
+        commonOperators.includes(data.operator) &&
+        !(
+          data.value === null ||
+          typeof data.value === "string" ||
+          typeof data.value === "number" ||
+          typeof data.value === "boolean" ||
+          data.value instanceof Date
+        )
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value has to be either a string, number, boolean, date or null`,
+          path: ["value"],
+        });
+      }
 
       // numeric
-      "greaterThan",
-      "greaterThanOrEquals",
-      "lessThan",
-      "lessThanOrEquals",
+      if (numericOperators.includes(data.operator) && typeof data.value !== "number") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value must be a number`,
+          path: ["value"],
+        });
+      }
 
       // string
-      "contains",
-      "notContains",
-      "startsWith",
-      "endsWith",
+      if (stringOperators.includes(data.operator) && typeof data.value !== "string") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value must be a string`,
+          path: ["value"],
+        });
+      }
 
-      // semver (string)
-      "semverEquals",
-      "semverNotEquals",
-      "semverGreaterThan",
-      "semverGreaterThanOrEquals",
-      "semverLessThan",
-      "semverLessThanOrEquals",
+      // semver
+      if (semverOperators.includes(data.operator) && typeof data.value !== "string") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value must be a string`,
+          path: ["value"],
+        });
+      }
 
-      // date comparisons
-      "before",
-      "after",
+      // date
+      if (dateOperators.includes(data.operator) && !(data.value instanceof Date)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value must be a date`,
+          path: ["value"],
+        });
+      }
 
-      // array of strings
-      "in",
-      "notIn",
-    ]),
-    value: z.union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()]),
-  });
+      // array
+      if (arrayOperators.includes(data.operator) && !Array.isArray(data.value)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value must be an array of strings`,
+          path: ["value"],
+        });
+      }
+    });
 
   const andOrNotConditionZodSchema = z.union([
     z.object({
