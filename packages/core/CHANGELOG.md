@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.6.0](https://github.com/featurevisor/featurevisor/compare/v1.5.1...v1.6.0) (2024-02-11)
+
+
+### Features
+
+* Linter overhaul ([#259](https://github.com/featurevisor/featurevisor/issues/259)) ([403eac0](https://github.com/featurevisor/featurevisor/commit/403eac02c21cf716092fb4aa6ea447b6bd7df732))
+
+
+
+
+
 ## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
 
 **Note:** Version bump only for package @featurevisor/core
