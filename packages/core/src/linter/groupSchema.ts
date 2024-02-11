@@ -98,7 +98,7 @@ export function getGroupZodSchema(
 
             return totalPercentage === 100;
           },
-          { message: "Total percentage is not 100" },
+          { message: "Total percentage of all slots is not 100" },
         ),
     })
     .strict();

@@ -1,5 +1,5 @@
 // for use in node only
-import * as Joi from "joi";
+import * as path from "path";
 
 import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema, getConditionsJoiSchema } from "./conditionSchema";
@@ -11,6 +11,7 @@ import { getTestsZodSchema } from "./testSchema";
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
+import { CLI_FORMAT_RED, CLI_FORMAT_UNDERLINE } from "../tester/cliFormat";
 
 export async function lintProject(deps: Dependencies): Promise<boolean> {
   const { projectConfig, datasource } = deps;
@@ -21,6 +22,31 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const availableSegmentKeys: string[] = [];
   const availableFeatureKeys: string[] = [];
 
+  function getFullPathFromKey(type: string, key: string, relative = false) {
+    const fileName = `${key}.${datasource.getExtension()}`;
+    let fullPath = "";
+
+    if (type === "attribute") {
+      fullPath = path.join(projectConfig.attributesDirectoryPath, fileName);
+    } else if (type === "segment") {
+      fullPath = path.join(projectConfig.segmentsDirectoryPath, fileName);
+    } else if (type === "feature") {
+      fullPath = path.join(projectConfig.featuresDirectoryPath, fileName);
+    } else if (type === "group") {
+      fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
+    } else if (type === "test") {
+      fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
+    } else {
+      throw new Error(`Unknown type: ${type}`);
+    }
+
+    if (relative) {
+      fullPath = path.relative(process.cwd(), fullPath);
+    }
+
+    return fullPath;
+  }
+
   // lint attributes
   const attributes = await datasource.listAttributes();
   console.log(`Linting ${attributes.length} attributes...\n`);
@@ -28,6 +54,8 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const attributeZodSchema = getAttributeZodSchema();
 
   for (const key of attributes) {
+    const fullPath = getFullPathFromKey("attribute", key);
+
     try {
       const parsed = await datasource.readAttribute(key);
       availableAttributeKeys.push(key);
@@ -35,7 +63,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       const result = attributeZodSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.log("  =>", key);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
 
         if ("error" in result) {
           printZodError(result.error);
@@ -44,7 +72,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
         hasError = true;
       }
     } catch (e) {
-      console.log("  =>", key);
+      console.log(CLI_FORMAT_UNDERLINE, fullPath);
       console.log("");
       console.log(e);
 
@@ -63,6 +91,8 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
   for (const key of segments) {
+    const fullPath = getFullPathFromKey("segment", key);
+
     try {
       const parsed = await datasource.readSegment(key);
       availableSegmentKeys.push(key);
@@ -70,7 +100,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       const result = segmentZodSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.log("  =>", key);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
 
         if ("error" in result) {
           printZodError(result.error);
@@ -79,7 +109,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
         hasError = true;
       }
     } catch (e) {
-      console.log("  =>", key);
+      console.log(CLI_FORMAT_UNDERLINE, fullPath);
       console.log("");
       console.log(e);
 
@@ -100,6 +130,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of features) {
+    const fullPath = getFullPathFromKey("feature", key);
     let parsed;
 
     try {
@@ -109,7 +140,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       const result = featureZodSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.log("  =>", key);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
 
         if ("error" in result) {
           printZodError(result.error);
@@ -118,7 +149,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
         hasError = true;
       }
     } catch (e) {
-      console.log("  =>", key);
+      console.log(CLI_FORMAT_UNDERLINE, fullPath);
       console.log("");
       console.log(e);
 
@@ -129,8 +160,8 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       try {
         await checkForCircularDependencyInRequired(datasource, key, parsed.required);
       } catch (e) {
-        console.log("  =>", key);
-        console.log("     => Error:", e.message);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
         hasError = true;
       }
     }
@@ -144,13 +175,15 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   const groupZodSchema = getGroupZodSchema(projectConfig, datasource, availableFeatureKeys);
 
   for (const key of groups) {
+    const fullPath = getFullPathFromKey("group", key);
+
     try {
       const parsed = await datasource.readGroup(key);
 
       const result = groupZodSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.log("  =>", key);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
 
         if ("error" in result) {
           printZodError(result.error);
@@ -159,7 +192,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
         hasError = true;
       }
     } catch (e) {
-      console.log("  =>", key);
+      console.log(CLI_FORMAT_UNDERLINE, fullPath);
       console.log("");
       console.log(e);
 
@@ -180,13 +213,15 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
   );
 
   for (const key of tests) {
+    const fullPath = getFullPathFromKey("test", key);
+
     try {
       const parsed = await datasource.readTest(key);
 
       const result = testsZodSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.log("  =>", key);
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
 
         if ("error" in result) {
           printZodError(result.error);
@@ -197,7 +232,7 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
         hasError = true;
       }
     } catch (e) {
-      console.log("  =>", key);
+      console.log(CLI_FORMAT_UNDERLINE, fullPath);
       console.log("");
       console.log(e);
 
