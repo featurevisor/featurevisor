@@ -2,7 +2,7 @@
 import * as path from "path";
 
 import { getAttributeZodSchema } from "./attributeSchema";
-import { getConditionsZodSchema, getConditionsJoiSchema } from "./conditionSchema";
+import { getConditionsZodSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureZodSchema } from "./featureSchema";

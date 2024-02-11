@@ -394,7 +394,7 @@ export function getFeatureZodSchema(
                 .refine((value) => value !== "variation"),
               type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
               description: z.string().optional(),
-              defaultValue: variableValueZodSchema.optional(),
+              defaultValue: variableValueZodSchema,
             })
             .strict(),
         )
