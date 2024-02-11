@@ -245,11 +245,14 @@ const context = {
   country: "de",
 };
 
-// true or false
+// flag status: true or false
 const isBannerEnabled = f.isEnabled(featureKey, context);
 
- // `control` or `treatment`
+// variation: `control`, `treatment`, or more
 const bannerVariation = f.getVariation(featureKey, context);
+
+// variables
+const myVariable = f.getVariable(featureKey, "myVariableKey", context);
 ```
 
 Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.
