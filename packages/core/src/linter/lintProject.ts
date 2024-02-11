@@ -9,6 +9,7 @@ import { getFeatureZodSchema } from "./featureSchema";
 import { getTestsZodSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
+import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
 import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_RED, CLI_FORMAT_UNDERLINE } from "../tester/cliFormat";
@@ -176,9 +177,10 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
 
   for (const key of groups) {
     const fullPath = getFullPathFromKey("group", key);
+    let parsed;
 
     try {
-      const parsed = await datasource.readGroup(key);
+      parsed = await datasource.readGroup(key);
 
       const result = groupZodSchema.safeParse(parsed);
 
@@ -197,6 +199,16 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
       console.log(e);
 
       hasError = true;
+    }
+
+    if (parsed) {
+      try {
+        await checkForFeatureExceedingGroupSlotPercentage(datasource, parsed, availableFeatureKeys);
+      } catch (e) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
+        hasError = true;
+      }
     }
   }
 
