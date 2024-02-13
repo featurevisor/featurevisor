@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Core package of Featurevisor for Node.js usage",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -50,10 +50,10 @@
     "@featurevisor/types": "^1.3.0",
     "axios": "^1.3.4",
     "express": "^4.18.2",
-    "joi": "^17.8.3",
     "js-yaml": "^4.1.0",
     "mkdirp": "^2.1.3",
-    "tar": "^6.1.13"
+    "tar": "^6.1.13",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

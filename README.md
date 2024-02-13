@@ -12,8 +12,8 @@
 
 <div align="center">
   <!-- NPM version -->
-  <a href="https://npmjs.org/package/@featurevisor/sdk">
-    <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg"
+  <a href="https://npmjs.org/package/@featurevisor/cli">
+    <img src="https://img.shields.io/npm/v/@featurevisor/cli.svg"
       alt="NPM version" />
   </a>
   <!-- Discord -->
