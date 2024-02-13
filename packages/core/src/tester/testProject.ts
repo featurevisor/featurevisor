@@ -124,9 +124,11 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  for (const testFile of testFiles) {
-    const executionResult = await executeTest(testFile, deps, options, patterns);
+  const results = await Promise.all(
+    testFiles.map((testFile) => executeTest(testFile, deps, options, patterns)),
+  );
 
+  for (const executionResult of results) {
     if (!executionResult) {
       continue;
     }
