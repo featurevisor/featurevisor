@@ -17,6 +17,7 @@ import {
   BuildCLIOptions,
   GenerateCodeCLIOptions,
   TestProjectOptions,
+  LintProjectOptions,
   restoreProject,
   Dependencies,
   Datasource,
@@ -84,8 +85,12 @@ async function main() {
       command: "lint",
       handler: async function (options) {
         const deps = await getDependencies(options);
+        const lintOptions: LintProjectOptions = {
+          keyPattern: options.keyPattern,
+          entityType: options.entityType,
+        };
 
-        const hasError = await lintProject(deps);
+        const hasError = await lintProject(deps, lintOptions);
 
         if (hasError) {
           process.exit(1);
