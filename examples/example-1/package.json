@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-1",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
@@ -14,6 +14,6 @@
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "^1.6.0"
+    "@featurevisor/cli": "^1.7.0"
   }
 }
