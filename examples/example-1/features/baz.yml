@@ -2,7 +2,10 @@ description: Classic on/off switch
 tags:
   - all
 
-bucketBy: userId
+bucketBy:
+  or:
+    - userId
+    - device
 
 environments:
   staging:
