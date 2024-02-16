@@ -12,6 +12,35 @@ import { Markdown } from "../blocks/markdown";
 
 import { isEnabledInEnvironment, sortEnvironmentNames } from "../../utils";
 
+function BucketBy({ bucketBy }) {
+  if (typeof bucketBy === "string") {
+    return <Link to={`/attributes/${bucketBy}`}>{bucketBy}</Link>;
+  }
+
+  if (bucketBy.or) {
+    return (
+      <ul>
+        <li>
+          <span className="rounded-full px-2 py-1 text-sm font-bold bg-yellow-300 text-yellow-700">
+            or:
+          </span>
+          <BucketBy bucketBy={bucketBy.or} />
+        </li>
+      </ul>
+    );
+  }
+
+  return (
+    <ul className="list-inside list-disc pl-5">
+      {bucketBy.map((b) => (
+        <li key={b} className="py-1">
+          <BucketBy bucketBy={b} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function FeaturePageView() {
   const { key } = useParams();
   const { toast } = useToast();
@@ -77,15 +106,7 @@ export function FeaturePageView() {
             <div>
               <dt className="text-sm font-medium text-gray-800">Bucket by</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {typeof feature.bucketBy === "string" ? (
-                  <span>{feature.bucketBy}</span>
-                ) : (
-                  <ul>
-                    {feature.bucketBy.map((b) => (
-                      <li key={b}>{b}</li>
-                    ))}
-                  </ul>
-                )}
+                <BucketBy bucketBy={feature.bucketBy} />
               </dd>
             </div>
 
