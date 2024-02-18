@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
@@ -97,8 +97,15 @@ function getEntitiesByQuery(query: Query, entities) {
 }
 
 function EntitiesTable() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+
   const [entities, setEntities] = React.useState(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState(initialQuery);
+
+  React.useEffect(() => {
+    setSearchParams({ q: searchQuery });
+  }, [searchQuery, setSearchParams]);
 
   React.useEffect(() => {
     fetch("/api/features")
@@ -123,6 +130,7 @@ function EntitiesTable() {
         type="search"
         autoComplete="off"
         placeholder="Search features..."
+        value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
 
