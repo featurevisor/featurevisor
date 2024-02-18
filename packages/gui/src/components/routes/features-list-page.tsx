@@ -15,7 +15,10 @@ function getEntitiesByQuery(query: Query, entities) {
     .filter((feature) => {
       let matched = true;
 
-      if (query.keyword.length > 0 && feature.key.indexOf(query.keyword.toLowerCase()) === -1) {
+      if (
+        query.keyword.length > 0 &&
+        feature.key.toLowerCase().indexOf(query.keyword.toLowerCase()) === -1
+      ) {
         matched = false;
       }
 
