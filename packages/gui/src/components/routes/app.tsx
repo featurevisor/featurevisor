@@ -29,6 +29,7 @@ import { FeaturesListPage } from "./features-list-page";
 import { FeaturePage } from "./feature-page";
 import { FeaturePageView } from "./feature-page-view";
 import { FeaturePageHistory } from "./feature-page-history";
+import { FeaturePageEdit } from "./feature-page-edit";
 
 import { HistoryPage } from "./history-page";
 
@@ -94,7 +95,7 @@ export function App() {
 
                 <Route path=":key" element={<FeaturePage />}>
                   <Route index element={<FeaturePageView />} />
-                  {/* <Route path="edit" element={<FeaturePageEdit />} /> */}
+                  <Route path="edit" element={<FeaturePageEdit />} />
                   <Route path="history" element={<FeaturePageHistory />} />
                 </Route>
               </Route>
