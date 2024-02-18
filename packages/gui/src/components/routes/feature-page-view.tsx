@@ -123,7 +123,9 @@ export function FeaturePageView() {
                           <span className="relative inline-block h-3 w-3 rounded-full bg-slate-300"></span>
                         )}
                       </span>{" "}
-                      {environmentKey}
+                      <Link to={`/features?q=` + encodeURIComponent(`in:${environmentKey}`)}>
+                        {environmentKey}
+                      </Link>
                     </li>
                   ))}
                 </ul>
