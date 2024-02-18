@@ -391,6 +391,8 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  // @TODO: PATCH /features/:key
+
   devServer.app.get("/api/features/:key/history", async function (req, res) {
     const index = entities.features.findIndex((segment) => segment.key === req.params.key);
 

@@ -31,6 +31,16 @@ const featureFormSchema = z.object({
 
 type FeatureFormValues = z.infer<typeof featureFormSchema>;
 
+function transformBody(body: FeatureFormValues) {
+  return {
+    ...body,
+
+    // if false, remove the key from the body
+    deprecated: body.deprecated || undefined,
+    archived: body.archived || undefined,
+  };
+}
+
 export function FeatureForm({ initialFeature = undefined }) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -44,10 +54,11 @@ export function FeatureForm({ initialFeature = undefined }) {
 
   function onSubmit(data: FeatureFormValues) {
     if (mode === "edit") {
-      const { key, ...body } = data;
+      const { key, ...rest } = data;
+      const body = transformBody(rest);
 
       fetch(`/api/features/${key}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -70,12 +81,14 @@ export function FeatureForm({ initialFeature = undefined }) {
           });
         });
     } else if (mode === "create") {
+      const body = transformBody(data);
+
       fetch(`/api/features`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(body),
       })
         .then((res) => res.json())
         .then((res) => {
