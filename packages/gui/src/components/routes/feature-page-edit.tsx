@@ -148,7 +148,7 @@ export function FeatureForm({ initialFeature = undefined }) {
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Depreciate this attribute?</FormLabel>
+                <FormLabel>Depreciate this feature?</FormLabel>
                 <FormDescription>
                   Learn more about deprecated{" "}
                   <a
@@ -175,7 +175,7 @@ export function FeatureForm({ initialFeature = undefined }) {
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Archive this attribute?</FormLabel>
+                <FormLabel>Archive this feature?</FormLabel>
                 <FormDescription>
                   Learn more about archiving{" "}
                   <a
