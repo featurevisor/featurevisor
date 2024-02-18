@@ -15,6 +15,26 @@ export function FeaturePage() {
       title: "Overview",
     },
     {
+      href: `/features/${key}/variables`,
+      title: "Variables",
+    },
+    {
+      href: `/features/${key}/variations`,
+      title: "Variations",
+    },
+    {
+      href: `/features/${key}/rules`,
+      title: "Rules",
+    },
+    {
+      href: `/features/${key}/dependencies`,
+      title: "Dependencies",
+    },
+    {
+      href: `/features/${key}/force`,
+      title: "Force",
+    },
+    {
       href: `/features/${key}/history`,
       title: "History",
     },
