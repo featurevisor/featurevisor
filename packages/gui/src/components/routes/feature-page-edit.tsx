@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import * as z from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLinkIcon } from "@radix-ui/react-icons";
 
@@ -21,10 +21,14 @@ import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select";
+import { cn } from "../../utils";
 
 const bucketByPlainSchema = z.string();
-const bucketByArraySchema = z.array(z.string());
-const bucketByOrSchema = z.object({ or: bucketByArraySchema });
+const bucketByArraySchema = z.array(
+  z.object({
+    value: z.string(),
+  }),
+);
 
 const featureFormSchema = z.object({
   key: z.string().min(1, { message: "Key must be at least 1 character long" }),
@@ -34,23 +38,22 @@ const featureFormSchema = z.object({
 
   // virtual fields for form only
   bucketByAs: z.string(), // plain, and, or
-  bucketByPlain: bucketByPlainSchema.optional(),
-  bucketByAnd: bucketByArraySchema.optional(),
-  bucketByOr: bucketByOrSchema.optional(),
+  bucketBySingle: bucketByPlainSchema.optional(),
+  bucketByMultiple: bucketByArraySchema.optional(),
 });
 
 type FeatureFormValues = z.infer<typeof featureFormSchema>;
 
 function transformBodyForBackend(body: FeatureFormValues) {
-  const { bucketByAs, bucketByPlain, bucketByAnd, bucketByOr, ...rest } = body;
+  const { bucketByAs, bucketBySingle, bucketByMultiple, ...rest } = body;
 
   let bucketBy;
   if (bucketByAs === "plain") {
-    bucketBy = bucketByPlain;
+    bucketBy = bucketBySingle;
   } else if (bucketByAs === "and") {
-    bucketBy = bucketByAnd;
+    bucketBy = bucketByMultiple.map((item) => item.value);
   } else if (bucketByAs === "or") {
-    bucketBy = bucketByOr;
+    bucketBy = { or: bucketByMultiple.map((item) => item.value) };
   }
 
   return {
@@ -74,6 +77,13 @@ export function FeatureForm({ initialFeature = undefined }) {
     defaultValues: initialFeature,
     mode: "onChange",
   });
+
+  const { fields, append } = useFieldArray({
+    name: "bucketByMultiple",
+    control: form.control,
+  });
+
+  const bucketAs = form.watch("bucketByAs");
 
   function onSubmit(data: FeatureFormValues) {
     if (mode === "edit") {
@@ -244,13 +254,13 @@ export function FeatureForm({ initialFeature = undefined }) {
         />
 
         {/* Bucket by plain (single attribute) */}
-        {form.getValues("bucketByAs") === "plain" && (
+        {bucketAs === "plain" && (
           <FormField
             control={form.control}
-            name="bucketByPlain"
+            name="bucketBySingle"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Bucket by single attribute</FormLabel>
+                <FormLabel>Bucket by a single attribute</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -259,6 +269,41 @@ export function FeatureForm({ initialFeature = undefined }) {
               </FormItem>
             )}
           />
+        )}
+
+        {/* Bucket by or (multiple attributes) */}
+        {bucketAs !== "plain" && (
+          <div>
+            {fields.map((field, index) => (
+              <FormField
+                control={form.control}
+                key={field.id}
+                name={`bucketByMultiple.${index}.value`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={cn(index !== 0 && "sr-only")}>
+                      {bucketAs === "and"
+                        ? "Bucket by multiple attributes together"
+                        : "Bucket by first available attribute"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => append({ value: "" })}
+            >
+              Add attribute
+            </Button>
+          </div>
         )}
 
         {/* Deprecated */}
@@ -344,20 +389,27 @@ export function FeatureForm({ initialFeature = undefined }) {
 
 function transformBodyForFrontend(body: any) {
   let as = "plain";
-
   if (Array.isArray(body.bucketBy)) {
     as = "and";
   } else if (body.bucketBy.or) {
     as = "or";
   }
 
+  let bucketByMultiple;
+  if (as === "and") {
+    bucketByMultiple = body.bucketBy.map((value) => ({ value }));
+  } else if (as === "or") {
+    bucketByMultiple = body.bucketBy.or.map((value) => ({ value }));
+  }
+
   return {
     ...body,
 
     bucketByAs: as,
-    bucketByPlain: as === "plain" ? body.bucketBy : undefined,
-    bucketByAnd: as === "and" ? body.bucketBy : undefined,
-    bucketByOr: as === "or" ? body.bucketBy : undefined,
+    bucketBySingle: as === "plain" ? body.bucketBy : undefined,
+
+    // the `value` property is needed for form fields as an array
+    bucketByMultiple,
   };
 }
 
