@@ -78,7 +78,7 @@ export function FeatureForm({ initialFeature = undefined }) {
     mode: "onChange",
   });
 
-  const { fields, append } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     name: "bucketByMultiple",
     control: form.control,
   });
@@ -287,7 +287,15 @@ export function FeatureForm({ initialFeature = undefined }) {
                         : "Bucket by first available attribute"}
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <div className="block">
+                        <Input {...field} className="w-1/3 inline" />{" "}
+                        <button
+                          className="inline ml-2 underline text-xs"
+                          onClick={() => remove(index)}
+                        >
+                          remove
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
