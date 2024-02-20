@@ -22,18 +22,41 @@ import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select";
 
+const bucketByPlainSchema = z.string();
+const bucketByArraySchema = z.array(z.string());
+const bucketByOrSchema = z.object({ or: bucketByArraySchema });
+
 const featureFormSchema = z.object({
   key: z.string().min(1, { message: "Key must be at least 1 character long" }),
   description: z.string().min(2, { message: "Description must be at least 2 characters long" }),
   deprecated: z.boolean().default(false).optional(),
   archived: z.boolean().default(false).optional(),
+
+  // virtual fields for form only
+  bucketByAs: z.string(), // plain, and, or
+  bucketByPlain: bucketByPlainSchema.optional(),
+  bucketByAnd: bucketByArraySchema.optional(),
+  bucketByOr: bucketByOrSchema.optional(),
 });
 
 type FeatureFormValues = z.infer<typeof featureFormSchema>;
 
-function transformBody(body: FeatureFormValues) {
+function transformBodyForBackend(body: FeatureFormValues) {
+  const { bucketByAs, bucketByPlain, bucketByAnd, bucketByOr, ...rest } = body;
+
+  let bucketBy;
+  if (bucketByAs === "plain") {
+    bucketBy = bucketByPlain;
+  } else if (bucketByAs === "and") {
+    bucketBy = bucketByAnd;
+  } else if (bucketByAs === "or") {
+    bucketBy = bucketByOr;
+  }
+
   return {
-    ...body,
+    ...rest,
+
+    bucketBy,
 
     // if false, remove the key from the body
     deprecated: body.deprecated || undefined,
@@ -55,7 +78,11 @@ export function FeatureForm({ initialFeature = undefined }) {
   function onSubmit(data: FeatureFormValues) {
     if (mode === "edit") {
       const { key, ...rest } = data;
-      const body = transformBody(rest);
+      const body = transformBodyForBackend(rest);
+
+      console.log(data);
+      console.log(body);
+      return;
 
       fetch(`/api/features/${key}`, {
         method: "PATCH",
@@ -81,7 +108,7 @@ export function FeatureForm({ initialFeature = undefined }) {
           });
         });
     } else if (mode === "create") {
-      const body = transformBody(data);
+      const body = transformBodyForBackend(data);
 
       fetch(`/api/features`, {
         method: "POST",
@@ -150,6 +177,89 @@ export function FeatureForm({ initialFeature = undefined }) {
             </FormItem>
           )}
         />
+
+        {/* Bucket by as */}
+        <FormField
+          control={form.control}
+          name="bucketByAs"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bucketing approach</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {[
+                    {
+                      as: "plain",
+                      title: (
+                        <div>
+                          <strong>Single attribute</strong>:{" "}
+                          <span className="text-muted-foreground">recommended</span>
+                        </div>
+                      ),
+                    },
+                    {
+                      as: "and",
+                      title: (
+                        <div>
+                          <strong>Compound attributes</strong>:{" "}
+                          <span className="text-muted-foreground">
+                            Multiple attributes together
+                          </span>
+                        </div>
+                      ),
+                    },
+                    {
+                      as: "or",
+                      title: (
+                        <div>
+                          <strong>Conditional attributes</strong>:{" "}
+                          <span className="text-muted-foreground">
+                            First available attribute used
+                          </span>
+                        </div>
+                      ),
+                    },
+                  ].map(({ as, title }) => (
+                    <SelectItem key={as} value={as}>
+                      {title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Learn more about bucketing{" "}
+                <a href="https://featurevisor.com/docs/features/#bucketing" className="underline">
+                  here <ExternalLinkIcon className="inline w-4 h-4" />
+                </a>
+                .
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Bucket by plain (single attribute) */}
+        {form.getValues("bucketByAs") === "plain" && (
+          <FormField
+            control={form.control}
+            name="bucketByPlain"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bucket by single attribute</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                {/* <FormDescription>...</FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Deprecated */}
         <FormField
@@ -232,11 +342,32 @@ export function FeatureForm({ initialFeature = undefined }) {
   );
 }
 
+function transformBodyForFrontend(body: any) {
+  let as = "plain";
+
+  if (Array.isArray(body.bucketBy)) {
+    as = "and";
+  } else if (body.bucketBy.or) {
+    as = "or";
+  }
+
+  return {
+    ...body,
+
+    bucketByAs: as,
+    bucketByPlain: as === "plain" ? body.bucketBy : undefined,
+    bucketByAnd: as === "and" ? body.bucketBy : undefined,
+    bucketByOr: as === "or" ? body.bucketBy : undefined,
+  };
+}
+
 export function FeaturePageEdit() {
   const [initialFeature, setInitialFeature] = React.useState(null);
   const { key } = useParams();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  console.log("initialFeature", initialFeature);
 
   React.useEffect(() => {
     if (key) {
@@ -254,7 +385,7 @@ export function FeaturePageEdit() {
             return;
           }
 
-          setInitialFeature(data.data);
+          setInitialFeature(transformBodyForFrontend(data.data));
         });
     }
   }, []);
