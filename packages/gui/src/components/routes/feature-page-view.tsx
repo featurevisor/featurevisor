@@ -136,7 +136,7 @@ export function FeaturePageView() {
               <dt className="text-sm font-medium text-gray-800">Tags</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {feature.tags.sort().map((tag) => (
-                  <Link to={`/features?q=${encodeURIComponent("tag:" + tag)}`}>
+                  <Link key={tag} to={`/features?q=${encodeURIComponent("tag:" + tag)}`}>
                     <Badge key={tag} variant="secondary">
                       {tag}
                     </Badge>
