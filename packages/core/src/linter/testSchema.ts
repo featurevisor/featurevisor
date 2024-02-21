@@ -7,6 +7,18 @@ export function getTestsZodSchema(
   availableFeatureKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
 ) {
+  const matrixZodSchema = z.record(
+    z.array(
+      z.union([
+        // allowed values in arrays
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.null(),
+      ]),
+    ),
+  );
+
   const segmentTestZodSchema = z
     .object({
       segment: z.string().refine(
@@ -18,7 +30,7 @@ export function getTestsZodSchema(
       assertions: z.array(
         z
           .object({
-            matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
+            matrix: matrixZodSchema.optional(),
             description: z.string().optional(),
             context: z.record(z.unknown()),
             expectedToMatch: z.boolean(),
@@ -39,7 +51,7 @@ export function getTestsZodSchema(
       assertions: z.array(
         z
           .object({
-            matrix: z.record(z.unknown()).optional(), // @TODO: make it stricter
+            matrix: matrixZodSchema.optional(),
             description: z.string().optional(),
             at: z.union([
               z.number().min(0).max(100),
