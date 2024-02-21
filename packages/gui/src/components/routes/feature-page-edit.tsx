@@ -58,12 +58,9 @@ function transformBodyForBackend(body: FeatureFormValues) {
 
   return {
     ...rest,
-
     bucketBy,
-
-    // if false, remove the key from the body
-    deprecated: body.deprecated || undefined,
-    archived: body.archived || undefined,
+    archived: rest.archived === true,
+    deprecated: rest.deprecated === true,
   };
 }
 
@@ -90,10 +87,6 @@ export function FeatureForm({ initialFeature = undefined }) {
       const { key, ...rest } = data;
       const body = transformBodyForBackend(rest);
 
-      console.log(data);
-      console.log(body);
-      return;
-
       fetch(`/api/features/${key}`, {
         method: "PATCH",
         headers: {
@@ -119,6 +112,9 @@ export function FeatureForm({ initialFeature = undefined }) {
         });
     } else if (mode === "create") {
       const body = transformBodyForBackend(data);
+
+      console.log(body);
+      return;
 
       fetch(`/api/features`, {
         method: "POST",

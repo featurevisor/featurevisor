@@ -391,7 +391,36 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
-  // @TODO: PATCH /features/:key
+  devServer.app.patch("/api/features/:key", function (req, res) {
+    const index = entities.features.findIndex((feature) => feature.key === req.params.key);
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: {
+          message: `Feature "${req.params.key}" not found`,
+        },
+      });
+    }
+
+    const feature = entities.features[index];
+    const { key, ...patchBody } = req.body;
+
+    // if false, remove the property
+    patchBody.archived = patchBody.archived === true ? true : undefined;
+    patchBody.deprecated = patchBody.deprecated === true ? true : undefined;
+
+    entities.features[index] = {
+      ...feature,
+      ...patchBody,
+    };
+
+    res.json({
+      data: {
+        ...entities.features[index],
+        key: req.params.key,
+      },
+    });
+  });
 
   devServer.app.get("/api/features/:key/history", async function (req, res) {
     const index = entities.features.findIndex((segment) => segment.key === req.params.key);
