@@ -19,6 +19,9 @@ export interface LintProjectOptions {
   entityType?: string;
 }
 
+const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-.]+$/;
+const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
+
 export async function lintProject(
   deps: Dependencies,
   options: LintProjectOptions = {},
@@ -76,6 +79,14 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("attribute", key);
 
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
+
       try {
         const parsed = await datasource.readAttribute(key);
 
@@ -117,6 +128,14 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("segment", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
 
       try {
         const parsed = await datasource.readSegment(key);
@@ -161,6 +180,15 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
+
       let parsed;
 
       try {
@@ -210,6 +238,15 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("group", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
+
       let parsed;
 
       try {
@@ -266,6 +303,14 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("test", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
 
       try {
         const parsed = await datasource.readTest(key);
