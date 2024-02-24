@@ -98,6 +98,15 @@ module.exports = function setupMockServer(devServer) {
     res.json({ data: {} });
   });
 
+  devServer.app.get("/api/config", function (req, res) {
+    res.json({
+      data: {
+        tags: projectConfig.tags,
+        environments: projectConfig.environments,
+      },
+    });
+  });
+
   /**
    * User
    */
