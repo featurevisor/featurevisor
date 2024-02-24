@@ -206,7 +206,7 @@ export function FeaturesListPage() {
         <p className="text-muted-foreground">List of all features in the project.</p>
 
         <div className="absolute right-0 top-0">
-          <Link to="/create/attribute">
+          <Link to="/create/feature">
             <Button size="sm">Create</Button>
           </Link>
         </div>

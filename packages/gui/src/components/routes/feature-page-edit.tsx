@@ -22,7 +22,6 @@ import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../ui/select";
-import { cn } from "../../utils";
 
 const bucketByPlainSchema = z.string();
 const bucketByArraySchema = z.array(
@@ -89,7 +88,7 @@ export function FeatureForm({ initialFeature = undefined }) {
     move(result.source.index, result.destination.index);
   };
 
-  const bucketAs = form.watch("bucketByAs");
+  const bucketByAs = form.watch("bucketByAs");
 
   function onSubmit(data: FeatureFormValues) {
     if (mode === "edit") {
@@ -121,9 +120,6 @@ export function FeatureForm({ initialFeature = undefined }) {
         });
     } else if (mode === "create") {
       const body = transformBodyForBackend(data);
-
-      console.log(body);
-      return;
 
       fetch(`/api/features`, {
         method: "POST",
@@ -259,7 +255,7 @@ export function FeatureForm({ initialFeature = undefined }) {
         />
 
         {/* Bucket by plain (single attribute) */}
-        {bucketAs === "plain" && (
+        {bucketByAs === "plain" && (
           <FormField
             control={form.control}
             name="bucketBySingle"
@@ -277,13 +273,13 @@ export function FeatureForm({ initialFeature = undefined }) {
         )}
 
         {/* Bucket by or (multiple attributes) */}
-        {bucketAs !== "plain" && (
+        {["and", "or"].indexOf(bucketByAs) > -1 && (
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="fields">
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef}>
                   <FormLabel className="">
-                    {bucketAs === "and"
+                    {bucketByAs === "and"
                       ? "Bucket by multiple attributes together"
                       : "Bucket by first available attribute"}
                   </FormLabel>
@@ -331,7 +327,7 @@ export function FeatureForm({ initialFeature = undefined }) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="mt-2"
+                    className="mt-2 block"
                     onClick={() => append({ value: "" })}
                   >
                     Add attribute
@@ -343,58 +339,62 @@ export function FeatureForm({ initialFeature = undefined }) {
         )}
 
         {/* Deprecated */}
-        <FormField
-          control={form.control}
-          name="deprecated"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Depreciate this feature?</FormLabel>
-                <FormDescription>
-                  Learn more about deprecated{" "}
-                  <a
-                    href="https://featurevisor.com/docs/features/#deprecating"
-                    className="underline"
-                    target="_blank"
-                  >
-                    here <ExternalLinkIcon className="inline w-4 h-4" />
-                  </a>
-                  .
-                </FormDescription>
-              </div>
-            </FormItem>
-          )}
-        />
+        {initialFeature && (
+          <FormField
+            control={form.control}
+            name="deprecated"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Depreciate this feature?</FormLabel>
+                  <FormDescription>
+                    Learn more about deprecated{" "}
+                    <a
+                      href="https://featurevisor.com/docs/features/#deprecating"
+                      className="underline"
+                      target="_blank"
+                    >
+                      here <ExternalLinkIcon className="inline w-4 h-4" />
+                    </a>
+                    .
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Archived */}
-        <FormField
-          control={form.control}
-          name="archived"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Archive this feature?</FormLabel>
-                <FormDescription>
-                  Learn more about archiving{" "}
-                  <a
-                    href="https://featurevisor.com/docs/features/#archiving"
-                    className="underline"
-                    target="_blank"
-                  >
-                    here <ExternalLinkIcon className="inline w-4 h-4" />
-                  </a>
-                  .
-                </FormDescription>
-              </div>
-            </FormItem>
-          )}
-        />
+        {initialFeature && (
+          <FormField
+            control={form.control}
+            name="archived"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Archive this feature?</FormLabel>
+                  <FormDescription>
+                    Learn more about archiving{" "}
+                    <a
+                      href="https://featurevisor.com/docs/features/#archiving"
+                      className="underline"
+                      target="_blank"
+                    >
+                      here <ExternalLinkIcon className="inline w-4 h-4" />
+                    </a>
+                    .
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Buttons */}
         <div className="flex space-x-4">
@@ -424,25 +424,25 @@ export function FeatureForm({ initialFeature = undefined }) {
 }
 
 function transformBodyForFrontend(body: any) {
-  let as = "plain";
+  let bucketByAs = "plain";
   if (Array.isArray(body.bucketBy)) {
-    as = "and";
+    bucketByAs = "and";
   } else if (body.bucketBy.or) {
-    as = "or";
+    bucketByAs = "or";
   }
 
   let bucketByMultiple;
-  if (as === "and") {
+  if (bucketByAs === "and") {
     bucketByMultiple = body.bucketBy.map((value) => ({ value }));
-  } else if (as === "or") {
+  } else if (bucketByAs === "or") {
     bucketByMultiple = body.bucketBy.or.map((value) => ({ value }));
   }
 
   return {
     ...body,
 
-    bucketByAs: as,
-    bucketBySingle: as === "plain" ? body.bucketBy : undefined,
+    bucketByAs: bucketByAs,
+    bucketBySingle: bucketByAs === "plain" ? body.bucketBy : undefined,
 
     // the `value` property is needed for form fields as an array
     bucketByMultiple,
@@ -454,8 +454,6 @@ export function FeaturePageEdit() {
   const { key } = useParams();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  console.log("initialFeature", initialFeature);
 
   React.useEffect(() => {
     if (key) {

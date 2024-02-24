@@ -30,6 +30,7 @@ import { FeaturePage } from "./feature-page";
 import { FeaturePageView } from "./feature-page-view";
 import { FeaturePageHistory } from "./feature-page-history";
 import { FeaturePageEdit } from "./feature-page-edit";
+import { FeaturesCreate } from "./features-create-page";
 
 import { HistoryPage } from "./history-page";
 
@@ -99,6 +100,7 @@ export function App() {
                   <Route path="history" element={<FeaturePageHistory />} />
                 </Route>
               </Route>
+              <Route path="create/feature" element={<FeaturesCreate />} />
 
               {/* History */}
               <Route path="history">

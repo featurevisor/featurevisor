@@ -391,6 +391,46 @@ module.exports = function setupMockServer(devServer) {
     });
   });
 
+  devServer.app.post("/api/features", function (req, res) {
+    const index = entities.features.findIndex((feature) => feature.key === req.body.key);
+
+    if (index !== -1) {
+      return res.status(400).json({
+        error: {
+          message: "Feature with this key already exists",
+        },
+      });
+    }
+
+    const feature = req.body;
+
+    if (!feature.tags) {
+      feature.tags = [];
+    }
+
+    if (!feature.environments) {
+      feature.environments = {};
+
+      for (const environment of projectConfig.environments) {
+        feature.environments[environment] = {
+          rules: [
+            {
+              key: "everyone",
+              segments: "*",
+              percentage: 0,
+            },
+          ],
+        };
+      }
+    }
+
+    entities.features.push(feature);
+
+    res.json({
+      data: feature,
+    });
+  });
+
   devServer.app.patch("/api/features/:key", function (req, res) {
     const index = entities.features.findIndex((feature) => feature.key === req.params.key);
 
