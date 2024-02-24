@@ -452,7 +452,7 @@ module.exports = function setupMockServer(devServer) {
     }
 
     const feature = entities.features[index];
-    const { key, ...patchBody } = req.body;
+    const { key, ...patchBody } = req.body; // eslint-disable-line
 
     // if false, remove the property
     patchBody.archived = patchBody.archived === true ? true : undefined;
