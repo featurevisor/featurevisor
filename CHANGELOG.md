@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
+
+
+### Bug Fixes
+
+* lint entity names ([#266](https://github.com/featurevisor/featurevisor/issues/266)) ([7e63137](https://github.com/featurevisor/featurevisor/commit/7e63137fa2821605362c742475d78c8256f89fcd))
+
+
+
+
+
 ## [1.7.2](https://github.com/featurevisor/featurevisor/compare/v1.7.1...v1.7.2) (2024-02-21)
 
 
