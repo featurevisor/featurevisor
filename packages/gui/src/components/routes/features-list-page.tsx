@@ -146,7 +146,7 @@ function EntitiesTable() {
                   <div className="block hover:bg-gray-50">
                     <div className="px-1 py-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-md relative font-bold text-slate-600">
+                        <div className="text-md relative font-bold text-slate-600">
                           <EnvironmentDot
                             feature={feature}
                             className="relative top-[0.5px] inline-block pr-2"
@@ -157,7 +157,7 @@ function EntitiesTable() {
                               archived
                             </span>
                           )}
-                        </p>
+                        </div>
 
                         <div className="ml-2 flex flex-shrink-0">
                           <div>
