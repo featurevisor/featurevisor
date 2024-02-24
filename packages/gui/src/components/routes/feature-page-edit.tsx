@@ -301,8 +301,7 @@ export function FeatureForm({ initialFeature = undefined }) {
                             key={field.id}
                             name={`bucketByMultiple.${index}.value`}
                             render={({ field }) => (
-                              <FormItem className="cursor-default">
-                                <FormLabel className={cn(index !== 0 && "sr-only")}></FormLabel>
+                              <FormItem className="cursor-default pt-2">
                                 <FormControl>
                                   <div className="block">
                                     <Input {...field} className="w-1/3 inline" />{" "}
