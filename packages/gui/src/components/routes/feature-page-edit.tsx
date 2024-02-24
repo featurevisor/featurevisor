@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import * as z from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ExternalLinkIcon } from "@radix-ui/react-icons";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { ExternalLinkIcon, MoveIcon } from "@radix-ui/react-icons";
 
 import { Separator } from "../ui/separator";
 import {
@@ -75,10 +76,18 @@ export function FeatureForm({ initialFeature = undefined }) {
     mode: "onChange",
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     name: "bucketByMultiple",
     control: form.control,
   });
+
+  const handleDragEnd = (result) => {
+    if (!result.destination) {
+      return;
+    }
+
+    move(result.source.index, result.destination.index);
+  };
 
   const bucketAs = form.watch("bucketByAs");
 
@@ -269,45 +278,69 @@ export function FeatureForm({ initialFeature = undefined }) {
 
         {/* Bucket by or (multiple attributes) */}
         {bucketAs !== "plain" && (
-          <div>
-            {fields.map((field, index) => (
-              <FormField
-                control={form.control}
-                key={field.id}
-                name={`bucketByMultiple.${index}.value`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className={cn(index !== 0 && "sr-only")}>
-                      {bucketAs === "and"
-                        ? "Bucket by multiple attributes together"
-                        : "Bucket by first available attribute"}
-                    </FormLabel>
-                    <FormControl>
-                      <div className="block">
-                        <Input {...field} className="w-1/3 inline" />{" "}
-                        <button
-                          className="inline ml-2 underline text-xs"
-                          onClick={() => remove(index)}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="fields">
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef}>
+                  <FormLabel className="">
+                    {bucketAs === "and"
+                      ? "Bucket by multiple attributes together"
+                      : "Bucket by first available attribute"}
+                  </FormLabel>
+
+                  {fields.map((field, index) => (
+                    <Draggable key={field.id} draggableId={field.id} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
                         >
-                          remove
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => append({ value: "" })}
-            >
-              Add attribute
-            </Button>
-          </div>
+                          <FormField
+                            control={form.control}
+                            key={field.id}
+                            name={`bucketByMultiple.${index}.value`}
+                            render={({ field }) => (
+                              <FormItem className="cursor-default">
+                                <FormLabel className={cn(index !== 0 && "sr-only")}></FormLabel>
+                                <FormControl>
+                                  <div className="block">
+                                    <Input {...field} className="w-1/3 inline" />{" "}
+                                    <button
+                                      className="inline ml-2 underline text-xs"
+                                      onClick={() => remove(index)}
+                                    >
+                                      remove
+                                    </button>
+                                    <div className="inline ml-2 cursor-grab active:cursor-grabbing">
+                                      <MoveIcon className="inline w-4 h-4" />
+                                    </div>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+
+                  {provided.placeholder}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => append({ value: "" })}
+                  >
+                    Add attribute
+                  </Button>
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         )}
 
         {/* Deprecated */}
