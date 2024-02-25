@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { TestSegment, TestFeature } from "@featurevisor/types";
+import { TestSegment, TestFeature, DatafileContent } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
@@ -9,11 +9,15 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
+import { buildDatafile } from "../builder";
+import { SCHEMA_VERSION } from "../config";
+
 export interface TestProjectOptions {
   keyPattern?: string;
   assertionPattern?: string;
   verbose?: boolean;
   showDatafile?: boolean;
+  singleDatafile?: boolean;
 }
 
 export interface TestPatterns {
@@ -29,11 +33,16 @@ export interface ExecutionResult {
   };
 }
 
+export interface DatafileContentByEnvironment {
+  [environment: string]: DatafileContent;
+}
+
 export async function executeTest(
   testFile: string,
   deps: Dependencies,
   options: TestProjectOptions,
   patterns: TestPatterns,
+  datafileContentByEnvironment: DatafileContentByEnvironment,
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
@@ -69,7 +78,14 @@ export async function executeTest(
   if (type === "segment") {
     testResult = await testSegment(datasource, tAsSegment, patterns);
   } else {
-    testResult = await testFeature(datasource, projectConfig, tAsFeature, options, patterns);
+    testResult = await testFeature(
+      datasource,
+      projectConfig,
+      tAsFeature,
+      options,
+      patterns,
+      datafileContentByEnvironment,
+    );
   }
 
   printTestResult(testResult, testFilePath, rootDirectoryPath);
@@ -124,8 +140,34 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
+  let datafileContentByEnvironment: DatafileContentByEnvironment = {};
+  if (options.singleDatafile) {
+    for (const environment of projectConfig.environments) {
+      const existingState = await datasource.readState(environment);
+      const datafileContent = await buildDatafile(
+        projectConfig,
+        datasource,
+        {
+          schemaVersion: SCHEMA_VERSION,
+          revision: "include-all-features",
+          environment: environment,
+          includeAllFeatures: true,
+        },
+        existingState,
+      );
+
+      datafileContentByEnvironment[environment] = datafileContent;
+    }
+  }
+
   for (const testFile of testFiles) {
-    const executionResult = await executeTest(testFile, deps, options, patterns);
+    const executionResult = await executeTest(
+      testFile,
+      deps,
+      options,
+      patterns,
+      datafileContentByEnvironment,
+    );
 
     if (!executionResult) {
       continue;

@@ -48,6 +48,7 @@ export async function testFeature(
   test: TestFeature,
   options: { verbose?: boolean; showDatafile?: boolean } = {},
   patterns,
+  datafileContentByEnvironment: { [environment: string]: DatafileContent } = {},
 ): Promise<TestResult> {
   const testStartTime = Date.now();
   const featureKey = test.feature;
@@ -81,12 +82,17 @@ export async function testFeature(
         continue;
       }
 
-      const datafileContent = await getDatafileForFeature(
-        test.feature,
-        assertion.environment,
-        projectConfig,
-        datasource,
-      );
+      let datafileContent;
+      if (typeof datafileContentByEnvironment[assertion.environment] !== "undefined") {
+        datafileContent = datafileContentByEnvironment[assertion.environment];
+      } else {
+        datafileContent = await getDatafileForFeature(
+          test.feature,
+          assertion.environment,
+          projectConfig,
+          datasource,
+        );
+      }
 
       if (options.showDatafile) {
         console.log("");

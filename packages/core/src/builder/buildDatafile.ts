@@ -32,6 +32,7 @@ export interface BuildOptions {
   environment: string;
   tag?: string;
   features?: FeatureKey[];
+  includeAllFeatures?: boolean;
 }
 
 export async function buildDatafile(
@@ -66,23 +67,28 @@ export async function buildDatafile(
         continue;
       }
 
-      if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
-        continue;
-      }
-
-      if (options.features && options.features.indexOf(featureKey) === -1) {
-        continue;
-      }
-
-      if (parsedFeature.environments[options.environment].expose === false) {
-        continue;
-      }
-
-      if (Array.isArray(parsedFeature.environments[options.environment].expose)) {
-        const exposeTags = parsedFeature.environments[options.environment].expose as string[];
-
-        if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+      if (
+        typeof options.includeAllFeatures === "undefined" ||
+        options.includeAllFeatures === false
+      ) {
+        if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
           continue;
+        }
+
+        if (options.features && options.features.indexOf(featureKey) === -1) {
+          continue;
+        }
+
+        if (parsedFeature.environments[options.environment].expose === false) {
+          continue;
+        }
+
+        if (Array.isArray(parsedFeature.environments[options.environment].expose)) {
+          const exposeTags = parsedFeature.environments[options.environment].expose as string[];
+
+          if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+            continue;
+          }
         }
       }
 
