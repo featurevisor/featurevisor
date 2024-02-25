@@ -140,7 +140,7 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  let datafileContentByEnvironment: DatafileContentByEnvironment = {};
+  const datafileContentByEnvironment: DatafileContentByEnvironment = {};
   if (options.singleDatafile) {
     for (const environment of projectConfig.environments) {
       const existingState = await datasource.readState(environment);
