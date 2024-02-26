@@ -17,7 +17,7 @@ export interface TestProjectOptions {
   assertionPattern?: string;
   verbose?: boolean;
   showDatafile?: boolean;
-  singleDatafile?: boolean;
+  fast?: boolean;
 }
 
 export interface TestPatterns {
@@ -141,7 +141,7 @@ export async function testProject(
   let failedAssertionsCount = 0;
 
   const datafileContentByEnvironment: DatafileContentByEnvironment = {};
-  if (options.singleDatafile) {
+  if (options.fast) {
     for (const environment of projectConfig.environments) {
       const existingState = await datasource.readState(environment);
       const datafileContent = await buildDatafile(
@@ -151,7 +151,6 @@ export async function testProject(
           schemaVersion: SCHEMA_VERSION,
           revision: "include-all-features",
           environment: environment,
-          includeAllFeatures: true,
         },
         existingState,
       );

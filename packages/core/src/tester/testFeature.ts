@@ -82,17 +82,15 @@ export async function testFeature(
         continue;
       }
 
-      let datafileContent;
-      if (typeof datafileContentByEnvironment[assertion.environment] !== "undefined") {
-        datafileContent = datafileContentByEnvironment[assertion.environment];
-      } else {
-        datafileContent = await getDatafileForFeature(
-          test.feature,
-          assertion.environment,
-          projectConfig,
-          datasource,
-        );
-      }
+      const datafileContent =
+        typeof datafileContentByEnvironment[assertion.environment] !== "undefined"
+          ? datafileContentByEnvironment[assertion.environment]
+          : await getDatafileForFeature(
+              test.feature,
+              assertion.environment,
+              projectConfig,
+              datasource,
+            );
 
       if (options.showDatafile) {
         console.log("");
