@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
+
+
+### Features
+
+* allow option to test by generating datafiles early ([#267](https://github.com/featurevisor/featurevisor/issues/267)) ([d2104ff](https://github.com/featurevisor/featurevisor/commit/d2104ffe25787e2d6deda18b632ad4830139061c))
+
+
+
+
+
 ## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
 
 
