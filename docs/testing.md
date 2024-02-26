@@ -204,6 +204,18 @@ $ featurevisor test --showDatafile
 
 Printing datafile content for each and every tested feature can be very verbose, so we recommend using this option with `--keyPattern` to filter tests.
 
+### `fast`
+
+By default, Featurevisor's test runner would generate a datafile for your feature against the desired environment for each assertion.
+
+If you have a lot of tests, this can be time-consuming. You can use the `--fast` option to generate datafiles for each environment early packing all the features in the project together, and then run the assertions:
+
+```
+$ featurevisor test --fast
+```
+
+**Note**: This approach is memory intensive and therefore not the default behaviour yet.
+
 ## NPM scripts
 
 If you are using npm scripts for testing your Featurevisor project like this:
