@@ -149,7 +149,29 @@ See documentation about `bucketBy` property in feature definitions for further e
 
 ## App Router
 
-We do not have documentation for Featurevisor SDK usage with Next.js App Router yet. If you are interested in contributing, please reach out to us on [GitHub](https://github.com/featurevisor/featurevisor).
+If your using app router, you can use like this 
+
+```js
+// src/app/approuter/page.tsx
+import { getInstance } from "../../featurevisor";
+
+export default function Home() {
+  const featureKey = "my_feature";
+  const context = { userId: "123", country: "nl" };
+
+  const f = await getInstance();
+
+  const isEnabled = f.isEnabled(featureKey, context);
+
+  return (
+    <div>
+      <h1>My page</h1>
+
+      <p>Feature is {props.isEnabled ? "enabled" : "disabled"}!</p>
+    </div>
+  );
+}
+```
 
 ## Working repository
 
