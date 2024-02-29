@@ -149,13 +149,13 @@ See documentation about `bucketBy` property in feature definitions for further e
 
 ## App Router
 
-If your using app router, you can use like this 
+If you are using App Router, you can do something like this:
 
 ```js
 // src/app/approuter/page.tsx
 import { getInstance } from "../../featurevisor";
 
-export default function Home() {
+export default async function Home() {
   const featureKey = "my_feature";
   const context = { userId: "123", country: "nl" };
 
