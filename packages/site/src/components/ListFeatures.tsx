@@ -12,6 +12,8 @@ import { PageContent } from "./PageContent";
 import { LastModified } from "./LastModified";
 import { useSearch } from "../hooks/useSearch";
 
+import Pagination from "./Pagination";
+
 export function ListFeatures() {
   const { features } = useSearch();
 
@@ -78,7 +80,8 @@ export function ListFeatures() {
           </ul>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            A total of <span className="font-bold">{features.length}</span> results found.
+            {/* A total of <span className="font-bold">{features.length}</span> results found. */}
+            <Pagination />
           </p>
         </div>
       )}

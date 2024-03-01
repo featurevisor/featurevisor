@@ -47,6 +47,7 @@ export function App() {
       .then((data) => {
         setSearchIndex(data);
       });
+      console.log("fetchedSearchIndex", fetchedSearchIndex);
   }, []);
 
   const environmentKeys = fetchedSearchIndex
