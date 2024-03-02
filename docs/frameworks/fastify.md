@@ -120,9 +120,9 @@ fastify.get("/my-route", async (request, reply) => {
     const isEnabled = f.isEnabled(featureKey, context);
 
   if (isEnabled) {
-    return "Hello World!";
+    reply.send("Hello World!");
   } else {
-    return "Not enabled yet!";
+    reply.send("Not enabled yet!");
   }
 });
 ```
