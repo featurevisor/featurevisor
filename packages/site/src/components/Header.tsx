@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link, NavLink } from "react-router-dom";
 
 export function Header(props) {
-  const {entitiesCount} = props;
+  const { entitiesCount } = props;
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -37,7 +37,7 @@ export function Header(props) {
             <img
               alt="Featurevisor"
               src="/favicon-128.png"
-              className="w-[36px]"
+              className="w-[63px]"
             />
           </Link>
 
@@ -67,7 +67,7 @@ export function Header(props) {
               >
                 {item.title}
                 <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                {entitiesCount[item.title.toLowerCase()] || 0}
+                  {entitiesCount[item.title.toLowerCase()] || 0}
                 </span>
               </NavLink>
             ))}
@@ -86,20 +86,10 @@ export function Header(props) {
           </Link>
 
           <button className="text-gray-50" onClick={() => setIsOpen(!isOpen)}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
             </svg>
+
           </button>
 
           <main
@@ -144,7 +134,7 @@ export function Header(props) {
                     >
                       {item.title}
                       <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                      {entitiesCount[item.title.toLowerCase()] || 0}
+                        {entitiesCount[item.title.toLowerCase()] || 0}
                       </span>
                     </NavLink>
                   ))}

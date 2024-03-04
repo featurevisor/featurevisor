@@ -5,8 +5,8 @@ export function SearchInput() {
   const { searchQuery, setSearchQuery } = useSearch();
 
   return (
-    <div className="relative px-6 pt-3.5">
-      <div className="pointer-events-none absolute">
+    <div className=" px-6 pt-3.5">
+      <div className="pointer-events-none ">
         <svg
           className="absolute ml-3 mt-5 h-6 w-6 text-slate-400"
           viewBox="0 0 20 20"
