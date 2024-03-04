@@ -11,6 +11,11 @@ import { useSearch } from "../hooks/useSearch";
 
 export function ListSegments() {
   const { segments } = useSearch();
+  const [displayCount, setDisplayCount] = React.useState(10);
+
+  const loadMore = () => {
+    setDisplayCount(displayCount + 10);
+  };
 
   return (
     <PageContent>
@@ -23,7 +28,7 @@ export function ListSegments() {
       {segments.length > 0 && (
         <div>
           <ul className="diving-gray-200 divide-y">
-            {segments.map((segment: any) => (
+            {segments.slice(0, displayCount).map((segment: any) => (
               <li key={segment.key}>
                 <Link to={`/segments/${segment.key}`} className="block hover:bg-gray-50">
                   <div className="px-6 py-4">
@@ -63,9 +68,21 @@ export function ListSegments() {
             ))}
           </ul>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          {/* <p className="mt-6 text-center text-sm text-gray-500">
             A total of <span className="font-bold">{segments.length}</span> results found.
-          </p>
+          </p> */}
+
+          {displayCount < segments.length && (
+            <button
+              className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
+              onClick={() => {
+                loadMore();
+              }}
+            >
+              Load more
+            </button>
+          )}
+
         </div>
       )}
     </PageContent>

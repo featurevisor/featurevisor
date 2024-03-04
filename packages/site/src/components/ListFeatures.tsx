@@ -15,6 +15,11 @@ import { useSearch } from "../hooks/useSearch";
 
 export function ListFeatures() {
   const { features } = useSearch();
+  const [displayCount, setDisplayCount] = React.useState(10);
+
+  const loadMore = () => {
+    setDisplayCount(displayCount + 10);
+  };
 
   return (
     <PageContent>
@@ -27,7 +32,7 @@ export function ListFeatures() {
       {features.length > 0 && (
         <div>
           <ul className="diving-gray-200 divide-y">
-            {features.map((feature: any) => (
+            {features.slice(0, displayCount).map((feature: any) => (
               <li key={feature.key}>
                 <Link to={`/features/${feature.key}`}>
                   <div className="block hover:bg-gray-50">
@@ -78,7 +83,20 @@ export function ListFeatures() {
             ))}
           </ul>
 
-         
+          {/* <p className="mt-6 text-center text-sm text-gray-500">
+            A total of <span className="font-bold">{features.length}</span> results found.
+          </p> */}
+          {displayCount < features.length && (
+            <button
+            className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
+            onClick={() => {
+              loadMore();
+            }}
+          >
+            Load more
+          </button>
+          )}
+
         </div>
       )}
     </PageContent>

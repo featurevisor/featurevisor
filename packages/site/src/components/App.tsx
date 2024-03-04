@@ -56,6 +56,9 @@ export function App() {
           segments: data.entities.segments.length,
           attributes: data.entities.attributes.length,
         })
+        // below line is for pagination testing
+        // data.entities.segments = [...data.entities.segments,...data.entities.segments]
+        // data.entities.attributes = [...data.entities.attributes,...data.entities.attributes]
         setSearchIndex(data);
       });
       console.log("fetchedSearchIndex", fetchedSearchIndex);
