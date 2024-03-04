@@ -40,11 +40,22 @@ import { SearchIndex } from "@featurevisor/types";
 
 export function App() {
   const [fetchedSearchIndex, setSearchIndex] = React.useState(undefined);
+  const [entitiesCount, setEntitiesCount] = React.useState({
+    features: 0,
+    segments: 0,
+    attributes: 0,
+  });
 
   React.useEffect(() => {
     fetch("/search-index.json")
       .then((response) => response.json())
       .then((data) => {
+        console.log("data", data);
+        setEntitiesCount({
+          features: data.entities.features.length,
+          segments: data.entities.segments.length,
+          attributes: data.entities.attributes.length,
+        })
         setSearchIndex(data);
       });
       console.log("fetchedSearchIndex", fetchedSearchIndex);
@@ -55,9 +66,12 @@ export function App() {
     : [];
 
   return (
-    <div>
-      <Header />
+    <div className="grid lg:grid-cols-12">
+      <div className="lg:col-span-2">
+      <Header entitiesCount={entitiesCount}/>
+      </div>
 
+      <div className="lg:col-span-10">
       <main>
         {!fetchedSearchIndex && <Alert type="warning">Loading...</Alert>}
 
@@ -108,9 +122,13 @@ export function App() {
             </Routes>
           </SearchIndexContext.Provider>
         )}
-      </main>
 
       <Footer />
+
+      </main>
+
+      </div>
+
     </div>
   );
 }
