@@ -75,7 +75,7 @@ export function Header(props) {
         </nav>
       </div>
 
-      <div className="lg:hidden block bg-gray-800 w-full h-[60px] sticky sticky-top">
+      <div className="lg:hidden block bg-gray-800 w-full h-[60px] ">
         <nav className="mx-auto flex items-center justify-between px-8 h-full">
           <Link to="/" className="text-gray-50">
             <img
@@ -91,6 +91,7 @@ export function Header(props) {
             </svg>
 
           </button>
+
 
           <main
             className={

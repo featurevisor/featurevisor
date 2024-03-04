@@ -38,20 +38,21 @@ export function ListFeatures() {
                   <div className="block hover:bg-gray-50">
                     <div className="px-6 py-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-md relative font-bold text-slate-600">
+                        <span className="text-md relative font-bold text-slate-600">
                           <EnvironmentDot
                             feature={feature}
                             className="relative top-[0.5px] inline-block pr-2"
                           />{" "}
-                          <a href="#" className="font-bold">
+                          {/* <a href="#" className="font-bold"> */}
                             {feature.key}
-                          </a>{" "}
+                          {/* </a>{" "} */}
                           {feature.archived && (
-                            <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                            <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium
+                             text-red-800">
                               archived
                             </span>
                           )}
-                        </p>
+                        </span>
 
                         <div className="ml-2 flex flex-shrink-0">
                           <div>
