@@ -73,14 +73,16 @@ export function ListSegments() {
           </p> */}
 
           {displayCount < segments.length && (
-            <button
-              className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
-              onClick={() => {
-                loadMore();
-              }}
-            >
-              Load more
-            </button>
+            <div className="px-6">
+              <button
+                className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
+                onClick={() => {
+                  loadMore();
+                }}
+              >
+                Load more
+              </button>
+            </div>
           )}
 
         </div>

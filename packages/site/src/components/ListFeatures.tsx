@@ -44,7 +44,7 @@ export function ListFeatures() {
                             className="relative top-[0.5px] inline-block pr-2"
                           />{" "}
                           {/* <a href="#" className="font-bold"> */}
-                            {feature.key}
+                          {feature.key}
                           {/* </a>{" "} */}
                           {feature.archived && (
                             <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium
@@ -88,14 +88,16 @@ export function ListFeatures() {
             A total of <span className="font-bold">{features.length}</span> results found.
           </p> */}
           {displayCount < features.length && (
-            <button
-            className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
-            onClick={() => {
-              loadMore();
-            }}
-          >
-            Load more
-          </button>
+            <div className="px-6">
+              <button
+                className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
+                onClick={() => {
+                  loadMore();
+                }}
+              >
+                Load more
+              </button>
+            </div>
           )}
 
         </div>
