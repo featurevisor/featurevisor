@@ -84,7 +84,6 @@ export function ListSegments() {
               </button>
             </div>
           )}
-
         </div>
       )}
     </PageContent>

@@ -90,7 +90,6 @@ export function ListAttributes() {
               </button>
             </div>
           )}
-
         </div>
       )}
     </PageContent>

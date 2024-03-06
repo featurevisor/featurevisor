@@ -34,11 +34,7 @@ export function Header(props) {
       <div className="bg-gray-800 lg:h-screen  fixed w-[18%] overflow-auto lg:block hidden">
         <nav className="mx-auto flex flex-col items-start justify-start px-8 pt-3">
           <Link to="/" className="text-gray-50 mb-8 flex align-middle justify-center w-full h-full">
-            <img
-              alt="Featurevisor"
-              src="/favicon-128.png"
-              className="w-[63px]"
-            />
+            <img alt="Featurevisor" src="/favicon-128.png" className="w-[63px]" />
           </Link>
 
           <div className="relative flex flex-col gap-y-4 w-full">
@@ -78,20 +74,25 @@ export function Header(props) {
       <div className="lg:hidden block bg-gray-800 w-full h-[60px] ">
         <nav className="mx-auto flex items-center justify-between px-8 h-full">
           <Link to="/" className="text-gray-50">
-            <img
-              alt="Featurevisor"
-              src="/favicon-128.png"
-              className="w-[36px]"
-            />
+            <img alt="Featurevisor" src="/favicon-128.png" className="w-[36px]" />
           </Link>
 
           <button className="text-gray-50" onClick={() => setIsOpen(!isOpen)}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"
+              />
             </svg>
-
           </button>
-
 
           <main
             className={
@@ -149,10 +150,8 @@ export function Header(props) {
               }}
             ></section>
           </main>
-
         </nav>
       </div>
-
     </>
   );
 }

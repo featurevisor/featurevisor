@@ -12,7 +12,6 @@ import { PageContent } from "./PageContent";
 import { LastModified } from "./LastModified";
 import { useSearch } from "../hooks/useSearch";
 
-
 export function ListFeatures() {
   const { features } = useSearch();
   const [displayCount, setDisplayCount] = React.useState(10);
@@ -47,8 +46,10 @@ export function ListFeatures() {
                           {feature.key}
                           {/* </a>{" "} */}
                           {feature.archived && (
-                            <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium
-                             text-red-800">
+                            <span
+                              className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium
+                             text-red-800"
+                            >
                               archived
                             </span>
                           )}
@@ -99,7 +100,6 @@ export function ListFeatures() {
               </button>
             </div>
           )}
-
         </div>
       )}
     </PageContent>

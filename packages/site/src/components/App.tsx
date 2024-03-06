@@ -55,13 +55,13 @@ export function App() {
           features: data.entities.features.length,
           segments: data.entities.segments.length,
           attributes: data.entities.attributes.length,
-        })
+        });
         // below line is for pagination testing
         // data.entities.segments = [...data.entities.segments,...data.entities.segments]
         // data.entities.attributes = [...data.entities.attributes,...data.entities.attributes]
         setSearchIndex(data);
       });
-      // console.log("fetchedSearchIndex", fetchedSearchIndex);
+    // console.log("fetchedSearchIndex", fetchedSearchIndex);
   }, []);
 
   const environmentKeys = fetchedSearchIndex
@@ -71,67 +71,64 @@ export function App() {
   return (
     <div className="grid lg:grid-cols-12">
       <div className="lg:col-span-2">
-      <Header entitiesCount={entitiesCount}/>
+        <Header entitiesCount={entitiesCount} />
       </div>
 
       <div className="lg:col-span-10">
-      <main>
-        {!fetchedSearchIndex && <Alert type="warning">Loading...</Alert>}
+        <main>
+          {!fetchedSearchIndex && <Alert type="warning">Loading...</Alert>}
 
-        {fetchedSearchIndex && (
-          <SearchIndexContext.Provider value={{ isLoaded: true, data: fetchedSearchIndex }}>
-            <Routes>
-              <Route path="features">
-                <Route index element={<ListFeatures />} />
+          {fetchedSearchIndex && (
+            <SearchIndexContext.Provider value={{ isLoaded: true, data: fetchedSearchIndex }}>
+              <Routes>
+                <Route path="features">
+                  <Route index element={<ListFeatures />} />
 
-                <Route path=":featureKey" element={<ShowFeature />}>
-                  <Route index element={<DisplayFeatureOverview />} />
-                  <Route path="variations" element={<DisplayFeatureVariations />} />
-                  <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
-                  <Route path="rules" element={<DisplayFeatureRules />}>
-                    <Route path=":environmentKey" element={<DisplayFeatureRulesTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                  <Route path=":featureKey" element={<ShowFeature />}>
+                    <Route index element={<DisplayFeatureOverview />} />
+                    <Route path="variations" element={<DisplayFeatureVariations />} />
+                    <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
+                    <Route path="rules" element={<DisplayFeatureRules />}>
+                      <Route path=":environmentKey" element={<DisplayFeatureRulesTable />} />
+                      <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                    </Route>
+                    <Route path="force" element={<DisplayFeatureForce />}>
+                      <Route path=":environmentKey" element={<DisplayFeatureForceTable />} />
+                      <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                    </Route>
+                    <Route path="history" element={<DisplayFeatureHistory />} />
                   </Route>
-                  <Route path="force" element={<DisplayFeatureForce />}>
-                    <Route path=":environmentKey" element={<DisplayFeatureForceTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                </Route>
+
+                <Route path="segments">
+                  <Route index element={<ListSegments />} />
+
+                  <Route path=":segmentKey" element={<ShowSegment />}>
+                    <Route index element={<DisplaySegmentOverview />} />
+                    <Route path="usage" element={<DisplaySegmentUsage />} />
+                    <Route path="history" element={<DisplaySegmentHistory />} />
                   </Route>
-                  <Route path="history" element={<DisplayFeatureHistory />} />
                 </Route>
-              </Route>
 
-              <Route path="segments">
-                <Route index element={<ListSegments />} />
+                <Route path="attributes">
+                  <Route index element={<ListAttributes />} />
 
-                <Route path=":segmentKey" element={<ShowSegment />}>
-                  <Route index element={<DisplaySegmentOverview />} />
-                  <Route path="usage" element={<DisplaySegmentUsage />} />
-                  <Route path="history" element={<DisplaySegmentHistory />} />
+                  <Route path=":attributeKey" element={<ShowAttribute />}>
+                    <Route index element={<DisplayAttributeOverview />} />
+                    <Route path="usage" element={<DisplayAttributeUsage />} />
+                    <Route path="history" element={<DisplayAttributeHistory />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              <Route path="attributes">
-                <Route index element={<ListAttributes />} />
+                <Route path="history" element={<ListHistory />} />
+                <Route index element={<Navigate to="features" replace />} />
+              </Routes>
+            </SearchIndexContext.Provider>
+          )}
 
-                <Route path=":attributeKey" element={<ShowAttribute />}>
-                  <Route index element={<DisplayAttributeOverview />} />
-                  <Route path="usage" element={<DisplayAttributeUsage />} />
-                  <Route path="history" element={<DisplayAttributeHistory />} />
-                </Route>
-              </Route>
-
-              <Route path="history" element={<ListHistory />} />
-              <Route index element={<Navigate to="features" replace />} />
-            </Routes>
-          </SearchIndexContext.Provider>
-        )}
-
-      <Footer />
-
-      </main>
-
+          <Footer />
+        </main>
       </div>
-
     </div>
   );
 }
