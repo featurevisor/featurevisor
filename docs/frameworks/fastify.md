@@ -96,7 +96,7 @@ start()
 
 ## Decorator
 
-If is very unlikely that we will have all our routes defined in the same index.js file, making it difficult for us to use the same Featurevisor SDK instance in all of them.
+It is very unlikely that we will have all our routes defined in the same index.js file, making it difficult for us to use the same Featurevisor SDK instance in all of them.
 
 To solve this problem, we can create a custom decorator that will set the Featurevisor SDK instance to the request object, so that we can use the same instance in all our routes throughout the lifecycle of this application.
 
@@ -117,7 +117,7 @@ fastify.get("/my-route", async (request, reply) => {
     const featureKey = "my_feature";
     const context = { userId: "123", country: "nl" };
 
-    const isEnabled = f.isEnabled(featureKey, context);
+    const isEnabled = request.f.isEnabled(featureKey, context);
 
   if (isEnabled) {
     reply.send("Hello World!");
