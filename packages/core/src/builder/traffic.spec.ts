@@ -47,6 +47,54 @@ describe("core: Traffic", function () {
     ]);
   });
 
+  it("should allocate traffic for 0-100 weight on two variations", function () {
+    const result = getTraffic(
+      // parsed variations from YAML
+      [
+        {
+          value: "control",
+          weight: 0,
+        },
+        {
+          value: "treatment",
+          weight: 100,
+        },
+      ],
+
+      // parsed rollouts from YAML
+      [
+        {
+          key: "1",
+          segments: "*",
+          percentage: 80,
+        },
+      ],
+
+      // existing feature from previous release
+      undefined,
+    );
+
+    expect(result).toEqual([
+      {
+        key: "1",
+        segments: "*",
+        percentage: 80000,
+        allocation: [
+          // should be filtered out automatically
+          // {
+          //   variation: "control",
+          //   range: [0, 0],
+          // },
+
+          {
+            variation: "treatment",
+            range: [0, 80000],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("should allocate traffic for 50-50 weight on two variations", function () {
     const result = getTraffic(
       // parsed variations from YAML
