@@ -1,0 +1,39 @@
+name: Feature Reviewer Assignment and Approval Check
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+    pull_request_review:
+        types: [submitted]
+
+jobs:
+    assign-reviewers:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Assign reviewers
+              if: github.event_name == 'pull_request'
+              run: node ./scripts/assign-reviewers.js
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # check-approvals:
+    #     needs: assign-reviewers
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Checkout code
+    #             uses: actions/checkout@v2
+
+    #         - name: Install dependencies
+    #             run: npm ci
+
+    #         - name: Check approvals
+    #             if: github.event_name == 'pull_request_review'
+    #             run: node .github/scripts/check-approvals.js
+    #             env:
+    #                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,15 @@
+##
+# Everything 
+#
+* @username 
+
+##
+# Specific feature (all environments)
+#
+my_feature @username
+
+##
+# Specific feature, with specific environments
+#
+my_feature staging @user-1
+my_feature production @user-2
