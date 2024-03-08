@@ -37,7 +37,7 @@ $ featurevisor build
 
 ```
 $ git add .featurevisor/*
-$ git commit -m "State files"
+$ git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
 ```
 
 Only the [state files](/docs/state-files) should be committed as available under `.featurevisor` directory. The generated datafiles in `dist` directory are ignored from Git.
