@@ -11,21 +11,21 @@ We recommend that you set up a CI/CD pipeline to automate the build and deployme
 
 When a new Pull Request (branch) is merged, the CI/CD pipeline should:
 
-### Lint your files
+### Linting
 
 Lint all the attributes, segments, and feature definitions:
 
 ```
-$ fearurevisor lint
+$ featurevisor lint
 ```
 
-### Version your project
+### Testing
+
+Test all the features and segments:
 
 ```
-$ npm version patch
+$ featurevisor test
 ```
-
-The new `version` value as available in `package.json` file will be used when building datafiles.
 
 ### Build the datafiles
 
@@ -36,11 +36,11 @@ $ featurevisor build
 ### Commit the state files
 
 ```
-$ git add .
+$ git add .featurevisor/*
 $ git commit -m "State files"
 ```
 
-Only the state files should be committed as available under `.featurevisor` directory. The generated datafiles in `dist` directory are ignored.
+Only the [state files](/docs/state-files) should be committed as available under `.featurevisor` directory. The generated datafiles in `dist` directory are ignored from Git.
 
 ### Upload to your CDN
 
@@ -53,7 +53,7 @@ You can use the `dist` directory as the root directory for your CDN.
 We want to make sure the next Pull Request merge will be on top of the latest version and state files.
 
 ```
-$ git push origin main --tags
+$ git push origin main
 ```
 
 If any of the steps above fail, the CI/CD pipeline should stop and notify the team.

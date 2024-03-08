@@ -65,11 +65,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build
-        run: npm run build
-
       - name: Test specs
         run: npm test
+
+      - name: Build
+        run: npm run build
 ```
 
 ### Publish
@@ -104,31 +104,44 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Git configs
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-
-      - name: Version
-        run: npm version patch
+      - name: Test specs
+        run: npm test
 
       - name: Build
         run: npm run build
-
-      - name: Test specs
-        run: npm test
 
       - name: Upload datafiles
         run: echo "Uploading..."
         # Update it accordingly based on your CDN set up
 
+      - name: Git configs
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
       - name: Push back to origin
         run: |
           git add .featurevisor/*
-          git commit --amend --no-edit
+          git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
           git push
 ```
 
 After generating new datafiles and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
 If you want an example of an actual uploading step, see [Cloudflare Pages](/docs/integrations/cloudflare-pages/) integration guide.
+
+## Sequential builds
+
+It is possible you might want to run the publish workflow sequentially for every merged Pull Requests, in case multiple Pull Requests are merged in quick succession.
+
+### Queue
+
+You can consider using [softprops/turnstyle](https://github.com/softprops/turnstyle) GitHub Action to run publish workflow of all your merged Pull Requests sequentially.
+
+### Branch protection rules
+
+Next to it, you can also make it stricter by requiring all Pull Request authors to have their branches up to date from latest main branch before merging:
+
+- [Managing suggestions to update pull request branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-suggestions-to-update-pull-request-branches)
+- [Create branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule#creating-a-branch-protection-rule) (see #7)
+  -  Require branches to be up to date before merging
