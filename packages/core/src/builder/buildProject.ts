@@ -54,7 +54,8 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const environments = projectConfig.environments;
 
   const currentRevision = await datasource.readRevision();
-  const nextRevision = getNextRevision(currentRevision);
+  const nextRevision =
+    (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);
@@ -69,7 +70,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         datasource,
         {
           schemaVersion: SCHEMA_VERSION,
-          revision: cliOptions.revision || nextRevision,
+          revision: nextRevision,
           environment: environment,
           tag: tag,
         },
