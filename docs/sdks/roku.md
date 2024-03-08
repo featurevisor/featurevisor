@@ -1,9 +1,12 @@
 ---
 title: Roku SDK
 description: Learn how to use Featurevisor Roku SDK
+ogImage: /img/og/docs-sdks-roku.png
 ---
 
-BrightScript SDK for Roku. This package is meant to be used with a [kopytko-framework](https://github.com/getndazn/kopytko-framework), however, if you don't use it, you can simply copy all SDK files and their dependencies to your project (version will be prepared in the future, once anyone is interested in using such).
+BrightScript SDK for Roku is meant to be used with [kopytko-framework](https://github.com/getndazn/kopytko-framework). {% .lead %}
+
+However, if you don't use it, you can simply copy all SDK files and their dependencies to your project (a version will be prepared in the future if anyone is interested).
 
 ## Installation
 
