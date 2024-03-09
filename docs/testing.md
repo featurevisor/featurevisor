@@ -204,6 +204,14 @@ $ featurevisor test --showDatafile
 
 Printing datafile content for each and every tested feature can be very verbose, so we recommend using this option with `--keyPattern` to filter tests.
 
+### `onlyFailures`
+
+If you are interested to see only the test specs that fail:
+
+```
+$ featurevisor test --onlyFailures
+```
+
 ### `fast`
 
 By default, Featurevisor's test runner would generate a datafile for your feature against the desired environment for each assertion.
