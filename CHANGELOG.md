@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+
+### Features
+
+* allow printing datafile per environment ([#275](https://github.com/featurevisor/featurevisor/issues/275)) ([28b4a0f](https://github.com/featurevisor/featurevisor/commit/28b4a0f776e2510f821a7c9d912c3c348857a729))
+
+
+
+
+
 # [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
 
 
