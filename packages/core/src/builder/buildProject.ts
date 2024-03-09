@@ -52,6 +52,8 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const environments = projectConfig.environments;
 
   const currentRevision = await datasource.readRevision();
+  console.log("\nCurrent revision:", currentRevision);
+
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
@@ -88,4 +90,6 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
     // write revision
     await datasource.writeRevision(nextRevision);
   }
+
+  console.log("\nLatest revision:", nextRevision);
 }
