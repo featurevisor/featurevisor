@@ -54,7 +54,7 @@ $ featurevisor build --revision 1.2.3
 
 ## Printing
 
-You can print the contents of a datafile for a single feature and or environment without writing anything to disk by passing these flags:
+You can print the contents of a datafile for a single feature in/or an environment without writing anything to disk by passing these flags:
 
 ```
 $ featurevisor build --feature=foo --environment=production --print --pretty
