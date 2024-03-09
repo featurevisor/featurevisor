@@ -2,8 +2,7 @@ import * as path from "path";
 
 import { SCHEMA_VERSION } from "../config";
 
-import { buildDatafile } from "./buildDatafile";
-import { getDatafileForFeature } from "../tester";
+import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
 
 export interface BuildCLIOptions {
@@ -23,20 +22,20 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * This build process does not write to disk, and prints only to stdout.
    *
    * This is ideally for test runners in other languages,
-   * when they wish to get datafile for a single feature,
+   * when they wish to get datafile for a single feature and/or environment,
    * so they can run tests against their own SDKs in other languages.
    *
    * This way we centralize the datafile generation in one place,
    * while tests can be run anywhere else.
    */
-  if (cliOptions.environment && cliOptions.feature && cliOptions.print) {
-    const datafileContent = await getDatafileForFeature(
-      cliOptions.feature,
-      cliOptions.environment,
+  if (cliOptions.environment && cliOptions.print) {
+    const datafileContent = await getCustomDatafile({
+      featureKey: cliOptions.feature,
+      environment: cliOptions.environment,
       projectConfig,
       datasource,
-      cliOptions.revision,
-    );
+      revision: cliOptions.revision,
+    });
 
     if (cliOptions.pretty) {
       console.log(JSON.stringify(datafileContent, null, 2));
