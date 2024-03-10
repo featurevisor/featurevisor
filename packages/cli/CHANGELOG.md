@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
+
+
+### Bug Fixes
+
+* init command ([#277](https://github.com/featurevisor/featurevisor/issues/277)) ([1e46d79](https://github.com/featurevisor/featurevisor/commit/1e46d7992a632ce956e8821dbaae9677bef59a43))
+
+
+
+
+
 # [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
 
 
