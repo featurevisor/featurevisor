@@ -25,7 +25,7 @@ After you have installed the dependencies in the project:
 
 ```
 $ npm install
-``
+```
 
 You can access the Featurevisor CLI from inside the project via:
 
