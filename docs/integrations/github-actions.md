@@ -14,7 +14,9 @@ This guide assumes you have created a new Featurevisor project using the CLI:
 
 ```
 $ mkdir my-featurevisor-project && cd my-featurevisor-project
+
 $ npx @featurevisor/cli init
+$ npm install
 ```
 
 ## Repository settings
