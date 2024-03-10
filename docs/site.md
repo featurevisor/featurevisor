@@ -24,7 +24,7 @@ The git repo also needs to have an `origin` remote set up, in order for the edit
 Use Featurevisor CLI:
 
 ```
-$ featurevisor site export
+$ npx featurevisor site export
 ```
 
 The generated static site will be available in the `out` directory.
@@ -34,7 +34,7 @@ The generated static site will be available in the `out` directory.
 Run:
 
 ```
-$ featurevisor site serve
+$ npx featurevisor site serve
 ```
 
 ## Screenshots

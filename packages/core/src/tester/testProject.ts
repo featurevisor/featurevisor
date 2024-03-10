@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { TestSegment, TestFeature } from "@featurevisor/types";
+import { TestSegment, TestFeature, DatafileContent } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
@@ -9,11 +9,16 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
+import { buildDatafile } from "../builder";
+import { SCHEMA_VERSION } from "../config";
+
 export interface TestProjectOptions {
   keyPattern?: string;
   assertionPattern?: string;
   verbose?: boolean;
   showDatafile?: boolean;
+  onlyFailures?: boolean;
+  fast?: boolean;
 }
 
 export interface TestPatterns {
@@ -29,11 +34,16 @@ export interface ExecutionResult {
   };
 }
 
+export interface DatafileContentByEnvironment {
+  [environment: string]: DatafileContent;
+}
+
 export async function executeTest(
   testFile: string,
   deps: Dependencies,
   options: TestProjectOptions,
   patterns: TestPatterns,
+  datafileContentByEnvironment: DatafileContentByEnvironment,
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
@@ -69,10 +79,25 @@ export async function executeTest(
   if (type === "segment") {
     testResult = await testSegment(datasource, tAsSegment, patterns);
   } else {
-    testResult = await testFeature(datasource, projectConfig, tAsFeature, options, patterns);
+    testResult = await testFeature(
+      datasource,
+      projectConfig,
+      tAsFeature,
+      options,
+      patterns,
+      datafileContentByEnvironment,
+    );
   }
 
-  printTestResult(testResult, testFilePath, rootDirectoryPath);
+  if (!options.onlyFailures) {
+    // show all
+    printTestResult(testResult, testFilePath, rootDirectoryPath);
+  } else {
+    // show failed only
+    if (!testResult.passed) {
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
+    }
+  }
 
   if (!testResult.passed) {
     executionResult.passed = false;
@@ -124,8 +149,33 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
+  const datafileContentByEnvironment: DatafileContentByEnvironment = {};
+  if (options.fast) {
+    for (const environment of projectConfig.environments) {
+      const existingState = await datasource.readState(environment);
+      const datafileContent = await buildDatafile(
+        projectConfig,
+        datasource,
+        {
+          schemaVersion: SCHEMA_VERSION,
+          revision: "include-all-features",
+          environment: environment,
+        },
+        existingState,
+      );
+
+      datafileContentByEnvironment[environment] = datafileContent;
+    }
+  }
+
   for (const testFile of testFiles) {
-    const executionResult = await executeTest(testFile, deps, options, patterns);
+    const executionResult = await executeTest(
+      testFile,
+      deps,
+      options,
+      patterns,
+      datafileContentByEnvironment,
+    );
 
     if (!executionResult) {
       continue;
@@ -144,7 +194,10 @@ export async function testProject(
 
   const diffInMs = Date.now() - startTime;
 
-  console.log("\n---\n");
+  if (options.onlyFailures !== true || hasError) {
+    console.log("\n---");
+  }
+  console.log("");
 
   const testSpecsMessage = `Test specs: ${passedTestsCount} passed, ${failedTestsCount} failed`;
   const testAssertionsMessage = `Assertions: ${passedAssertionsCount} passed, ${failedAssertionsCount} failed`;

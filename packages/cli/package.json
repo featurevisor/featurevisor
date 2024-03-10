@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/cli",
-  "version": "1.7.3",
+  "version": "1.11.0",
   "description": "CLI package of Featurevisor",
   "main": "bin.js",
   "types": "lib/index.d.ts",
@@ -47,7 +47,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/core": "^1.7.3",
+    "@featurevisor/core": "^1.11.0",
     "yargs": "^17.6.2"
   },
   "devDependencies": {

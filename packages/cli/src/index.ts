@@ -45,8 +45,9 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
   return getProjectConfig(rootDirectoryPath);
 }
 
+const rootDirectoryPath = process.cwd();
+
 async function getDependencies(options): Promise<Dependencies> {
-  const rootDirectoryPath = process.cwd();
   const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
   const datasource = new Datasource(projectConfig, rootDirectoryPath);
 
@@ -68,8 +69,7 @@ async function main() {
     .command({
       command: "init",
       handler: async function (options) {
-        const deps = await getDependencies(options);
-        const hasError = await initProject(deps.rootDirectoryPath, options.example);
+        const hasError = await initProject(rootDirectoryPath, options.example);
 
         if (hasError) {
           process.exit(1);
@@ -149,6 +149,8 @@ async function main() {
           assertionPattern: options.assertionPattern,
           verbose: options.verbose || false,
           showDatafile: options.showDatafile || false,
+          fast: options.fast || false,
+          onlyFailures: options.onlyFailures || false,
         };
 
         const hasError = await testProject(deps, testOptions);

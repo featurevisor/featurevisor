@@ -7,13 +7,7 @@ Visit [https://featurevisor.com/docs/cli](https://featurevisor.com/docs/cli) for
 ## Installation
 
 ```
-$ npm install -g @featurevisor/cli
-```
-
-Or via `npx`:
-
-```
-$ npx featurevisor <command>
+$ npm install --save-dev @featurevisor/cli
 ```
 
 ## Usage
@@ -23,13 +17,15 @@ $ npx featurevisor <command>
 Initialize your project.
 
 ```
-$ featurevisor init
+$ mkdir my-featurevisor-project && cd my-featurevisor-project
+$ npx @featurevisor/cli init
+$ npm install
 ```
 
 If you want to initialize your project with a specific example:
 
 ```
-$ featurevisor init --example <name>
+$ npx @featurevisor/cli init --example <name>
 ```
 
 Examples found [here](../../examples).
@@ -39,7 +35,7 @@ Examples found [here](../../examples).
 Check if your YAMLs are valid.
 
 ```
-$ featurevisor lint
+$ npx featurevisor lint
 ```
 
 
@@ -48,7 +44,7 @@ $ featurevisor lint
 Build your datafiles.
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 ### `test`
@@ -56,7 +52,7 @@ $ featurevisor build
 Test your generated datafiles using the SDK, against specs written in YAMLs.
 
 ```
-$ featurevisor test
+$ npx featurevisor test
 ```
 
 See test specs in YAMLs [here](../../examples/example-1/tests) for inspiration.
@@ -66,8 +62,8 @@ See test specs in YAMLs [here](../../examples/example-1/tests) for inspiration.
 Start a local server to view your project's site.
 
 ```
-$ featurevisor site export
-$ featurevisor site serve
+$ npx featurevisor site export
+$ npx featurevisor site serve
 ```
 
 ## License

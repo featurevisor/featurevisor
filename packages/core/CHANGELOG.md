@@ -3,6 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+
+### Features
+
+* revisioning info moved to its own file ([#274](https://github.com/featurevisor/featurevisor/issues/274)) ([6a175d1](https://github.com/featurevisor/featurevisor/commit/6a175d1be01c1ab78661bbd93d535de69af47135))
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+
+### Features
+
+* allow showing only failed specs in test runner ([#276](https://github.com/featurevisor/featurevisor/issues/276)) ([cefab8f](https://github.com/featurevisor/featurevisor/commit/cefab8f8c0eb091c10bee213039920d55fa3957a))
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+
+### Features
+
+* allow printing datafile per environment ([#275](https://github.com/featurevisor/featurevisor/issues/275)) ([28b4a0f](https://github.com/featurevisor/featurevisor/commit/28b4a0f776e2510f821a7c9d912c3c348857a729))
+
+
+
+
+
+# [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
+
+
+### Features
+
+* allow option to test by generating datafiles early ([#267](https://github.com/featurevisor/featurevisor/issues/267)) ([d2104ff](https://github.com/featurevisor/featurevisor/commit/d2104ffe25787e2d6deda18b632ad4830139061c))
+
+
+
+
+
 ## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
 
 

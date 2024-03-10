@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
+## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
+# [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
 ## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
 
 **Note:** Version bump only for package @featurevisor/example-json
