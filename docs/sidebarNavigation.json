@@ -52,7 +52,8 @@
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
       { "title": "Astro", "href": "/docs/frameworks/astro" },
-      { "title": "Express.js", "href": "/docs/frameworks/express" }
+      { "title": "Express.js", "href": "/docs/frameworks/express" },
+      { "title": "Fastify", "href": "/docs/frameworks/fastify" }
     ]
   },
   {
