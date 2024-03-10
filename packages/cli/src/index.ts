@@ -149,6 +149,7 @@ async function main() {
           verbose: options.verbose || false,
           showDatafile: options.showDatafile || false,
           fast: options.fast || false,
+          onlyFailures: options.onlyFailures || false,
         };
 
         const hasError = await testProject(deps, testOptions);
