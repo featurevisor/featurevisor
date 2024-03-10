@@ -1,7 +1,6 @@
-import * as path from "path";
-
 import { SCHEMA_VERSION } from "../config";
 
+import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
 
@@ -16,7 +15,7 @@ export interface BuildCLIOptions {
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
-  const { rootDirectoryPath, projectConfig, datasource } = deps;
+  const { projectConfig, datasource } = deps;
 
   /**
    * This build process does not write to disk, and prints only to stdout.
@@ -52,7 +51,11 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const tags = projectConfig.tags;
   const environments = projectConfig.environments;
 
-  const pkg = require(path.join(rootDirectoryPath, "package.json"));
+  const currentRevision = await datasource.readRevision();
+  console.log("\nCurrent revision:", currentRevision);
+
+  const nextRevision =
+    (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
   for (const environment of environments) {
     console.log(`\nBuilding datafiles for environment: ${environment}`);
@@ -67,7 +70,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         datasource,
         {
           schemaVersion: SCHEMA_VERSION,
-          revision: cliOptions.revision || pkg.version,
+          revision: nextRevision,
           environment: environment,
           tag: tag,
         },
@@ -83,5 +86,10 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
     // write state for environment
     await datasource.writeState(environment, existingState);
+
+    // write revision
+    await datasource.writeRevision(nextRevision);
   }
+
+  console.log("\nLatest revision:", nextRevision);
 }

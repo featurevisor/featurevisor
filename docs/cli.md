@@ -8,33 +8,29 @@ Beyond just initializing a project and building datafiles, Featurevisor CLI can 
 
 ## Installation
 
-Install with `npm`:
+Use `npx` to initialize a project first:
 
 ```
-$ npm install -g @featurevisor/cli
-```
-
-Or use `npx` to run the CLI without installing it:
-
-```
-$ npx @featurevisor/cli <command>
-```
-
-Rest of the documentation assumes that you have installed the CLI globally.
-
-## Initializing a project
-
-Scaffold a new project in your working directory:
-
-```
-$ mkdir my-project && cd my-project
-$ featurevisor init
+$ mkdir my-featurevisor-project && cd my-featurevisor-project
+$ npx @featurevisor/cli init
 ```
 
 If you wish to initialize a specific example as available in the [monorepo](https://github.com/featurevisor/featurevisor/tree/main/examples):
 
 ```
-$ featurevisor init --example <name>
+$ npx @featurevisor/cli init --example <name>
+```
+
+After you have installed the dependencies in the project:
+
+```
+$ npm install
+``
+
+You can access the Featurevisor CLI from inside the project via:
+
+```
+$ npx featurevisor
 ```
 
 Learn more in [Quick start](/docs/quick-start).
@@ -44,7 +40,7 @@ Learn more in [Quick start](/docs/quick-start).
 Check if the YAML files have any syntax or structural errors:
 
 ```
-$ featurevisor lint
+$ npx featurevisor lint
 ```
 
 Lear more in [Linting](/docs/linting).
@@ -54,7 +50,7 @@ Lear more in [Linting](/docs/linting).
 Generate JSON files on a per environment and tag combination as exists in project [configuration](/docs/configuration):
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 Learn more in [Building datafiles](/docs/building-datafiles).
@@ -64,7 +60,7 @@ Learn more in [Building datafiles](/docs/building-datafiles).
 Test your features and segments:
 
 ```
-$ featurevisor test
+$ npx featurevisor test
 ```
 
 Learn more in [Testing](/docs/testing).
@@ -76,7 +72,7 @@ Building datafiles also generates [state files](/docs/state-files).
 To restore them to last known state in Git, run:
 
 ```
-$ featurevisor restore
+$ npx featurevisor restore
 ```
 
 ## Generate static site
@@ -84,19 +80,19 @@ $ featurevisor restore
 Build the site:
 
 ```
-$ featurevisor site export
+$ npx featurevisor site export
 ```
 
 Serve the built site (defaults to port 3000):
 
 ```
-$ featurevisor site serve
+$ npx featurevisor site serve
 ```
 
 Serve it in a specific port:
 
 ```
-$ featurevisor site serve -p 3000
+$ npx featurevisor site serve -p 3000
 ```
 
 Learn more in [Status site](/docs/status-site).
@@ -107,7 +103,7 @@ Learn more in [Status site](/docs/status-site).
 Generate TypeScript code from your YAMLs:
 
 ```
-$ featurevisor generate-code --language typescript --out-dir ./src
+$ npx featurevisor generate-code --language typescript --out-dir ./src
 ```
 
 See output in `./src` directory.
@@ -121,5 +117,5 @@ It is possible to end up with multiple segments having same conditions in larger
 We can find these duplicates early on by running:
 
 ```
-$ featurevisor find-duplicate-segments
+$ npx featurevisor find-duplicate-segments
 ```

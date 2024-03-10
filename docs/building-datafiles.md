@@ -10,7 +10,7 @@ Datafiles are JSON files that are created against combinations of tags and envir
 Use Featurevisor CLI to build your datafiles:
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 ## Output
@@ -49,7 +49,7 @@ By default, Featurevisor will use the `version` as exists in `package.json` of t
 You can optionally customize the `revision` value in datafiles by passing a `--revision` flag when building:
 
 ```
-$ featurevisor build --revision 1.2.3
+$ npx featurevisor build --revision 1.2.3
 ```
 
 ## Printing
@@ -57,13 +57,13 @@ $ featurevisor build --revision 1.2.3
 You can print the contents of a datafile for a single feature in/or an environment without writing anything to disk by passing these flags:
 
 ```
-$ featurevisor build --feature=foo --environment=production --print --pretty
+$ npx featurevisor build --feature=foo --environment=production --print --pretty
 ```
 
 Or if you with to print datafile containing all features for a specific environment:
 
 ```
-$ featurevisor build --environment=production --print --pretty
+$ npx featurevisor build --environment=production --print --pretty
 ```
 
 This is useful primarily for debugging and testing purposes.

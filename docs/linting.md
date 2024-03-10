@@ -10,7 +10,7 @@ Featurevisor provides a CLI command to lint your definition files, making sure t
 Run:
 
 ```
-$ featurevisor lint
+$ npx featurevisor lint
 ```
 
 And it will show you the errors in your definition files, if any.
@@ -24,7 +24,7 @@ If any errors are found, it will terminate with a non-zero exit code.
 You can also filter keys using regex patterns:
 
 ```
-$ featurevisor lint --keyPattern="myKeyHere"
+$ npx featurevisor lint --keyPattern="myKeyHere"
 ```
 
 ### `entityType`
@@ -32,7 +32,7 @@ $ featurevisor lint --keyPattern="myKeyHere"
 If you want to filter it down further by entity type:
 
 ```
-$ featurevisor lint --keyPattern="myKeyHere" --entityType="feature"
+$ npx featurevisor lint --keyPattern="myKeyHere" --entityType="feature"
 ```
 
 Possible values for `--entityType`:

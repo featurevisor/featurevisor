@@ -14,14 +14,10 @@ This guide assumes you have created a new Featurevisor project using the CLI:
 
 ```
 $ mkdir my-featurevisor-project && cd my-featurevisor-project
+
 $ npx @featurevisor/cli init
+$ npm install
 ```
-
-The initialized project will already contain the npm scripts for linting, building, and testing your project:
-
-- `lint`: `featurevisor lint`
-- `build`: `featurevisor build`
-- `test`: `featurevisor test`
 
 ## Cloudflare Pages
 
@@ -78,13 +74,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
+
+      - name: Build
+        run: npx featurevisor build
 ```
 
 ### Publish
@@ -117,21 +113,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
-
-      - name: Git configs
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-
-      - name: Version
-        run: npm version patch
-
-      - name: Build
-        run: npm run build
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
+
+      - name: Build
+        run: npx featurevisor build
 
       - name: Upload to Cloudflare Pages
         run: |
@@ -141,10 +129,15 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+      - name: Git configs
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
       - name: Push back to origin
         run: |
           git add .featurevisor/*
-          git commit --amend --no-edit
+          git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
           git push
 ```
 
@@ -154,8 +147,12 @@ Once uploaded, the your datafiles will be accessible as: `https://<your-project>
 
 You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
 
-Learn how too consume datafiles from URLs directly using [SDKs](/docs/sdks).
+Learn how to consume datafiles from URLs directly using [SDKs](/docs/sdks).
 
 ## Full example
 
 You can find a fully functional repository based on this guide here: [https://github.com/featurevisor/featurevisor-example-cloudflare](https://github.com/featurevisor/featurevisor-example-cloudflare).
+
+## Sequential builds
+
+In case you are worried about simultaneous builds triggered by multiple Pull Requests merged in quick succession, you can learn about mitigating any unintended issues [here](/docs/integrations/github-actions/#sequential-builds).
