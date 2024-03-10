@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/cli",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "CLI package of Featurevisor",
   "main": "bin.js",
   "types": "lib/index.d.ts",
