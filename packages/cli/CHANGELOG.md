@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+
+### Features
+
+* revisioning info moved to its own file ([#274](https://github.com/featurevisor/featurevisor/issues/274)) ([6a175d1](https://github.com/featurevisor/featurevisor/commit/6a175d1be01c1ab78661bbd93d535de69af47135))
+
+
+
+
+
 ## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
 
 
