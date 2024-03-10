@@ -163,7 +163,7 @@ This helps us cover more scenarios by having to write less code in our specs.
 Use the Featurevisor CLI to run your tests:
 
 ```
-$ featurevisor test
+$ npx featurevisor test
 ```
 
 If any of your assertions fail in any test specs, it will terminate with a non-zero exit code.
@@ -175,7 +175,7 @@ If any of your assertions fail in any test specs, it will terminate with a non-z
 You can also filter tests by feature or segment keys using regex patterns:
 
 ```
-$ featurevisor test --keyPattern="myKeyHere"
+$ npx featurevisor test --keyPattern="myKeyHere"
 ```
 
 ### `assertionPattern`
@@ -183,7 +183,7 @@ $ featurevisor test --keyPattern="myKeyHere"
 If you are writing assertion descriptions, then you can filter them further using regex patterns:
 
 ```
-$ featurevisor test --keyPattern="myKeyHere" --assertionPattern="text..."
+$ npx featurevisor test --keyPattern="myKeyHere" --assertionPattern="text..."
 ```
 
 ### `verbose`
@@ -191,7 +191,7 @@ $ featurevisor test --keyPattern="myKeyHere" --assertionPattern="text..."
 For debugging purposes, you can enable verbose mode to see more details of your assertion evaluations
 
 ```
-$ featurevisor test --verbose
+$ npx featurevisor test --verbose
 ```
 
 ### `showDatafile`
@@ -199,7 +199,7 @@ $ featurevisor test --verbose
 For more advanced debugging, you can print the datafile content used by test runner:
 
 ```
-$ featurevisor test --showDatafile
+$ npx featurevisor test --showDatafile
 ```
 
 Printing datafile content for each and every tested feature can be very verbose, so we recommend using this option with `--keyPattern` to filter tests.
@@ -209,7 +209,7 @@ Printing datafile content for each and every tested feature can be very verbose,
 If you are interested to see only the test specs that fail:
 
 ```
-$ featurevisor test --onlyFailures
+$ npx featurevisor test --onlyFailures
 ```
 
 ### `fast`
@@ -219,7 +219,7 @@ By default, Featurevisor's test runner would generate a datafile for your featur
 If you have a lot of tests, this can be time-consuming. You can use the `--fast` option to generate datafiles for each environment early packing all the features in the project together, and then run the assertions:
 
 ```
-$ featurevisor test --fast
+$ npx featurevisor test --fast
 ```
 
 **Note**: This approach is memory intensive and therefore not the default behaviour yet.

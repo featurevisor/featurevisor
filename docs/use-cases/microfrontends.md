@@ -102,7 +102,7 @@ module.exports = {
 Once this configuration is in place, we can [build](/docs/building-datafiles) our datafiles:
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 And it will output the following datafiles in the `dist` directory:
