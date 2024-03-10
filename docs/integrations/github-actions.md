@@ -17,12 +17,6 @@ $ mkdir my-featurevisor-project && cd my-featurevisor-project
 $ npx @featurevisor/cli init
 ```
 
-The initialized project will already contain the npm scripts for linting, building, and testing your project:
-
-- `lint`: `featurevisor lint`
-- `build`: `featurevisor build`
-- `test`: `featurevisor test`
-
 ## Repository settings
 
 Make sure you have `Read and write permissions` enabled in your GitHub repository's `Settings > Actions > General > Workflow permissions` section.
@@ -63,13 +57,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
 
       - name: Build
-        run: npm run build
+        run: npx featurevisor build
 ```
 
 ### Publish
@@ -102,13 +96,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
 
       - name: Build
-        run: npm run build
+        run: npx featurevisor build
 
       - name: Upload datafiles
         run: echo "Uploading..."

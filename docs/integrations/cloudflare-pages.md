@@ -17,12 +17,6 @@ $ mkdir my-featurevisor-project && cd my-featurevisor-project
 $ npx @featurevisor/cli init
 ```
 
-The initialized project will already contain the npm scripts for linting, building, and testing your project:
-
-- `lint`: `featurevisor lint`
-- `build`: `featurevisor build`
-- `test`: `featurevisor test`
-
 ## Cloudflare Pages
 
 We are going to be uploading to and serving our datafiles from [Cloudflare Pages](https://pages.cloudflare.com/).
@@ -78,13 +72,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
 
       - name: Build
-        run: npm run build
+        run: npx featurevisor build
 ```
 
 ### Publish
@@ -117,13 +111,13 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npx featurevisor lint
 
       - name: Test specs
-        run: npm test
+        run: npx featurevisor test
 
       - name: Build
-        run: npm run build
+        run: npx featurevisor build
 
       - name: Upload to Cloudflare Pages
         run: |

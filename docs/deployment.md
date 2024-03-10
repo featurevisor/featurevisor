@@ -16,7 +16,7 @@ When a new Pull Request (branch) is merged, the CI/CD pipeline should:
 Lint all the attributes, segments, and feature definitions:
 
 ```
-$ featurevisor lint
+$ npx featurevisor lint
 ```
 
 ### Testing
@@ -24,13 +24,13 @@ $ featurevisor lint
 Test all the features and segments:
 
 ```
-$ featurevisor test
+$ npx featurevisor test
 ```
 
 ### Build the datafiles
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 ### Commit the state files
