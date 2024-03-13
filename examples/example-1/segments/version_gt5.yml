@@ -1,0 +1,5 @@
+description: Version greater than 5
+conditions:
+  - attribute: version
+    operator: semverGreaterThan
+    value: 5.0.0
