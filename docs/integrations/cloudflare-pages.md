@@ -27,6 +27,10 @@ Cloudflare Pages is a product that allows you to host your static sites and apps
 
 Make sure you already have a Cloudflare Pages project set up, and then use it in the publish workflow later.
 
+{% callout type="note" title="Note about Cloudflare Pages automatic deployments" %}
+Cloudflare Pages is set to auto-deploy your site on every push. This could interfere with our GitHub publish action. To prevent this, you can turn off auto deployment by following the steps in this [Cloudflare documentation](https://developers.cloudflare.com/pages/configuration/branch-build-controls/).
+{% /callout %}
+
 ## Secrets
 
 Follow the guide [here](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/), and set up these two secrets in your GitHub repository's `Settings > Secrets and variables > Actions` section:
