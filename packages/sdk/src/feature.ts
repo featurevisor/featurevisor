@@ -2,6 +2,7 @@ import { Allocation, Context, Traffic, Feature, Force } from "@featurevisor/type
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
+import { Logger } from "./logger";
 
 export function getMatchedAllocation(
   traffic: Traffic,
@@ -30,10 +31,16 @@ export function getMatchedTraffic(
   traffic: Traffic[],
   context: Context,
   datafileReader: DatafileReader,
+  logger: Logger,
 ): Traffic | undefined {
   return traffic.find((t) => {
     if (
-      !allGroupSegmentsAreMatched(parseFromStringifiedSegments(t.segments), context, datafileReader)
+      !allGroupSegmentsAreMatched(
+        parseFromStringifiedSegments(t.segments),
+        context,
+        datafileReader,
+        logger,
+      )
     ) {
       return false;
     }
@@ -52,12 +59,14 @@ export function getMatchedTrafficAndAllocation(
   context: Context,
   bucketValue: number,
   datafileReader: DatafileReader,
+  logger: Logger,
 ): MatchedTrafficAndAllocation {
   const matchedTraffic = traffic.find((t) => {
     return allGroupSegmentsAreMatched(
       parseFromStringifiedSegments(t.segments),
       context,
       datafileReader,
+      logger,
     );
   });
 
@@ -80,6 +89,7 @@ export function findForceFromFeature(
   feature: Feature,
   context: Context,
   datafileReader: DatafileReader,
+  logger: Logger,
 ): Force | undefined {
   if (!feature.force) {
     return undefined;
@@ -87,11 +97,11 @@ export function findForceFromFeature(
 
   return feature.force.find((f: Force) => {
     if (f.conditions) {
-      return allConditionsAreMatched(f.conditions, context);
+      return allConditionsAreMatched(f.conditions, context, logger);
     }
 
     if (f.segments) {
-      return allGroupSegmentsAreMatched(f.segments, context, datafileReader);
+      return allGroupSegmentsAreMatched(f.segments, context, datafileReader, logger);
     }
 
     return false;
