@@ -1,6 +1,8 @@
+import { DatafileContent, GroupSegment } from "@featurevisor/types";
+
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
-import { DatafileContent, GroupSegment } from "@featurevisor/types";
+import { createLogger } from "./logger";
 
 interface Group {
   key: string;
@@ -8,6 +10,8 @@ interface Group {
 }
 
 describe("sdk: Segments", function () {
+  const logger = createLogger();
+
   it("should be a function", function () {
     expect(typeof allGroupSegmentsAreMatched).toEqual("function");
   });
@@ -178,13 +182,13 @@ describe("sdk: Segments", function () {
       const group = groups.find((g) => g.key === "*") as Group;
 
       // match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(true);
-      expect(allGroupSegmentsAreMatched(group.segments, { foo: "foo" }, datafileReader)).toEqual(
-        true,
-      );
-      expect(allGroupSegmentsAreMatched(group.segments, { bar: "bar" }, datafileReader)).toEqual(
-        true,
-      );
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { foo: "foo" }, datafileReader, logger),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { bar: "bar" }, datafileReader, logger),
+      ).toEqual(true);
     });
 
     it("should match dutchMobileUsers", function () {
@@ -196,6 +200,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -203,16 +208,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "de", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -226,6 +233,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -233,16 +241,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "de", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -256,6 +266,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -263,6 +274,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -270,6 +282,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -277,16 +290,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "desktop", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "de", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
       expect(
@@ -294,6 +309,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -307,6 +323,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -314,6 +331,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "mobile", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -321,6 +339,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -328,16 +347,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "nl", deviceType: "desktop", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "de", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
       expect(
@@ -345,6 +366,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -358,6 +380,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -365,16 +388,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "mobile", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "nl", deviceType: "mobile" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -388,6 +413,7 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
       expect(
@@ -395,16 +421,18 @@ describe("sdk: Segments", function () {
           group.segments,
           { country: "de", deviceType: "desktop", browser: "chrome" },
           datafileReader,
+          logger,
         ),
       ).toEqual(true);
 
       // not match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(false);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(false);
       expect(
         allGroupSegmentsAreMatched(
           group.segments,
           { country: "nl", deviceType: "desktop" },
           datafileReader,
+          logger,
         ),
       ).toEqual(false);
     });
@@ -413,28 +441,28 @@ describe("sdk: Segments", function () {
       const group = groups.find((g) => g.key === "notVersion5.5") as Group;
 
       // match
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(true);
-      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader)).toEqual(true);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(true);
+      expect(allGroupSegmentsAreMatched(group.segments, {}, datafileReader, logger)).toEqual(true);
       expect(
-        allGroupSegmentsAreMatched(group.segments, { version: "5.6" }, datafileReader),
+        allGroupSegmentsAreMatched(group.segments, { version: "5.6" }, datafileReader, logger),
       ).toEqual(true);
-      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.6 }, datafileReader)).toEqual(
-        true,
-      );
       expect(
-        allGroupSegmentsAreMatched(group.segments, { version: "5.7" }, datafileReader),
+        allGroupSegmentsAreMatched(group.segments, { version: 5.6 }, datafileReader, logger),
       ).toEqual(true);
-      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.7 }, datafileReader)).toEqual(
-        true,
-      );
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: "5.7" }, datafileReader, logger),
+      ).toEqual(true);
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: 5.7 }, datafileReader, logger),
+      ).toEqual(true);
 
       // not match
       expect(
-        allGroupSegmentsAreMatched(group.segments, { version: "5.5" }, datafileReader),
+        allGroupSegmentsAreMatched(group.segments, { version: "5.5" }, datafileReader, logger),
       ).toEqual(false);
-      expect(allGroupSegmentsAreMatched(group.segments, { version: 5.5 }, datafileReader)).toEqual(
-        false,
-      );
+      expect(
+        allGroupSegmentsAreMatched(group.segments, { version: 5.5 }, datafileReader, logger),
+      ).toEqual(false);
     });
   });
 });

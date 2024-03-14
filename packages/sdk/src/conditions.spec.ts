@@ -1,7 +1,11 @@
-import { allConditionsAreMatched } from "./conditions";
 import { Condition } from "@featurevisor/types";
 
+import { allConditionsAreMatched } from "./conditions";
+import { createLogger } from "./logger";
+
 describe("sdk: Conditions", function () {
+  const logger = createLogger();
+
   it("should be a function", function () {
     expect(typeof allConditionsAreMatched).toEqual("function");
   });
@@ -17,10 +21,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        false,
+      );
     });
 
     it("should match with operator: notEquals", function () {
@@ -33,10 +39,14 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        true,
+      );
 
       // not match
-      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, logger)).toEqual(
+        false,
+      );
     });
 
     it("should match with operator: startsWith", function () {
@@ -49,11 +59,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { name: "Hello Universe" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hello Universe" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" }, logger)).toEqual(false);
     });
 
     it("should match with operator: endsWith", function () {
@@ -66,11 +76,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { name: "Hi Universe" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hi Universe" }, logger)).toEqual(false);
     });
 
     it("should match with operator: contains", function () {
@@ -83,11 +93,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" }, logger)).toEqual(false);
     });
 
     it("should match with operator: notContains", function () {
@@ -100,11 +110,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(false);
-      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" }, logger)).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" }, logger)).toEqual(false);
     });
 
     it("should match with operator: in", function () {
@@ -117,12 +127,16 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        true,
+      );
 
       // not match
-      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(false);
-      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" }, logger)).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" }, logger)).toEqual(
+        false,
+      );
     });
 
     it("should match with operator: notIn", function () {
@@ -135,12 +149,16 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
-      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, logger)).toEqual(
+        false,
+      );
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        false,
+      );
     });
 
     it("should match with operator: greaterThan", function () {
@@ -153,10 +171,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 19 }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 17 }, logger)).toEqual(false);
     });
 
     it("should match with operator: greaterThanOrEquals", function () {
@@ -169,12 +187,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 18 }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 19 }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
-      expect(allConditionsAreMatched(conditions, { age: 16 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 17 }, logger)).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 16 }, logger)).toEqual(false);
     });
 
     it("should match with operator: lessThan", function () {
@@ -187,10 +205,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 17 }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 19 }, logger)).toEqual(false);
     });
 
     it("should match with operator: lessThanOrEquals", function () {
@@ -203,12 +221,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 17 }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 18 }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
-      expect(allConditionsAreMatched(conditions, { age: 20 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 19 }, logger)).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 20 }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverEquals", function () {
@@ -221,10 +239,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverNotEquals", function () {
@@ -237,10 +255,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverGreaterThan", function () {
@@ -253,10 +271,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverGreaterThanOrEquals", function () {
@@ -269,11 +287,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverLessThan", function () {
@@ -286,10 +304,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: semverLessThanOrEquals", function () {
@@ -302,10 +320,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" }, logger)).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" }, logger)).toEqual(false);
     });
 
     it("should match with operator: before", function () {
@@ -318,15 +336,19 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" }, logger)).toEqual(
+        true,
+      );
       expect(
-        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }),
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }, logger),
       ).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" }, logger)).toEqual(
+        false,
+      );
       expect(
-        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }),
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }, logger),
       ).toEqual(false);
     });
 
@@ -340,15 +362,19 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" }, logger)).toEqual(
+        true,
+      );
       expect(
-        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }),
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-14T00:00:00Z") }, logger),
       ).toEqual(true);
 
       // not match
-      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" }, logger)).toEqual(
+        false,
+      );
       expect(
-        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }),
+        allConditionsAreMatched(conditions, { date: new Date("2023-05-12T00:00:00Z") }, logger),
       ).toEqual(false);
     });
   });
@@ -365,9 +391,13 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions[0], {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions[0],
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
 
@@ -382,9 +412,13 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
 
@@ -393,16 +427,24 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
 
@@ -417,10 +459,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
 
@@ -440,11 +486,15 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "1.0",
-          foo: "bar",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "1.0",
+            foo: "bar",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
   });
@@ -465,16 +515,24 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
 
@@ -498,17 +556,25 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
   });
@@ -529,9 +595,13 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
     });
 
@@ -555,16 +625,24 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
   });
@@ -585,16 +663,24 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
 
@@ -618,29 +704,45 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+          },
+          logger,
+        ),
       ).toEqual(true);
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
   });
@@ -675,31 +777,47 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "3.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "3.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
 
@@ -737,34 +855,50 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "nl",
-          browser_type: "chrome",
-          browser_version: "1.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "nl",
+            browser_type: "chrome",
+            browser_version: "1.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "nl",
-          browser_type: "chrome",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "nl",
+            browser_type: "chrome",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "3.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "3.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "us",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "us",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
 
@@ -797,33 +931,49 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "chrome",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "chrome",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-          device_type: "mobile",
-          orientation: "portrait",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+            device_type: "mobile",
+            orientation: "portrait",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-          device_type: "desktop",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+            device_type: "desktop",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
 
@@ -861,36 +1011,52 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "nl",
-          browser_type: "chrome",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "nl",
+            browser_type: "chrome",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "nl",
-          browser_type: "firefox",
-          device_type: "mobile",
-          orientation: "portrait",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "nl",
+            browser_type: "firefox",
+            device_type: "mobile",
+            orientation: "portrait",
+          },
+          logger,
+        ),
       ).toEqual(true);
 
       // not match
       expect(
-        allConditionsAreMatched(conditions, {
-          browser_type: "firefox",
-          browser_version: "2.0",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            browser_type: "firefox",
+            browser_version: "2.0",
+          },
+          logger,
+        ),
       ).toEqual(false);
 
       expect(
-        allConditionsAreMatched(conditions, {
-          country: "de",
-          browser_type: "firefox",
-          device_type: "desktop",
-        }),
+        allConditionsAreMatched(
+          conditions,
+          {
+            country: "de",
+            browser_type: "firefox",
+            device_type: "desktop",
+          },
+          logger,
+        ),
       ).toEqual(false);
     });
   });
