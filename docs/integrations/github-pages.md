@@ -163,3 +163,7 @@ Learn how to consume datafiles from URLs directly using [SDKs](/docs/sdks).
 ## Full example
 
 You can find a fully functional repository based on this guide here: [https://github.com/meirroth/featurevisor-example-github](https://github.com/meirroth/featurevisor-example-github).
+
+## Sequential builds
+
+In case you are worried about simultaneous builds triggered by multiple Pull Requests merged in quick succession, you can learn about mitigating any unintended issues [here](/docs/integrations/github-actions/#sequential-builds).
