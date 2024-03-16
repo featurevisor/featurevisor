@@ -80,7 +80,8 @@
       { "title": "CLI usage", "href": "/docs/cli" },
       { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers" },
       { "title": "Code generation", "href": "/docs/code-generation" },
-      { "title": "Bucketing", "href": "/docs/bucketing" }
+      { "title": "Bucketing", "href": "/docs/bucketing" },
+      { "title": "Scopes", "href": "/docs/scopes" }
     ]
   },
   {
