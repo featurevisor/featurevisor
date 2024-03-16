@@ -12,11 +12,12 @@ You are recommended to learn about these concepts before proceeding further:
 - [Configuration](/docs/configuration)
 - [Tags in features](/docs/features/#tags)
 - [Building datafiles](/docs/building-datafiles)
-- [Consuming datafiles with SDKs](/docs/sdks)
+- [Consuming datafiles with SDKs](/docs/sdk/javascript/#initialization)
+- [Context](/docs/sdks/javascript/#context)
 
 ## Default behaviour
 
-By default, Featurevisor will generate datafiles for your project against a combination of environment and tag as found in the project configuration.
+By default, Featurevisor will generate datafiles for our project against a combination of environment and tag as found in the project configuration.
 
 Assuming we have [configuration](/docs/configuration) as below:
 
