@@ -273,3 +273,9 @@ assertions:
       country: nl
     expectedToBeEnabled: true
 ```
+
+Afterwards, run your tests as usual:
+
+```
+$ npx featurevisor test
+```
