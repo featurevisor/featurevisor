@@ -207,7 +207,7 @@ $ tree dist
 2 directories, 8 files
 ```
 
-Notice that we have a new `datafile-tag-web-scope-browser.json` file above.
+Notice that we have a new `datafile-tag-web-scope-browsers.json` file above.
 
 This file is a more tailored and optimized version of `datafile-tag-web.json`, containing rules and conditions that are needed only for web alone.
 
