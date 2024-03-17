@@ -19,7 +19,7 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { ProjectConfig, SCHEMA_VERSION } from "../config";
+import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
@@ -321,6 +321,16 @@ export async function buildDatafile(
   datafileContent.attributes = attributes;
   datafileContent.segments = segments;
   datafileContent.features = features;
+
+  return datafileContent;
+}
+
+export function buildScopedDatafile(
+  originalDatafile: DatafileContent,
+  scope: Scope,
+): DatafileContent {
+  // @TODO: implement this
+  const datafileContent = originalDatafile;
 
   return datafileContent;
 }
