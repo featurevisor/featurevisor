@@ -326,11 +326,11 @@ export async function buildDatafile(
 }
 
 export function buildScopedDatafile(
-  originalDatafile: DatafileContent,
+  originalDatafileContent: DatafileContent,
   scope: Scope,
 ): DatafileContent {
   // @TODO: implement this
-  const datafileContent = originalDatafile;
+  const datafileContent = originalDatafileContent;
 
   return datafileContent;
 }
