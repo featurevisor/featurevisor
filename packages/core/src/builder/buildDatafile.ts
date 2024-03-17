@@ -159,7 +159,9 @@ export async function buildDatafile(
                     );
 
                     return {
-                      conditions: JSON.stringify(override.conditions),
+                      conditions: projectConfig.stringify
+                        ? JSON.stringify(override.conditions)
+                        : override.conditions,
                       value: override.value,
                     };
                   }
@@ -174,9 +176,9 @@ export async function buildDatafile(
 
                     return {
                       segments:
-                        typeof override.segments === "string"
-                          ? override.segments
-                          : JSON.stringify(override.segments),
+                        typeof override.segments !== "string" && projectConfig.stringify
+                          ? JSON.stringify(override.segments)
+                          : override.segments,
                       value: override.value,
                     };
                   }
@@ -195,7 +197,15 @@ export async function buildDatafile(
           parsedFeature.environments[options.environment].rules,
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
-        ),
+        ).map((t: Traffic) => {
+          return {
+            ...t,
+            segments:
+              typeof typeof t.segments !== "string" && projectConfig.stringify
+                ? JSON.stringify(t.segments)
+                : t.segments,
+          };
+        }),
         ranges: featureRanges.get(featureKey) || undefined,
       };
 
@@ -278,7 +288,7 @@ export async function buildDatafile(
       const segment: Segment = {
         key: segmentKey,
         conditions:
-          typeof parsedSegment.conditions !== "string"
+          typeof parsedSegment.conditions !== "string" && projectConfig.stringify === true
             ? JSON.stringify(parsedSegment.conditions)
             : parsedSegment.conditions,
       };
