@@ -201,7 +201,7 @@ export async function buildDatafile(
           return {
             ...t,
             segments:
-              typeof typeof t.segments !== "string" && projectConfig.stringify
+              typeof t.segments !== "string" && projectConfig.stringify
                 ? JSON.stringify(t.segments)
                 : t.segments,
           };
