@@ -170,15 +170,20 @@ module.exports = {
   environments: ["staging", "production"],
   tags: ["web", "ios", "android"],
 
-  // scopes are optionally defined if we need them
+  // (optional) scopes
   scopes: [
     {
       name: "browsers",
       context: { platform: "web" },
+
+      // (optional) if we want to scope certain tags only
+      forTags: ["web"],
     },
   ]
 };
 ```
+
+Here we used a very simple context for our scope, but they can be more complex with more attributes.
 
 ### Generate datafiles
 
