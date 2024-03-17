@@ -329,8 +329,24 @@ export function buildScopedDatafile(
   originalDatafileContent: DatafileContent,
   scope: Scope,
 ): DatafileContent {
-  // @TODO: implement this
-  const datafileContent = originalDatafileContent;
+  const { context } = scope;
 
-  return datafileContent;
+  const scopedDatafileContent = {
+    ...originalDatafileContent,
+  };
+
+  // @TODO: remove redundant conditions from segments
+  // @TODO: remove redundant conditions from environment rules
+  // @TODO: remove redundant conditions from environment force
+  // @TODO: remove redundant condtions from variation overrides
+
+  // @TODO: remove redundant segments from environment rules
+  // @TODO: remove redundant segments from environment force
+  // @TODO: remove redundant segments from variation overrides
+
+  // @TODO: remove redundant rules
+  // @TODO: remove redundant segments
+  // @TODO: remove redundant attributes
+
+  return scopedDatafileContent;
 }
