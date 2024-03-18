@@ -5,7 +5,7 @@ import {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { allConditionsAreMatched } from "@featurevisor/sdk";
+import { allConditionsAreMatched, createLogger } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
@@ -41,6 +41,7 @@ export async function testSegment(
 
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
+  const logger = createLogger();
 
   test.assertions.forEach(function (assertion, aIndex) {
     const assertions = getSegmentAssertionsFromMatrix(aIndex, assertion);
@@ -59,7 +60,7 @@ export async function testSegment(
       }
 
       const expected = assertion.expectedToMatch;
-      const actual = allConditionsAreMatched(conditions, assertion.context);
+      const actual = allConditionsAreMatched(conditions, assertion.context, logger);
       const passed = actual === expected;
 
       if (!passed) {

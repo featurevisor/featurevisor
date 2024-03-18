@@ -17,6 +17,7 @@ export interface TestProjectOptions {
   assertionPattern?: string;
   verbose?: boolean;
   showDatafile?: boolean;
+  onlyFailures?: boolean;
   fast?: boolean;
 }
 
@@ -88,7 +89,15 @@ export async function executeTest(
     );
   }
 
-  printTestResult(testResult, testFilePath, rootDirectoryPath);
+  if (!options.onlyFailures) {
+    // show all
+    printTestResult(testResult, testFilePath, rootDirectoryPath);
+  } else {
+    // show failed only
+    if (!testResult.passed) {
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
+    }
+  }
 
   if (!testResult.passed) {
     executionResult.passed = false;
@@ -185,7 +194,10 @@ export async function testProject(
 
   const diffInMs = Date.now() - startTime;
 
-  console.log("\n---\n");
+  if (options.onlyFailures !== true || hasError) {
+    console.log("\n---");
+  }
+  console.log("");
 
   const testSpecsMessage = `Test specs: ${passedTestsCount} passed, ${failedTestsCount} failed`;
   const testAssertionsMessage = `Assertions: ${passedAssertionsCount} passed, ${failedAssertionsCount} failed`;

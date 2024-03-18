@@ -22,7 +22,7 @@ We will learn more about it in [Deployment](/docs/deployment).
 If you have already built your datafiles, you can restore the state files to the last known state in Git by running:
 
 ```
-$ featurevisor restore
+$ npx featurevisor restore
 ```
 
 This will only work if the state files already exist in the Git repository.

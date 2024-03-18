@@ -9,38 +9,11 @@ import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
-import { buildDatafile } from "../builder";
-import { SCHEMA_VERSION } from "../config";
+import { getCustomDatafile } from "../builder";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
 import { getFeatureAssertionsFromMatrix } from "./matrix";
-
-export async function getDatafileForFeature(
-  featureKey: string,
-  environment: string,
-  projectConfig: ProjectConfig,
-  datasource: Datasource,
-  revision: string = "testing",
-): Promise<DatafileContent> {
-  const requiredChain = await datasource.getRequiredFeaturesChain(featureKey);
-  const featuresToInclude = Array.from(requiredChain);
-
-  const existingState = await datasource.readState(environment);
-  const datafileContent = await buildDatafile(
-    projectConfig,
-    datasource,
-    {
-      schemaVersion: SCHEMA_VERSION,
-      revision,
-      environment: environment,
-      features: featuresToInclude,
-    },
-    existingState,
-  );
-
-  return datafileContent;
-}
 
 export async function testFeature(
   datasource: Datasource,
@@ -85,12 +58,12 @@ export async function testFeature(
       const datafileContent =
         typeof datafileContentByEnvironment[assertion.environment] !== "undefined"
           ? datafileContentByEnvironment[assertion.environment]
-          : await getDatafileForFeature(
-              test.feature,
-              assertion.environment,
+          : await getCustomDatafile({
+              featureKey: test.feature,
+              environment: assertion.environment,
               projectConfig,
               datasource,
-            );
+            });
 
       if (options.showDatafile) {
         console.log("");

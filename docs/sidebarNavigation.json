@@ -39,7 +39,8 @@
     "links": [
       { "title": "JavaScript", "href": "/docs/sdks/javascript" },
       { "title": "Node.js", "href": "/docs/sdks/nodejs" },
-      { "title": "Browser", "href": "/docs/sdks/browser" }
+      { "title": "Browser", "href": "/docs/sdks/browser" },
+      { "title": "Roku", "href": "/docs/sdks/roku" }
     ]
   },
   {
@@ -51,7 +52,8 @@
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
       { "title": "Astro", "href": "/docs/frameworks/astro" },
-      { "title": "Express.js", "href": "/docs/frameworks/express" }
+      { "title": "Express.js", "href": "/docs/frameworks/express" },
+      { "title": "Fastify", "href": "/docs/frameworks/fastify" }
     ]
   },
   {
@@ -89,6 +91,7 @@
     "title": "CI/CD guides",
     "links": [
       { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
+      { "title": "GitHub Pages", "href": "/docs/integrations/github-pages" },
       { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" },
       { "title": "PartyKit", "href": "/docs/integrations/partykit" }
     ]
