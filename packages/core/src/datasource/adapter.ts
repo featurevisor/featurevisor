@@ -29,6 +29,10 @@ export abstract class Adapter {
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 
+  // revision
+  abstract readRevision(): Promise<string>;
+  abstract writeRevision(revision: string): Promise<void>;
+
   // history
   abstract listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]>;
   abstract readCommit(

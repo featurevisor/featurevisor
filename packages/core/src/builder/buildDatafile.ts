@@ -19,12 +19,44 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
+import { ProjectConfig, SCHEMA_VERSION } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
+
+export interface CustomDatafileOptions {
+  featureKey?: string;
+  environment: string;
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  revision?: string;
+}
+
+export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
+  let featuresToInclude;
+
+  if (options.featureKey) {
+    const requiredChain = await options.datasource.getRequiredFeaturesChain(options.featureKey);
+    featuresToInclude = Array.from(requiredChain);
+  }
+
+  const existingState = await options.datasource.readState(options.environment);
+  const datafileContent = await buildDatafile(
+    options.projectConfig,
+    options.datasource,
+    {
+      schemaVersion: SCHEMA_VERSION,
+      revision: options.revision || "tester",
+      environment: options.environment,
+      features: featuresToInclude,
+    },
+    existingState,
+  );
+
+  return datafileContent;
+}
 
 export interface BuildOptions {
   schemaVersion: string;

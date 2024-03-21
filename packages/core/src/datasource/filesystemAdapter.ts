@@ -28,6 +28,10 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
 }
 
+export function getRevisionFilePath(projectConfig: ProjectConfig): string {
+  return path.join(projectConfig.stateDirectoryPath, `REVISION`);
+}
+
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
@@ -134,6 +138,41 @@ export class FilesystemAdapter extends Adapter {
     );
 
     fs.writeFileSync(filePath, JSON.stringify(existingState, null, 2));
+  }
+
+  /**
+   * Revision
+   */
+  async readRevision(): Promise<string> {
+    const filePath = getRevisionFilePath(this.config);
+
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, "utf8");
+    }
+
+    // maintain backwards compatibility
+    try {
+      const pkg = require(path.join(this.rootDirectoryPath as string, "package.json"));
+      const pkgVersion = pkg.version;
+
+      if (pkgVersion) {
+        return pkgVersion;
+      }
+
+      return "0";
+    } catch (e) {
+      return "0";
+    }
+  }
+
+  async writeRevision(revision: string): Promise<void> {
+    const filePath = getRevisionFilePath(this.config);
+
+    if (!fs.existsSync(this.config.stateDirectoryPath)) {
+      mkdirp.sync(this.config.stateDirectoryPath);
+    }
+
+    fs.writeFileSync(filePath, revision);
   }
 
   /**
