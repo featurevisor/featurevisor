@@ -21,6 +21,7 @@ jobs:
               run: node ./scripts/assign-reviewers.js
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                ENVIROMENT: "staging"
 
     # check-approvals:
     #     needs: assign-reviewers
