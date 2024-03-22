@@ -37,3 +37,27 @@ And then `require()` it in your code:
 ```js
 require("isomorphic-fetch");
 ```
+
+## Consuming the SDK
+
+### Require
+
+If you aren't using latest Node.js version or not dealing with ES Modules, you can use `require()`:
+
+```js
+const { createInstance } from "@featurevisor/sdk";
+```
+
+### Import
+
+If you are using latest Node.js and either using `.mjs` files or have set `type: "module"` in your application's `package.json`, you can import the SDK directly:
+
+```js
+import FeaturevisorSDK from "@featurevisor/sdk";
+
+const { createInstance } = FeaturevisorSDK;
+```
+
+## Example repository
+
+You can refer to this repository that shows a fully working Node.js application using Featurevisor SDK: [https://github.com/featurevisor/featurevisor-example-nodejs](https://github.com/featurevisor/featurevisor-example-nodejs),
