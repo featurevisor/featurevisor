@@ -27,6 +27,10 @@ Cloudflare Pages is a product that allows you to host your static sites and apps
 
 Make sure you already have a Cloudflare Pages project set up, and then use it in the publish workflow later.
 
+{% callout type="note" title="Note about Cloudflare Pages automatic deployments" %}
+Cloudflare Pages is set to auto-deploy your site on every push. This could interfere with our GitHub publish action. To prevent this, you can turn off auto deployment by following the steps in this [Cloudflare documentation](https://developers.cloudflare.com/pages/configuration/branch-build-controls/).
+{% /callout %}
+
 ## Secrets
 
 Follow the guide [here](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/), and set up these two secrets in your GitHub repository's `Settings > Secrets and variables > Actions` section:
@@ -64,11 +68,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
@@ -103,11 +107,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
@@ -143,7 +147,7 @@ jobs:
 
 After generating new datafiles and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
-Once uploaded, the your datafiles will be accessible as: `https://<your-project>.pages.dev/<environment>/datafile-tag-<your-tag>.json`.
+Once uploaded, your datafiles will be accessible as: `https://<your-project>.pages.dev/<environment>/datafile-tag-<your-tag>.json`.
 
 You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
 

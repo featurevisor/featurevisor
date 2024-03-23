@@ -60,6 +60,6 @@ If any of the steps above fail, the CI/CD pipeline should stop and notify the te
 
 ## Fully functional example
 
-You can refer to the CI/CD guide for [GitHub Actions](/docs/integrations/github-actions) and [Cloudflare Pages](/docs/integrations/cloudflare-pages) if you want a fully functional real-world example of setting up a Featurevisor project.
+You can refer to the CI/CD guide for [GitHub Actions](/docs/integrations/github-actions) and either [Cloudflare Pages](/docs/integrations/cloudflare-pages) or [GitHub Pages](/docs/integrations/github-pages) if you want a fully functional real-world example of setting up a Featurevisor project.
 
 Repo is available here: [https://github.com/featurevisor/featurevisor-example-cloudflare](https://github.com/featurevisor/featurevisor-example-cloudflare).

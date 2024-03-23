@@ -91,6 +91,7 @@
     "title": "CI/CD guides",
     "links": [
       { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
+      { "title": "GitHub Pages", "href": "/docs/integrations/github-pages" },
       { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" },
       { "title": "PartyKit", "href": "/docs/integrations/partykit" }
     ]

@@ -521,7 +521,7 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader);
+      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
 
       if (force && typeof force.enabled !== "undefined") {
         evaluation = {
@@ -579,7 +579,12 @@ export class FeaturevisorInstance {
       // bucketing
       const bucketValue = this.getBucketValue(feature, finalContext);
 
-      const matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, this.datafileReader);
+      const matchedTraffic = getMatchedTraffic(
+        feature.traffic,
+        finalContext,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (matchedTraffic) {
         // check if mutually exclusive
@@ -774,7 +779,7 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader);
+      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
 
       if (force && force.variation) {
         const variation = feature.variations.find((v) => v.value === force.variation);
@@ -800,6 +805,7 @@ export class FeaturevisorInstance {
         finalContext,
         bucketValue,
         this.datafileReader,
+        this.logger,
       );
 
       if (matchedTraffic) {
@@ -1040,7 +1046,7 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader);
+      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
 
       if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
         evaluation = {
@@ -1064,6 +1070,7 @@ export class FeaturevisorInstance {
         finalContext,
         bucketValue,
         this.datafileReader,
+        this.logger,
       );
 
       if (matchedTraffic) {
@@ -1109,6 +1116,7 @@ export class FeaturevisorInstance {
                     return allConditionsAreMatched(
                       typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
                       finalContext,
+                      this.logger,
                     );
                   }
 
@@ -1117,6 +1125,7 @@ export class FeaturevisorInstance {
                       parseFromStringifiedSegments(o.segments),
                       finalContext,
                       this.datafileReader,
+                      this.logger,
                     );
                   }
 

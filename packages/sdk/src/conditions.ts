@@ -2,6 +2,8 @@ import { compareVersions } from "compare-versions";
 
 import { Context, Condition, PlainCondition } from "@featurevisor/types";
 
+import { Logger } from "./logger";
+
 export function conditionIsMatched(condition: PlainCondition, context: Context): boolean {
   const { attribute, operator, value } = condition;
 
@@ -75,17 +77,30 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
 export function allConditionsAreMatched(
   conditions: Condition[] | Condition,
   context: Context,
+  logger: Logger,
 ): boolean {
   if ("attribute" in conditions) {
-    return conditionIsMatched(conditions, context);
+    try {
+      return conditionIsMatched(conditions, context);
+    } catch (e) {
+      logger.warn(e.message, {
+        error: e,
+        details: {
+          condition: conditions,
+          context,
+        },
+      });
+
+      return false;
+    }
   }
 
   if ("and" in conditions && Array.isArray(conditions.and)) {
-    return conditions.and.every((c) => allConditionsAreMatched(c, context));
+    return conditions.and.every((c) => allConditionsAreMatched(c, context, logger));
   }
 
   if ("or" in conditions && Array.isArray(conditions.or)) {
-    return conditions.or.some((c) => allConditionsAreMatched(c, context));
+    return conditions.or.some((c) => allConditionsAreMatched(c, context, logger));
   }
 
   if ("not" in conditions && Array.isArray(conditions.not)) {
@@ -96,12 +111,13 @@ export function allConditionsAreMatched(
             and: conditions.not,
           },
           context,
+          logger,
         ) === false,
     );
   }
 
   if (Array.isArray(conditions)) {
-    return conditions.every((c) => allConditionsAreMatched(c, context));
+    return conditions.every((c) => allConditionsAreMatched(c, context, logger));
   }
 
   return false;
