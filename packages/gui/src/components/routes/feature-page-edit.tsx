@@ -71,7 +71,16 @@ export function FeatureForm({ initialFeature = undefined }) {
 
   const form = useForm<FeatureFormValues>({
     resolver: zodResolver(featureFormSchema),
-    defaultValues: initialFeature,
+    defaultValues:
+      typeof initialFeature !== "undefined"
+        ? // edit mode
+          initialFeature
+        : // create mode
+          {
+            // show at least one input in UI,
+            // if bucketing is not against a single attribute
+            bucketByMultiple: [{ value: "" }],
+          },
     mode: "onChange",
   });
 
