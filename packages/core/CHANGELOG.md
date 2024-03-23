@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+
+### Features
+
+* introduce new project config stringify ([#286](https://github.com/featurevisor/featurevisor/issues/286)) ([96bd230](https://github.com/featurevisor/featurevisor/commit/96bd2309da6b45c44efdec764ff0a4f63d885fa6))
+
+
+
+
+
 ## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
 
 
