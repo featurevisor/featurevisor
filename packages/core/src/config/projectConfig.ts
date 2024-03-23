@@ -42,6 +42,7 @@ export interface ProjectConfig {
   parser: Parser;
   prettyState: boolean;
   prettyDatafile: boolean;
+  stringify: boolean;
   siteExportDirectoryPath: string;
   adapter: any; // @TODO: type this properly later
 }
@@ -66,6 +67,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
+    stringify: true,
 
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
 
@@ -78,7 +80,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const mergedConfig = {};
 
   Object.keys(baseConfig).forEach((key) => {
-    mergedConfig[key] = customConfig[key] || baseConfig[key];
+    mergedConfig[key] =
+      typeof customConfig[key] !== "undefined" ? customConfig[key] : baseConfig[key];
 
     if (key.endsWith("Path") && mergedConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1) {
       mergedConfig[key] = mergedConfig[key].replace(ROOT_DIR_PLACEHOLDER, rootDirectoryPath);
