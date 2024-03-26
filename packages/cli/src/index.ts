@@ -245,6 +245,9 @@ async function main() {
           await findUsageInProject(deps, {
             segment: options.segment,
             attribute: options.attribute,
+
+            unusedSegments: options.unusedSegments,
+            unusedAttributes: options.unusedAttributes,
           });
         } catch (e) {
           console.error(e.message);

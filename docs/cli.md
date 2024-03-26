@@ -122,16 +122,28 @@ $ npx featurevisor find-duplicate-segments
 
 ## Find usage
 
-Learn where certain segments are attributes are used in.
+Learn where/if certain segments are attributes are used in.
 
-### Segment
+### Segment usage
 
 ```
 $ npx featurevisor find-usage --segment=my_segment
 ```
 
-### Attribute
+### Attribute usage
 
 ```
 $ npx featurevisor find-usage --attribute=my_attribute
 ```
+
+### Unused segments
+
+```
+$ npx featurevisor find-usage --unusedSegments
+```
+
+### Unused attributes
+
+```
+$ npx featurevisor find-usage --unusedAttributes
+``

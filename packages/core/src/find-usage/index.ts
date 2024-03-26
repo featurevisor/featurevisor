@@ -148,9 +148,46 @@ export async function findAttributeUsage(
   return usedIn;
 }
 
+export async function findUnusedSegments(deps: Dependencies): Promise<Set<string>> {
+  const { datasource } = deps;
+
+  const segmentKeys = await datasource.listSegments();
+  const unusedSegments = new Set<string>();
+
+  for (const segmentKey of segmentKeys) {
+    const usedInFeatures = await findSegmentUsage(deps, segmentKey);
+
+    if (usedInFeatures.size === 0) {
+      unusedSegments.add(segmentKey);
+    }
+  }
+
+  return unusedSegments;
+}
+
+export async function findUnusedAttributes(deps: Dependencies): Promise<Set<string>> {
+  const { datasource } = deps;
+
+  const attributeKeys = await datasource.listAttributes();
+  const unusedAttributes = new Set<string>();
+
+  for (const attributeKey of attributeKeys) {
+    const usedIn = await findAttributeUsage(deps, attributeKey);
+
+    if (usedIn.features.size === 0 && usedIn.segments.size === 0) {
+      unusedAttributes.add(attributeKey);
+    }
+  }
+
+  return unusedAttributes;
+}
+
 export interface FindUsageOptions {
   segment?: string;
   attribute?: string;
+
+  unusedSegments?: boolean;
+  unusedAttributes?: boolean;
 }
 
 export async function findUsageInProject(deps: Dependencies, options: FindUsageOptions) {
@@ -198,6 +235,40 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
       usedIn.segments.forEach((segmentKey) => {
         console.log(`  - ${segmentKey}`);
+      });
+    }
+
+    return;
+  }
+
+  // unused segments
+  if (options.unusedSegments) {
+    const unusedSegments = await findUnusedSegments(deps);
+
+    if (unusedSegments.size === 0) {
+      console.log("No unused segments found.");
+    } else {
+      console.log("Unused segments:\n");
+
+      unusedSegments.forEach((segmentKey) => {
+        console.log(`  - ${segmentKey}`);
+      });
+    }
+
+    return;
+  }
+
+  // unused attributes
+  if (options.unusedAttributes) {
+    const unusedAttributes = await findUnusedAttributes(deps);
+
+    if (unusedAttributes.size === 0) {
+      console.log("No unused attributes found.");
+    } else {
+      console.log("Unused attributes:\n");
+
+      unusedAttributes.forEach((attributeKey) => {
+        console.log(`  - ${attributeKey}`);
       });
     }
 
