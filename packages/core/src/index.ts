@@ -7,5 +7,6 @@ export * from "./site";
 export * from "./generate-code";
 export * from "./restore";
 export * from "./find-duplicate-segments";
+export * from "./find-usage";
 export * from "./dependencies";
 export * from "./datasource";
