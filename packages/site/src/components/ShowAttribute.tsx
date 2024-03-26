@@ -117,6 +117,7 @@ export function ShowAttribute() {
     {
       title: "Overview",
       to: `/attributes/${attributeKey}`,
+      end: true,
     },
     {
       title: "Usage",

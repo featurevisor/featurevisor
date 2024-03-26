@@ -5,17 +5,17 @@ export function SearchInput() {
   const { searchQuery, setSearchQuery } = useSearch();
 
   return (
-    <div className="relative px-6 pt-3.5">
-      <div className="pointer-events-none absolute">
+    <div className=" px-6 pt-3.5">
+      <div className="pointer-events-none ">
         <svg
           className="absolute ml-3 mt-5 h-6 w-6 text-slate-400"
           viewBox="0 0 20 20"
           fill="currentColor"
         >
           <path
-            fill-rule="evenodd"
+            fillRule="evenodd"
             d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-            clip-rule="evenodd"
+            clipRule="evenodd"
           />
         </svg>
       </div>

@@ -97,6 +97,7 @@ export function ShowSegment() {
     {
       title: "Overview",
       to: `/segments/${segmentKey}`,
+      end: true,
     },
     {
       title: "Usage",
