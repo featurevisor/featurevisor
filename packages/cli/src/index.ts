@@ -14,6 +14,8 @@ import {
   serveSite,
   generateCodeForProject,
   findDuplicateSegmentsInProject,
+  findUsageInProject,
+  FindUsageOptions,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
   TestProjectOptions,
@@ -230,7 +232,29 @@ async function main() {
         }
       },
     })
-    .example("$0 generate-code", "generate code from YAMLs")
+    .example("$0 find-duplicate-segments", "list segments with same conditions")
+
+    /**
+     * Find usage
+     */
+    .command({
+      command: "find-usage",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          await findUsageInProject(deps, {
+            segment: options.segment,
+            attribute: options.attribute,
+          });
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 find-usage", "find usage of segments and attributes")
+    .example("$0 find-usage --segment=my_segment", "find usage of segments")
 
     /**
      * Options

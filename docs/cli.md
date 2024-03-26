@@ -119,3 +119,13 @@ We can find these duplicates early on by running:
 ```
 $ npx featurevisor find-duplicate-segments
 ```
+
+## Find usage
+
+Learn where certain segments are attributes are used in.
+
+### Segments
+
+```
+$ npx featurevisor find-usage --segment=my_segment
+```
