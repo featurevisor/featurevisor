@@ -122,7 +122,7 @@ $ npx featurevisor find-duplicate-segments
 
 ## Find usage
 
-Learn where/if certain segments are attributes are used in.
+Learn where/if certain segments and attributes are used in.
 
 ### Segment usage
 
