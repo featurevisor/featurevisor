@@ -15,7 +15,6 @@ import {
   generateCodeForProject,
   findDuplicateSegmentsInProject,
   findUsageInProject,
-  FindUsageOptions,
   BuildCLIOptions,
   GenerateCodeCLIOptions,
   TestProjectOptions,

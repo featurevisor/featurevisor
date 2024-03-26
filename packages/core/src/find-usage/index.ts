@@ -1,3 +1,5 @@
+import { Condition } from "@featurevisor/types";
+
 import { Dependencies } from "../dependencies";
 import {
   extractAttributeKeysFromConditions,
@@ -67,6 +69,85 @@ export async function findSegmentUsage(
   return usedInFeatures;
 }
 
+export interface AttributeUsage {
+  features: Set<string>;
+  segments: Set<string>;
+}
+
+export async function findAttributeUsage(
+  deps: Dependencies,
+  attributeKey: string,
+): Promise<AttributeUsage> {
+  const { datasource, projectConfig } = deps;
+
+  const usedIn: AttributeUsage = {
+    features: new Set<string>(),
+    segments: new Set<string>(),
+  };
+
+  // features
+  const featureKeys = await datasource.listFeatures();
+  for (const featureKey of featureKeys) {
+    const feature = await datasource.readFeature(featureKey);
+    const attributeKeys = new Set<string>();
+
+    // variable overrides inside variations
+    projectConfig.environments.forEach((environment) => {
+      if (feature.variations) {
+        feature.variations.forEach((variation) => {
+          if (variation.variables) {
+            variation.variables.forEach((variable) => {
+              if (variable.overrides) {
+                variable.overrides.forEach((override) => {
+                  if (override.conditions) {
+                    extractAttributeKeysFromConditions(override.conditions).forEach(
+                      (attributeKey) => attributeKeys.add(attributeKey),
+                    );
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // force
+      if (feature.environments[environment].force) {
+        feature.environments[environment].force?.forEach((force) => {
+          if (force.conditions) {
+            extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) =>
+              attributeKeys.add(attributeKey),
+            );
+          }
+        });
+      }
+    });
+
+    if (attributeKeys.has(attributeKey)) {
+      usedIn.features.add(featureKey);
+    }
+  }
+
+  // segments
+  const segmentKeys = await datasource.listSegments();
+  for (const segmentKey of segmentKeys) {
+    const segment = await datasource.readSegment(segmentKey);
+    const attributeKeys = new Set<string>();
+
+    extractAttributeKeysFromConditions(segment.conditions as Condition | Condition[]).forEach(
+      (attributeKey) => {
+        attributeKeys.add(attributeKey);
+      },
+    );
+
+    if (attributeKeys.has(attributeKey)) {
+      usedIn.segments.add(segmentKey);
+    }
+  }
+
+  return usedIn;
+}
+
 export interface FindUsageOptions {
   segment?: string;
   attribute?: string;
@@ -86,6 +167,37 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
       usedInFeatures.forEach((featureKey) => {
         console.log(`  - ${featureKey}`);
+      });
+    }
+
+    return;
+  }
+
+  // attribute
+  if (options.attribute) {
+    const usedIn = await findAttributeUsage(deps, options.attribute);
+
+    if (usedIn.features.size === 0 && usedIn.segments.size === 0) {
+      console.log(`Attribute "${options.attribute}" is not used in any features or segments.`);
+
+      return;
+    }
+
+    if (usedIn.features.size > 0) {
+      console.log(`Attribute "${options.attribute}" is used in the following features:\n`);
+
+      usedIn.features.forEach((featureKey) => {
+        console.log(`  - ${featureKey}`);
+      });
+
+      console.log("");
+    }
+
+    if (usedIn.segments.size > 0) {
+      console.log(`Attribute "${options.attribute}" is used in the following segments:\n`);
+
+      usedIn.segments.forEach((segmentKey) => {
+        console.log(`  - ${segmentKey}`);
       });
     }
 
