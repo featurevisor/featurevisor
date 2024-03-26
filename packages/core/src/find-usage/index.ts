@@ -1,4 +1,4 @@
-import { Condition, FeatureKey, SegmentKey, AttributeKey, Segment } from "@featurevisor/types";
+import { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 import {
