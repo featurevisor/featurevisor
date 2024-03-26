@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+
+### Features
+
+* find usage of segments and attributes ([#289](https://github.com/featurevisor/featurevisor/issues/289)) ([c1319b3](https://github.com/featurevisor/featurevisor/commit/c1319b32d46ae7bbb03eb7b7e5dd19e37f2be51d))
+
+
+
+
+
 # [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
 
 **Note:** Version bump only for package @featurevisor/cli
