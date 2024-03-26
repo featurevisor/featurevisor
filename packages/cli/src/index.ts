@@ -253,7 +253,8 @@ async function main() {
       },
     })
     .example("$0 find-usage", "find usage of segments and attributes")
-    .example("$0 find-usage --segment=my_segment", "find usage of segments")
+    .example("$0 find-usage --segment=my_segment", "find usage of segment")
+    .example("$0 find-usage --attribute=my_attribute", "find usage of attribute")
 
     /**
      * Options
