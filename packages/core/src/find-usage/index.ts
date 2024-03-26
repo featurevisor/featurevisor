@@ -1,4 +1,4 @@
-import { Condition } from "@featurevisor/types";
+import { Condition, FeatureKey, SegmentKey, AttributeKey, Segment } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 import {
@@ -8,17 +8,17 @@ import {
 
 export async function findSegmentUsage(
   deps: Dependencies,
-  segmentKey: string,
-): Promise<Set<string>> {
+  segmentKey: SegmentKey,
+): Promise<Set<FeatureKey>> {
   const { datasource, projectConfig } = deps;
 
   const featureKeys = await datasource.listFeatures();
 
-  const usedInFeatures = new Set<string>();
+  const usedInFeatures = new Set<FeatureKey>();
 
   for (const featureKey of featureKeys) {
     const feature = await datasource.readFeature(featureKey);
-    const segmentKeys = new Set<string>();
+    const segmentKeys = new Set<SegmentKey>();
 
     // variable overrides inside variations
     projectConfig.environments.forEach((environment) => {
@@ -70,26 +70,26 @@ export async function findSegmentUsage(
 }
 
 export interface AttributeUsage {
-  features: Set<string>;
-  segments: Set<string>;
+  features: Set<FeatureKey>;
+  segments: Set<SegmentKey>;
 }
 
 export async function findAttributeUsage(
   deps: Dependencies,
-  attributeKey: string,
+  attributeKey: AttributeKey,
 ): Promise<AttributeUsage> {
   const { datasource, projectConfig } = deps;
 
   const usedIn: AttributeUsage = {
-    features: new Set<string>(),
-    segments: new Set<string>(),
+    features: new Set<FeatureKey>(),
+    segments: new Set<SegmentKey>(),
   };
 
   // features
   const featureKeys = await datasource.listFeatures();
   for (const featureKey of featureKeys) {
     const feature = await datasource.readFeature(featureKey);
-    const attributeKeys = new Set<string>();
+    const attributeKeys = new Set<AttributeKey>();
 
     // variable overrides inside variations
     projectConfig.environments.forEach((environment) => {
@@ -132,7 +132,7 @@ export async function findAttributeUsage(
   const segmentKeys = await datasource.listSegments();
   for (const segmentKey of segmentKeys) {
     const segment = await datasource.readSegment(segmentKey);
-    const attributeKeys = new Set<string>();
+    const attributeKeys = new Set<AttributeKey>();
 
     extractAttributeKeysFromConditions(segment.conditions as Condition | Condition[]).forEach(
       (attributeKey) => {
@@ -148,11 +148,11 @@ export async function findAttributeUsage(
   return usedIn;
 }
 
-export async function findUnusedSegments(deps: Dependencies): Promise<Set<string>> {
+export async function findUnusedSegments(deps: Dependencies): Promise<Set<SegmentKey>> {
   const { datasource } = deps;
 
   const segmentKeys = await datasource.listSegments();
-  const unusedSegments = new Set<string>();
+  const unusedSegments = new Set<SegmentKey>();
 
   for (const segmentKey of segmentKeys) {
     const usedInFeatures = await findSegmentUsage(deps, segmentKey);
@@ -165,11 +165,11 @@ export async function findUnusedSegments(deps: Dependencies): Promise<Set<string
   return unusedSegments;
 }
 
-export async function findUnusedAttributes(deps: Dependencies): Promise<Set<string>> {
+export async function findUnusedAttributes(deps: Dependencies): Promise<Set<AttributeKey>> {
   const { datasource } = deps;
 
   const attributeKeys = await datasource.listAttributes();
-  const unusedAttributes = new Set<string>();
+  const unusedAttributes = new Set<AttributeKey>();
 
   for (const attributeKey of attributeKeys) {
     const usedIn = await findAttributeUsage(deps, attributeKey);
