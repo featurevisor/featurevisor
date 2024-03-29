@@ -134,6 +134,7 @@
     "links": [
       { "title": "Roadmap", "href": "/docs/roadmap" },
       { "title": "FAQ", "href": "/docs/faq" },
+      { "title": "Glossary", "href": "/docs/glossary" },
       { "title": "Examples", "href": "/docs/examples" },
       { "title": "Contributing", "href": "/docs/contributing" },
       { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }
