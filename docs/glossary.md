@@ -88,6 +88,14 @@ In Featurevisor, it can apply to a few different areas:
 - If Feature itself is [enabled or disabled](/docs/sdks/javascript/#checking-if-enabled)
 - Boolean type for [variables](/docs/features/#boolean)
 
+## Branch
+
+A [Git](#git) branch is a pointer to a specific sequence of [commits](#commit) in a [repository](#repository).
+
+It represents an independent line of development in a project, allowing you to isolate changes for specific features or tasks. The default branch in Git is usually called `master` or `main`.
+
+You can create, switch to, [merge](#merge), and delete branches using various Git commands. This branching mechanism facilitates collaboration, experimentation, and non-linear development workflows.
+
 ## Browser
 
 Browsers help you access web applications. If you are using Chrome, Firefox, or Safari, then you are using a browser already.
@@ -96,7 +104,10 @@ Browsers help you access web applications. If you are using Chrome, Firefox, or 
 
 Bucketing is the process how we make sure a particular user is consistently seeing a feature as enabled/disabled or a specific variation (if an [A/B test](#a-b-test) experiment) across all sessions and devices in your application(s).
 
-Learn more about bucketing [here](/docs/bucketing).
+Learn more about bucketing here:
+
+- [Bucketing concept](/docs/bucketing)
+- [Configuring bucketing in features](/docs/features/#bucketing)
 
 ## Build
 
@@ -130,9 +141,23 @@ CLI stands for Command Line Interface. It is a text-based interface that allows 
 
 Learn more [here](/docs/cli).
 
+## Commit
+
+A [Git](#git) commit is a command that saves changes to a local [repository](#repository). It's like a snapshot of your work that you can revert to or compare with other versions later.
+
+Each commit has a unique ID (a hash), a message describing the changes, and information about the author.
+
+Commits form a linear or branched history, allowing you to track progress and understand the evolution of a project.
+
 ## Condition
 
 Conditions are the building blocks of your segments. Learn more in [segments](/docs/segments).
+
+## Configuration
+
+Featurevisor manages its project configuration via `featurevisor.config.js` file.
+
+Learn more about project configuration [here](/docs/configuration).
 
 ## Context
 
@@ -193,6 +218,10 @@ These concepts can help you understand more about it:
 
 All Featurevisor [entities](#entity) expect descriptions, to help document what they are intended to be used for.
 
+## Directory
+
+A directory, also known as a folder, is a container used to organize [files](#file) and other directories within a file system.
+
 ## Double
 
 Featurevisor allows `double` as a data type for [variables](#variable), which allows you to have numbers with decimal places.
@@ -229,6 +258,17 @@ against a given [context](#context).
 
 Learn more in [SDKs](/docs/sdks/) page.
 
+## Event
+
+Featurevisor [SDKs](#sdk) emit several different kinds of events for [applications](#application) to hook into depending on their use cases.
+
+Learn more here:
+
+- [Readiness](/docs/sdks/javascript/#asynchronous)
+- [Activation](/docs/sdks/javascript/#activation)
+- [Events](/docs/sdks/javascript/#events)
+- [Logging](/docs/sdks/javascript/#logging)
+
 ## Experiment
 
 Experiments can be of two types in Featurevisor:
@@ -263,6 +303,12 @@ A feature is the core building block, and you can learn more about its anatomy [
 ## Fetch
 
 Fetching is the process of how Featurevisor [SDKs](#sdk) pull in the latest datafiles over the network which packs all the configuration for evaluating all your features in your application against provided contexts.
+
+## File
+
+A file is a container in a computer system for storing information, often in the form of text, images, audio, or software.
+
+Featurevisor [entities](#entity) are all stored as files in their own [directories](#directory).
 
 ## Flag
 
@@ -314,6 +360,12 @@ Featurevisor [SDKs]](#sdk) rely on in-memory hashing algorithm making sure same 
 
 Learn more about it in our guide for [bucketing](/docs/bucketing).
 
+## Instance
+
+Refers to the instance of the [SDK](#sdk), once initialized with your desired configuration parameters.
+
+Learn more about SDK usage [here](/docs/sdks/javascript).
+
 ## Integer
 
 If you wish to define [variables](#variable) which are whole numbers (without decimal places), then `integer` type is what you need.
@@ -350,6 +402,15 @@ When [variables](/docs/features/#variables) are defined inside a feature, they a
 
 As for [rules](/docs/features/#rules) within [environments](#environment), they also have their own keys.
 
+## Level
+
+Refers to the different levels of [logging](#logging), like:
+
+- `log`
+- `info`
+- `warn`
+- `error`
+
 ## Lint
 
 Entities are expressed declaratively in Featurevisor, primarily as [YAML](#yaml) or [JSON](#json) files.
@@ -357,6 +418,12 @@ Entities are expressed declaratively in Featurevisor, primarily as [YAML](#yaml)
 To make sure they do not contain any human introduced mistakes, linting takes care of finding those issues early (if any) before proceeding with [building datafiles](/docs/building-datafiles).
 
 Learn more about linting [here](/docs/linting).
+
+## Logging
+
+Featurevisor [SDKs](#sdk) allow logging various different levels of messages which can be used for tracking, analyzing performance, troubleshooting, understanding how [evaluations](#evaluation) are done and more.
+
+Learn more about logging [here](/docs/sdks/javascript/#logging).
 
 ## Merge
 
@@ -472,6 +539,12 @@ A pull request is a feature in version control systems like [Git](#git), and pla
 
 It's a request to "pull" your changes into the main project. Pull requests show content differences, facilitate discussions, code [review](#review), and can be integrated with other testing and [CI/CD](#ci-cd) tools before the changes are [merged](#merge) into the main branch.
 
+## Push
+
+In the context of [Git](#git), "push" is a command used to upload local [repository](#repository) content to a remote repository.
+
+After [committing](#commit) changes locally, you "push" them to the remote repository to share your changes with others and synchronize your local repository with the remote. It's an essential command for collaborative work in Git.
+
 ## QA
 
 Many organizations have Quality Assurance (QA) teams, making sure everything is working as expected before the changes of your applications are exposed to your real users, minimizing any potential risks.
@@ -514,6 +587,15 @@ Learn more about it:
 
 - [Building datafiles](/docs/building-datafiles)
 - [State files](/docs/state-files)
+
+## Required
+
+Featurevisor supports defining certain features as dependencies for a particular feature.
+
+Learn more about it here:
+
+- [Managing feature dependencies](/docs/use-cases/dependencies)
+- [Defining dependencies in features](/docs/features/#required)
 
 ## Rule
 
@@ -570,6 +652,18 @@ Learn more about them and their usage here:
 
 - [State files](/docs/state-files)
 - [Deployment](/docs/deployment)
+
+## Status
+
+A status check for a [commit](#commit) is a process in version control systems like [Git](#git), and platforms like [GitHub](#github), that verifies the commit against certain criteria before it's merged into the main [branch](#branch).
+
+This can include running automated tests, checking for code style adherence, verifying the commit message format, and more. Status checks help maintain code quality and prevent introducing errors into the main codebase. They are often integrated into the [pull request](#pull-request) process.
+
+## Sticky
+
+Applications may often decide to make certain [evaluations](#evaluation) sticky (not take fetched [datafile](#datafile) into account) for specific users against certain [features](#feature) for the lifecycle of the [SDK](#sdk).
+
+You can more about how Featurevisor SDKs allow that [here](/docs/sdks/javascript/#stickiness).
 
 ## String
 
