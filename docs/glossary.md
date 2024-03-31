@@ -201,7 +201,7 @@ Learn more about its usage [here](/docs/features/#double).
 
 ## Entity
 
-All the building blocks of Featuervisor are called entities, which are:
+All the building blocks of Featurevisor are called entities, which are:
 
 - [Attribute](/docs/attributes)
 - [Segment](/docs/segments)
@@ -256,7 +256,7 @@ Either you want a:
 - one with [variations](#variation) to be treated as an [experiment](#experiment), or
 - one with [variables](#variable) for more complex configuration
 
-...everthing is defined as a feature in Featurevisor.
+...everything is defined as a feature in Featurevisor.
 
 A feature is the core building block, and you can learn more about its anatomy [here](/docs/features).
 
@@ -448,7 +448,7 @@ Not all releases of your features should be a big bang release affecting all you
 
 These percentages are defined in your rollout [rules](/docs/features/#rules) inside features.
 
-Learn more about gradual rollouts and progressive delivery [here](/docs/use-cases/progressive-delivery).
+Learn more about gradual rollout and progressive delivery [here](/docs/use-cases/progressive-delivery).
 
 ## Pretty
 
