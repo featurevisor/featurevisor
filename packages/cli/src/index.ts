@@ -22,6 +22,7 @@ import {
   restoreProject,
   Dependencies,
   Datasource,
+  benchmarkFeature,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -260,6 +261,53 @@ async function main() {
     .example("$0 find-usage --attribute=my_attribute", "find usage of attribute")
     .example("$0 find-usage --unusedSegments", "find unused segments")
     .example("$0 find-usage --unusedAttributes", "find unused attributes")
+
+    /**
+     * Benchmark features
+     */
+    .command({
+      command: "benchmark",
+      handler: async function (options) {
+        if (!options.environment) {
+          console.error("Please specify an environment with --environment flag.");
+          process.exit(1);
+        }
+
+        if (!options.feature) {
+          console.error("Please specify a feature with --feature flag.");
+          process.exit(1);
+        }
+
+        const deps = await getDependencies(options);
+
+        try {
+          await benchmarkFeature(deps, {
+            environment: options.environment,
+            feature: options.feature,
+            n: parseInt(options.n, 10) || 1,
+            context: options.context ? JSON.parse(options.context) : {},
+            variation: options.variation || undefined,
+            variable: options.variable || undefined,
+          });
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 benchmark", "benchmark feature evaluations")
+    .example(
+      "$0 benchmark --environment=production --feature=my_feature --context='{}' -n=100",
+      "benchmark feature flag evaluation",
+    )
+    .example(
+      "$0 benchmark --environment=production --feature=my_feature --context='{}' --variation -n=100",
+      "benchmark feature variation evaluation",
+    )
+    .example(
+      "$0 benchmark --environment=production --feature=my_feature --context='{}' --variable=my_variable_key -n=100",
+      "benchmark feature variable evaluation",
+    )
 
     /**
      * Options

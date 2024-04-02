@@ -147,3 +147,47 @@ $ npx featurevisor find-usage --unusedSegments
 ```
 $ npx featurevisor find-usage --unusedAttributes
 ```
+
+## Benchmarking
+
+You can measure how fast or slow your SDK evaluations are for particular features.
+
+The `--n` option is used to specify the number of iterations to run the benchmark for.
+
+### Feature
+
+To benchmark evaluating a feature itself if it is enabled or disabled via SDK's `.isEnabled()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variation
+
+To benchmark evaluating a feature's variation via SDKs's `.getVariation()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variation \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variable
+
+To benchmark evaluating a feature's variable via SDKs's `.getVariable()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variable=my_variable_key \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
