@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+
+### Features
+
+* benchmarking option in CLI ([#292](https://github.com/featurevisor/featurevisor/issues/292)) ([6abcecc](https://github.com/featurevisor/featurevisor/commit/6abcecc3a92f00ccea7dcb542676126b6eb3b778))
+
+
+
+
+
 ## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
 
 
