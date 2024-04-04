@@ -109,8 +109,6 @@ export function showProjectConfig(
   projectConfig: ProjectConfig,
   options: ShowProjectConfigOptions = {},
 ) {
-  const keys = Object.keys(projectConfig);
-
   if (options.print) {
     console.log(
       options.pretty ? JSON.stringify(projectConfig, null, 2) : JSON.stringify(projectConfig),
@@ -121,6 +119,7 @@ export function showProjectConfig(
 
   console.log("\nProject configuration:\n");
 
+  const keys = Object.keys(projectConfig);
   const longestKeyLength = keys.reduce((acc, key) => (key.length > acc ? key.length : acc), 0);
   const ignoreKeys = ["adapter", "parser"];
 
