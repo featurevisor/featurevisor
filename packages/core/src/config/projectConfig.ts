@@ -50,15 +50,6 @@ export interface ProjectConfig {
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
-    featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
-    segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
-    attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
-    groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
-    testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
-
-    stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
-    outputDirectoryPath: path.join(rootDirectoryPath, OUTPUT_DIRECTORY_NAME),
-
     environments: DEFAULT_ENVIRONMENTS,
     tags: DEFAULT_TAGS,
     defaultBucketBy: "userId",
@@ -69,9 +60,16 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
     stringify: true,
 
-    siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
-
     adapter: FilesystemAdapter,
+
+    featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
+    segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
+    attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
+    groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
+    testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
+    stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
+    outputDirectoryPath: path.join(rootDirectoryPath, OUTPUT_DIRECTORY_NAME),
+    siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
@@ -100,4 +98,36 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   }
 
   return finalConfig as ProjectConfig;
+}
+
+export interface ShowProjectConfigOptions {
+  print?: boolean;
+  pretty?: boolean;
+}
+
+export function showProjectConfig(
+  projectConfig: ProjectConfig,
+  options: ShowProjectConfigOptions = {},
+) {
+  if (options.print) {
+    console.log(
+      options.pretty ? JSON.stringify(projectConfig, null, 2) : JSON.stringify(projectConfig),
+    );
+
+    return;
+  }
+
+  console.log("\nProject configuration:\n");
+
+  const keys = Object.keys(projectConfig);
+  const longestKeyLength = keys.reduce((acc, key) => (key.length > acc ? key.length : acc), 0);
+  const ignoreKeys = ["adapter", "parser"];
+
+  for (const key of keys) {
+    if (ignoreKeys.indexOf(key) !== -1) {
+      continue;
+    }
+
+    console.log(`  - ${key.padEnd(longestKeyLength, " ")}: ${projectConfig[key]}`);
+  }
 }

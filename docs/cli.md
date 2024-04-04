@@ -191,3 +191,17 @@ $ npx featurevisor benchmark \
   --context='{"userId": "123"}' \
   --n=1000
 ```
+
+## Configuration
+
+To view the project [configuration](/docs/configuration):
+
+```
+$ npx featurevisor config
+```
+
+Printing configuration as JSON:
+
+```
+$ npx featurevisor config --print --pretty
+```
