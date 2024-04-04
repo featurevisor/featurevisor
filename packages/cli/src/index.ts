@@ -23,6 +23,7 @@ import {
   Dependencies,
   Datasource,
   benchmarkFeature,
+  showProjectConfig,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -308,6 +309,24 @@ async function main() {
       "$0 benchmark --environment=production --feature=my_feature --context='{}' --variable=my_variable_key -n=100",
       "benchmark feature variable evaluation",
     )
+
+    /**
+     * Show config
+     */
+    .command({
+      command: "config",
+      handler: async function (options) {
+        const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
+
+        showProjectConfig(projectConfig, {
+          print: options.print,
+          pretty: options.pretty,
+        });
+      },
+    })
+    .example("$0 config", "show project configuration")
+    .example("$0 config --print", "print project configuration as JSON")
+    .example("$0 config --print --pretty", "print project configuration as prettified JSON")
 
     /**
      * Options
