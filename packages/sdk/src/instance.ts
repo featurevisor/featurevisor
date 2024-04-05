@@ -104,6 +104,7 @@ export interface Evaluation {
   reason: EvaluationReason;
 
   // common
+  bucketKey?: BucketKey;
   bucketValue?: BucketValue;
   ruleKey?: RuleKey;
   error?: Error;
@@ -368,16 +369,27 @@ export class FeaturevisorInstance {
     return result;
   }
 
-  private getBucketValue(feature: Feature, context: Context): BucketValue {
+  private getBucketValue(
+    feature: Feature,
+    context: Context,
+  ): { bucketKey: BucketKey; bucketValue: BucketValue } {
     const bucketKey = this.getBucketKey(feature, context);
 
     const value = getBucketedNumber(bucketKey);
 
     if (this.configureBucketValue) {
-      return this.configureBucketValue(feature, context, value);
+      const configuredValue = this.configureBucketValue(feature, context, value);
+
+      return {
+        bucketKey,
+        bucketValue: configuredValue,
+      };
     }
 
-    return value;
+    return {
+      bucketKey,
+      bucketValue: value,
+    };
   }
 
   /**
@@ -577,7 +589,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const matchedTraffic = getMatchedTraffic(
         feature.traffic,
@@ -600,6 +612,7 @@ export class FeaturevisorInstance {
               reason: EvaluationReason.ALLOCATED,
               enabled:
                 typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
+              bucketKey,
               bucketValue,
             };
 
@@ -613,6 +626,7 @@ export class FeaturevisorInstance {
             featureKey: feature.key,
             reason: EvaluationReason.OUT_OF_RANGE,
             enabled: false,
+            bucketKey,
             bucketValue,
           };
 
@@ -627,6 +641,7 @@ export class FeaturevisorInstance {
             featureKey: feature.key,
             reason: EvaluationReason.OVERRIDE,
             enabled: matchedTraffic.enabled,
+            bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
@@ -643,6 +658,7 @@ export class FeaturevisorInstance {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
             enabled: true,
+            bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
@@ -659,6 +675,7 @@ export class FeaturevisorInstance {
         featureKey: feature.key,
         reason: EvaluationReason.ERROR,
         enabled: false,
+        bucketKey,
         bucketValue,
       };
 
@@ -798,7 +815,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
@@ -818,6 +835,7 @@ export class FeaturevisorInstance {
               featureKey: feature.key,
               reason: EvaluationReason.RULE,
               variation,
+              bucketKey,
               bucketValue,
               ruleKey: matchedTraffic.key,
             };
@@ -836,6 +854,7 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.ALLOCATED,
+              bucketKey,
               bucketValue,
               variation,
             };
@@ -851,6 +870,7 @@ export class FeaturevisorInstance {
       evaluation = {
         featureKey: feature.key,
         reason: EvaluationReason.ERROR,
+        bucketKey,
         bucketValue,
       };
 
@@ -1063,7 +1083,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
@@ -1085,6 +1105,7 @@ export class FeaturevisorInstance {
             variableKey,
             variableSchema,
             variableValue: matchedTraffic.variables[variableKey],
+            bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
           };
@@ -1139,6 +1160,7 @@ export class FeaturevisorInstance {
                     variableKey,
                     variableSchema,
                     variableValue: override.value,
+                    bucketKey,
                     bucketValue,
                     ruleKey: matchedTraffic.key,
                   };
@@ -1156,6 +1178,7 @@ export class FeaturevisorInstance {
                   variableKey,
                   variableSchema,
                   variableValue: variableFromVariation.value,
+                  bucketKey,
                   bucketValue,
                   ruleKey: matchedTraffic.key,
                 };
@@ -1176,6 +1199,7 @@ export class FeaturevisorInstance {
         variableKey,
         variableSchema,
         variableValue: variableSchema.defaultValue,
+        bucketKey,
         bucketValue,
       };
 

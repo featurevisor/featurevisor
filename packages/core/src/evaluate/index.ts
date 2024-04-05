@@ -6,7 +6,7 @@ import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 
 function printEvaluationDetails(evaluation: Evaluation) {
-  const ignoreKeys = ["featureKey", "traffic", "bucketValue", "bucketKey"];
+  const ignoreKeys = ["featureKey", "traffic"];
 
   for (const [key, value] of Object.entries(evaluation)) {
     if (ignoreKeys.indexOf(key) !== -1) {
@@ -97,14 +97,8 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   }
 
   console.log("");
-  console.log(`Evaluating feature "${options.feature}" in environment "${options.environment}..."`);
+  console.log(`Evaluating feature "${options.feature}" in environment "${options.environment}"...`);
   console.log(`Against context: ${JSON.stringify(options.context)}`);
-
-  // bucketing
-  printHeader("Bucketing");
-
-  // console.log("Bucket key:", flagEvaluation.bucketKey); // @TODO
-  console.log("Bucket value:", flagEvaluation.bucketValue);
 
   // flag
   printHeader("Is enabled?");
