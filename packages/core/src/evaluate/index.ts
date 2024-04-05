@@ -4,7 +4,29 @@ import { Evaluation, createInstance, createLogger } from "@featurevisor/sdk";
 import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
-import { prettyNumber } from "../utils";
+
+function printEvaluationDetails(evaluation: Evaluation) {
+  const ignoreKeys = ["featureKey", "traffic", "bucketValue", "bucketKey"];
+
+  for (const [key, value] of Object.entries(evaluation)) {
+    if (ignoreKeys.indexOf(key) !== -1) {
+      continue;
+    }
+
+    if (key === "variation") {
+      console.log(`-`, `${key}:`, value?.key);
+      continue;
+    }
+
+    console.log(`-`, `${key}:`, value);
+  }
+}
+
+function printHeader(message: string) {
+  console.log("\n\n###############");
+  console.log(`# ${message}`);
+  console.log("###############\n");
+}
 
 export interface EvaluateOptions {
   environment: string;
@@ -78,33 +100,29 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   console.log(`Evaluating feature "${options.feature}" in environment "${options.environment}..."`);
   console.log(`Against context: ${JSON.stringify(options.context)}`);
 
+  // bucketing
+  printHeader("Bucketing");
+
+  // console.log("Bucket key:", flagEvaluation.bucketKey); // @TODO
+  console.log("Bucket value:", flagEvaluation.bucketValue);
+
   // flag
-  console.log("\n###");
-  console.log("# Is enabled?");
-  console.log("#\n");
+  printHeader("Is enabled?");
 
   console.log("Value:", flagEvaluation.enabled);
-  console.log("\nDetails:");
+  console.log("\nDetails:\n");
 
-  for (const [key, value] of Object.entries(flagEvaluation)) {
-    if (key === "traffic") {
-      continue;
-    }
+  printEvaluationDetails(flagEvaluation);
 
-    console.log(`-`, `${key}:`, value);
+  // variation
+  printHeader("Variation");
+
+  if (feature?.variations) {
+    console.log("Value:", variationEvaluation.enabled);
+    console.log("\nDetails:\n");
+
+    printEvaluationDetails(variationEvaluation);
+  } else {
+    console.log("No variations available.");
   }
-
-  // const variation = f.getVariation(options.feature, options.context as Context);
-  // console.log("Variation:", variation);
-
-  // const feature = f.getFeature(options.feature);
-
-  // if (feature?.variablesSchema) {
-  //   console.log("Variables:");
-
-  //   feature.variablesSchema.forEach((v) => {
-  //     const variableValue = f.getVariable(options.feature, v.key, options.context as Context);
-  //     console.log(`  - "${v.key}": ${variableValue}`);
-  //   });
-  // }
 }
