@@ -18,6 +18,12 @@ function printEvaluationDetails(evaluation: Evaluation) {
       continue;
     }
 
+    if (key === "variableSchema") {
+      console.log(`-`, `variableType:`, value.type);
+      console.log(`-`, `defaultValue:`, value.defaultValue);
+      continue;
+    }
+
     console.log(`-`, `${key}:`, value);
   }
 }
@@ -68,7 +74,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   const flagEvaluation = f.evaluateFlag(options.feature, options.context as Context);
   const variationEvaluation = f.evaluateVariation(options.feature, options.context as Context);
-  const variableEvaluations: Array<Evaluation> = [];
+  const variableEvaluations: Record<string, Evaluation> = {};
 
   const feature = f.getFeature(options.feature);
   if (feature?.variablesSchema) {
@@ -78,7 +84,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
         v.key,
         options.context as Context,
       );
-      variableEvaluations.push(variableEvaluation);
+      variableEvaluations[v.key] = variableEvaluation;
     });
   }
 
@@ -117,6 +123,22 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
     printEvaluationDetails(variationEvaluation);
   } else {
-    console.log("No variations available.");
+    console.log("No variations defined.");
+  }
+
+  // variables
+  if (feature?.variablesSchema) {
+    for (const [key, value] of Object.entries(variableEvaluations)) {
+      printHeader(`Variable: ${key}`);
+
+      console.log("Value:", value.variableValue);
+      console.log("\nDetails:\n");
+
+      printEvaluationDetails(value);
+    }
+  } else {
+    printHeader("Variables");
+
+    console.log("No variables defined.");
   }
 }
