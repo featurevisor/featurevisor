@@ -18,6 +18,7 @@ import {
   VariableKey,
   VariableSchema,
   Force,
+  Required,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
@@ -113,6 +114,7 @@ export interface Evaluation {
   traffic?: Traffic;
   forceIndex?: number;
   force?: Force;
+  required?: Required[];
   sticky?: OverrideFeature;
   initial?: OverrideFeature;
 
@@ -485,8 +487,8 @@ export class FeaturevisorInstance {
         evaluation = {
           featureKey: key,
           reason: EvaluationReason.STICKY,
-          enabled: this.stickyFeatures[key].enabled,
           sticky: this.stickyFeatures[key],
+          enabled: this.stickyFeatures[key].enabled,
         };
 
         this.logger.debug("using sticky enabled", evaluation);
@@ -505,8 +507,8 @@ export class FeaturevisorInstance {
         evaluation = {
           featureKey: key,
           reason: EvaluationReason.INITIAL,
-          enabled: this.initialFeatures[key].enabled,
           initial: this.initialFeatures[key],
+          enabled: this.initialFeatures[key].enabled,
         };
 
         this.logger.debug("using initial enabled", evaluation);
@@ -589,6 +591,7 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.REQUIRED,
+            required: feature.required,
             enabled: requiredFeaturesAreEnabled,
           };
 
@@ -620,10 +623,12 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.ALLOCATED,
-              enabled:
-                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
               bucketKey,
               bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              enabled:
+                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
             };
 
             this.logger.debug("matched", evaluation);
@@ -635,9 +640,9 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.OUT_OF_RANGE,
-            enabled: false,
             bucketKey,
             bucketValue,
+            enabled: false,
           };
 
           this.logger.debug("not matched", evaluation);
@@ -650,11 +655,11 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.OVERRIDE,
-            enabled: matchedTraffic.enabled,
             bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
+            enabled: matchedTraffic.enabled,
           };
 
           this.logger.debug("override from rule", evaluation);
@@ -667,11 +672,11 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
-            enabled: true,
             bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
+            enabled: true,
           };
 
           this.logger.debug("matched traffic", evaluation);
@@ -683,10 +688,10 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR,
-        enabled: false,
+        reason: EvaluationReason.ERROR, // @TODO: any better reason?
         bucketKey,
         bucketValue,
+        enabled: false,
       };
 
       this.logger.debug("nothing matched", evaluation);
@@ -851,10 +856,11 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.RULE,
-              variation,
               bucketKey,
               bucketValue,
               ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              variation,
             };
 
             this.logger.debug("override from rule", evaluation);
@@ -873,6 +879,8 @@ export class FeaturevisorInstance {
               reason: EvaluationReason.ALLOCATED,
               bucketKey,
               bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
               variation,
             };
 
@@ -886,7 +894,7 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR,
+        reason: EvaluationReason.ERROR, // @TODO: any better reason?
         bucketKey,
         bucketValue,
       };
@@ -1126,12 +1134,13 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
-            variableKey,
-            variableSchema,
-            variableValue: matchedTraffic.variables[variableKey],
             bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+            variableKey,
+            variableSchema,
+            variableValue: matchedTraffic.variables[variableKey],
           };
 
           this.logger.debug("override from rule", evaluation);
@@ -1181,12 +1190,13 @@ export class FeaturevisorInstance {
                   evaluation = {
                     featureKey: feature.key,
                     reason: EvaluationReason.OVERRIDE,
-                    variableKey,
-                    variableSchema,
-                    variableValue: override.value,
                     bucketKey,
                     bucketValue,
                     ruleKey: matchedTraffic.key,
+                    traffic: matchedTraffic,
+                    variableKey,
+                    variableSchema,
+                    variableValue: override.value,
                   };
 
                   this.logger.debug("variable override", evaluation);
@@ -1199,12 +1209,13 @@ export class FeaturevisorInstance {
                 evaluation = {
                   featureKey: feature.key,
                   reason: EvaluationReason.ALLOCATED,
-                  variableKey,
-                  variableSchema,
-                  variableValue: variableFromVariation.value,
                   bucketKey,
                   bucketValue,
                   ruleKey: matchedTraffic.key,
+                  traffic: matchedTraffic,
+                  variableKey,
+                  variableSchema,
+                  variableValue: variableFromVariation.value,
                 };
 
                 this.logger.debug("allocated variable", evaluation);
@@ -1220,11 +1231,11 @@ export class FeaturevisorInstance {
       evaluation = {
         featureKey: feature.key,
         reason: EvaluationReason.DEFAULTED,
+        bucketKey,
+        bucketValue,
         variableKey,
         variableSchema,
         variableValue: variableSchema.defaultValue,
-        bucketKey,
-        bucketValue,
       };
 
       this.logger.debug("using default value", evaluation);

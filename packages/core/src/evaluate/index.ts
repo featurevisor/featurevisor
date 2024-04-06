@@ -6,7 +6,7 @@ import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 
 function printEvaluationDetails(evaluation: Evaluation) {
-  const ignoreKeys = ["featureKey", "traffic", "force"];
+  const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
 
   for (const [key, value] of Object.entries(evaluation)) {
     if (ignoreKeys.indexOf(key) !== -1) {
