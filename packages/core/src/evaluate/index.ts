@@ -6,7 +6,7 @@ import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 
 function printEvaluationDetails(evaluation: Evaluation) {
-  const ignoreKeys = ["featureKey", "traffic"];
+  const ignoreKeys = ["featureKey", "traffic", "force"];
 
   for (const [key, value] of Object.entries(evaluation)) {
     if (ignoreKeys.indexOf(key) !== -1) {
@@ -14,7 +14,7 @@ function printEvaluationDetails(evaluation: Evaluation) {
     }
 
     if (key === "variation") {
-      console.log(`-`, `${key}:`, value?.key);
+      console.log(`-`, `${key}:`, value?.value);
       continue;
     }
 
@@ -118,7 +118,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   printHeader("Variation");
 
   if (feature?.variations) {
-    console.log("Value:", variationEvaluation.enabled);
+    console.log("Value:", variationEvaluation.variation?.value);
     console.log("\nDetails:\n");
 
     printEvaluationDetails(variationEvaluation);

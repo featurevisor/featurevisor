@@ -17,6 +17,7 @@ import {
   RuleKey,
   VariableKey,
   VariableSchema,
+  Force,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
@@ -110,6 +111,8 @@ export interface Evaluation {
   error?: Error;
   enabled?: boolean;
   traffic?: Traffic;
+  forceIndex?: number;
+  force?: Force;
   sticky?: OverrideFeature;
   initial?: OverrideFeature;
 
@@ -533,12 +536,19 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && typeof force.enabled !== "undefined") {
         evaluation = {
           featureKey: feature.key,
           reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
           enabled: force.enabled,
         };
 
@@ -796,7 +806,12 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && force.variation) {
         const variation = feature.variations.find((v) => v.value === force.variation);
@@ -805,6 +820,8 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.FORCED,
+            forceIndex,
+            force,
             variation,
           };
 
@@ -1066,12 +1083,19 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
         evaluation = {
           featureKey: feature.key,
           reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
           variableKey,
           variableSchema,
           variableValue: force.variables[variableKey],
