@@ -24,6 +24,7 @@ import {
   Datasource,
   benchmarkFeature,
   showProjectConfig,
+  evaluateFeature,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -327,6 +328,44 @@ async function main() {
     .example("$0 config", "show project configuration")
     .example("$0 config --print", "print project configuration as JSON")
     .example("$0 config --print --pretty", "print project configuration as prettified JSON")
+
+    /**
+     * Evaluate
+     */
+    .command({
+      command: "evaluate",
+      handler: async function (options) {
+        if (!options.environment) {
+          console.error("Please specify an environment with --environment flag.");
+          process.exit(1);
+        }
+
+        if (!options.feature) {
+          console.error("Please specify a feature with --feature flag.");
+          process.exit(1);
+        }
+
+        const deps = await getDependencies(options);
+
+        try {
+          await evaluateFeature(deps, {
+            environment: options.environment,
+            feature: options.feature,
+            context: options.context ? JSON.parse(options.context) : {},
+            print: options.print,
+            pretty: options.pretty,
+          });
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 evaluate", "evaluate a feature along with its variation and variables")
+    .example(
+      "$0 evaluate --environment=production --feature=my_feature --context='{}'",
+      "evaluate a feature against provided context",
+    )
 
     /**
      * Options

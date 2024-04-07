@@ -205,3 +205,31 @@ Printing configuration as JSON:
 ```
 $ npx featurevisor config --print --pretty
 ```
+
+## Evaluate
+
+To learn why certain values (like feature and its variation or variables) are evaluated as they are:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}'
+```
+
+This will show you full [evaluation details](/docs/sdks/javascript/#evaluation-details) helping you debug better in case of any confusion.
+
+It is similar to [logging](/docs/sdks/javascript/#logging) in SDKs with `debug` level. But here instead, we are doing it at CLI directly in our Featurevisor project without having to involve our application(s).
+
+If you wish to print the evaluation details in plain JSON, you can pass `--print` at the end:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}' \
+  --print \
+  --pretty
+```
+
+The `--pretty` flag is optional.
