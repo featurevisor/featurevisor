@@ -118,7 +118,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   printHeader("Variation");
 
   if (feature?.variations) {
-    console.log("Value:", variationEvaluation.variation?.value);
+    console.log("Value:", JSON.stringify(variationEvaluation.variation?.value));
     console.log("\nDetails:\n");
 
     printEvaluationDetails(variationEvaluation);
@@ -131,7 +131,12 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     for (const [key, value] of Object.entries(variableEvaluations)) {
       printHeader(`Variable: ${key}`);
 
-      console.log("Value:", value.variableValue);
+      console.log(
+        "Value:",
+        typeof value.variableValue !== "undefined"
+          ? JSON.stringify(value.variableValue)
+          : value.variableValue,
+      );
       console.log("\nDetails:\n");
 
       printEvaluationDetails(value);
