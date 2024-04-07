@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+
+### Features
+
+* evaluate features in CLI ([#295](https://github.com/featurevisor/featurevisor/issues/295)) ([5a3332a](https://github.com/featurevisor/featurevisor/commit/5a3332a226a3b4901445fe2fe04baa8320e94f48))
+
+
+
+
+
 # [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
 
 
