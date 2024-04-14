@@ -10,5 +10,6 @@ export * from "./find-duplicate-segments";
 export * from "./find-usage";
 export * from "./dependencies";
 export * from "./datasource";
+export * from "./gui";
 export * from "./benchmark";
 export * from "./evaluate";

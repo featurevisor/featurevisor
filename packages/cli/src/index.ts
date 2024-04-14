@@ -22,6 +22,7 @@ import {
   restoreProject,
   Dependencies,
   Datasource,
+  openGui,
   benchmarkFeature,
   showProjectConfig,
   evaluateFeature,
@@ -366,6 +367,24 @@ async function main() {
       "$0 evaluate --environment=production --feature=my_feature --context='{}'",
       "evaluate a feature against provided context",
     )
+
+    /**
+     * GUI
+     */
+    .command({
+      command: "gui",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          openGui(deps);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 gui", "Open GUI")
 
     /**
      * Options
