@@ -241,6 +241,6 @@ const bannerVariation = f.getVariation(featureKey, context);
 const myVariable = f.getVariable(featureKey, "myVariableKey", context);
 ```
 
-Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.
+Featurevisor SDK will take care of computing the right value(s) for you against the provided `userId` and `country` attributes as context.
 
 Find more examples of SDK usage [here](/docs/sdks).

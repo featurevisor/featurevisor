@@ -85,25 +85,47 @@ export function getMatchedTrafficAndAllocation(
   };
 }
 
+export interface ForceResult {
+  force?: Force;
+  forceIndex?: number;
+}
+
 export function findForceFromFeature(
   feature: Feature,
   context: Context,
   datafileReader: DatafileReader,
   logger: Logger,
-): Force | undefined {
+): ForceResult {
+  const result: ForceResult = {
+    force: undefined,
+    forceIndex: undefined,
+  };
+
   if (!feature.force) {
-    return undefined;
+    return result;
   }
 
-  return feature.force.find((f: Force) => {
-    if (f.conditions) {
-      return allConditionsAreMatched(f.conditions, context, logger);
+  for (let i = 0; i < feature.force.length; i++) {
+    const currentForce = feature.force[i];
+
+    if (
+      currentForce.conditions &&
+      allConditionsAreMatched(currentForce.conditions, context, logger)
+    ) {
+      result.force = currentForce;
+      result.forceIndex = i;
+      break;
     }
 
-    if (f.segments) {
-      return allGroupSegmentsAreMatched(f.segments, context, datafileReader, logger);
+    if (
+      currentForce.segments &&
+      allGroupSegmentsAreMatched(currentForce.segments, context, datafileReader, logger)
+    ) {
+      result.force = currentForce;
+      result.forceIndex = i;
+      break;
     }
+  }
 
-    return false;
-  });
+  return result;
 }
