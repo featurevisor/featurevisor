@@ -156,7 +156,7 @@ The `--n` option is used to specify the number of iterations to run the benchmar
 
 ### Feature
 
-To benchmark evaluating a feature itself if it is enabled or disabled via SDK's `.isEnabled()` method:
+To benchmark evaluating a feature itself if it is enabled or disabled via SDK's `.isEnabled()` method against provided [context](/docs/sdks/javascript/#context):
 
 ```
 $ npx featurevisor benchmark \
@@ -208,7 +208,7 @@ $ npx featurevisor config --print --pretty
 
 ## Evaluate
 
-To learn why certain values (like feature and its variation or variables) are evaluated as they are:
+To learn why certain values (like feature and its variation or variables) are evaluated as they are against provided [context](/docs/sdks/javascript/#context):
 
 ```
 $ npx featurevisor evaluate \
@@ -233,3 +233,31 @@ $ npx featurevisor evaluate \
 ```
 
 The `--pretty` flag is optional.
+
+## Assess distribution
+
+To check if the gradual rollout of a feature and the weight distribution of its variations (if any exists) are going to work as expected in a real world application with real traffic against provided [context](/docs/sdks/javascript/#context), we can imitate that by running:
+
+```
+$ npx featurevisor assess-distribution \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"country": "nl"}' \
+  --populateUuid=userId \
+  --n=1000
+```
+
+The `--n` option controls the number of iterations to run, and the `--populateUuid` option is used to simulate different users in each iteration in this particular case.
+
+Further details about all the options:
+
+- `--environment`: the environment name
+- `--feature`: the feature key
+- `--context`: the common [context](/docs/sdks/javascript/#context) object in stringified form
+- `--populateUuid`: attribute key that should be populated with a new UUID, and merged with provided context.
+  - You can pass multiple attributes in your command: `--populateUuid=userId --populateUuid=deviceId`
+- `--n`: the number of iterations to run the assessment for
+  - The higher the number, the more accurate the distribution will be
+- `--verbose`: print the merged context for better debugging
+
+Everything is happening locally in memory without modifying any content anywhere. This command exists only to add to our confidence if questions arise about how effective traffic distribution in Featurevisor is.
