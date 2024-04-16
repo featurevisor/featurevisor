@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+
+### Features
+
+* assess traffic distribution via CLI ([#297](https://github.com/featurevisor/featurevisor/issues/297)) ([2063ad9](https://github.com/featurevisor/featurevisor/commit/2063ad9a5408071bfb1636c748cabe616065191d))
+
+
+
+
+
 # [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
 
 
