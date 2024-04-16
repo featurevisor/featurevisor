@@ -25,6 +25,7 @@ import {
   benchmarkFeature,
   showProjectConfig,
   evaluateFeature,
+  assessDistribution,
 } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
@@ -365,6 +366,47 @@ async function main() {
     .example(
       "$0 evaluate --environment=production --feature=my_feature --context='{}'",
       "evaluate a feature against provided context",
+    )
+
+    /**
+     * Assess distribution
+     */
+    .command({
+      command: "assess-distribution",
+      handler: async function (options) {
+        if (!options.environment) {
+          console.error("Please specify an environment with --environment flag.");
+          process.exit(1);
+        }
+
+        if (!options.feature) {
+          console.error("Please specify a feature with --feature flag.");
+          process.exit(1);
+        }
+
+        const deps = await getDependencies(options);
+
+        try {
+          await assessDistribution(deps, {
+            environment: options.environment,
+            feature: options.feature,
+            context: options.context ? JSON.parse(options.context) : {},
+            populateUuid: Array.isArray(options.populateUuid)
+              ? options.populateUuid
+              : [options.populateUuid as string].filter(Boolean),
+            n: parseInt(options.n, 10) || 1,
+            verbose: options.verbose,
+          });
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 assess-distribution", "test traffic distribution of a feature")
+    .example(
+      "$0 assess-distribution --environment=production --feature=my_feature --context='{}' --populateUuid=userId --n=100",
+      "test traffic distribution a feature against provided context",
     )
 
     /**
