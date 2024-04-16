@@ -74,7 +74,7 @@ The `bucketBy` property is used to determine how the feature will be bucketed. M
 bucketBy: userId
 ```
 
-Given we used `userId` attribute as the `bucketBy` value, it means no matter which application or device the user is using, as long as the `userId` attribute's value is the same, the same variation of the feature will be consistently assigned to that particular user.
+Given we used `userId` attribute as the `bucketBy` value, it means no matter which application or device the user is using, as long as the `userId` attribute's value is the same, the same value(s) of the feature will be consistently assigned to that particular user.
 
 If you want to bucket users against multiple attributes together, you can do as follows:
 

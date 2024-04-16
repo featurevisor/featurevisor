@@ -3,6 +3,74 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+
+### Features
+
+* evaluate features in CLI ([#295](https://github.com/featurevisor/featurevisor/issues/295)) ([5a3332a](https://github.com/featurevisor/featurevisor/commit/5a3332a226a3b4901445fe2fe04baa8320e94f48))
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.15.0](https://github.com/featurevisor/featurevisor/compare/v1.14.0...v1.15.0) (2024-04-04)
+
+
+### Features
+
+* show project configuration via CLI ([#293](https://github.com/featurevisor/featurevisor/issues/293)) ([a83f6fa](https://github.com/featurevisor/featurevisor/commit/a83f6fa4d21012b2e0c0d97ab6bb182f9aa4c1af))
+
+
+
+
+
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+
+### Features
+
+* benchmarking option in CLI ([#292](https://github.com/featurevisor/featurevisor/issues/292)) ([6abcecc](https://github.com/featurevisor/featurevisor/commit/6abcecc3a92f00ccea7dcb542676126b6eb3b778))
+
+
+
+
+
+## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+
+### Features
+
+* find usage of segments and attributes ([#289](https://github.com/featurevisor/featurevisor/issues/289)) ([c1319b3](https://github.com/featurevisor/featurevisor/commit/c1319b32d46ae7bbb03eb7b7e5dd19e37f2be51d))
+
+
+
+
+
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
 ## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
 
 **Note:** Version bump only for package @featurevisor/cli

@@ -7,9 +7,19 @@ When you build your datafiles, Featurevisor generates some additional JSON files
 
 ## Location
 
-They are located in the `.featurevisor` directory.
+They are located in the `.featurevisor` directory. You don't have to deal with them directly ever.
 
-You don't have to deal with them directly ever, but they contain valuable rollout information for the next build to maintain [consistent bucketing](/docs/bucketing) of your users against features.
+## What do they contain?
+
+### Traffic allocation
+
+Traffic allocation information is important to keep track of so that the next build can maintain [consistent bucketing](/docs/bucketing) for your users against individual features.
+
+### Revision
+
+Next to the JSON files for traffic allocation, it will also create and maintain a `REVISION` file which an integer value incremented by every successful build.
+
+This revision number will be present in your [generated datafiles](/docs/building-datafiles).
 
 ## Committing state files
 

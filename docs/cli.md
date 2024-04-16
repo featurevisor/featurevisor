@@ -119,3 +119,117 @@ We can find these duplicates early on by running:
 ```
 $ npx featurevisor find-duplicate-segments
 ```
+
+## Find usage
+
+Learn where/if certain segments and attributes are used in.
+
+### Segment usage
+
+```
+$ npx featurevisor find-usage --segment=my_segment
+```
+
+### Attribute usage
+
+```
+$ npx featurevisor find-usage --attribute=my_attribute
+```
+
+### Unused segments
+
+```
+$ npx featurevisor find-usage --unusedSegments
+```
+
+### Unused attributes
+
+```
+$ npx featurevisor find-usage --unusedAttributes
+```
+
+## Benchmarking
+
+You can measure how fast or slow your SDK evaluations are for particular features.
+
+The `--n` option is used to specify the number of iterations to run the benchmark for.
+
+### Feature
+
+To benchmark evaluating a feature itself if it is enabled or disabled via SDK's `.isEnabled()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variation
+
+To benchmark evaluating a feature's variation via SDKs's `.getVariation()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variation \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variable
+
+To benchmark evaluating a feature's variable via SDKs's `.getVariable()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variable=my_variable_key \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+## Configuration
+
+To view the project [configuration](/docs/configuration):
+
+```
+$ npx featurevisor config
+```
+
+Printing configuration as JSON:
+
+```
+$ npx featurevisor config --print --pretty
+```
+
+## Evaluate
+
+To learn why certain values (like feature and its variation or variables) are evaluated as they are:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}'
+```
+
+This will show you full [evaluation details](/docs/sdks/javascript/#evaluation-details) helping you debug better in case of any confusion.
+
+It is similar to [logging](/docs/sdks/javascript/#logging) in SDKs with `debug` level. But here instead, we are doing it at CLI directly in our Featurevisor project without having to involve our application(s).
+
+If you wish to print the evaluation details in plain JSON, you can pass `--print` at the end:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}' \
+  --print \
+  --pretty
+```
+
+The `--pretty` flag is optional.
