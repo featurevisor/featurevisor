@@ -51,7 +51,6 @@ export function App() {
     fetch("/search-index.json")
       .then((response) => response.json())
       .then((data) => {
-
         setRevision(data.revision);
 
         setEntitiesCount({
