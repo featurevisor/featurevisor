@@ -5,10 +5,6 @@ export function Header(props) {
   const { entitiesCount, revision } = props;
   const [isOpen, setIsOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    console.log("entitiesCount", entitiesCount,revision);
-  }, [entitiesCount,revision]);
-
   const navItems = [
     {
       title: "Features",

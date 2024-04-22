@@ -51,7 +51,6 @@ export function App() {
     fetch("/search-index.json")
       .then((response) => response.json())
       .then((data) => {
-        // console.log("data", data);
 
         setRevision(data.revision);
 
@@ -65,7 +64,6 @@ export function App() {
         // data.entities.attributes = [...data.entities.attributes,...data.entities.attributes]
         setSearchIndex(data);
       });
-    // console.log("fetchedSearchIndex", fetchedSearchIndex);
   }, []);
 
   const environmentKeys = fetchedSearchIndex
