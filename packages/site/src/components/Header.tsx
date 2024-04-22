@@ -2,12 +2,12 @@ import * as React from "react";
 import { Link, NavLink } from "react-router-dom";
 
 export function Header(props) {
-  const { entitiesCount } = props;
+  const { entitiesCount, revision } = props;
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
-    console.log("entitiesCount", entitiesCount);
-  }, [entitiesCount]);
+    console.log("entitiesCount", entitiesCount,revision);
+  }, [entitiesCount,revision]);
 
   const navItems = [
     {
@@ -32,8 +32,8 @@ export function Header(props) {
   return (
     <>
       <div className="bg-gray-800 lg:h-screen  fixed w-[18%] overflow-auto lg:block hidden">
-        <nav className="mx-auto flex flex-col items-start justify-start px-8 pt-3">
-          <Link to="/" className="text-gray-50 mb-8 flex align-middle justify-center w-full h-full">
+        <nav className="mx-auto flex flex-col items-start justify-start px-8 pt-3 h-100">
+          <Link to="/" className="text-gray-50 mb-8 flex align-middle justify-center w-full">
             <img alt="Featurevisor" src="/favicon-128.png" className="w-[63px]" />
           </Link>
 
@@ -62,11 +62,15 @@ export function Header(props) {
                 }}
               >
                 {item.title}
-                <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                {item.title != 'History' && <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
                   {entitiesCount[item.title.toLowerCase()] || 0}
-                </span>
+                </span>}
               </NavLink>
             ))}
+          </div>
+
+          <div className="fixed flex flex-col gap-y-4 w-full px-3 text-gray-50 bottom-0">
+           {revision}
           </div>
         </nav>
       </div>
@@ -135,11 +139,15 @@ export function Header(props) {
                       }}
                     >
                       {item.title}
-                      <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                      {item.title != 'History' && <span className="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
                         {entitiesCount[item.title.toLowerCase()] || 0}
-                      </span>
+                      </span>}
                     </NavLink>
                   ))}
+                </div>
+
+                <div className="fixed flex flex-col gap-y-4 w-full px-3 text-gray-50 bottom-0">
+                  {revision}
                 </div>
               </article>
             </section>

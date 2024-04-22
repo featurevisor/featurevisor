@@ -22,6 +22,7 @@ export async function generateSiteSearchIndex(
   const { rootDirectoryPath, projectConfig, datasource } = deps;
 
   const result: SearchIndex = {
+    revision: "",
     links: undefined,
     entities: {
       attributes: [],
@@ -29,6 +30,14 @@ export async function generateSiteSearchIndex(
       features: [],
     },
   };
+
+  /**
+   * Revision
+   */
+  let revision = await datasource.readRevision();
+  if (revision) {
+    revision = revision.trim();
+  }
 
   /**
    * Links

@@ -439,6 +439,7 @@ export interface LastModified {
 }
 
 export interface SearchIndex {
+  revision: string,
   links?: {
     feature: string;
     segment: string;

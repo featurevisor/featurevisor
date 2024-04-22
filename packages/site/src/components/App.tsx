@@ -40,6 +40,7 @@ import { SearchIndex } from "@featurevisor/types";
 
 export function App() {
   const [fetchedSearchIndex, setSearchIndex] = React.useState(undefined);
+  const [revision, setRevision] = React.useState("");
   const [entitiesCount, setEntitiesCount] = React.useState({
     features: 0,
     segments: 0,
@@ -51,6 +52,9 @@ export function App() {
       .then((response) => response.json())
       .then((data) => {
         // console.log("data", data);
+
+        setRevision(data.revision);
+
         setEntitiesCount({
           features: data.entities.features.length,
           segments: data.entities.segments.length,
@@ -71,7 +75,7 @@ export function App() {
   return (
     <div className="grid lg:grid-cols-12">
       <div className="lg:col-span-2">
-        <Header entitiesCount={entitiesCount} />
+        <Header entitiesCount={entitiesCount} revision={revision} />
       </div>
 
       <div className="lg:col-span-10">
