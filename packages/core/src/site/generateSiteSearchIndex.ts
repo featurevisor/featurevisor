@@ -34,9 +34,9 @@ export async function generateSiteSearchIndex(
   /**
    * Revision
    */
-  let revision = await datasource.readRevision();
+  const revision = await datasource.readRevision();
   if (revision) {
-    revision = revision.trim();
+    result.revision = revision.trim();
   }
 
   /**
