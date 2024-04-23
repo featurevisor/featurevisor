@@ -68,7 +68,7 @@ export function Header(props) {
           </div>
 
           <div className="fixed flex flex-col gap-y-4 w-full px-3 text-gray-50 bottom-0">
-          Revision: {revision}
+            Revision: {revision}
           </div>
         </nav>
       </div>
@@ -147,7 +147,7 @@ export function Header(props) {
                 </div>
 
                 <div className="fixed flex flex-col gap-y-4 w-full px-3 text-gray-50 bottom-0">
-                Revision: {revision}
+                  Revision: {revision}
                 </div>
               </article>
             </section>
