@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+
+### Bug Fixes
+
+* search features by any case in generated site ([#298](https://github.com/featurevisor/featurevisor/issues/298)) ([1676e7e](https://github.com/featurevisor/featurevisor/commit/1676e7ea325a60bf482205dc32a91f77eba96655))
+
+
+
+
+
 # [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
 
 
