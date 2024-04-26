@@ -1,8 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as yargs from "yargs";
-
 import {
   CONFIG_MODULE_NAME,
   getProjectConfig,
@@ -28,6 +26,8 @@ import {
   assessDistribution,
 } from "@featurevisor/core";
 
+const yargs = require("yargs"); // eslint-disable-line @typescript-eslint/no-var-requires
+
 process.on("unhandledRejection", (reason) => {
   console.error(reason);
   process.exit(1);
@@ -52,11 +52,13 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
 const rootDirectoryPath = process.cwd();
 
 async function getDependencies(options): Promise<Dependencies> {
-  const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
-  const datasource = new Datasource(projectConfig, rootDirectoryPath);
+  const useRootDirectoryPath = options.rootDirectoryPath || rootDirectoryPath;
+
+  const projectConfig = requireAndGetProjectConfig(useRootDirectoryPath);
+  const datasource = new Datasource(projectConfig, useRootDirectoryPath);
 
   return {
-    rootDirectoryPath,
+    rootDirectoryPath: useRootDirectoryPath,
     projectConfig,
     datasource,
     options,
@@ -228,7 +230,9 @@ async function main() {
         const deps = await getDependencies(options);
 
         try {
-          await findDuplicateSegmentsInProject(deps);
+          await findDuplicateSegmentsInProject(deps, {
+            authors: options.authors,
+          });
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -236,6 +240,7 @@ async function main() {
       },
     })
     .example("$0 find-duplicate-segments", "list segments with same conditions")
+    .example("$0 find-duplicate-segments --authors", "show the duplicates along with author names")
 
     /**
      * Find usage

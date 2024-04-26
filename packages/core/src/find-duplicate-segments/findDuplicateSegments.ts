@@ -1,10 +1,24 @@
 import * as crypto from "crypto";
 
-import { SegmentKey } from "@featurevisor/types";
+import { HistoryEntry, SegmentKey } from "@featurevisor/types";
 
-import { Datasource } from "../datasource";
+import { Dependencies } from "../dependencies";
 
-export async function findDuplicateSegments(datasource: Datasource): Promise<SegmentKey[][]> {
+export interface DuplicateSegmentsOptions {
+  authors?: boolean;
+}
+
+export interface DuplicateSegmentsResult {
+  segments: SegmentKey[];
+  authors?: string[];
+}
+
+export async function findDuplicateSegments(
+  deps: Dependencies,
+  options: DuplicateSegmentsOptions = {},
+): Promise<DuplicateSegmentsResult[]> {
+  const { datasource } = deps;
+
   const segments = await datasource.listSegments();
 
   const segmentsWithHash: { segmentKey: SegmentKey; hash: string }[] = [];
@@ -30,7 +44,33 @@ export async function findDuplicateSegments(datasource: Datasource): Promise<Seg
     {},
   );
 
-  const result = Object.values(groupedSegments).filter((segmentKeys) => segmentKeys.length > 1);
+  const duplicateSegments = Object.values(groupedSegments).filter(
+    (segmentKeys) => segmentKeys.length > 1,
+  );
+  const result: DuplicateSegmentsResult[] = [];
+
+  for (const segmentKeys of duplicateSegments) {
+    const entry: DuplicateSegmentsResult = {
+      segments: segmentKeys,
+    };
+
+    if (options.authors) {
+      const historyEntries: HistoryEntry[] = [];
+
+      for (const segmentKey of segmentKeys) {
+        const entries = await datasource.listHistoryEntries("segment", segmentKey);
+
+        entries.forEach((entry) => {
+          historyEntries.push(entry);
+        });
+      }
+
+      const authors = Array.from(new Set(historyEntries.map((entry) => entry.author)));
+      entry.authors = authors;
+    }
+
+    result.push(entry);
+  }
 
   return result;
 }
