@@ -120,6 +120,12 @@ We can find these duplicates early on by running:
 $ npx featurevisor find-duplicate-segments
 ```
 
+If we want to know the names of authors who worked on the duplicate segments, we can pass `--authors`:
+
+```
+$ npx featurevisor find-duplicate-segments --authors
+```
+
 ## Find usage
 
 Learn where/if certain segments and attributes are used in.
