@@ -360,6 +360,7 @@ async function main() {
             context: options.context ? JSON.parse(options.context) : {},
             print: options.print,
             pretty: options.pretty,
+            verbose: options.verbose,
           });
         } catch (e) {
           console.error(e.message);

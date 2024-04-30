@@ -1,5 +1,12 @@
 import { Context } from "@featurevisor/types";
-import { Evaluation, createInstance, createLogger } from "@featurevisor/sdk";
+import {
+  Evaluation,
+  createInstance,
+  createLogger,
+  LogLevel,
+  LogMessage,
+  LogDetails,
+} from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
@@ -28,6 +35,13 @@ function printEvaluationDetails(evaluation: Evaluation) {
   }
 }
 
+function printLogs(logs: Log[]) {
+  logs.forEach((log) => {
+    console.log(`[${log.level}] ${log.message}`, log.details);
+    console.log("");
+  });
+}
+
 function printHeader(message: string) {
   console.log("\n\n###############");
   console.log(`# ${message}`);
@@ -40,6 +54,13 @@ export interface EvaluateOptions {
   context: Record<string, unknown>;
   print?: boolean;
   pretty?: boolean;
+  verbose?: boolean;
+}
+
+export interface Log {
+  level: LogLevel;
+  message: LogMessage;
+  details?: LogDetails;
 }
 
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
@@ -57,7 +78,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     existingState,
   );
 
-  const logs: Array<any> = [];
+  let logs: Log[] = [];
   const f = createInstance({
     datafile: datafileContent,
     logger: createLogger({
@@ -73,8 +94,15 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   });
 
   const flagEvaluation = f.evaluateFlag(options.feature, options.context as Context);
+  const flagEvaluationLogs = [...logs];
+  logs = [];
+
   const variationEvaluation = f.evaluateVariation(options.feature, options.context as Context);
+  const variationEvaluationLogs = [...logs];
+  logs = [];
+
   const variableEvaluations: Record<string, Evaluation> = {};
+  const variableEvaluationLogs: Record<string, Log[]> = {};
 
   const feature = f.getFeature(options.feature);
   if (feature?.variablesSchema) {
@@ -84,6 +112,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
         v.key,
         options.context as Context,
       );
+
+      variableEvaluationLogs[v.key] = [...logs];
+      logs = [];
+
       variableEvaluations[v.key] = variableEvaluation;
     });
   }
@@ -109,6 +141,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   // flag
   printHeader("Is enabled?");
 
+  if (options.verbose) {
+    printLogs(flagEvaluationLogs);
+  }
+
   console.log("Value:", flagEvaluation.enabled);
   console.log("\nDetails:\n");
 
@@ -118,6 +154,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   printHeader("Variation");
 
   if (feature?.variations) {
+    if (options.verbose) {
+      printLogs(variationEvaluationLogs);
+    }
+
     console.log("Value:", JSON.stringify(variationEvaluation.variation?.value));
     console.log("\nDetails:\n");
 
@@ -130,6 +170,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   if (feature?.variablesSchema) {
     for (const [key, value] of Object.entries(variableEvaluations)) {
       printHeader(`Variable: ${key}`);
+
+      if (options.verbose) {
+        printLogs(variableEvaluationLogs[key]);
+      }
 
       console.log(
         "Value:",
