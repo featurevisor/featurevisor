@@ -87,6 +87,7 @@ export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileCont
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
+  NO_MATCH = "no_match",
   DISABLED = "disabled",
   REQUIRED = "required",
   OUT_OF_RANGE = "out_of_range",
@@ -688,7 +689,7 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR, // @TODO: any better reason?
+        reason: EvaluationReason.NO_MATCH,
         bucketKey,
         bucketValue,
         enabled: false,
@@ -894,7 +895,7 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR, // @TODO: any better reason?
+        reason: EvaluationReason.NO_MATCH,
         bucketKey,
         bucketValue,
       };

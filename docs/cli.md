@@ -240,6 +240,16 @@ $ npx featurevisor evaluate \
 
 The `--pretty` flag is optional.
 
+To print further logs in a more verbose way, you can pass `--verbose`:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}' \
+  --verbose
+```
+
 ## Assess distribution
 
 To check if the gradual rollout of a feature and the weight distribution of its variations (if any exists) are going to work as expected in a real world application with real traffic against provided [context](/docs/sdks/javascript/#context), we can imitate that by running:
