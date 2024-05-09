@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+
+### Features
+
+* make test runner fast by default ([#301](https://github.com/featurevisor/featurevisor/issues/301)) ([6ed5d0c](https://github.com/featurevisor/featurevisor/commit/6ed5d0cdba99b987fea4242c54aa74202a975142))
+
+
+
+
+
 # [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
 
 
