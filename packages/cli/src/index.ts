@@ -155,7 +155,6 @@ async function main() {
           assertionPattern: options.assertionPattern,
           verbose: options.verbose || false,
           showDatafile: options.showDatafile || false,
-          fast: options.fast || false,
           onlyFailures: options.onlyFailures || false,
         };
 
