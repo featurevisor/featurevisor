@@ -9,7 +9,6 @@ import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
-import { getCustomDatafile } from "../builder";
 
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
@@ -55,15 +54,7 @@ export async function testFeature(
         continue;
       }
 
-      const datafileContent =
-        typeof datafileContentByEnvironment[assertion.environment] !== "undefined"
-          ? datafileContentByEnvironment[assertion.environment]
-          : await getCustomDatafile({
-              featureKey: test.feature,
-              environment: assertion.environment,
-              projectConfig,
-              datasource,
-            });
+      const datafileContent = datafileContentByEnvironment[assertion.environment];
 
       if (options.showDatafile) {
         console.log("");
