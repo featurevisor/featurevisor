@@ -71,7 +71,8 @@
       { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
       { "title": "Trunk-based development", "href": "/docs/use-cases/trunk-based-development" },
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
-      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" }
+      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" },
+      { "title": "Deprecating features", "href": "/docs/use-cases/deprecation" }
     ]
   },
   {
