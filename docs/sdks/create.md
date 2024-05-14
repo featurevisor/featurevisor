@@ -6,9 +6,9 @@ ogImage: /img/og/docs-sdks-create.png
 
 Featurevisor is a programming language agnostic feature management solution meant to be used anywhere as long as you have an SDK for it. {% .lead %}
 
-While the project comes with a few different [SDKs](/docs/sdks/) supporting different programming languages, you can also create your own to support languages that we don't support yet.
+While the project comes with a few different [SDKs](/docs/sdks/) supporting different programming languages, you can also create your own to contribute to the growing ecosystem.
 
-## Prerequisites
+## Prior reading
 
 You are highly recommended to read the following pages before creating a new SDK.
 
@@ -29,7 +29,6 @@ You are highly recommended to read the following pages before creating a new SDK
 - [Deployment](/docs/deployment)
   - [GitHub Actions](/docs/integrations/github-actions)
 
-
 ### Consuming datafile with SDK
 
 Use the following SDKs as a reference for implementation:
@@ -42,11 +41,17 @@ Use the following SDKs as a reference for implementation:
 
 We wish to maintain feature parity across all SDKs in various different programming languages, so we can provide a consistent experience to our developers.
 
-To achieve this, we have defined a set of common interfaces that each SDK should implement.
+To achieve this, we have defined a set of common [interfaces](https://github.com/featurevisor/featurevisor/blob/main/packages/types/src/index.ts) that each SDK should implement.
+
+## Interfaces
+
+It's worth referring to the common TypeScript interfaces defined [here](https://github.com/featurevisor/featurevisor/blob/main/packages/types/src/index.ts) that both the SDK and CLI use.
+
+There are also additional interfaces defined for SDK alone [here](https://github.com/featurevisor/featurevisor/tree/main/packages/sdk/src).
 
 ### Instance
 
-An SDK instance should be created by calling a function `createInstance`, which should receive a configuration object as an argument, which can choose to call "constructor options".
+An SDK instance should be created by calling a function `createInstance`, which should receive a configuration object as an argument, that we call "constructor options".
 
 Example in JavaScript:
 
@@ -76,6 +81,8 @@ When creating the SDK instance, it should receive an `options` object with the f
 | `refreshInterval`      | `number` (optional)   | The interval in seconds to refresh the datafile                                  |
 | `stickyFeatures`       | `object` (optional)   | Override feature evaluations for certain features                                |
 
+All of the properties are optional indeed, but we must have either `datafile` or `datafileUrl` present in the `options` object.
+
 Refer to JavaScript implementation [here](https://github.com/featurevisor/featurevisor/blob/main/packages/sdk/src/instance.ts).
 
 ### Bucketing
@@ -93,6 +100,14 @@ Refer to the JavaScript implementation here:
 
 - [Generating hash](https://github.com/featurevisor/featurevisor/blob/main/packages/sdk/src/bucket.ts)
 - [Usage in instance](https://github.com/featurevisor/featurevisor/blob/main/packages/sdk/src/instance.ts)
+
+### Logger
+
+The SDK ships with a default logger that logs/prints messages to the console. However, you can override this behavior by providing your own logger function.
+
+The `logger` property should receive an instance of `Logger` as found [here](https://github.com/featurevisor/featurevisor/blob/main/packages/sdk/src/logger.ts).
+
+To make it convenient for developers to create their own loggers, we recommend that you also export a [`createLogger`](https://github.com/featurevisor/featurevisor/blob/main/packages/sdk/src/logger.ts) function that can be used to create a new custom logger instance.
 
 ### Methods
 
@@ -152,12 +167,19 @@ $ featurevisor-go benchmark
 $ featurevisor-go <command-name>
 ```
 
-There's no strict rule for providing an executable/binary like mentioned above. Our goal is to somehow allow developers to interact with the Featurevisor project via command line.
+There's no strict rule for providing an executable/binary like mentioned above. Our goal is to somehow allow developers to interact with the Featurevisor project via command line that makes of the newly created SDK by you.
 
 See our [CLI guide](/docs/cli) to get the full picture.
 
-## Documenting
+## Documentation
 
 If you are confident with your newly developed SDK, and wish to let others know about it, you can document it on the same [Featurevisor website](https://featurevisor.com) that you are reading right now.
 
-To do so
+To do so:
+
+- [Fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) the [monorepo](https://github.com/featurevisor/featurevisor)
+- Create a new [branch](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-and-deleting-branches-within-your-repository)
+- Create a new SDK page [here](https://github.com/featurevisor/featurevisor/tree/main/docs/sdks)
+- Link to your SDK page from this root page [here](https://github.com/featurevisor/featurevisor/blob/main/docs/sdks/index.md)
+- Link to your SDK page from sidebar navigation [here](https://github.com/featurevisor/featurevisor/blob/main/docs/sidebarNavigation.json)
+- Send a [Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) from your fork
