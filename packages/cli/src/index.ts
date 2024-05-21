@@ -24,6 +24,7 @@ import {
   showProjectConfig,
   evaluateFeature,
   assessDistribution,
+  showProjectInfo,
 } from "@featurevisor/core";
 
 const yargs = require("yargs"); // eslint-disable-line @typescript-eslint/no-var-requires
@@ -413,6 +414,23 @@ async function main() {
       "$0 assess-distribution --environment=production --feature=my_feature --context='{}' --populateUuid=userId --n=100",
       "test traffic distribution a feature against provided context",
     )
+
+    /**
+     * Info
+     */
+    .command({
+      command: "info",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          await showProjectInfo(deps);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
 
     /**
      * Options

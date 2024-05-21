@@ -277,3 +277,11 @@ Further details about all the options:
 - `--verbose`: print the merged context for better debugging
 
 Everything is happening locally in memory without modifying any content anywhere. This command exists only to add to our confidence if questions arise about how effective traffic distribution in Featurevisor is.
+
+## Info
+
+Shows count of various entities in the project:
+
+```
+$ npx featurevisor info
+```
