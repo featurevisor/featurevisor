@@ -134,6 +134,8 @@ export function getTraffic(
         const toFillValue = needsRebucketing
           ? percentage * (rulePercentage / 100) // whole value
           : (weight / 100) * rulePercentageDiff; // incrementing
+
+        // @TODO: this is where the issue is
         const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
 
         rangesToFill.forEach(function (range) {
