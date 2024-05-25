@@ -86,3 +86,7 @@ To disable this stringification, you can set it to `false`.
 ### `parser`
 
 By default, Featurevisor expects YAML for all definitions. You can change this to JSON by setting `parser: "json"`.
+
+### `enforceCatchAllRule`
+
+When set to `true`, linting will make sure all features have a catch-all rule with `segment: "*"` as the last rule in all environments.

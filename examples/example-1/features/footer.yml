@@ -12,6 +12,10 @@ environments:
           - not:
               - version_5.5
         percentage: 100
+
+      - key: "2"
+        segments: "*"
+        percentage: 0
   production:
     rules:
       - key: "1"
