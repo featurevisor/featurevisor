@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
 # [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
 
 
