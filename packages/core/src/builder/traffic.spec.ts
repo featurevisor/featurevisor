@@ -95,6 +95,217 @@ describe("core: Traffic", function () {
     ]);
   });
 
+  it("should allocate traffic for 0-100 weight on two variations, with rule percentage going from 80% to 100%", function () {
+    const result = getTraffic(
+      // parsed variations from YAML
+      [
+        {
+          value: "control",
+          weight: 0,
+        },
+        {
+          value: "treatment",
+          weight: 100,
+        },
+      ],
+
+      // parsed rollouts from YAML
+      [
+        {
+          key: "1",
+          segments: "*",
+          percentage: 100,
+        },
+      ],
+
+      // existing feature from previous release
+      {
+        variations: [
+          {
+            value: "control",
+            weight: 0,
+          },
+          {
+            value: "treatment",
+            weight: 80,
+          },
+        ],
+        traffic: [
+          {
+            key: "1",
+            percentage: 80000,
+            allocation: [
+              {
+                variation: "treatment",
+                range: [0, 80000],
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    expect(result).toEqual([
+      {
+        key: "1",
+        segments: "*",
+        percentage: 100000,
+        allocation: [
+          // should be filtered out automatically
+          // {
+          //   variation: "control",
+          //   range: [0, 0],
+          // },
+
+          {
+            variation: "treatment",
+            range: [0, 100000],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("should allocate traffic for 0-100 weight on two variations, with rule percentage going from 100% to 80%", function () {
+    const result = getTraffic(
+      // parsed variations from YAML
+      [
+        {
+          value: "control",
+          weight: 0,
+        },
+        {
+          value: "treatment",
+          weight: 100,
+        },
+      ],
+
+      // parsed rollouts from YAML
+      [
+        {
+          key: "1",
+          segments: "*",
+          percentage: 80,
+        },
+      ],
+
+      // existing feature from previous release
+      {
+        variations: [
+          {
+            value: "control",
+            weight: 0,
+          },
+          {
+            value: "treatment",
+            weight: 80,
+          },
+        ],
+        traffic: [
+          {
+            key: "1",
+            percentage: 100000,
+            allocation: [
+              {
+                variation: "treatment",
+                range: [0, 100000],
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    expect(result).toEqual([
+      {
+        key: "1",
+        segments: "*",
+        percentage: 80000,
+        allocation: [
+          // should be filtered out automatically
+          // {
+          //   variation: "control",
+          //   range: [0, 0],
+          // },
+
+          {
+            variation: "treatment",
+            range: [0, 80000],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("should allocate traffic for existing variations state of 0-100 weights", function () {
+    const result = getTraffic(
+      // parsed variations from YAML
+      [
+        {
+          value: "control",
+          weight: 50,
+        },
+        {
+          value: "treatment",
+          weight: 50,
+        },
+      ],
+
+      // parsed rollouts from YAML
+      [
+        {
+          key: "1",
+          segments: "*",
+          percentage: 80,
+        },
+      ],
+
+      // existing feature from previous release
+      {
+        variations: [
+          {
+            value: "control",
+            weight: 0,
+          },
+          {
+            value: "treatment",
+            weight: 80,
+          },
+        ],
+        traffic: [
+          {
+            key: "1",
+            percentage: 80000,
+            allocation: [
+              {
+                variation: "treatment",
+                range: [0, 80000],
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    expect(result).toEqual([
+      {
+        key: "1",
+        segments: "*",
+        percentage: 80000,
+        allocation: [
+          {
+            variation: "control",
+            range: [0, 40000],
+          },
+          {
+            variation: "treatment",
+            range: [40000, 80000],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("should allocate traffic for 50-50 weight on two variations", function () {
     const result = getTraffic(
       // parsed variations from YAML
