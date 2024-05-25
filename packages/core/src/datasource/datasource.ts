@@ -41,6 +41,17 @@ export class Datasource {
   }
 
   /**
+   * Revision
+   */
+  readRevision() {
+    return this.adapter.readRevision();
+  }
+
+  writeRevision(revision: string) {
+    return this.adapter.writeRevision(revision);
+  }
+
+  /**
    * Datafile
    */
   readDatafile(options: DatafileOptions) {

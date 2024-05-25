@@ -19,12 +19,44 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
+import { ProjectConfig, SCHEMA_VERSION } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
+
+export interface CustomDatafileOptions {
+  featureKey?: string;
+  environment: string;
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  revision?: string;
+}
+
+export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
+  let featuresToInclude;
+
+  if (options.featureKey) {
+    const requiredChain = await options.datasource.getRequiredFeaturesChain(options.featureKey);
+    featuresToInclude = Array.from(requiredChain);
+  }
+
+  const existingState = await options.datasource.readState(options.environment);
+  const datafileContent = await buildDatafile(
+    options.projectConfig,
+    options.datasource,
+    {
+      schemaVersion: SCHEMA_VERSION,
+      revision: options.revision || "tester",
+      environment: options.environment,
+      features: featuresToInclude,
+    },
+    existingState,
+  );
+
+  return datafileContent;
+}
 
 export interface BuildOptions {
   schemaVersion: string;
@@ -127,7 +159,9 @@ export async function buildDatafile(
                     );
 
                     return {
-                      conditions: JSON.stringify(override.conditions),
+                      conditions: projectConfig.stringify
+                        ? JSON.stringify(override.conditions)
+                        : override.conditions,
                       value: override.value,
                     };
                   }
@@ -142,9 +176,9 @@ export async function buildDatafile(
 
                     return {
                       segments:
-                        typeof override.segments === "string"
-                          ? override.segments
-                          : JSON.stringify(override.segments),
+                        typeof override.segments !== "string" && projectConfig.stringify
+                          ? JSON.stringify(override.segments)
+                          : override.segments,
                       value: override.value,
                     };
                   }
@@ -163,7 +197,15 @@ export async function buildDatafile(
           parsedFeature.environments[options.environment].rules,
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
-        ),
+        ).map((t: Traffic) => {
+          return {
+            ...t,
+            segments:
+              typeof t.segments !== "string" && projectConfig.stringify
+                ? JSON.stringify(t.segments)
+                : t.segments,
+          };
+        }),
         ranges: featureRanges.get(featureKey) || undefined,
       };
 
@@ -246,7 +288,7 @@ export async function buildDatafile(
       const segment: Segment = {
         key: segmentKey,
         conditions:
-          typeof parsedSegment.conditions !== "string"
+          typeof parsedSegment.conditions !== "string" && projectConfig.stringify === true
             ? JSON.stringify(parsedSegment.conditions)
             : parsedSegment.conditions,
       };

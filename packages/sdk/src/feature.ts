@@ -2,6 +2,7 @@ import { Allocation, Context, Traffic, Feature, Force } from "@featurevisor/type
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
 import { allConditionsAreMatched } from "./conditions";
+import { Logger } from "./logger";
 
 export function getMatchedAllocation(
   traffic: Traffic,
@@ -30,10 +31,16 @@ export function getMatchedTraffic(
   traffic: Traffic[],
   context: Context,
   datafileReader: DatafileReader,
+  logger: Logger,
 ): Traffic | undefined {
   return traffic.find((t) => {
     if (
-      !allGroupSegmentsAreMatched(parseFromStringifiedSegments(t.segments), context, datafileReader)
+      !allGroupSegmentsAreMatched(
+        parseFromStringifiedSegments(t.segments),
+        context,
+        datafileReader,
+        logger,
+      )
     ) {
       return false;
     }
@@ -52,12 +59,14 @@ export function getMatchedTrafficAndAllocation(
   context: Context,
   bucketValue: number,
   datafileReader: DatafileReader,
+  logger: Logger,
 ): MatchedTrafficAndAllocation {
   const matchedTraffic = traffic.find((t) => {
     return allGroupSegmentsAreMatched(
       parseFromStringifiedSegments(t.segments),
       context,
       datafileReader,
+      logger,
     );
   });
 
@@ -76,24 +85,47 @@ export function getMatchedTrafficAndAllocation(
   };
 }
 
+export interface ForceResult {
+  force?: Force;
+  forceIndex?: number;
+}
+
 export function findForceFromFeature(
   feature: Feature,
   context: Context,
   datafileReader: DatafileReader,
-): Force | undefined {
+  logger: Logger,
+): ForceResult {
+  const result: ForceResult = {
+    force: undefined,
+    forceIndex: undefined,
+  };
+
   if (!feature.force) {
-    return undefined;
+    return result;
   }
 
-  return feature.force.find((f: Force) => {
-    if (f.conditions) {
-      return allConditionsAreMatched(f.conditions, context);
+  for (let i = 0; i < feature.force.length; i++) {
+    const currentForce = feature.force[i];
+
+    if (
+      currentForce.conditions &&
+      allConditionsAreMatched(currentForce.conditions, context, logger)
+    ) {
+      result.force = currentForce;
+      result.forceIndex = i;
+      break;
     }
 
-    if (f.segments) {
-      return allGroupSegmentsAreMatched(f.segments, context, datafileReader);
+    if (
+      currentForce.segments &&
+      allGroupSegmentsAreMatched(currentForce.segments, context, datafileReader, logger)
+    ) {
+      result.force = currentForce;
+      result.forceIndex = i;
+      break;
     }
+  }
 
-    return false;
-  });
+  return result;
 }

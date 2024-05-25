@@ -1,0 +1,29 @@
+description: For testing wrong semver parsing
+tags:
+  - all
+
+bucketBy:
+  - userId
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "desktop"
+        segments:
+          - version_gt5
+          - desktop
+        percentage: 100
+
+      - key: "mobile"
+        segments:
+          - mobile
+        percentage: 100
+
+      - key: "all"
+        segments: "*"
+        percentage: 0

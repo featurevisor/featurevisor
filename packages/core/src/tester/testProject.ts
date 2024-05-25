@@ -17,7 +17,7 @@ export interface TestProjectOptions {
   assertionPattern?: string;
   verbose?: boolean;
   showDatafile?: boolean;
-  fast?: boolean;
+  onlyFailures?: boolean;
 }
 
 export interface TestPatterns {
@@ -88,7 +88,15 @@ export async function executeTest(
     );
   }
 
-  printTestResult(testResult, testFilePath, rootDirectoryPath);
+  if (!options.onlyFailures) {
+    // show all
+    printTestResult(testResult, testFilePath, rootDirectoryPath);
+  } else {
+    // show failed only
+    if (!testResult.passed) {
+      printTestResult(testResult, testFilePath, rootDirectoryPath);
+    }
+  }
 
   if (!testResult.passed) {
     executionResult.passed = false;
@@ -141,22 +149,21 @@ export async function testProject(
   let failedAssertionsCount = 0;
 
   const datafileContentByEnvironment: DatafileContentByEnvironment = {};
-  if (options.fast) {
-    for (const environment of projectConfig.environments) {
-      const existingState = await datasource.readState(environment);
-      const datafileContent = await buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: "include-all-features",
-          environment: environment,
-        },
-        existingState,
-      );
 
-      datafileContentByEnvironment[environment] = datafileContent;
-    }
+  for (const environment of projectConfig.environments) {
+    const existingState = await datasource.readState(environment);
+    const datafileContent = await buildDatafile(
+      projectConfig,
+      datasource,
+      {
+        schemaVersion: SCHEMA_VERSION,
+        revision: "include-all-features",
+        environment: environment,
+      },
+      existingState,
+    );
+
+    datafileContentByEnvironment[environment] = datafileContent;
   }
 
   for (const testFile of testFiles) {
@@ -185,7 +192,10 @@ export async function testProject(
 
   const diffInMs = Date.now() - startTime;
 
-  console.log("\n---\n");
+  if (options.onlyFailures !== true || hasError) {
+    console.log("\n---");
+  }
+  console.log("");
 
   const testSpecsMessage = `Test specs: ${passedTestsCount} passed, ${failedTestsCount} failed`;
   const testAssertionsMessage = `Assertions: ${passedAssertionsCount} passed, ${failedAssertionsCount} failed`;

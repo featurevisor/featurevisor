@@ -3,6 +3,150 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.19.0](https://github.com/featurevisor/featurevisor/compare/v1.18.1...v1.19.0) (2024-04-26)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.15.0](https://github.com/featurevisor/featurevisor/compare/v1.14.0...v1.15.0) (2024-04-04)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+**Note:** Version bump only for package @featurevisor/example-toml
+
+
+
+
+
 # [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
 
 **Note:** Version bump only for package @featurevisor/example-toml

@@ -3,6 +3,186 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+
+### Features
+
+* show project info in CLI ([#304](https://github.com/featurevisor/featurevisor/issues/304)) ([d94cb87](https://github.com/featurevisor/featurevisor/commit/d94cb878f24fc4f2280c6126ab40a70aa6bebe9f))
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+
+### Features
+
+* make test runner fast by default ([#301](https://github.com/featurevisor/featurevisor/issues/301)) ([6ed5d0c](https://github.com/featurevisor/featurevisor/commit/6ed5d0cdba99b987fea4242c54aa74202a975142))
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+
+### Features
+
+* allow evaluating in CLI with more verbosity ([#300](https://github.com/featurevisor/featurevisor/issues/300)) ([8c3a096](https://github.com/featurevisor/featurevisor/commit/8c3a0962a5950abf424695db314ee5eeb8e6ccd5))
+
+
+
+
+
+# [1.19.0](https://github.com/featurevisor/featurevisor/compare/v1.18.1...v1.19.0) (2024-04-26)
+
+
+### Features
+
+* find duplicate segments with authors info ([#299](https://github.com/featurevisor/featurevisor/issues/299)) ([5008066](https://github.com/featurevisor/featurevisor/commit/5008066128fb7c732b633856dcffcb768f52c88c))
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+
+### Features
+
+* assess traffic distribution via CLI ([#297](https://github.com/featurevisor/featurevisor/issues/297)) ([2063ad9](https://github.com/featurevisor/featurevisor/commit/2063ad9a5408071bfb1636c748cabe616065191d))
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+
+### Features
+
+* evaluate features in CLI ([#295](https://github.com/featurevisor/featurevisor/issues/295)) ([5a3332a](https://github.com/featurevisor/featurevisor/commit/5a3332a226a3b4901445fe2fe04baa8320e94f48))
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.15.0](https://github.com/featurevisor/featurevisor/compare/v1.14.0...v1.15.0) (2024-04-04)
+
+
+### Features
+
+* show project configuration via CLI ([#293](https://github.com/featurevisor/featurevisor/issues/293)) ([a83f6fa](https://github.com/featurevisor/featurevisor/commit/a83f6fa4d21012b2e0c0d97ab6bb182f9aa4c1af))
+
+
+
+
+
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+
+### Features
+
+* benchmarking option in CLI ([#292](https://github.com/featurevisor/featurevisor/issues/292)) ([6abcecc](https://github.com/featurevisor/featurevisor/commit/6abcecc3a92f00ccea7dcb542676126b6eb3b778))
+
+
+
+
+
+## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+
+### Features
+
+* find usage of segments and attributes ([#289](https://github.com/featurevisor/featurevisor/issues/289)) ([c1319b3](https://github.com/featurevisor/featurevisor/commit/c1319b32d46ae7bbb03eb7b7e5dd19e37f2be51d))
+
+
+
+
+
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+
+### Features
+
+* revisioning info moved to its own file ([#274](https://github.com/featurevisor/featurevisor/issues/274)) ([6a175d1](https://github.com/featurevisor/featurevisor/commit/6a175d1be01c1ab78661bbd93d535de69af47135))
+
+
+
+
+
+## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
+
+
+### Bug Fixes
+
+* init command ([#277](https://github.com/featurevisor/featurevisor/issues/277)) ([1e46d79](https://github.com/featurevisor/featurevisor/commit/1e46d7992a632ce956e8821dbaae9677bef59a43))
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+
+### Features
+
+* allow showing only failed specs in test runner ([#276](https://github.com/featurevisor/featurevisor/issues/276)) ([cefab8f](https://github.com/featurevisor/featurevisor/commit/cefab8f8c0eb091c10bee213039920d55fa3957a))
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
 # [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
 
 

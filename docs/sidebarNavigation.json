@@ -39,7 +39,8 @@
     "links": [
       { "title": "JavaScript", "href": "/docs/sdks/javascript" },
       { "title": "Node.js", "href": "/docs/sdks/nodejs" },
-      { "title": "Browser", "href": "/docs/sdks/browser" }
+      { "title": "Browser", "href": "/docs/sdks/browser" },
+      { "title": "Roku", "href": "/docs/sdks/roku" }
     ]
   },
   {
@@ -51,7 +52,8 @@
       { "title": "Vue.js", "href": "/docs/vue" },
       { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
       { "title": "Astro", "href": "/docs/frameworks/astro" },
-      { "title": "Express.js", "href": "/docs/frameworks/express" }
+      { "title": "Express.js", "href": "/docs/frameworks/express" },
+      { "title": "Fastify", "href": "/docs/frameworks/fastify" }
     ]
   },
   {
@@ -69,7 +71,8 @@
       { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
       { "title": "Trunk-based development", "href": "/docs/use-cases/trunk-based-development" },
       { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
-      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" }
+      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" },
+      { "title": "Deprecating features", "href": "/docs/use-cases/deprecation" }
     ]
   },
   {
@@ -89,6 +92,7 @@
     "title": "CI/CD guides",
     "links": [
       { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
+      { "title": "GitHub Pages", "href": "/docs/integrations/github-pages" },
       { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" },
       { "title": "PartyKit", "href": "/docs/integrations/partykit" }
     ]
@@ -131,6 +135,7 @@
     "links": [
       { "title": "Roadmap", "href": "/docs/roadmap" },
       { "title": "FAQ", "href": "/docs/faq" },
+      { "title": "Glossary", "href": "/docs/glossary" },
       { "title": "Examples", "href": "/docs/examples" },
       { "title": "Contributing", "href": "/docs/contributing" },
       { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }

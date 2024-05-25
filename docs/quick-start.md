@@ -8,20 +8,6 @@ ogImage: /img/og/docs-quick-start.png
 
 - [Node.js](https://nodejs.org/en/) >= 16.0.0
 
-## Installation
-
-Easiest way to get started is by using the Featurevisor CLI.
-
-```
-$ npm install -g @featurevisor/cli
-```
-
-If you want to avoid global installation, you can use `npx` instead:
-
-```
-$ npx @featurevisor/cli <command>
-```
-
 ## Initialize your project
 
 This is meant to be a completely separate repository from your application code.
@@ -31,21 +17,21 @@ The idea is to be able to decouple your application deployments from releasing y
 Run the following command to initialize your project:
 
 ```
-$ mkdir my-project && cd my-project
-$ featurevisor init
+$ mkdir my-featurevisor-project && cd my-featurevisor-project
+$ npx @featurevisor/cli init
 ```
 
 If you want to initialize a specific example:
 
 ```
-$ featurevisor init --example <name>
+$ npx @featurevisor/cli init --example <name>
 ```
 
 You can find all available examples [here](/docs/examples).
 
-## Dependencies
+## Installation
 
-We start by installing all the necessary local dependencies:
+Once your project has been initialized, install all the dependencies:
 
 ```
 $ npm install
@@ -153,7 +139,7 @@ environments:
 We can lint the content of all our files to make sure they are all valid:
 
 ```
-$ featurevisor lint
+$ npx featurevisor lint
 ```
 
 Learn more in [Linting](/docs/linting).
@@ -165,7 +151,7 @@ Datafiles are JSON files that we expect our client-side applications to consume 
 Now that we have all the configuration in place, we can build the project:
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 This will generate datafiles in the `dist` directory for each of your tags against each environment as defined in your `featurevisor.config.js` file.
@@ -255,6 +241,6 @@ const bannerVariation = f.getVariation(featureKey, context);
 const myVariable = f.getVariable(featureKey, "myVariableKey", context);
 ```
 
-Featurevisor SDK will take care of computing the right variation for you against the given `userId` and `country` attributes as context.
+Featurevisor SDK will take care of computing the right value(s) for you against the provided `userId` and `country` attributes as context.
 
 Find more examples of SDK usage [here](/docs/sdks).
