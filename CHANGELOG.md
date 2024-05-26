@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
 ## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
 
 
