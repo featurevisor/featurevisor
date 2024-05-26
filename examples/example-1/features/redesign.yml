@@ -16,3 +16,7 @@ environments:
       - key: "1"
         segments: netherlands
         percentage: 100
+
+      - key: "2"
+        segments: "*"
+        percentage: 0
