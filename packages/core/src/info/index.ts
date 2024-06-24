@@ -16,9 +16,19 @@ export async function showProjectInfo(deps: Dependencies) {
   const features = await datasource.listFeatures();
   const groups = await datasource.listGroups();
 
+  let variablesCount = 0;
+  for (const featureKey of features) {
+    const feature = await datasource.readFeature(featureKey);
+
+    if (feature.variablesSchema) {
+      variablesCount += Object.keys(feature.variablesSchema).length;
+    }
+  }
+
   console.log("  - Total attributes: ", attributes.length);
   console.log("  - Total segments:   ", segments.length);
   console.log("  - Total features:   ", features.length);
+  console.log("  - Total variables:  ", variablesCount);
   console.log("  - Total groups:     ", groups.length);
 
   console.log("");
