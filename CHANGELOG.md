@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+
+### Features
+
+* show variables count from CLI ([#310](https://github.com/featurevisor/featurevisor/issues/310)) ([f0f3dc0](https://github.com/featurevisor/featurevisor/commit/f0f3dc003c3040c21e05ad019c37676cfeb9e8fe))
+
+
+
+
+
 # [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
 
 

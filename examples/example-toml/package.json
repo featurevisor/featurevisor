@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-toml",
   "private": true,
-  "version": "1.23.0",
+  "version": "1.24.0",
   "description": "Featurevisor project with TOML definitions",
   "scripts": {
     "lint": "featurevisor lint",
@@ -13,7 +13,7 @@
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "^1.23.0",
+    "@featurevisor/cli": "^1.24.0",
     "toml": "^3.0.0"
   }
 }
