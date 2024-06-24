@@ -21,7 +21,7 @@ export async function showProjectInfo(deps: Dependencies) {
     const feature = await datasource.readFeature(featureKey);
 
     if (feature.variablesSchema) {
-      variablesCount += Object.keys(feature.variablesSchema).length;
+      variablesCount += feature.variablesSchema.length;
     }
   }
 
