@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+
+### Features
+
+* allow showing authors when finding unused entities ([#313](https://github.com/featurevisor/featurevisor/issues/313)) ([67e1158](https://github.com/featurevisor/featurevisor/commit/67e1158b0a2d8636700d167e69f391c1f03a7ed6))
+
+
+
+
+
 # [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
 
 
