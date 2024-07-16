@@ -130,6 +130,8 @@ $ npx featurevisor find-duplicate-segments --authors
 
 Learn where/if certain segments and attributes are used in.
 
+For each of the `find-usage` commands below, you can optionally pass `--authors` to find who worked on the affected entities.
+
 ### Segment usage
 
 ```
