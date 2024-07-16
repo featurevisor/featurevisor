@@ -257,6 +257,8 @@ async function main() {
 
             unusedSegments: options.unusedSegments,
             unusedAttributes: options.unusedAttributes,
+
+            authors: options.authors,
           });
         } catch (e) {
           console.error(e.message);
