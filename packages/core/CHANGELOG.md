@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+
+### Features
+
+* allow building datafiles without making changes to state files ([#314](https://github.com/featurevisor/featurevisor/issues/314)) ([d02c005](https://github.com/featurevisor/featurevisor/commit/d02c005c8792e5111b234015adb030773bba64a5))
+
+
+
+
+
 # [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
 
 
