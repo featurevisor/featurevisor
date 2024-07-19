@@ -12,6 +12,7 @@ export interface BuildCLIOptions {
   feature?: string;
   print?: boolean;
   pretty?: boolean;
+  stateFiles?: boolean; // --no-state-files in CLI
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -84,11 +85,13 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       });
     }
 
-    // write state for environment
-    await datasource.writeState(environment, existingState);
+    if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
+      // write state for environment
+      await datasource.writeState(environment, existingState);
 
-    // write revision
-    await datasource.writeRevision(nextRevision);
+      // write revision
+      await datasource.writeRevision(nextRevision);
+    }
   }
 
   console.log("\nLatest revision:", nextRevision);
