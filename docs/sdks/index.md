@@ -11,6 +11,7 @@ Supported environments:
 - [Node.js](/docs/sdks/nodejs)
 - [Browser](/docs/sdks/browser)
 - [Roku](/docs/sdks/roku)
+- [Swift](/docs/sdks/swift)
 
 With other languages to follow very soon:
 
