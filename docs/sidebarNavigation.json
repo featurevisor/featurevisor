@@ -1,59 +1,152 @@
 [
   {
     "title": "Getting started",
-    "links": [{ "title": "Quick start", "href": "/docs/quick-start" }]
+    "links": [
+      {
+        "title": "Quick start",
+        "href": "/docs/quick-start"
+      }
+    ]
   },
   {
     "title": "Concepts",
     "links": [
-      { "title": "Feature Management", "href": "/docs/feature-management" },
-      { "title": "Cloud Native Architecture", "href": "/docs/concepts/cloud-native-architecture" },
-      { "title": "Infrastructure as Code", "href": "/docs/concepts/infrastructure-as-code" },
-      { "title": "GitOps", "href": "/docs/concepts/gitops" }
+      {
+        "title": "Feature Management",
+        "href": "/docs/feature-management"
+      },
+      {
+        "title": "Cloud Native Architecture",
+        "href": "/docs/concepts/cloud-native-architecture"
+      },
+      {
+        "title": "Infrastructure as Code",
+        "href": "/docs/concepts/infrastructure-as-code"
+      },
+      {
+        "title": "GitOps",
+        "href": "/docs/concepts/gitops"
+      }
     ]
   },
   {
     "title": "Building blocks",
     "links": [
-      { "title": "Attributes", "href": "/docs/attributes" },
-      { "title": "Segments", "href": "/docs/segments" },
-      { "title": "Features", "href": "/docs/features" },
-      { "title": "Groups", "href": "/docs/groups" }
+      {
+        "title": "Attributes",
+        "href": "/docs/attributes"
+      },
+      {
+        "title": "Segments",
+        "href": "/docs/segments"
+      },
+      {
+        "title": "Features",
+        "href": "/docs/features"
+      },
+      {
+        "title": "Groups",
+        "href": "/docs/groups"
+      }
     ]
   },
   {
     "title": "Workflow",
     "links": [
-      { "title": "Configuration", "href": "/docs/configuration" },
-      { "title": "Linting", "href": "/docs/linting" },
-      { "title": "Building datafiles", "href": "/docs/building-datafiles" },
-      { "title": "State files", "href": "/docs/state-files" },
-      { "title": "Testing", "href": "/docs/testing" },
-      { "title": "Status site", "href": "/docs/site" },
-      { "title": "Deployment", "href": "/docs/deployment" },
-      { "title": "SDKs", "href": "/docs/sdks" }
+      {
+        "title": "Configuration",
+        "href": "/docs/configuration"
+      },
+      {
+        "title": "Linting",
+        "href": "/docs/linting"
+      },
+      {
+        "title": "Building datafiles",
+        "href": "/docs/building-datafiles"
+      },
+      {
+        "title": "State files",
+        "href": "/docs/state-files"
+      },
+      {
+        "title": "Testing",
+        "href": "/docs/testing"
+      },
+      {
+        "title": "Status site",
+        "href": "/docs/site"
+      },
+      {
+        "title": "Deployment",
+        "href": "/docs/deployment"
+      },
+      {
+        "title": "SDKs",
+        "href": "/docs/sdks"
+      }
     ]
   },
   {
     "title": "SDKs",
     "links": [
-      { "title": "JavaScript", "href": "/docs/sdks/javascript" },
-      { "title": "Node.js", "href": "/docs/sdks/nodejs" },
-      { "title": "Browser", "href": "/docs/sdks/browser" },
-      { "title": "Roku", "href": "/docs/sdks/roku" }
+      {
+        "title": "JavaScript",
+        "href": "/docs/sdks/javascript"
+      },
+      {
+        "title": "Node.js",
+        "href": "/docs/sdks/nodejs"
+      },
+      {
+        "title": "Browser",
+        "href": "/docs/sdks/browser"
+      },
+      {
+        "title": "Roku",
+        "href": "/docs/sdks/roku"
+      },
+      {
+        "title": "Swift",
+        "href": "/docs/sdks/swift"
+      }
     ]
   },
   {
     "title": "Framework guides",
     "links": [
-      { "title": "React", "href": "/docs/react" },
-      { "title": "React Native", "href": "/docs/react-native" },
-      { "title": "Next.js", "href": "/docs/frameworks/nextjs" },
-      { "title": "Vue.js", "href": "/docs/vue" },
-      { "title": "Nuxt", "href": "/docs/frameworks/nuxt" },
-      { "title": "Astro", "href": "/docs/frameworks/astro" },
-      { "title": "Express.js", "href": "/docs/frameworks/express" },
-      { "title": "Fastify", "href": "/docs/frameworks/fastify" }
+      {
+        "title": "React",
+        "href": "/docs/react"
+      },
+      {
+        "title": "React Native",
+        "href": "/docs/react-native"
+      },
+      {
+        "title": "Next.js",
+        "href": "/docs/frameworks/nextjs"
+      },
+      {
+        "title": "Vue.js",
+        "href": "/docs/vue"
+      },
+      {
+        "title": "Nuxt",
+        "href": "/docs/frameworks/nuxt"
+      },
+      {
+        "title": "Astro",
+        "href": "/docs/frameworks/astro"
+      },
+      {
+        "title": "Express.js",
+        "href": "/docs/frameworks/express"
+      },
+      {
+        "title": "Fastify",
+        "href": "/docs/frameworks/fastify"
+      }
     ]
   },
   {
@@ -63,38 +156,97 @@
         "title": "Decoupled Releases",
         "href": "/docs/use-cases/decouple-releases-from-deployments"
       },
-      { "title": "Progressive delivery", "href": "/docs/use-cases/progressive-delivery" },
-      { "title": "Testing in production", "href": "/docs/use-cases/testing-in-production" },
-      { "title": "Experiments", "href": "/docs/use-cases/experiments" },
-      { "title": "User entitlements", "href": "/docs/use-cases/entitlements" },
-      { "title": "Remote configuration", "href": "/docs/use-cases/remote-configuration" },
-      { "title": "Establishing ownership", "href": "/docs/use-cases/establishing-ownership" },
-      { "title": "Trunk-based development", "href": "/docs/use-cases/trunk-based-development" },
-      { "title": "Microfrontends", "href": "/docs/use-cases/microfrontends" },
-      { "title": "Managing dependencies", "href": "/docs/use-cases/dependencies" },
-      { "title": "Deprecating features", "href": "/docs/use-cases/deprecation" }
+      {
+        "title": "Progressive delivery",
+        "href": "/docs/use-cases/progressive-delivery"
+      },
+      {
+        "title": "Testing in production",
+        "href": "/docs/use-cases/testing-in-production"
+      },
+      {
+        "title": "Experiments",
+        "href": "/docs/use-cases/experiments"
+      },
+      {
+        "title": "User entitlements",
+        "href": "/docs/use-cases/entitlements"
+      },
+      {
+        "title": "Remote configuration",
+        "href": "/docs/use-cases/remote-configuration"
+      },
+      {
+        "title": "Establishing ownership",
+        "href": "/docs/use-cases/establishing-ownership"
+      },
+      {
+        "title": "Trunk-based development",
+        "href": "/docs/use-cases/trunk-based-development"
+      },
+      {
+        "title": "Microfrontends",
+        "href": "/docs/use-cases/microfrontends"
+      },
+      {
+        "title": "Managing dependencies",
+        "href": "/docs/use-cases/dependencies"
+      },
+      {
+        "title": "Deprecating features",
+        "href": "/docs/use-cases/deprecation"
+      }
     ]
   },
   {
     "title": "Advanced",
     "links": [
-      { "title": "CLI usage", "href": "/docs/cli" },
-      { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers" },
-      { "title": "Code generation", "href": "/docs/code-generation" },
-      { "title": "Bucketing", "href": "/docs/bucketing" }
+      {
+        "title": "CLI usage",
+        "href": "/docs/cli"
+      },
+      {
+        "title": "Custom parsers",
+        "href": "/docs/advanced/custom-parsers"
+      },
+      {
+        "title": "Code generation",
+        "href": "/docs/code-generation"
+      },
+      {
+        "title": "Bucketing",
+        "href": "/docs/bucketing"
+      }
     ]
   },
   {
     "title": "Tracking guides",
-    "links": [{ "title": "Google Analytics", "href": "/docs/tracking/google-analytics" }]
+    "links": [
+      {
+        "title": "Google Analytics",
+        "href": "/docs/tracking/google-analytics"
+      }
+    ]
   },
   {
     "title": "CI/CD guides",
     "links": [
-      { "title": "GitHub Actions", "href": "/docs/integrations/github-actions" },
-      { "title": "GitHub Pages", "href": "/docs/integrations/github-pages" },
-      { "title": "Cloudflare Pages", "href": "/docs/integrations/cloudflare-pages" },
-      { "title": "PartyKit", "href": "/docs/integrations/partykit" }
+      {
+        "title": "GitHub Actions",
+        "href": "/docs/integrations/github-actions"
+      },
+      {
+        "title": "GitHub Pages",
+        "href": "/docs/integrations/github-pages"
+      },
+      {
+        "title": "Cloudflare Pages",
+        "href": "/docs/integrations/cloudflare-pages"
+      },
+      {
+        "title": "PartyKit",
+        "href": "/docs/integrations/partykit"
+      }
     ]
   },
   {
@@ -133,12 +285,30 @@
   {
     "title": "Project",
     "links": [
-      { "title": "Roadmap", "href": "/docs/roadmap" },
-      { "title": "FAQ", "href": "/docs/faq" },
-      { "title": "Glossary", "href": "/docs/glossary" },
-      { "title": "Examples", "href": "/docs/examples" },
-      { "title": "Contributing", "href": "/docs/contributing" },
-      { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }
+      {
+        "title": "Roadmap",
+        "href": "/docs/roadmap"
+      },
+      {
+        "title": "FAQ",
+        "href": "/docs/faq"
+      },
+      {
+        "title": "Glossary",
+        "href": "/docs/glossary"
+      },
+      {
+        "title": "Examples",
+        "href": "/docs/examples"
+      },
+      {
+        "title": "Contributing",
+        "href": "/docs/contributing"
+      },
+      {
+        "title": "GitHub",
+        "href": "https://github.com/featurevisor/featurevisor"
+      }
     ]
   }
 ]
