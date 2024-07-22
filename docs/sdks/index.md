@@ -15,5 +15,4 @@ Supported environments:
 
 With other languages to follow very soon:
 
-- Swift
 - Kotlin

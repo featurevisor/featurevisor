@@ -172,6 +172,86 @@ let objectVariable: MyDecodableObject? = f.getVariableObject(featureKey: Feature
 let jsonVariable: MyJSONDecodableObject? = f.getVariableJSON(featureKey: FeatureKey, variableKey: VariableKey, context: Context)
 ```
 
+## Activation
+
+Activation is useful when you want to track what features and their variations are exposed to your users.
+
+It works the same as `f.getVariation()` method, but it will also bubble an event up that you can listen to.
+
+```swift
+import FeaturevisorSDK
+
+var options: InstanceOptions = .default
+options.datafileUrl = "https://cdn.yoursite.com/production/datafile-tag-all.json"
+options.onActivation = { ... }
+
+let f = try createInstance(options: options)
+
+let featureKey = "my_feature";
+let context = [
+    "userId": .string("123"),
+]
+
+f.activate(featureKey: featureKey, context: context)
+```
+
+From the `onActivation` handler, you can send the activation event to your analytics service.
+
+## Initial features
+
+You may want to initialize your SDK with a set of features before SDK has successfully fetched the datafile (if using `datafileUrl` option).
+
+This helps in cases when you fail to fetch the datafile, but you still wish your SDK instance to continue serving a set of sensible default values. And as soon as the datafile is fetched successfully, the SDK will start serving values from there.
+
+```swift
+import FeaturevisorSDK
+
+var options: InstanceOptions = .default
+options.datafileUrl = "https://cdn.yoursite.com/production/datafile-tag-all.json"
+options.initialFeatures = [
+  "my_feature": .init(enabled: true, variation: "treatment", variables: ["myVariableKey": .string("myVariableValue")]),
+  "another_feature": .init(enabled: true, variation: nil, variables: nil)
+]
+
+let f = try createInstance(options: options)
+```
+
+## Stickiness
+
+Featurevisor relies on consistent bucketing making sure the same user always sees the same variation in a deterministic way. You can learn more about it in [Bucketing](/docs/bucketing) section.
+
+But there are times when your targeting conditions (segments) can change and this may lead to some users being re-bucketed into a different variation. This is where stickiness becomes important.
+
+If you have already identified your user in your application, and know what features should be exposed to them in what variations, you can initialize the SDK with a set of sticky features:
+
+```swift
+import FeaturevisorSDK
+
+var options: InstanceOptions = .default
+options.datafileUrl = "https://cdn.yoursite.com/production/datafile-tag-all.json"
+options.stickyFeatures = [
+  "my_feature": .init(enabled: true, variation: "treatment", variables: ["myVariableKey": .string("myVariableValue")]),
+  "another_feature": .init(enabled: true, variation: nil, variables: nil)
+]
+
+let f = try createInstance(options: options)
+```
+
+Once initialized with sticky features, the SDK will look for values there first before evaluating the targeting conditions and going through the bucketing process.
+
+You can also set sticky features after the SDK is initialized:
+
+```swift
+f.setStickyFeatures(stickyFeatures: [
+  "my_feature": .init(enabled: true, variation: "treatment", variables: ["myVariableKey": .string("myVariableValue")])
+])
+```
+
+This will be handy when you want to:
+
+- update sticky features in the SDK without re-initializing it (or restarting the app), and
+- handle evaluation of features for multiple users from the same instance of the SDK (e.g. in a server dealing with incoming requests from multiple users)
+
 ## Logging
 
 By default, Featurevisor will log logs in console output window for warn and error levels.
@@ -200,6 +280,25 @@ options.logger = logger
 
 let f = try createInstance(options: options)
 ```
+
+## Intercepting context
+
+You can intercept context before they are used for evaluation:
+
+```swift
+import FeaturevisorSDK
+
+let defaultContext = [
+  "country": "nl"
+]
+
+var options: InstanceOptions = .default
+options.interceptContext = { context in context.merging(defaultContext) { (current, _) in current } }
+
+let f = try createInstance(options: options)
+```
+
+This is useful when you wish to add a default set of attributes as context for all your evaluations, giving you the convenience of not having to pass them in every time.
 
 ## Refreshing datafile
 
@@ -285,13 +384,9 @@ You can listen to these events that can occur at various stages in your applicat
 When the SDK is ready to be used if used in an asynchronous way involving `datafileUrl` option:
 
 ```swift
-import FeaturevisorSDK
-
-var options: InstanceOptions = .default
-options.datafileUrl = "https://cdn.yoursite.com/production/datafile-tag-all.json"
-options.onReady = { ... }
-
-let f = try createInstance(options: options)
+sdk.on?(.ready, { _ in
+  // sdk is ready to be used
+})
 ```
 
 The `ready` event is fired maximum once.
@@ -299,7 +394,7 @@ The `ready` event is fired maximum once.
 You can also synchronously check if the SDK is ready:
 
 ```swift
-if f.isReady() {
+if (f.isReady()) {
   // sdk is ready to be used
 }
 ```
@@ -309,11 +404,80 @@ if f.isReady() {
 When a feature is activated:
 
 ```swift
-import FeaturevisorSDK
-
-var options: InstanceOptions = .default
-options.datafileUrl = "https://cdn.yoursite.com/production/datafile-tag-all.json"
-options.onActivation = { ... }
-
-let f = try createInstance(options: options)
+sdk.on?(.activation, { _ in })
 ```
+
+#### `refresh`
+
+When the datafile is refreshed:
+
+```swift
+sdk.on?(.refresh, { _ in
+  // datafile has been refreshed successfully
+})
+```
+
+This will only occur if you are using `refreshInterval` option.
+
+#### `update`
+
+When the datafile is refreshed, and new datafile content is different from the previous one:
+
+```swift
+sdk.on?(.update, { _ in
+  // datafile has been refreshed, and
+  // new datafile content is different from the previous one
+})
+```
+
+This will only occur if you are using `refreshInterval` option.
+
+### Stop listening
+
+You can stop listening to specific events by assgning nil to `off` or by calling `removeListener()`:
+
+```swift
+f.off = nil
+f.removeListener?(.update, { _ in })
+```
+
+### Remove all listeners
+
+If you wish to remove all listeners of any specific event type:
+
+```swift
+f.removeAllListeners?(.update)
+f.removeAllListeners?(.ready)
+```
+
+## Evaluation details
+
+Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given context:
+
+```swift
+// flag
+let evaluation = f.evaluateFlag(featureKey: featureKey, context: context)
+
+// variation
+let evaluation = f.evaluateVariation(featureKey: featureKey, context: context)
+
+// variable
+let evaluation = f.evaluateVariable(featureKey: featureKey, variableKey: variableKey, context: context)
+```
+
+The returned object will always contain the following properties:
+
+- `featureKey`: the feature key
+- `reason`: the reason how the value was evaluated
+
+And optionally these properties depending on whether you are evaluating a feature variation or a variable:
+
+- `bucketValue`: the bucket value between 0 and 100,000
+- `ruleKey`: the rule key
+- `error`: the error object
+- `enabled`: if feature itself is enabled or not
+- `variation`: the variation object
+- `variationValue`: the variation value
+- `variableKey`: the variable key
+- `variableValue`: the variable value
+- `variableSchema`: the variable schema
