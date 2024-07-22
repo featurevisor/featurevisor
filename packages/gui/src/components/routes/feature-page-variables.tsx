@@ -125,8 +125,8 @@ export function FeatureVariablesForm({ initialFeature = undefined }) {
           />
         )}
 
-        {/* Description */}
-        <FormField
+        {/* TODO: Description */}
+        {/*<FormField
           control={form.control}
           name="description"
           render={({ field }) => (
@@ -142,7 +142,7 @@ export function FeatureVariablesForm({ initialFeature = undefined }) {
               <FormMessage />
             </FormItem>
           )}
-        />
+        />*/}
 
         {/* Buttons */}
         <div className="flex space-x-4">

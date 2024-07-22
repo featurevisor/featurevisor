@@ -3,6 +3,112 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+
+### Features
+
+* allow showing authors when finding unused entities ([#313](https://github.com/featurevisor/featurevisor/issues/313)) ([67e1158](https://github.com/featurevisor/featurevisor/commit/67e1158b0a2d8636700d167e69f391c1f03a7ed6))
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+
+### Features
+
+* show project info in CLI ([#304](https://github.com/featurevisor/featurevisor/issues/304)) ([d94cb87](https://github.com/featurevisor/featurevisor/commit/d94cb878f24fc4f2280c6126ab40a70aa6bebe9f))
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+
+### Features
+
+* make test runner fast by default ([#301](https://github.com/featurevisor/featurevisor/issues/301)) ([6ed5d0c](https://github.com/featurevisor/featurevisor/commit/6ed5d0cdba99b987fea4242c54aa74202a975142))
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+
+### Features
+
+* allow evaluating in CLI with more verbosity ([#300](https://github.com/featurevisor/featurevisor/issues/300)) ([8c3a096](https://github.com/featurevisor/featurevisor/commit/8c3a0962a5950abf424695db314ee5eeb8e6ccd5))
+
+
+
+
+
+# [1.19.0](https://github.com/featurevisor/featurevisor/compare/v1.18.1...v1.19.0) (2024-04-26)
+
+
+### Features
+
+* find duplicate segments with authors info ([#299](https://github.com/featurevisor/featurevisor/issues/299)) ([5008066](https://github.com/featurevisor/featurevisor/commit/5008066128fb7c732b633856dcffcb768f52c88c))
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+
+### Features
+
+* assess traffic distribution via CLI ([#297](https://github.com/featurevisor/featurevisor/issues/297)) ([2063ad9](https://github.com/featurevisor/featurevisor/commit/2063ad9a5408071bfb1636c748cabe616065191d))
+
+
+
+
+
 # [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
 
 

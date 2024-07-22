@@ -18,7 +18,6 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
-  fast?: boolean;
 }
 
 export interface TestPatterns {
@@ -150,22 +149,21 @@ export async function testProject(
   let failedAssertionsCount = 0;
 
   const datafileContentByEnvironment: DatafileContentByEnvironment = {};
-  if (options.fast) {
-    for (const environment of projectConfig.environments) {
-      const existingState = await datasource.readState(environment);
-      const datafileContent = await buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: "include-all-features",
-          environment: environment,
-        },
-        existingState,
-      );
 
-      datafileContentByEnvironment[environment] = datafileContent;
-    }
+  for (const environment of projectConfig.environments) {
+    const existingState = await datasource.readState(environment);
+    const datafileContent = await buildDatafile(
+      projectConfig,
+      datasource,
+      {
+        schemaVersion: SCHEMA_VERSION,
+        revision: "include-all-features",
+        environment: environment,
+      },
+      existingState,
+    );
+
+    datafileContentByEnvironment[environment] = datafileContent;
   }
 
   for (const testFile of testFiles) {

@@ -1,8 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as yargs from "yargs";
-
 import {
   CONFIG_MODULE_NAME,
   getProjectConfig,
@@ -26,7 +24,11 @@ import {
   benchmarkFeature,
   showProjectConfig,
   evaluateFeature,
+  assessDistribution,
+  showProjectInfo,
 } from "@featurevisor/core";
+
+const yargs = require("yargs"); // eslint-disable-line @typescript-eslint/no-var-requires
 
 process.on("unhandledRejection", (reason) => {
   console.error(reason);
@@ -52,11 +54,13 @@ function requireAndGetProjectConfig(rootDirectoryPath) {
 const rootDirectoryPath = process.cwd();
 
 async function getDependencies(options): Promise<Dependencies> {
-  const projectConfig = requireAndGetProjectConfig(rootDirectoryPath);
-  const datasource = new Datasource(projectConfig, rootDirectoryPath);
+  const useRootDirectoryPath = options.rootDirectoryPath || rootDirectoryPath;
+
+  const projectConfig = requireAndGetProjectConfig(useRootDirectoryPath);
+  const datasource = new Datasource(projectConfig, useRootDirectoryPath);
 
   return {
-    rootDirectoryPath,
+    rootDirectoryPath: useRootDirectoryPath,
     projectConfig,
     datasource,
     options,
@@ -153,7 +157,6 @@ async function main() {
           assertionPattern: options.assertionPattern,
           verbose: options.verbose || false,
           showDatafile: options.showDatafile || false,
-          fast: options.fast || false,
           onlyFailures: options.onlyFailures || false,
         };
 
@@ -228,7 +231,9 @@ async function main() {
         const deps = await getDependencies(options);
 
         try {
-          await findDuplicateSegmentsInProject(deps);
+          await findDuplicateSegmentsInProject(deps, {
+            authors: options.authors,
+          });
         } catch (e) {
           console.error(e.message);
           process.exit(1);
@@ -236,6 +241,7 @@ async function main() {
       },
     })
     .example("$0 find-duplicate-segments", "list segments with same conditions")
+    .example("$0 find-duplicate-segments --authors", "show the duplicates along with author names")
 
     /**
      * Find usage
@@ -252,6 +258,8 @@ async function main() {
 
             unusedSegments: options.unusedSegments,
             unusedAttributes: options.unusedAttributes,
+
+            authors: options.authors,
           });
         } catch (e) {
           console.error(e.message);
@@ -355,6 +363,7 @@ async function main() {
             context: options.context ? JSON.parse(options.context) : {},
             print: options.print,
             pretty: options.pretty,
+            verbose: options.verbose,
           });
         } catch (e) {
           console.error(e.message);
@@ -367,6 +376,64 @@ async function main() {
       "$0 evaluate --environment=production --feature=my_feature --context='{}'",
       "evaluate a feature against provided context",
     )
+
+    /**
+     * Assess distribution
+     */
+    .command({
+      command: "assess-distribution",
+      handler: async function (options) {
+        if (!options.environment) {
+          console.error("Please specify an environment with --environment flag.");
+          process.exit(1);
+        }
+
+        if (!options.feature) {
+          console.error("Please specify a feature with --feature flag.");
+          process.exit(1);
+        }
+
+        const deps = await getDependencies(options);
+
+        try {
+          await assessDistribution(deps, {
+            environment: options.environment,
+            feature: options.feature,
+            context: options.context ? JSON.parse(options.context) : {},
+            populateUuid: Array.isArray(options.populateUuid)
+              ? options.populateUuid
+              : [options.populateUuid as string].filter(Boolean),
+            n: parseInt(options.n, 10) || 1,
+            verbose: options.verbose,
+          });
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+    .example("$0 assess-distribution", "test traffic distribution of a feature")
+    .example(
+      "$0 assess-distribution --environment=production --feature=my_feature --context='{}' --populateUuid=userId --n=100",
+      "test traffic distribution a feature against provided context",
+    )
+
+    /**
+     * Info
+     */
+    .command({
+      command: "info",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          await showProjectInfo(deps);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
 
     /**
      * GUI
@@ -384,6 +451,7 @@ async function main() {
         }
       },
     })
+
     .example("$0 gui", "Open GUI")
 
     /**

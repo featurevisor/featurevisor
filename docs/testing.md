@@ -214,15 +214,7 @@ $ npx featurevisor test --onlyFailures
 
 ### `fast`
 
-By default, Featurevisor's test runner would generate a datafile for your feature against the desired environment for each assertion.
-
-If you have a lot of tests, this can be time-consuming. You can use the `--fast` option to generate datafiles for each environment early packing all the features in the project together, and then run the assertions:
-
-```
-$ npx featurevisor test --fast
-```
-
-**Note**: This approach is memory intensive and therefore not the default behaviour yet.
+This option has been deprecated, because test runner is now fast by default.
 
 ## NPM scripts
 

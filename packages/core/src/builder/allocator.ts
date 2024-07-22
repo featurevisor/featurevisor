@@ -22,6 +22,10 @@ export function getUpdatedAvailableRangesAfterFilling(
   availableRanges: Range[],
   fill: Percentage,
 ): Range[] {
+  if (fill === 0) {
+    return availableRanges;
+  }
+
   const result: Range[] = [];
 
   let remaining = fill;

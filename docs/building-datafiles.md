@@ -44,12 +44,18 @@ Next to datafiles, the build process will also generate some additional JSON fil
 
 ## Revision
 
-By default, Featurevisor will use the `version` as exists in `package.json` of the project as the `revision` value in generated datafiles.
+By default, Featurevisor will increment the revision number as found in `.featurevisor/REVISION` file (learn more in [state files](/docs/state-files)).
 
-You can optionally customize the `revision` value in datafiles by passing a `--revision` flag when building:
+You can optionally customize the `revision` value when building datafiles by passing a `--revision` flag:
 
 ```
 $ npx featurevisor build --revision 1.2.3
+```
+
+If you wish to build datafiles without making any changes to [state files](/docs/state-files), you can pass the `--no-state-files` flag:
+
+```
+$ npx featurevisor build --no-state-files
 ```
 
 ## Printing

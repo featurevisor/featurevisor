@@ -13,3 +13,5 @@ export * from "./datasource";
 export * from "./gui";
 export * from "./benchmark";
 export * from "./evaluate";
+export * from "./assess-distribution";
+export * from "./info";
