@@ -4,6 +4,8 @@ description: Learn how to use Featurevisor Swift SDK
 ogImage: /img/og/docs-sdks-swift.png
 ---
 
+If you don't find what you are looking for or the provided details are insufficient, please check out [Swift SDK](https://github.com/featurevisor/featurevisor-swift) repository. If still, something is not clear, please raise an issue.
+
 ## Installation
 
 Swift Package Manager executable requires compilation before running it.
@@ -11,8 +13,7 @@ Swift Package Manager executable requires compilation before running it.
 ```bash
 $ cd path/to/featurevisor-swift-sdk
 $ swift build -c release
-$ cd .build/release
-$ cp -f featurevisor /usr/local/bin/featurevisor-swift
+$ cd .build/release && cp -f featurevisor /usr/local/bin/featurevisor-swift
 ```
 
 ## Initialization
