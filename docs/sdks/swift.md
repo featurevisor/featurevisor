@@ -4,16 +4,20 @@ description: Learn how to use Featurevisor Swift SDK
 ogImage: /img/og/docs-sdks-swift.png
 ---
 
-If you don't find what you are looking for or the provided details are insufficient, please check out [Swift SDK](https://github.com/featurevisor/featurevisor-swift) repository. If still, something is not clear, please raise an issue.
+Featurevisor Swift SDK can be used in Apple devices targeting several operating systems including: iOS, iPadOS, macOS, tvOS, and watchOS. {% .lead %}
+
+If you don't find what you are looking for or the provided details are insufficient in this page, please check out [Swift SDK](https://github.com/featurevisor/featurevisor-swift) repository on GitHub.
+
+If something is still not clear, please raise an [issue](https://github.com/featurevisor/featurevisor-swift/issues).
 
 ## Installation
 
 Swift Package Manager executable requires compilation before running it.
 
-```bash
+```
 $ cd path/to/featurevisor-swift-sdk
 $ swift build -c release
-$ cd .build/release && cp -f featurevisor /usr/local/bin/featurevisor-swift
+$ (cd .build/release && cp -f featurevisor /usr/local/bin/featurevisor-swift)
 ```
 
 ## Initialization
