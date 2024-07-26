@@ -7,10 +7,12 @@ import {
   CommitHash,
   EntityType,
 } from "@featurevisor/types";
+import { Scope } from "../config";
 
 export interface DatafileOptions {
   environment: EnvironmentKey;
   tag: string;
+  scope?: Scope;
 }
 
 export abstract class Adapter {
