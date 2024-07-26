@@ -1394,4 +1394,15 @@ describe("sdk: instance", function () {
     expect(sdk.isEnabled("test", { userId: "123", country: "nl" })).toEqual(true);
     expect(sdk.isEnabled("test", { userId: "123", country: "us", device: "iphone" })).toEqual(true);
   });
+
+  it.only("should handle datafile fetch error gracefully", function (done) {
+    const sdk = createInstance({
+      datafileUrl: "http://localhost:9090/datafile-tag-non-existing.json",
+    });
+
+    setTimeout(function () {
+      expect(sdk.isReady()).toEqual(false);
+      done();
+    }, 100);
+  });
 });
