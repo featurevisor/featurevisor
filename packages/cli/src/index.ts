@@ -20,6 +20,7 @@ import {
   restoreProject,
   Dependencies,
   Datasource,
+  openGui,
   benchmarkFeature,
   showProjectConfig,
   evaluateFeature,
@@ -433,6 +434,25 @@ async function main() {
         }
       },
     })
+
+    /**
+     * GUI
+     */
+    .command({
+      command: "gui",
+      handler: async function (options) {
+        const deps = await getDependencies(options);
+
+        try {
+          openGui(deps);
+        } catch (e) {
+          console.error(e.message);
+          process.exit(1);
+        }
+      },
+    })
+
+    .example("$0 gui", "Open GUI")
 
     /**
      * Options
