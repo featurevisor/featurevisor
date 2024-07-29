@@ -4,6 +4,7 @@ import { BucketBy } from "@featurevisor/types";
 
 import { Parser, parsers } from "./parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
+import type { Plugin } from "../cli";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -46,6 +47,7 @@ export interface ProjectConfig {
   siteExportDirectoryPath: string;
   enforceCatchAllRule?: boolean;
   adapter: any; // @TODO: type this properly later
+  plugins?: Plugin[];
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)

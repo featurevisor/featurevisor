@@ -14,3 +14,4 @@ export * from "./benchmark";
 export * from "./evaluate";
 export * from "./assess-distribution";
 export * from "./info";
+export * from "./cli";
