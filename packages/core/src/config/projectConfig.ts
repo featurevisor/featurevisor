@@ -44,6 +44,7 @@ export interface ProjectConfig {
   prettyDatafile: boolean;
   stringify: boolean;
   siteExportDirectoryPath: string;
+  enforceCatchAllRule?: boolean;
   adapter: any; // @TODO: type this properly later
 }
 
@@ -70,6 +71,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
     outputDirectoryPath: path.join(rootDirectoryPath, OUTPUT_DIRECTORY_NAME),
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
+
+    enforceCatchAllRule: false,
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);

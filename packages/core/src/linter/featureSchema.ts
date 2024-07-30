@@ -87,6 +87,16 @@ export function getFeatureZodSchema(
             })
             .strict(),
         )
+
+        // must have at least one rule
+        .refine(
+          (value) => value.length > 0,
+          () => ({
+            message: "Must have at least one rule",
+          }),
+        )
+
+        // duplicate rules
         .refine(
           (value) => {
             const keys = value.map((v) => v.key);
@@ -94,6 +104,21 @@ export function getFeatureZodSchema(
           },
           (value) => ({
             message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+          }),
+        )
+
+        // enforce catch-all rule
+        .refine(
+          (value) => {
+            if (!projectConfig.enforceCatchAllRule) {
+              return true;
+            }
+
+            const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
+            return hasCatchAllAsLastRule;
+          },
+          () => ({
+            message: `Missing catch-all rule with \`segments: "*"\` at the end`,
           }),
         ),
       force: z

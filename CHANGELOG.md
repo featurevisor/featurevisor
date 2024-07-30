@@ -3,6 +3,83 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+
+### Features
+
+* allow building datafiles without making changes to state files ([#314](https://github.com/featurevisor/featurevisor/issues/314)) ([d02c005](https://github.com/featurevisor/featurevisor/commit/d02c005c8792e5111b234015adb030773bba64a5))
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+
+### Features
+
+* allow showing authors when finding unused entities ([#313](https://github.com/featurevisor/featurevisor/issues/313)) ([67e1158](https://github.com/featurevisor/featurevisor/commit/67e1158b0a2d8636700d167e69f391c1f03a7ed6))
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+
+### Features
+
+* show variables count from CLI ([#310](https://github.com/featurevisor/featurevisor/issues/310)) ([f0f3dc0](https://github.com/featurevisor/featurevisor/commit/f0f3dc003c3040c21e05ad019c37676cfeb9e8fe))
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+
+### Features
+
+* show project info in CLI ([#304](https://github.com/featurevisor/featurevisor/issues/304)) ([d94cb87](https://github.com/featurevisor/featurevisor/commit/d94cb878f24fc4f2280c6126ab40a70aa6bebe9f))
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+
+### Features
+
+* make test runner fast by default ([#301](https://github.com/featurevisor/featurevisor/issues/301)) ([6ed5d0c](https://github.com/featurevisor/featurevisor/commit/6ed5d0cdba99b987fea4242c54aa74202a975142))
+
+
+
+
+
 # [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
 
 

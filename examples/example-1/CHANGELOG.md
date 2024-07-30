@@ -3,6 +3,68 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
 # [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
 
 **Note:** Version bump only for package @featurevisor/example-1

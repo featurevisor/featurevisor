@@ -243,9 +243,13 @@ export interface FindUsageOptions {
 
   unusedSegments?: boolean;
   unusedAttributes?: boolean;
+
+  authors?: boolean;
 }
 
 export async function findUsageInProject(deps: Dependencies, options: FindUsageOptions) {
+  const { datasource } = deps;
+
   console.log("");
 
   // segment
@@ -257,9 +261,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log(`Segment "${options.segment}" is used in the following features:\n`);
 
-      usedInFeatures.forEach((featureKey) => {
-        console.log(`  - ${featureKey}`);
-      });
+      for (const featureKey of Array.from(usedInFeatures)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("feature", featureKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${featureKey}`);
+        }
+      }
     }
 
     return;
@@ -278,9 +289,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     if (usedIn.features.size > 0) {
       console.log(`Attribute "${options.attribute}" is used in the following features:\n`);
 
-      usedIn.features.forEach((featureKey) => {
-        console.log(`  - ${featureKey}`);
-      });
+      for (const featureKey of Array.from(usedIn.features)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("feature", featureKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${featureKey}`);
+        }
+      }
 
       console.log("");
     }
@@ -288,9 +306,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     if (usedIn.segments.size > 0) {
       console.log(`Attribute "${options.attribute}" is used in the following segments:\n`);
 
-      usedIn.segments.forEach((segmentKey) => {
-        console.log(`  - ${segmentKey}`);
-      });
+      for (const segmentKey of Array.from(usedIn.segments)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("segment", segmentKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${segmentKey}`);
+        }
+      }
     }
 
     return;
@@ -305,9 +330,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log("Unused segments:\n");
 
-      unusedSegments.forEach((segmentKey) => {
-        console.log(`  - ${segmentKey}`);
-      });
+      for (const segmentKey of Array.from(unusedSegments)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("segment", segmentKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${segmentKey}`);
+        }
+      }
     }
 
     return;
@@ -322,9 +354,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log("Unused attributes:\n");
 
-      unusedAttributes.forEach((attributeKey) => {
-        console.log(`  - ${attributeKey}`);
-      });
+      for (const attributeKey of Array.from(unusedAttributes)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("attribute", attributeKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${attributeKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${attributeKey}`);
+        }
+      }
     }
 
     return;
