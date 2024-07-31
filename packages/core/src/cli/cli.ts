@@ -84,4 +84,12 @@ export async function runCLI(runnerOptions: RunnerOptions) {
   for (const plugin of projectBasedPlugins) {
     registerPlugin(plugin);
   }
+
+  // show help if no command is provided
+  y.command({
+    command: "*",
+    handler() {
+      y.showHelp();
+    },
+  }).argv;
 }
