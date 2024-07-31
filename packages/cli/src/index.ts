@@ -1,72 +1,34 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import {
-  CONFIG_MODULE_NAME,
-  getProjectConfig,
-  lintProject,
-  testProject,
-  buildProject,
-  initProject,
-  exportSite,
-  serveSite,
-  generateCodeForProject,
-  findDuplicateSegmentsInProject,
-  findUsageInProject,
-  BuildCLIOptions,
-  GenerateCodeCLIOptions,
-  TestProjectOptions,
-  LintProjectOptions,
-  restoreProject,
-  Dependencies,
-  Datasource,
-  benchmarkFeature,
-  showProjectConfig,
-  evaluateFeature,
-  assessDistribution,
-  showProjectInfo,
-} from "@featurevisor/core";
-
-const yargs = require("yargs"); // eslint-disable-line @typescript-eslint/no-var-requires
+import { CONFIG_MODULE_NAME, getProjectConfig, Datasource, runCLI } from "@featurevisor/core";
 
 process.on("unhandledRejection", (reason) => {
   console.error(reason);
   process.exit(1);
 });
 
-function requireConfigFile(configModulePath) {
-  if (!fs.existsSync(configModulePath)) {
-    console.error("No config file found. Please create `featurevisor.config.js` file first.");
-
-    process.exit(1);
-  }
-}
-
-function requireAndGetProjectConfig(rootDirectoryPath) {
-  const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
-
-  requireConfigFile(configModulePath);
-
-  return getProjectConfig(rootDirectoryPath);
-}
-
-const rootDirectoryPath = process.cwd();
-
-async function getDependencies(options): Promise<Dependencies> {
-  const useRootDirectoryPath = options.rootDirectoryPath || rootDirectoryPath;
-
-  const projectConfig = requireAndGetProjectConfig(useRootDirectoryPath);
-  const datasource = new Datasource(projectConfig, useRootDirectoryPath);
-
-  return {
-    rootDirectoryPath: useRootDirectoryPath,
-    projectConfig,
-    datasource,
-    options,
-  };
-}
-
 async function main() {
+  const rootDirectoryPath = process.cwd();
+  const useRootDirectoryPath = rootDirectoryPath; // @TODO: see if can get it from CLI args if overridden
+
+  const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
+  if (!fs.existsSync(configModulePath)) {
+    // not an existing project
+    await runCLI({ rootDirectoryPath: useRootDirectoryPath });
+  } else {
+    // existing project
+    const projectConfig = getProjectConfig(useRootDirectoryPath);
+    const datasource = new Datasource(projectConfig, useRootDirectoryPath);
+
+    await runCLI({
+      rootDirectoryPath: useRootDirectoryPath,
+      projectConfig,
+      datasource,
+    });
+  }
+
+  return; // @TODO: remove old code below later
   yargs(process.argv.slice(2))
     .usage("Usage: <command> [options]")
 

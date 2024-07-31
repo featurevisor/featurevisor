@@ -1,17 +1,7 @@
-import yargs from "yargs/yargs";
-
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
-import { corePlugins } from "./corePlugins";
-
-export interface RunnerOptions {
-  rootDirectoryPath: string;
-
-  // optional because Featurevisor CLI can be used without a project
-  projectConfig?: ProjectConfig;
-  datasource?: Datasource;
-}
+import { nonProjectPlugins, projectBasedPlugins } from "./plugins";
 
 export type CLIOptions = Record<string, unknown>; // CLI args @TODO: map to yargs?
 
@@ -31,27 +21,26 @@ export interface Plugin {
   }[];
 }
 
+export interface RunnerOptions {
+  rootDirectoryPath: string;
+
+  // optional because Featurevisor CLI can be used without a project
+  projectConfig?: ProjectConfig;
+  datasource?: Datasource;
+}
+
 export async function runCLI(runnerOptions: RunnerOptions) {
+  const yargs = require("yargs");
+
   let y = yargs(process.argv.slice(2));
+  const registeredCommands: string[] = [];
+
   const { rootDirectoryPath, projectConfig, datasource } = runnerOptions;
 
-  // handle plugins without needing a project
-  // @TODO: handle init
-  // @TODO: handle --version and/or version
-
-  if (!projectConfig || !datasource) {
-    console.log("No existing project found.");
-
-    return;
-  }
-
-  // handle plugins that need a project
-  const registeredCommands: string[] = [];
-  const allPlugins = [...corePlugins, ...(projectConfig.plugins || [])];
-  for (const plugin of allPlugins) {
+  function registerPlugin(plugin: Plugin) {
     if (registeredCommands.includes(plugin.command)) {
       console.warn(`Plugin "${plugin.command}" already registered. Skipping.`);
-      continue;
+      return;
     }
 
     y = y.command({
@@ -62,7 +51,7 @@ export async function runCLI(runnerOptions: RunnerOptions) {
           projectConfig,
           datasource,
           options,
-        });
+        } as PluginHandlerOptions);
 
         if (result === false) {
           process.exit(1);
@@ -75,5 +64,24 @@ export async function runCLI(runnerOptions: RunnerOptions) {
     }
 
     registeredCommands.push(plugin.command);
+  }
+
+  // non project-based plugins
+  if (!projectConfig) {
+    for (const plugin of nonProjectPlugins) {
+      registerPlugin(plugin);
+    }
+  }
+
+  // project-based plugins
+  if (projectConfig) {
+    for (const plugin of [...projectBasedPlugins, ...(projectConfig.plugins || [])]) {
+      registerPlugin(plugin);
+    }
+  }
+
+  // common plugins
+  for (const plugin of projectBasedPlugins) {
+    registerPlugin(plugin);
   }
 }
