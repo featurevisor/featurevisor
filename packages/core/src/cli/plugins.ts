@@ -1,7 +1,9 @@
 import type { Plugin } from "./cli";
 
+import { initPlugin } from "../init";
+
 // @TODO: add these plugins
-// - [ ] init
+// - [x] init
 // - [ ] lint
 // - [ ] build
 // - [ ] restore
@@ -17,9 +19,7 @@ import type { Plugin } from "./cli";
 // - [ ] info
 
 // that do not require an existing project
-export const nonProjectPlugins: Plugin[] = [
-  // ...
-];
+export const nonProjectPlugins: Plugin[] = [initPlugin];
 
 // that require an existing Featurevisor project
 export const projectBasedPlugins: Plugin[] = [

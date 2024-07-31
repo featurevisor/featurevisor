@@ -1,6 +1,8 @@
 import axios from "axios";
 import * as tar from "tar";
 
+import { Plugin } from "../cli";
+
 export const DEFAULT_EXAMPLE = "example-yml";
 
 export const EXAMPLES_ORG_NAME = "fahad19";
@@ -42,3 +44,22 @@ export function initProject(
     });
   });
 }
+
+export const initPlugin: Plugin = {
+  command: "init",
+  handler: async function (options) {
+    const { rootDirectoryPath, parsed } = options;
+
+    return initProject(rootDirectoryPath, parsed.example);
+  },
+  examples: [
+    {
+      command: "init",
+      description: "scaffold a new project in current directory",
+    },
+    {
+      command: "init --example=exampleName",
+      description: "scaffold a new project in current directory from known example",
+    },
+  ],
+};

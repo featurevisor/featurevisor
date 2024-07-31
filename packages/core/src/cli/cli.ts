@@ -3,13 +3,16 @@ import { Datasource } from "../datasource";
 
 import { nonProjectPlugins, projectBasedPlugins } from "./plugins";
 
-export type CLIOptions = Record<string, unknown>; // CLI args @TODO: map to yargs?
+export interface ParsedOptions {
+  _: string[];
+  [key: string]: any;
+}
 
 export interface PluginHandlerOptions {
   rootDirectoryPath: string;
   projectConfig: ProjectConfig;
   datasource: Datasource;
-  options: CLIOptions;
+  parsed: ParsedOptions;
 }
 
 export interface Plugin {
@@ -45,12 +48,12 @@ export async function runCLI(runnerOptions: RunnerOptions) {
 
     y = y.command({
       command: plugin.command,
-      handler: async function (options) {
+      handler: async function (parsed: ParsedOptions) {
         const result = await plugin.handler({
           rootDirectoryPath,
           projectConfig,
           datasource,
-          options,
+          parsed,
         } as PluginHandlerOptions);
 
         if (result === false) {
