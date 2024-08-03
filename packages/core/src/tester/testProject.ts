@@ -216,7 +216,7 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    return testProject(
+    const hasError = await testProject(
       {
         rootDirectoryPath,
         projectConfig,
@@ -225,6 +225,10 @@ export const testPlugin: Plugin = {
       },
       parsed as TestProjectOptions,
     );
+
+    if (hasError) {
+      return false;
+    }
   },
   examples: [
     {

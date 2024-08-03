@@ -50,7 +50,7 @@ export const initPlugin: Plugin = {
   handler: async function (options) {
     const { rootDirectoryPath, parsed } = options;
 
-    return initProject(rootDirectoryPath, parsed.example);
+    await initProject(rootDirectoryPath, parsed.example);
   },
   examples: [
     {

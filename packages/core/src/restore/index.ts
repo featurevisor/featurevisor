@@ -26,7 +26,7 @@ export async function restoreProject(deps: Dependencies) {
 export const restorePlugin: Plugin = {
   command: "restore",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    return restoreProject({
+    await restoreProject({
       rootDirectoryPath,
       projectConfig,
       datasource,

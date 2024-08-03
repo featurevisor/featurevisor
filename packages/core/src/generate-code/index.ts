@@ -55,7 +55,7 @@ export async function generateCodeForProject(
 export const generateCodePlugin: Plugin = {
   command: "generate-code",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    return generateCodeForProject(
+    await generateCodeForProject(
       {
         rootDirectoryPath,
         projectConfig,

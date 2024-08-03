@@ -347,7 +347,7 @@ export const lintPlugin: Plugin = {
   handler: async function (options) {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
-    return lintProject(
+    await lintProject(
       {
         rootDirectoryPath,
         projectConfig,

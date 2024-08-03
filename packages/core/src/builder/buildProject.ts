@@ -101,7 +101,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    return buildProject(
+    await buildProject(
       {
         rootDirectoryPath,
         projectConfig,
