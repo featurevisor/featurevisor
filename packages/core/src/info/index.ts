@@ -1,5 +1,6 @@
 import { Dependencies } from "../dependencies";
 import { getMatrixCombinations } from "../tester/matrix";
+import { Plugin } from "./cli";
 
 export async function showProjectInfo(deps: Dependencies) {
   const { datasource } = deps;
@@ -52,3 +53,21 @@ export async function showProjectInfo(deps: Dependencies) {
 
   console.log("  - Total assertions: ", assertionsCount);
 }
+
+export const infoPlugin: Plugin = {
+  command: "info",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    await showProjectInfo({
+      rootDirectoryPath,
+      projectConfig,
+      datasource,
+      options: parsed,
+    });
+  },
+  examples: [
+    {
+      command: "info",
+      description: "show various stats for the project",
+    },
+  ],
+};
