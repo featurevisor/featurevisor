@@ -11,6 +11,7 @@ import {
 import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
+import { Plugin } from "../cli";
 
 function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
@@ -191,3 +192,32 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     console.log("No variables defined.");
   }
 }
+
+export const evaluatePlugin: Plugin = {
+  command: "evaluate",
+  handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    await evaluateFeature(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        environment: parsed.environment,
+        feature: parsed.feature,
+        context: parsed.context ? JSON.parse(parsed.context) : {},
+        print: parsed.print,
+        pretty: parsed.pretty,
+        verbose: parsed.verbose,
+      },
+    );
+  },
+  examples: [
+    {
+      command:
+        'evaluate --environment=production --feature=my_feature --context=\'{"userId": "123"}\'',
+      description: "evaluate a feature against provided context",
+    },
+  ],
+};
