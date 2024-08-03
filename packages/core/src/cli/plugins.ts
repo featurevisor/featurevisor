@@ -11,6 +11,7 @@ import { findUsagePlugin } from "../find-usage";
 import { benchmarkPlugin } from "../benchmark";
 import { configPlugin } from "../config";
 import { evaluatePlugin } from "../evaluate";
+import { assessDistributionPlugin } from "../assess-distribution";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -27,8 +28,8 @@ export const projectBasedPlugins: Plugin[] = [
   benchmarkPlugin,
   configPlugin,
   evaluatePlugin,
+  assessDistributionPlugin,
   // sitePlugin,
-  // assessDistributionPlugin,
   // infoPlugin,
 ];
 
