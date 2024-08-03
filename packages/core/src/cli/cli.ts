@@ -1,7 +1,7 @@
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
-import { nonProjectPlugins, projectBasedPlugins } from "./plugins";
+import { commonPlugins, nonProjectPlugins, projectBasedPlugins } from "./plugins";
 
 export interface ParsedOptions {
   _: string[];
@@ -84,7 +84,7 @@ export async function runCLI(runnerOptions: RunnerOptions) {
   }
 
   // common plugins
-  for (const plugin of projectBasedPlugins) {
+  for (const plugin of commonPlugins) {
     registerPlugin(plugin);
   }
 
