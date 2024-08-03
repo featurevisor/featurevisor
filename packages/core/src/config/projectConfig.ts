@@ -136,3 +136,28 @@ export function showProjectConfig(
     console.log(`  - ${key.padEnd(longestKeyLength, " ")}: ${projectConfig[key]}`);
   }
 }
+
+export const configPlugin: Plugin = {
+  command: "config",
+  handler: async ({ rootDirectoryPath, parsed }) => {
+    const projectConfig = getProjectConfig(rootDirectoryPath);
+    showProjectConfig(projectConfig, {
+      print: parsed.print,
+      pretty: parsed.pretty,
+    });
+  },
+  examples: [
+    {
+      command: "config",
+      description: "show the project configuration",
+    },
+    {
+      command: "config --print",
+      description: "show the project configuration as JSON",
+    },
+    {
+      command: "config --print --pretty",
+      description: "show the project configuration (as pretty JSON)",
+    },
+  ],
+};
