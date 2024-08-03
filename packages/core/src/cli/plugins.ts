@@ -2,6 +2,7 @@ import type { Plugin } from "./cli";
 
 import { initPlugin } from "../init";
 import { lintPlugin } from "../linter";
+import { buildPlugin } from "../builder";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -9,7 +10,7 @@ export const nonProjectPlugins: Plugin[] = [initPlugin];
 // that require an existing Featurevisor project
 export const projectBasedPlugins: Plugin[] = [
   lintPlugin,
-  // buildPlugin,
+  buildPlugin,
   // restorePlugin,
   // sitePlugin,
   // servePlugin,
