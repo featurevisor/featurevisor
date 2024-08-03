@@ -3,6 +3,7 @@ import type { Plugin } from "./cli";
 import { initPlugin } from "../init";
 import { lintPlugin } from "../linter";
 import { buildPlugin } from "../builder";
+import { restorePlugin } from "../restore";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -11,7 +12,7 @@ export const nonProjectPlugins: Plugin[] = [initPlugin];
 export const projectBasedPlugins: Plugin[] = [
   lintPlugin,
   buildPlugin,
-  // restorePlugin,
+  restorePlugin,
   // sitePlugin,
   // servePlugin,
   // generateCodePlugin,
