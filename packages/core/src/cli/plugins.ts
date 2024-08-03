@@ -6,6 +6,7 @@ import { buildPlugin } from "../builder";
 import { restorePlugin } from "../restore";
 import { testPlugin } from "../tester";
 import { generateCodePlugin } from "../generate-code";
+import { findDuplicateSegmentsPlugin } from "../find-duplicate-segments";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -17,8 +18,8 @@ export const projectBasedPlugins: Plugin[] = [
   restorePlugin,
   testPlugin,
   generateCodePlugin,
+  findDuplicateSegmentsPlugin,
   // sitePlugin,
-  // findDuplicateSegmentsPlugin,
   // findUsagePlugin,
   // benchmarkPlugin,
   // configPlugin,
