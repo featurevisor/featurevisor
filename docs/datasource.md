@@ -4,13 +4,13 @@ description: Go beyond file system as source of your configuration with Featurev
 ogImage: /img/og/docs-datasource.png
 ---
 
-By default, Featurevisor [CLI](/docs/cli) uses file system for reading/writing data from your project, given it's a Git repository after all. But the API allows you to switch to any source via adapters. {% .lead %}
+By default, Featurevisor [CLI](/docs/cli) uses the file system for reading/writing data from your project, given it's a Git repository after all. But the [configuration](/docs/configuration) API allows you to switch to any source via adapters. {% .lead %}
 
 ## Accessing datasource
 
-It's unlikely that you want to make use of the Datasource API yourself directly, unless you are a [plugins](/docs/plugins) developer.
+It's unlikely that you will make use of the Datasource API yourself directly, unless you are a [plugin](/docs/plugins) developer.
 
-The `datasource` object allows you to read and write data from/to the Featurevisor project, so that you don't have to deal with the file system directly.
+The `datasource` object allows you to read and write data from/to the Featurevisor project, so that you don't have to deal with the file system (or any other custom source of your project data) directly.
 
 You can refer to the full [datasource API](https://github.com/featurevisor/featurevisor/blob/main/packages/core/src/datasource/datasource.ts) for more details.
 
@@ -99,9 +99,11 @@ datasource.writeState(environment, { ...existingState, ...newState });
 
 Because a Featurevisor project is a Git repository by default, Featurevisor CLI ships with a default adapter that reads and writes data from/to the file system which is called `FilesystemAdapter`.
 
+You don't have to configure this adapter explicitly anywhere, unless you are writing a custom one.
+
 ### Writing a custom adapter
 
-You can write your own datasource adapter as follows:
+You can write your own custom datasource adapter as follows:
 
 ```ts
 // adapters/custom-adapter.ts
