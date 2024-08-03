@@ -36,13 +36,15 @@ export async function runCLI(runnerOptions: RunnerOptions) {
   const yargs = require("yargs");
 
   let y = yargs(process.argv.slice(2)).usage("Usage: <command> [options]");
-  const registeredCommands: string[] = [];
+  const registeredSubcommands: string[] = [];
 
   const { rootDirectoryPath, projectConfig, datasource } = runnerOptions;
 
   function registerPlugin(plugin: Plugin) {
-    if (registeredCommands.includes(plugin.command)) {
-      console.warn(`Plugin "${plugin.command}" already registered. Skipping.`);
+    const subcommand = plugin.command.split(" ")[0];
+
+    if (registeredSubcommands.includes(subcommand)) {
+      console.warn(`Plugin "${subcommand}" already registered. Skipping.`);
       return;
     }
 
@@ -66,7 +68,7 @@ export async function runCLI(runnerOptions: RunnerOptions) {
       y = y.example(`$0 ${example.command}`, example.description);
     }
 
-    registeredCommands.push(plugin.command);
+    registeredSubcommands.push(subcommand);
   }
 
   // non project-based plugins

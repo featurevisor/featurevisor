@@ -4,11 +4,13 @@ description: Extend Featurevisor CLI with additional tooling using the plugins A
 ogImage: /img/og/docs-plugins.png
 ---
 
-While Featurevisor [CLI](/docs/cli) is packed with various core functionalities, it also has a plugins API allowing you to extend with further tooling as per your needs. {% .lead %}
+While Featurevisor [CLI](/docs/cli) is packed with various core functionalities, it also has a plugins API allowing you to extend it with further tooling as per your needs. {% .lead %}
 
 ## CLI
 
-The entire CLI is built on top of the plugins API. This means that all the core functionalities are implemented as plugins. You can also create your own plugins to extend the CLI with additional tooling.
+The entire CLI is built on top of the plugins API. This means that all the core functionalities are implemented as plugins internally.
+
+You can also create your own plugins either locally at individual project level, or even share them with others in the form of npm packages.
 
 ## Installing plugins
 
@@ -113,7 +115,7 @@ export default examplePlugin;
 
 ### rootDirectoryPath
 
-This is the root directory path of the project where the CLI was executed from.
+This is the root directory path of the Featurevisor project where the CLI was executed from.
 
 ### projectConfig
 
@@ -131,7 +133,7 @@ For example, if the command was:
 $ npx featurevisor example --foo=bar
 ```
 
-Then `parsed` will be:
+Then `parsed` object will be:
 
 ```js
 {
