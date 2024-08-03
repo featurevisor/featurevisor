@@ -1,6 +1,6 @@
 import { Dependencies } from "../dependencies";
 import { getMatrixCombinations } from "../tester/matrix";
-import { Plugin } from "./cli";
+import { Plugin } from "../cli";
 
 export async function showProjectInfo(deps: Dependencies) {
   const { datasource } = deps;
