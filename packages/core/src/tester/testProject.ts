@@ -11,6 +11,7 @@ import { printTestResult } from "./printTestResult";
 
 import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
+import { Plugin } from "../cli";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -211,3 +212,44 @@ export async function testProject(
 
   return hasError;
 }
+
+export const testPlugin: Plugin = {
+  command: "test",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    return testProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      parsed as TestProjectOptions,
+    );
+  },
+  examples: [
+    {
+      command: "test",
+      description: "run all tests",
+    },
+    {
+      command: "test --keyPattern=pattern",
+      description: "run tests matching key pattern",
+    },
+    {
+      command: "test --assertionPattern=pattern",
+      description: "run tests matching assertion pattern",
+    },
+    {
+      command: "test --onlyFailures",
+      description: "run only failed tests",
+    },
+    {
+      command: "test --showDatafile",
+      description: "show datafile content for each test",
+    },
+    {
+      command: "test --verbose",
+      description: "show all test results",
+    },
+  ],
+};
