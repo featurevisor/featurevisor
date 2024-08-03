@@ -35,7 +35,7 @@ export interface RunnerOptions {
 export async function runCLI(runnerOptions: RunnerOptions) {
   const yargs = require("yargs");
 
-  let y = yargs(process.argv.slice(2));
+  let y = yargs(process.argv.slice(2)).usage("Usage: <command> [options]");
   const registeredCommands: string[] = [];
 
   const { rootDirectoryPath, projectConfig, datasource } = runnerOptions;
