@@ -95,6 +95,22 @@ const existingState = await datasource.readState(environment);
 datasource.writeState(environment, { ...existingState, ...newState });
 ```
 
+### History
+
+To get history of changes made to a specific entity:
+
+```js
+const fooChanges = await datasource.listHistoryEntries("feature", "foo");
+```
+
+The first argument for entity type can be one of:
+
+- `feature`
+- `segment`
+- `attribute`
+- `group`
+- `test`
+
 ## Adapters
 
 Because a Featurevisor project is a Git repository by default, Featurevisor CLI ships with a default adapter that reads and writes data from/to the file system which is called `FilesystemAdapter`.

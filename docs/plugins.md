@@ -111,6 +111,53 @@ const examplePlugin: Plugin = {
 export default examplePlugin;
 ```
 
+## Advice for reusable plugins
+
+Above example shows how to create a simple plugin. However, if you are creating a plugin that you wish to share with others, it's recommended to make it configurable when registering them.
+
+Instead of exporting the plugin object directly from a module, we can export a function that returns the plugin object:
+
+```js
+// npm package: featurevisor-plugin-example
+
+module.exports = function configureExamplePlugin(options) {
+  // use `options` here as needed
+
+  // return the plugin object
+  return {
+    command: "example",
+    handler: async function ({
+      rootDirectoryPath,
+      projectConfig,
+      parsed,
+      datasource,
+    }) {
+      // ...
+    },
+    examples: [
+      // ...
+    ],
+  };
+};
+```
+
+When registering the plugin, the configuration options can be passed based on project specific needs:
+
+```js
+// featurevisor.config.js
+
+module.exports = {
+  environments: ["staging", "production"],
+  tags: ["web", "mobile"],
+  plugins: [
+    require("featurevisor-plugin-example")({
+      // custom options here...
+      someProperty: "some value",
+    }),
+  ],
+};
+```
+
 ## Handler options
 
 ### rootDirectoryPath
@@ -196,34 +243,4 @@ await datasource.writeAttribute("foo", { ...fooAttribute, ...newData });
 await datasource.deleteAttribute("foo");
 ```
 
-#### Groups
-
-See [groups](/docs/groups) for more details.
-
-```js
-const groups = await datasource.listGroups();
-const fooGroupExists = await datasource.groupExists("foo");
-const fooGroup = await datasource.readGroup("foo");
-await datasource.writeGroup("foo", { ...fooGroup, ...newData });
-await datasource.deleteGroup("foo");
-```
-
-#### Tests
-
-See [testing](/docs/testing) for more details.
-
-```js
-const tests = await datasource.listTests();
-const fooTest = await datasource.readTest("foo");
-await datasource.writeTest("foo", { ...fooTest, ...newData });
-await datasource.deleteTest("foo");
-```
-
-#### State
-
-See [state files](/docs/state-files) for more details.
-
-```js
-const existingState = await datasource.readState(environment);
-datasource.writeState(environment, { ...existingState, ...newState });
-```
+See more in [datasource](/docs/datasource) documentation.
