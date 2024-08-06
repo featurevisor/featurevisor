@@ -51,14 +51,19 @@ export async function runCLI(runnerOptions: RunnerOptions) {
     y = y.command({
       command: plugin.command,
       handler: async function (parsed: ParsedOptions) {
-        const result = await plugin.handler({
-          rootDirectoryPath,
-          projectConfig,
-          datasource,
-          parsed,
-        } as PluginHandlerOptions);
+        try {
+          const result = await plugin.handler({
+            rootDirectoryPath,
+            projectConfig,
+            datasource,
+            parsed,
+          } as PluginHandlerOptions);
 
-        if (result === false) {
+          if (result === false) {
+            process.exit(1);
+          }
+        } catch (error) {
+          console.error(error);
           process.exit(1);
         }
       },

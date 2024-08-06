@@ -347,7 +347,7 @@ export const lintPlugin: Plugin = {
   handler: async function (options) {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
-    await lintProject(
+    const hasError = await lintProject(
       {
         rootDirectoryPath,
         projectConfig,
@@ -359,6 +359,10 @@ export const lintPlugin: Plugin = {
         entityType: parsed.entityType,
       },
     );
+
+    if (hasError) {
+      return false;
+    }
   },
   examples: [
     {
