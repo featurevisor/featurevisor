@@ -10,7 +10,29 @@ process.on("unhandledRejection", (reason) => {
 
 async function main() {
   const rootDirectoryPath = process.cwd();
-  const useRootDirectoryPath = rootDirectoryPath; // @TODO: see if can get it from CLI args if overridden
+  const argv = process.argv.slice(2);
+
+  if (argv.length === 1 && ["version", "--version", "-v"].indexOf(argv[0]) > -1) {
+    const cliPackage = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+    );
+
+    const corePackage = JSON.parse(
+      fs.readFileSync(require.resolve("@featurevisor/core/package.json"), "utf8"),
+    );
+
+    console.log("\nPackage versions:\n");
+    console.log(`  - @featurevisor/cli:  ${cliPackage.version}`);
+    console.log(`  - @featurevisor/core: ${corePackage.version}`);
+
+    return;
+  }
+
+  let useRootDirectoryPath = rootDirectoryPath;
+  const customRootDir = argv.slice(2).filter((arg) => arg.startsWith("--rootDirectoryPath="));
+  if (customRootDir.length > 0) {
+    useRootDirectoryPath = customRootDir[0].split("=")[1];
+  }
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
   if (!fs.existsSync(configModulePath)) {

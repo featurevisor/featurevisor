@@ -287,3 +287,18 @@ Shows count of various entities in the project:
 ```
 $ npx featurevisor info
 ```
+
+
+## Version
+
+Get the current version number of Featurevisor CLI, and its relevant packages:
+
+```
+$ npx featurevisor --version
+```
+
+Or do:
+
+```
+$ npx featurevisor -v
+```
