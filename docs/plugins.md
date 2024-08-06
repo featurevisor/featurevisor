@@ -10,7 +10,7 @@ While Featurevisor [CLI](/docs/cli) is packed with various core functionalities,
 
 The entire CLI is built on top of the plugins API. This means that all the core functionalities are implemented as plugins internally.
 
-You can also create your own plugins either locally at individual project level, or even share them with others in the form of npm packages.
+You can create your own plugins either locally at individual project level, or even share them with others in the form of reusable npm packages.
 
 ## Installing plugins
 
@@ -18,7 +18,7 @@ Additional plugins can be installed from [npm](https://www.npmjs.com/) directly.
 
 ```
 $ cd my-featurevisor-project
-$ npm install --save @featurevisor/plugin-example
+$ npm install --save featurevisor-plugin-example
 ```
 
 Plugins can also be created locally without needing any additional npm package or publishing to a central registry.
@@ -36,10 +36,20 @@ module.exports = {
 
   // register plugins here
   plugins: [
-    require("@featurevisor/plugin-example"),
+    require("featurevisor-plugin-example"),
     // require("./plugins/my-local-plugin"),
   ],
 };
+```
+
+## Running a plugin
+
+Once registered, you can run the plugin via the CLI:
+
+```
+$ npx featurevisor example
+
+Hello world!
 ```
 
 ## Creating a plugin
@@ -63,7 +73,7 @@ module.exports = {
     parsed,
     datasource,
   }) {
-    console.log("Running the example command!");
+    console.log("Hello world!");
 
     if (somethingFailed) {
       return false; // this will exit the CLI with an error
