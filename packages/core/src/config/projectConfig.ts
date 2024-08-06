@@ -47,7 +47,7 @@ export interface ProjectConfig {
   siteExportDirectoryPath: string;
   enforceCatchAllRule?: boolean;
   adapter: any; // @TODO: type this properly later
-  plugins?: Plugin[];
+  plugins: Plugin[];
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
@@ -75,6 +75,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
 
     enforceCatchAllRule: false,
+    plugins: [],
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
