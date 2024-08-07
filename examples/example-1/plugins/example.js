@@ -9,7 +9,7 @@ module.exports = {
   handler: async function ({ rootDirectoryPath, projectConfig, parsed, datasource }) {
     console.log("Running the example command!");
 
-    return false;
+    // return false; // for errors
   },
 
   // self-documenting examples
