@@ -3,6 +3,7 @@ import { SCHEMA_VERSION } from "../config";
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -96,3 +97,44 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
   console.log("\nLatest revision:", nextRevision);
 }
+
+export const buildPlugin: Plugin = {
+  command: "build",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    await buildProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      parsed as BuildCLIOptions,
+    );
+  },
+  examples: [
+    {
+      command: "build",
+      description: "build datafiles for all environments and tags",
+    },
+    {
+      command: "build --revision=123",
+      description: "build datafiles starting with revision value as 123",
+    },
+    {
+      command: "build --environment=production",
+      description: "build datafiles for production environment",
+    },
+    {
+      command: "build --print --environment=production --feature=featureKey",
+      description: "print datafile for a feature in production environment",
+    },
+    {
+      command: "build --print --environment=production --pretty",
+      description: "print datafile with pretty print",
+    },
+    {
+      command: "build --no-state-files",
+      description: "build datafiles without writing state files",
+    },
+  ],
+};

@@ -1,6 +1,7 @@
 import { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 import {
   extractAttributeKeysFromConditions,
   extractSegmentKeysFromGroupSegments,
@@ -371,3 +372,46 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   console.log("Please specify a segment or attribute.");
 }
+
+export const findUsagePlugin: Plugin = {
+  command: "find-usage",
+  handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    await findUsageInProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        segment: parsed.segment,
+        attribute: parsed.attribute,
+        unusedSegments: parsed.unusedSegments,
+        unusedAttributes: parsed.unusedAttributes,
+        authors: parsed.authors,
+      },
+    );
+  },
+  examples: [
+    {
+      command: "find-usage --segment=<segmentKey>",
+      description: "Find usage of a segment",
+    },
+    {
+      command: "find-usage --attribute=<attributeKey>",
+      description: "Find usage of an attribute",
+    },
+    {
+      command: "find-usage --unused-segments",
+      description: "Find unused segments",
+    },
+    {
+      command: "find-usage --unused-attributes",
+      description: "Find unused attributes",
+    },
+    {
+      command: "find-usage --authors",
+      description: "List authors of the usage",
+    },
+  ],
+};

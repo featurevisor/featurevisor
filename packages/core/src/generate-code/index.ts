@@ -5,6 +5,7 @@ import * as mkdirp from "mkdirp";
 
 import { generateTypeScriptCodeForProject } from "./typescript";
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 
@@ -50,3 +51,27 @@ export async function generateCodeForProject(
 
   throw new Error(`Language ${cliOptions.language} is not supported`);
 }
+
+export const generateCodePlugin: Plugin = {
+  command: "generate-code",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    await generateCodeForProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        language: parsed.language,
+        outDir: parsed.outDir,
+      },
+    );
+  },
+  examples: [
+    {
+      command: "generate-code --language typescript --out-dir src/generated",
+      description: "Generate TypeScript code for the project",
+    },
+  ],
+};

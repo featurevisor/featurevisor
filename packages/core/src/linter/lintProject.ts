@@ -13,6 +13,7 @@ import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageEx
 import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_RED, CLI_FORMAT_UNDERLINE } from "../tester/cliFormat";
+import { Plugin } from "../cli";
 
 export interface LintProjectOptions {
   keyPattern?: string;
@@ -340,3 +341,53 @@ export async function lintProject(
 
   return hasError;
 }
+
+export const lintPlugin: Plugin = {
+  command: "lint",
+  handler: async function (options) {
+    const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
+
+    const hasError = await lintProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        keyPattern: parsed.keyPattern,
+        entityType: parsed.entityType,
+      },
+    );
+
+    if (hasError) {
+      return false;
+    }
+  },
+  examples: [
+    {
+      command: "lint",
+      description: "lint all entities",
+    },
+    {
+      command: "lint --entityType=feature",
+      description: "lint only features",
+    },
+    {
+      command: "lint --entityType=segment",
+      description: "lint only segments",
+    },
+    {
+      command: "lint --entityType=group",
+      description: "lint only groups",
+    },
+    {
+      command: "lint --entityType=test",
+      description: "lint only tests",
+    },
+    {
+      command: 'lint --keyPattern="abc"',
+      description: `lint only entities with keys containing "abc"`,
+    },
+  ],
+};

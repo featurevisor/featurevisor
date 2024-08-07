@@ -7,6 +7,7 @@ import { Dependencies } from "../dependencies";
 import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { prettyPercentage, prettyNumber } from "../utils";
+import { Plugin } from "../cli";
 
 const UUID_LENGTHS = [4, 2, 2, 2, 6];
 
@@ -165,3 +166,34 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
     printCounts(variationEvaluations, options.n);
   }
 }
+
+export const assessDistributionPlugin: Plugin = {
+  command: "assess-distribution",
+  handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    await assessDistribution(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        environment: parsed.environment,
+        feature: parsed.feature,
+        n: parseInt(parsed.n, 10) || 1,
+        context: parsed.context ? JSON.parse(parsed.context) : {},
+        populateUuid: Array.isArray(parsed.populateUuid)
+          ? parsed.populateUuid
+          : [parsed.populateUuid as string].filter(Boolean),
+        verbose: parsed.verbose,
+      },
+    );
+  },
+  examples: [
+    {
+      command:
+        "assess-distribution --environment=production --feature=my_feature --context='{}' --populateUuid=userId -n=100",
+      description: "test traffic distribution a feature against provided context",
+    },
+  ],
+};

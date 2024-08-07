@@ -4,6 +4,7 @@ import { BucketBy } from "@featurevisor/types";
 
 import { Parser, parsers } from "./parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
+import type { Plugin } from "../cli";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -46,6 +47,7 @@ export interface ProjectConfig {
   siteExportDirectoryPath: string;
   enforceCatchAllRule?: boolean;
   adapter: any; // @TODO: type this properly later
+  plugins: Plugin[];
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
@@ -73,6 +75,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
 
     enforceCatchAllRule: false,
+    plugins: [],
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
@@ -134,3 +137,28 @@ export function showProjectConfig(
     console.log(`  - ${key.padEnd(longestKeyLength, " ")}: ${projectConfig[key]}`);
   }
 }
+
+export const configPlugin: Plugin = {
+  command: "config",
+  handler: async ({ rootDirectoryPath, parsed }) => {
+    const projectConfig = getProjectConfig(rootDirectoryPath);
+    showProjectConfig(projectConfig, {
+      print: parsed.print,
+      pretty: parsed.pretty,
+    });
+  },
+  examples: [
+    {
+      command: "config",
+      description: "show the project configuration",
+    },
+    {
+      command: "config --print",
+      description: "show the project configuration as JSON",
+    },
+    {
+      command: "config --print --pretty",
+      description: "show the project configuration (as pretty JSON)",
+    },
+  ],
+};
