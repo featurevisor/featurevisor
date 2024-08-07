@@ -4,7 +4,7 @@ description: Go beyond file system as source of your configuration with Featurev
 ogImage: /img/og/docs-datasource.png
 ---
 
-By default, Featurevisor [CLI](/docs/cli) uses the file system for reading/writing data from your project, given it's a Git repository after all. But the [configuration](/docs/configuration) API allows you to switch to any source via adapters. {% .lead %}
+By default, Featurevisor [CLI](/docs/cli) uses the file system for reading and writing data in your project, given it's a Git repository after all. But the [configuration](/docs/configuration) API allows you to switch to any source via adapters. {% .lead %}
 
 ## Accessing datasource
 
