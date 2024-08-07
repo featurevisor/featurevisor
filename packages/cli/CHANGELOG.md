@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.27.0](https://github.com/featurevisor/featurevisor/compare/v1.26.0...v1.27.0) (2024-08-07)
+
+
+### Features
+
+* Plugins API ([#318](https://github.com/featurevisor/featurevisor/issues/318)) ([f86312b](https://github.com/featurevisor/featurevisor/commit/f86312bbf02466f2926783edd590e78e254060fd))
+
+
+
+
+
 # [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
 
 **Note:** Version bump only for package @featurevisor/cli
