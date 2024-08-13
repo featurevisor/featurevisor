@@ -11,6 +11,7 @@ import { printTestResult } from "./printTestResult";
 
 import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
+import { Plugin } from "../cli";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -18,7 +19,6 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
-  fast?: boolean;
 }
 
 export interface TestPatterns {
@@ -150,22 +150,21 @@ export async function testProject(
   let failedAssertionsCount = 0;
 
   const datafileContentByEnvironment: DatafileContentByEnvironment = {};
-  if (options.fast) {
-    for (const environment of projectConfig.environments) {
-      const existingState = await datasource.readState(environment);
-      const datafileContent = await buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: "include-all-features",
-          environment: environment,
-        },
-        existingState,
-      );
 
-      datafileContentByEnvironment[environment] = datafileContent;
-    }
+  for (const environment of projectConfig.environments) {
+    const existingState = await datasource.readState(environment);
+    const datafileContent = await buildDatafile(
+      projectConfig,
+      datasource,
+      {
+        schemaVersion: SCHEMA_VERSION,
+        revision: "include-all-features",
+        environment: environment,
+      },
+      existingState,
+    );
+
+    datafileContentByEnvironment[environment] = datafileContent;
   }
 
   for (const testFile of testFiles) {
@@ -213,3 +212,48 @@ export async function testProject(
 
   return hasError;
 }
+
+export const testPlugin: Plugin = {
+  command: "test",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    const hasError = await testProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      parsed as TestProjectOptions,
+    );
+
+    if (hasError) {
+      return false;
+    }
+  },
+  examples: [
+    {
+      command: "test",
+      description: "run all tests",
+    },
+    {
+      command: "test --keyPattern=pattern",
+      description: "run tests matching key pattern",
+    },
+    {
+      command: "test --assertionPattern=pattern",
+      description: "run tests matching assertion pattern",
+    },
+    {
+      command: "test --onlyFailures",
+      description: "run only failed tests",
+    },
+    {
+      command: "test --showDatafile",
+      description: "show datafile content for each test",
+    },
+    {
+      command: "test --verbose",
+      description: "show all test results",
+    },
+  ],
+};

@@ -119,3 +119,186 @@ We can find these duplicates early on by running:
 ```
 $ npx featurevisor find-duplicate-segments
 ```
+
+If we want to know the names of authors who worked on the duplicate segments, we can pass `--authors`:
+
+```
+$ npx featurevisor find-duplicate-segments --authors
+```
+
+## Find usage
+
+Learn where/if certain segments and attributes are used in.
+
+For each of the `find-usage` commands below, you can optionally pass `--authors` to find who worked on the affected entities.
+
+### Segment usage
+
+```
+$ npx featurevisor find-usage --segment=my_segment
+```
+
+### Attribute usage
+
+```
+$ npx featurevisor find-usage --attribute=my_attribute
+```
+
+### Unused segments
+
+```
+$ npx featurevisor find-usage --unusedSegments
+```
+
+### Unused attributes
+
+```
+$ npx featurevisor find-usage --unusedAttributes
+```
+
+## Benchmarking
+
+You can measure how fast or slow your SDK evaluations are for particular features.
+
+The `--n` option is used to specify the number of iterations to run the benchmark for.
+
+### Feature
+
+To benchmark evaluating a feature itself if it is enabled or disabled via SDK's `.isEnabled()` method against provided [context](/docs/sdks/javascript/#context):
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variation
+
+To benchmark evaluating a feature's variation via SDKs's `.getVariation()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variation \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+### Variable
+
+To benchmark evaluating a feature's variable via SDKs's `.getVariable()` method:
+
+```
+$ npx featurevisor benchmark \
+  --environment=production \
+  --feature=my_feature \
+  --variable=my_variable_key \
+  --context='{"userId": "123"}' \
+  --n=1000
+```
+
+## Configuration
+
+To view the project [configuration](/docs/configuration):
+
+```
+$ npx featurevisor config
+```
+
+Printing configuration as JSON:
+
+```
+$ npx featurevisor config --print --pretty
+```
+
+## Evaluate
+
+To learn why certain values (like feature and its variation or variables) are evaluated as they are against provided [context](/docs/sdks/javascript/#context):
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}'
+```
+
+This will show you full [evaluation details](/docs/sdks/javascript/#evaluation-details) helping you debug better in case of any confusion.
+
+It is similar to [logging](/docs/sdks/javascript/#logging) in SDKs with `debug` level. But here instead, we are doing it at CLI directly in our Featurevisor project without having to involve our application(s).
+
+If you wish to print the evaluation details in plain JSON, you can pass `--print` at the end:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}' \
+  --print \
+  --pretty
+```
+
+The `--pretty` flag is optional.
+
+To print further logs in a more verbose way, you can pass `--verbose`:
+
+```
+$ npx featurevisor evaluate \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"userId": "123", "country": "nl"}' \
+  --verbose
+```
+
+## Assess distribution
+
+To check if the gradual rollout of a feature and the weight distribution of its variations (if any exists) are going to work as expected in a real world application with real traffic against provided [context](/docs/sdks/javascript/#context), we can imitate that by running:
+
+```
+$ npx featurevisor assess-distribution \
+  --environment=production \
+  --feature=my_feature \
+  --context='{"country": "nl"}' \
+  --populateUuid=userId \
+  --n=1000
+```
+
+The `--n` option controls the number of iterations to run, and the `--populateUuid` option is used to simulate different users in each iteration in this particular case.
+
+Further details about all the options:
+
+- `--environment`: the environment name
+- `--feature`: the feature key
+- `--context`: the common [context](/docs/sdks/javascript/#context) object in stringified form
+- `--populateUuid`: attribute key that should be populated with a new UUID, and merged with provided context.
+  - You can pass multiple attributes in your command: `--populateUuid=userId --populateUuid=deviceId`
+- `--n`: the number of iterations to run the assessment for
+  - The higher the number, the more accurate the distribution will be
+- `--verbose`: print the merged context for better debugging
+
+Everything is happening locally in memory without modifying any content anywhere. This command exists only to add to our confidence if questions arise about how effective traffic distribution in Featurevisor is.
+
+## Info
+
+Shows count of various entities in the project:
+
+```
+$ npx featurevisor info
+```
+
+
+## Version
+
+Get the current version number of Featurevisor CLI, and its relevant packages:
+
+```
+$ npx featurevisor --version
+```
+
+Or do:
+
+```
+$ npx featurevisor -v
+```

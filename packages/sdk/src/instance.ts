@@ -17,6 +17,8 @@ import {
   RuleKey,
   VariableKey,
   VariableSchema,
+  Force,
+  Required,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
@@ -85,6 +87,7 @@ export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileCont
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
   NO_VARIATIONS = "no_variations",
+  NO_MATCH = "no_match",
   DISABLED = "disabled",
   REQUIRED = "required",
   OUT_OF_RANGE = "out_of_range",
@@ -104,11 +107,15 @@ export interface Evaluation {
   reason: EvaluationReason;
 
   // common
+  bucketKey?: BucketKey;
   bucketValue?: BucketValue;
   ruleKey?: RuleKey;
   error?: Error;
   enabled?: boolean;
   traffic?: Traffic;
+  forceIndex?: number;
+  force?: Force;
+  required?: Required[];
   sticky?: OverrideFeature;
   initial?: OverrideFeature;
 
@@ -368,16 +375,27 @@ export class FeaturevisorInstance {
     return result;
   }
 
-  private getBucketValue(feature: Feature, context: Context): BucketValue {
+  private getBucketValue(
+    feature: Feature,
+    context: Context,
+  ): { bucketKey: BucketKey; bucketValue: BucketValue } {
     const bucketKey = this.getBucketKey(feature, context);
 
     const value = getBucketedNumber(bucketKey);
 
     if (this.configureBucketValue) {
-      return this.configureBucketValue(feature, context, value);
+      const configuredValue = this.configureBucketValue(feature, context, value);
+
+      return {
+        bucketKey,
+        bucketValue: configuredValue,
+      };
     }
 
-    return value;
+    return {
+      bucketKey,
+      bucketValue: value,
+    };
   }
 
   /**
@@ -470,8 +488,8 @@ export class FeaturevisorInstance {
         evaluation = {
           featureKey: key,
           reason: EvaluationReason.STICKY,
-          enabled: this.stickyFeatures[key].enabled,
           sticky: this.stickyFeatures[key],
+          enabled: this.stickyFeatures[key].enabled,
         };
 
         this.logger.debug("using sticky enabled", evaluation);
@@ -490,8 +508,8 @@ export class FeaturevisorInstance {
         evaluation = {
           featureKey: key,
           reason: EvaluationReason.INITIAL,
-          enabled: this.initialFeatures[key].enabled,
           initial: this.initialFeatures[key],
+          enabled: this.initialFeatures[key].enabled,
         };
 
         this.logger.debug("using initial enabled", evaluation);
@@ -521,12 +539,19 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && typeof force.enabled !== "undefined") {
         evaluation = {
           featureKey: feature.key,
           reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
           enabled: force.enabled,
         };
 
@@ -567,6 +592,7 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.REQUIRED,
+            required: feature.required,
             enabled: requiredFeaturesAreEnabled,
           };
 
@@ -577,7 +603,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const matchedTraffic = getMatchedTraffic(
         feature.traffic,
@@ -598,9 +624,12 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.ALLOCATED,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
               enabled:
                 typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
-              bucketValue,
             };
 
             this.logger.debug("matched", evaluation);
@@ -612,8 +641,9 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.OUT_OF_RANGE,
-            enabled: false,
+            bucketKey,
             bucketValue,
+            enabled: false,
           };
 
           this.logger.debug("not matched", evaluation);
@@ -626,10 +656,11 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.OVERRIDE,
-            enabled: matchedTraffic.enabled,
+            bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
+            enabled: matchedTraffic.enabled,
           };
 
           this.logger.debug("override from rule", evaluation);
@@ -642,10 +673,11 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
-            enabled: true,
+            bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
             traffic: matchedTraffic,
+            enabled: true,
           };
 
           this.logger.debug("matched traffic", evaluation);
@@ -657,9 +689,10 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR,
-        enabled: false,
+        reason: EvaluationReason.NO_MATCH,
+        bucketKey,
         bucketValue,
+        enabled: false,
       };
 
       this.logger.debug("nothing matched", evaluation);
@@ -779,7 +812,12 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && force.variation) {
         const variation = feature.variations.find((v) => v.value === force.variation);
@@ -788,6 +826,8 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.FORCED,
+            forceIndex,
+            force,
             variation,
           };
 
@@ -798,7 +838,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
@@ -817,9 +857,11 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.RULE,
-              variation,
+              bucketKey,
               bucketValue,
               ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              variation,
             };
 
             this.logger.debug("override from rule", evaluation);
@@ -836,7 +878,10 @@ export class FeaturevisorInstance {
             evaluation = {
               featureKey: feature.key,
               reason: EvaluationReason.ALLOCATED,
+              bucketKey,
               bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
               variation,
             };
 
@@ -850,7 +895,8 @@ export class FeaturevisorInstance {
       // nothing matched
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.ERROR,
+        reason: EvaluationReason.NO_MATCH,
+        bucketKey,
         bucketValue,
       };
 
@@ -1046,12 +1092,19 @@ export class FeaturevisorInstance {
       const finalContext = this.interceptContext ? this.interceptContext(context) : context;
 
       // forced
-      const force = findForceFromFeature(feature, context, this.datafileReader, this.logger);
+      const { force, forceIndex } = findForceFromFeature(
+        feature,
+        context,
+        this.datafileReader,
+        this.logger,
+      );
 
       if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
         evaluation = {
           featureKey: feature.key,
           reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
           variableKey,
           variableSchema,
           variableValue: force.variables[variableKey],
@@ -1063,7 +1116,7 @@ export class FeaturevisorInstance {
       }
 
       // bucketing
-      const bucketValue = this.getBucketValue(feature, finalContext);
+      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
 
       const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
         feature.traffic,
@@ -1082,11 +1135,13 @@ export class FeaturevisorInstance {
           evaluation = {
             featureKey: feature.key,
             reason: EvaluationReason.RULE,
+            bucketKey,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
             variableKey,
             variableSchema,
             variableValue: matchedTraffic.variables[variableKey],
-            bucketValue,
-            ruleKey: matchedTraffic.key,
           };
 
           this.logger.debug("override from rule", evaluation);
@@ -1136,11 +1191,13 @@ export class FeaturevisorInstance {
                   evaluation = {
                     featureKey: feature.key,
                     reason: EvaluationReason.OVERRIDE,
+                    bucketKey,
+                    bucketValue,
+                    ruleKey: matchedTraffic.key,
+                    traffic: matchedTraffic,
                     variableKey,
                     variableSchema,
                     variableValue: override.value,
-                    bucketValue,
-                    ruleKey: matchedTraffic.key,
                   };
 
                   this.logger.debug("variable override", evaluation);
@@ -1153,11 +1210,13 @@ export class FeaturevisorInstance {
                 evaluation = {
                   featureKey: feature.key,
                   reason: EvaluationReason.ALLOCATED,
+                  bucketKey,
+                  bucketValue,
+                  ruleKey: matchedTraffic.key,
+                  traffic: matchedTraffic,
                   variableKey,
                   variableSchema,
                   variableValue: variableFromVariation.value,
-                  bucketValue,
-                  ruleKey: matchedTraffic.key,
                 };
 
                 this.logger.debug("allocated variable", evaluation);
@@ -1173,10 +1232,11 @@ export class FeaturevisorInstance {
       evaluation = {
         featureKey: feature.key,
         reason: EvaluationReason.DEFAULTED,
+        bucketKey,
+        bucketValue,
         variableKey,
         variableSchema,
         variableValue: variableSchema.defaultValue,
-        bucketValue,
       };
 
       this.logger.debug("using default value", evaluation);

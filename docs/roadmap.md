@@ -9,7 +9,18 @@ Feature requests on [GitHub](https://github.com/featurevisor/featurevisor/issues
 
 ## Past milestones
 
-Most recent first:
+For full changelog, visit [GitHub](https://github.com/featurevisor/featurevisor/blob/main/CHANGELOG.md).
+
+Notable changes:
+
+### 2024
+
+- March 10th, 2024: [Revisioning info moved to state files](/docs/state-files)
+- February 26th, 2024: [Test runner made 100x faster](/docs/testing/#fast)
+- February 11th, 2024: [Linter overhauled using Zod](/docs/linting)
+- January 16th, 2024: [Matrix for test specs](/docs/testing/#matrix)
+
+### 2023
 
 - December 13th, 2023: [v1.0 stable released](/blog/v1-release) 🎉
 - September 24th, 2023: [Custom parsers API](/docs/advanced/custom-parsers)
