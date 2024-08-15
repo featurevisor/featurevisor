@@ -4,6 +4,98 @@ import { ProjectConfig } from "../config";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
+function isFlatObject(value) {
+  let isFlat = true;
+
+  Object.keys(value).forEach((key) => {
+    if (typeof value[key] === "object") {
+      isFlat = false;
+    }
+  });
+
+  return isFlat;
+}
+
+function isArrayOfStrings(value) {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function superRefineVariableValue(variableSchema, variableValue, ctx) {
+  // string
+  if (variableSchema.type === "string") {
+    if (typeof variableValue !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+      });
+    }
+
+    return;
+  }
+
+  // integer, double
+  if (["integer", "double"].indexOf(variableSchema.type) > -1) {
+    if (typeof variableValue !== "number") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+      });
+    }
+
+    return;
+  }
+
+  // boolean
+  if (variableSchema.type === "boolean") {
+    if (typeof variableValue !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+      });
+    }
+
+    return;
+  }
+
+  // array
+  if (variableSchema.type === "array") {
+    if (!Array.isArray(variableValue) || !isArrayOfStrings(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+      });
+    }
+
+    return;
+  }
+
+  // object
+  if (variableSchema.type === "object") {
+    if (typeof variableValue !== "object" || !isFlatObject(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+      });
+    }
+
+    return;
+  }
+
+  // json
+  if (variableSchema.type === "json") {
+    try {
+      JSON.parse(variableValue as string);
+    } catch (e) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+      });
+    }
+
+    return;
+  }
+}
+
 export function getFeatureZodSchema(
   projectConfig: ProjectConfig,
   conditionsZodSchema,
@@ -19,15 +111,7 @@ export function getFeatureZodSchema(
     z.array(z.string()),
     z.record(z.unknown()).refine(
       (value) => {
-        let isFlat = true;
-
-        Object.keys(value).forEach((key) => {
-          if (typeof value[key] === "object") {
-            isFlat = false;
-          }
-        });
-
-        return isFlat;
+        return isFlatObject(value);
       },
       {
         message: "object is not flat",
@@ -225,22 +309,12 @@ export function getFeatureZodSchema(
               defaultValue: variableValueZodSchema,
             })
             .strict()
-            .refine(
-              (value) => {
-                if (value.type === "json") {
-                  try {
-                    JSON.parse(value.defaultValue as string);
-                  } catch (e) {
-                    return false;
-                  }
-                }
+            .superRefine((value, ctx) => {
+              const variableSchema = value;
+              const variableValue = variableSchema.defaultValue;
 
-                return true;
-              },
-              (value) => ({
-                message: `Invalid JSON for variable "${value.key}" in schema: \n\n${value.defaultValue}\n\n`,
-              }),
-            ),
+              superRefineVariableValue(variableSchema, variableValue, ctx);
+            }),
         )
         .refine(
           (value) => {
