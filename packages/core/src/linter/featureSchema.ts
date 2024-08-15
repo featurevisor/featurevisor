@@ -20,13 +20,14 @@ function isArrayOfStrings(value) {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
-function superRefineVariableValue(variableSchema, variableValue, ctx) {
+function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
   // string
   if (variableSchema.type === "string") {
     if (typeof variableValue !== "string") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
       });
     }
 
@@ -39,6 +40,7 @@ function superRefineVariableValue(variableSchema, variableValue, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
       });
     }
 
@@ -51,6 +53,7 @@ function superRefineVariableValue(variableSchema, variableValue, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
       });
     }
 
@@ -63,6 +66,7 @@ function superRefineVariableValue(variableSchema, variableValue, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
       });
     }
 
@@ -75,6 +79,7 @@ function superRefineVariableValue(variableSchema, variableValue, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
       });
     }
 
@@ -89,6 +94,7 @@ function superRefineVariableValue(variableSchema, variableValue, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
       });
     }
 
@@ -313,7 +319,7 @@ export function getFeatureZodSchema(
               const variableSchema = value;
               const variableValue = variableSchema.defaultValue;
 
-              superRefineVariableValue(variableSchema, variableValue, ctx);
+              superRefineVariableValue(variableSchema, variableValue, ["defaultValue"], ctx);
             }),
         )
         .refine(
