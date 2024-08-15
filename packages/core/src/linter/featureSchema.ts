@@ -435,7 +435,7 @@ export function getFeatureZodSchema(
         });
       }
 
-      // environments[n].rules[n].variables[key]
+      // environments[key].rules[n].variables[key]
       Object.keys(value.environments).forEach((environmentKey) => {
         value.environments[environmentKey].rules.forEach((rule, ruleN) => {
           if (rule.variables) {
