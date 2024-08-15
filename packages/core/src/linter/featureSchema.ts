@@ -378,7 +378,6 @@ export function getFeatureZodSchema(
     })
     .strict()
     .superRefine((value, ctx) => {
-      // variable values
       if (!value.variablesSchema) {
         return;
       }
@@ -398,7 +397,7 @@ export function getFeatureZodSchema(
         );
       });
 
-      // variations[n].variables
+      // variations[n].variables[n].value
       if (value.variations) {
         value.variations.forEach((variation, variationN) => {
           if (!variation.variables) {
@@ -436,7 +435,7 @@ export function getFeatureZodSchema(
         });
       }
 
-      // environments[n].rules[n].variables
+      // environments[n].rules[n].variables[key]
       Object.keys(value.environments).forEach((environmentKey) => {
         value.environments[environmentKey].rules.forEach((rule, ruleN) => {
           if (rule.variables) {
