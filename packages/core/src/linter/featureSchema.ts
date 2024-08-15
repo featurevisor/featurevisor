@@ -399,8 +399,58 @@ export function getFeatureZodSchema(
       });
 
       // variations[n].variables
-      // variations[n].variables[n].overrides[n].value
+      if (value.variations) {
+        value.variations.forEach((variation, variationN) => {
+          if (!variation.variables) {
+            return;
+          }
+
+          variation.variables.forEach((variable, variableN) => {
+            superRefineVariableValue(
+              variableSchemaByKey[variable.key],
+              variable.value,
+              ["variations", variationN, "variables", variableN, "value"],
+              ctx,
+            );
+
+            // variations[n].variables[n].overrides[n].value
+            if (variable.overrides) {
+              variable.overrides.forEach((override, overrideN) => {
+                superRefineVariableValue(
+                  variableSchemaByKey[variable.key],
+                  override.value,
+                  [
+                    "variations",
+                    variationN,
+                    "variables",
+                    variableN,
+                    "overrides",
+                    overrideN,
+                    "value",
+                  ],
+                  ctx,
+                );
+              });
+            }
+          });
+        });
+      }
+
       // environments[n].rules[n].variables
+      Object.keys(value.environments).forEach((environmentKey) => {
+        value.environments[environmentKey].rules.forEach((rule, ruleN) => {
+          if (rule.variables) {
+            Object.keys(rule.variables).forEach((variableKey) => {
+              superRefineVariableValue(
+                variableSchemaByKey[variableKey],
+                rule.variables[variableKey],
+                ["environments", environmentKey, "rules", ruleN, "variables", variableKey],
+                ctx,
+              );
+            });
+          }
+        });
+      });
     });
 
   return featureZodSchema;
