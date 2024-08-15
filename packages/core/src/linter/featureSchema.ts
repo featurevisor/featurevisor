@@ -314,13 +314,7 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               defaultValue: variableValueZodSchema,
             })
-            .strict()
-            .superRefine((value, ctx) => {
-              const variableSchema = value;
-              const variableValue = variableSchema.defaultValue;
-
-              superRefineVariableValue(variableSchema, variableValue, ["defaultValue"], ctx);
-            }),
+            .strict(),
         )
         .refine(
           (value) => {
@@ -382,7 +376,32 @@ export function getFeatureZodSchema(
         .optional(),
       environments: allEnvironmentsZodSchema,
     })
-    .strict();
+    .strict()
+    .superRefine((value, ctx) => {
+      // variable values
+      if (!value.variablesSchema) {
+        return;
+      }
+
+      const allVariablesSchema = value.variablesSchema;
+      const variableSchemaByKey = {};
+
+      // variablesSchema[n].defaultValue
+      allVariablesSchema.forEach((variableSchema, n) => {
+        variableSchemaByKey[variableSchema.key] = variableSchema;
+
+        superRefineVariableValue(
+          variableSchema,
+          variableSchema.defaultValue,
+          ["variablesSchema", n, "defaultValue"],
+          ctx,
+        );
+      });
+
+      // variations[n].variables
+      // variations[n].variables[n].overrides[n].value
+      // environments[n].rules[n].variables
+    });
 
   return featureZodSchema;
 }
