@@ -224,7 +224,23 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               defaultValue: variableValueZodSchema,
             })
-            .strict(),
+            .strict()
+            .refine(
+              (value) => {
+                if (value.type === "json") {
+                  try {
+                    JSON.parse(value.defaultValue as string);
+                  } catch (e) {
+                    return false;
+                  }
+                }
+
+                return true;
+              },
+              (value) => ({
+                message: `Invalid JSON for variable "${value.key}" in schema: \n\n${value.defaultValue}\n\n`,
+              }),
+            ),
         )
         .refine(
           (value) => {
