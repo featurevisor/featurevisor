@@ -3,3 +3,4 @@ export const CLI_FORMAT_GREEN = "\x1b[32m%s\x1b[0m";
 
 export const CLI_FORMAT_BOLD = "\x1b[1m%s\x1b[0m";
 export const CLI_FORMAT_UNDERLINE = "\x1b[4m%s\x1b[0m";
+export const CLI_FORMAT_BOLD_UNDERLINE = "\x1b[1m\x1b[4m%s\x1b[0m";

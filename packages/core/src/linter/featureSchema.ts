@@ -21,6 +21,26 @@ function isArrayOfStrings(value) {
 }
 
 function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
+  if (!variableSchema) {
+    let message = `Unknown variable with value: ${variableValue}`;
+
+    if (path.length > 0) {
+      const lastPath = path[path.length - 1];
+
+      if (typeof lastPath === "string") {
+        message = `Unknown variable "${lastPath}" with value: ${variableValue}`;
+      }
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path,
+    });
+
+    return;
+  }
+
   // string
   if (variableSchema.type === "string") {
     if (typeof variableValue !== "string") {

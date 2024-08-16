@@ -22,8 +22,6 @@ export function printZodError(e: ZodError) {
       }
     }
 
-    if (issues.length > 1) {
-      console.error("");
-    }
+    console.error("");
   });
 }
