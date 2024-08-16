@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.27.1](https://github.com/featurevisor/featurevisor/compare/v1.27.0...v1.27.1) (2024-08-16)
+
+
+### Bug Fixes
+
+* improve linting variable values ([#320](https://github.com/featurevisor/featurevisor/issues/320)) ([8d1c753](https://github.com/featurevisor/featurevisor/commit/8d1c75335151f6a310b1db5902e869cb0570c71c))
+
+
+
+
+
 # [1.27.0](https://github.com/featurevisor/featurevisor/compare/v1.26.0...v1.27.0) (2024-08-07)
 
 
