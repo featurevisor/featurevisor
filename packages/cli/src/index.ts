@@ -29,7 +29,7 @@ async function main() {
   }
 
   let useRootDirectoryPath = rootDirectoryPath;
-  const customRootDir = argv.slice(2).filter((arg) => arg.startsWith("--rootDirectoryPath="));
+  const customRootDir = argv.filter((arg) => arg.startsWith("--rootDirectoryPath="));
   if (customRootDir.length > 0) {
     useRootDirectoryPath = customRootDir[0].split("=")[1];
   }

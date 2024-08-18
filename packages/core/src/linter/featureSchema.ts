@@ -4,6 +4,124 @@ import { ProjectConfig } from "../config";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
+function isFlatObject(value) {
+  let isFlat = true;
+
+  Object.keys(value).forEach((key) => {
+    if (typeof value[key] === "object") {
+      isFlat = false;
+    }
+  });
+
+  return isFlat;
+}
+
+function isArrayOfStrings(value) {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
+  if (!variableSchema) {
+    let message = `Unknown variable with value: ${variableValue}`;
+
+    if (path.length > 0) {
+      const lastPath = path[path.length - 1];
+
+      if (typeof lastPath === "string") {
+        message = `Unknown variable "${lastPath}" with value: ${variableValue}`;
+      }
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path,
+    });
+
+    return;
+  }
+
+  // string
+  if (variableSchema.type === "string") {
+    if (typeof variableValue !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // integer, double
+  if (["integer", "double"].indexOf(variableSchema.type) > -1) {
+    if (typeof variableValue !== "number") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // boolean
+  if (variableSchema.type === "boolean") {
+    if (typeof variableValue !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // array
+  if (variableSchema.type === "array") {
+    if (!Array.isArray(variableValue) || !isArrayOfStrings(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // object
+  if (variableSchema.type === "object") {
+    if (typeof variableValue !== "object" || !isFlatObject(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // json
+  if (variableSchema.type === "json") {
+    try {
+      JSON.parse(variableValue as string);
+    } catch (e) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
+
+    return;
+  }
+}
+
 export function getFeatureZodSchema(
   projectConfig: ProjectConfig,
   conditionsZodSchema,
@@ -19,15 +137,7 @@ export function getFeatureZodSchema(
     z.array(z.string()),
     z.record(z.unknown()).refine(
       (value) => {
-        let isFlat = true;
-
-        Object.keys(value).forEach((key) => {
-          if (typeof value[key] === "object") {
-            isFlat = false;
-          }
-        });
-
-        return isFlat;
+        return isFlatObject(value);
       },
       {
         message: "object is not flat",
@@ -286,7 +396,81 @@ export function getFeatureZodSchema(
         .optional(),
       environments: allEnvironmentsZodSchema,
     })
-    .strict();
+    .strict()
+    .superRefine((value, ctx) => {
+      if (!value.variablesSchema) {
+        return;
+      }
+
+      const allVariablesSchema = value.variablesSchema;
+      const variableSchemaByKey = {};
+
+      // variablesSchema[n].defaultValue
+      allVariablesSchema.forEach((variableSchema, n) => {
+        variableSchemaByKey[variableSchema.key] = variableSchema;
+
+        superRefineVariableValue(
+          variableSchema,
+          variableSchema.defaultValue,
+          ["variablesSchema", n, "defaultValue"],
+          ctx,
+        );
+      });
+
+      // variations[n].variables[n].value
+      if (value.variations) {
+        value.variations.forEach((variation, variationN) => {
+          if (!variation.variables) {
+            return;
+          }
+
+          variation.variables.forEach((variable, variableN) => {
+            superRefineVariableValue(
+              variableSchemaByKey[variable.key],
+              variable.value,
+              ["variations", variationN, "variables", variableN, "value"],
+              ctx,
+            );
+
+            // variations[n].variables[n].overrides[n].value
+            if (variable.overrides) {
+              variable.overrides.forEach((override, overrideN) => {
+                superRefineVariableValue(
+                  variableSchemaByKey[variable.key],
+                  override.value,
+                  [
+                    "variations",
+                    variationN,
+                    "variables",
+                    variableN,
+                    "overrides",
+                    overrideN,
+                    "value",
+                  ],
+                  ctx,
+                );
+              });
+            }
+          });
+        });
+      }
+
+      // environments[key].rules[n].variables[key]
+      Object.keys(value.environments).forEach((environmentKey) => {
+        value.environments[environmentKey].rules.forEach((rule, ruleN) => {
+          if (rule.variables) {
+            Object.keys(rule.variables).forEach((variableKey) => {
+              superRefineVariableValue(
+                variableSchemaByKey[variableKey],
+                rule.variables[variableKey],
+                ["environments", environmentKey, "rules", ruleN, "variables", variableKey],
+                ctx,
+              );
+            });
+          }
+        });
+      });
+    });
 
   return featureZodSchema;
 }

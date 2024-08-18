@@ -88,7 +88,8 @@ Supported features:
 
 SDK support:
 
-- [JavaScript](https://featurevisor.com/docs/sdks/) (both Node.js and browser environments)
+- [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
+- [Swift](https://featurevisor.com/docs/sdks/swift/)
 - [React](https://featurevisor.com/docs/react/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
