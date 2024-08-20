@@ -41,6 +41,10 @@ function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
     return;
   }
 
+  if (variableValue === null || typeof variableValue === "undefined") {
+    return;
+  }
+
   // string
   if (variableSchema.type === "string") {
     if (typeof variableValue !== "string") {
@@ -143,6 +147,8 @@ export function getFeatureZodSchema(
         message: "object is not flat",
       },
     ),
+    z.null(),
+    z.undefined(),
   ]);
 
   const plainGroupSegment = z.string().refine(
