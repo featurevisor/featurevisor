@@ -11,15 +11,25 @@ assertions:
     context:
       userId: "user-2"
     expectedToBeEnabled: true
+    expectedVariables:
+      nullableField: null
 
   - at: 40
     environment: staging
     context:
       userId: "user-3"
     expectedToBeEnabled: true
+    expectedVariables:
+      nullableField: test value
 
   - at: 40
     environment: staging
     context:
       userId: "user-6"
     expectedToBeEnabled: false
+
+  - at: 40
+    environment: staging
+    context:
+      userId: "user-3"
+    expectedToBeEnabled: true

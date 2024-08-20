@@ -4,6 +4,11 @@ tags:
 
 bucketBy: userId
 
+variablesSchema:
+  - key: nullableField
+    type: string
+    defaultValue: null
+
 environments:
   staging:
     force:
@@ -15,6 +20,8 @@ environments:
             operator: equals
             value: user-3
         enabled: true
+        variables:
+          nullableField: "test value"
     rules:
       - key: "1"
         segments: "*"
