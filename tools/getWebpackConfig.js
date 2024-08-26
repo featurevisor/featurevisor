@@ -22,6 +22,9 @@ module.exports = function getWebpackConfig(options) {
     externals,
     devServer,
     plugins,
+
+    // new option for bundle type
+    bundleType,
   } = options;
 
   const entry = {};
@@ -33,7 +36,7 @@ module.exports = function getWebpackConfig(options) {
       path: outputDirectoryPath,
       filename: outputFileName || "[name].js",
       library: outputLibrary,
-      libraryTarget: outputLibraryTarget || "umd",
+      libraryTarget: outputLibraryTarget || (bundleType === "esm" ? "module" : "umd"),
       globalObject: "this",
     },
     devServer,
@@ -54,12 +57,22 @@ module.exports = function getWebpackConfig(options) {
           exclude: /(node_modules)/,
           loader: "ts-loader",
           options: {
-            configFile: tsConfigFilePath || path.join(__dirname, "..", "tsconfig.cjs.json"),
+            configFile:
+              tsConfigFilePath ||
+              (bundleType === "esm"
+                ? path.join(__dirname, "..", "tsconfig.esm.json")
+                : path.join(__dirname, "..", "tsconfig.cjs.json")),
           },
         },
       ],
     },
   };
+
+  if (bundleType === "esm") {
+    config.experiments = {
+      outputModule: true,
+    };
+  }
 
   if (enableCssModules) {
     config.resolve.extensions = [...config.resolve.extensions, ".css"];
