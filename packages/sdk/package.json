@@ -19,7 +19,7 @@
   },
   "scripts": {
     "transpile": "echo 'Nothing to transpile'",
-    "dist": "webpack --config ./webpack.config.js && tsc --project tsconfig.esm.json --declaration --emitDeclarationOnly --outFile dist/index.d.ts",
+    "dist": "webpack --config ./webpack.config.js && tsc --project tsconfig.esm.json --declaration --emitDeclarationOnly --declarationDir dist",
     "build": "npm run transpile && npm run dist",
     "test": "jest --config jest.config.js --verbose --coverage",
     "format": "prettier . --check --cache --loglevel=warn",
