@@ -20,9 +20,9 @@ lint:
 # Misc.
 #
 print-bundle-size:
-	@gzip -c packages/sdk/dist/index.js > packages/sdk/dist/index.js.gz
+	@gzip -c packages/sdk/dist/index.esm.js > packages/sdk/dist/index.esm.js.gz
 	@echo 'SDK package size:'
-	@ls -alh packages/sdk/dist | grep index.js | awk '{print $$9 "\t" $$5}'
+	@ls -alh packages/sdk/dist | grep index.esm.js | awk '{print $$9 "\t" $$5}'
 
 	@echo ''
 
