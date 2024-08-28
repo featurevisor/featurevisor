@@ -8,7 +8,7 @@ module.exports = [
     },
     output: {
       path: path.join(__dirname, "dist"),
-      filename: "index.cjs.js",
+      filename: "index.js",
       library: "FeaturevisorSDK",
       libraryTarget: "umd",
       globalObject: "this",
@@ -45,12 +45,10 @@ module.exports = [
 
   // esm
   {
-    entry: {
-      "index.esm": path.join(__dirname, "src", "index.ts"),
-    },
+    entry: path.join(__dirname, "src", "index.ts"),
     output: {
       path: path.join(__dirname, "dist"),
-      filename: "index.esm.js",
+      filename: "index.mjs",
       library: {
         type: "module",
       },
