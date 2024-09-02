@@ -348,7 +348,7 @@ export function buildScopedDatafile(
   // @TODO: remove redundant conditions from segments
   // @TODO: remove redundant conditions from environment rules
   // @TODO: remove redundant conditions from environment force
-  // @TODO: remove redundant condtions from variation overrides
+  // @TODO: remove redundant conditions from variation overrides
 
   // @TODO: remove redundant segments from environment rules
   // @TODO: remove redundant segments from environment force
