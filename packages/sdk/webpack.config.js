@@ -1,13 +1,80 @@
 const path = require("path");
 
-const getWebpackConfig = require("../../tools/getWebpackConfig");
+module.exports = [
+  // cjs
+  {
+    entry: {
+      "index.cjs": path.join(__dirname, "src", "index.ts"),
+    },
+    output: {
+      path: path.join(__dirname, "dist"),
+      filename: "index.js",
+      library: "FeaturevisorSDK",
+      libraryTarget: "umd",
+      globalObject: "this",
+    },
+    mode: "production",
+    devtool: "source-map",
+    resolve: {
+      extensions: [".ts", ".tsx", ".js"],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(ts|tsx)$/,
+          exclude: /(node_modules)/,
+          use: [
+            {
+              loader: "ts-loader",
+              options: {
+                configFile: path.join(__dirname, "tsconfig.cjs.json"),
+                transpileOnly: true,
+              },
+            },
+          ],
+        },
+      ],
+    },
+    performance: {
+      hints: false,
+    },
+    optimization: {
+      minimize: true,
+    },
+  },
 
-const wepbackConfig = getWebpackConfig({
-  entryFilePath: path.join(__dirname, "src", "index.ts"),
-  entryKey: "index",
-  outputDirectoryPath: path.join(__dirname, "dist"),
-  outputLibrary: "FeaturevisorSDK",
-  tsConfigFilePath: path.join(__dirname, "tsconfig.cjs.json"),
-});
-
-module.exports = wepbackConfig;
+  // esm
+  {
+    entry: path.join(__dirname, "src", "index.ts"),
+    output: {
+      path: path.join(__dirname, "dist"),
+      filename: "index.mjs",
+      library: {
+        type: "module",
+      },
+    },
+    experiments: {
+      outputModule: true,
+    },
+    mode: "production",
+    devtool: "source-map",
+    resolve: {
+      extensions: [".ts", ".tsx", ".js"],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(ts|tsx)$/,
+          exclude: /(node_modules)/,
+          loader: "ts-loader",
+          options: {
+            configFile: path.join(__dirname, "tsconfig.esm.json"),
+          },
+        },
+      ],
+    },
+    performance: {
+      hints: false,
+    },
+  },
+];

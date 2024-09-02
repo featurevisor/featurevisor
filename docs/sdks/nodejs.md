@@ -53,9 +53,7 @@ const { createInstance } = require("@featurevisor/sdk");
 If you want to take advantage of ES Modules, you can import the SDK directly:
 
 ```js
-import FeaturevisorSDK from "@featurevisor/sdk";
-
-const { createInstance } = FeaturevisorSDK;
+import { createInstance } from "@featurevisor/sdk";
 ```
 
 ## Example repository

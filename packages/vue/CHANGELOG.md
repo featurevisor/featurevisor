@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+
+### Bug Fixes
+
+* ESM bundle for SDK ([#324](https://github.com/featurevisor/featurevisor/issues/324)) ([54556ea](https://github.com/featurevisor/featurevisor/commit/54556ea5ce9a6c221f482b230905a42e24e64886))
+
+
+
+
+
 # [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
 
 **Note:** Version bump only for package @featurevisor/vue

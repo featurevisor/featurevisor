@@ -4,4 +4,7 @@ module.exports = {
 
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["@testing-library/jest-dom/extend-expect", "./jest.setup.js"],
+  moduleNameMapper: {
+    "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+  },
 };
