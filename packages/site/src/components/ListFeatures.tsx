@@ -14,6 +14,11 @@ import { useSearch } from "../hooks/useSearch";
 
 export function ListFeatures() {
   const { features } = useSearch();
+  const [displayCount, setDisplayCount] = React.useState(10);
+
+  const loadMore = () => {
+    setDisplayCount(displayCount + 10);
+  };
 
   return (
     <PageContent>
@@ -26,26 +31,29 @@ export function ListFeatures() {
       {features.length > 0 && (
         <div>
           <ul className="diving-gray-200 divide-y">
-            {features.map((feature: any) => (
+            {features.slice(0, displayCount).map((feature: any) => (
               <li key={feature.key}>
                 <Link to={`/features/${feature.key}`}>
                   <div className="block hover:bg-gray-50">
                     <div className="px-6 py-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-md relative font-bold text-slate-600">
+                        <span className="text-md relative font-bold text-slate-600">
                           <EnvironmentDot
                             feature={feature}
                             className="relative top-[0.5px] inline-block pr-2"
                           />{" "}
-                          <a href="#" className="font-bold">
-                            {feature.key}
-                          </a>{" "}
+                          {/* <a href="#" className="font-bold"> */}
+                          {feature.key}
+                          {/* </a>{" "} */}
                           {feature.archived && (
-                            <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                            <span
+                              className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium
+                             text-red-800"
+                            >
                               archived
                             </span>
                           )}
-                        </p>
+                        </span>
 
                         <div className="ml-2 flex flex-shrink-0">
                           <div>
@@ -77,9 +85,21 @@ export function ListFeatures() {
             ))}
           </ul>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          {/* <p className="mt-6 text-center text-sm text-gray-500">
             A total of <span className="font-bold">{features.length}</span> results found.
-          </p>
+          </p> */}
+          {displayCount < features.length && (
+            <div className="px-6">
+              <button
+                className="w-full text-md block rounded-md border border-gray-300 bg-gray-50 py-2 pl-6 text-center font-bold text-gray-500 shadow-sm hover:bg-gray-100"
+                onClick={() => {
+                  loadMore();
+                }}
+              >
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       )}
     </PageContent>
