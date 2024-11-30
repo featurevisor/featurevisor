@@ -1,4 +1,5 @@
 {
+  "revision": "v0.1.0",
   "links": {
     "attribute": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/attributes/{{key}}.yml",
     "segment": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/segments/{{key}}.yml",
