@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+
+### Bug Fixes
+
+* non-existent property in context when checking in and noIn conditions ([#328](https://github.com/featurevisor/featurevisor/issues/328)) ([fc85214](https://github.com/featurevisor/featurevisor/commit/fc85214449ff9c34b9f63e8eb737104365f0bb8d))
+
+
+
+
+
 ## [1.27.3](https://github.com/featurevisor/featurevisor/compare/v1.27.2...v1.27.3) (2024-10-04)
 
 **Note:** Version bump only for package @featurevisor/example-1
