@@ -1,0 +1,10 @@
+description: EU
+conditions:
+  - attribute: continent
+    operator: equals
+    value: europe
+
+  - attribute: country
+    operator: notIn
+    value:
+      - gb

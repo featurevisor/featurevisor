@@ -1,0 +1,19 @@
+segment: eu
+assertions:
+  - context:
+      continent: europe
+    expectedToMatch: true
+
+  - context:
+      continent: "asia"
+    expectedToMatch: false
+
+  - context:
+      continent: europe
+      country: nl
+    expectedToMatch: true
+
+  - context:
+      continent: europe
+      country: gb
+    expectedToMatch: false
