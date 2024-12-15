@@ -1,7 +1,7 @@
 import { SCHEMA_VERSION } from "../config";
 
 import { getNextRevision } from "./revision";
-import { buildDatafile, getCustomDatafile } from "./buildDatafile";
+import { buildDatafile, getCustomDatafile, buildScopedDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 
@@ -50,8 +50,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   /**
    * Regular build process that writes to disk.
    */
-  const tags = projectConfig.tags;
-  const environments = projectConfig.environments;
+  const { tags, environments, scopes } = projectConfig;
 
   const currentRevision = await datasource.readRevision();
   console.log("\nCurrent revision:", currentRevision);
@@ -84,6 +83,22 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         environment,
         tag,
       });
+
+      // scopes
+      for (const scope of scopes) {
+        if (scope.forTags && !scope.forTags.includes(tag)) {
+          continue;
+        }
+
+        const scopedDatafileContent = buildScopedDatafile(datafileContent, scope);
+
+        // write scoped datafile
+        await datasource.writeDatafile(scopedDatafileContent, {
+          environment,
+          tag,
+          scope,
+        });
+      }
     }
 
     if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
