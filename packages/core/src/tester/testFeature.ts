@@ -145,7 +145,10 @@ export async function testFeature(
                 ? JSON.parse(expectedValue as string)
                 : expectedValue;
 
-            if (Array.isArray(actualValue)) {
+            // Evaluate `null` values ahead of objects as `null` will equate to type of `object`
+            if (parsedExpectedValue === null) {
+              passed = actualValue === null;
+            } else if (Array.isArray(actualValue)) {
               passed = checkIfArraysAreEqual(parsedExpectedValue, actualValue);
             } else if (typeof actualValue === "object") {
               passed = checkIfObjectsAreEqual(parsedExpectedValue, actualValue);
@@ -169,7 +172,11 @@ export async function testFeature(
             }
           } else {
             // other types
-            if (typeof expectedValue === "object") {
+
+            // Evaluate `null` values ahead of objects as `null` will equate to type of `object`
+            if (expectedValue === null) {
+              passed = actualValue === null;
+            } else if (typeof expectedValue === "object") {
               passed = checkIfObjectsAreEqual(expectedValue, actualValue);
             } else if (Array.isArray(expectedValue)) {
               passed = checkIfArraysAreEqual(expectedValue, actualValue);
