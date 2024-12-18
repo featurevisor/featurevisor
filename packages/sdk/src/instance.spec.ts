@@ -1249,11 +1249,18 @@ describe("sdk: instance", function () {
     });
 
     // non existing
-    expect(sdk.getVariable("test", "nonExisting", context)).toEqual(undefined);
-    expect(sdk.getVariable("nonExistingFeature", "nonExisting", context)).toEqual(undefined);
+    expect(sdk.getVariable("test", "nonExisting", context)).toEqual(null);
+    expect(sdk.getVariableArray("test", "nonExisting", context)).toEqual(null);
+    expect(sdk.getVariableBoolean("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariableDouble("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariableInteger("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariableJSON("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariableObject("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariableString("test", "unknown", context)).toEqual(null);
+    expect(sdk.getVariable("nonExistingFeature", "nonExisting", context)).toEqual(null);
 
     // disabled
-    expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
+    expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(null);
   });
 
   it("should get variables without any variations", function () {

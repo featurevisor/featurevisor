@@ -112,14 +112,7 @@ export type VariableType =
 export interface VariableObjectValue {
   [key: string]: VariableValue;
 }
-export type VariableValue =
-  | boolean
-  | string
-  | number
-  | string[]
-  | VariableObjectValue
-  | null
-  | undefined;
+export type VariableValue = boolean | string | number | string[] | VariableObjectValue | null;
 
 export interface VariableOverrideSegments {
   segments: GroupSegment | GroupSegment[];
@@ -391,8 +384,8 @@ export type Test = TestSegment | TestFeature;
 
 export interface TestResultAssertionError {
   type: "flag" | "variation" | "variable" | "segment";
-  expected: string | number | boolean | Date | null | undefined;
-  actual: string | number | boolean | Date | null | undefined;
+  expected: string | number | boolean | Date | null;
+  actual: string | number | boolean | Date | null;
   message?: string;
   details?: object;
 }
