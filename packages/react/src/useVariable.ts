@@ -6,7 +6,7 @@ export function useVariable(
   featureKey: FeatureKey,
   variableKey: VariableKey,
   context: Context = {},
-): VariableValue | undefined {
+): VariableValue {
   const sdk = useSdk();
 
   return sdk.getVariable(featureKey, variableKey, context);

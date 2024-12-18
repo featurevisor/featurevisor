@@ -178,7 +178,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
       console.log(
         "Value:",
-        typeof value.variableValue !== "undefined"
+        typeof value.variableValue !== "undefined" && value.variableValue !== null
           ? JSON.stringify(value.variableValue)
           : value.variableValue,
       );
