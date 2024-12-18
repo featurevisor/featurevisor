@@ -19,6 +19,10 @@ variablesSchema:
       - visa
       - mastercard
 
+  - key: data
+    type: json
+    defaultValue: '{}'
+
 environments:
   staging:
     rules:
@@ -45,6 +49,10 @@ environments:
             - paypal
 
       - key: "3"
+        segments: switzerland
+        percentage: 0
+
+      - key: "4"
         segments: "*"
         percentage: 100
         variables:

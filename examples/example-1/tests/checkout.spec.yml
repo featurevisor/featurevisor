@@ -45,3 +45,16 @@ assertions:
       paymentMethods:
         - sofort
         - paypal
+
+  ##
+  # CH
+  #
+  - at: 80
+    environment: production
+    context:
+      country: ch
+    expectedToBeEnabled: false
+    expectedVariables:
+      showPayments: ~
+      showShipping: null
+      data: null
