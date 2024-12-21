@@ -8,12 +8,7 @@
   "scripts": {
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
-    "build": "npm run transpile && npm run dist",
-    "test": "jest --config jest.config.js --verbose --coverage",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "build": "npm run transpile && npm run dist"
   },
   "author": {
     "name": "Fahad Heylaal",

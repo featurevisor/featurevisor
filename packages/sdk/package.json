@@ -17,11 +17,7 @@
     "transpile": "echo 'Nothing to transpile'",
     "dist": "webpack --config ./webpack.config.js && tsc --project tsconfig.esm.json --declaration --emitDeclarationOnly --declarationDir dist",
     "build": "npm run transpile && npm run dist",
-    "test": "jest --config jest.config.js --verbose --coverage",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "jest --config jest.config.js --verbose --coverage"
   },
   "author": {
     "name": "Fahad Heylaal",

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.esm.json",
+  "include": ["./packages/**/*.ts", "./packages/**/*.tsx"],
+  "exclude": []
+}
