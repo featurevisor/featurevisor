@@ -69,11 +69,7 @@ describe("core: buildDatafile", function () {
       ],
     };
 
-    const scopedDatafileContent = buildScopedDatafile(originalDatafileContent, {
-      name: "browsers",
-      context: { platform: "web" },
-      tag: "web",
-    });
+    const scopedDatafileContent = buildScopedDatafile(originalDatafileContent, { platform: "web" });
 
     expect(scopedDatafileContent).toEqual({
       schemaVersion: "1",

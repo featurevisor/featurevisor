@@ -92,7 +92,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
         console.log(`\n     Scope: ${scope.name}`);
 
-        const scopedDatafileContent = buildScopedDatafile(datafileContent, scope);
+        const scopedDatafileContent = buildScopedDatafile(datafileContent, scope.context);
 
         // write scoped datafile
         await datasource.writeDatafile(scopedDatafileContent, {

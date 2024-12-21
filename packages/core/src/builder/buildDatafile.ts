@@ -17,6 +17,7 @@ import {
   FeatureKey,
   Allocation,
   VariableSchema,
+  Context,
 } from "@featurevisor/types";
 
 import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
@@ -337,10 +338,8 @@ export async function buildDatafile(
 
 export function buildScopedDatafile(
   originalDatafileContent: DatafileContent,
-  scope: Scope,
+  context: Context,
 ): DatafileContent {
-  const { context } = scope;
-
   const scopedDatafileContent = {
     ...originalDatafileContent,
   };
