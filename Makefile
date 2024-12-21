@@ -12,7 +12,7 @@ test:
 	npm test
 
 lint:
-	npx prettier examples/ packages/ --check
+	npx @biomejs/biome format
 	npm run lint
 
 ##
