@@ -18,6 +18,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@eslint/js": "^9.17.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
