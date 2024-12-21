@@ -20,7 +20,10 @@ import { Adapter, DatafileOptions } from "./adapter";
 export class Datasource {
   private adapter: Adapter;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     this.adapter = new config.adapter(config, rootDirectoryPath);
   }
 

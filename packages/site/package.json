@@ -1,17 +1,13 @@
 {
   "name": "@featurevisor/site",
-  "version": "1.18.1",
+  "version": "1.27.5",
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {
     "transpile": "echo 'Nothing to transpile in this package'",
     "build": "webpack --mode production --config ./webpack.prod.js",
     "dev": "webpack serve --mode development --config ./webpack.dev.js",
-    "test": "echo 'Nothing to test in types package'",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "echo 'Nothing to test in types package'"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -63,6 +59,6 @@
     "webpack-merge": "^5.10.0"
   },
   "dependencies": {
-    "@featurevisor/types": "^1.3.0"
+    "@featurevisor/types": "^1.27.5"
   }
 }

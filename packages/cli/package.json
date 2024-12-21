@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/cli",
-  "version": "1.27.2",
+  "version": "1.27.5",
   "description": "CLI package of Featurevisor",
   "main": "bin.js",
   "types": "lib/index.d.ts",
@@ -11,11 +11,7 @@
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "echo 'Nothing to test in this package'",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "echo 'Nothing to test in this package'"
   },
   "homepage": "https://featurevisor.com",
   "keywords": [
@@ -47,6 +43,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/core": "^1.27.2"
+    "@featurevisor/core": "^1.27.5"
   }
 }

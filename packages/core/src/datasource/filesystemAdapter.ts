@@ -19,7 +19,7 @@ import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
 
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -35,7 +35,10 @@ export function getRevisionFilePath(projectConfig: ProjectConfig): string {
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     super();
 
     this.parser = config.parser as CustomParser;
