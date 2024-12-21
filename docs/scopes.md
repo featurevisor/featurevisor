@@ -173,11 +173,9 @@ module.exports = {
   // (optional) scopes
   scopes: [
     {
-      name: "browsers",
-      context: { platform: "web" },
-
-      // (optional) if we want to scope certain tags only
-      forTags: ["web"],
+      name: "browsers", // give a unique name for your scope
+      tag: ["web"], // tag of the datafile that we wish to filter further
+      context: { platform: "web" }, // context values that are already known
     },
   ]
 };
@@ -199,22 +197,22 @@ And we will notice the files created in this manner in `dist` directory:
 $ tree dist
 .
 ├── production
+│   ├── datafile-scope-browsers.json
 │   ├── datafile-tag-web.json
-│   ├── datafile-tag-web-scope-browsers.json
 │   ├── datafile-tag-ios.json
 │   └── datafile-tag-android.json
 └── staging
+    ├── datafile-scope-browsers.json
     ├── datafile-tag-web.json
-    ├── datafile-tag-web-scope-browsers.json
     ├── datafile-tag-ios.json
     └── datafile-tag-android.json
 
 2 directories, 8 files
 ```
 
-Notice that we have a new `datafile-tag-web-scope-browsers.json` file above.
+Notice that we have a new `datafile-scope-browsers.json` file above.
 
-This file is a more tailored and optimized version of `datafile-tag-web.json`, containing rules and conditions that are needed only for web alone.
+This file is a more tailored and optimized version of `datafile-tag-web.json`, containing rules and conditions that are needed only for web alone where context is always known to contain `{ platform: "web" }`.
 
 ### Consume scoped datafile
 
@@ -227,7 +225,7 @@ import { createInstance } from "@featurevisor/sdk";
 const f = createInstance({
   // this datafile will omit any rules/conditions
   // involving `platform` attribute having non-`web` values
-  datafileUrl: "https://cdn.yoursite.com/datafile-tag-web-scope-browsers.json",
+  datafileUrl: "https://cdn.yoursite.com/datafile-scope-browsers.json",
   onReady: () => console.log("SDK is ready"),
 });
 ```

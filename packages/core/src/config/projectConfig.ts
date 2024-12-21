@@ -32,7 +32,7 @@ export const SCHEMA_VERSION = "1";
 export interface Scope {
   name: string;
   context: Context;
-  forTags?: Tag[];
+  tag: Tag;
 }
 
 export interface ProjectConfig {

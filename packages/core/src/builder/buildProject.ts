@@ -83,22 +83,6 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         environment,
         tag,
       });
-
-      // scopes
-      for (const scope of scopes) {
-        if (scope.forTags && !scope.forTags.includes(tag)) {
-          continue;
-        }
-
-        const scopedDatafileContent = buildScopedDatafile(datafileContent, scope);
-
-        // write scoped datafile
-        await datasource.writeDatafile(scopedDatafileContent, {
-          environment,
-          tag,
-          scope,
-        });
-      }
     }
 
     if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
@@ -107,6 +91,22 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
       // write revision
       await datasource.writeRevision(nextRevision);
+    }
+
+    // scopes
+    for (const scope of scopes) {
+      console.log(`\n  => Scope: ${scope}`);
+
+      const tag = scope.tag;
+      const taggedDatafileContent = await datasource.readDatafile({ environment, tag });
+      const scopedDatafileContent = buildScopedDatafile(taggedDatafileContent, scope);
+
+      // write scoped datafile
+      await datasource.writeDatafile(scopedDatafileContent, {
+        environment,
+        tag,
+        scope,
+      });
     }
   }
 

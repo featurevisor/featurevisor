@@ -5,8 +5,8 @@ module.exports = {
   scopes: [
     {
       name: "browsers",
+      tag: "web",
       context: { platform: "web" },
-      forTags: ["web"],
     },
   ],
   prettyState: true,

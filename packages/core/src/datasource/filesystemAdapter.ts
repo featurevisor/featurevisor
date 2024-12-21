@@ -185,7 +185,7 @@ export class FilesystemAdapter extends Adapter {
     let fileName = `datafile-tag-${options.tag}`;
 
     if (options.scope) {
-      fileName += `-scope-${options.scope.name}`;
+      fileName = `datafile-scope-${options.scope.name}`;
     }
 
     fileName += ".json";
