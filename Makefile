@@ -3,7 +3,6 @@
 #
 install:
 	npm ci
-	npm run bootstrap
 
 build:
 	npm run build

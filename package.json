@@ -8,7 +8,6 @@
     "examples/*"
   ],
   "scripts": {
-    "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
     "lint": "eslint ."
