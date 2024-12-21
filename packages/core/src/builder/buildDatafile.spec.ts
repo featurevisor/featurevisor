@@ -72,6 +72,7 @@ describe("core: buildDatafile", function () {
     const scopedDatafileContent = buildScopedDatafile(originalDatafileContent, {
       name: "browsers",
       context: { platform: "web" },
+      tag: "web",
     });
 
     expect(scopedDatafileContent).toEqual({
