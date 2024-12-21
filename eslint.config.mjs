@@ -12,6 +12,7 @@ export default [
       "**/lib/",
       "**/coverage/",
       "**/out/",
+      "tools/",
 
       // files
       "**/*.config.js",
@@ -53,7 +54,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: "./tsconfig.esm.json",
+        project: "./tsconfig.eslint.json",
       },
       globals: globals.browser,
     },

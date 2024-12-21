@@ -1,5 +1,3 @@
-/* eslint-disable no-global-assign */
-
 import { createLogger } from "./logger";
 
 describe("logger", () => {
@@ -66,7 +64,7 @@ describe("logger", () => {
       error: (...args) => logs.push(args),
     };
 
-    console = customConsole as unknown as Console; // eslint-ignore-line
+    console = customConsole as unknown as Console;
 
     const logger = createLogger({});
 

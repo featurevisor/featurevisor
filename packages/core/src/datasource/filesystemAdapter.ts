@@ -19,7 +19,7 @@ import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
 
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
