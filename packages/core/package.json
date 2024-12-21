@@ -8,11 +8,7 @@
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "jest --config jest.config.js --verbose --coverage",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "jest --config jest.config.js --verbose --coverage"
   },
   "author": {
     "name": "Fahad Heylaal",
