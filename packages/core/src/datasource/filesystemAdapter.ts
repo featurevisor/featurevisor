@@ -35,7 +35,10 @@ export function getRevisionFilePath(projectConfig: ProjectConfig): string {
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     super();
 
     this.parser = config.parser as CustomParser;
