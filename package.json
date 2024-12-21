@@ -11,7 +11,6 @@
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "test": "lerna run test",
-    "format": "lerna run format",
     "lint": "eslint ."
   },
   "author": {
@@ -29,7 +28,7 @@
     "globals": "^15.14.0",
     "jest": "^29.4.2",
     "lerna": "^6.5.0",
-    "prettier": "^2.8.8",
+    "prettier": "^3.4.2",
     "rimraf": "^4.1.2",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.4.2",

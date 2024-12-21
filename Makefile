@@ -13,7 +13,7 @@ test:
 	npm test
 
 lint:
-	npm run format
+	npx prettier examples/ packages/ --check
 	npm run lint
 
 ##
