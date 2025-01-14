@@ -83,6 +83,7 @@ export interface BenchmarkOptions {
   context: Record<string, unknown>;
   variation?: boolean;
   variable?: string;
+  schemaVersion?: string;
 }
 
 export async function benchmarkFeature(
@@ -103,7 +104,7 @@ export async function benchmarkFeature(
     projectConfig,
     datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment,
     },

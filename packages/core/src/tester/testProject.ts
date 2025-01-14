@@ -217,10 +217,6 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    if (parsed.schemaVersion && typeof parsed.schemaVersion !== "string") {
-      parsed.schemaVersion = parsed.schemaVersion.toString();
-    }
-
     const hasError = await testProject(
       {
         rootDirectoryPath,

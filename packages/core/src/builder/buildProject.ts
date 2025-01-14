@@ -103,11 +103,6 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    // @TODO: in future, allow yargs options to be defined via plugins
-    if (parsed.schemaVersion && typeof parsed.schemaVersion !== "string") {
-      parsed.schemaVersion = parsed.schemaVersion.toString();
-    }
-
     await buildProject(
       {
         rootDirectoryPath,
