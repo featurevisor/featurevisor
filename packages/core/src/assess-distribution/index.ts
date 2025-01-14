@@ -71,6 +71,7 @@ export interface AssessDistributionOptions {
   feature: FeatureKey;
   context: Context;
   n: number;
+  schemaVersion?: string;
 
   populateUuid?: AttributeKey[];
   verbose?: boolean;
@@ -91,7 +92,7 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
     projectConfig,
     datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment,
     },
