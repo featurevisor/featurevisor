@@ -86,11 +86,10 @@ export class DatafileReader {
   }
 
   getSegment(segmentKey: SegmentKey): Segment | undefined {
-    if (this.schemaVersion === "2") {
-      return this.segmentsV2[segmentKey];
-    }
-
-    const segment = this.segments.find((s) => s.key === segmentKey);
+    const segment =
+      this.schemaVersion === "2"
+        ? this.segmentsV2[segmentKey]
+        : this.segments.find((s) => s.key === segmentKey);
 
     if (!segment) {
       return undefined;
@@ -100,11 +99,10 @@ export class DatafileReader {
   }
 
   getFeature(featureKey: FeatureKey): Feature | undefined {
-    if (this.schemaVersion === "2") {
-      return this.featuresV2[featureKey];
-    }
-
-    const feature = this.features.find((s) => s.key === featureKey);
+    const feature =
+      this.schemaVersion === "2"
+        ? this.featuresV2[featureKey]
+        : this.features.find((f) => f.key === featureKey);
 
     if (!feature) {
       return undefined;
