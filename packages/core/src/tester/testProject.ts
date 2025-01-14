@@ -19,6 +19,7 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
+  schemaVersion?: string;
 }
 
 export interface TestPatterns {
@@ -157,7 +158,7 @@ export async function testProject(
       projectConfig,
       datasource,
       {
-        schemaVersion: SCHEMA_VERSION,
+        schemaVersion: options.schemaVersion || SCHEMA_VERSION,
         revision: "include-all-features",
         environment: environment,
       },
@@ -216,6 +217,10 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    if (parsed.schemaVersion && typeof parsed.schemaVersion !== "string") {
+      parsed.schemaVersion = parsed.schemaVersion.toString();
+    }
+
     const hasError = await testProject(
       {
         rootDirectoryPath,
