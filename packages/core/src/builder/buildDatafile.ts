@@ -4,6 +4,8 @@ import {
   Segment,
   Feature,
   DatafileContent,
+  DatafileContentV1,
+  DatafileContentV2,
   Variation,
   Variable,
   VariableOverride,
@@ -32,6 +34,7 @@ export interface CustomDatafileOptions {
   projectConfig: ProjectConfig;
   datasource: Datasource;
   revision?: string;
+  schemaVersion?: string;
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
@@ -47,7 +50,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
     options.projectConfig,
     options.datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: options.revision || "tester",
       environment: options.environment,
       features: featuresToInclude,
@@ -72,7 +75,7 @@ export async function buildDatafile(
   options: BuildOptions,
   existingState: ExistingState,
 ): Promise<DatafileContent> {
-  const datafileContent: DatafileContent = {
+  const datafileContent: DatafileContentV1 = {
     schemaVersion: options.schemaVersion,
     revision: options.revision,
     attributes: [],
@@ -328,6 +331,35 @@ export async function buildDatafile(
     }
   }
 
+  if (options.schemaVersion === "2") {
+    // v2
+    const datafileContentV2: DatafileContentV2 = {
+      schemaVersion: "2",
+      revision: options.revision,
+      attributes: {},
+      segments: {},
+      features: {},
+    };
+
+    datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
+      acc[attribute.key] = attribute;
+      return acc;
+    }, {});
+
+    datafileContentV2.segments = segments.reduce((acc, segment) => {
+      acc[segment.key] = segment;
+      return acc;
+    }, {});
+
+    datafileContentV2.features = features.reduce((acc, feature) => {
+      acc[feature.key] = feature;
+      return acc;
+    }, {});
+
+    return datafileContentV2;
+  }
+
+  // default behaviour
   datafileContent.attributes = attributes;
   datafileContent.segments = segments;
   datafileContent.features = features;

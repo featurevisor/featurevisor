@@ -249,13 +249,29 @@ export interface Feature {
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
-export interface DatafileContent {
+export interface DatafileContentV1 {
   schemaVersion: string;
   revision: string;
   attributes: Attribute[];
   segments: Segment[];
   features: Feature[];
 }
+
+export interface DatafileContentV2 {
+  schemaVersion: string;
+  revision: string;
+  attributes: {
+    [key: AttributeKey]: Attribute;
+  };
+  segments: {
+    [key: SegmentKey]: Segment;
+  };
+  features: {
+    [key: FeatureKey]: Feature;
+  };
+}
+
+export type DatafileContent = DatafileContentV1 | DatafileContentV2;
 
 export interface OverrideFeature {
   enabled: boolean;

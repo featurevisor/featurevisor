@@ -27,7 +27,7 @@ export const DEFAULT_PRETTY_DATAFILE = false;
 
 export const DEFAULT_PARSER: Parser = "yml";
 
-export const SCHEMA_VERSION = "1";
+export const SCHEMA_VERSION = "1"; // default schema version
 
 export interface ProjectConfig {
   featuresDirectoryPath: string;

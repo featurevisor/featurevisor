@@ -7,6 +7,7 @@ import { Plugin } from "../cli";
 
 export interface BuildCLIOptions {
   revision?: string;
+  schemaVersion?: string;
 
   // all three together
   environment?: string;
@@ -36,6 +37,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       projectConfig,
       datasource,
       revision: cliOptions.revision,
+      schemaVersion: cliOptions.schemaVersion,
     });
 
     if (cliOptions.pretty) {
@@ -71,7 +73,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         projectConfig,
         datasource,
         {
-          schemaVersion: SCHEMA_VERSION,
+          schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
           revision: nextRevision,
           environment: environment,
           tag: tag,
@@ -101,6 +103,11 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    // @TODO: in future, allow yargs options to be defined via plugins
+    if (parsed.schemaVersion && typeof parsed.schemaVersion !== "string") {
+      parsed.schemaVersion = parsed.schemaVersion.toString();
+    }
+
     await buildProject(
       {
         rootDirectoryPath,
