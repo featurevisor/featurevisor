@@ -84,6 +84,7 @@ export interface BenchmarkOptions {
   variation?: boolean;
   variable?: string;
   schemaVersion?: string;
+  inflate?: number;
 }
 
 export async function benchmarkFeature(
@@ -107,6 +108,7 @@ export async function benchmarkFeature(
       schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment,
+      inflate: options.inflate,
     },
     existingState,
   );

@@ -20,6 +20,7 @@ export interface TestProjectOptions {
   showDatafile?: boolean;
   onlyFailures?: boolean;
   schemaVersion?: string;
+  inflate?: number;
 }
 
 export interface TestPatterns {
@@ -161,6 +162,7 @@ export async function testProject(
         schemaVersion: options.schemaVersion || SCHEMA_VERSION,
         revision: "include-all-features",
         environment: environment,
+        inflate: options.inflate,
       },
       existingState,
     );

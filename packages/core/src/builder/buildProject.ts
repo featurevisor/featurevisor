@@ -15,6 +15,7 @@ export interface BuildCLIOptions {
   print?: boolean;
   pretty?: boolean;
   stateFiles?: boolean; // --no-state-files in CLI
+  inflate?: number;
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -77,6 +78,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
           revision: nextRevision,
           environment: environment,
           tag: tag,
+          inflate: cliOptions.inflate,
         },
         existingState,
       );

@@ -35,6 +35,7 @@ export interface CustomDatafileOptions {
   datasource: Datasource;
   revision?: string;
   schemaVersion?: string;
+  inflate?: number;
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
@@ -54,6 +55,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       revision: options.revision || "tester",
       environment: options.environment,
       features: featuresToInclude,
+      inflate: options.inflate,
     },
     existingState,
   );
@@ -67,6 +69,7 @@ export interface BuildOptions {
   environment: string;
   tag?: string;
   features?: FeatureKey[];
+  inflate?: number;
 }
 
 export async function buildDatafile(
@@ -331,6 +334,46 @@ export async function buildDatafile(
     }
   }
 
+  // inflate
+  if (options.inflate) {
+    const allFeatureKeys = features.map((f) => f.key);
+    const allSegmentKeys = segments.map((s) => s.key);
+    const allAttributeKeys = attributes.map((a) => a.key);
+
+    for (let i = 0; i < options.inflate; i++) {
+      // feature
+      for (const featureKey of allFeatureKeys) {
+        const originalFeature = features.find((f) => f.key === featureKey) as Feature;
+
+        features.unshift({
+          ...originalFeature,
+          key: `${originalFeature.key}-${i}`,
+        });
+      }
+
+      // segment
+      for (const segmentKey of allSegmentKeys) {
+        const originalSegment = segments.find((s) => s.key === segmentKey) as Segment;
+
+        segments.unshift({
+          ...originalSegment,
+          key: `${originalSegment.key}-${i}`,
+        });
+      }
+
+      // attribute
+      for (const attributeKey of allAttributeKeys) {
+        const originalAttribute = attributes.find((a) => a.key === attributeKey) as Attribute;
+
+        attributes.unshift({
+          ...originalAttribute,
+          key: `${originalAttribute.key}-${i}`,
+        });
+      }
+    }
+  }
+
+  // schema v2
   if (options.schemaVersion === "2") {
     // v2
     const datafileContentV2: DatafileContentV2 = {
