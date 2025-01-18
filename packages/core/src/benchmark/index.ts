@@ -99,6 +99,9 @@ export async function benchmarkFeature(
   console.log("");
 
   console.log(`Building datafile containing all features for "${options.environment}"...`);
+  if (options.inflate) {
+    console.log(`Inflating datafile by ${options.inflate} times to increase its size...`);
+  }
   const datafileBuildStart = Date.now();
   const existingState = await datasource.readState(options.environment);
   const datafileContent = await buildDatafile(
@@ -114,6 +117,7 @@ export async function benchmarkFeature(
   );
   const datafileBuildDuration = Date.now() - datafileBuildStart;
   console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
+  console.log(`Datafile size: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`);
 
   console.log("");
 
@@ -170,6 +174,8 @@ export const benchmarkPlugin: Plugin = {
         context: parsed.context ? JSON.parse(parsed.context) : {},
         variation: parsed.variation || undefined,
         variable: parsed.variable || undefined,
+        schemaVersion: parsed.schemaVersion || undefined,
+        inflate: parseInt(parsed.inflate, 10) || undefined,
       },
     );
   },
