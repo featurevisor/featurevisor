@@ -75,3 +75,13 @@ $ npx featurevisor build --environment=production --print --pretty
 This is useful primarily for debugging and testing purposes.
 
 If you are an SDK developer in other languages besides JavaScript, you may want to use this handy command to get the generated datafile content in JSON format that you can use in your own [test runner](/docs/testing).
+
+## Schema v2
+
+In preparation for the upcoming [major v2.0](https://github.com/featurevisor/featurevisor/issues/326) release, current Featurevisor v1.x CLI can optionally build datafiles in the new schema format. To enable this, you can pass the `--schema-version=2` flag:
+
+```
+$ npx featurevisor build --schema-version=2
+```
+
+Before generating datafiles in the new schema format, make sure to upgrade to latest Featurevisor SDK in your client application(s) which supports both schema versions.
