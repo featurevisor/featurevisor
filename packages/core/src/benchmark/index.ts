@@ -99,9 +99,6 @@ export async function benchmarkFeature(
   console.log("");
 
   console.log(`Building datafile containing all features for "${options.environment}"...`);
-  if (options.inflate) {
-    console.log(`Inflating datafile by ${options.inflate} times to increase its size...`);
-  }
   const datafileBuildStart = Date.now();
   const existingState = await datasource.readState(options.environment);
   const datafileContent = await buildDatafile(
@@ -118,6 +115,13 @@ export async function benchmarkFeature(
   const datafileBuildDuration = Date.now() - datafileBuildStart;
   console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
   console.log(`Datafile size: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`);
+
+  if (options.inflate) {
+    console.log("");
+    console.log("Features count:", Object.keys(datafileContent.features).length);
+    console.log("Segments count:", Object.keys(datafileContent.segments).length);
+    console.log("Attributes count:", Object.keys(datafileContent.attributes).length);
+  }
 
   console.log("");
 
