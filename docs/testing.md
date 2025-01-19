@@ -216,6 +216,14 @@ $ npx featurevisor test --onlyFailures
 
 This option has been deprecated, because test runner is now fast by default.
 
+### `schema-version`
+
+If you are using the new schema v2, you can specify it like this:
+
+```
+$ npx featurevisor test --schema-version=2
+```
+
 ## NPM scripts
 
 If you are using npm scripts for testing your Featurevisor project like this:
