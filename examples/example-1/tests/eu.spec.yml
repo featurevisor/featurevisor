@@ -1,9 +1,9 @@
 segment: eu
 assertions:
-  - description: continent is europe, with no country passed should still match
+  - description: continent is europe, with no country passed should not match
     context:
       continent: europe
-    expectedToMatch: true
+    expectedToMatch: false
 
   - description: continent is asia, so not matching early
     context:
@@ -28,12 +28,12 @@ assertions:
       country:
         a: a
         b: b
-    expectedToMatch: true
+    expectedToMatch: false
 
   - context:
       continent: europe
       country: [a, b, c]
-    expectedToMatch: true
+    expectedToMatch: false
 
   - context:
       continent: europe
