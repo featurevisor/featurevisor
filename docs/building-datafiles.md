@@ -78,10 +78,12 @@ If you are an SDK developer in other languages besides JavaScript, you may want 
 
 ## Schema v2
 
-In preparation for the upcoming [major v2.0](https://github.com/featurevisor/featurevisor/issues/326) release, current Featurevisor v1.x CLI can optionally build datafiles in the new schema format. To enable this, you can pass the `--schema-version=2` flag:
+In preparation for the upcoming [major v2.0](https://github.com/featurevisor/featurevisor/issues/326) release, current Featurevisor v1.x CLI can optionally build datafiles in the new schema format.
+
+To enable this, you can pass `--schema-version=2` in CLI:
 
 ```
 $ npx featurevisor build --schema-version=2
 ```
 
-Before generating datafiles in the new schema format, make sure to upgrade to latest Featurevisor SDK in your client application(s) which supports both schema versions.
+Before generating datafiles in the new schema format, make sure to upgrade to latest Featurevisor SDKs in your client application(s) which supports both schema versions.
