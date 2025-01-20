@@ -218,7 +218,7 @@ This option has been deprecated, because test runner is now fast by default.
 
 ### `schema-version`
 
-If you are using the new schema v2, you can specify it like this:
+If you are using the new [schema v2](/docs/building-datafiles/#schema-v2), you can specify it like this:
 
 ```
 $ npx featurevisor test --schema-version=2

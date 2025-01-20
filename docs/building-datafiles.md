@@ -86,4 +86,4 @@ To enable this, you can pass `--schema-version=2` in CLI:
 $ npx featurevisor build --schema-version=2
 ```
 
-Before generating datafiles in the new schema format, make sure to upgrade to latest Featurevisor SDKs in your client application(s) which supports both schema versions.
+Before generating datafiles in the new schema format, make sure to upgrade to latest Featurevisor SDKs in your client application(s) which support both schema versions.
