@@ -23,4 +23,5 @@ test-datafiles:
 
 test:
 	npx featurevisor test
+	npx featurevisor test --schema-version=2
 	make test-datafiles

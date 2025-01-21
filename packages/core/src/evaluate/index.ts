@@ -56,6 +56,8 @@ export interface EvaluateOptions {
   print?: boolean;
   pretty?: boolean;
   verbose?: boolean;
+  schemaVersion?: string;
+  inflate?: number;
 }
 
 export interface Log {
@@ -72,9 +74,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     projectConfig,
     datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment,
+      inflate: options.inflate,
     },
     existingState,
   );

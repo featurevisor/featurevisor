@@ -83,6 +83,8 @@ export interface BenchmarkOptions {
   context: Record<string, unknown>;
   variation?: boolean;
   variable?: string;
+  schemaVersion?: string;
+  inflate?: number;
 }
 
 export async function benchmarkFeature(
@@ -103,14 +105,23 @@ export async function benchmarkFeature(
     projectConfig,
     datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment,
+      inflate: options.inflate,
     },
     existingState,
   );
   const datafileBuildDuration = Date.now() - datafileBuildStart;
   console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
+  console.log(`Datafile size: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`);
+
+  if (options.inflate) {
+    console.log("");
+    console.log("Features count:", Object.keys(datafileContent.features).length);
+    console.log("Segments count:", Object.keys(datafileContent.segments).length);
+    console.log("Attributes count:", Object.keys(datafileContent.attributes).length);
+  }
 
   console.log("");
 
@@ -167,6 +178,8 @@ export const benchmarkPlugin: Plugin = {
         context: parsed.context ? JSON.parse(parsed.context) : {},
         variation: parsed.variation || undefined,
         variable: parsed.variable || undefined,
+        schemaVersion: parsed.schemaVersion || undefined,
+        inflate: parseInt(parsed.inflate, 10) || undefined,
       },
     );
   },

@@ -7,6 +7,7 @@ import { Plugin } from "../cli";
 
 export interface BuildCLIOptions {
   revision?: string;
+  schemaVersion?: string;
 
   // all three together
   environment?: string;
@@ -14,6 +15,7 @@ export interface BuildCLIOptions {
   print?: boolean;
   pretty?: boolean;
   stateFiles?: boolean; // --no-state-files in CLI
+  inflate?: number;
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -36,6 +38,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       projectConfig,
       datasource,
       revision: cliOptions.revision,
+      schemaVersion: cliOptions.schemaVersion,
     });
 
     if (cliOptions.pretty) {
@@ -71,10 +74,11 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         projectConfig,
         datasource,
         {
-          schemaVersion: SCHEMA_VERSION,
+          schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
           revision: nextRevision,
           environment: environment,
           tag: tag,
+          inflate: cliOptions.inflate,
         },
         existingState,
       );

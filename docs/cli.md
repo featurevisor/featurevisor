@@ -200,6 +200,8 @@ $ npx featurevisor benchmark \
   --n=1000
 ```
 
+You can optionally pass `--schema-version=2` if you are using the new schema v2.
+
 ## Configuration
 
 To view the project [configuration](/docs/configuration):
@@ -251,6 +253,8 @@ $ npx featurevisor evaluate \
   --context='{"userId": "123", "country": "nl"}' \
   --verbose
 ```
+
+You can optionally pass `--schema-version=2` if you are using the new schema v2.
 
 ## Assess distribution
 
