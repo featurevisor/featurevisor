@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.29.0](https://github.com/featurevisor/featurevisor/compare/v1.28.0...v1.29.0) (2025-01-22)
+
+
+### Features
+
+* pass custom datafiles directory path from CLI ([#336](https://github.com/featurevisor/featurevisor/issues/336)) ([d30502b](https://github.com/featurevisor/featurevisor/commit/d30502bccfc2267ea82f417fdfd2e4e10217285d))
+
+
+
+
+
 # [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
 
 
