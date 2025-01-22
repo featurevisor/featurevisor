@@ -16,6 +16,7 @@ export interface BuildCLIOptions {
   pretty?: boolean;
   stateFiles?: boolean; // --no-state-files in CLI
   inflate?: number;
+  datafilesDir?: string;
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -87,6 +88,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       await datasource.writeDatafile(datafileContent, {
         environment,
         tag,
+        datafilesDir: cliOptions.datafilesDir,
       });
     }
 
