@@ -23,33 +23,39 @@ As your tags and environments grow, you can keep adding them to your configurati
 
 ### `attributesDirectoryPath`
 
-Path to the directory containing your attributes.
+Path to the directory containing your [attributes](/docs/attributes/).
 
 Defaults to `<rootDir>/attributes`.
 
 ### `segmentsDirectoryPath`
 
-Path to the directory containing your segments.
+Path to the directory containing your [segments](/docs/segments/).
 
 Defaults to `<rootDir>/segments`.
 
 ### `featuresDirectoryPath`
 
-Path to the directory containing your features.
+Path to the directory containing your [features](/docs/features/).
 
 Defaults to `<rootDir>/features`.
 
 ### `groupsDirectoryPath`
 
-Path to the directory containing your groups.
+Path to the directory containing your [groups](/docs/groups/).
 
 Defaults to `<rootDir>/groups`.
 
 ### `testsDirectoryPath`
 
-Path to the directory containing your tests.
+Path to the directory containing your [tests](/docs/testing/).
 
 Defaults to `<rootDir>/tests`.
+
+### `outputDirectoryPath`
+
+Path to the directory for your generated [datafiles](/docs/building-datafiles/).
+
+Defaults to `<rootDir>/dist`.
 
 ### `stateDirectoryPath`
 

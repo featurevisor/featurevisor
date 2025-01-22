@@ -11,6 +11,7 @@ import {
 export interface DatafileOptions {
   environment: EnvironmentKey;
   tag: string;
+  datafilesDir?: string;
 }
 
 export abstract class Adapter {
