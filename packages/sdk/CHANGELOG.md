@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* convert to datafile schema v2 internally ([#337](https://github.com/featurevisor/featurevisor/issues/337)) ([3441369](https://github.com/featurevisor/featurevisor/commit/3441369a2c237fbef2acdf8acd219cda6c4eb923))
+
+
+
+
+
 # [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
 
 
