@@ -43,6 +43,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/core": "^1.29.0"
+    "@featurevisor/core": "1.29.0"
   }
 }
