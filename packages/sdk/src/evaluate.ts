@@ -16,12 +16,13 @@ import {
   VariableSchema,
   StickyFeatures,
   InitialFeatures,
+  Allocation,
 } from "@featurevisor/types";
 
 import { Logger } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { getBucket, ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
-import { getMatchedTraffic, findForceFromFeature } from "./feature";
+import { getMatchedTraffic, getMatchedTrafficAndAllocation, findForceFromFeature } from "./feature";
 import type { Statuses, InterceptContext } from "./instance";
 
 export enum EvaluationReason {
@@ -285,8 +286,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // @TODO: variable
     }
 
-    // required
-    if (feature.required && feature.required.length > 0) {
+    // feature: required
+    if (type === "flag" && feature.required && feature.required.length > 0) {
       const requiredFeaturesAreEnabled = feature.required.every((required) => {
         let requiredKey;
         let requiredVariation;
@@ -363,93 +364,176 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       configureBucketValue,
     });
 
-    const matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, datafileReader, logger);
+    let matchedTraffic: Traffic | undefined;
+    let matchedAllocation: Allocation | undefined;
+
+    if (type === "variation") {
+      // @TODO: check later if variable evaluation need it too
+      const matched = getMatchedTrafficAndAllocation(
+        feature.traffic,
+        finalContext,
+        bucketValue,
+        this.datafileReader,
+        this.logger,
+      );
+
+      matchedTraffic = matched.matchedTraffic;
+      matchedAllocation = matched.matchedAllocation;
+    } else {
+      matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, datafileReader, logger);
+    }
 
     if (matchedTraffic) {
-      // check if mutually exclusive
-      if (feature.ranges && feature.ranges.length > 0) {
-        const matchedRange = feature.ranges.find((range) => {
-          return bucketValue >= range[0] && bucketValue < range[1];
-        });
+      // flag
+      if (type === "flag") {
+        // flag: check if mutually exclusive
+        if (feature.ranges && feature.ranges.length > 0) {
+          const matchedRange = feature.ranges.find((range) => {
+            return bucketValue >= range[0] && bucketValue < range[1];
+          });
 
-        // matched
-        if (matchedRange) {
+          // matched
+          if (matchedRange) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: EvaluationReason.ALLOCATED,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              enabled:
+                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
+            };
+
+            logger.debug("matched", evaluation);
+
+            return evaluation;
+          }
+
+          // no match
           evaluation = {
             featureKey: feature.key,
-            reason: EvaluationReason.ALLOCATED,
+            reason: EvaluationReason.OUT_OF_RANGE,
             bucketKey,
             bucketValue,
-            ruleKey: matchedTraffic.key,
-            traffic: matchedTraffic,
-            enabled: typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
+            enabled: false,
           };
 
-          logger.debug("matched", evaluation);
+          logger.debug("not matched", evaluation);
 
           return evaluation;
         }
 
-        // no match
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.OUT_OF_RANGE,
-          bucketKey,
-          bucketValue,
-          enabled: false,
-        };
+        // flag: override from rule
+        if (typeof matchedTraffic.enabled !== "undefined") {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.OVERRIDE,
+            bucketKey,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+            enabled: matchedTraffic.enabled,
+          };
 
-        logger.debug("not matched", evaluation);
+          logger.debug("override from rule", evaluation);
 
-        return evaluation;
+          return evaluation;
+        }
+
+        // treated as enabled because of matched traffic
+        if (bucketValue <= matchedTraffic.percentage) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.RULE,
+            bucketKey,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+            enabled: true,
+          };
+
+          logger.debug("matched traffic", evaluation);
+
+          return evaluation;
+        }
       }
 
-      // override from rule
-      if (typeof matchedTraffic.enabled !== "undefined") {
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.OVERRIDE,
-          bucketKey,
-          bucketValue,
-          ruleKey: matchedTraffic.key,
-          traffic: matchedTraffic,
-          enabled: matchedTraffic.enabled,
-        };
+      // variation
+      if (type === "variation" && feature.variations) {
+        // override from rule
+        if (matchedTraffic.variation) {
+          const variation = feature.variations.find((v) => v.value === matchedTraffic.variation);
 
-        logger.debug("override from rule", evaluation);
+          if (variation) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: EvaluationReason.RULE,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              variation,
+            };
 
-        return evaluation;
+            logger.debug("override from rule", evaluation);
+
+            return evaluation;
+          }
+        }
+
+        // regular allocation
+        if (matchedAllocation && matchedAllocation.variation) {
+          const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
+
+          if (variation) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: EvaluationReason.ALLOCATED,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              variation,
+            };
+
+            logger.debug("allocated variation", evaluation);
+
+            return evaluation;
+          }
+        }
       }
 
-      // treated as enabled because of matched traffic
-      if (bucketValue <= matchedTraffic.percentage) {
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.RULE,
-          bucketKey,
-          bucketValue,
-          ruleKey: matchedTraffic.key,
-          traffic: matchedTraffic,
-          enabled: true,
-        };
-
-        logger.debug("matched traffic", evaluation);
-
-        return evaluation;
-      }
+      // @TODO: variable
     }
 
     // nothing matched
-    evaluation = {
-      featureKey: feature.key,
-      reason: EvaluationReason.NO_MATCH,
-      bucketKey,
-      bucketValue,
-      enabled: false,
-    };
+    if (type === "flag") {
+      evaluation = {
+        featureKey: feature.key,
+        reason: EvaluationReason.NO_MATCH,
+        bucketKey,
+        bucketValue,
+        enabled: false,
+      };
 
-    logger.debug("nothing matched", evaluation);
+      logger.debug("nothing matched", evaluation);
 
-    return evaluation;
+      return evaluation;
+    }
+
+    if (type === "variation") {
+      evaluation = {
+        featureKey: feature.key,
+        reason: EvaluationReason.NO_MATCH,
+        bucketKey,
+        bucketValue,
+      };
+
+      logger.debug("no matched variation", evaluation);
+
+      return evaluation;
+    }
   } catch (e) {
     evaluation = {
       featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
