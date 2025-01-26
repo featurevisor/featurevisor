@@ -33,6 +33,7 @@ import {
 } from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
+import { Evaluation, EvaluationReason } from "./evaluate";
 
 export type ReadyCallback = () => void;
 
@@ -83,51 +84,6 @@ const emptyDatafile: DatafileContent = {
 };
 
 export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileContent>;
-
-export enum EvaluationReason {
-  NOT_FOUND = "not_found",
-  NO_VARIATIONS = "no_variations",
-  NO_MATCH = "no_match",
-  DISABLED = "disabled",
-  REQUIRED = "required",
-  OUT_OF_RANGE = "out_of_range",
-  FORCED = "forced",
-  INITIAL = "initial",
-  STICKY = "sticky",
-  RULE = "rule",
-  ALLOCATED = "allocated",
-  DEFAULTED = "defaulted",
-  OVERRIDE = "override",
-  ERROR = "error",
-}
-
-export interface Evaluation {
-  // required
-  featureKey: FeatureKey;
-  reason: EvaluationReason;
-
-  // common
-  bucketKey?: BucketKey;
-  bucketValue?: BucketValue;
-  ruleKey?: RuleKey;
-  error?: Error;
-  enabled?: boolean;
-  traffic?: Traffic;
-  forceIndex?: number;
-  force?: Force;
-  required?: Required[];
-  sticky?: OverrideFeature;
-  initial?: OverrideFeature;
-
-  // variation
-  variation?: Variation;
-  variationValue?: VariationValue;
-
-  // variable
-  variableKey?: VariableKey;
-  variableValue?: VariableValue;
-  variableSchema?: VariableSchema;
-}
 
 function fetchDatafileContent(
   datafileUrl,
