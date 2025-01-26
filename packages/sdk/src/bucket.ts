@@ -21,7 +21,11 @@ export function getBucketedNumber(bucketKey: string): number {
 /**
  * Feature specific bucketing
  */
-type ConfigureBucketKey = (feature: Feature, context: Context, bucketKey: BucketKey) => BucketKey;
+export type ConfigureBucketKey = (
+  feature: Feature,
+  context: Context,
+  bucketKey: BucketKey,
+) => BucketKey;
 
 export interface BucketKeyOptions {
   feature: Feature;
