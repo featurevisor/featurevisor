@@ -177,23 +177,37 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     }
 
     // initial
-    if (
-      statuses &&
-      !statuses.ready &&
-      initialFeatures &&
-      initialFeatures[key] &&
-      typeof initialFeatures[key].enabled !== "undefined"
-    ) {
-      evaluation = {
-        featureKey: key,
-        reason: EvaluationReason.INITIAL,
-        initial: initialFeatures[key],
-        enabled: initialFeatures[key].enabled,
-      };
+    if (statuses && !statuses.ready && initialFeatures && initialFeatures[key]) {
+      // flag
+      if (type === "flag" && typeof initialFeatures[key].enabled !== "undefined") {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.INITIAL,
+          initial: initialFeatures[key],
+          enabled: initialFeatures[key].enabled,
+        };
 
-      logger.debug("using initial enabled", evaluation);
+        logger.debug("using initial enabled", evaluation);
 
-      return evaluation;
+        return evaluation;
+      }
+
+      // variation
+      if (type === "variation" && typeof this.initialFeatures[key].variation !== "undefined") {
+        const variationValue = initialFeatures[key].variation;
+
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.INITIAL,
+          variationValue,
+        };
+
+        logger.debug("using initial variation", evaluation);
+
+        return evaluation;
+      }
+
+      // @TODO: variable
     }
 
     const feature =
