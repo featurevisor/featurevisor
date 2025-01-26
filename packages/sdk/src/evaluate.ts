@@ -213,11 +213,11 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     const feature =
       typeof featureKey === "string" ? datafileReader.getFeature(featureKey) : featureKey;
 
-    // not found
+    // feature: not found
     if (!feature) {
       evaluation = {
         featureKey: key,
-        reason: EvaluationReason.NOT_FOUND,
+        reason: EvaluationReason.NOT_FOUND, // @TODO: make it type-specific
       };
 
       logger.warn("feature not found", evaluation);
@@ -225,9 +225,21 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    // deprecated
-    if (feature.deprecated) {
+    // feature: deprecated
+    if (type === "flag" && feature.deprecated) {
       logger.warn("feature is deprecated", { featureKey: feature.key });
+    }
+
+    // variation: no variations
+    if (type === "variation" && (!feature.variations || feature.variations.length === 0)) {
+      evaluation = {
+        featureKey: key,
+        reason: EvaluationReason.NO_VARIATIONS,
+      };
+
+      this.logger.warn("no variations", evaluation);
+
+      return evaluation;
     }
 
     const finalContext = interceptContext ? interceptContext(context) : context;
