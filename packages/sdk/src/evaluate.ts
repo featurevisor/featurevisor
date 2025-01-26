@@ -94,6 +94,7 @@ export interface EvaluateOptions {
 export function evaluate(options: EvaluateOptions): Evaluation {
   let evaluation: Evaluation;
   const {
+    type,
     featureKey,
     context,
     logger,
@@ -110,22 +111,69 @@ export function evaluate(options: EvaluateOptions): Evaluation {
   try {
     const key = typeof featureKey === "string" ? featureKey : featureKey.key;
 
-    // sticky
-    if (
-      stickyFeatures &&
-      stickyFeatures[key] &&
-      typeof stickyFeatures[key].enabled !== "undefined"
-    ) {
-      evaluation = {
+    let flag: Evaluation;
+    if (type !== "flag") {
+      // needed by variation and variable evaluations
+      flag = evaluate({
+        type: "flag",
         featureKey: key,
-        reason: EvaluationReason.STICKY,
-        sticky: stickyFeatures[key],
-        enabled: stickyFeatures[key].enabled,
-      };
+        context,
+        logger,
+        datafileReader,
+        statuses,
+        stickyFeatures,
+        initialFeatures,
+        bucketKeySeparator,
+        configureBucketKey,
+        configureBucketValue,
+      });
 
-      logger.debug("using sticky enabled", evaluation);
+      if (flag.enabled === false) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.DISABLED,
+        };
 
-      return evaluation;
+        logger.debug("feature is disabled", evaluation);
+
+        return evaluation;
+      }
+    }
+
+    // sticky
+    if (stickyFeatures && stickyFeatures[key]) {
+      // flag
+      if (type === "flag" && typeof stickyFeatures[key].enabled !== "undefined") {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.STICKY,
+          sticky: stickyFeatures[key],
+          enabled: stickyFeatures[key].enabled,
+        };
+
+        logger.debug("using sticky enabled", evaluation);
+
+        return evaluation;
+      }
+
+      // variation
+      if (type === "variation") {
+        const variationValue = stickyFeatures[key].variation;
+
+        if (typeof variationValue !== "undefined") {
+          evaluation = {
+            featureKey: key,
+            reason: EvaluationReason.STICKY,
+            variationValue,
+          };
+
+          logger.debug("using sticky variation", evaluation);
+
+          return evaluation;
+        }
+      }
+
+      // @TODO: variable
     }
 
     // initial
