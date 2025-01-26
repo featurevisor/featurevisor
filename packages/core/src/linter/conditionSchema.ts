@@ -114,7 +114,45 @@ export function getConditionsZodSchema(
   const andOrNotConditionZodSchema = z.union([
     z
       .object({
-        and: z.array(z.lazy(() => conditionZodSchema)),
+        and: z.array(z.lazy(() => conditionZodSchema)).refine(
+          (conditions) => {
+            const attributeOperatorPairs = conditions
+              .map((c) => {
+                if ("attribute" in c) {
+                  return { attr: c.attribute, op: c.operator };
+                }
+                return null;
+              })
+              .filter((p): p is { attr: string; op: string } => p !== null);
+
+            const pairStrings = attributeOperatorPairs.map((p) => `${p.attr}-${p.op}`);
+            return pairStrings.length === new Set(pairStrings).size;
+          },
+          (conditions) => {
+            const pairs = conditions
+              .map((c) => {
+                if ("attribute" in c) {
+                  return { attr: c.attribute, op: c.operator };
+                }
+                return null;
+              })
+              .filter((p): p is { attr: string; op: string } => p !== null);
+
+            const pairStrings = pairs.map((p) => `${p.attr}-${p.op}`);
+            const duplicates = pairStrings.filter(
+              (pair, index) => pairStrings.indexOf(pair) !== index,
+            );
+
+            const duplicateDesc = duplicates.map((d) => {
+              const [attr, op] = d.split("-");
+              return `${attr} with ${op}`;
+            });
+
+            return {
+              message: `Duplicate attribute-operator pairs found in 'and' condition: ${duplicateDesc.join(", ")}`,
+            };
+          },
+        ),
       })
       .strict(),
     z
@@ -124,7 +162,31 @@ export function getConditionsZodSchema(
       .strict(),
     z
       .object({
-        not: z.array(z.lazy(() => conditionZodSchema)),
+        not: z.array(z.lazy(() => conditionZodSchema)).refine(
+          (conditions) => {
+            const attributes = conditions
+              .map((c) => {
+                if ("attribute" in c) {
+                  return c.attribute;
+                }
+                return null;
+              })
+              .filter(Boolean);
+
+            return attributes.length === new Set(attributes).size;
+          },
+          (conditions) => {
+            const attributes = conditions
+              .map((c) => ("attribute" in c ? c.attribute : null))
+              .filter(Boolean);
+            const duplicates = attributes.filter(
+              (attr, index) => attributes.indexOf(attr) !== index,
+            );
+            return {
+              message: `Duplicate attributes found in 'not' condition: ${duplicates.join(", ")}`,
+            };
+          },
+        ),
       })
       .strict(),
   ]);
