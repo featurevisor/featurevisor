@@ -247,18 +247,42 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     // forced
     const { force, forceIndex } = findForceFromFeature(feature, context, datafileReader, logger);
 
-    if (force && typeof force.enabled !== "undefined") {
-      evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.FORCED,
-        forceIndex,
-        force,
-        enabled: force.enabled,
-      };
+    if (force) {
+      // flag
+      if (type === "flag" && typeof force.enabled !== "undefined") {
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
+          enabled: force.enabled,
+        };
 
-      logger.debug("forced enabled found", evaluation);
+        logger.debug("forced enabled found", evaluation);
 
-      return evaluation;
+        return evaluation;
+      }
+
+      // variation
+      if (type === "variation" && force.variation && feature.variations) {
+        const variation = feature.variations.find((v) => v.value === force.variation);
+
+        if (variation) {
+          evaluation = {
+            featureKey: feature.key,
+            reason: EvaluationReason.FORCED,
+            forceIndex,
+            force,
+            variation,
+          };
+
+          logger.debug("forced variation found", evaluation);
+
+          return evaluation;
+        }
+      }
+
+      // @TODO: variable
     }
 
     // required
