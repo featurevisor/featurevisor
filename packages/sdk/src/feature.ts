@@ -33,7 +33,7 @@ export function getMatchedTraffic(
   datafileReader: DatafileReader,
   logger: Logger,
 ): Traffic | undefined {
-  return traffic.find((t) => {
+  const matchedTraffic = traffic.find((t) => {
     if (
       !allGroupSegmentsAreMatched(
         parseFromStringifiedSegments(t.segments),
@@ -47,6 +47,12 @@ export function getMatchedTraffic(
 
     return true;
   });
+
+  if (matchedTraffic && matchedTraffic.percentage > 0) {
+    return matchedTraffic;
+  }
+
+  return;
 }
 
 export interface MatchedTrafficAndAllocation {
