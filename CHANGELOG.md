@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+
+### Bug Fixes
+
+* matched rules with percentage of 0 should be disabled ([#340](https://github.com/featurevisor/featurevisor/issues/340)) ([07f1682](https://github.com/featurevisor/featurevisor/commit/07f1682b98c67ac00b6edb91bda90fd77791458b))
+
+
+
+
+
 ## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
 
 **Note:** Version bump only for package featurevisor
