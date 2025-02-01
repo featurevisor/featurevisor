@@ -508,20 +508,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     }
 
     // nothing matched
-    if (type === "flag") {
-      evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.NO_MATCH,
-        bucketKey,
-        bucketValue,
-        enabled: false,
-      };
-
-      logger.debug("nothing matched", evaluation);
-
-      return evaluation;
-    }
-
     if (type === "variation") {
       evaluation = {
         featureKey: feature.key,
@@ -534,6 +520,18 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       return evaluation;
     }
+
+    evaluation = {
+      featureKey: feature.key,
+      reason: EvaluationReason.NO_MATCH,
+      bucketKey,
+      bucketValue,
+      enabled: false,
+    };
+
+    logger.debug("nothing matched", evaluation);
+
+    return evaluation;
   } catch (e) {
     evaluation = {
       featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
