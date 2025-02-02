@@ -22,7 +22,14 @@ import {
 import { Logger } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { getBucket, ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
-import { getMatchedTraffic, getMatchedTrafficAndAllocation, findForceFromFeature } from "./feature";
+import {
+  getMatchedTraffic,
+  getMatchedTrafficAndAllocation,
+  findForceFromFeature,
+  parseFromStringifiedSegments,
+} from "./feature";
+import { allConditionsAreMatched } from "./conditions";
+import { allGroupSegmentsAreMatched } from "./segments";
 import type { Statuses, InterceptContext } from "./instance";
 
 export enum EvaluationReason {
@@ -77,6 +84,7 @@ export interface EvaluateOptions {
   type: EvaluationType;
 
   featureKey: FeatureKey | Feature;
+  variableKey?: VariableKey;
   context: Context;
 
   logger: Logger;
@@ -111,6 +119,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
   try {
     const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+    const variableKey = options.variableKey;
 
     /**
      * Root flag evaluation
@@ -179,7 +188,27 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         }
       }
 
-      // @TODO: variable
+      // variable
+      if (variableKey) {
+        const variables = stickyFeatures[key].variables;
+
+        if (variables) {
+          const result = variables[variableKey];
+
+          if (typeof result !== "undefined") {
+            evaluation = {
+              featureKey: key,
+              reason: EvaluationReason.STICKY,
+              variableKey,
+              variableValue: result,
+            };
+
+            logger.debug("using sticky variable", evaluation);
+
+            return evaluation;
+          }
+        }
+      }
     }
 
     /**
@@ -201,7 +230,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       }
 
       // variation
-      if (type === "variation" && typeof this.initialFeatures[key].variation !== "undefined") {
+      if (type === "variation" && typeof initialFeatures[key].variation !== "undefined") {
         const variationValue = initialFeatures[key].variation;
 
         evaluation = {
@@ -215,7 +244,25 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         return evaluation;
       }
 
-      // @TODO: variable
+      // variable
+      if (variableKey) {
+        const variables = initialFeatures[key].variables;
+
+        if (variables) {
+          if (typeof variables[variableKey] !== "undefined") {
+            evaluation = {
+              featureKey: key,
+              reason: EvaluationReason.INITIAL,
+              variableKey,
+              variableValue: variables[variableKey],
+            };
+
+            logger.debug("using initial variable", evaluation);
+
+            return evaluation;
+          }
+        }
+      }
     }
 
     /**
@@ -241,6 +288,28 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       logger.warn("feature is deprecated", { featureKey: feature.key });
     }
 
+    // variableSchema
+    let variableSchema: VariableSchema | undefined;
+
+    if (variableKey) {
+      variableSchema = Array.isArray(feature.variablesSchema)
+        ? feature.variablesSchema.find((v) => v.key === variableKey)
+        : undefined;
+
+      // variable schema not found
+      if (!variableSchema) {
+        evaluation = {
+          featureKey: key,
+          reason: EvaluationReason.NOT_FOUND,
+          variableKey,
+        };
+
+        logger.warn("variable schema not found", evaluation);
+
+        return evaluation;
+      }
+    }
+
     // variation: no variations
     if (type === "variation" && (!feature.variations || feature.variations.length === 0)) {
       evaluation = {
@@ -248,7 +317,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         reason: EvaluationReason.NO_VARIATIONS,
       };
 
-      this.logger.warn("no variations", evaluation);
+      logger.warn("no variations", evaluation);
 
       return evaluation;
     }
@@ -295,7 +364,22 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         }
       }
 
-      // @TODO: variable
+      // variable
+      if (variableKey && force.variables && typeof force.variables[variableKey] !== "undefined") {
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.FORCED,
+          forceIndex,
+          force,
+          variableKey,
+          variableSchema,
+          variableValue: force.variables[variableKey],
+        };
+
+        logger.debug("forced variable", evaluation);
+
+        return evaluation;
+      }
     }
 
     /**
@@ -383,14 +467,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     let matchedTraffic: Traffic | undefined;
     let matchedAllocation: Allocation | undefined;
 
-    if (type === "variation") {
-      // @TODO: check later if variable evaluation need it too
+    if (type !== "flag") {
       const matched = getMatchedTrafficAndAllocation(
         feature.traffic,
         finalContext,
         bucketValue,
-        this.datafileReader,
-        this.logger,
+        datafileReader,
+        logger,
       );
 
       matchedTraffic = matched.matchedTraffic;
@@ -520,7 +603,125 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         }
       }
 
-      // @TODO: variable
+      // variable
+      if (variableKey) {
+        if (matchedTraffic) {
+          // override from rule
+          if (
+            matchedTraffic.variables &&
+            typeof matchedTraffic.variables[variableKey] !== "undefined"
+          ) {
+            evaluation = {
+              featureKey: feature.key,
+              reason: EvaluationReason.RULE,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic.key,
+              traffic: matchedTraffic,
+              variableKey,
+              variableSchema,
+              variableValue: matchedTraffic.variables[variableKey],
+            };
+
+            logger.debug("override from rule", evaluation);
+
+            return evaluation;
+          }
+
+          // regular allocation
+          let variationValue;
+
+          if (force && force.variation) {
+            variationValue = force.variation;
+          } else if (matchedAllocation && matchedAllocation.variation) {
+            variationValue = matchedAllocation.variation;
+          }
+
+          if (variationValue && Array.isArray(feature.variations)) {
+            const variation = feature.variations.find((v) => v.value === variationValue);
+
+            if (variation && variation.variables) {
+              const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
+
+              if (variableFromVariation) {
+                if (variableFromVariation.overrides) {
+                  const override = variableFromVariation.overrides.find((o) => {
+                    if (o.conditions) {
+                      return allConditionsAreMatched(
+                        typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
+                        finalContext,
+                        logger,
+                      );
+                    }
+
+                    if (o.segments) {
+                      return allGroupSegmentsAreMatched(
+                        parseFromStringifiedSegments(o.segments),
+                        finalContext,
+                        datafileReader,
+                        logger,
+                      );
+                    }
+
+                    return false;
+                  });
+
+                  if (override) {
+                    evaluation = {
+                      featureKey: feature.key,
+                      reason: EvaluationReason.OVERRIDE,
+                      bucketKey,
+                      bucketValue,
+                      ruleKey: matchedTraffic.key,
+                      traffic: matchedTraffic,
+                      variableKey,
+                      variableSchema,
+                      variableValue: override.value,
+                    };
+
+                    logger.debug("variable override", evaluation);
+
+                    return evaluation;
+                  }
+                }
+
+                if (typeof variableFromVariation.value !== "undefined") {
+                  evaluation = {
+                    featureKey: feature.key,
+                    reason: EvaluationReason.ALLOCATED,
+                    bucketKey,
+                    bucketValue,
+                    ruleKey: matchedTraffic.key,
+                    traffic: matchedTraffic,
+                    variableKey,
+                    variableSchema,
+                    variableValue: variableFromVariation.value,
+                  };
+
+                  logger.debug("allocated variable", evaluation);
+
+                  return evaluation;
+                }
+              }
+            }
+          }
+        }
+
+        // fall back to default
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.DEFAULTED,
+          bucketKey,
+          bucketValue,
+          variableKey,
+          variableSchema,
+          variableValue: variableSchema?.defaultValue,
+        };
+
+        logger.debug("using default value", evaluation);
+
+        return evaluation;
+      }
     }
 
     /**
