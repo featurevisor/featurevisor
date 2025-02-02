@@ -699,7 +699,7 @@ describe("sdk: instance", function () {
       },
     });
 
-    // expect(sdk.isEnabled("myKey")).toEqual(false);
+    expect(sdk.isEnabled("myKey")).toEqual(false);
 
     // child should be enabled because required has desired variation
     const sdk2 = createInstance({
