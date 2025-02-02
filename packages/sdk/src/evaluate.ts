@@ -430,7 +430,14 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             configureBucketKey,
             configureBucketValue,
           });
-          const requiredVariationValue = requiredVariationEvaluation.variationValue;
+
+          let requiredVariationValue;
+
+          if (requiredVariationEvaluation.variationValue) {
+            requiredVariationValue = requiredVariationEvaluation.variationValue;
+          } else if (requiredVariationEvaluation.variation) {
+            requiredVariationValue = requiredVariationEvaluation.variation.value;
+          }
 
           return requiredVariationValue === requiredVariation;
         }
