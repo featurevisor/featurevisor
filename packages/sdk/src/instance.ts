@@ -7,33 +7,18 @@ import {
   Feature,
   FeatureKey,
   InitialFeatures,
-  OverrideFeature,
   StickyFeatures,
-  Traffic,
   VariableType,
   VariableValue,
   VariationValue,
-  Variation,
-  RuleKey,
   VariableKey,
-  VariableSchema,
-  Force,
-  Required,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
-import { getBucketedNumber } from "./bucket";
-import {
-  findForceFromFeature,
-  getMatchedTraffic,
-  getMatchedTrafficAndAllocation,
-  parseFromStringifiedSegments,
-} from "./feature";
-import { allConditionsAreMatched } from "./conditions";
-import { allGroupSegmentsAreMatched } from "./segments";
-import { Evaluation, EvaluationReason } from "./evaluate";
+import { getBucketedNumber, ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
+import { Evaluation, evaluate } from "./evaluate";
 
 export type ReadyCallback = () => void;
 
@@ -43,10 +28,6 @@ export type ActivationCallback = (
   context: Context,
   captureContext: Context,
 ) => void;
-
-export type ConfigureBucketKey = (feature, context, bucketKey: BucketKey) => BucketKey;
-
-export type ConfigureBucketValue = (feature, context, bucketValue: BucketValue) => BucketValue;
 
 export interface Statuses {
   ready: boolean;
@@ -430,241 +411,24 @@ export class FeaturevisorInstance {
    * Flag
    */
   evaluateFlag(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
-    let evaluation: Evaluation;
+    return evaluate({
+      type: "flag",
 
-    try {
-      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+      featureKey,
+      context,
 
-      // sticky
-      if (
-        this.stickyFeatures &&
-        this.stickyFeatures[key] &&
-        typeof this.stickyFeatures[key].enabled !== "undefined"
-      ) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.STICKY,
-          sticky: this.stickyFeatures[key],
-          enabled: this.stickyFeatures[key].enabled,
-        };
+      logger: this.logger,
+      datafileReader: this.datafileReader,
+      statuses: this.statuses,
+      interceptContext: this.interceptContext,
 
-        this.logger.debug("using sticky enabled", evaluation);
+      stickyFeatures: this.stickyFeatures,
+      initialFeatures: this.initialFeatures,
 
-        return evaluation;
-      }
-
-      // initial
-      if (
-        this.statuses &&
-        !this.statuses.ready &&
-        this.initialFeatures &&
-        this.initialFeatures[key] &&
-        typeof this.initialFeatures[key].enabled !== "undefined"
-      ) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          initial: this.initialFeatures[key],
-          enabled: this.initialFeatures[key].enabled,
-        };
-
-        this.logger.debug("using initial enabled", evaluation);
-
-        return evaluation;
-      }
-
-      const feature = this.getFeature(featureKey);
-
-      // not found
-      if (!feature) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NOT_FOUND,
-        };
-
-        this.logger.warn("feature not found", evaluation);
-
-        return evaluation;
-      }
-
-      // deprecated
-      if (feature.deprecated) {
-        this.logger.warn("feature is deprecated", { featureKey: feature.key });
-      }
-
-      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
-
-      // forced
-      const { force, forceIndex } = findForceFromFeature(
-        feature,
-        context,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (force && typeof force.enabled !== "undefined") {
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.FORCED,
-          forceIndex,
-          force,
-          enabled: force.enabled,
-        };
-
-        this.logger.debug("forced enabled found", evaluation);
-
-        return evaluation;
-      }
-
-      // required
-      if (feature.required && feature.required.length > 0) {
-        const requiredFeaturesAreEnabled = feature.required.every((required) => {
-          let requiredKey;
-          let requiredVariation;
-
-          if (typeof required === "string") {
-            requiredKey = required;
-          } else {
-            requiredKey = required.key;
-            requiredVariation = required.variation;
-          }
-
-          const requiredIsEnabled = this.isEnabled(requiredKey, finalContext);
-
-          if (!requiredIsEnabled) {
-            return false;
-          }
-
-          if (typeof requiredVariation !== "undefined") {
-            const requiredVariationValue = this.getVariation(requiredKey, finalContext);
-
-            return requiredVariationValue === requiredVariation;
-          }
-
-          return true;
-        });
-
-        if (!requiredFeaturesAreEnabled) {
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.REQUIRED,
-            required: feature.required,
-            enabled: requiredFeaturesAreEnabled,
-          };
-
-          this.logger.debug("required features not enabled", evaluation);
-
-          return evaluation;
-        }
-      }
-
-      // bucketing
-      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
-
-      const matchedTraffic = getMatchedTraffic(
-        feature.traffic,
-        finalContext,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (matchedTraffic) {
-        // check if mutually exclusive
-        if (feature.ranges && feature.ranges.length > 0) {
-          const matchedRange = feature.ranges.find((range) => {
-            return bucketValue >= range[0] && bucketValue < range[1];
-          });
-
-          // matched
-          if (matchedRange) {
-            evaluation = {
-              featureKey: feature.key,
-              reason: EvaluationReason.ALLOCATED,
-              bucketKey,
-              bucketValue,
-              ruleKey: matchedTraffic.key,
-              traffic: matchedTraffic,
-              enabled:
-                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
-            };
-
-            this.logger.debug("matched", evaluation);
-
-            return evaluation;
-          }
-
-          // no match
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.OUT_OF_RANGE,
-            bucketKey,
-            bucketValue,
-            enabled: false,
-          };
-
-          this.logger.debug("not matched", evaluation);
-
-          return evaluation;
-        }
-
-        // override from rule
-        if (typeof matchedTraffic.enabled !== "undefined") {
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.OVERRIDE,
-            bucketKey,
-            bucketValue,
-            ruleKey: matchedTraffic.key,
-            traffic: matchedTraffic,
-            enabled: matchedTraffic.enabled,
-          };
-
-          this.logger.debug("override from rule", evaluation);
-
-          return evaluation;
-        }
-
-        // treated as enabled because of matched traffic
-        if (bucketValue <= matchedTraffic.percentage) {
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.RULE,
-            bucketKey,
-            bucketValue,
-            ruleKey: matchedTraffic.key,
-            traffic: matchedTraffic,
-            enabled: true,
-          };
-
-          this.logger.debug("matched traffic", evaluation);
-
-          return evaluation;
-        }
-      }
-
-      // nothing matched
-      evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.NO_MATCH,
-        bucketKey,
-        bucketValue,
-        enabled: false,
-      };
-
-      this.logger.debug("nothing matched", evaluation);
-
-      return evaluation;
-    } catch (e) {
-      evaluation = {
-        featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
-        reason: EvaluationReason.ERROR,
-        error: e,
-      };
-
-      this.logger.error("error", evaluation);
-
-      return evaluation;
-    }
+      bucketKeySeparator: this.bucketKeySeparator,
+      configureBucketKey: this.configureBucketKey,
+      configureBucketValue: this.configureBucketValue,
+    });
   }
 
   isEnabled(featureKey: FeatureKey | Feature, context: Context = {}): boolean {
@@ -683,193 +447,24 @@ export class FeaturevisorInstance {
    * Variation
    */
   evaluateVariation(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
-    let evaluation: Evaluation;
+    return evaluate({
+      type: "variation",
 
-    try {
-      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+      featureKey,
+      context,
 
-      const flag = this.evaluateFlag(featureKey, context);
+      logger: this.logger,
+      datafileReader: this.datafileReader,
+      statuses: this.statuses,
+      interceptContext: this.interceptContext,
 
-      if (flag.enabled === false) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.DISABLED,
-        };
+      stickyFeatures: this.stickyFeatures,
+      initialFeatures: this.initialFeatures,
 
-        this.logger.debug("feature is disabled", evaluation);
-
-        return evaluation;
-      }
-
-      // sticky
-      if (this.stickyFeatures && this.stickyFeatures[key]) {
-        const variationValue = this.stickyFeatures[key].variation;
-
-        if (typeof variationValue !== "undefined") {
-          evaluation = {
-            featureKey: key,
-            reason: EvaluationReason.STICKY,
-            variationValue,
-          };
-
-          this.logger.debug("using sticky variation", evaluation);
-
-          return evaluation;
-        }
-      }
-
-      // initial
-      if (
-        this.statuses &&
-        !this.statuses.ready &&
-        this.initialFeatures &&
-        this.initialFeatures[key] &&
-        typeof this.initialFeatures[key].variation !== "undefined"
-      ) {
-        const variationValue = this.initialFeatures[key].variation;
-
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          variationValue,
-        };
-
-        this.logger.debug("using initial variation", evaluation);
-
-        return evaluation;
-      }
-
-      const feature = this.getFeature(featureKey);
-
-      // not found
-      if (!feature) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NOT_FOUND,
-        };
-
-        this.logger.warn("feature not found", evaluation);
-
-        return evaluation;
-      }
-
-      // no variations
-      if (!feature.variations || feature.variations.length === 0) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NO_VARIATIONS,
-        };
-
-        this.logger.warn("no variations", evaluation);
-
-        return evaluation;
-      }
-
-      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
-
-      // forced
-      const { force, forceIndex } = findForceFromFeature(
-        feature,
-        context,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (force && force.variation) {
-        const variation = feature.variations.find((v) => v.value === force.variation);
-
-        if (variation) {
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.FORCED,
-            forceIndex,
-            force,
-            variation,
-          };
-
-          this.logger.debug("forced variation found", evaluation);
-
-          return evaluation;
-        }
-      }
-
-      // bucketing
-      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
-
-      const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
-        feature.traffic,
-        finalContext,
-        bucketValue,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (matchedTraffic) {
-        // override from rule
-        if (matchedTraffic.variation) {
-          const variation = feature.variations.find((v) => v.value === matchedTraffic.variation);
-
-          if (variation) {
-            evaluation = {
-              featureKey: feature.key,
-              reason: EvaluationReason.RULE,
-              bucketKey,
-              bucketValue,
-              ruleKey: matchedTraffic.key,
-              traffic: matchedTraffic,
-              variation,
-            };
-
-            this.logger.debug("override from rule", evaluation);
-
-            return evaluation;
-          }
-        }
-
-        // regular allocation
-        if (matchedAllocation && matchedAllocation.variation) {
-          const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
-
-          if (variation) {
-            evaluation = {
-              featureKey: feature.key,
-              reason: EvaluationReason.ALLOCATED,
-              bucketKey,
-              bucketValue,
-              ruleKey: matchedTraffic.key,
-              traffic: matchedTraffic,
-              variation,
-            };
-
-            this.logger.debug("allocated variation", evaluation);
-
-            return evaluation;
-          }
-        }
-      }
-
-      // nothing matched
-      evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.NO_MATCH,
-        bucketKey,
-        bucketValue,
-      };
-
-      this.logger.debug("no matched variation", evaluation);
-
-      return evaluation;
-    } catch (e) {
-      evaluation = {
-        featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
-        reason: EvaluationReason.ERROR,
-        error: e,
-      };
-
-      this.logger.error("error", evaluation);
-
-      return evaluation;
-    }
+      bucketKeySeparator: this.bucketKeySeparator,
+      configureBucketKey: this.configureBucketKey,
+      configureBucketValue: this.configureBucketValue,
+    });
   }
 
   getVariation(
@@ -948,268 +543,25 @@ export class FeaturevisorInstance {
     variableKey: VariableKey,
     context: Context = {},
   ): Evaluation {
-    let evaluation: Evaluation;
+    return evaluate({
+      type: "variable",
 
-    try {
-      const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+      featureKey,
+      variableKey,
+      context,
 
-      const flag = this.evaluateFlag(featureKey, context);
+      logger: this.logger,
+      datafileReader: this.datafileReader,
+      statuses: this.statuses,
+      interceptContext: this.interceptContext,
 
-      if (flag.enabled === false) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.DISABLED,
-        };
+      stickyFeatures: this.stickyFeatures,
+      initialFeatures: this.initialFeatures,
 
-        this.logger.debug("feature is disabled", evaluation);
-
-        return evaluation;
-      }
-
-      // sticky
-      if (this.stickyFeatures && this.stickyFeatures[key]) {
-        const variables = this.stickyFeatures[key].variables;
-
-        if (variables) {
-          const result = variables[variableKey];
-
-          if (typeof result !== "undefined") {
-            evaluation = {
-              featureKey: key,
-              reason: EvaluationReason.STICKY,
-              variableKey,
-              variableValue: result,
-            };
-
-            this.logger.debug("using sticky variable", evaluation);
-
-            return evaluation;
-          }
-        }
-      }
-
-      // initial
-      if (
-        this.statuses &&
-        !this.statuses.ready &&
-        this.initialFeatures &&
-        this.initialFeatures[key]
-      ) {
-        const variables = this.initialFeatures[key].variables;
-
-        if (variables) {
-          if (typeof variables[variableKey] !== "undefined") {
-            evaluation = {
-              featureKey: key,
-              reason: EvaluationReason.INITIAL,
-              variableKey,
-              variableValue: variables[variableKey],
-            };
-
-            this.logger.debug("using initial variable", evaluation);
-
-            return evaluation;
-          }
-        }
-      }
-
-      const feature = this.getFeature(featureKey);
-
-      // not found
-      if (!feature) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NOT_FOUND,
-          variableKey,
-        };
-
-        this.logger.warn("feature not found in datafile", evaluation);
-
-        return evaluation;
-      }
-
-      const variableSchema = Array.isArray(feature.variablesSchema)
-        ? feature.variablesSchema.find((v) => v.key === variableKey)
-        : undefined;
-
-      // variable schema not found
-      if (!variableSchema) {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NOT_FOUND,
-          variableKey,
-        };
-
-        this.logger.warn("variable schema not found", evaluation);
-
-        return evaluation;
-      }
-
-      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
-
-      // forced
-      const { force, forceIndex } = findForceFromFeature(
-        feature,
-        context,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (force && force.variables && typeof force.variables[variableKey] !== "undefined") {
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.FORCED,
-          forceIndex,
-          force,
-          variableKey,
-          variableSchema,
-          variableValue: force.variables[variableKey],
-        };
-
-        this.logger.debug("forced variable", evaluation);
-
-        return evaluation;
-      }
-
-      // bucketing
-      const { bucketKey, bucketValue } = this.getBucketValue(feature, finalContext);
-
-      const { matchedTraffic, matchedAllocation } = getMatchedTrafficAndAllocation(
-        feature.traffic,
-        finalContext,
-        bucketValue,
-        this.datafileReader,
-        this.logger,
-      );
-
-      if (matchedTraffic) {
-        // override from rule
-        if (
-          matchedTraffic.variables &&
-          typeof matchedTraffic.variables[variableKey] !== "undefined"
-        ) {
-          evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.RULE,
-            bucketKey,
-            bucketValue,
-            ruleKey: matchedTraffic.key,
-            traffic: matchedTraffic,
-            variableKey,
-            variableSchema,
-            variableValue: matchedTraffic.variables[variableKey],
-          };
-
-          this.logger.debug("override from rule", evaluation);
-
-          return evaluation;
-        }
-
-        // regular allocation
-        let variationValue;
-
-        if (force && force.variation) {
-          variationValue = force.variation;
-        } else if (matchedAllocation && matchedAllocation.variation) {
-          variationValue = matchedAllocation.variation;
-        }
-
-        if (variationValue && Array.isArray(feature.variations)) {
-          const variation = feature.variations.find((v) => v.value === variationValue);
-
-          if (variation && variation.variables) {
-            const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
-
-            if (variableFromVariation) {
-              if (variableFromVariation.overrides) {
-                const override = variableFromVariation.overrides.find((o) => {
-                  if (o.conditions) {
-                    return allConditionsAreMatched(
-                      typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
-                      finalContext,
-                      this.logger,
-                    );
-                  }
-
-                  if (o.segments) {
-                    return allGroupSegmentsAreMatched(
-                      parseFromStringifiedSegments(o.segments),
-                      finalContext,
-                      this.datafileReader,
-                      this.logger,
-                    );
-                  }
-
-                  return false;
-                });
-
-                if (override) {
-                  evaluation = {
-                    featureKey: feature.key,
-                    reason: EvaluationReason.OVERRIDE,
-                    bucketKey,
-                    bucketValue,
-                    ruleKey: matchedTraffic.key,
-                    traffic: matchedTraffic,
-                    variableKey,
-                    variableSchema,
-                    variableValue: override.value,
-                  };
-
-                  this.logger.debug("variable override", evaluation);
-
-                  return evaluation;
-                }
-              }
-
-              if (typeof variableFromVariation.value !== "undefined") {
-                evaluation = {
-                  featureKey: feature.key,
-                  reason: EvaluationReason.ALLOCATED,
-                  bucketKey,
-                  bucketValue,
-                  ruleKey: matchedTraffic.key,
-                  traffic: matchedTraffic,
-                  variableKey,
-                  variableSchema,
-                  variableValue: variableFromVariation.value,
-                };
-
-                this.logger.debug("allocated variable", evaluation);
-
-                return evaluation;
-              }
-            }
-          }
-        }
-      }
-
-      // fall back to default
-      evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.DEFAULTED,
-        bucketKey,
-        bucketValue,
-        variableKey,
-        variableSchema,
-        variableValue: variableSchema.defaultValue,
-      };
-
-      this.logger.debug("using default value", evaluation);
-
-      return evaluation;
-    } catch (e) {
-      evaluation = {
-        featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
-        reason: EvaluationReason.ERROR,
-        variableKey,
-        error: e,
-      };
-
-      this.logger.error("error", evaluation);
-
-      return evaluation;
-    }
+      bucketKeySeparator: this.bucketKeySeparator,
+      configureBucketKey: this.configureBucketKey,
+      configureBucketValue: this.configureBucketValue,
+    });
   }
 
   getVariable(
