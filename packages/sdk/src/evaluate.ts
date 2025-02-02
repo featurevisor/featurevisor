@@ -112,6 +112,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
   try {
     const key = typeof featureKey === "string" ? featureKey : featureKey.key;
 
+    /**
+     * Root flag evaluation
+     */
     let flag: Evaluation;
     if (type !== "flag") {
       // needed by variation and variable evaluations
@@ -141,7 +144,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       }
     }
 
-    // sticky
+    /**
+     * Sticky
+     */
     if (stickyFeatures && stickyFeatures[key]) {
       // flag
       if (type === "flag" && typeof stickyFeatures[key].enabled !== "undefined") {
@@ -177,7 +182,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // @TODO: variable
     }
 
-    // initial
+    /**
+     * Initial
+     */
     if (statuses && !statuses.ready && initialFeatures && initialFeatures[key]) {
       // flag
       if (type === "flag" && typeof initialFeatures[key].enabled !== "undefined") {
@@ -211,6 +218,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // @TODO: variable
     }
 
+    /**
+     * Feature
+     */
     const feature =
       typeof featureKey === "string" ? datafileReader.getFeature(featureKey) : featureKey;
 
@@ -245,7 +255,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
     const finalContext = interceptContext ? interceptContext(context) : context;
 
-    // forced
+    /**
+     * Forced
+     */
     const { force, forceIndex } = findForceFromFeature(feature, context, datafileReader, logger);
 
     if (force) {
@@ -286,7 +298,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // @TODO: variable
     }
 
-    // feature: required
+    /**
+     * Required
+     */
     if (type === "flag" && feature.required && feature.required.length > 0) {
       const requiredFeaturesAreEnabled = feature.required.every((required) => {
         let requiredKey;
@@ -354,7 +368,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       }
     }
 
-    // bucketing
+    /**
+     * Bucketing
+     */
     const { bucketKey, bucketValue } = getBucket({
       feature,
       context: finalContext,
@@ -507,7 +523,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // @TODO: variable
     }
 
-    // nothing matched
+    /**
+     * Nothing matched
+     */
     if (type === "variation") {
       evaluation = {
         featureKey: feature.key,
