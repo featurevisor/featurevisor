@@ -96,3 +96,19 @@ By default, Featurevisor expects YAML for all definitions. You can change this t
 ### `enforceCatchAllRule`
 
 When set to `true`, linting will make sure all features have a catch-all rule with `segment: "*"` as the last rule in all environments.
+
+### `maxVariableStringLength`
+
+Maximum length of a string variable in features. Defaults to no limit.
+
+### `maxVariableArrayStringifiedLength`
+
+Maximum length of a stringified array variable in features. Defaults to no limit.
+
+### `maxVariableObjectStringifiedLength`
+
+Maximum length of a stringified object variable in features. Defaults to no limit.
+
+### `maxVariableJSONStringifiedLength`
+
+Maximum length of a JSON stringified variable in features. Defaults to no limit.

@@ -37,17 +37,26 @@ export interface ProjectConfig {
   testsDirectoryPath: string;
   stateDirectoryPath: string;
   outputDirectoryPath: string;
+  siteExportDirectoryPath: string;
+
   environments: string[];
   tags: string[];
+
+  adapter: any; // @TODO: type this properly later
+  plugins: Plugin[];
+
   defaultBucketBy: BucketBy;
   parser: Parser;
+
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
-  siteExportDirectoryPath: string;
+
   enforceCatchAllRule?: boolean;
-  adapter: any; // @TODO: type this properly later
-  plugins: Plugin[];
+  maxVariableStringLength?: number;
+  maxVariableArrayStringifiedLength?: number;
+  maxVariableObjectStringifiedLength?: number;
+  maxVariableJSONStringifiedLength?: number;
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
@@ -76,6 +85,11 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     enforceCatchAllRule: false,
     plugins: [],
+
+    maxVariableStringLength: undefined,
+    maxVariableArrayStringifiedLength: undefined,
+    maxVariableObjectStringifiedLength: undefined,
+    maxVariableJSONStringifiedLength: undefined,
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);

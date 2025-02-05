@@ -20,7 +20,13 @@ function isArrayOfStrings(value) {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
-function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
+function superRefineVariableValue(
+  projectConfig: ProjectConfig,
+  variableSchema,
+  variableValue,
+  path,
+  ctx,
+) {
   if (!variableSchema) {
     let message = `Unknown variable with value: ${variableValue}`;
 
@@ -47,6 +53,17 @@ function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    if (
+      projectConfig.maxVariableStringLength &&
+      variableValue.length > projectConfig.maxVariableStringLength
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${variableSchema.key}" value is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableStringLength}`,
         path,
       });
     }
@@ -90,6 +107,18 @@ function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
       });
     }
 
+    if (projectConfig.maxVariableArrayStringifiedLength) {
+      const stringified = JSON.stringify(variableValue);
+
+      if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Variable "${variableSchema.key}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
+          path,
+        });
+      }
+    }
+
     return;
   }
 
@@ -103,6 +132,18 @@ function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
       });
     }
 
+    if (projectConfig.maxVariableObjectStringifiedLength) {
+      const stringified = JSON.stringify(variableValue);
+
+      if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Variable "${variableSchema.key}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
+          path,
+        });
+      }
+    }
+
     return;
   }
 
@@ -110,6 +151,18 @@ function superRefineVariableValue(variableSchema, variableValue, path, ctx) {
   if (variableSchema.type === "json") {
     try {
       JSON.parse(variableValue as string);
+
+      if (projectConfig.maxVariableJSONStringifiedLength) {
+        const stringified = variableValue;
+
+        if (stringified.length > projectConfig.maxVariableJSONStringifiedLength) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableSchema.key}" JSON is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
+            path,
+          });
+        }
+      }
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -410,6 +463,7 @@ export function getFeatureZodSchema(
         variableSchemaByKey[variableSchema.key] = variableSchema;
 
         superRefineVariableValue(
+          projectConfig,
           variableSchema,
           variableSchema.defaultValue,
           ["variablesSchema", n, "defaultValue"],
@@ -426,6 +480,7 @@ export function getFeatureZodSchema(
 
           variation.variables.forEach((variable, variableN) => {
             superRefineVariableValue(
+              projectConfig,
               variableSchemaByKey[variable.key],
               variable.value,
               ["variations", variationN, "variables", variableN, "value"],
@@ -436,6 +491,7 @@ export function getFeatureZodSchema(
             if (variable.overrides) {
               variable.overrides.forEach((override, overrideN) => {
                 superRefineVariableValue(
+                  projectConfig,
                   variableSchemaByKey[variable.key],
                   override.value,
                   [
@@ -461,6 +517,7 @@ export function getFeatureZodSchema(
           if (rule.variables) {
             Object.keys(rule.variables).forEach((variableKey) => {
               superRefineVariableValue(
+                projectConfig,
                 variableSchemaByKey[variableKey],
                 rule.variables[variableKey],
                 ["environments", environmentKey, "rules", ruleN, "variables", variableKey],
