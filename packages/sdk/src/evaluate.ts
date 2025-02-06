@@ -105,6 +105,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
   const {
     type,
     featureKey,
+    variableKey,
     context,
     logger,
     datafileReader,
@@ -119,7 +120,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
   try {
     const key = typeof featureKey === "string" ? featureKey : featureKey.key;
-    const variableKey = options.variableKey;
 
     /**
      * Root flag evaluation
