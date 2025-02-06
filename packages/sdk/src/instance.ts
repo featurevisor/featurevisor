@@ -1,8 +1,5 @@
 import {
   Context,
-  AttributeValue,
-  BucketKey,
-  BucketValue,
   DatafileContent,
   Feature,
   FeatureKey,
@@ -17,7 +14,7 @@ import {
 import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { Emitter } from "./emitter";
-import { getBucketedNumber, ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
+import { ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
 import { Evaluation, evaluate } from "./evaluate";
 
 export type ReadyCallback = () => void;
