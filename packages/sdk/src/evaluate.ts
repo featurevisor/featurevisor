@@ -609,125 +609,109 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           }
         }
       }
+    }
 
-      // variable
-      if (variableKey) {
-        if (matchedTraffic) {
-          // override from rule
-          if (
-            matchedTraffic.variables &&
-            typeof matchedTraffic.variables[variableKey] !== "undefined"
-          ) {
-            evaluation = {
-              featureKey: feature.key,
-              reason: EvaluationReason.RULE,
-              bucketKey,
-              bucketValue,
-              ruleKey: matchedTraffic.key,
-              traffic: matchedTraffic,
-              variableKey,
-              variableSchema,
-              variableValue: matchedTraffic.variables[variableKey],
-            };
+    // variable
+    if (type === "variable" && variableKey) {
+      // override from rule
+      if (
+        matchedTraffic &&
+        matchedTraffic.variables &&
+        typeof matchedTraffic.variables[variableKey] !== "undefined"
+      ) {
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.RULE,
+          bucketKey,
+          bucketValue,
+          ruleKey: matchedTraffic.key,
+          traffic: matchedTraffic,
+          variableKey,
+          variableSchema,
+          variableValue: matchedTraffic.variables[variableKey],
+        };
 
-            logger.debug("override from rule", evaluation);
+        logger.debug("override from rule", evaluation);
 
-            return evaluation;
-          }
+        return evaluation;
+      }
 
-          // regular allocation
-          let variationValue;
+      // check variations
+      let variationValue;
 
-          if (force && force.variation) {
-            variationValue = force.variation;
-          } else if (matchedAllocation && matchedAllocation.variation) {
-            variationValue = matchedAllocation.variation;
-          }
+      if (force && force.variation) {
+        variationValue = force.variation;
+      } else if (matchedAllocation && matchedAllocation.variation) {
+        variationValue = matchedAllocation.variation;
+      }
 
-          if (variationValue && Array.isArray(feature.variations)) {
-            const variation = feature.variations.find((v) => v.value === variationValue);
+      if (variationValue && Array.isArray(feature.variations)) {
+        const variation = feature.variations.find((v) => v.value === variationValue);
 
-            if (variation && variation.variables) {
-              const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
+        if (variation && variation.variables) {
+          const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
 
-              if (variableFromVariation) {
-                if (variableFromVariation.overrides) {
-                  const override = variableFromVariation.overrides.find((o) => {
-                    if (o.conditions) {
-                      return allConditionsAreMatched(
-                        typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
-                        finalContext,
-                        logger,
-                      );
-                    }
-
-                    if (o.segments) {
-                      return allGroupSegmentsAreMatched(
-                        parseFromStringifiedSegments(o.segments),
-                        finalContext,
-                        datafileReader,
-                        logger,
-                      );
-                    }
-
-                    return false;
-                  });
-
-                  if (override) {
-                    evaluation = {
-                      featureKey: feature.key,
-                      reason: EvaluationReason.OVERRIDE,
-                      bucketKey,
-                      bucketValue,
-                      ruleKey: matchedTraffic.key,
-                      traffic: matchedTraffic,
-                      variableKey,
-                      variableSchema,
-                      variableValue: override.value,
-                    };
-
-                    logger.debug("variable override", evaluation);
-
-                    return evaluation;
-                  }
+          if (variableFromVariation) {
+            if (variableFromVariation.overrides) {
+              const override = variableFromVariation.overrides.find((o) => {
+                if (o.conditions) {
+                  return allConditionsAreMatched(
+                    typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
+                    finalContext,
+                    logger,
+                  );
                 }
 
-                if (typeof variableFromVariation.value !== "undefined") {
-                  evaluation = {
-                    featureKey: feature.key,
-                    reason: EvaluationReason.ALLOCATED,
-                    bucketKey,
-                    bucketValue,
-                    ruleKey: matchedTraffic.key,
-                    traffic: matchedTraffic,
-                    variableKey,
-                    variableSchema,
-                    variableValue: variableFromVariation.value,
-                  };
-
-                  logger.debug("allocated variable", evaluation);
-
-                  return evaluation;
+                if (o.segments) {
+                  return allGroupSegmentsAreMatched(
+                    parseFromStringifiedSegments(o.segments),
+                    finalContext,
+                    datafileReader,
+                    logger,
+                  );
                 }
+
+                return false;
+              });
+
+              if (override) {
+                evaluation = {
+                  featureKey: feature.key,
+                  reason: EvaluationReason.OVERRIDE,
+                  bucketKey,
+                  bucketValue,
+                  ruleKey: matchedTraffic?.key,
+                  traffic: matchedTraffic,
+                  variableKey,
+                  variableSchema,
+                  variableValue: override.value,
+                };
+
+                logger.debug("variable override", evaluation);
+
+                return evaluation;
               }
+            }
+
+            if (typeof variableFromVariation.value !== "undefined") {
+              evaluation = {
+                featureKey: feature.key,
+                reason: EvaluationReason.ALLOCATED,
+                bucketKey,
+                bucketValue,
+                ruleKey: matchedTraffic?.key,
+                traffic: matchedTraffic,
+                variableKey,
+                variableSchema,
+                variableValue: variableFromVariation.value,
+              };
+
+              logger.debug("allocated variable", evaluation);
+
+              return evaluation;
             }
           }
         }
-
-        // fall back to default
-        evaluation = {
-          featureKey: feature.key,
-          reason: EvaluationReason.DEFAULTED,
-          bucketKey,
-          bucketValue,
-          variableKey,
-          variableSchema,
-          variableValue: variableSchema?.defaultValue,
-        };
-
-        logger.debug("using default value", evaluation);
-
-        return evaluation;
       }
     }
 
@@ -743,6 +727,22 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       };
 
       logger.debug("no matched variation", evaluation);
+
+      return evaluation;
+    }
+
+    if (type === "variable" && variableSchema) {
+      evaluation = {
+        featureKey: feature.key,
+        reason: EvaluationReason.DEFAULTED,
+        bucketKey,
+        bucketValue,
+        variableKey,
+        variableSchema,
+        variableValue: variableSchema.defaultValue,
+      };
+
+      logger.debug("using default value", evaluation);
 
       return evaluation;
     }
