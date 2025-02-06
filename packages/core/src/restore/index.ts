@@ -2,6 +2,7 @@ import * as path from "path";
 import { execSync } from "child_process";
 
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 
 export async function restoreProject(deps: Dependencies) {
   const { rootDirectoryPath, projectConfig } = deps;
@@ -21,3 +22,21 @@ export async function restoreProject(deps: Dependencies) {
     throw new Error("Failed to restore state files.");
   }
 }
+
+export const restorePlugin: Plugin = {
+  command: "restore",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    await restoreProject({
+      rootDirectoryPath,
+      projectConfig,
+      datasource,
+      options: parsed,
+    });
+  },
+  examples: [
+    {
+      command: "restore",
+      description: "restore state files",
+    },
+  ],
+};

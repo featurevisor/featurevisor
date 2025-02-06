@@ -1,19 +1,19 @@
 {
   "name": "@featurevisor/example-1",
   "private": true,
-  "version": "1.2.1",
+  "version": "1.30.0",
   "description": "For testing only",
   "scripts": {
     "lint": "featurevisor lint",
     "build": "npm run build:datafiles && npm run export && npm run find-duplicate-segments && npm run generate-code",
     "build:datafiles": "featurevisor build",
-    "test": "featurevisor test",
+    "test": "make test",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "^1.2.1"
+    "@featurevisor/cli": "1.30.0"
   }
 }

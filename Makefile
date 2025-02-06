@@ -3,7 +3,6 @@
 #
 install:
 	npm ci
-	npm run bootstrap
 
 build:
 	npm run build
@@ -13,16 +12,16 @@ test:
 	npm test
 
 lint:
-	npm run format
+	npx prettier examples/ packages/ --check
 	npm run lint
 
 ##
 # Misc.
 #
 print-bundle-size:
-	@gzip -c packages/sdk/dist/index.js > packages/sdk/dist/index.js.gz
+	@gzip -c packages/sdk/dist/index.mjs > packages/sdk/dist/index.mjs.gz
 	@echo 'SDK package size:'
-	@ls -alh packages/sdk/dist | grep index.js | awk '{print $$9 "\t" $$5}'
+	@ls -alh packages/sdk/dist | grep index.mjs | awk '{print $$9 "\t" $$5}'
 
 	@echo ''
 

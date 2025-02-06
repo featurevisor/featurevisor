@@ -3,6 +3,159 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+
+### Bug Fixes
+
+* matched rules with percentage of 0 should be disabled ([#340](https://github.com/featurevisor/featurevisor/issues/340)) ([07f1682](https://github.com/featurevisor/featurevisor/commit/07f1682b98c67ac00b6edb91bda90fd77791458b))
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* convert to datafile schema v2 internally ([#337](https://github.com/featurevisor/featurevisor/issues/337)) ([3441369](https://github.com/featurevisor/featurevisor/commit/3441369a2c237fbef2acdf8acd219cda6c4eb923))
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+
+### Bug Fixes
+
+* in operator with non-existent context value ([#335](https://github.com/featurevisor/featurevisor/issues/335)) ([08f6f38](https://github.com/featurevisor/featurevisor/commit/08f6f38c252940ac010148937af9e93c2b5c3557))
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+
+### Bug Fixes
+
+* non-existent property in context when checking in and noIn conditions ([#328](https://github.com/featurevisor/featurevisor/issues/328)) ([fc85214](https://github.com/featurevisor/featurevisor/commit/fc85214449ff9c34b9f63e8eb737104365f0bb8d))
+
+
+
+
+
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+
+### Bug Fixes
+
+* ESM bundle for SDK ([#324](https://github.com/featurevisor/featurevisor/issues/324)) ([54556ea](https://github.com/featurevisor/featurevisor/commit/54556ea5ce9a6c221f482b230905a42e24e64886))
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+
+### Features
+
+* allow evaluating in CLI with more verbosity ([#300](https://github.com/featurevisor/featurevisor/issues/300)) ([8c3a096](https://github.com/featurevisor/featurevisor/commit/8c3a0962a5950abf424695db314ee5eeb8e6ccd5))
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+
+### Features
+
+* evaluate features in CLI ([#295](https://github.com/featurevisor/featurevisor/issues/295)) ([5a3332a](https://github.com/featurevisor/featurevisor/commit/5a3332a226a3b4901445fe2fe04baa8320e94f48))
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+
+### Features
+
+* Added export of emitter module ([#294](https://github.com/featurevisor/featurevisor/issues/294)) ([aaf0afc](https://github.com/featurevisor/featurevisor/commit/aaf0afcf18a6bdad7d82349d70ac052c9f288ca0))
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+
+### Bug Fixes
+
+* move to next condition if parsing fails ([#279](https://github.com/featurevisor/featurevisor/issues/279)) ([9f198e2](https://github.com/featurevisor/featurevisor/commit/9f198e2303498c2c74fb2a9a2fcfa5c320acf93f))
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+
+### Bug Fixes
+
+* rule percentage checks are now inclusive of end range ([#248](https://github.com/featurevisor/featurevisor/issues/248)) ([339231c](https://github.com/featurevisor/featurevisor/commit/339231c66391288e0e831f02b9407453938385d1))
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
 # [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
 
 **Note:** Version bump only for package @featurevisor/sdk

@@ -1,200 +1,533 @@
-import * as Joi from "joi";
+import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
-export function getFeatureJoiSchema(
+function isFlatObject(value) {
+  let isFlat = true;
+
+  Object.keys(value).forEach((key) => {
+    if (typeof value[key] === "object") {
+      isFlat = false;
+    }
+  });
+
+  return isFlat;
+}
+
+function isArrayOfStrings(value) {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function superRefineVariableValue(
   projectConfig: ProjectConfig,
-  conditionsJoiSchema,
-  availableSegmentKeys: string[],
-  availableFeatureKeys: string[],
+  variableSchema,
+  variableValue,
+  path,
+  ctx,
 ) {
-  const variationValueJoiSchema = Joi.string().required();
-  const variableValueJoiSchema = Joi.alternatives()
-    .try(
-      // @TODO: make it stricter based on variableSchema.type
-      Joi.string(),
-      Joi.number(),
-      Joi.boolean(),
-      Joi.array().items(Joi.string()),
-      Joi.object().custom(function (value) {
-        let isFlat = true;
+  if (!variableSchema) {
+    let message = `Unknown variable with value: ${variableValue}`;
 
-        Object.keys(value).forEach((key) => {
-          if (typeof value[key] === "object") {
-            isFlat = false;
-          }
+    if (path.length > 0) {
+      const lastPath = path[path.length - 1];
+
+      if (typeof lastPath === "string") {
+        message = `Unknown variable "${lastPath}" with value: ${variableValue}`;
+      }
+    }
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path,
+    });
+
+    return;
+  }
+
+  // string
+  if (variableSchema.type === "string") {
+    if (typeof variableValue !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    if (
+      projectConfig.maxVariableStringLength &&
+      variableValue.length > projectConfig.maxVariableStringLength
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${variableSchema.key}" value is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableStringLength}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // integer, double
+  if (["integer", "double"].indexOf(variableSchema.type) > -1) {
+    if (typeof variableValue !== "number") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // boolean
+  if (variableSchema.type === "boolean") {
+    if (typeof variableValue !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        path,
+      });
+    }
+
+    return;
+  }
+
+  // array
+  if (variableSchema.type === "array") {
+    if (!Array.isArray(variableValue) || !isArrayOfStrings(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
+
+    if (projectConfig.maxVariableArrayStringifiedLength) {
+      const stringified = JSON.stringify(variableValue);
+
+      if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Variable "${variableSchema.key}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
+          path,
         });
+      }
+    }
 
-        if (!isFlat) {
-          throw new Error("object is not flat");
+    return;
+  }
+
+  // object
+  if (variableSchema.type === "object") {
+    if (typeof variableValue !== "object" || !isFlatObject(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
+
+    if (projectConfig.maxVariableObjectStringifiedLength) {
+      const stringified = JSON.stringify(variableValue);
+
+      if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Variable "${variableSchema.key}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
+          path,
+        });
+      }
+    }
+
+    return;
+  }
+
+  // json
+  if (variableSchema.type === "json") {
+    try {
+      JSON.parse(variableValue as string);
+
+      if (projectConfig.maxVariableJSONStringifiedLength) {
+        const stringified = variableValue;
+
+        if (stringified.length > projectConfig.maxVariableJSONStringifiedLength) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableSchema.key}" JSON is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
+            path,
+          });
         }
+      }
+    } catch (e) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        path,
+      });
+    }
 
-        return value;
-      }),
-    )
-    .allow("");
+    return;
+  }
+}
 
-  const plainGroupSegment = Joi.string().valid("*", ...availableSegmentKeys);
+export function getFeatureZodSchema(
+  projectConfig: ProjectConfig,
+  conditionsZodSchema,
+  availableAttributeKeys: [string, ...string[]],
+  availableSegmentKeys: [string, ...string[]],
+  availableFeatureKeys: [string, ...string[]],
+) {
+  const variationValueZodSchema = z.string().min(1);
+  const variableValueZodSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.record(z.unknown()).refine(
+      (value) => {
+        return isFlatObject(value);
+      },
+      {
+        message: "object is not flat",
+      },
+    ),
+  ]);
 
-  const andOrNotGroupSegment = Joi.alternatives()
-    .try(
-      Joi.object({
-        and: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
-      }),
-      Joi.object({
-        or: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
-      }),
-      Joi.object({
-        // @TODO: allow plainGroupSegment as well?
-        not: Joi.array().items(Joi.link("#andOrNotGroupSegment"), plainGroupSegment),
-      }),
-    )
-    .id("andOrNotGroupSegment");
-
-  const groupSegment = Joi.alternatives().try(andOrNotGroupSegment, plainGroupSegment);
-
-  const groupSegmentsJoiSchema = Joi.alternatives().try(
-    Joi.array().items(groupSegment),
-    groupSegment,
+  const plainGroupSegment = z.string().refine(
+    (value) => value === "*" || availableSegmentKeys.includes(value),
+    (value) => ({
+      message: `Unknown segment key "${value}"`,
+    }),
   );
 
-  const environmentJoiSchema = Joi.object({
-    expose: Joi.boolean(),
-    rules: Joi.array()
-      .items(
-        Joi.object({
-          key: Joi.string().required(),
-          description: Joi.string().optional(),
-          segments: groupSegmentsJoiSchema.required(),
-          percentage: Joi.number().precision(3).min(0).max(100).required(),
+  const andOrNotGroupSegment = z.union([
+    z
+      .object({
+        and: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
+    z
+      .object({
+        or: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
+    z
+      .object({
+        not: z.array(z.lazy(() => groupSegmentZodSchema)),
+      })
+      .strict(),
+  ]);
 
-          enabled: Joi.boolean().optional(),
-          variation: variationValueJoiSchema.optional(), // @TODO: only allowed if feature.variations is present
-          variables: Joi.object().optional(), // @TODO: make it stricter
-        }),
-      )
-      .unique("key")
-      .required(),
-    force: Joi.array().items(
-      Joi.object({
-        // @TODO: either of the two below should be required
-        segments: groupSegmentsJoiSchema.optional(),
-        conditions: conditionsJoiSchema.optional(),
+  const groupSegmentZodSchema = z.union([andOrNotGroupSegment, plainGroupSegment]);
 
-        enabled: Joi.boolean().optional(),
-        variation: variationValueJoiSchema.optional(),
-        variables: Joi.object().optional(), // @TODO: make it stricter
-      }),
-    ),
-  });
+  const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
+
+  const environmentZodSchema = z
+    .object({
+      expose: z
+        .union([
+          z.boolean(),
+          z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
+        ])
+        .optional(),
+      rules: z
+        .array(
+          z
+            .object({
+              key: z.string(),
+              description: z.string().optional(),
+              segments: groupSegmentsZodSchema,
+              percentage: z.number().min(0).max(100),
+
+              enabled: z.boolean().optional(),
+              variation: variationValueZodSchema.optional(),
+              variables: z.record(variableValueZodSchema).optional(),
+            })
+            .strict(),
+        )
+
+        // must have at least one rule
+        .refine(
+          (value) => value.length > 0,
+          () => ({
+            message: "Must have at least one rule",
+          }),
+        )
+
+        // duplicate rules
+        .refine(
+          (value) => {
+            const keys = value.map((v) => v.key);
+            return keys.length === new Set(keys).size;
+          },
+          (value) => ({
+            message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+          }),
+        )
+
+        // enforce catch-all rule
+        .refine(
+          (value) => {
+            if (!projectConfig.enforceCatchAllRule) {
+              return true;
+            }
+
+            const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
+            return hasCatchAllAsLastRule;
+          },
+          () => ({
+            message: `Missing catch-all rule with \`segments: "*"\` at the end`,
+          }),
+        ),
+      force: z
+        .array(
+          z.union([
+            z
+              .object({
+                segments: groupSegmentsZodSchema,
+                enabled: z.boolean().optional(),
+                variation: variationValueZodSchema.optional(),
+                variables: z.record(variableValueZodSchema).optional(),
+              })
+              .strict(),
+            z
+              .object({
+                conditions: conditionsZodSchema,
+                enabled: z.boolean().optional(),
+                variation: variationValueZodSchema.optional(),
+                variables: z.record(variableValueZodSchema).optional(),
+              })
+              .strict(),
+          ]),
+        )
+        .optional(),
+    })
+    .strict();
 
   const allEnvironmentsSchema = {};
   projectConfig.environments.forEach((environmentKey) => {
-    allEnvironmentsSchema[environmentKey] = environmentJoiSchema.required();
+    allEnvironmentsSchema[environmentKey] = environmentZodSchema;
   });
-  const allEnvironmentsJoiSchema = Joi.object(allEnvironmentsSchema);
+  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
 
-  const featureJoiSchema = Joi.object({
-    archived: Joi.boolean().optional(),
-    deprecated: Joi.boolean().optional(),
-    description: Joi.string().required(),
-    tags: Joi.array()
-      .items(
-        Joi.string().custom((value) => {
-          if (!tagRegex.test(value)) {
-            throw new Error("tag must be lower cased and alphanumeric, and may contain hyphens.");
-          }
+  const attributeKeyZodSchema = z.string().refine(
+    (value) => value === "*" || availableAttributeKeys.includes(value),
+    (value) => ({
+      message: `Unknown attribute "${value}"`,
+    }),
+  );
 
-          return value;
-        }),
-      )
-      .required(),
+  const featureKeyZodSchema = z.string().refine(
+    (value) => availableFeatureKeys.includes(value),
+    (value) => ({
+      message: `Unknown feature "${value}"`,
+    }),
+  );
 
-    required: Joi.array()
-      .items(
-        Joi.alternatives().try(
-          Joi.string()
-            .required()
-            .valid(...availableFeatureKeys),
-          Joi.object({
-            key: Joi.string()
-              .required()
-              .valid(...availableFeatureKeys),
-            variation: Joi.string().optional(), // @TODO: can be made stricter
+  const featureZodSchema = z
+    .object({
+      archived: z.boolean().optional(),
+      deprecated: z.boolean().optional(),
+      description: z.string(),
+      tags: z
+        .array(
+          z.string().refine(
+            (value) => tagRegex.test(value),
+            (value) => ({
+              message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+            }),
+          ),
+        )
+        .refine(
+          (value) => {
+            return value.length === new Set(value).size;
+          },
+          (value) => ({
+            message: "Duplicate tags found: " + value.join(", "),
           }),
         ),
-      )
-      .optional(),
+      required: z
+        .array(
+          z.union([
+            featureKeyZodSchema,
+            z
+              .object({
+                key: featureKeyZodSchema,
+                variation: z.string().optional(),
+              })
+              .strict(),
+          ]),
+        )
+        .optional(),
+      bucketBy: z.union([
+        attributeKeyZodSchema,
+        z.array(attributeKeyZodSchema),
+        z
+          .object({
+            or: z.array(attributeKeyZodSchema),
+          })
+          .strict(),
+      ]),
+      variablesSchema: z
+        .array(
+          z
+            .object({
+              key: z
+                .string()
+                .min(1)
+                .refine((value) => value !== "variation", {
+                  message: `variable key cannot be "variation"`,
+                }),
+              type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
+              description: z.string().optional(),
+              defaultValue: variableValueZodSchema,
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const keys = value.map((v) => v.key);
+            return keys.length === new Set(keys).size;
+          },
+          (value) => ({
+            message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
+          }),
+        )
+        .optional(),
+      variations: z
+        .array(
+          z
+            .object({
+              description: z.string().optional(),
+              value: variationValueZodSchema,
+              weight: z.number().min(0).max(100),
+              variables: z
+                .array(
+                  z
+                    .object({
+                      key: z.string().min(1),
+                      value: variableValueZodSchema,
+                      overrides: z
+                        .array(
+                          z.union([
+                            z
+                              .object({
+                                conditions: conditionsZodSchema,
+                                value: variableValueZodSchema,
+                              })
+                              .strict(),
+                            z
+                              .object({
+                                segments: groupSegmentsZodSchema,
+                                value: variableValueZodSchema,
+                              })
+                              .strict(),
+                          ]),
+                        )
+                        .optional(),
+                    })
+                    .strict(),
+                )
+                .optional(),
+            })
+            .strict(),
+        )
+        .refine(
+          (value) => {
+            const variationValues = value.map((v) => v.value);
+            return variationValues.length === new Set(variationValues).size;
+          },
+          (value) => ({
+            message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
+          }),
+        )
+        .optional(),
+      environments: allEnvironmentsZodSchema,
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (!value.variablesSchema) {
+        return;
+      }
 
-    bucketBy: Joi.alternatives()
-      .try(
-        // plain
-        Joi.string(),
+      const allVariablesSchema = value.variablesSchema;
+      const variableSchemaByKey = {};
 
-        // and
-        Joi.array().items(Joi.string()),
+      // variablesSchema[n].defaultValue
+      allVariablesSchema.forEach((variableSchema, n) => {
+        variableSchemaByKey[variableSchema.key] = variableSchema;
 
-        // or
-        Joi.object({
-          or: Joi.array().items(Joi.string()),
-        }),
-      )
-      .required(),
+        superRefineVariableValue(
+          projectConfig,
+          variableSchema,
+          variableSchema.defaultValue,
+          ["variablesSchema", n, "defaultValue"],
+          ctx,
+        );
+      });
 
-    variablesSchema: Joi.array()
-      .items(
-        Joi.object({
-          key: Joi.string().disallow("variation").required(),
-          type: Joi.string()
-            .valid("string", "integer", "boolean", "double", "array", "object", "json")
-            .required(),
-          description: Joi.string().optional(),
-          defaultValue: variableValueJoiSchema, // @TODO: make it stricter based on `type`
-        }),
-      )
-      .unique("key"),
+      // variations[n].variables[n].value
+      if (value.variations) {
+        value.variations.forEach((variation, variationN) => {
+          if (!variation.variables) {
+            return;
+          }
 
-    variations: Joi.array()
-      .items(
-        Joi.object({
-          description: Joi.string(),
-          value: variationValueJoiSchema.required(),
-          weight: Joi.number().precision(3).min(0).max(100).required(),
-          variables: Joi.array()
-            .items(
-              Joi.object({
-                key: Joi.string(),
-                value: variableValueJoiSchema,
-                overrides: Joi.array().items(
-                  Joi.object({
-                    // @TODO: either segments or conditions prsent at a time
-                    segments: groupSegmentsJoiSchema,
-                    conditions: conditionsJoiSchema,
+          variation.variables.forEach((variable, variableN) => {
+            superRefineVariableValue(
+              projectConfig,
+              variableSchemaByKey[variable.key],
+              variable.value,
+              ["variations", variationN, "variables", variableN, "value"],
+              ctx,
+            );
 
-                    // @TODO: make it stricter based on `type`
-                    value: variableValueJoiSchema,
-                  }),
-                ),
-              }),
-            )
-            .unique("key"),
-        }),
-      )
-      .custom((value) => {
-        const total = value.reduce((acc, v) => acc + v.weight, 0);
+            // variations[n].variables[n].overrides[n].value
+            if (variable.overrides) {
+              variable.overrides.forEach((override, overrideN) => {
+                superRefineVariableValue(
+                  projectConfig,
+                  variableSchemaByKey[variable.key],
+                  override.value,
+                  [
+                    "variations",
+                    variationN,
+                    "variables",
+                    variableN,
+                    "overrides",
+                    overrideN,
+                    "value",
+                  ],
+                  ctx,
+                );
+              });
+            }
+          });
+        });
+      }
 
-        if (total !== 100) {
-          throw new Error(`Sum of all variation weights must be 100, got ${total}`);
-        }
+      // environments[key].rules[n].variables[key]
+      Object.keys(value.environments).forEach((environmentKey) => {
+        value.environments[environmentKey].rules.forEach((rule, ruleN) => {
+          if (rule.variables) {
+            Object.keys(rule.variables).forEach((variableKey) => {
+              superRefineVariableValue(
+                projectConfig,
+                variableSchemaByKey[variableKey],
+                rule.variables[variableKey],
+                ["environments", environmentKey, "rules", ruleN, "variables", variableKey],
+                ctx,
+              );
+            });
+          }
+        });
+      });
+    });
 
-        return value;
-      })
-      .optional(),
-
-    environments: allEnvironmentsJoiSchema.required(),
-  });
-
-  return featureJoiSchema;
+  return featureZodSchema;
 }

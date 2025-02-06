@@ -1,7 +1,8 @@
 import {
   Feature,
   Segment,
-  DatafileContent,
+  DatafileContentV1,
+  DatafileContentV2,
   Attribute,
   AttributeKey,
   SegmentKey,
@@ -23,16 +24,41 @@ export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
 export class DatafileReader {
   private schemaVersion: string;
   private revision: string;
-  private attributes: Attribute[];
-  private segments: Segment[];
-  private features: Feature[];
 
-  constructor(datafileJson: DatafileContent) {
+  private attributes: Record<AttributeKey, Attribute>;
+  private segments: Record<SegmentKey, Segment>;
+  private features: Record<FeatureKey, Feature>;
+
+  constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
-    this.segments = datafileJson.segments;
-    this.attributes = datafileJson.attributes;
-    this.features = datafileJson.features;
+
+    if (this.schemaVersion === "2") {
+      // v2
+      const datafileJsonV2 = datafileJson as DatafileContentV2;
+
+      this.attributes = datafileJsonV2.attributes;
+      this.segments = datafileJsonV2.segments;
+      this.features = datafileJsonV2.features;
+    } else {
+      // v1
+      const datafileJsonV1 = datafileJson as DatafileContentV1;
+
+      this.attributes = {};
+      datafileJsonV1.attributes.forEach((a) => {
+        this.attributes[a.key] = a;
+      });
+
+      this.segments = {};
+      datafileJsonV1.segments.forEach((s) => {
+        this.segments[s.key] = s;
+      });
+
+      this.features = {};
+      datafileJsonV1.features.forEach((f) => {
+        this.features[f.key] = f;
+      });
+    }
   }
 
   getRevision(): string {
@@ -44,15 +70,21 @@ export class DatafileReader {
   }
 
   getAllAttributes(): Attribute[] {
-    return this.attributes;
+    const result: Attribute[] = [];
+
+    Object.keys(this.attributes).forEach((key) => {
+      result.push(this.attributes[key]);
+    });
+
+    return result;
   }
 
   getAttribute(attributeKey: AttributeKey): Attribute | undefined {
-    return this.attributes.find((a) => a.key === attributeKey);
+    return this.attributes[attributeKey];
   }
 
   getSegment(segmentKey: SegmentKey): Segment | undefined {
-    const segment = this.segments.find((s) => s.key === segmentKey);
+    const segment = this.segments[segmentKey];
 
     if (!segment) {
       return undefined;
@@ -62,12 +94,6 @@ export class DatafileReader {
   }
 
   getFeature(featureKey: FeatureKey): Feature | undefined {
-    const feature = this.features.find((s) => s.key === featureKey);
-
-    if (!feature) {
-      return undefined;
-    }
-
-    return feature;
+    return this.features[featureKey];
   }
 }

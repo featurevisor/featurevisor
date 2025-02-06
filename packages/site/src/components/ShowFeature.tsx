@@ -18,6 +18,35 @@ export function DisplayFeatureOverview() {
 
   const environmentKeys = Object.keys(feature.environments).sort();
 
+  const renderBucketBy = (bucketBy) => {
+    if (typeof bucketBy === "string") {
+      return <span>{bucketBy}</span>;
+    }
+
+    if (bucketBy.or) {
+      return (
+        <ul>
+          <li>
+            <span className="rounded-full px-2 py-1 text-sm font-bold bg-yellow-300 text-yellow-700">
+              or:
+            </span>
+            {renderBucketBy(bucketBy.or)}
+          </li>
+        </ul>
+      );
+    }
+
+    return (
+      <ul className="list-inside list-disc pl-5">
+        {bucketBy.map((b) => (
+          <li key={b} className="py-1">
+            {b}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <div className="border-gray-200">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
@@ -33,17 +62,7 @@ export function DisplayFeatureOverview() {
         </div>
         <div>
           <dt className="text-sm font-medium text-gray-500">Bucket by</dt>
-          <dd className="mt-1 text-sm text-gray-900">
-            {typeof feature.bucketBy === "string" ? (
-              <span>{feature.bucketBy}</span>
-            ) : (
-              <ul>
-                {feature.bucketBy.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-            )}
-          </dd>
+          <dd className="mt-1 text-sm text-gray-900">{renderBucketBy(feature.bucketBy)}</dd>
         </div>
         <div>
           <dt className="text-sm font-medium text-gray-500">Status</dt>
@@ -213,6 +232,13 @@ export function DisplayFeatureRulesTable() {
         <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
           Rules are not <a href="https://featurevisor.com/docs/features/#expose">exposed</a> in this
           environment.
+        </p>
+      )}
+
+      {Array.isArray(feature.environments[environmentKey].expose) && (
+        <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
+          Rules are <a href="https://featurevisor.com/docs/features/#expose">exposed</a> for these
+          tags only: {feature.environments[environmentKey].expose.join(", ")}.
         </p>
       )}
 

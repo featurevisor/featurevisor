@@ -61,3 +61,47 @@ assertions:
     expectedVariables:
       bar: bar_here
       baz: baz for NL
+
+  ##
+  # Testing `at` with last value of range
+  #
+  - at: 100
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+
+  - at: 49.999
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - at: 50
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - at: 50.001
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - at: 99.999
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - at: 100
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment

@@ -1,57 +1,86 @@
-import { TestSegment, Condition } from "@featurevisor/types";
-import { allConditionsAreMatched } from "@featurevisor/sdk";
+import {
+  TestSegment,
+  Condition,
+  TestResult,
+  TestResultAssertion,
+  TestResultAssertionError,
+} from "@featurevisor/types";
+import { allConditionsAreMatched, createLogger } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
-import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 import { getSegmentAssertionsFromMatrix } from "./matrix";
 
 export async function testSegment(
   datasource: Datasource,
   test: TestSegment,
   patterns,
-): Promise<boolean> {
-  let hasError = false;
-
+): Promise<TestResult> {
+  const testStartTime = Date.now();
   const segmentKey = test.segment;
 
-  console.log(CLI_FORMAT_BOLD, `  Segment "${segmentKey}":`);
+  const testResult: TestResult = {
+    type: "segment",
+    key: segmentKey,
+
+    // to be updated later
+    notFound: false,
+    duration: 0,
+    passed: true,
+    assertions: [],
+  };
 
   const segmentExists = await datasource.segmentExists(segmentKey);
 
   if (!segmentExists) {
-    console.error(CLI_FORMAT_RED, `  Segment does not exist: ${segmentKey}`);
-    hasError = true;
+    testResult.notFound = true;
+    testResult.passed = false;
 
-    return hasError;
+    return testResult;
   }
 
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
+  const logger = createLogger();
 
   test.assertions.forEach(function (assertion, aIndex) {
     const assertions = getSegmentAssertionsFromMatrix(aIndex, assertion);
 
     assertions.forEach(function (assertion) {
+      const assertionStartTime = Date.now();
+      const testResultAssertion: TestResultAssertion = {
+        description: assertion.description as string,
+        duration: 0,
+        passed: true,
+        errors: [],
+      };
+
       if (patterns.assertionPattern && !patterns.assertionPattern.test(assertion.description)) {
         return;
       }
 
-      console.log(assertion.description);
-
       const expected = assertion.expectedToMatch;
-      const actual = allConditionsAreMatched(conditions, assertion.context);
+      const actual = allConditionsAreMatched(conditions, assertion.context, logger);
+      const passed = actual === expected;
 
-      if (actual !== expected) {
-        hasError = true;
+      if (!passed) {
+        const testResultAssertionError: TestResultAssertionError = {
+          type: "segment",
+          expected,
+          actual,
+        };
 
-        console.error(
-          CLI_FORMAT_RED,
-          `    Segment failed: expected "${expected}", got "${actual}"`,
-        );
+        (testResultAssertion.errors as TestResultAssertionError[]).push(testResultAssertionError);
+        testResult.passed = false;
+        testResultAssertion.passed = passed;
       }
+
+      testResult.assertions.push(testResultAssertion);
+      testResultAssertion.duration = Date.now() - assertionStartTime;
     });
   });
 
-  return hasError;
+  testResult.duration = Date.now() - testStartTime;
+
+  return testResult;
 }

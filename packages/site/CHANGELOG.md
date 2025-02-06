@@ -3,6 +3,87 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+
+### Bug Fixes
+
+* search features by any case in generated site ([#298](https://github.com/featurevisor/featurevisor/issues/298)) ([1676e7e](https://github.com/featurevisor/featurevisor/commit/1676e7ea325a60bf482205dc32a91f77eba96655))
+
+
+
+
+
+## [1.7.1](https://github.com/featurevisor/featurevisor/compare/v1.7.0...v1.7.1) (2024-02-15)
+
+
+### Bug Fixes
+
+* **site:** properly handle bucketBy.or in feature ([#263](https://github.com/featurevisor/featurevisor/issues/263)) ([5574613](https://github.com/featurevisor/featurevisor/commit/5574613012a2e8d927ce8486033556bc1f276049))
+
+
+
+
+
+## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+
+### Features
+
+* additional advanced search options in generated site ([#257](https://github.com/featurevisor/featurevisor/issues/257)) ([6e0b34a](https://github.com/featurevisor/featurevisor/commit/6e0b34a150119b990c10d8c882d99f8aba4bff66))
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/site
+
+
+
+
+
 ## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
 
 

@@ -12,8 +12,8 @@
 
 <div align="center">
   <!-- NPM version -->
-  <a href="https://npmjs.org/package/@featurevisor/sdk">
-    <img src="https://img.shields.io/npm/v/@featurevisor/sdk.svg"
+  <a href="https://npmjs.org/package/@featurevisor/cli">
+    <img src="https://img.shields.io/npm/v/@featurevisor/cli.svg"
       alt="NPM version" />
   </a>
   <!-- Discord -->
@@ -88,7 +88,8 @@ Supported features:
 
 SDK support:
 
-- [JavaScript](https://featurevisor.com/docs/sdks/) (both Node.js and browser environments)
+- [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
+- [Swift](https://featurevisor.com/docs/sdks/swift/)
 - [React](https://featurevisor.com/docs/react/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
@@ -102,17 +103,13 @@ The whole process can be broken down into 3 steps:
 
 ## Step 1: Create a Featurevisor project
 
-Install Featurevisor CLI globally (or use `npx @featurevisor/cli`):
-
-```
-$ npm install -g @featurevisor/cli
-```
-
-Initialize a new Featurevisor project:
+Use `npx` to scaffold a new Featurevisor project:
 
 ```
 $ mkdir my-featurevisor-project && cd my-featurevisor-project
-$ featurevisor init
+
+$ npx @featurevisor/cli init
+$ npm install
 ```
 
 You can now create and manage your feature flags, experiments, and remote config in this directory expressed as YAMLs.
@@ -128,7 +125,7 @@ See the building block guides here:
 Once the project is ready, you can build your datafiles (JSON files containing configuration of your feature flags):
 
 ```
-$ featurevisor build
+$ npx featurevisor build
 ```
 
 You will find the output in `dist` directory, that you can upload to your CDN.

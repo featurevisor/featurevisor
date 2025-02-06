@@ -249,13 +249,29 @@ export interface Feature {
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
-export interface DatafileContent {
+export interface DatafileContentV1 {
   schemaVersion: string;
   revision: string;
   attributes: Attribute[];
   segments: Segment[];
   features: Feature[];
 }
+
+export interface DatafileContentV2 {
+  schemaVersion: string;
+  revision: string;
+  attributes: {
+    [key: AttributeKey]: Attribute;
+  };
+  segments: {
+    [key: SegmentKey]: Segment;
+  };
+  features: {
+    [key: FeatureKey]: Feature;
+  };
+}
+
+export type DatafileContent = DatafileContentV1 | DatafileContentV2;
 
 export interface OverrideFeature {
   enabled: boolean;
@@ -293,13 +309,13 @@ export interface Rule {
   };
 }
 
+export type Tag = string;
+
 export interface Environment {
-  expose?: boolean;
+  expose?: boolean | Tag[];
   rules: Rule[];
   force?: Force[];
 }
-
-export type Tag = string;
 
 export interface ParsedFeature {
   key: FeatureKey;
@@ -388,6 +404,30 @@ export interface TestSegment {
 }
 
 export type Test = TestSegment | TestFeature;
+
+export interface TestResultAssertionError {
+  type: "flag" | "variation" | "variable" | "segment";
+  expected: string | number | boolean | Date | null | undefined;
+  actual: string | number | boolean | Date | null | undefined;
+  message?: string;
+  details?: object;
+}
+
+export interface TestResultAssertion {
+  description: string;
+  duration: number;
+  passed: boolean;
+  errors?: TestResultAssertionError[];
+}
+
+export interface TestResult {
+  type: "feature" | "segment";
+  key: string;
+  notFound?: boolean;
+  passed: boolean;
+  duration: number;
+  assertions: TestResultAssertion[];
+}
 
 /**
  * Site index and history

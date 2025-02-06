@@ -4,6 +4,8 @@ import {
   Segment,
   Feature,
   DatafileContent,
+  DatafileContentV1,
+  DatafileContentV2,
   Variation,
   Variable,
   VariableOverride,
@@ -19,12 +21,47 @@ import {
   VariableSchema,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
+import { ProjectConfig, SCHEMA_VERSION } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
+
+export interface CustomDatafileOptions {
+  featureKey?: string;
+  environment: string;
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  revision?: string;
+  schemaVersion?: string;
+  inflate?: number;
+}
+
+export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
+  let featuresToInclude;
+
+  if (options.featureKey) {
+    const requiredChain = await options.datasource.getRequiredFeaturesChain(options.featureKey);
+    featuresToInclude = Array.from(requiredChain);
+  }
+
+  const existingState = await options.datasource.readState(options.environment);
+  const datafileContent = await buildDatafile(
+    options.projectConfig,
+    options.datasource,
+    {
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+      revision: options.revision || "tester",
+      environment: options.environment,
+      features: featuresToInclude,
+      inflate: options.inflate,
+    },
+    existingState,
+  );
+
+  return datafileContent;
+}
 
 export interface BuildOptions {
   schemaVersion: string;
@@ -32,6 +69,7 @@ export interface BuildOptions {
   environment: string;
   tag?: string;
   features?: FeatureKey[];
+  inflate?: number;
 }
 
 export async function buildDatafile(
@@ -40,7 +78,7 @@ export async function buildDatafile(
   options: BuildOptions,
   existingState: ExistingState,
 ): Promise<DatafileContent> {
-  const datafileContent: DatafileContent = {
+  const datafileContent: DatafileContentV1 = {
     schemaVersion: options.schemaVersion,
     revision: options.revision,
     attributes: [],
@@ -76,6 +114,14 @@ export async function buildDatafile(
 
       if (parsedFeature.environments[options.environment].expose === false) {
         continue;
+      }
+
+      if (Array.isArray(parsedFeature.environments[options.environment].expose)) {
+        const exposeTags = parsedFeature.environments[options.environment].expose as string[];
+
+        if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+          continue;
+        }
       }
 
       for (const parsedRule of parsedFeature.environments[options.environment].rules) {
@@ -119,7 +165,9 @@ export async function buildDatafile(
                     );
 
                     return {
-                      conditions: JSON.stringify(override.conditions),
+                      conditions: projectConfig.stringify
+                        ? JSON.stringify(override.conditions)
+                        : override.conditions,
                       value: override.value,
                     };
                   }
@@ -134,9 +182,9 @@ export async function buildDatafile(
 
                     return {
                       segments:
-                        typeof override.segments === "string"
-                          ? override.segments
-                          : JSON.stringify(override.segments),
+                        typeof override.segments !== "string" && projectConfig.stringify
+                          ? JSON.stringify(override.segments)
+                          : override.segments,
                       value: override.value,
                     };
                   }
@@ -155,7 +203,15 @@ export async function buildDatafile(
           parsedFeature.environments[options.environment].rules,
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
-        ),
+        ).map((t: Traffic) => {
+          return {
+            ...t,
+            segments:
+              typeof t.segments !== "string" && projectConfig.stringify
+                ? JSON.stringify(t.segments)
+                : t.segments,
+          };
+        }),
         ranges: featureRanges.get(featureKey) || undefined,
       };
 
@@ -238,7 +294,7 @@ export async function buildDatafile(
       const segment: Segment = {
         key: segmentKey,
         conditions:
-          typeof parsedSegment.conditions !== "string"
+          typeof parsedSegment.conditions !== "string" && projectConfig.stringify === true
             ? JSON.stringify(parsedSegment.conditions)
             : parsedSegment.conditions,
       };
@@ -278,6 +334,75 @@ export async function buildDatafile(
     }
   }
 
+  // inflate
+  if (options.inflate) {
+    const allFeatureKeys = features.map((f) => f.key);
+    const allSegmentKeys = segments.map((s) => s.key);
+    const allAttributeKeys = attributes.map((a) => a.key);
+
+    for (let i = 0; i < options.inflate; i++) {
+      // feature
+      for (const featureKey of allFeatureKeys) {
+        const originalFeature = features.find((f) => f.key === featureKey) as Feature;
+
+        features.unshift({
+          ...originalFeature,
+          key: `${originalFeature.key}-${i}`,
+        });
+      }
+
+      // segment
+      for (const segmentKey of allSegmentKeys) {
+        const originalSegment = segments.find((s) => s.key === segmentKey) as Segment;
+
+        segments.unshift({
+          ...originalSegment,
+          key: `${originalSegment.key}-${i}`,
+        });
+      }
+
+      // attribute
+      for (const attributeKey of allAttributeKeys) {
+        const originalAttribute = attributes.find((a) => a.key === attributeKey) as Attribute;
+
+        attributes.unshift({
+          ...originalAttribute,
+          key: `${originalAttribute.key}-${i}`,
+        });
+      }
+    }
+  }
+
+  // schema v2
+  if (options.schemaVersion === "2") {
+    // v2
+    const datafileContentV2: DatafileContentV2 = {
+      schemaVersion: "2",
+      revision: options.revision,
+      attributes: {},
+      segments: {},
+      features: {},
+    };
+
+    datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
+      acc[attribute.key] = attribute;
+      return acc;
+    }, {});
+
+    datafileContentV2.segments = segments.reduce((acc, segment) => {
+      acc[segment.key] = segment;
+      return acc;
+    }, {});
+
+    datafileContentV2.features = features.reduce((acc, feature) => {
+      acc[feature.key] = feature;
+      return acc;
+    }, {});
+
+    return datafileContentV2;
+  }
+
+  // default behaviour
   datafileContent.attributes = attributes;
   datafileContent.segments = segments;
   datafileContent.features = features;

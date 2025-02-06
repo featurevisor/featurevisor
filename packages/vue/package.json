@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/vue",
-  "version": "1.2.0",
+  "version": "1.29.3",
   "description": "Vue.js package for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",
@@ -9,11 +9,7 @@
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
     "build": "npm run transpile && npm run dist",
-    "test": "jest --config jest.config.js --verbose --coverage ./src/*.spec.ts",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "jest --config jest.config.js --verbose --coverage ./src/*.spec.ts"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -45,8 +41,8 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "dependencies": {
-    "@featurevisor/sdk": "^1.2.0",
-    "@featurevisor/types": "^1.2.0",
+    "@featurevisor/sdk": "1.29.3",
+    "@featurevisor/types": "1.29.2",
     "vue": "^3.3.4"
   },
   "license": "MIT",

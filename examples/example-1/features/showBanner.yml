@@ -1,0 +1,34 @@
+description: for testing expose property with tags
+tags:
+  - all
+  - checkout
+
+bucketBy: userId
+
+environments:
+  staging:
+    expose:
+      # this means, this feature:
+      #   - will exist in staging/datafile-tag-checkout.json only
+      #   - not exist in staging/datafile-tag-all.json
+      - checkout
+    force:
+      - segments: qa
+        enabled: true
+
+      - conditions:
+          - attribute: userId
+            operator: equals
+            value: user-3
+        enabled: true
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 0
+
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 0
+# See README for additional test scripts for verifying the datafile generation

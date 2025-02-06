@@ -19,7 +19,7 @@ import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
 
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -28,10 +28,17 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
 }
 
+export function getRevisionFilePath(projectConfig: ProjectConfig): string {
+  return path.join(projectConfig.stateDirectoryPath, `REVISION`);
+}
+
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     super();
 
     this.parser = config.parser as CustomParser;
@@ -137,12 +144,48 @@ export class FilesystemAdapter extends Adapter {
   }
 
   /**
+   * Revision
+   */
+  async readRevision(): Promise<string> {
+    const filePath = getRevisionFilePath(this.config);
+
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, "utf8");
+    }
+
+    // maintain backwards compatibility
+    try {
+      const pkg = require(path.join(this.rootDirectoryPath as string, "package.json"));
+      const pkgVersion = pkg.version;
+
+      if (pkgVersion) {
+        return pkgVersion;
+      }
+
+      return "0";
+    } catch (e) {
+      return "0";
+    }
+  }
+
+  async writeRevision(revision: string): Promise<void> {
+    const filePath = getRevisionFilePath(this.config);
+
+    if (!fs.existsSync(this.config.stateDirectoryPath)) {
+      mkdirp.sync(this.config.stateDirectoryPath);
+    }
+
+    fs.writeFileSync(filePath, revision);
+  }
+
+  /**
    * Datafile
    */
   getDatafilePath(options: DatafileOptions): string {
     const fileName = `datafile-tag-${options.tag}.json`;
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
-    return path.join(this.config.outputDirectoryPath, options.environment, fileName);
+    return path.join(dir, options.environment, fileName);
   }
 
   async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
@@ -154,10 +197,9 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
-    const outputEnvironmentDirPath = path.join(
-      this.config.outputDirectoryPath,
-      options.environment,
-    );
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+
+    const outputEnvironmentDirPath = path.join(dir, options.environment);
     mkdirp.sync(outputEnvironmentDirPath);
 
     const outputFilePath = this.getDatafilePath(options);
@@ -169,7 +211,7 @@ export class FilesystemAdapter extends Adapter {
         : JSON.stringify(datafileContent),
     );
 
-    const root = path.resolve(this.config.outputDirectoryPath, "..");
+    const root = path.resolve(dir, "..");
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
     console.log(`     Datafile generated: ${shortPath}`);

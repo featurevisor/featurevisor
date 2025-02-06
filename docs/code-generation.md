@@ -27,7 +27,7 @@ Support for other languages is planned in future, as Featurevisor SDK becomes av
 From the root of your Featurevisor project directory, use the [CLI](/docs/cli) for generating code in a specified directory:
 
 ```
-$ featurevisor generate-code --language typescript --out-dir ./src
+$ npx featurevisor generate-code --language typescript --out-dir ./src
 ```
 
 The generated files can be found in `./src` directory.

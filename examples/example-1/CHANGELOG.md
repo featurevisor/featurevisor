@@ -3,6 +3,437 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.30.0](https://github.com/featurevisor/featurevisor/compare/v1.29.3...v1.30.0) (2025-02-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+
+### Bug Fixes
+
+* matched rules with percentage of 0 should be disabled ([#340](https://github.com/featurevisor/featurevisor/issues/340)) ([07f1682](https://github.com/featurevisor/featurevisor/commit/07f1682b98c67ac00b6edb91bda90fd77791458b))
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.29.0](https://github.com/featurevisor/featurevisor/compare/v1.28.0...v1.29.0) (2025-01-22)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+
+### Bug Fixes
+
+* in operator with non-existent context value ([#335](https://github.com/featurevisor/featurevisor/issues/335)) ([08f6f38](https://github.com/featurevisor/featurevisor/commit/08f6f38c252940ac010148937af9e93c2b5c3557))
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+
+### Bug Fixes
+
+* non-existent property in context when checking in and noIn conditions ([#328](https://github.com/featurevisor/featurevisor/issues/328)) ([fc85214](https://github.com/featurevisor/featurevisor/commit/fc85214449ff9c34b9f63e8eb737104365f0bb8d))
+
+
+
+
+
+## [1.27.3](https://github.com/featurevisor/featurevisor/compare/v1.27.2...v1.27.3) (2024-10-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.1](https://github.com/featurevisor/featurevisor/compare/v1.27.0...v1.27.1) (2024-08-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.27.0](https://github.com/featurevisor/featurevisor/compare/v1.26.0...v1.27.0) (2024-08-07)
+
+
+### Features
+
+* Plugins API ([#318](https://github.com/featurevisor/featurevisor/issues/318)) ([f86312b](https://github.com/featurevisor/featurevisor/commit/f86312bbf02466f2926783edd590e78e254060fd))
+
+
+
+
+
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.19.0](https://github.com/featurevisor/featurevisor/compare/v1.18.1...v1.19.0) (2024-04-26)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.15.0](https://github.com/featurevisor/featurevisor/compare/v1.14.0...v1.15.0) (2024-04-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+
+### Features
+
+* introduce new project config stringify ([#286](https://github.com/featurevisor/featurevisor/issues/286)) ([96bd230](https://github.com/featurevisor/featurevisor/commit/96bd2309da6b45c44efdec764ff0a4f63d885fa6))
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+
+### Bug Fixes
+
+* move to next condition if parsing fails ([#279](https://github.com/featurevisor/featurevisor/issues/279)) ([9f198e2](https://github.com/featurevisor/featurevisor/commit/9f198e2303498c2c74fb2a9a2fcfa5c320acf93f))
+
+
+
+
+
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.10.1](https://github.com/featurevisor/featurevisor/compare/v1.10.0...v1.10.1) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.7.2](https://github.com/featurevisor/featurevisor/compare/v1.7.1...v1.7.2) (2024-02-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.7.1](https://github.com/featurevisor/featurevisor/compare/v1.7.0...v1.7.1) (2024-02-15)
+
+
+### Bug Fixes
+
+* **site:** properly handle bucketBy.or in feature ([#263](https://github.com/featurevisor/featurevisor/issues/263)) ([5574613](https://github.com/featurevisor/featurevisor/commit/5574613012a2e8d927ce8486033556bc1f276049))
+
+
+
+
+
+# [1.7.0](https://github.com/featurevisor/featurevisor/compare/v1.6.0...v1.7.0) (2024-02-14)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.6.0](https://github.com/featurevisor/featurevisor/compare/v1.5.1...v1.6.0) (2024-02-11)
+
+
+### Features
+
+* Linter overhaul ([#259](https://github.com/featurevisor/featurevisor/issues/259)) ([403eac0](https://github.com/featurevisor/featurevisor/commit/403eac02c21cf716092fb4aa6ea447b6bd7df732))
+
+
+
+
+
+## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.4.0](https://github.com/featurevisor/featurevisor/compare/v1.3.0...v1.4.0) (2024-01-27)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+
+### Features
+
+* allow exposing features with tags + environment combination ([#254](https://github.com/featurevisor/featurevisor/issues/254)) ([1ae08e7](https://github.com/featurevisor/featurevisor/commit/1ae08e71393b620f98f7080aff18033a3e3b7192))
+
+
+
+
+
+## [1.2.4](https://github.com/featurevisor/featurevisor/compare/v1.2.3...v1.2.4) (2024-01-20)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+
+### Bug Fixes
+
+* rule percentage checks are now inclusive of end range ([#248](https://github.com/featurevisor/featurevisor/issues/248)) ([339231c](https://github.com/featurevisor/featurevisor/commit/339231c66391288e0e831f02b9407453938385d1))
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
 ## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
 
 **Note:** Version bump only for package @featurevisor/example-1

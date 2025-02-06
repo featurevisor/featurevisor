@@ -3,6 +3,489 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.30.0](https://github.com/featurevisor/featurevisor/compare/v1.29.3...v1.30.0) (2025-02-04)
+
+
+### Features
+
+* allow setting max character limits for variables ([#342](https://github.com/featurevisor/featurevisor/issues/342)) ([14bff84](https://github.com/featurevisor/featurevisor/commit/14bff84eafcc01929fb7e072b63f5802bf836d26))
+
+
+
+
+
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* convert to datafile schema v2 internally ([#337](https://github.com/featurevisor/featurevisor/issues/337)) ([3441369](https://github.com/featurevisor/featurevisor/commit/3441369a2c237fbef2acdf8acd219cda6c4eb923))
+
+
+
+
+
+# [1.29.0](https://github.com/featurevisor/featurevisor/compare/v1.28.0...v1.29.0) (2025-01-22)
+
+
+### Features
+
+* pass custom datafiles directory path from CLI ([#336](https://github.com/featurevisor/featurevisor/issues/336)) ([d30502b](https://github.com/featurevisor/featurevisor/commit/d30502bccfc2267ea82f417fdfd2e4e10217285d))
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.27.3](https://github.com/featurevisor/featurevisor/compare/v1.27.2...v1.27.3) (2024-10-04)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.27.1](https://github.com/featurevisor/featurevisor/compare/v1.27.0...v1.27.1) (2024-08-16)
+
+
+### Bug Fixes
+
+* improve linting variable values ([#320](https://github.com/featurevisor/featurevisor/issues/320)) ([8d1c753](https://github.com/featurevisor/featurevisor/commit/8d1c75335151f6a310b1db5902e869cb0570c71c))
+
+
+
+
+
+# [1.27.0](https://github.com/featurevisor/featurevisor/compare/v1.26.0...v1.27.0) (2024-08-07)
+
+
+### Features
+
+* Plugins API ([#318](https://github.com/featurevisor/featurevisor/issues/318)) ([f86312b](https://github.com/featurevisor/featurevisor/commit/f86312bbf02466f2926783edd590e78e254060fd))
+
+
+
+
+
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+
+### Features
+
+* allow building datafiles without making changes to state files ([#314](https://github.com/featurevisor/featurevisor/issues/314)) ([d02c005](https://github.com/featurevisor/featurevisor/commit/d02c005c8792e5111b234015adb030773bba64a5))
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+
+### Features
+
+* allow showing authors when finding unused entities ([#313](https://github.com/featurevisor/featurevisor/issues/313)) ([67e1158](https://github.com/featurevisor/featurevisor/commit/67e1158b0a2d8636700d167e69f391c1f03a7ed6))
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+
+### Features
+
+* show variables count from CLI ([#310](https://github.com/featurevisor/featurevisor/issues/310)) ([f0f3dc0](https://github.com/featurevisor/featurevisor/commit/f0f3dc003c3040c21e05ad019c37676cfeb9e8fe))
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+
+### Features
+
+* show project info in CLI ([#304](https://github.com/featurevisor/featurevisor/issues/304)) ([d94cb87](https://github.com/featurevisor/featurevisor/commit/d94cb878f24fc4f2280c6126ab40a70aa6bebe9f))
+
+
+
+
+
+# [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
+
+
+### Features
+
+* make test runner fast by default ([#301](https://github.com/featurevisor/featurevisor/issues/301)) ([6ed5d0c](https://github.com/featurevisor/featurevisor/commit/6ed5d0cdba99b987fea4242c54aa74202a975142))
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+
+### Features
+
+* allow evaluating in CLI with more verbosity ([#300](https://github.com/featurevisor/featurevisor/issues/300)) ([8c3a096](https://github.com/featurevisor/featurevisor/commit/8c3a0962a5950abf424695db314ee5eeb8e6ccd5))
+
+
+
+
+
+# [1.19.0](https://github.com/featurevisor/featurevisor/compare/v1.18.1...v1.19.0) (2024-04-26)
+
+
+### Features
+
+* find duplicate segments with authors info ([#299](https://github.com/featurevisor/featurevisor/issues/299)) ([5008066](https://github.com/featurevisor/featurevisor/commit/5008066128fb7c732b633856dcffcb768f52c88c))
+
+
+
+
+
+## [1.18.1](https://github.com/featurevisor/featurevisor/compare/v1.18.0...v1.18.1) (2024-04-23)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.18.0](https://github.com/featurevisor/featurevisor/compare/v1.17.0...v1.18.0) (2024-04-16)
+
+
+### Features
+
+* assess traffic distribution via CLI ([#297](https://github.com/featurevisor/featurevisor/issues/297)) ([2063ad9](https://github.com/featurevisor/featurevisor/commit/2063ad9a5408071bfb1636c748cabe616065191d))
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+
+### Features
+
+* evaluate features in CLI ([#295](https://github.com/featurevisor/featurevisor/issues/295)) ([5a3332a](https://github.com/featurevisor/featurevisor/commit/5a3332a226a3b4901445fe2fe04baa8320e94f48))
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.15.0](https://github.com/featurevisor/featurevisor/compare/v1.14.0...v1.15.0) (2024-04-04)
+
+
+### Features
+
+* show project configuration via CLI ([#293](https://github.com/featurevisor/featurevisor/issues/293)) ([a83f6fa](https://github.com/featurevisor/featurevisor/commit/a83f6fa4d21012b2e0c0d97ab6bb182f9aa4c1af))
+
+
+
+
+
+# [1.14.0](https://github.com/featurevisor/featurevisor/compare/v1.13.1...v1.14.0) (2024-04-02)
+
+
+### Features
+
+* benchmarking option in CLI ([#292](https://github.com/featurevisor/featurevisor/issues/292)) ([6abcecc](https://github.com/featurevisor/featurevisor/commit/6abcecc3a92f00ccea7dcb542676126b6eb3b778))
+
+
+
+
+
+## [1.13.1](https://github.com/featurevisor/featurevisor/compare/v1.13.0...v1.13.1) (2024-03-27)
+
+
+### Bug Fixes
+
+* internal improvements for finding usage ([#290](https://github.com/featurevisor/featurevisor/issues/290)) ([070d7ec](https://github.com/featurevisor/featurevisor/commit/070d7eced9c20cbfdd4839345234dbafda39c1e3))
+
+
+
+
+
+# [1.13.0](https://github.com/featurevisor/featurevisor/compare/v1.12.0...v1.13.0) (2024-03-26)
+
+
+### Features
+
+* find usage of segments and attributes ([#289](https://github.com/featurevisor/featurevisor/issues/289)) ([c1319b3](https://github.com/featurevisor/featurevisor/commit/c1319b32d46ae7bbb03eb7b7e5dd19e37f2be51d))
+
+
+
+
+
+# [1.12.0](https://github.com/featurevisor/featurevisor/compare/v1.11.1...v1.12.0) (2024-03-23)
+
+
+### Features
+
+* introduce new project config stringify ([#286](https://github.com/featurevisor/featurevisor/issues/286)) ([96bd230](https://github.com/featurevisor/featurevisor/commit/96bd2309da6b45c44efdec764ff0a4f63d885fa6))
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+
+### Bug Fixes
+
+* move to next condition if parsing fails ([#279](https://github.com/featurevisor/featurevisor/issues/279)) ([9f198e2](https://github.com/featurevisor/featurevisor/commit/9f198e2303498c2c74fb2a9a2fcfa5c320acf93f))
+
+
+
+
+
+# [1.11.0](https://github.com/featurevisor/featurevisor/compare/v1.10.1...v1.11.0) (2024-03-10)
+
+
+### Features
+
+* revisioning info moved to its own file ([#274](https://github.com/featurevisor/featurevisor/issues/274)) ([6a175d1](https://github.com/featurevisor/featurevisor/commit/6a175d1be01c1ab78661bbd93d535de69af47135))
+
+
+
+
+
+# [1.10.0](https://github.com/featurevisor/featurevisor/compare/v1.9.0...v1.10.0) (2024-03-10)
+
+
+### Features
+
+* allow showing only failed specs in test runner ([#276](https://github.com/featurevisor/featurevisor/issues/276)) ([cefab8f](https://github.com/featurevisor/featurevisor/commit/cefab8f8c0eb091c10bee213039920d55fa3957a))
+
+
+
+
+
+# [1.9.0](https://github.com/featurevisor/featurevisor/compare/v1.8.0...v1.9.0) (2024-03-09)
+
+
+### Features
+
+* allow printing datafile per environment ([#275](https://github.com/featurevisor/featurevisor/issues/275)) ([28b4a0f](https://github.com/featurevisor/featurevisor/commit/28b4a0f776e2510f821a7c9d912c3c348857a729))
+
+
+
+
+
+# [1.8.0](https://github.com/featurevisor/featurevisor/compare/v1.7.3...v1.8.0) (2024-02-26)
+
+
+### Features
+
+* allow option to test by generating datafiles early ([#267](https://github.com/featurevisor/featurevisor/issues/267)) ([d2104ff](https://github.com/featurevisor/featurevisor/commit/d2104ffe25787e2d6deda18b632ad4830139061c))
+
+
+
+
+
+## [1.7.3](https://github.com/featurevisor/featurevisor/compare/v1.7.2...v1.7.3) (2024-02-24)
+
+
+### Bug Fixes
+
+* lint entity names ([#266](https://github.com/featurevisor/featurevisor/issues/266)) ([7e63137](https://github.com/featurevisor/featurevisor/commit/7e63137fa2821605362c742475d78c8256f89fcd))
+
+
+
+
+
+## [1.7.2](https://github.com/featurevisor/featurevisor/compare/v1.7.1...v1.7.2) (2024-02-21)
+
+
+### Bug Fixes
+
+* linting should pick up non-array matrix values in tests ([#265](https://github.com/featurevisor/featurevisor/issues/265)) ([f89c7c3](https://github.com/featurevisor/featurevisor/commit/f89c7c3eb19886dd60acf9e4f0ba80d11f12d0e0))
+
+
+
+
+
+## [1.7.1](https://github.com/featurevisor/featurevisor/compare/v1.7.0...v1.7.1) (2024-02-15)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.7.0](https://github.com/featurevisor/featurevisor/compare/v1.6.0...v1.7.0) (2024-02-14)
+
+
+### Features
+
+* lint by key pattern and entity type ([#261](https://github.com/featurevisor/featurevisor/issues/261)) ([f4ab707](https://github.com/featurevisor/featurevisor/commit/f4ab707abc32660765d72be64bec7bedf83fa94e))
+
+
+
+
+
+# [1.6.0](https://github.com/featurevisor/featurevisor/compare/v1.5.1...v1.6.0) (2024-02-11)
+
+
+### Features
+
+* Linter overhaul ([#259](https://github.com/featurevisor/featurevisor/issues/259)) ([403eac0](https://github.com/featurevisor/featurevisor/commit/403eac02c21cf716092fb4aa6ea447b6bd7df732))
+
+
+
+
+
+## [1.5.1](https://github.com/featurevisor/featurevisor/compare/v1.5.0...v1.5.1) (2024-02-03)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.5.0](https://github.com/featurevisor/featurevisor/compare/v1.4.0...v1.5.0) (2024-02-01)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.4.0](https://github.com/featurevisor/featurevisor/compare/v1.3.0...v1.4.0) (2024-01-27)
+
+
+### Features
+
+* print feature datafile ([#256](https://github.com/featurevisor/featurevisor/issues/256)) ([b24d8ab](https://github.com/featurevisor/featurevisor/commit/b24d8ab4d4b4ffd403a380ed7d6d2acb016e2805))
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+
+### Features
+
+* allow exposing features with tags + environment combination ([#254](https://github.com/featurevisor/featurevisor/issues/254)) ([1ae08e7](https://github.com/featurevisor/featurevisor/commit/1ae08e71393b620f98f7080aff18033a3e3b7192))
+
+
+
+
+
+## [1.2.4](https://github.com/featurevisor/featurevisor/compare/v1.2.3...v1.2.4) (2024-01-20)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
 ## [1.2.1](https://github.com/featurevisor/featurevisor/compare/v1.2.0...v1.2.1) (2024-01-16)
 
 **Note:** Version bump only for package @featurevisor/core

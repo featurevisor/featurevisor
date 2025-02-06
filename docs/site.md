@@ -24,7 +24,7 @@ The git repo also needs to have an `origin` remote set up, in order for the edit
 Use Featurevisor CLI:
 
 ```
-$ featurevisor site export
+$ npx featurevisor site export
 ```
 
 The generated static site will be available in the `out` directory.
@@ -34,7 +34,7 @@ The generated static site will be available in the `out` directory.
 Run:
 
 ```
-$ featurevisor site serve
+$ npx featurevisor site serve
 ```
 
 ## Screenshots
@@ -64,6 +64,10 @@ Examples:
 - `in:production`: search features by environment
 - `archived:true` or `archived:false`
 - `capture:true` or `capture:false`: for filtering attributes
+- `with:variations` or `without:variations`: for filtering features with/without variations
+- `variation:variation-value`: for filtering features by variation value
+- `with:variables` or `without:variables`: for filtering features with/without variables
+- `variable:variable-key`: for filtering features by variable key
 
 ## Read-only mode
 

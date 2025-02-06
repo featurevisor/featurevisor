@@ -19,7 +19,7 @@
           "description": "Operator to be used in the condition. Allowed values are: equals, notEquals, greaterThan, greaterThanOrEquals, lessThan, lessThanOrEquals, contains, notContains, startsWith, endsWith, semverEquals, semverNotEquals, semverGreaterThan, semverGreaterThanOrEquals, semverLessThan, semverLessThanOrEquals, in, notIn."
         },
         "value": {
-          "type": ["string", "number", "boolean", "array"],
+          "type": ["string", "number", "boolean", "array", "null"],
           "description": "Value to be used in the condition. Can be a string, number, boolean, or array of strings."
         }
       },
@@ -40,7 +40,7 @@
           "type": "array",
           "items": {
             "anyOf": [
-              { "$ref": "#/$defs/simple_condition" },
+              { "$ref": "#/$defs/plain_condition" },
               { "$ref": "#/$defs/complex_condition" }
             ]
           },
@@ -56,7 +56,7 @@
           "type": "array",
           "items": {
             "anyOf": [
-              { "$ref": "#/$defs/simple_condition" },
+              { "$ref": "#/$defs/plain_condition" },
               { "$ref": "#/$defs/complex_condition" }
             ]
           },
@@ -72,7 +72,7 @@
           "type": "array",
           "items": {
             "anyOf": [
-              { "$ref": "#/$defs/simple_condition" },
+              { "$ref": "#/$defs/plain_condition" },
               { "$ref": "#/$defs/complex_condition" }
             ]
           },
@@ -93,7 +93,11 @@
       "description": "Human readable description of the segment for documentation purposes."
     },
     "conditions": {
-      "oneOf": [{ "$ref": "#/$defs/multiple_conditions" }, { "$ref": "#/$defs/complex_condition" }],
+      "oneOf": [
+        { "$ref": "#/$defs/multiple_conditions" },
+        { "$ref": "#/$defs/complex_condition" },
+        { "$ref": "#/$defs/plain_condition" }
+      ],
       "description": "The set of conditions to be evaluated for the segment."
     }
   },

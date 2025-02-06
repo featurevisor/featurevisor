@@ -3,6 +3,126 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+# [1.20.0](https://github.com/featurevisor/featurevisor/compare/v1.19.0...v1.20.0) (2024-04-30)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+# [1.17.0](https://github.com/featurevisor/featurevisor/compare/v1.16.0...v1.17.0) (2024-04-07)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+# [1.16.0](https://github.com/featurevisor/featurevisor/compare/v1.15.0...v1.16.0) (2024-04-05)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.11.1](https://github.com/featurevisor/featurevisor/compare/v1.11.0...v1.11.1) (2024-03-14)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+# [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.2.3](https://github.com/featurevisor/featurevisor/compare/v1.2.2...v1.2.3) (2024-01-18)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
+## [1.2.2](https://github.com/featurevisor/featurevisor/compare/v1.2.1...v1.2.2) (2024-01-17)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
 # [1.2.0](https://github.com/featurevisor/featurevisor/compare/v1.1.1...v1.2.0) (2024-01-16)
 
 **Note:** Version bump only for package @featurevisor/react

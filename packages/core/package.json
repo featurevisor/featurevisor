@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "1.2.1",
+  "version": "1.30.0",
   "description": "Core package of Featurevisor for Node.js usage",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -8,11 +8,7 @@
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "jest --config jest.config.js --verbose --coverage",
-    "format": "prettier . --check --cache --loglevel=warn",
-    "lint": "eslint . --cache",
-    "format:fix": "prettier . --write --cache --loglevel=warn",
-    "lint:fix": "eslint . --fix --cache"
+    "test": "jest --config jest.config.js --verbose --coverage"
   },
   "author": {
     "name": "Fahad Heylaal",
@@ -44,14 +40,15 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/sdk": "^1.2.0",
-    "@featurevisor/site": "^1.2.1",
-    "@featurevisor/types": "^1.2.0",
+    "@featurevisor/sdk": "1.29.3",
+    "@featurevisor/site": "1.29.2",
+    "@featurevisor/types": "1.29.2",
     "axios": "^1.3.4",
-    "joi": "^17.8.3",
     "js-yaml": "^4.1.0",
     "mkdirp": "^2.1.3",
-    "tar": "^6.1.13"
+    "tar": "^6.1.13",
+    "yargs": "^17.7.2",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

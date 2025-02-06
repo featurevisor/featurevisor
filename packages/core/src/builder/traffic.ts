@@ -79,11 +79,8 @@ export function getTraffic(
     const rulePercentage = parsedRule.percentage; // 0 - 100
 
     const traffic: Traffic = {
-      key: parsedRule.key, // @TODO: not needed in datafile. keep it for now
-      segments:
-        typeof parsedRule.segments !== "string"
-          ? JSON.stringify(parsedRule.segments)
-          : parsedRule.segments,
+      key: parsedRule.key,
+      segments: parsedRule.segments,
       percentage: rulePercentage * (MAX_BUCKETED_NUMBER / 100),
       allocation: [],
     };

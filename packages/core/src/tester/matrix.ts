@@ -105,7 +105,7 @@ export function getFeatureAssertionsFromMatrix(
 ): FeatureAssertion[] {
   if (!assertionWithMatrix.matrix) {
     const assertion = { ...assertionWithMatrix };
-    assertion.description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
+    assertion.description = `Assertion #${aIndex + 1}: (${assertion.environment}) ${
       assertion.description || `at ${assertion.at}%`
     }`;
 
@@ -118,7 +118,7 @@ export function getFeatureAssertionsFromMatrix(
   for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
     const combination = combinations[cIndex];
     const assertion = applyCombinationToFeatureAssertion(combination, assertionWithMatrix);
-    assertion.description = `  Assertion #${aIndex + 1}: (${assertion.environment}) ${
+    assertion.description = `Assertion #${aIndex + 1}: (${assertion.environment}) ${
       assertion.description || `at ${assertion.at}%`
     }`;
 
@@ -161,7 +161,7 @@ export function getSegmentAssertionsFromMatrix(
 ): SegmentAssertion[] {
   if (!assertionWithMatrix.matrix) {
     const assertion = { ...assertionWithMatrix };
-    assertion.description = `  Assertion #${aIndex + 1}: ${
+    assertion.description = `Assertion #${aIndex + 1}: ${
       assertion.description || `#${aIndex + 1}`
     }`;
 
@@ -174,7 +174,7 @@ export function getSegmentAssertionsFromMatrix(
   for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
     const combination = combinations[cIndex];
     const assertion = applyCombinationToSegmentAssertion(combination, assertionWithMatrix);
-    assertion.description = `  Assertion #${aIndex + 1}: ${
+    assertion.description = `Assertion #${aIndex + 1}: ${
       assertion.description || `#${aIndex + 1}`
     }`;
 

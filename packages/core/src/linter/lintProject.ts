@@ -1,142 +1,369 @@
 // for use in node only
-import * as Joi from "joi";
+import * as path from "path";
 
-import { getAttributeJoiSchema } from "./attributeSchema";
-import { getConditionsJoiSchema } from "./conditionSchema";
-import { getSegmentJoiSchema } from "./segmentSchema";
-import { getGroupJoiSchema } from "./groupSchema";
-import { getFeatureJoiSchema } from "./featureSchema";
-import { getTestsJoiSchema } from "./testSchema";
+import { getAttributeZodSchema } from "./attributeSchema";
+import { getConditionsZodSchema } from "./conditionSchema";
+import { getSegmentZodSchema } from "./segmentSchema";
+import { getGroupZodSchema } from "./groupSchema";
+import { getFeatureZodSchema } from "./featureSchema";
+import { getTestsZodSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
-import { printJoiError } from "./printJoiError";
+import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
+import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
+import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
+import { Plugin } from "../cli";
 
-export async function lintProject(deps: Dependencies): Promise<boolean> {
+export interface LintProjectOptions {
+  keyPattern?: string;
+  entityType?: string;
+  authors?: boolean;
+}
+
+const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-.]+$/;
+const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
+
+async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
+  const entries = await datasource.listHistoryEntries(entityType, entityKey);
+  const authors: string[] = Array.from(new Set(entries.map((entry) => entry.author)));
+
+  return authors;
+}
+
+export async function lintProject(
+  deps: Dependencies,
+  options: LintProjectOptions = {},
+): Promise<boolean> {
   const { projectConfig, datasource } = deps;
 
   let hasError = false;
 
-  const availableAttributeKeys: string[] = [];
-  const availableSegmentKeys: string[] = [];
-  const availableFeatureKeys: string[] = [];
+  function getFullPathFromKey(type: string, key: string, relative = false) {
+    const fileName = `${key}.${datasource.getExtension()}`;
+    let fullPath = "";
+
+    if (type === "attribute") {
+      fullPath = path.join(projectConfig.attributesDirectoryPath, fileName);
+    } else if (type === "segment") {
+      fullPath = path.join(projectConfig.segmentsDirectoryPath, fileName);
+    } else if (type === "feature") {
+      fullPath = path.join(projectConfig.featuresDirectoryPath, fileName);
+    } else if (type === "group") {
+      fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
+    } else if (type === "test") {
+      fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
+    } else {
+      throw new Error(`Unknown type: ${type}`);
+    }
+
+    if (relative) {
+      fullPath = path.relative(process.cwd(), fullPath);
+    }
+
+    return fullPath;
+  }
+
+  const keyPattern = options.keyPattern ? new RegExp(options.keyPattern) : null;
+
+  if (keyPattern) {
+    console.log("");
+    console.log(`Linting only keys matching pattern: ${keyPattern}`);
+    console.log("");
+  }
 
   // lint attributes
   const attributes = await datasource.listAttributes();
-  console.log(`Linting ${attributes.length} attributes...\n`);
+  const attributeZodSchema = getAttributeZodSchema();
 
-  const attributeJoiSchema = getAttributeJoiSchema();
+  if (!options.entityType || options.entityType === "attribute") {
+    const filteredKeys = !keyPattern
+      ? attributes
+      : attributes.filter((key) => keyPattern.test(key));
 
-  for (const key of attributes) {
-    try {
-      const parsed = await datasource.readAttribute(key);
-      availableAttributeKeys.push(key);
-      await attributeJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      console.log("  =>", key);
-      console.log("");
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} attributes...\n`);
+    }
 
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("attribute", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
       }
 
-      hasError = true;
+      try {
+        const parsed = await datasource.readAttribute(key);
+
+        const result = attributeZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
     }
   }
 
   // lint segments
   const segments = await datasource.listSegments();
-  console.log(`\nLinting ${segments.length} segments...\n`);
+  const conditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    attributes as [string, ...string[]],
+  );
+  const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
-  const conditionsJoiSchema = getConditionsJoiSchema(projectConfig, availableAttributeKeys);
-  const segmentJoiSchema = getSegmentJoiSchema(projectConfig, conditionsJoiSchema);
+  if (!options.entityType || options.entityType === "segment") {
+    const filteredKeys = !keyPattern ? segments : segments.filter((key) => keyPattern.test(key));
 
-  for (const key of segments) {
-    try {
-      const parsed = await datasource.readSegment(key);
-      availableSegmentKeys.push(key);
-      await segmentJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      console.log("  =>", key);
-      console.log("");
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} segments...\n`);
+    }
 
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("segment", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "segment", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
       }
 
-      hasError = true;
+      try {
+        const parsed = await datasource.readSegment(key);
+
+        const result = segmentZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "segment", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "segment", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
     }
   }
 
   // lint features
   const features = await datasource.listFeatures();
-  console.log(`\nLinting ${features.length} features...\n`);
-
-  const featureJoiSchema = getFeatureJoiSchema(
+  const featureZodSchema = getFeatureZodSchema(
     projectConfig,
-    conditionsJoiSchema,
-    availableSegmentKeys,
-    availableFeatureKeys,
+    conditionsZodSchema,
+    attributes as [string, ...string[]],
+    segments as [string, ...string[]],
+    features as [string, ...string[]],
   );
 
-  for (const key of features) {
-    let parsed;
+  if (!options.entityType || options.entityType === "feature") {
+    const filteredKeys = !keyPattern ? features : features.filter((key) => keyPattern.test(key));
 
-    try {
-      parsed = await datasource.readFeature(key);
-      availableFeatureKeys.push(key);
-
-      await featureJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      console.log("  =>", key);
-      console.log("");
-
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
-      }
-
-      hasError = true;
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} features...\n`);
     }
 
-    if (parsed && parsed.required) {
-      try {
-        await checkForCircularDependencyInRequired(datasource, key, parsed.required);
-      } catch (e) {
-        console.log("  =>", key);
-        console.log("     => Error:", e.message);
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("feature", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "feature", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
         hasError = true;
+      }
+
+      let parsed;
+
+      try {
+        parsed = await datasource.readFeature(key);
+
+        const result = featureZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "feature", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "feature", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
+
+      if (parsed && parsed.required) {
+        try {
+          await checkForCircularDependencyInRequired(datasource, key, parsed.required);
+        } catch (e) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "feature", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
+
+          hasError = true;
+        }
       }
     }
   }
 
   // lint groups
   const groups = await datasource.listGroups();
-  console.log(`\nLinting ${groups.length} groups...\n`);
+  const groupZodSchema = getGroupZodSchema(projectConfig, datasource, features);
 
-  // @TODO: feature it slots can be from availableFeatureKeys only
-  const groupJoiSchema = getGroupJoiSchema(projectConfig, datasource, availableFeatureKeys);
+  if (!options.entityType || options.entityType === "group") {
+    const filteredKeys = !keyPattern ? groups : groups.filter((key) => keyPattern.test(key));
 
-  for (const key of groups) {
-    try {
-      const parsed = await datasource.readGroup(key);
-      await groupJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      console.log("  =>", key);
-      console.log("");
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} groups...\n`);
+    }
 
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("group", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "group", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
       }
 
-      hasError = true;
+      let parsed;
+
+      try {
+        parsed = await datasource.readGroup(key);
+
+        const result = groupZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "group", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "group", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
+
+      if (parsed) {
+        try {
+          await checkForFeatureExceedingGroupSlotPercentage(datasource, parsed, features);
+        } catch (e) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
+          hasError = true;
+        }
+      }
     }
   }
 
@@ -144,31 +371,124 @@ export async function lintProject(deps: Dependencies): Promise<boolean> {
 
   // lint tests
   const tests = await datasource.listTests();
-  console.log(`\nLinting ${tests.length} tests...\n`);
 
-  const testsJoiSchema = getTestsJoiSchema(
+  const testsZodSchema = getTestsZodSchema(
     projectConfig,
-    availableFeatureKeys,
-    availableSegmentKeys,
+    features as [string, ...string[]],
+    segments as [string, ...string[]],
   );
 
-  for (const key of tests) {
-    try {
-      const parsed = await datasource.readTest(key);
-      await testsJoiSchema.validateAsync(parsed);
-    } catch (e) {
-      console.log("  =>", key);
-      console.log("");
+  if (!options.entityType || options.entityType === "test") {
+    const filteredKeys = !keyPattern ? tests : tests.filter((key) => keyPattern.test(key));
 
-      if (e instanceof Joi.ValidationError) {
-        printJoiError(e);
-      } else {
-        console.log(e);
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} tests...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("test", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "test", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
       }
 
-      hasError = true;
+      try {
+        const parsed = await datasource.readTest(key);
+
+        const result = testsZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "test", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+
+            process.exit(1);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "test", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
     }
   }
 
   return hasError;
 }
+
+export const lintPlugin: Plugin = {
+  command: "lint",
+  handler: async function (options) {
+    const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
+
+    const hasError = await lintProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        keyPattern: parsed.keyPattern,
+        entityType: parsed.entityType,
+        authors: parsed.authors,
+      },
+    );
+
+    if (hasError) {
+      return false;
+    }
+  },
+  examples: [
+    {
+      command: "lint",
+      description: "lint all entities",
+    },
+    {
+      command: "lint --entityType=feature",
+      description: "lint only features",
+    },
+    {
+      command: "lint --entityType=segment",
+      description: "lint only segments",
+    },
+    {
+      command: "lint --entityType=group",
+      description: "lint only groups",
+    },
+    {
+      command: "lint --entityType=test",
+      description: "lint only tests",
+    },
+    {
+      command: 'lint --keyPattern="abc"',
+      description: `lint only entities with keys containing "abc"`,
+    },
+  ],
+};
