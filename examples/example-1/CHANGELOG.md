@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.30.1](https://github.com/featurevisor/featurevisor/compare/v1.30.0...v1.30.1) (2025-02-08)
+
+
+### Bug Fixes
+
+* single function to evaluate flag, variation, and variable ([#341](https://github.com/featurevisor/featurevisor/issues/341)) ([ebba884](https://github.com/featurevisor/featurevisor/commit/ebba884d96ea24f5832c523bae17bd8b4d904584))
+
+
+
+
+
 # [1.30.0](https://github.com/featurevisor/featurevisor/compare/v1.29.3...v1.30.0) (2025-02-04)
 
 **Note:** Version bump only for package @featurevisor/example-1
