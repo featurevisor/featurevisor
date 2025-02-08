@@ -84,7 +84,8 @@
       { "title": "Plugins", "href": "/docs/plugins" },
       { "title": "Datasource", "href": "/docs/datasource" },
       { "title": "Code generation", "href": "/docs/code-generation" },
-      { "title": "Bucketing", "href": "/docs/bucketing" }
+      { "title": "Bucketing", "href": "/docs/bucketing" },
+      { "title": "Scopes", "href": "/docs/scopes" }
     ]
   },
   {

@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { BucketBy } from "@featurevisor/types";
+import { BucketBy, Context, Tag } from "@featurevisor/types";
 
 import { Parser, parsers } from "./parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
@@ -29,6 +29,12 @@ export const DEFAULT_PARSER: Parser = "yml";
 
 export const SCHEMA_VERSION = "1"; // default schema version
 
+export interface Scope {
+  name: string;
+  context: Context;
+  tag: Tag;
+}
+
 export interface ProjectConfig {
   featuresDirectoryPath: string;
   segmentsDirectoryPath: string;
@@ -41,6 +47,7 @@ export interface ProjectConfig {
 
   environments: string[];
   tags: string[];
+  scopes: Scope[];
 
   adapter: any; // @TODO: type this properly later
   plugins: Plugin[];
@@ -64,6 +71,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
     environments: DEFAULT_ENVIRONMENTS,
     tags: DEFAULT_TAGS,
+    scopes: [],
     defaultBucketBy: "userId",
 
     parser: DEFAULT_PARSER,
