@@ -190,7 +190,9 @@ export class FilesystemAdapter extends Adapter {
 
     fileName += ".json";
 
-    return path.join(this.config.outputDirectoryPath, options.environment, fileName);
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+
+    return path.join(dir, options.environment, fileName);
   }
 
   async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
@@ -202,10 +204,9 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
-    const outputEnvironmentDirPath = path.join(
-      this.config.outputDirectoryPath,
-      options.environment,
-    );
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+
+    const outputEnvironmentDirPath = path.join(dir, options.environment);
     mkdirp.sync(outputEnvironmentDirPath);
 
     const outputFilePath = this.getDatafilePath(options);
@@ -217,7 +218,7 @@ export class FilesystemAdapter extends Adapter {
         : JSON.stringify(datafileContent),
     );
 
-    const root = path.resolve(this.config.outputDirectoryPath, "..");
+    const root = path.resolve(dir, "..");
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
     console.log(`     Datafile generated: ${shortPath}`);

@@ -609,6 +609,14 @@ When [variables](#variable) are defined inside a feature, they must also provide
 
 Learn more about variables schema [here](/docs/features/#variables).
 
+## Schema version
+
+Generated [datafiles](#datafile) follow a schema version.
+
+Featurevisor started with the schema version of 1, and a new schema version 2 is in the works.
+
+See how you can build datafiles against a more optimized schema version [here](/docs/building-datafiles/#schema-v2).
+
 ## SDK
 
 SDK stands for Software Development Kit.

@@ -3,6 +3,82 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.30.1](https://github.com/featurevisor/featurevisor/compare/v1.30.0...v1.30.1) (2025-02-08)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+# [1.30.0](https://github.com/featurevisor/featurevisor/compare/v1.29.3...v1.30.0) (2025-02-04)
+
+
+### Features
+
+* allow setting max character limits for variables ([#342](https://github.com/featurevisor/featurevisor/issues/342)) ([14bff84](https://github.com/featurevisor/featurevisor/commit/14bff84eafcc01929fb7e072b63f5802bf836d26))
+
+
+
+
+
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* convert to datafile schema v2 internally ([#337](https://github.com/featurevisor/featurevisor/issues/337)) ([3441369](https://github.com/featurevisor/featurevisor/commit/3441369a2c237fbef2acdf8acd219cda6c4eb923))
+
+
+
+
+
+# [1.29.0](https://github.com/featurevisor/featurevisor/compare/v1.28.0...v1.29.0) (2025-01-22)
+
+
+### Features
+
+* pass custom datafiles directory path from CLI ([#336](https://github.com/featurevisor/featurevisor/issues/336)) ([d30502b](https://github.com/featurevisor/featurevisor/commit/d30502bccfc2267ea82f417fdfd2e4e10217285d))
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+**Note:** Version bump only for package @featurevisor/core
+
+
+
+
+
 ## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
 
 **Note:** Version bump only for package @featurevisor/core

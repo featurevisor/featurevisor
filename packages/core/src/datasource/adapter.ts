@@ -13,6 +13,7 @@ export interface DatafileOptions {
   environment: EnvironmentKey;
   tag: string;
   scope?: Scope;
+  datafilesDir?: string;
 }
 
 export abstract class Adapter {

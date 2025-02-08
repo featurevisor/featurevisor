@@ -51,6 +51,11 @@ export async function runCLI(runnerOptions: RunnerOptions) {
     y = y.command({
       command: plugin.command,
       handler: async function (parsed: ParsedOptions) {
+        // @TODO: in future, allow yargs options to be defined via plugins
+        if (parsed.schemaVersion && typeof parsed.schemaVersion !== "string") {
+          parsed.schemaVersion = parsed.schemaVersion.toString();
+        }
+
         try {
           const result = await plugin.handler({
             rootDirectoryPath,

@@ -3,6 +3,69 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.30.1](https://github.com/featurevisor/featurevisor/compare/v1.30.0...v1.30.1) (2025-02-08)
+
+
+### Bug Fixes
+
+* single function to evaluate flag, variation, and variable ([#341](https://github.com/featurevisor/featurevisor/issues/341)) ([ebba884](https://github.com/featurevisor/featurevisor/commit/ebba884d96ea24f5832c523bae17bd8b4d904584))
+
+
+
+
+
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+
+### Bug Fixes
+
+* matched rules with percentage of 0 should be disabled ([#340](https://github.com/featurevisor/featurevisor/issues/340)) ([07f1682](https://github.com/featurevisor/featurevisor/commit/07f1682b98c67ac00b6edb91bda90fd77791458b))
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/sdk
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+
+### Bug Fixes
+
+* convert to datafile schema v2 internally ([#337](https://github.com/featurevisor/featurevisor/issues/337)) ([3441369](https://github.com/featurevisor/featurevisor/commit/3441369a2c237fbef2acdf8acd219cda6c4eb923))
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+
+### Bug Fixes
+
+* in operator with non-existent context value ([#335](https://github.com/featurevisor/featurevisor/issues/335)) ([08f6f38](https://github.com/featurevisor/featurevisor/commit/08f6f38c252940ac010148937af9e93c2b5c3557))
+
+
+
+
+
 ## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
 
 **Note:** Version bump only for package @featurevisor/sdk

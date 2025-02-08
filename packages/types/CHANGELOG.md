@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
 ## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
 
 **Note:** Version bump only for package @featurevisor/types

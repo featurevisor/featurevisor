@@ -1,0 +1,17 @@
+description: Classic on/off switch
+tags:
+  - all
+
+bucketBy: userId
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 0
