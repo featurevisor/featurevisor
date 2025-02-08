@@ -145,13 +145,13 @@ type ValueType = VariableValue;
 
 export function getValueByType(value: ValueType, fieldType: FieldType): ValueType {
   try {
-    if (value === undefined) {
-      return undefined;
+    if (value === null) {
+      return null;
     }
 
     switch (fieldType) {
       case "string":
-        return typeof value === "string" ? value : undefined;
+        return typeof value === "string" ? value : null;
       case "integer":
         return parseInt(value as string, 10);
       case "double":
@@ -159,15 +159,15 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
       case "boolean":
         return value === true;
       case "array":
-        return Array.isArray(value) ? value : undefined;
+        return Array.isArray(value) ? value : null;
       case "object":
-        return typeof value === "object" ? value : undefined;
+        return typeof value === "object" ? value : null;
       // @NOTE: `json` is not handled here intentionally
       default:
         return value;
     }
   } catch (e) {
-    return undefined;
+    return null;
   }
 }
 
@@ -1260,11 +1260,11 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): VariableValue | undefined {
+  ): VariableValue {
     try {
       const evaluation = this.evaluateVariable(featureKey, variableKey, context);
 
-      if (typeof evaluation.variableValue !== "undefined") {
+      if (typeof evaluation.variableValue !== "undefined" && evaluation.variableValue !== null) {
         if (
           evaluation.variableSchema &&
           evaluation.variableSchema.type === "json" &&
@@ -1276,11 +1276,11 @@ export class FeaturevisorInstance {
         return evaluation.variableValue;
       }
 
-      return undefined;
+      return null;
     } catch (e) {
       this.logger.error("getVariable", { featureKey, variableKey, error: e });
 
-      return undefined;
+      return null;
     }
   }
 
@@ -1288,70 +1288,70 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): boolean | undefined {
+  ): boolean | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "boolean") as boolean | undefined;
+    return getValueByType(variableValue, "boolean") as boolean | null;
   }
 
   getVariableString(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): string | undefined {
+  ): string | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "string") as string | undefined;
+    return getValueByType(variableValue, "string") as string | null;
   }
 
   getVariableInteger(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): number | undefined {
+  ): number | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "integer") as number | undefined;
+    return getValueByType(variableValue, "integer") as number | null;
   }
 
   getVariableDouble(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): number | undefined {
+  ): number | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "double") as number | undefined;
+    return getValueByType(variableValue, "double") as number | null;
   }
 
   getVariableArray(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): string[] | undefined {
+  ): string[] | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "array") as string[] | undefined;
+    return getValueByType(variableValue, "array") as string[] | null;
   }
 
   getVariableObject<T>(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): T | undefined {
+  ): T | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "object") as T | undefined;
+    return getValueByType(variableValue, "object") as T | null;
   }
 
   getVariableJSON<T>(
     featureKey: FeatureKey | Feature,
     variableKey: string,
     context: Context = {},
-  ): T | undefined {
+  ): T | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
-    return getValueByType(variableValue, "json") as T | undefined;
+    return getValueByType(variableValue, "json") as T | null;
   }
 }
 
