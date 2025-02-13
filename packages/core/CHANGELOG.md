@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.31.0](https://github.com/featurevisor/featurevisor/compare/v1.30.1...v1.31.0) (2025-02-13)
+
+
+### Features
+
+* variables schema as dictionary ([#343](https://github.com/featurevisor/featurevisor/issues/343)) ([18e8aed](https://github.com/featurevisor/featurevisor/commit/18e8aedab10ecdd68b7f0cbf911896b14ab37c91))
+
+
+
+
+
 ## [1.30.1](https://github.com/featurevisor/featurevisor/compare/v1.30.0...v1.30.1) (2025-02-08)
 
 **Note:** Version bump only for package @featurevisor/core
