@@ -241,7 +241,7 @@ export interface Feature {
   key: FeatureKey;
   deprecated?: boolean;
   required?: Required[];
-  variablesSchema?: VariableSchema[];
+  variablesSchema?: VariableSchema[] | Record<VariableKey, VariableSchema>;
   variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];

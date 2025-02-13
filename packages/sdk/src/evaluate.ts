@@ -292,9 +292,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     let variableSchema: VariableSchema | undefined;
 
     if (variableKey) {
-      variableSchema = Array.isArray(feature.variablesSchema)
-        ? feature.variablesSchema.find((v) => v.key === variableKey)
-        : undefined;
+      if (feature.variablesSchema && feature.variablesSchema[variableKey]) {
+        variableSchema = feature.variablesSchema[variableKey];
+      }
 
       // variable schema not found
       if (!variableSchema) {

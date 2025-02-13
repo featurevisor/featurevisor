@@ -395,6 +395,14 @@ export async function buildDatafile(
     }, {});
 
     datafileContentV2.features = features.reduce((acc, feature) => {
+      if (Array.isArray(feature.variablesSchema)) {
+        feature.variablesSchema = feature.variablesSchema.reduce((vAcc, variableSchema) => {
+          vAcc[variableSchema.key] = variableSchema;
+
+          return vAcc;
+        }, {});
+      }
+
       acc[feature.key] = feature;
       return acc;
     }, {});

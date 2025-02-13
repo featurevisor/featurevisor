@@ -110,17 +110,21 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   const feature = f.getFeature(options.feature);
   if (feature?.variablesSchema) {
-    feature.variablesSchema.forEach((v) => {
+    const variableKeys = Array.isArray(feature.variablesSchema)
+      ? feature.variablesSchema
+      : Object.keys(feature.variablesSchema);
+
+    variableKeys.forEach((variableKey) => {
       const variableEvaluation = f.evaluateVariable(
         options.feature,
-        v.key,
+        variableKey,
         options.context as Context,
       );
 
-      variableEvaluationLogs[v.key] = [...logs];
+      variableEvaluationLogs[variableKey] = [...logs];
       logs = [];
 
-      variableEvaluations[v.key] = variableEvaluation;
+      variableEvaluations[variableKey] = variableEvaluation;
     });
   }
 

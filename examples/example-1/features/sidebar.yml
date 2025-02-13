@@ -18,6 +18,24 @@ variablesSchema:
   - key: title
     type: string
     defaultValue: "Sidebar Title"
+  - key: title2
+    type: string
+    defaultValue: "Sidebar Title 2"
+  - key: title3
+    type: string
+    defaultValue: "Sidebar Title 3"
+  - key: title4
+    type: string
+    defaultValue: "Sidebar Title 4"
+  - key: title5
+    type: string
+    defaultValue: "Sidebar Title 5"
+  - key: title6
+    type: string
+    defaultValue: "Sidebar Title 6"
+  - key: title7
+    type: string
+    defaultValue: "Sidebar Title 7"
 
 variations:
   - value: control

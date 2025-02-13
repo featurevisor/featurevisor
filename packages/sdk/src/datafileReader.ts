@@ -56,6 +56,13 @@ export class DatafileReader {
 
       this.features = {};
       datafileJsonV1.features.forEach((f) => {
+        if (Array.isArray(f.variablesSchema)) {
+          f.variablesSchema = f.variablesSchema.reduce((acc, variable) => {
+            acc[variable.key] = variable;
+            return acc;
+          }, {});
+        }
+
         this.features[f.key] = f;
       });
     }
