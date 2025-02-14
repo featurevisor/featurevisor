@@ -250,7 +250,6 @@ export function getFeatureZodSchema(
             })
             .strict(),
         )
-
         // must have at least one rule
         .refine(
           (value) => value.length > 0,
@@ -258,7 +257,6 @@ export function getFeatureZodSchema(
             message: "Must have at least one rule",
           }),
         )
-
         // duplicate rules
         .refine(
           (value) => {
@@ -269,7 +267,6 @@ export function getFeatureZodSchema(
             message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
           }),
         )
-
         // enforce catch-all rule
         .refine(
           (value) => {
@@ -283,6 +280,42 @@ export function getFeatureZodSchema(
           () => ({
             message: `Missing catch-all rule with \`segments: "*"\` at the end`,
           }),
+        )
+
+        .refine(
+          (rules) => {
+            let hasDuplicates = false;
+            rules.forEach((rule) => {
+              if (Array.isArray(rule.segments)) {
+                const segments = rule.segments;
+                const uniqueSegments = new Set(segments);
+                if (segments.length !== uniqueSegments.size) {
+                  hasDuplicates = true;
+                }
+              }
+            });
+            return !hasDuplicates;
+          },
+          (rules) => {
+            const duplicatesInRules = rules
+              .map((rule) => {
+                if (Array.isArray(rule.segments)) {
+                  const segments = rule.segments;
+                  const duplicates = segments.filter(
+                    (segment, index) => segments.indexOf(segment) !== index,
+                  );
+                  if (duplicates.length > 0) {
+                    return `Rule "${rule.key}": ${duplicates.join(", ")}`;
+                  }
+                }
+                return null;
+              })
+              .filter(Boolean);
+
+            return {
+              message: "Duplicate segments found in rules: " + duplicatesInRules.join("; "),
+            };
+          },
         ),
       force: z
         .array(
@@ -294,7 +327,29 @@ export function getFeatureZodSchema(
                 variation: variationValueZodSchema.optional(),
                 variables: z.record(variableValueZodSchema).optional(),
               })
-              .strict(),
+              .strict()
+              .refine(
+                (forceRule) => {
+                  if (Array.isArray(forceRule.segments)) {
+                    const segments = forceRule.segments;
+                    const uniqueSegments = new Set(segments);
+                    return segments.length === uniqueSegments.size;
+                  }
+                  return true;
+                },
+                (forceRule) => {
+                  if (Array.isArray(forceRule.segments)) {
+                    const segments = forceRule.segments;
+                    const duplicates = segments.filter(
+                      (segment, index) => segments.indexOf(segment) !== index,
+                    );
+                    return {
+                      message: `Duplicate segments found in force rule: ${duplicates.join(", ")}`,
+                    };
+                  }
+                  return { message: "" };
+                },
+              ),
             z
               .object({
                 conditions: conditionsZodSchema,
