@@ -182,7 +182,14 @@ export class FilesystemAdapter extends Adapter {
    * Datafile
    */
   getDatafilePath(options: DatafileOptions): string {
-    const fileName = `datafile-tag-${options.tag}.json`;
+    let fileName = `datafile-tag-${options.tag}`;
+
+    if (options.scope) {
+      fileName = `datafile-scope-${options.scope.name}`;
+    }
+
+    fileName += ".json";
+
     const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
     return path.join(dir, options.environment, fileName);

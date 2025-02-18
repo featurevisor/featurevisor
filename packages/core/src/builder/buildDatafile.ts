@@ -19,9 +19,10 @@ import {
   FeatureKey,
   Allocation,
   VariableSchema,
+  Context,
 } from "@featurevisor/types";
 
-import { ProjectConfig, SCHEMA_VERSION } from "../config";
+import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 
@@ -416,4 +417,28 @@ export async function buildDatafile(
   datafileContent.features = features;
 
   return datafileContent;
+}
+
+export function buildScopedDatafile(
+  originalDatafileContent: DatafileContent,
+  context: Context,
+): DatafileContent {
+  const scopedDatafileContent = {
+    ...originalDatafileContent,
+  };
+
+  // @TODO: remove redundant conditions from segments
+  // @TODO: remove redundant conditions from environment rules
+  // @TODO: remove redundant conditions from environment force
+  // @TODO: remove redundant conditions from variation overrides
+
+  // @TODO: remove redundant segments from environment rules
+  // @TODO: remove redundant segments from environment force
+  // @TODO: remove redundant segments from variation overrides
+
+  // @TODO: remove redundant rules
+  // @TODO: remove redundant segments
+  // @TODO: remove redundant attributes
+
+  return scopedDatafileContent;
 }
