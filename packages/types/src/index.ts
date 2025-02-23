@@ -333,9 +333,14 @@ export interface ParsedFeature {
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
 
-  environments: {
+  // if using environments
+  environments?: {
     [key: EnvironmentKey]: Environment;
   };
+
+  // if not using environments
+  rules?: Rule[];
+  force?: Force[];
 }
 
 /**

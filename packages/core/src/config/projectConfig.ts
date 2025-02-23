@@ -39,7 +39,7 @@ export interface ProjectConfig {
   outputDirectoryPath: string;
   siteExportDirectoryPath: string;
 
-  environments: string[];
+  environments: string[] | false;
   tags: string[];
 
   adapter: any; // @TODO: type this properly later

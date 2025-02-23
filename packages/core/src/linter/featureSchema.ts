@@ -309,11 +309,17 @@ export function getFeatureZodSchema(
     })
     .strict();
 
-  const allEnvironmentsSchema = {};
-  projectConfig.environments.forEach((environmentKey) => {
-    allEnvironmentsSchema[environmentKey] = environmentZodSchema;
-  });
-  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
+  let allEnvironmentsZodSchema: z.ZodTypeAny = z.never();
+
+  if (Array.isArray(projectConfig.environments)) {
+    const allEnvironmentsSchema = {};
+
+    projectConfig.environments.forEach((environmentKey) => {
+      allEnvironmentsSchema[environmentKey] = environmentZodSchema;
+    });
+
+    allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
+  }
 
   const attributeKeyZodSchema = z.string().refine(
     (value) => value === "*" || availableAttributeKeys.includes(value),
