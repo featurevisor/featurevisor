@@ -9,7 +9,7 @@ import {
 } from "@featurevisor/types";
 
 export interface DatafileOptions {
-  environment: EnvironmentKey;
+  environment: EnvironmentKey | false;
   tag: string;
   datafilesDir?: string;
 }
@@ -23,8 +23,11 @@ export abstract class Adapter {
   abstract deleteEntity(entityType: EntityType, entityKey: string): Promise<void>;
 
   // state
-  abstract readState(environment: EnvironmentKey): Promise<ExistingState>;
-  abstract writeState(environment: EnvironmentKey, existingState: ExistingState): Promise<void>;
+  abstract readState(environment: EnvironmentKey | false): Promise<ExistingState>;
+  abstract writeState(
+    environment: EnvironmentKey | false,
+    existingState: ExistingState,
+  ): Promise<void>;
 
   // datafile
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;

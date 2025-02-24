@@ -311,8 +311,10 @@ export interface Rule {
 
 export type Tag = string;
 
+export type Expose = boolean | Tag[];
+
 export interface Environment {
-  expose?: boolean | Tag[];
+  expose?: Expose;
   rules: Rule[];
   force?: Force[];
 }
@@ -339,6 +341,7 @@ export interface ParsedFeature {
   };
 
   // if not using environments
+  expose?: Expose;
   rules?: Rule[];
   force?: Force[];
 }

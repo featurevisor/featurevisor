@@ -35,11 +35,11 @@ export class Datasource {
   /**
    * State
    */
-  readState(environment: EnvironmentKey): Promise<ExistingState> {
+  readState(environment: EnvironmentKey | false): Promise<ExistingState> {
     return this.adapter.readState(environment);
   }
 
-  writeState(environment: EnvironmentKey, existingState: ExistingState) {
+  writeState(environment: EnvironmentKey | false, existingState: ExistingState) {
     return this.adapter.writeState(environment, existingState);
   }
 

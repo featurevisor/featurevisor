@@ -19,6 +19,9 @@ import {
   FeatureKey,
   Allocation,
   VariableSchema,
+  Expose,
+  Rule,
+  Force,
 } from "@featurevisor/types";
 
 import { ProjectConfig, SCHEMA_VERSION } from "../config";
@@ -66,7 +69,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
 export interface BuildOptions {
   schemaVersion: string;
   revision: string;
-  environment: string;
+  environment: string | false;
   tag?: string;
   features?: FeatureKey[];
   inflate?: number;
@@ -112,19 +115,33 @@ export async function buildDatafile(
         continue;
       }
 
-      if (parsedFeature.environments[options.environment].expose === false) {
+      let expose: Expose | undefined;
+      let rules: Rule[];
+      let force: Force[] | undefined;
+
+      if (options.environment && parsedFeature.environments) {
+        expose = parsedFeature.environments[options.environment].expose;
+        rules = parsedFeature.environments[options.environment].rules;
+        force = parsedFeature.environments[options.environment].force;
+      } else {
+        expose = parsedFeature.expose;
+        rules = parsedFeature.rules as Rule[];
+        force = parsedFeature.force;
+      }
+
+      if (expose === false) {
         continue;
       }
 
-      if (Array.isArray(parsedFeature.environments[options.environment].expose)) {
-        const exposeTags = parsedFeature.environments[options.environment].expose as string[];
+      if (expose) {
+        const exposeTags = expose as string[];
 
         if (options.tag && exposeTags.indexOf(options.tag) === -1) {
           continue;
         }
       }
 
-      for (const parsedRule of parsedFeature.environments[options.environment].rules) {
+      for (const parsedRule of rules) {
         const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
         extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
       }
@@ -200,7 +217,7 @@ export async function buildDatafile(
           : undefined,
         traffic: getTraffic(
           parsedFeature.variations,
-          parsedFeature.environments[options.environment].rules,
+          rules,
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
         ).map((t: Traffic) => {
@@ -253,8 +270,8 @@ export async function buildDatafile(
         });
       }
 
-      if (parsedFeature.environments[options.environment].force) {
-        feature.force = parsedFeature.environments[options.environment].force;
+      if (force) {
+        feature.force = force;
 
         feature.force?.forEach((f) => {
           if (f.segments) {
