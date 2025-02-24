@@ -1,6 +1,6 @@
 /** @type {import('@featurevisor/core').ProjectConfig} */
 module.exports = {
-  environments: ["staging", "production"],
+  environments: false,
   tags: ["all"],
   prettyState: true,
 };
