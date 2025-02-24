@@ -1,0 +1,15 @@
+description: Show cookie banner to users from the Netherlands
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  - key: "1"
+    segments:
+      - netherlands # enabled in prod for NL only
+    percentage: 100
+
+  - key: "2"
+    segments: "*" # everyone else
+    percentage: 0

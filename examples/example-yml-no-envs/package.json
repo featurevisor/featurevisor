@@ -1,0 +1,18 @@
+{
+  "name": "@featurevisor/example-yml",
+  "private": true,
+  "version": "1.31.0",
+  "description": "Featurevisor project with YAML definitions",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test",
+    "export": "featurevisor site export",
+    "start": "npm run export && featurevisor site serve",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
+    "find-duplicate-segments": "featurevisor find-duplicate-segments"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "1.31.0"
+  }
+}
