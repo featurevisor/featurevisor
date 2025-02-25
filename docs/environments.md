@@ -13,8 +13,17 @@ It is recommended that you have at least `staging` and `production` environments
 ```js
 // featurevisor.config.js
 module.exports = {
-  tags: ["web", "mobile"],
-  environments: ["staging", "production"],
+  tags: [
+    "web",
+    "mobile"
+  ],
+
+  environments: [
+    "staging",
+    "production",
+
+    // add more environments here...
+  ],
 };
 ```
 
@@ -41,6 +50,19 @@ environments:
       - key: "1"
         segments: "*"
         percentage: 0
+```
+
+And the [datafiles](/docs/building-datafiles) will be built per each environment:
+
+```
+$ tree dist
+.
+├── staging
+│   ├── datafile-tag-web.json
+│   └── datafile-tag-mobile.json
+├── production
+│   ├── datafile-tag-web.json
+│   └── datafile-tag-mobile.json
 ```
 
 ## No environments
@@ -70,4 +92,13 @@ rules:
   - key: "1"
     segments: "*"
     percentage: 100
+```
+
+The [datafiles](/docs/building-datafiles) will be built without any environment:
+
+```
+$ tree dist
+.
+├── datafile-tag-web.json
+├── datafile-tag-mobile.json
 ```
