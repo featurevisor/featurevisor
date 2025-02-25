@@ -115,7 +115,7 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
     if (projectConfig.environments === false) {
       // force
       if (feature.force) {
-        feature.force?.forEach((force) => {
+        feature.force.forEach((force) => {
           if (force.segments) {
             extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) =>
               usageInFeatures[featureKey].segments.add(segmentKey),
@@ -132,7 +132,7 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
 
       // rules
       if (feature.rules) {
-        feature.rules?.forEach((rule) => {
+        feature.rules.forEach((rule) => {
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
             usageInFeatures[featureKey].segments.add(segmentKey),
           );
