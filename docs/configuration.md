@@ -21,6 +21,49 @@ As your tags and environments grow, you can keep adding them to your configurati
 
 ## Additional configuration
 
+### `tags`
+
+An array of tags that can be used in your [features](/docs/features/). Tags are used for building smaller [datafiles](/docs/building-datafiles) containing only the features that you need for your application(s).
+
+```js
+// featurevisor.config.js
+module.exports = {
+  tags: [
+    "web",
+    "ios",
+    "android",
+    "all",
+  ],
+};
+```
+
+### `environments`
+
+An array of environments that can be used in your [features](/docs/features/).
+
+By default, Featurevisor will use `staging` and `production` as environments:
+
+```js
+// featurevisor.config.js
+module.exports = {
+  environments: [
+    "staging",
+    "production",
+  ],
+};
+```
+
+If your project does not need any environments, you can also disable it:
+
+```js
+// featurevisor.config.js
+module.exports = {
+  environments: false,
+};
+```
+
+Read more in [Environments](/docs/environments) page.
+
 ### `attributesDirectoryPath`
 
 Path to the directory containing your [attributes](/docs/attributes/).
