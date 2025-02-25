@@ -133,8 +133,8 @@ export async function buildDatafile(
         continue;
       }
 
-      if (expose) {
-        const exposeTags = expose as string[];
+      if (Array.isArray(expose)) {
+        const exposeTags = expose;
 
         if (options.tag && exposeTags.indexOf(options.tag) === -1) {
           continue;
