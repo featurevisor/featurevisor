@@ -460,12 +460,12 @@ export function getFeatureZodSchema(
       // with environments
       environments: Array.isArray(projectConfig.environments)
         ? allEnvironmentsZodSchema
-        : z.never(),
+        : z.never().optional(),
 
       // no environments
-      expose: projectConfig.environments === false ? exposeSchema : z.never(),
-      rules: projectConfig.environments === false ? rulesSchema : z.never(),
-      force: projectConfig.environments === false ? forceSchema : z.never(),
+      expose: projectConfig.environments === false ? exposeSchema : z.never().optional(),
+      rules: projectConfig.environments === false ? rulesSchema : z.never().optional(),
+      force: projectConfig.environments === false ? forceSchema : z.never().optional(),
     })
     .strict()
     .superRefine((value, ctx) => {

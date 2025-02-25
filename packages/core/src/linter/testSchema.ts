@@ -81,7 +81,7 @@ export function getTestsZodSchema(
                     message: `Unknown environment "${value}"`,
                   }),
                 )
-              : z.never(),
+              : z.never().optional(),
             context: z.record(z.unknown()),
             expectedToBeEnabled: z.boolean(),
             expectedVariation: z.string().optional(),
