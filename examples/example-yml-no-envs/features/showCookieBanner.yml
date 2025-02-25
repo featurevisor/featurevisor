@@ -7,7 +7,7 @@ bucketBy: userId
 rules:
   - key: "1"
     segments:
-      - netherlands # enabled in prod for NL only
+      - netherlands
     percentage: 100
 
   - key: "2"

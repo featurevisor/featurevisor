@@ -50,7 +50,7 @@ function printHeader(message: string) {
 }
 
 export interface EvaluateOptions {
-  environment: string;
+  environment?: string;
   feature: string;
   context: Record<string, unknown>;
   print?: boolean;
@@ -69,14 +69,14 @@ export interface Log {
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
   const { datasource, projectConfig } = deps;
 
-  const existingState = await datasource.readState(options.environment);
+  const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
     projectConfig,
     datasource,
     {
       schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
-      environment: options.environment,
+      environment: options.environment || false,
       inflate: options.inflate,
     },
     existingState,
