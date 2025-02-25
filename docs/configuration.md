@@ -17,13 +17,13 @@ module.exports = {
 };
 ```
 
-As your tags and environments grow, you can keep adding them to your configuration file.
+As your [tags](/docs/tags) and [environments](/docs/environments) grow, you can keep adding them to your configuration file.
 
-## Additional configuration
+## Params
 
 ### `tags`
 
-An array of tags that can be used in your [features](/docs/features/). Tags are used for building smaller [datafiles](/docs/building-datafiles) containing only the features that you need for your application(s).
+An array of [tags](/docs/tags) that can be used in your [features](/docs/features/). Tags are used for building smaller [datafiles](/docs/building-datafiles) containing only the features that you need for your application(s).
 
 ```js
 // featurevisor.config.js
@@ -39,7 +39,7 @@ module.exports = {
 
 ### `environments`
 
-An array of environments that can be used in your [features](/docs/features/).
+An array of [environments](/docs/environments) that can be used in your [features](/docs/features/).
 
 By default, Featurevisor will use `staging` and `production` as environments:
 

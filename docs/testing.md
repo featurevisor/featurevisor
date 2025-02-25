@@ -74,6 +74,8 @@ assertions:
 
 The `at` property is the bucketed value (in percentage form ranging from 0 to 100) that assertions will be run against. Read more in [Bucketing](/docs/bucketing).
 
+If your project has no [environments](/docs/environments), you can omit the `environment` property in your assertions.
+
 File names of test specs are not important, but we recommend using the same name as the feature key.
 
 ## Testing segments
