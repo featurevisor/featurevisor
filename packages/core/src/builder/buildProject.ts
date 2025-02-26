@@ -1,4 +1,5 @@
-import { SCHEMA_VERSION } from "../config";
+import { SCHEMA_VERSION, ProjectConfig } from "../config";
+import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
@@ -17,6 +18,58 @@ export interface BuildCLIOptions {
   stateFiles?: boolean; // --no-state-files in CLI
   inflate?: number;
   datafilesDir?: string;
+}
+
+async function buildForEnvironment({
+  projectConfig,
+  datasource,
+  nextRevision,
+  environment,
+  tags,
+  cliOptions,
+}: {
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  nextRevision: string;
+  environment: string | false;
+  tags: string[];
+  cliOptions: BuildCLIOptions;
+}) {
+  console.log(`\nBuilding datafiles for environment: ${environment}`);
+
+  const existingState = await datasource.readState(environment);
+
+  for (const tag of tags) {
+    console.log(`\n  => Tag: ${tag}`);
+
+    const datafileContent = await buildDatafile(
+      projectConfig,
+      datasource,
+      {
+        schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
+        revision: nextRevision,
+        environment: environment,
+        tag: tag,
+        inflate: cliOptions.inflate,
+      },
+      existingState,
+    );
+
+    // write datafile for environment/tag
+    await datasource.writeDatafile(datafileContent, {
+      environment,
+      tag,
+      datafilesDir: cliOptions.datafilesDir,
+    });
+  }
+
+  if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
+    // write state for environment
+    await datasource.writeState(environment, existingState);
+
+    // write revision
+    await datasource.writeRevision(nextRevision);
+  }
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -63,42 +116,30 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
-  for (const environment of environments) {
-    console.log(`\nBuilding datafiles for environment: ${environment}`);
-
-    const existingState = await datasource.readState(environment);
-
-    for (const tag of tags) {
-      console.log(`\n  => Tag: ${tag}`);
-
-      const datafileContent = await buildDatafile(
+  // with environments
+  if (Array.isArray(environments)) {
+    for (const environment of environments) {
+      await buildForEnvironment({
         projectConfig,
         datasource,
-        {
-          schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
-          revision: nextRevision,
-          environment: environment,
-          tag: tag,
-          inflate: cliOptions.inflate,
-        },
-        existingState,
-      );
-
-      // write datafile for environment/tag
-      await datasource.writeDatafile(datafileContent, {
+        nextRevision,
         environment,
-        tag,
-        datafilesDir: cliOptions.datafilesDir,
+        tags,
+        cliOptions,
       });
     }
+  }
 
-    if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
-      // write state for environment
-      await datasource.writeState(environment, existingState);
-
-      // write revision
-      await datasource.writeRevision(nextRevision);
-    }
+  // no environment
+  if (environments === false) {
+    await buildForEnvironment({
+      projectConfig,
+      datasource,
+      nextRevision,
+      environment: false,
+      tags,
+      cliOptions,
+    });
   }
 
   console.log("\nLatest revision:", nextRevision);

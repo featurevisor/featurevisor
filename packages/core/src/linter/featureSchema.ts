@@ -227,93 +227,102 @@ export function getFeatureZodSchema(
 
   const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
 
+  const exposeSchema = z
+    .union([z.boolean(), z.array(z.string().refine((value) => projectConfig.tags.includes(value)))])
+    .optional();
+
+  const rulesSchema = z
+    .array(
+      z
+        .object({
+          key: z.string(),
+          description: z.string().optional(),
+          segments: groupSegmentsZodSchema,
+          percentage: z.number().min(0).max(100),
+
+          enabled: z.boolean().optional(),
+          variation: variationValueZodSchema.optional(),
+          variables: z.record(variableValueZodSchema).optional(),
+        })
+        .strict(),
+    )
+
+    // must have at least one rule
+    .refine(
+      (value) => value.length > 0,
+      () => ({
+        message: "Must have at least one rule",
+      }),
+    )
+
+    // duplicate rules
+    .refine(
+      (value) => {
+        const keys = value.map((v) => v.key);
+        return keys.length === new Set(keys).size;
+      },
+      (value) => ({
+        message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+      }),
+    )
+
+    // enforce catch-all rule
+    .refine(
+      (value) => {
+        if (!projectConfig.enforceCatchAllRule) {
+          return true;
+        }
+
+        const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
+        return hasCatchAllAsLastRule;
+      },
+      () => ({
+        message: `Missing catch-all rule with \`segments: "*"\` at the end`,
+      }),
+    );
+
+  const forceSchema = z
+    .array(
+      z.union([
+        z
+          .object({
+            segments: groupSegmentsZodSchema,
+            enabled: z.boolean().optional(),
+            variation: variationValueZodSchema.optional(),
+            variables: z.record(variableValueZodSchema).optional(),
+          })
+          .strict(),
+        z
+          .object({
+            conditions: conditionsZodSchema,
+            enabled: z.boolean().optional(),
+            variation: variationValueZodSchema.optional(),
+            variables: z.record(variableValueZodSchema).optional(),
+          })
+          .strict(),
+      ]),
+    )
+    .optional();
+
   const environmentZodSchema = z
     .object({
-      expose: z
-        .union([
-          z.boolean(),
-          z.array(z.string().refine((value) => projectConfig.tags.includes(value))),
-        ])
-        .optional(),
-      rules: z
-        .array(
-          z
-            .object({
-              key: z.string(),
-              description: z.string().optional(),
-              segments: groupSegmentsZodSchema,
-              percentage: z.number().min(0).max(100),
-
-              enabled: z.boolean().optional(),
-              variation: variationValueZodSchema.optional(),
-              variables: z.record(variableValueZodSchema).optional(),
-            })
-            .strict(),
-        )
-
-        // must have at least one rule
-        .refine(
-          (value) => value.length > 0,
-          () => ({
-            message: "Must have at least one rule",
-          }),
-        )
-
-        // duplicate rules
-        .refine(
-          (value) => {
-            const keys = value.map((v) => v.key);
-            return keys.length === new Set(keys).size;
-          },
-          (value) => ({
-            message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
-          }),
-        )
-
-        // enforce catch-all rule
-        .refine(
-          (value) => {
-            if (!projectConfig.enforceCatchAllRule) {
-              return true;
-            }
-
-            const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
-            return hasCatchAllAsLastRule;
-          },
-          () => ({
-            message: `Missing catch-all rule with \`segments: "*"\` at the end`,
-          }),
-        ),
-      force: z
-        .array(
-          z.union([
-            z
-              .object({
-                segments: groupSegmentsZodSchema,
-                enabled: z.boolean().optional(),
-                variation: variationValueZodSchema.optional(),
-                variables: z.record(variableValueZodSchema).optional(),
-              })
-              .strict(),
-            z
-              .object({
-                conditions: conditionsZodSchema,
-                enabled: z.boolean().optional(),
-                variation: variationValueZodSchema.optional(),
-                variables: z.record(variableValueZodSchema).optional(),
-              })
-              .strict(),
-          ]),
-        )
-        .optional(),
+      expose: exposeSchema,
+      rules: rulesSchema,
+      force: forceSchema,
     })
     .strict();
 
-  const allEnvironmentsSchema = {};
-  projectConfig.environments.forEach((environmentKey) => {
-    allEnvironmentsSchema[environmentKey] = environmentZodSchema;
-  });
-  const allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
+  let allEnvironmentsZodSchema: z.ZodTypeAny = z.never();
+
+  if (Array.isArray(projectConfig.environments)) {
+    const allEnvironmentsSchema = {};
+
+    projectConfig.environments.forEach((environmentKey) => {
+      allEnvironmentsSchema[environmentKey] = environmentZodSchema;
+    });
+
+    allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
+  }
 
   const attributeKeyZodSchema = z.string().refine(
     (value) => value === "*" || availableAttributeKeys.includes(value),
@@ -447,7 +456,16 @@ export function getFeatureZodSchema(
           }),
         )
         .optional(),
-      environments: allEnvironmentsZodSchema,
+
+      // with environments
+      environments: Array.isArray(projectConfig.environments)
+        ? allEnvironmentsZodSchema
+        : z.never().optional(),
+
+      // no environments
+      expose: projectConfig.environments === false ? exposeSchema : z.never().optional(),
+      rules: projectConfig.environments === false ? rulesSchema : z.never().optional(),
+      force: projectConfig.environments === false ? forceSchema : z.never().optional(),
     })
     .strict()
     .superRefine((value, ctx) => {

@@ -13,6 +13,7 @@ import { ProjectConfig } from "../config";
 import { checkIfArraysAreEqual } from "./checkIfArraysAreEqual";
 import { checkIfObjectsAreEqual } from "./checkIfObjectsAreEqual";
 import { getFeatureAssertionsFromMatrix } from "./matrix";
+import type { DatafileContentByEnvironment } from "./testProject";
 
 export async function testFeature(
   datasource: Datasource,
@@ -20,7 +21,7 @@ export async function testFeature(
   test: TestFeature,
   options: { verbose?: boolean; showDatafile?: boolean } = {},
   patterns,
-  datafileContentByEnvironment: { [environment: string]: DatafileContent } = {},
+  datafileContentByEnvironment: DatafileContentByEnvironment,
 ): Promise<TestResult> {
   const testStartTime = Date.now();
   const featureKey = test.feature;
@@ -54,7 +55,7 @@ export async function testFeature(
         continue;
       }
 
-      const datafileContent = datafileContentByEnvironment[assertion.environment];
+      const datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
 
       if (options.showDatafile) {
         console.log("");

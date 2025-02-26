@@ -13,7 +13,8 @@ test:
 
 lint:
 	npx prettier examples/ packages/ --check
-	npm run lint
+	npx eslint .
+	npx lerna run lint
 
 ##
 # Misc.

@@ -67,7 +67,7 @@ function createContext(providedContext: Context, populateUuid?: AttributeKey[]):
 }
 
 export interface AssessDistributionOptions {
-  environment: string;
+  environment?: string;
   feature: FeatureKey;
   context: Context;
   n: number;
@@ -88,14 +88,14 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
    */
   const datafileBuildStart = Date.now();
   console.log(`\n\nBuilding datafile containing all features for "${options.environment}"...`);
-  const existingState = await datasource.readState(options.environment);
+  const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
     projectConfig,
     datasource,
     {
       schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
-      environment: options.environment,
+      environment: options.environment || false,
       inflate: options.inflate,
     },
     existingState,

@@ -52,34 +52,70 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
     }
 
     // variable overrides inside variations
-    projectConfig.environments.forEach((environment) => {
-      if (feature.variations) {
-        feature.variations.forEach((variation) => {
-          if (variation.variables) {
-            variation.variables.forEach((variable) => {
-              if (variable.overrides) {
-                variable.overrides.forEach((override) => {
-                  if (override.segments) {
-                    extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
-                      usageInFeatures[featureKey].segments.add(segmentKey),
-                    );
-                  }
+    if (feature.variations) {
+      feature.variations.forEach((variation) => {
+        if (variation.variables) {
+          variation.variables.forEach((variable) => {
+            if (variable.overrides) {
+              variable.overrides.forEach((override) => {
+                if (override.segments) {
+                  extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                    usageInFeatures[featureKey].segments.add(segmentKey),
+                  );
+                }
 
-                  if (override.conditions) {
-                    extractAttributeKeysFromConditions(override.conditions).forEach(
-                      (attributeKey) => usageInFeatures[featureKey].attributes.add(attributeKey),
-                    );
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
+                if (override.conditions) {
+                  extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
+                    usageInFeatures[featureKey].attributes.add(attributeKey),
+                  );
+                }
+              });
+            }
+          });
+        }
+      });
+    }
 
+    // with environments
+    if (Array.isArray(projectConfig.environments)) {
+      projectConfig.environments.forEach((environment) => {
+        if (!feature.environments) {
+          return;
+        }
+
+        // force
+        if (feature.environments[environment].force) {
+          feature.environments[environment].force?.forEach((force) => {
+            if (force.segments) {
+              extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) =>
+                usageInFeatures[featureKey].segments.add(segmentKey),
+              );
+            }
+
+            if (force.conditions) {
+              extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) =>
+                usageInFeatures[featureKey].attributes.add(attributeKey),
+              );
+            }
+          });
+        }
+
+        // rules
+        if (feature.environments[environment].rules) {
+          feature.environments[environment].rules?.forEach((rule) => {
+            extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
+              usageInFeatures[featureKey].segments.add(segmentKey),
+            );
+          });
+        }
+      });
+    }
+
+    // no environments
+    if (projectConfig.environments === false) {
       // force
-      if (feature.environments[environment].force) {
-        feature.environments[environment].force?.forEach((force) => {
+      if (feature.force) {
+        feature.force.forEach((force) => {
           if (force.segments) {
             extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) =>
               usageInFeatures[featureKey].segments.add(segmentKey),
@@ -95,14 +131,14 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
       }
 
       // rules
-      if (feature.environments[environment].rules) {
-        feature.environments[environment].rules?.forEach((rule) => {
+      if (feature.rules) {
+        feature.rules.forEach((rule) => {
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
             usageInFeatures[featureKey].segments.add(segmentKey),
           );
         });
       }
-    });
+    }
   }
 
   return usageInFeatures;

@@ -23,6 +23,10 @@ export async function generateSiteSearchIndex(
 
   const result: SearchIndex = {
     links: undefined,
+    projectConfig: {
+      tags: projectConfig.tags,
+      environments: projectConfig.environments,
+    },
     entities: {
       attributes: [],
       segments: [],
@@ -115,10 +119,52 @@ export async function generateSiteSearchIndex(
       });
     }
 
-    Object.keys(parsed.environments).forEach((environmentKey) => {
-      const env = parsed.environments[environmentKey];
+    // with environments
+    if (parsed.environments) {
+      Object.keys(parsed.environments).forEach((environmentKey) => {
+        const env = parsed.environments[environmentKey];
 
-      env.rules.forEach((rule) => {
+        env.rules.forEach((rule) => {
+          if (rule.segments && rule.segments !== "*") {
+            extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
+              if (!segmentsUsedInFeatures[segmentKey]) {
+                segmentsUsedInFeatures[segmentKey] = new Set();
+              }
+
+              segmentsUsedInFeatures[segmentKey].add(entityName);
+            });
+          }
+        });
+
+        if (env.force) {
+          env.force.forEach((force) => {
+            if (force.segments && force.segments !== "*") {
+              extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
+                if (!segmentsUsedInFeatures[segmentKey]) {
+                  segmentsUsedInFeatures[segmentKey] = new Set();
+                }
+
+                segmentsUsedInFeatures[segmentKey].add(entityName);
+              });
+            }
+
+            if (force.conditions) {
+              extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
+                if (!attributesUsedInFeatures[attributeKey]) {
+                  attributesUsedInFeatures[attributeKey] = new Set();
+                }
+
+                attributesUsedInFeatures[attributeKey].add(entityName);
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // no environments
+    if (parsed.rules) {
+      parsed.rules.forEach((rule) => {
         if (rule.segments && rule.segments !== "*") {
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
             if (!segmentsUsedInFeatures[segmentKey]) {
@@ -129,32 +175,33 @@ export async function generateSiteSearchIndex(
           });
         }
       });
+    }
 
-      if (env.force) {
-        env.force.forEach((force) => {
-          if (force.segments && force.segments !== "*") {
-            extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
-              if (!segmentsUsedInFeatures[segmentKey]) {
-                segmentsUsedInFeatures[segmentKey] = new Set();
-              }
+    if (parsed.force) {
+      parsed.force.forEach((force) => {
+        if (force.segments && force.segments !== "*") {
+          extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
+            if (!segmentsUsedInFeatures[segmentKey]) {
+              segmentsUsedInFeatures[segmentKey] = new Set();
+            }
 
-              segmentsUsedInFeatures[segmentKey].add(entityName);
-            });
-          }
+            segmentsUsedInFeatures[segmentKey].add(entityName);
+          });
+        }
 
-          if (force.conditions) {
-            extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
-              if (!attributesUsedInFeatures[attributeKey]) {
-                attributesUsedInFeatures[attributeKey] = new Set();
-              }
+        if (force.conditions) {
+          extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
+            if (!attributesUsedInFeatures[attributeKey]) {
+              attributesUsedInFeatures[attributeKey] = new Set();
+            }
 
-              attributesUsedInFeatures[attributeKey].add(entityName);
-            });
-          }
-        });
-      }
-    });
+            attributesUsedInFeatures[attributeKey].add(entityName);
+          });
+        }
+      });
+    }
 
+    // push
     result.entities.features.push({
       ...parsed,
       key: entityName,

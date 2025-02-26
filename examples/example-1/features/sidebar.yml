@@ -66,6 +66,8 @@ variations:
 
 environments:
   staging:
+    expose:
+      - all
     rules:
       - key: "1"
         segments: "*"

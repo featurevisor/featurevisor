@@ -9,8 +9,7 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "test": "lerna run test",
-    "lint": "eslint ."
+    "test": "lerna run test"
   },
   "author": {
     "name": "Fahad Heylaal",

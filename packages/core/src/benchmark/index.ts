@@ -77,7 +77,7 @@ export function benchmarkFeatureVariable(
 }
 
 export interface BenchmarkOptions {
-  environment: string;
+  environment?: string;
   feature: string;
   n: number;
   context: Record<string, unknown>;
@@ -100,14 +100,14 @@ export async function benchmarkFeature(
 
   console.log(`Building datafile containing all features for "${options.environment}"...`);
   const datafileBuildStart = Date.now();
-  const existingState = await datasource.readState(options.environment);
+  const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
     projectConfig,
     datasource,
     {
       schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
-      environment: options.environment,
+      environment: options.environment || false,
       inflate: options.inflate,
     },
     existingState,

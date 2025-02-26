@@ -14,6 +14,7 @@ environments:
         segments: "*"
         percentage: 100
   production:
+    expose: true
     rules:
       - key: "1"
         segments: "*"

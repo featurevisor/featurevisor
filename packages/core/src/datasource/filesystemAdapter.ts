@@ -23,9 +23,11 @@ const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
-  environment: EnvironmentKey,
+  environment: EnvironmentKey | false,
 ): string {
-  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
+  const fileName = environment ? `existing-state-${environment}.json` : `existing-state.json`;
+
+  return path.join(projectConfig.stateDirectoryPath, fileName);
 }
 
 export function getRevisionFilePath(projectConfig: ProjectConfig): string {
@@ -185,7 +187,11 @@ export class FilesystemAdapter extends Adapter {
     const fileName = `datafile-tag-${options.tag}.json`;
     const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
-    return path.join(dir, options.environment, fileName);
+    if (options.environment) {
+      return path.join(dir, options.environment, fileName);
+    }
+
+    return path.join(dir, fileName);
   }
 
   async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
@@ -199,7 +205,9 @@ export class FilesystemAdapter extends Adapter {
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
     const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
-    const outputEnvironmentDirPath = path.join(dir, options.environment);
+    const outputEnvironmentDirPath = options.environment
+      ? path.join(dir, options.environment)
+      : dir;
     mkdirp.sync(outputEnvironmentDirPath);
 
     const outputFilePath = this.getDatafilePath(options);

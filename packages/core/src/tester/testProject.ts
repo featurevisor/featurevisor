@@ -36,9 +36,7 @@ export interface ExecutionResult {
   };
 }
 
-export interface DatafileContentByEnvironment {
-  [environment: string]: DatafileContent;
-}
+export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
 
 export async function executeTest(
   testFile: string,
@@ -151,23 +149,44 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  const datafileContentByEnvironment: DatafileContentByEnvironment = {};
+  const datafileContentByEnvironment: DatafileContentByEnvironment = new Map();
 
-  for (const environment of projectConfig.environments) {
-    const existingState = await datasource.readState(environment);
+  // with environments
+  if (Array.isArray(projectConfig.environments)) {
+    for (const environment of projectConfig.environments) {
+      const existingState = await datasource.readState(environment);
+      const datafileContent = await buildDatafile(
+        projectConfig,
+        datasource,
+        {
+          schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+          revision: "include-all-features",
+          environment: environment,
+          inflate: options.inflate,
+        },
+        existingState,
+      );
+
+      datafileContentByEnvironment.set(environment, datafileContent);
+    }
+  }
+
+  // no environments
+  if (projectConfig.environments === false) {
+    const existingState = await datasource.readState(false);
     const datafileContent = await buildDatafile(
       projectConfig,
       datasource,
       {
         schemaVersion: options.schemaVersion || SCHEMA_VERSION,
         revision: "include-all-features",
-        environment: environment,
+        environment: false,
         inflate: options.inflate,
       },
       existingState,
     );
 
-    datafileContentByEnvironment[environment] = datafileContent;
+    datafileContentByEnvironment.set(false, datafileContent);
   }
 
   for (const testFile of testFiles) {

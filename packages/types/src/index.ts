@@ -311,8 +311,10 @@ export interface Rule {
 
 export type Tag = string;
 
+export type Expose = boolean | Tag[];
+
 export interface Environment {
-  expose?: boolean | Tag[];
+  expose?: Expose;
   rules: Rule[];
   force?: Force[];
 }
@@ -333,9 +335,15 @@ export interface ParsedFeature {
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
 
-  environments: {
+  // if using environments
+  environments?: {
     [key: EnvironmentKey]: Environment;
   };
+
+  // if not using environments
+  expose?: Expose;
+  rules?: Rule[];
+  force?: Force[];
 }
 
 /**
@@ -460,6 +468,10 @@ export interface SearchIndex {
     segment: string;
     attribute: string;
     commit: CommitHash;
+  };
+  projectConfig: {
+    tags: Tag[];
+    environments: EnvironmentKey[] | false;
   };
   entities: {
     attributes: (Attribute & {

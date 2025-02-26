@@ -95,22 +95,40 @@ export function isEnabledInEnvironment(feature: any, environment: string) {
     return false;
   }
 
-  if (!feature.environments[environment]) {
-    return false;
-  }
+  if (feature.environments) {
+    // with environments
+    if (!feature.environments[environment]) {
+      return false;
+    }
 
-  if (feature.environments[environment].expose === false) {
-    return false;
-  }
+    if (feature.environments[environment].expose === false) {
+      return false;
+    }
 
-  if (feature.environments[environment].rules.some((rule: any) => rule.percentage > 0)) {
-    return true;
+    if (feature.environments[environment].rules.some((rule: any) => rule.percentage > 0)) {
+      return true;
+    }
+  } else {
+    // no environments
+    if (feature.rules.some((rule: any) => rule.percentage > 0)) {
+      return true;
+    }
   }
 
   return false;
 }
 
 export function isEnabledInAnyEnvironment(feature: any) {
+  // no environments
+  if (feature.rules) {
+    if (feature.rules.some((rule: any) => rule.percentage > 0)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // with environments
   const environments = Object.keys(feature.environments);
 
   for (const environment of environments) {
