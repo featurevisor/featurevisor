@@ -1,7 +1,7 @@
 ---
 title: Tagging features
 description: Tag your features to load them in your application via smaller datafiles
-ogImage: /img/og/environments.png
+ogImage: /img/og/docs-tags.png
 ---
 
 Tagging your features helps build smaller datafiles, so that your applications get to load only the minimum required features in the runtime. {% .lead %}

@@ -1,7 +1,7 @@
 ---
 title: Environments
 description: Customize your Featurevisor project with multiple environments
-ogImage: /img/og/environments.png
+ogImage: /img/og/docs-environments.png
 ---
 
 Featurevisor is highly configurable and allows you to have any number of custom environments (like development, staging, and production). You can also choose to have no environments at all. {% .lead %}
