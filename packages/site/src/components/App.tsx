@@ -50,7 +50,7 @@ export function App() {
   }, []);
 
   const environmentKeys = fetchedSearchIndex
-    ? Object.keys((fetchedSearchIndex as SearchIndex).entities.features[0].environments).sort()
+    ? (fetchedSearchIndex as SearchIndex).projectConfig.environments
     : [];
 
   return (
@@ -72,11 +72,23 @@ export function App() {
                   <Route path="variables" element={<DisplayFeatureVariablesSchema />} />
                   <Route path="rules" element={<DisplayFeatureRules />}>
                     <Route path=":environmentKey" element={<DisplayFeatureRulesTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                    <Route
+                      index
+                      element={
+                        Array.isArray(environmentKeys) &&
+                        environmentKeys.length > 0 && <Navigate to={environmentKeys[0]} replace />
+                      }
+                    />
                   </Route>
                   <Route path="force" element={<DisplayFeatureForce />}>
                     <Route path=":environmentKey" element={<DisplayFeatureForceTable />} />
-                    <Route index element={<Navigate to={environmentKeys[0]} replace />} />
+                    <Route
+                      index
+                      element={
+                        Array.isArray(environmentKeys) &&
+                        environmentKeys.length > 0 && <Navigate to={environmentKeys[0]} replace />
+                      }
+                    />
                   </Route>
                   <Route path="history" element={<DisplayFeatureHistory />} />
                 </Route>

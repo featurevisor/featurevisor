@@ -4,6 +4,13 @@ tags:
 
 bucketBy: userId
 
+force:
+  - conditions:
+      - attribute: userId
+        operator: equals
+        value: "123"
+    enabled: true
+
 rules:
   - key: "1"
     segments:

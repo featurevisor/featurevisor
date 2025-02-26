@@ -469,6 +469,10 @@ export interface SearchIndex {
     attribute: string;
     commit: CommitHash;
   };
+  projectConfig: {
+    tags: Tag[];
+    environments: EnvironmentKey[] | false;
+  };
   entities: {
     attributes: (Attribute & {
       lastModified?: LastModified;
