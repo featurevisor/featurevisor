@@ -382,10 +382,12 @@ export function getFeatureZodSchema(
           })
           .strict(),
       ]),
+      // @TODO: in v2, this will become a dictionary
       variablesSchema: z
         .array(
           z
             .object({
+              deprecated: z.boolean().optional(),
               key: z
                 .string()
                 .min(1)

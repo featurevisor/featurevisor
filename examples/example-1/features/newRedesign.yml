@@ -11,6 +11,7 @@ variablesSchema:
   - key: bar
     type: string
     defaultValue: "default bar"
+    deprecated: true
 
 variations:
   - value: control

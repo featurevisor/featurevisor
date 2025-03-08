@@ -308,6 +308,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
         return evaluation;
       }
+
+      if (variableSchema.deprecated) {
+        logger.warn("variable is deprecated", {
+          featureKey: feature.key,
+          variableKey,
+        });
+      }
     }
 
     // variation: no variations

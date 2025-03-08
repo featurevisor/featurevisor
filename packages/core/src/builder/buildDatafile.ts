@@ -266,6 +266,7 @@ export async function buildDatafile(
             key: v.key,
             type: v.type,
             defaultValue: v.defaultValue,
+            deprecated: v.deprecated === true ? true : undefined,
           };
         });
       }
