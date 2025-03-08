@@ -34,6 +34,25 @@ export function getRevisionFilePath(projectConfig: ProjectConfig): string {
   return path.join(projectConfig.stateDirectoryPath, `REVISION`);
 }
 
+export function getAllEntityFilePathsRecursively(directoryPath, extension) {
+  let entities: string[] = [];
+
+  const files = fs.readdirSync(directoryPath);
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const filePath = path.join(directoryPath, file);
+
+    if (fs.statSync(filePath).isDirectory()) {
+      entities = entities.concat(getAllEntityFilePathsRecursively(filePath, extension));
+    } else if (file.endsWith(`.${extension}`)) {
+      entities.push(filePath);
+    }
+  }
+
+  return entities;
+}
+
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
@@ -68,15 +87,19 @@ export class FilesystemAdapter extends Adapter {
 
   async listEntities(entityType: EntityType): Promise<string[]> {
     const directoryPath = this.getEntityDirectoryPath(entityType);
+    const filePaths = getAllEntityFilePathsRecursively(directoryPath, this.parser.extension);
 
-    if (!fs.existsSync(directoryPath)) {
-      return [];
-    }
+    return (
+      filePaths
+        // keep only the files with the right extension
+        .filter((filterPath) => filterPath.endsWith(`.${this.parser.extension}`))
 
-    return fs
-      .readdirSync(directoryPath)
-      .filter((fileName) => fileName.endsWith(`.${this.parser.extension}`))
-      .map((fileName) => fileName.replace(`.${this.parser.extension}`, ""));
+        // remove the entity directory path from beginning
+        .map((filePath) => filePath.replace(directoryPath + path.sep, ""))
+
+        // remove the extension from the end
+        .map((filterPath) => filterPath.replace(`.${this.parser.extension}`, ""))
+    );
   }
 
   async entityExists(entityType: EntityType, entityKey: string): Promise<boolean> {
