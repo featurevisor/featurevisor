@@ -21,7 +21,7 @@ export interface LintProjectOptions {
   authors?: boolean;
 }
 
-const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-.]+$/;
+const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
 const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
 
 async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
