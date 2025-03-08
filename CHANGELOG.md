@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.33.0](https://github.com/featurevisor/featurevisor/compare/v1.32.0...v1.33.0) (2025-03-08)
+
+
+### Features
+
+* allow deprecating variables ([#345](https://github.com/featurevisor/featurevisor/issues/345)) ([cecbf5b](https://github.com/featurevisor/featurevisor/commit/cecbf5beb87d06d46c654c352910766f565e81b2))
+
+
+
+
+
 # [1.32.0](https://github.com/featurevisor/featurevisor/compare/v1.31.0...v1.32.0) (2025-02-26)
 
 
