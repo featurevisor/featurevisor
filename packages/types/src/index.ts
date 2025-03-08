@@ -163,6 +163,7 @@ export interface Variation {
 }
 
 export interface VariableSchema {
+  deprecated?: boolean;
   key: VariableKey;
   type: VariableType;
   defaultValue: VariableValue;

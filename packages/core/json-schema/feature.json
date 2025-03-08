@@ -69,6 +69,10 @@
           "items": {
             "type": "object",
             "properties": {
+              "deprecated": {
+                "type": "boolean",
+                "description": "Indicates whether the variable is deprecated or not."
+              },
               "key": {
                 "type": "string",
                 "description": "Key of the variable."
