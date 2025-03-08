@@ -37,6 +37,10 @@ export function getRevisionFilePath(projectConfig: ProjectConfig): string {
 export function getAllEntityFilePathsRecursively(directoryPath, extension) {
   let entities: string[] = [];
 
+  if (!fs.existsSync(directoryPath)) {
+    return entities;
+  }
+
   const files = fs.readdirSync(directoryPath);
 
   for (let i = 0; i < files.length; i++) {
