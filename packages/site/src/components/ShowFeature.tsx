@@ -490,28 +490,28 @@ export function ShowFeature() {
   const tabs = [
     {
       title: "Overview",
-      to: `/features/${featureKey}`,
+      to: `/features/${encodeURIComponent(featureKey)}`,
       end: true,
     },
     {
       title: "Variations",
-      to: `/features/${featureKey}/variations`,
+      to: `/features/${encodeURIComponent(featureKey)}/variations`,
     },
     {
       title: "Variables",
-      to: `/features/${featureKey}/variables`,
+      to: `/features/${encodeURIComponent(featureKey)}/variables`,
     },
     {
       title: "Rules",
-      to: `/features/${featureKey}/rules`,
+      to: `/features/${encodeURIComponent(featureKey)}/rules`,
     },
     {
       title: "Force",
-      to: `/features/${featureKey}/force`,
+      to: `/features/${encodeURIComponent(featureKey)}/force`,
     },
     {
       title: "History",
-      to: `/features/${featureKey}/history`,
+      to: `/features/${encodeURIComponent(featureKey)}/history`,
     },
   ];
 
