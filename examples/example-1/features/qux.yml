@@ -30,7 +30,7 @@ environments:
     rules:
       - key: "1"
         segments:
-          - germany
+          - countries/germany
         percentage: 50
         variation: b
       - key: "2"

@@ -49,19 +49,19 @@ variations:
         value: red
         overrides:
           - segments:
-              - germany
+              - countries/germany
             value: yellow
           - segments:
-              - switzerland
+              - countries/switzerland
             value: white
       - key: sections
         value: ["home", "about", "contact"]
         overrides:
           - segments:
-              - germany
+              - countries/germany
             value: ["home", "about", "contact", "imprint"]
           - segments:
-              - netherlands
+              - countries/netherlands
             value: ["home", "about", "contact", "bitterballen"]
 
 environments:

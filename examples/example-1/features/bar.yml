@@ -29,8 +29,8 @@ variations:
         overrides:
           - segments:
               or:
-                - germany
-                - switzerland
+                - countries/germany
+                - countries/switzerland
             value:
               title: Hero Title for B in DE or CH
               subtitle: Hero Subtitle for B in DE of CH
