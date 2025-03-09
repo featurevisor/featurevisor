@@ -93,5 +93,5 @@ segment: countries/nl
 Namespaces are no replacement for [tags](/docs/tags/) or [environments](/docs/environments/), but they can be used in conjunction with them to create a more structured and organized project.
 
 - **Tags**: for [tagging features](/docs/tags/) resulting in targeted and smaller [datafiles](/docs/building-datafiles/) that your applications consume via [SDKs](/docs/sdks/)
-- **Environments**: for creating different [environments](/docs/environments/), like `production` and `staging`, and then use them in your feature [rules]/docs/features/#rules) to control the rollout of features
+- **Environments**: for creating different [environments](/docs/environments/), like `production` and `staging`, and then use them in your feature [rules](/docs/features/#rules) to control the rollout of features
 - **Namespaces**: for organizing features and segments in a hierarchical way
