@@ -43,7 +43,7 @@ environments:
 We can create a new test spec for it in `tests` directory:
 
 ```yml
-# tests/foo.feature.yml
+# tests/features/foo.spec.yml
 feature: foo # your feature key
 assertions:
 
@@ -96,7 +96,7 @@ conditions:
 We can create a new test spec in `tests` directory:
 
 ```yml
-# tests/netherlands.segment.yml
+# tests/segments/netherlands.spec.yml
 segment: netherlands # your segment key
 assertions:
   - description: Testing segment in NL
@@ -117,7 +117,7 @@ To make things more convenient when testing against a lof of different combinati
 For example, in a feature test spec:
 
 ```yml
-# tests/foo.feature.yml
+# tests/features/foo.spec.yml
 feature: foo
 assertions:
   - matrix:
@@ -145,7 +145,7 @@ Just because a lot of variables are used in above example, it doesn't mean you h
 You can do the same for segment test specs as well:
 
 ```yml
-# tests/netherlands.segment.yml
+# tests/segments/netherlands.spec.yml
 segment: netherlands # your segment key
 assertions:
   - matrix:

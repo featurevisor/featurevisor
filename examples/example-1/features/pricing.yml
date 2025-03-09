@@ -20,7 +20,7 @@ environments:
   production:
     rules:
       - key: "1"
-        segments: germany
+        segments: countries/germany
         percentage: 100
       - key: "2"
         segments: "*"

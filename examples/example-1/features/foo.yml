@@ -29,13 +29,13 @@ variations:
         overrides:
           - segments:
               or:
-                - germany
-                - switzerland
+                - countries/germany
+                - countries/switzerland
             value: bar for DE or CH
       - key: baz
         value: baz_here
         overrides:
-          - segments: netherlands
+          - segments: countries/netherlands
             value: baz for NL
 
 environments:
@@ -69,8 +69,8 @@ environments:
           and:
             - mobile
             - or:
-                - germany
-                - switzerland
+                - countries/germany
+                - countries/switzerland
         percentage: 80
         variables:
           qux: true

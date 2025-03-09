@@ -25,13 +25,13 @@ variations:
         overrides:
           - segments:
               or:
-                - germany
-                - switzerland
+                - countries/germany
+                - countries/switzerland
             value: foo for treatment in DE or CH
       - key: bar
         value: bar for treatment
         overrides:
-          - segments: netherlands
+          - segments: countries/netherlands
             value: bar for treatment in NL
 
 environments:

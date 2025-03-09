@@ -82,6 +82,7 @@
       { "title": "CLI usage", "href": "/docs/cli" },
       { "title": "Environments", "href": "/docs/environments" },
       { "title": "Tagging features", "href": "/docs/tags" },
+      { "title": "Namespaces", "href": "/docs/namespaces" },
       { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers" },
       { "title": "Plugins", "href": "/docs/plugins" },
       { "title": "Datasource", "href": "/docs/datasource" },
