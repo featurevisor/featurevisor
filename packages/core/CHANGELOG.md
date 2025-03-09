@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.34.0](https://github.com/featurevisor/featurevisor/compare/v1.33.0...v1.34.0) (2025-03-09)
+
+
+### Features
+
+* namespaces ([#346](https://github.com/featurevisor/featurevisor/issues/346)) ([561e24b](https://github.com/featurevisor/featurevisor/commit/561e24b4de985517fe414f9a6cf7b420403c6eeb))
+
+
+
+
+
 # [1.33.0](https://github.com/featurevisor/featurevisor/compare/v1.32.0...v1.33.0) (2025-03-08)
 
 
