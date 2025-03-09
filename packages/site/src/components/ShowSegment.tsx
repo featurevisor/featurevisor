@@ -64,7 +64,7 @@ export function DisplaySegmentUsage() {
                 {segment.usedInFeatures.map((feature) => {
                   return (
                     <li key={feature}>
-                      <Link to={`/features/${feature}`}>{feature}</Link>
+                      <Link to={`/features/${encodeURIComponent(feature)}`}>{feature}</Link>
                     </li>
                   );
                 })}
@@ -96,15 +96,15 @@ export function ShowSegment() {
   const tabs = [
     {
       title: "Overview",
-      to: `/segments/${segmentKey}`,
+      to: `/segments/${encodeURIComponent(segmentKey)}`,
     },
     {
       title: "Usage",
-      to: `/segments/${segmentKey}/usage`,
+      to: `/segments/${encodeURIComponent(segmentKey)}/usage`,
     },
     {
       title: "History",
-      to: `/segments/${segmentKey}/history`,
+      to: `/segments/${encodeURIComponent(segmentKey)}/history`,
     },
   ];
 
