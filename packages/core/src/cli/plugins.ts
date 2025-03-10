@@ -13,6 +13,7 @@ import { configPlugin } from "../config";
 import { evaluatePlugin } from "../evaluate";
 import { assessDistributionPlugin } from "../assess-distribution";
 import { infoPlugin } from "../info";
+import { listPlugin } from "../list";
 import { sitePlugin } from "../site";
 
 // that do not require an existing project
@@ -32,6 +33,7 @@ export const projectBasedPlugins: Plugin[] = [
   evaluatePlugin,
   assessDistributionPlugin,
   infoPlugin,
+  listPlugin,
   sitePlugin,
 ];
 
