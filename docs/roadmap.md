@@ -28,6 +28,13 @@ For full changelog, visit [GitHub](https://github.com/featurevisor/featurevisor/
 
 Notable changes:
 
+### 2025
+
+- March 9th, 2025: [Namespaces](/docs/namespaces)
+- March 8th, 2025: [Allow deprecating variables](/docs/features/#variables)
+- February 26th, 2025: [Make environments optional](/docs/environments)
+- January 21st, 2025: [Optional v2 datafile schema](/docs/building-datafiles)
+
 ### 2024
 
 - August 7th, 2024: [Plugins API introduced](/docs/plugins)
