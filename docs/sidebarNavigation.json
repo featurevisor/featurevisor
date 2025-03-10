@@ -144,6 +144,7 @@
       { "title": "Glossary", "href": "/docs/glossary" },
       { "title": "Examples", "href": "/docs/examples" },
       { "title": "Contributing", "href": "/docs/contributing" },
+      { "title": "llms.txt", "href": "/docs/llms" },
       { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }
     ]
   }
