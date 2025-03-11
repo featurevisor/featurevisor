@@ -31,7 +31,67 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
       entity = (await datasource.readAttribute(key)) as T;
     }
 
-    // @TODO: filter
+    // filter
+    if (entityType === "feature") {
+      const parsedFeature = entity as ParsedFeature;
+
+      // --archived=true|false
+      if (parsedFeature.archived) {
+        const archivedStatus = options.archived === "false";
+
+        if (parsedFeature.archived !== archivedStatus) {
+          continue;
+        }
+      }
+
+      // --description=<pattern>
+      if (options.description) {
+        const description = parsedFeature.description || "";
+
+        const regex = new RegExp(options.description, "i");
+        if (!regex.test(description)) {
+          continue;
+        }
+      }
+
+      // @TODO --in=<environment>
+      // @TODO --keyPattern=<pattern>
+
+      // --tag=<tag>
+      if (options.tag) {
+        const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
+        const hasTags = tags.every((tag) => parsedFeature.tags.includes(tag));
+
+        if (!hasTags) {
+          continue;
+        }
+      }
+
+      // @TODO --variable=<variableKey>
+      // @TODO --variableDescription=<pattern>
+      // @TODO --variation=<variationValue>
+      // @TODO --variationDescription=<pattern>
+      // @TODO --with-tests
+      // @TODO --with-variables
+      // @TODO --with-variations
+      // @TODO --without-tests
+      // @TODO --without-variables
+      // @TODO --without-variations
+    } else if (entityType === "segment") {
+      const segment = entity as Segment;
+
+      // @TODO --archived=true|false
+      // @TODO --description=<pattern>
+      // @TODO --keyPattern=<pattern>
+      // @TODO --with-tests
+      // @TODO --without-tests
+    } else if (entityType === "attribute") {
+      const attribute = entity as Attribute;
+
+      // @TODO --archived=true|false
+      // @TODO --description=<pattern>
+      // @TODO --keyPattern=<pattern>
+    }
 
     result.push({
       ...entity,

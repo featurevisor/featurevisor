@@ -267,22 +267,24 @@ $ npx featurevisor list --features
 
 Advanced search options:
 
-| Option                         | Description                                        |
-| ------------------------------ | -------------------------------------------------- |
-| `--archived=<true or false>`   | by [archived](/docs/features/#archiving) status    |
-| `--description=<pattern>`      | by description pattern                             |
-| `--in=<environment>`           | enabled in an [environment](/docs/environments)    |
-| `--json`                       | print as JSON                                      |
-| `--keyPattern=<pattern>`       | by key pattern                                     |
-| `--tag=<tag>`                  | by [tag](/docs/tags/)                              |
-| `--variable=<variableKey>`     | containing specific variable key                   |
-| `--variation=<variationValue>` | containing specific variation key                  |
-| `--with-tests`                 | with [test specs](/docs/testing)                   |
-| `--with-variables`             | with variables                                     |
-| `--with-variations`            | with [variations](/docs/features/#variations)      |
-| `--without-tests`              | without any test specs                             |
-| `--without-variables`          | without any [variables](/docs/features/#variables) |
-| `--without-variations`         | without any variations                             |
+| Option                             | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| `--archived=<true or false>`       | by [archived](/docs/features/#archiving) status    |
+| `--description=<pattern>`          | by description pattern                             |
+| `--in=<environment>`               | enabled in an [environment](/docs/environments)    |
+| `--json`                           | print as JSON                                      |
+| `--keyPattern=<pattern>`           | by key pattern                                     |
+| `--tag=<tag>`                      | by [tag](/docs/tags/)                              |
+| `--variable=<variableKey>`         | containing specific variable key                   |
+| `--variableDescription=<pattern>`  | by variable description pattern                    |
+| `--variation=<variationValue>`     | containing specific variation key                  |
+| `--variationDescription=<pattern>` | by variation description pattern                   |
+| `--with-tests`                     | with [test specs](/docs/testing)                   |
+| `--with-variables`                 | with variables                                     |
+| `--with-variations`                | with [variations](/docs/features/#variations)      |
+| `--without-tests`                  | without any test specs                             |
+| `--without-variables`              | without any [variables](/docs/features/#variables) |
+| `--without-variations`             | without any variations                             |
 
 ### List segments
 
