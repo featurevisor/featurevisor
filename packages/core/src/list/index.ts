@@ -54,8 +54,37 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --in=<environment>
+      // --in=<environment>
+      if (parsedFeature.environments && parsedFeature.environments[options.in]) {
+        const enabledInEnvironment = parsedFeature.environments[options.in].rules.some((rule) => {
+          return rule.percentage > 0;
+        });
+
+        if (!enabledInEnvironment) {
+          continue;
+        }
+      }
+
       // @TODO --keyPattern=<pattern>
+      if (options.keyPattern) {
+        const regex = new RegExp(options.keyPattern, "i");
+        if (!regex.test(key)) {
+          continue;
+        }
+      }
+
+      // --notIn=<environment>
+      if (parsedFeature.environments && parsedFeature.environments[options.notIn]) {
+        const disabledInEnvironment = parsedFeature.environments[options.notIn].rules.every(
+          (rule) => {
+            return rule.percentage === 0;
+          },
+        );
+
+        if (!disabledInEnvironment) {
+          continue;
+        }
+      }
 
       // --tag=<tag>
       if (options.tag) {
