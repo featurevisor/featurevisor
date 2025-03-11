@@ -1,25 +1,41 @@
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import { ParsedFeature } from "@featurevisor/types";
+import { ParsedFeature, Segment, Attribute } from "@featurevisor/types";
 
-async function listFeatures(deps: Dependencies) {
+async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
 
-  const result: ParsedFeature[] = [];
-  const allFeatureKeys = await datasource.listFeatures();
+  const result: T[] = [];
+  let entityKeys: string[] = [];
 
-  if (allFeatureKeys.length === 0) {
+  if (entityType === "feature") {
+    entityKeys = await datasource.listFeatures();
+  } else if (entityType === "segment") {
+    entityKeys = await datasource.listSegments();
+  } else if (entityType === "attribute") {
+    entityKeys = await datasource.listAttributes();
+  }
+
+  if (entityKeys.length === 0) {
     return result;
   }
 
-  for (const featureKey of allFeatureKeys) {
-    const feature = await datasource.readFeature(featureKey);
+  for (const key of entityKeys) {
+    let entity = {} as T;
+
+    if (entityType === "feature") {
+      entity = (await datasource.readFeature(key)) as T;
+    } else if (entityType === "segment") {
+      entity = (await datasource.readSegment(key)) as T;
+    } else if (entityType === "attribute") {
+      entity = (await datasource.readAttribute(key)) as T;
+    }
 
     // @TODO: filter
 
     result.push({
-      ...feature,
-      key: featureKey,
+      ...entity,
+      key,
     });
   }
 
@@ -55,7 +71,7 @@ export async function listProject(deps: Dependencies) {
 
   // features
   if (options.features) {
-    const result = await listFeatures(deps);
+    const result = await listEntities<ParsedFeature>(deps, "feature");
 
     return printResult({
       result,
@@ -64,10 +80,29 @@ export async function listProject(deps: Dependencies) {
     });
   }
 
-  // @TODO: segments
-  // @TODO: attributes
+  // segments
+  if (options.segments) {
+    const result = await listEntities<Segment>(deps, "segment");
 
-  console.log("Nothing to list. Please pass `--features`, `--segments`, or `--attributes`.");
+    return printResult({
+      result,
+      entityType: "segment",
+      options,
+    });
+  }
+
+  // attributes
+  if (options.attributes) {
+    const result = await listEntities<Attribute>(deps, "attribute");
+
+    return printResult({
+      result,
+      entityType: "attribute",
+      options,
+    });
+  }
+
+  console.log("\nNothing to list. \n\nPlease pass `--features`, `--segments`, or `--attributes`.");
 }
 
 export const listPlugin: Plugin = {
