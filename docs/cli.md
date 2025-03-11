@@ -272,6 +272,7 @@ Advanced search options:
 | `--archived=<true or false>`   | by [archived](/docs/features/#archiving) status    |
 | `--description=<pattern>`      | by description pattern                             |
 | `--in=<environment>`           | enabled in an [environment](/docs/environments)    |
+| `--json`                       | print as JSON                                      |
 | `--keyPattern=<pattern>`       | by key pattern                                     |
 | `--tag=<tag>`                  | by [tag](/docs/tags/)                              |
 | `--variable=<variableKey>`     | containing specific variable key                   |
@@ -297,6 +298,7 @@ Advanced search options:
 | ---------------------------- | ----------------------------------------------- |
 | `--archived=<true or false>` | by [archived](/docs/segments/#archiving) status |
 | `--description=<pattern>`    | by description pattern                          |
+| `--json`                     | print as JSON                                   |
 | `--keyPattern=<pattern>`     | by key pattern                                  |
 | `--with-tests`               | with [test specs](/docs/testing)                |
 | `--without-tests`            | without any test specs                          |
@@ -315,6 +317,7 @@ Advanced search options:
 | ---------------------------- | ------------------------------------------------- |
 | `--archived=<true or false>` | by [archived](/docs/attributes/#archiving) status |
 | `--description=<pattern>`    | by description pattern                            |
+| `--json`                     | print as JSON                                     |
 | `--keyPattern=<pattern>`     | by key pattern                                    |
 
 ## Assess distribution
