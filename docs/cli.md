@@ -97,7 +97,6 @@ $ npx featurevisor site serve -p 3000
 
 Learn more in [Status site](/docs/status-site).
 
-
 ## Generate code
 
 Generate TypeScript code from your YAMLs:
@@ -256,6 +255,68 @@ $ npx featurevisor evaluate \
 
 You can optionally pass `--schema-version=2` if you are using the new schema v2.
 
+## List
+
+### List features
+
+To list all features in the project:
+
+```
+$ npx featurevisor list --features
+```
+
+Advanced search options:
+
+| Option                         | Description                                        |
+| ------------------------------ | -------------------------------------------------- |
+| `--archived=<true or false>`   | by [archived](/docs/features/#archiving) status    |
+| `--description=<pattern>`      | by description pattern                             |
+| `--in=<environment>`           | enabled in an [environment](/docs/environments)    |
+| `--keyPattern=<pattern>`       | by key pattern                                     |
+| `--tag=<tag>`                  | by [tag](/docs/tags/)                              |
+| `--variable=<variableKey>`     | containing specific variable key                   |
+| `--variation=<variationValue>` | containing specific variation key                  |
+| `--with-tests`                 | with [test specs](/docs/testing)                   |
+| `--with-variables`             | with variables                                     |
+| `--with-variations`            | with [variations](/docs/features/#variations)      |
+| `--without-tests`              | without any test specs                             |
+| `--without-variables`          | without any [variables](/docs/features/#variables) |
+| `--without-variations`         | without any variations                             |
+
+### List segments
+
+To list all segments in the project:
+
+```
+$ npx featurevisor list --segments
+```
+
+Advanced search options:
+
+| Option                       | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| `--archived=<true or false>` | by [archived](/docs/segments/#archiving) status |
+| `--description=<pattern>`    | by description pattern                          |
+| `--keyPattern=<pattern>`     | by key pattern                                  |
+| `--with-tests`               | with [test specs](/docs/testing)                |
+| `--without-tests`            | without any test specs                          |
+
+### List attributes
+
+To list all attributes in the project:
+
+```
+$ npx featurevisor list --attributes
+```
+
+Advanced search options:
+
+| Option                       | Description                                       |
+| ---------------------------- | ------------------------------------------------- |
+| `--archived=<true or false>` | by [archived](/docs/attributes/#archiving) status |
+| `--description=<pattern>`    | by description pattern                            |
+| `--keyPattern=<pattern>`     | by key pattern                                    |
+
 ## Assess distribution
 
 To check if the gradual rollout of a feature and the weight distribution of its variations (if any exists) are going to work as expected in a real world application with real traffic against provided [context](/docs/sdks/javascript/#context), we can imitate that by running:
@@ -291,7 +352,6 @@ Shows count of various entities in the project:
 ```
 $ npx featurevisor info
 ```
-
 
 ## Version
 
