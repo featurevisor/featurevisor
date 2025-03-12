@@ -198,7 +198,15 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --with-variables
+      // --with-variables
+      if (options.withVariables) {
+        const hasVariables = parsedFeature.variablesSchema;
+
+        if (!hasVariables) {
+          continue;
+        }
+      }
+
       // @TODO --with-variations
 
       // --without-tests
@@ -210,7 +218,15 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --without-variables
+      // --without-variables
+      if (options.withoutVariables) {
+        const hasVariables = parsedFeature.variablesSchema;
+
+        if (hasVariables) {
+          continue;
+        }
+      }
+
       // @TODO --without-variations
     } else if (entityType === "segment") {
       const segment = entity as Segment;
