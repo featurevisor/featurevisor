@@ -1,6 +1,33 @@
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import { ParsedFeature, Segment, Attribute, VariableSchema } from "@featurevisor/types";
+import { ParsedFeature, Segment, Attribute, TestFeature, TestSegment } from "@featurevisor/types";
+
+async function getEntitiesWithTests(
+  deps: Dependencies,
+): Promise<{ features: string[]; segments: string[] }> {
+  const { datasource } = deps;
+
+  const featuresWithTests = new Set<string>();
+  const segmentsWithTests = new Set<string>();
+
+  const tests = await datasource.listTests();
+  for (const testKey of tests) {
+    const test = await datasource.readTest(testKey);
+
+    if ((test as TestFeature).feature) {
+      featuresWithTests.add((test as TestFeature).feature);
+    }
+
+    if ((test as TestSegment).segment) {
+      segmentsWithTests.add((test as TestSegment).segment);
+    }
+  }
+
+  return {
+    features: Array.from(featuresWithTests),
+    segments: Array.from(segmentsWithTests),
+  };
+}
 
 async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
@@ -18,6 +45,21 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
 
   if (entityKeys.length === 0) {
     return result;
+  }
+
+  let entitiesWithTests: { features: string[]; segments: string[] } = {
+    features: [],
+    segments: [],
+  };
+  let entitiesWithTestsInitialized = false;
+
+  async function initializeEntitiesWithTests() {
+    if (entitiesWithTestsInitialized) {
+      return;
+    }
+
+    entitiesWithTests = await getEntitiesWithTests(deps);
+    entitiesWithTestsInitialized = true;
   }
 
   for (const key of entityKeys) {
@@ -147,10 +189,27 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --with-tests
+      // --with-tests
+      if (options.withTests) {
+        await initializeEntitiesWithTests();
+
+        if (!entitiesWithTests.features.includes(key)) {
+          continue;
+        }
+      }
+
       // @TODO --with-variables
       // @TODO --with-variations
-      // @TODO --without-tests
+
+      // --without-tests
+      if (options.withoutTests) {
+        await initializeEntitiesWithTests();
+
+        if (entitiesWithTests.features.includes(key)) {
+          continue;
+        }
+      }
+
       // @TODO --without-variables
       // @TODO --without-variations
     } else if (entityType === "segment") {
