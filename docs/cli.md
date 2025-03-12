@@ -275,7 +275,6 @@ Advanced search options:
 | `--enabledIn=<environment>`        | enabled in an [environment](/docs/environments)        |
 | `--json`                           | print as JSON                                          |
 | `--keyPattern=<pattern>`           | by key pattern                                         |
-| `--notIn=<environment>`            | fully disabled in an [environment](/docs/environments) |
 | `--tag=<tag>`                      | by [tag](/docs/tags/)                                  |
 | `--variable=<variableKey>`         | containing specific variable key                       |
 | `--variableDescription=<pattern>`  | by variable description pattern                        |
