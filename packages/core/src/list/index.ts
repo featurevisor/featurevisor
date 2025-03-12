@@ -207,7 +207,14 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --with-variations
+      // --with-variations
+      if (options.withVariations) {
+        const hasVariations = parsedFeature.variations;
+
+        if (!hasVariations) {
+          continue;
+        }
+      }
 
       // --without-tests
       if (options.withoutTests) {
@@ -227,7 +234,14 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --without-variations
+      // --without-variations
+      if (options.withoutVariations) {
+        const hasVariations = parsedFeature.variations;
+
+        if (hasVariations) {
+          continue;
+        }
+      }
     } else if (entityType === "segment") {
       const segment = entity as Segment;
 
