@@ -245,17 +245,79 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
     } else if (entityType === "segment") {
       const segment = entity as Segment;
 
-      // @TODO --archived=true|false
-      // @TODO --description=<pattern>
-      // @TODO --keyPattern=<pattern>
-      // @TODO --with-tests
-      // @TODO --without-tests
+      // --archived=true|false
+      if (segment.archived) {
+        const archivedStatus = options.archived === "false";
+
+        if (segment.archived !== archivedStatus) {
+          continue;
+        }
+      }
+
+      // --description=<pattern>
+      if (options.description) {
+        const description = segment.description || "";
+
+        const regex = new RegExp(options.description, "i");
+        if (!regex.test(description)) {
+          continue;
+        }
+      }
+
+      // --keyPattern=<pattern>
+      if (options.keyPattern) {
+        const regex = new RegExp(options.keyPattern, "i");
+        if (!regex.test(key)) {
+          continue;
+        }
+      }
+
+      // --with-tests
+      if (options.withTests) {
+        await initializeEntitiesWithTests();
+
+        if (!entitiesWithTests.segments.includes(key)) {
+          continue;
+        }
+      }
+
+      // --without-tests
+      if (options.withoutTests) {
+        await initializeEntitiesWithTests();
+
+        if (entitiesWithTests.segments.includes(key)) {
+          continue;
+        }
+      }
     } else if (entityType === "attribute") {
       const attribute = entity as Attribute;
 
-      // @TODO --archived=true|false
-      // @TODO --description=<pattern>
-      // @TODO --keyPattern=<pattern>
+      // --archived=true|false
+      if (options.archived) {
+        const archivedStatus = options.archived === "false";
+
+        if (attribute.archived !== archivedStatus) {
+          continue;
+        }
+      }
+
+      // --description=<pattern>
+      if (options.description) {
+        const description = attribute.description || "";
+
+        const regex = new RegExp(options.description, "i");
+        if (!regex.test(description)) {
+          continue;
+        }
+      }
+
+      // --keyPattern=<pattern>
+      if (options.keyPattern) {
+        const regex = new RegExp(options.keyPattern, "i");
+        if (!regex.test(key)) {
+          continue;
+        }
+      }
     }
 
     result.push({
