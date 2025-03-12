@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
@@ -255,13 +255,32 @@ export class FilesystemAdapter extends Adapter {
   /**
    * History
    */
-  getRawHistory(pathPatterns: string[]) {
+  async getRawHistory(pathPatterns: string[]): Promise<string> {
     const gitPaths = pathPatterns.join(" ");
 
     const logCommand = `git log --name-only --pretty=format:"%h|%an|%aI" --relative --no-merges -- ${gitPaths}`;
     const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
 
-    return execSync(fullCommand, { encoding: "utf8" }).toString();
+    return new Promise(function (resolve, reject) {
+      const child = spawn(fullCommand, { shell: true });
+      let result = "";
+
+      child.stdout.on("data", function (data) {
+        result += data.toString();
+      });
+
+      child.stderr.on("data", function (data) {
+        console.error(data.toString());
+      });
+
+      child.on("close", function (code) {
+        if (code === 0) {
+          resolve(result);
+        } else {
+          reject(code);
+        }
+      });
+    });
   }
 
   getPathPatterns(entityType?: EntityType, entityKey?: string): string[] {
@@ -296,7 +315,7 @@ export class FilesystemAdapter extends Adapter {
 
   async listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]> {
     const pathPatterns = this.getPathPatterns(entityType, entityKey);
-    const rawHistory = this.getRawHistory(pathPatterns);
+    const rawHistory = await this.getRawHistory(pathPatterns);
 
     const fullHistory: HistoryEntry[] = [];
     const blocks = rawHistory.split("\n\n");
