@@ -271,7 +271,8 @@ Advanced search options:
 | ---------------------------------- | ------------------------------------------------------ |
 | `--archived=<true or false>`       | by [archived](/docs/features/#archiving) status        |
 | `--description=<pattern>`          | by description pattern                                 |
-| `--in=<environment>`               | enabled in an [environment](/docs/environments)        |
+| `--disabledIn=<environment>`       | disabled in an [environment](/docs/environments)       |
+| `--enabledIn=<environment>`        | enabled in an [environment](/docs/environments)        |
 | `--json`                           | print as JSON                                          |
 | `--keyPattern=<pattern>`           | by key pattern                                         |
 | `--notIn=<environment>`            | fully disabled in an [environment](/docs/environments) |

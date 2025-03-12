@@ -54,34 +54,44 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // --in=<environment>
-      if (parsedFeature.environments && parsedFeature.environments[options.in]) {
-        const enabledInEnvironment = parsedFeature.environments[options.in].rules.some((rule) => {
-          return rule.percentage > 0;
-        });
-
-        if (!enabledInEnvironment) {
-          continue;
-        }
-      }
-
-      // @TODO --keyPattern=<pattern>
-      if (options.keyPattern) {
-        const regex = new RegExp(options.keyPattern, "i");
-        if (!regex.test(key)) {
-          continue;
-        }
-      }
-
-      // --notIn=<environment>
-      if (parsedFeature.environments && parsedFeature.environments[options.notIn]) {
-        const disabledInEnvironment = parsedFeature.environments[options.notIn].rules.every(
+      // --disabledIn=<environment>
+      if (
+        options.disabledIn &&
+        parsedFeature.environments &&
+        parsedFeature.environments[options.disabledIn]
+      ) {
+        const disabledInEnvironment = parsedFeature.environments[options.disabledIn].rules.every(
           (rule) => {
             return rule.percentage === 0;
           },
         );
 
         if (!disabledInEnvironment) {
+          continue;
+        }
+      }
+
+      // --enabledIn=<environment>
+      if (
+        options.enabledIn &&
+        parsedFeature.environments &&
+        parsedFeature.environments[options.enabledIn]
+      ) {
+        const enabledInEnvironment = parsedFeature.environments[options.enabledIn].rules.some(
+          (rule) => {
+            return rule.percentage > 0;
+          },
+        );
+
+        if (!enabledInEnvironment) {
+          continue;
+        }
+      }
+
+      // --keyPattern=<pattern>
+      if (options.keyPattern) {
+        const regex = new RegExp(options.keyPattern, "i");
+        if (!regex.test(key)) {
           continue;
         }
       }
@@ -96,7 +106,16 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --variable=<variableKey>
+      // --variable=<variableKey>
+      if (options.variable) {
+        const variables = Array.isArray(options.variable) ? options.variable : [options.variable];
+        const hasVariables = variables.every((variable) => parsedFeature.tags.includes(variable));
+
+        if (!hasVariables) {
+          continue;
+        }
+      }
+
       // @TODO --variableDescription=<pattern>
       // @TODO --variation=<variationValue>
       // @TODO --variationDescription=<pattern>
