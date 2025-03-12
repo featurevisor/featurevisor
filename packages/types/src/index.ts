@@ -167,6 +167,7 @@ export interface VariableSchema {
   key: VariableKey;
   type: VariableType;
   defaultValue: VariableValue;
+  description?: string;
 }
 
 export type FeatureKey = string;

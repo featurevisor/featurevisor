@@ -277,9 +277,7 @@ Advanced search options:
 | `--keyPattern=<pattern>`           | by key pattern                                         |
 | `--tag=<tag>`                      | by [tag](/docs/tags/)                                  |
 | `--variable=<variableKey>`         | containing specific variable key                       |
-| `--variableDescription=<pattern>`  | by variable description pattern                        |
 | `--variation=<variationValue>`     | containing specific variation key                      |
-| `--variationDescription=<pattern>` | by variation description pattern                       |
 | `--with-tests`                     | with [test specs](/docs/testing)                       |
 | `--with-variables`                 | with variables                                         |
 | `--with-variations`                | with [variations](/docs/features/#variations)          |

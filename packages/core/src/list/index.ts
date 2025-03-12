@@ -1,6 +1,6 @@
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import { ParsedFeature, Segment, Attribute } from "@featurevisor/types";
+import { ParsedFeature, Segment, Attribute, VariableSchema } from "@featurevisor/types";
 
 async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
@@ -128,9 +128,25 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
         }
       }
 
-      // @TODO --variableDescription=<pattern>
-      // @TODO --variation=<variationValue>
-      // @TODO --variationDescription=<pattern>
+      // --variation=<variationValue>
+      if (options.variation) {
+        const lookForVariations = Array.isArray(options.variation)
+          ? options.variation
+          : [options.variation];
+
+        let variationsInFeature: string[] = parsedFeature.variations
+          ? parsedFeature.variations.map((v) => v.value)
+          : [];
+
+        const hasVariations = lookForVariations.every((variation) =>
+          variationsInFeature.includes(variation),
+        );
+
+        if (!hasVariations) {
+          continue;
+        }
+      }
+
       // @TODO --with-tests
       // @TODO --with-variables
       // @TODO --with-variations
