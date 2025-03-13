@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/vue",
-  "version": "1.33.0",
+  "version": "1.35.0",
   "description": "Vue.js package for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",
@@ -41,8 +41,8 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "dependencies": {
-    "@featurevisor/sdk": "1.33.0",
-    "@featurevisor/types": "1.33.0",
+    "@featurevisor/sdk": "1.35.0",
+    "@featurevisor/types": "1.35.0",
     "vue": "^3.3.4"
   },
   "license": "MIT",
