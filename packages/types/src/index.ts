@@ -13,6 +13,7 @@ export interface Attribute {
   key: AttributeKey;
   type: AttributeType;
   capture?: boolean;
+  description?: string; // only available in YAML files
 }
 
 export type Operator =
@@ -77,6 +78,7 @@ export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey;
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
+  description?: string; // only available in YAML files
 }
 
 export type PlainGroupSegment = SegmentKey;
@@ -167,6 +169,7 @@ export interface VariableSchema {
   key: VariableKey;
   type: VariableType;
   defaultValue: VariableValue;
+  description?: string; // only available in YAML files
 }
 
 export type FeatureKey = string;

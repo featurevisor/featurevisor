@@ -17,6 +17,7 @@ variablesSchema:
   - key: qux
     type: boolean
     defaultValue: false
+    description: This is a boolean variable
 
 variations:
   - value: control
