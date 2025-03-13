@@ -267,23 +267,23 @@ $ npx featurevisor list --features
 
 Advanced search options:
 
-| Option                             | Description                                            |
-| ---------------------------------- | ------------------------------------------------------ |
-| `--archived=<true or false>`       | by [archived](/docs/features/#archiving) status        |
-| `--description=<pattern>`          | by description pattern                                 |
-| `--disabledIn=<environment>`       | disabled in an [environment](/docs/environments)       |
-| `--enabledIn=<environment>`        | enabled in an [environment](/docs/environments)        |
-| `--json`                           | print as JSON                                          |
-| `--keyPattern=<pattern>`           | by key pattern                                         |
-| `--tag=<tag>`                      | by [tag](/docs/tags/)                                  |
-| `--variable=<variableKey>`         | containing specific variable key                       |
-| `--variation=<variationValue>`     | containing specific variation key                      |
-| `--with-tests`                     | with [test specs](/docs/testing)                       |
-| `--with-variables`                 | with variables                                         |
-| `--with-variations`                | with [variations](/docs/features/#variations)          |
-| `--without-tests`                  | without any test specs                                 |
-| `--without-variables`              | without any [variables](/docs/features/#variables)     |
-| `--without-variations`             | without any variations                                 |
+| Option                         | Description                                        |
+| ------------------------------ | -------------------------------------------------- |
+| `--archived=<true or false>`   | by [archived](/docs/features/#archiving) status    |
+| `--description=<pattern>`      | by description pattern                             |
+| `--disabledIn=<environment>`   | disabled in an [environment](/docs/environments)   |
+| `--enabledIn=<environment>`    | enabled in an [environment](/docs/environments)    |
+| `--json`                       | print as JSON                                      |
+| `--keyPattern=<pattern>`       | by key pattern                                     |
+| `--tag=<tag>`                  | by [tag](/docs/tags/)                              |
+| `--variable=<variableKey>`     | containing specific variable key                   |
+| `--variation=<variationValue>` | containing specific variation key                  |
+| `--with-tests`                 | with [test specs](/docs/testing)                   |
+| `--with-variables`             | with variables                                     |
+| `--with-variations`            | with [variations](/docs/features/#variations)      |
+| `--without-tests`              | without any test specs                             |
+| `--without-variables`          | without any [variables](/docs/features/#variables) |
+| `--without-variations`         | without any variations                             |
 
 ### List segments
 
@@ -301,6 +301,7 @@ Advanced search options:
 | `--description=<pattern>`    | by description pattern                          |
 | `--json`                     | print as JSON                                   |
 | `--keyPattern=<pattern>`     | by key pattern                                  |
+| `--pretty`                   | pretty JSON                                     |
 | `--with-tests`               | with [test specs](/docs/testing)                |
 | `--without-tests`            | without any test specs                          |
 
@@ -320,6 +321,25 @@ Advanced search options:
 | `--description=<pattern>`    | by description pattern                            |
 | `--json`                     | print as JSON                                     |
 | `--keyPattern=<pattern>`     | by key pattern                                    |
+| `--pretty`                   | pretty JSON                                       |
+
+### List tests
+
+To list all tests specs in the project:
+
+```
+$ npx featurevisor list --tests
+```
+
+Advanced search options:
+
+| Option                         | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `--applyMatrix`                | apply matrix for assertions                       |
+| `--assertionPattern=<pattern>` | by assertion's description pattern                |
+| `--json`                       | print as JSON                                     |
+| `--keyPattern=<pattern>`       | by key pattern of feature or segment being tested |
+| `--pretty`                     | pretty JSON                                       |
 
 ## Assess distribution
 

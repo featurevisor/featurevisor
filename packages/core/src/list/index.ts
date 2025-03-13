@@ -1,6 +1,16 @@
+import {
+  ParsedFeature,
+  Segment,
+  Attribute,
+  TestFeature,
+  TestSegment,
+  FeatureAssertion,
+  SegmentAssertion,
+} from "@featurevisor/types";
+
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import { ParsedFeature, Segment, Attribute, TestFeature, TestSegment } from "@featurevisor/types";
+import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "../tester";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -41,6 +51,8 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
     entityKeys = await datasource.listSegments();
   } else if (entityType === "attribute") {
     entityKeys = await datasource.listAttributes();
+  } else if (entityType === "test") {
+    entityKeys = await datasource.listTests();
   }
 
   if (entityKeys.length === 0) {
@@ -71,6 +83,8 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
       entity = (await datasource.readSegment(key)) as T;
     } else if (entityType === "attribute") {
       entity = (await datasource.readAttribute(key)) as T;
+    } else if (entityType === "test") {
+      entity = (await datasource.readTest(key)) as T;
     }
 
     // filter
@@ -318,6 +332,66 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
           continue;
         }
       }
+    } else if (entityType === "test") {
+      let test = entity as TestFeature | TestSegment;
+      const testEntityKey = (test as TestFeature).feature || (test as TestSegment).segment;
+      const testEntityType = (test as TestSegment).segment ? "segment" : "feature";
+      let testAssertions = test.assertions;
+
+      // --apply-matrix
+      if (options.applyMatrix) {
+        if (testEntityType === "feature") {
+          let assertionsAfterApplyingMatrix: FeatureAssertion[] = [];
+          for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            const processedAssertions = getFeatureAssertionsFromMatrix(
+              aIndex,
+              testAssertions[aIndex] as FeatureAssertion,
+            );
+            assertionsAfterApplyingMatrix =
+              assertionsAfterApplyingMatrix.concat(processedAssertions);
+          }
+
+          testAssertions = assertionsAfterApplyingMatrix;
+        } else if (testEntityType === "segment") {
+          let assertionsAfterApplyingMatrix: SegmentAssertion[] = [];
+          for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            const processedAssertions = getSegmentAssertionsFromMatrix(
+              aIndex,
+              testAssertions[aIndex] as SegmentAssertion,
+            );
+            assertionsAfterApplyingMatrix =
+              assertionsAfterApplyingMatrix.concat(processedAssertions);
+          }
+
+          testAssertions = assertionsAfterApplyingMatrix;
+        }
+      }
+
+      // --keyPattern=<pattern>
+      if (options.keyPattern) {
+        const regex = new RegExp(options.keyPattern, "i");
+        if (!regex.test(testEntityKey)) {
+          continue;
+        }
+      }
+
+      // --assertionPattern=<pattern>
+      if (options.assertionPattern) {
+        const regex = new RegExp(options.assertionPattern, "i");
+        testAssertions = testAssertions.filter((assertion) => {
+          if (!assertion.description) {
+            return false;
+          }
+
+          return regex.test(assertion.description);
+        }) as FeatureAssertion[] | SegmentAssertion[];
+
+        if (testAssertions.length === 0) {
+          continue;
+        }
+      }
+
+      (entity as TestFeature | TestSegment).assertions = testAssertions;
     }
 
     result.push({
@@ -335,7 +409,7 @@ function ucfirst(str: string) {
 
 function printResult({ result, entityType, options }) {
   if (options.json) {
-    console.log(JSON.stringify(result));
+    console.log(options.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
     return;
   }
 
@@ -385,6 +459,17 @@ export async function listProject(deps: Dependencies) {
     return printResult({
       result,
       entityType: "attribute",
+      options,
+    });
+  }
+
+  // tests
+  if (options.tests) {
+    const result = await listEntities<Attribute>(deps, "test");
+
+    return printResult({
+      result,
+      entityType: "test",
       options,
     });
   }
