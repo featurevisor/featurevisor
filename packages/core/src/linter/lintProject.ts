@@ -12,15 +12,24 @@ import { checkForCircularDependencyInRequired } from "./checkCircularDependency"
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
 import { printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
-import { CLI_FORMAT_RED, CLI_FORMAT_UNDERLINE } from "../tester/cliFormat";
+import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
+import { Plugin } from "../cli";
 
 export interface LintProjectOptions {
   keyPattern?: string;
   entityType?: string;
+  authors?: boolean;
 }
 
-const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-.]+$/;
+const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
 const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
+
+async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
+  const entries = await datasource.listHistoryEntries(entityType, entityKey);
+  const authors: string[] = Array.from(new Set(entries.map((entry) => entry.author)));
+
+  return authors;
+}
 
 export async function lintProject(
   deps: Dependencies,
@@ -80,7 +89,13 @@ export async function lintProject(
       const fullPath = getFullPathFromKey("attribute", key);
 
       if (!ENTITY_NAME_REGEX.test(key)) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
         console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
         console.log("");
@@ -93,7 +108,12 @@ export async function lintProject(
         const result = attributeZodSchema.safeParse(parsed);
 
         if (!result.success) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
 
           if ("error" in result) {
             printZodError(result.error);
@@ -102,7 +122,13 @@ export async function lintProject(
           hasError = true;
         }
       } catch (e) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "attribute", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log("");
         console.log(e);
 
@@ -130,7 +156,13 @@ export async function lintProject(
       const fullPath = getFullPathFromKey("segment", key);
 
       if (!ENTITY_NAME_REGEX.test(key)) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "segment", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
         console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
         console.log("");
@@ -143,7 +175,12 @@ export async function lintProject(
         const result = segmentZodSchema.safeParse(parsed);
 
         if (!result.success) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "segment", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
 
           if ("error" in result) {
             printZodError(result.error);
@@ -152,7 +189,13 @@ export async function lintProject(
           hasError = true;
         }
       } catch (e) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "segment", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log("");
         console.log(e);
 
@@ -182,7 +225,13 @@ export async function lintProject(
       const fullPath = getFullPathFromKey("feature", key);
 
       if (!ENTITY_NAME_REGEX.test(key)) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "feature", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
         console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
         console.log("");
@@ -197,7 +246,12 @@ export async function lintProject(
         const result = featureZodSchema.safeParse(parsed);
 
         if (!result.success) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "feature", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
 
           if ("error" in result) {
             printZodError(result.error);
@@ -206,7 +260,13 @@ export async function lintProject(
           hasError = true;
         }
       } catch (e) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "feature", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log("");
         console.log(e);
 
@@ -217,8 +277,15 @@ export async function lintProject(
         try {
           await checkForCircularDependencyInRequired(datasource, key, parsed.required);
         } catch (e) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "feature", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
           console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
+
           hasError = true;
         }
       }
@@ -240,8 +307,14 @@ export async function lintProject(
       const fullPath = getFullPathFromKey("group", key);
 
       if (!ENTITY_NAME_REGEX.test(key)) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "group", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
         console.log("");
         hasError = true;
@@ -255,7 +328,12 @@ export async function lintProject(
         const result = groupZodSchema.safeParse(parsed);
 
         if (!result.success) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "group", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
 
           if ("error" in result) {
             printZodError(result.error);
@@ -264,7 +342,13 @@ export async function lintProject(
           hasError = true;
         }
       } catch (e) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "group", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log("");
         console.log(e);
 
@@ -275,7 +359,7 @@ export async function lintProject(
         try {
           await checkForFeatureExceedingGroupSlotPercentage(datasource, parsed, features);
         } catch (e) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
           console.log(CLI_FORMAT_RED, `  => Error: ${e.message}`);
           hasError = true;
         }
@@ -305,7 +389,13 @@ export async function lintProject(
       const fullPath = getFullPathFromKey("test", key);
 
       if (!ENTITY_NAME_REGEX.test(key)) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "test", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
         console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
         console.log("");
@@ -318,7 +408,12 @@ export async function lintProject(
         const result = testsZodSchema.safeParse(parsed);
 
         if (!result.success) {
-          console.log(CLI_FORMAT_UNDERLINE, fullPath);
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "test", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
 
           if ("error" in result) {
             printZodError(result.error);
@@ -329,7 +424,13 @@ export async function lintProject(
           hasError = true;
         }
       } catch (e) {
-        console.log(CLI_FORMAT_UNDERLINE, fullPath);
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "test", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
         console.log("");
         console.log(e);
 
@@ -340,3 +441,54 @@ export async function lintProject(
 
   return hasError;
 }
+
+export const lintPlugin: Plugin = {
+  command: "lint",
+  handler: async function (options) {
+    const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
+
+    const hasError = await lintProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        keyPattern: parsed.keyPattern,
+        entityType: parsed.entityType,
+        authors: parsed.authors,
+      },
+    );
+
+    if (hasError) {
+      return false;
+    }
+  },
+  examples: [
+    {
+      command: "lint",
+      description: "lint all entities",
+    },
+    {
+      command: "lint --entityType=feature",
+      description: "lint only features",
+    },
+    {
+      command: "lint --entityType=segment",
+      description: "lint only segments",
+    },
+    {
+      command: "lint --entityType=group",
+      description: "lint only groups",
+    },
+    {
+      command: "lint --entityType=test",
+      description: "lint only tests",
+    },
+    {
+      command: 'lint --keyPattern="abc"',
+      description: `lint only entities with keys containing "abc"`,
+    },
+  ],
+};

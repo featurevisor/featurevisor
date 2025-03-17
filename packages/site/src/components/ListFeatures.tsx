@@ -28,7 +28,7 @@ export function ListFeatures() {
           <ul className="diving-gray-200 divide-y">
             {features.map((feature: any) => (
               <li key={feature.key}>
-                <Link to={`/features/${feature.key}`}>
+                <Link to={`/features/${encodeURIComponent(feature.key)}`}>
                   <div className="block hover:bg-gray-50">
                     <div className="px-6 py-4">
                       <div className="flex items-center justify-between">

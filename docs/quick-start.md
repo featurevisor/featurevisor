@@ -12,7 +12,7 @@ ogImage: /img/og/docs-quick-start.png
 
 This is meant to be a completely separate repository from your application code.
 
-The idea is to be able to decouple your application deployments from releasing your features. Therefore, it stays as a separate repository.
+The idea is to be able to [decouple](/docs/use-cases/decouple-releases-from-deployments) your application deployments from releasing your features. Therefore, it stays as a separate repository.
 
 Run the following command to initialize your project:
 
@@ -51,7 +51,7 @@ module.exports = {
 
 Learn more in [Configuration](/docs/configuration).
 
-By default, Featurevisor defines attributes, segments, and features as YAML files. If you want JSON, TOML, or any other language, see [custom parsers](/docs/advanced/custom-parsers) guide.
+By default, Featurevisor defines [attributes](/docs/attributes), [segments](/docs/segments), and [features](/docs/features) as YAML files. If you want JSON, TOML, or any other language, see [custom parsers](/docs/advanced/custom-parsers) guide.
 
 ## Create an attribute
 
@@ -181,7 +181,7 @@ In your application, install the SDK first:
 $ npm install --save @featurevisor/sdk
 ```
 
-Featurevisor SDK is compatible with both Node.js and browser environments.
+Featurevisor JavaScript SDK is compatible with both Node.js and browser environments.
 
 ### Synchronous
 
@@ -222,7 +222,7 @@ const f = createInstance({
 
 ### Usage
 
-Once the SDK is initialized, you can get variations of your features as follows:
+Once the SDK is initialized, you can evaluate your features and their variations and variables as follows:
 
 ```js
 const featureKey = "showBanner";
@@ -238,9 +238,10 @@ const isBannerEnabled = f.isEnabled(featureKey, context);
 const bannerVariation = f.getVariation(featureKey, context);
 
 // variables
-const myVariable = f.getVariable(featureKey, "myVariableKey", context);
+const variableKey = "myVariableKey";
+const myVariable = f.getVariable(featureKey, variableKey, context);
 ```
 
-Featurevisor SDK will take care of computing the right value(s) for you against the provided `userId` and `country` attributes as context.
+Featurevisor SDK will take care of evaluating the right value(s) for you synchronously against the provided `userId` and `country` attributes in the context.
 
 Find more examples of SDK usage [here](/docs/sdks).

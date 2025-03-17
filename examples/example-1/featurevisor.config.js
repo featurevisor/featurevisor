@@ -4,4 +4,7 @@ module.exports = {
   tags: ["all", "checkout"],
   prettyState: true,
   prettyDatafile: true,
+  // enforceCatchAllRule: true,
+
+  plugins: [require("./plugins/example")],
 };

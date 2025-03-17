@@ -25,7 +25,10 @@ export function ListAttributes() {
           <ul className="diving-gray-200 divide-y">
             {attributes.map((attribute: any) => (
               <li key={attribute.key}>
-                <Link to={`/attributes/${attribute.key}`} className="block hover:bg-gray-50">
+                <Link
+                  to={`/attributes/${encodeURIComponent(attribute.key)}`}
+                  className="block hover:bg-gray-50"
+                >
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <p className="text-md relative font-bold text-slate-600">

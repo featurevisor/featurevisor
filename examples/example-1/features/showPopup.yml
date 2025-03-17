@@ -21,6 +21,7 @@ environments:
         percentage: 0
 
   production:
+    expose: false
     rules:
       - key: "1"
         segments: "*"

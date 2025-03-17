@@ -1,6 +1,7 @@
 import { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 import {
   extractAttributeKeysFromConditions,
   extractSegmentKeysFromGroupSegments,
@@ -51,34 +52,70 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
     }
 
     // variable overrides inside variations
-    projectConfig.environments.forEach((environment) => {
-      if (feature.variations) {
-        feature.variations.forEach((variation) => {
-          if (variation.variables) {
-            variation.variables.forEach((variable) => {
-              if (variable.overrides) {
-                variable.overrides.forEach((override) => {
-                  if (override.segments) {
-                    extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
-                      usageInFeatures[featureKey].segments.add(segmentKey),
-                    );
-                  }
+    if (feature.variations) {
+      feature.variations.forEach((variation) => {
+        if (variation.variables) {
+          variation.variables.forEach((variable) => {
+            if (variable.overrides) {
+              variable.overrides.forEach((override) => {
+                if (override.segments) {
+                  extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                    usageInFeatures[featureKey].segments.add(segmentKey),
+                  );
+                }
 
-                  if (override.conditions) {
-                    extractAttributeKeysFromConditions(override.conditions).forEach(
-                      (attributeKey) => usageInFeatures[featureKey].attributes.add(attributeKey),
-                    );
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
+                if (override.conditions) {
+                  extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
+                    usageInFeatures[featureKey].attributes.add(attributeKey),
+                  );
+                }
+              });
+            }
+          });
+        }
+      });
+    }
 
+    // with environments
+    if (Array.isArray(projectConfig.environments)) {
+      projectConfig.environments.forEach((environment) => {
+        if (!feature.environments) {
+          return;
+        }
+
+        // force
+        if (feature.environments[environment].force) {
+          feature.environments[environment].force?.forEach((force) => {
+            if (force.segments) {
+              extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) =>
+                usageInFeatures[featureKey].segments.add(segmentKey),
+              );
+            }
+
+            if (force.conditions) {
+              extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) =>
+                usageInFeatures[featureKey].attributes.add(attributeKey),
+              );
+            }
+          });
+        }
+
+        // rules
+        if (feature.environments[environment].rules) {
+          feature.environments[environment].rules?.forEach((rule) => {
+            extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
+              usageInFeatures[featureKey].segments.add(segmentKey),
+            );
+          });
+        }
+      });
+    }
+
+    // no environments
+    if (projectConfig.environments === false) {
       // force
-      if (feature.environments[environment].force) {
-        feature.environments[environment].force?.forEach((force) => {
+      if (feature.force) {
+        feature.force.forEach((force) => {
           if (force.segments) {
             extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) =>
               usageInFeatures[featureKey].segments.add(segmentKey),
@@ -94,14 +131,14 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
       }
 
       // rules
-      if (feature.environments[environment].rules) {
-        feature.environments[environment].rules?.forEach((rule) => {
+      if (feature.rules) {
+        feature.rules.forEach((rule) => {
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
             usageInFeatures[featureKey].segments.add(segmentKey),
           );
         });
       }
-    });
+    }
   }
 
   return usageInFeatures;
@@ -243,9 +280,13 @@ export interface FindUsageOptions {
 
   unusedSegments?: boolean;
   unusedAttributes?: boolean;
+
+  authors?: boolean;
 }
 
 export async function findUsageInProject(deps: Dependencies, options: FindUsageOptions) {
+  const { datasource } = deps;
+
   console.log("");
 
   // segment
@@ -257,9 +298,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log(`Segment "${options.segment}" is used in the following features:\n`);
 
-      usedInFeatures.forEach((featureKey) => {
-        console.log(`  - ${featureKey}`);
-      });
+      for (const featureKey of Array.from(usedInFeatures)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("feature", featureKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${featureKey}`);
+        }
+      }
     }
 
     return;
@@ -278,9 +326,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     if (usedIn.features.size > 0) {
       console.log(`Attribute "${options.attribute}" is used in the following features:\n`);
 
-      usedIn.features.forEach((featureKey) => {
-        console.log(`  - ${featureKey}`);
-      });
+      for (const featureKey of Array.from(usedIn.features)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("feature", featureKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${featureKey}`);
+        }
+      }
 
       console.log("");
     }
@@ -288,9 +343,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     if (usedIn.segments.size > 0) {
       console.log(`Attribute "${options.attribute}" is used in the following segments:\n`);
 
-      usedIn.segments.forEach((segmentKey) => {
-        console.log(`  - ${segmentKey}`);
-      });
+      for (const segmentKey of Array.from(usedIn.segments)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("segment", segmentKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${segmentKey}`);
+        }
+      }
     }
 
     return;
@@ -305,9 +367,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log("Unused segments:\n");
 
-      unusedSegments.forEach((segmentKey) => {
-        console.log(`  - ${segmentKey}`);
-      });
+      for (const segmentKey of Array.from(unusedSegments)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("segment", segmentKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${segmentKey}`);
+        }
+      }
     }
 
     return;
@@ -322,9 +391,16 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     } else {
       console.log("Unused attributes:\n");
 
-      unusedAttributes.forEach((attributeKey) => {
-        console.log(`  - ${attributeKey}`);
-      });
+      for (const attributeKey of Array.from(unusedAttributes)) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("attribute", attributeKey);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+
+          console.log(`  - ${attributeKey} (Authors: ${authors.join(", ")})`);
+        } else {
+          console.log(`  - ${attributeKey}`);
+        }
+      }
     }
 
     return;
@@ -332,3 +408,46 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   console.log("Please specify a segment or attribute.");
 }
+
+export const findUsagePlugin: Plugin = {
+  command: "find-usage",
+  handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    await findUsageInProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        segment: parsed.segment,
+        attribute: parsed.attribute,
+        unusedSegments: parsed.unusedSegments,
+        unusedAttributes: parsed.unusedAttributes,
+        authors: parsed.authors,
+      },
+    );
+  },
+  examples: [
+    {
+      command: "find-usage --segment=<segmentKey>",
+      description: "Find usage of a segment",
+    },
+    {
+      command: "find-usage --attribute=<attributeKey>",
+      description: "Find usage of an attribute",
+    },
+    {
+      command: "find-usage --unused-segments",
+      description: "Find unused segments",
+    },
+    {
+      command: "find-usage --unused-attributes",
+      description: "Find unused attributes",
+    },
+    {
+      command: "find-usage --authors",
+      description: "List authors of the usage",
+    },
+  ],
+};

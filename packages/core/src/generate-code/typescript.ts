@@ -47,7 +47,6 @@ function getRelativePath(from, to) {
   return relativePath;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getFeaturevisorTypeFromValue(value) {
   if (typeof value === "boolean") {
     return "boolean";

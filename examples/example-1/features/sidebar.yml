@@ -18,6 +18,24 @@ variablesSchema:
   - key: title
     type: string
     defaultValue: "Sidebar Title"
+  - key: title2
+    type: string
+    defaultValue: "Sidebar Title 2"
+  - key: title3
+    type: string
+    defaultValue: "Sidebar Title 3"
+  - key: title4
+    type: string
+    defaultValue: "Sidebar Title 4"
+  - key: title5
+    type: string
+    defaultValue: "Sidebar Title 5"
+  - key: title6
+    type: string
+    defaultValue: "Sidebar Title 6"
+  - key: title7
+    type: string
+    defaultValue: "Sidebar Title 7"
 
 variations:
   - value: control
@@ -31,23 +49,25 @@ variations:
         value: red
         overrides:
           - segments:
-              - germany
+              - countries/germany
             value: yellow
           - segments:
-              - switzerland
+              - countries/switzerland
             value: white
       - key: sections
         value: ["home", "about", "contact"]
         overrides:
           - segments:
-              - germany
+              - countries/germany
             value: ["home", "about", "contact", "imprint"]
           - segments:
-              - netherlands
+              - countries/netherlands
             value: ["home", "about", "contact", "bitterballen"]
 
 environments:
   staging:
+    expose:
+      - all
     rules:
       - key: "1"
         segments: "*"

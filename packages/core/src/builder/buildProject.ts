@@ -1,17 +1,75 @@
-import { SCHEMA_VERSION } from "../config";
+import { SCHEMA_VERSION, ProjectConfig } from "../config";
+import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
+import { Plugin } from "../cli";
 
 export interface BuildCLIOptions {
   revision?: string;
+  schemaVersion?: string;
 
   // all three together
   environment?: string;
   feature?: string;
   print?: boolean;
   pretty?: boolean;
+  stateFiles?: boolean; // --no-state-files in CLI
+  inflate?: number;
+  datafilesDir?: string;
+}
+
+async function buildForEnvironment({
+  projectConfig,
+  datasource,
+  nextRevision,
+  environment,
+  tags,
+  cliOptions,
+}: {
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  nextRevision: string;
+  environment: string | false;
+  tags: string[];
+  cliOptions: BuildCLIOptions;
+}) {
+  console.log(`\nBuilding datafiles for environment: ${environment}`);
+
+  const existingState = await datasource.readState(environment);
+
+  for (const tag of tags) {
+    console.log(`\n  => Tag: ${tag}`);
+
+    const datafileContent = await buildDatafile(
+      projectConfig,
+      datasource,
+      {
+        schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
+        revision: nextRevision,
+        environment: environment,
+        tag: tag,
+        inflate: cliOptions.inflate,
+      },
+      existingState,
+    );
+
+    // write datafile for environment/tag
+    await datasource.writeDatafile(datafileContent, {
+      environment,
+      tag,
+      datafilesDir: cliOptions.datafilesDir,
+    });
+  }
+
+  if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
+    // write state for environment
+    await datasource.writeState(environment, existingState);
+
+    // write revision
+    await datasource.writeRevision(nextRevision);
+  }
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -34,6 +92,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       projectConfig,
       datasource,
       revision: cliOptions.revision,
+      schemaVersion: cliOptions.schemaVersion,
     });
 
     if (cliOptions.pretty) {
@@ -57,39 +116,72 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
-  for (const environment of environments) {
-    console.log(`\nBuilding datafiles for environment: ${environment}`);
-
-    const existingState = await datasource.readState(environment);
-
-    for (const tag of tags) {
-      console.log(`\n  => Tag: ${tag}`);
-
-      const datafileContent = await buildDatafile(
+  // with environments
+  if (Array.isArray(environments)) {
+    for (const environment of environments) {
+      await buildForEnvironment({
         projectConfig,
         datasource,
-        {
-          schemaVersion: SCHEMA_VERSION,
-          revision: nextRevision,
-          environment: environment,
-          tag: tag,
-        },
-        existingState,
-      );
-
-      // write datafile for environment/tag
-      await datasource.writeDatafile(datafileContent, {
+        nextRevision,
         environment,
-        tag,
+        tags,
+        cliOptions,
       });
     }
+  }
 
-    // write state for environment
-    await datasource.writeState(environment, existingState);
-
-    // write revision
-    await datasource.writeRevision(nextRevision);
+  // no environment
+  if (environments === false) {
+    await buildForEnvironment({
+      projectConfig,
+      datasource,
+      nextRevision,
+      environment: false,
+      tags,
+      cliOptions,
+    });
   }
 
   console.log("\nLatest revision:", nextRevision);
 }
+
+export const buildPlugin: Plugin = {
+  command: "build",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    await buildProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      parsed as BuildCLIOptions,
+    );
+  },
+  examples: [
+    {
+      command: "build",
+      description: "build datafiles for all environments and tags",
+    },
+    {
+      command: "build --revision=123",
+      description: "build datafiles starting with revision value as 123",
+    },
+    {
+      command: "build --environment=production",
+      description: "build datafiles for production environment",
+    },
+    {
+      command: "build --print --environment=production --feature=featureKey",
+      description: "print datafile for a feature in production environment",
+    },
+    {
+      command: "build --print --environment=production --pretty",
+      description: "print datafile with pretty print",
+    },
+    {
+      command: "build --no-state-files",
+      description: "build datafiles without writing state files",
+    },
+  ],
+};

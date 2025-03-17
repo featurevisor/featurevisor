@@ -3,6 +3,261 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.35.0](https://github.com/featurevisor/featurevisor/compare/v1.34.2...v1.35.0) (2025-03-13)
+
+
+### Features
+
+* list entities from CLI ([#349](https://github.com/featurevisor/featurevisor/issues/349)) ([160e151](https://github.com/featurevisor/featurevisor/commit/160e15103860be8a81a145d515e0ceb69a3cad79))
+
+
+
+
+
+## [1.34.2](https://github.com/featurevisor/featurevisor/compare/v1.34.1...v1.34.2) (2025-03-12)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.34.1](https://github.com/featurevisor/featurevisor/compare/v1.34.0...v1.34.1) (2025-03-09)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.34.0](https://github.com/featurevisor/featurevisor/compare/v1.33.0...v1.34.0) (2025-03-09)
+
+
+### Features
+
+* namespaces ([#346](https://github.com/featurevisor/featurevisor/issues/346)) ([561e24b](https://github.com/featurevisor/featurevisor/commit/561e24b4de985517fe414f9a6cf7b420403c6eeb))
+
+
+
+
+
+# [1.33.0](https://github.com/featurevisor/featurevisor/compare/v1.32.0...v1.33.0) (2025-03-08)
+
+
+### Features
+
+* allow deprecating variables ([#345](https://github.com/featurevisor/featurevisor/issues/345)) ([cecbf5b](https://github.com/featurevisor/featurevisor/commit/cecbf5beb87d06d46c654c352910766f565e81b2))
+
+
+
+
+
+# [1.32.0](https://github.com/featurevisor/featurevisor/compare/v1.31.0...v1.32.0) (2025-02-26)
+
+
+### Features
+
+* optionally have no environments ([#344](https://github.com/featurevisor/featurevisor/issues/344)) ([20b14e6](https://github.com/featurevisor/featurevisor/commit/20b14e6bf0fb1decbda90c7cd38d85e54815fcd6))
+
+
+
+
+
+# [1.31.0](https://github.com/featurevisor/featurevisor/compare/v1.30.1...v1.31.0) (2025-02-13)
+
+
+### Features
+
+* variables schema as dictionary ([#343](https://github.com/featurevisor/featurevisor/issues/343)) ([18e8aed](https://github.com/featurevisor/featurevisor/commit/18e8aedab10ecdd68b7f0cbf911896b14ab37c91))
+
+
+
+
+
+## [1.30.1](https://github.com/featurevisor/featurevisor/compare/v1.30.0...v1.30.1) (2025-02-08)
+
+
+### Bug Fixes
+
+* single function to evaluate flag, variation, and variable ([#341](https://github.com/featurevisor/featurevisor/issues/341)) ([ebba884](https://github.com/featurevisor/featurevisor/commit/ebba884d96ea24f5832c523bae17bd8b4d904584))
+
+
+
+
+
+# [1.30.0](https://github.com/featurevisor/featurevisor/compare/v1.29.3...v1.30.0) (2025-02-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.29.3](https://github.com/featurevisor/featurevisor/compare/v1.29.2...v1.29.3) (2025-01-30)
+
+
+### Bug Fixes
+
+* matched rules with percentage of 0 should be disabled ([#340](https://github.com/featurevisor/featurevisor/issues/340)) ([07f1682](https://github.com/featurevisor/featurevisor/commit/07f1682b98c67ac00b6edb91bda90fd77791458b))
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.29.1](https://github.com/featurevisor/featurevisor/compare/v1.29.0...v1.29.1) (2025-01-23)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.29.0](https://github.com/featurevisor/featurevisor/compare/v1.28.0...v1.29.0) (2025-01-22)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.6](https://github.com/featurevisor/featurevisor/compare/v1.27.5...v1.27.6) (2025-01-20)
+
+
+### Bug Fixes
+
+* in operator with non-existent context value ([#335](https://github.com/featurevisor/featurevisor/issues/335)) ([08f6f38](https://github.com/featurevisor/featurevisor/commit/08f6f38c252940ac010148937af9e93c2b5c3557))
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.4](https://github.com/featurevisor/featurevisor/compare/v1.27.3...v1.27.4) (2024-12-01)
+
+
+### Bug Fixes
+
+* non-existent property in context when checking in and noIn conditions ([#328](https://github.com/featurevisor/featurevisor/issues/328)) ([fc85214](https://github.com/featurevisor/featurevisor/commit/fc85214449ff9c34b9f63e8eb737104365f0bb8d))
+
+
+
+
+
+## [1.27.3](https://github.com/featurevisor/featurevisor/compare/v1.27.2...v1.27.3) (2024-10-04)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.2](https://github.com/featurevisor/featurevisor/compare/v1.27.1...v1.27.2) (2024-08-28)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+## [1.27.1](https://github.com/featurevisor/featurevisor/compare/v1.27.0...v1.27.1) (2024-08-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.27.0](https://github.com/featurevisor/featurevisor/compare/v1.26.0...v1.27.0) (2024-08-07)
+
+
+### Features
+
+* Plugins API ([#318](https://github.com/featurevisor/featurevisor/issues/318)) ([f86312b](https://github.com/featurevisor/featurevisor/commit/f86312bbf02466f2926783edd590e78e254060fd))
+
+
+
+
+
+# [1.26.0](https://github.com/featurevisor/featurevisor/compare/v1.25.0...v1.26.0) (2024-07-19)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.25.0](https://github.com/featurevisor/featurevisor/compare/v1.24.0...v1.25.0) (2024-07-16)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.24.0](https://github.com/featurevisor/featurevisor/compare/v1.23.0...v1.24.0) (2024-06-24)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
+# [1.23.0](https://github.com/featurevisor/featurevisor/compare/v1.22.1...v1.23.0) (2024-05-26)
+
+
+### Features
+
+* enforce catch-all rule in features with configuration ([#305](https://github.com/featurevisor/featurevisor/issues/305)) ([bfcd01a](https://github.com/featurevisor/featurevisor/commit/bfcd01abbc61e051a5b05e882a9f3122baf2ba9e))
+
+
+
+
+
+## [1.22.1](https://github.com/featurevisor/featurevisor/compare/v1.22.0...v1.22.1) (2024-05-25)
+
+
+### Bug Fixes
+
+* issue with first variation having weight of 0 ([#273](https://github.com/featurevisor/featurevisor/issues/273)) ([2853529](https://github.com/featurevisor/featurevisor/commit/2853529a958f6f8b8e596ec2eaad9c392294989f))
+
+
+
+
+
+# [1.22.0](https://github.com/featurevisor/featurevisor/compare/v1.21.0...v1.22.0) (2024-05-21)
+
+**Note:** Version bump only for package @featurevisor/example-1
+
+
+
+
+
 # [1.21.0](https://github.com/featurevisor/featurevisor/compare/v1.20.0...v1.21.0) (2024-05-09)
 
 **Note:** Version bump only for package @featurevisor/example-1

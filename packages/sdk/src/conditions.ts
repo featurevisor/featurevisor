@@ -22,7 +22,10 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
     return operator === "before"
       ? dateInContext < dateInCondition
       : dateInContext > dateInCondition;
-  } else if (typeof context[attribute] === "string" && Array.isArray(value)) {
+  } else if (
+    Array.isArray(value) &&
+    (["string", "number"].indexOf(typeof context[attribute]) !== -1 || context[attribute] === null)
+  ) {
     // array
     const valueInContext = context[attribute] as string;
 

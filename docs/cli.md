@@ -97,7 +97,6 @@ $ npx featurevisor site serve -p 3000
 
 Learn more in [Status site](/docs/status-site).
 
-
 ## Generate code
 
 Generate TypeScript code from your YAMLs:
@@ -129,6 +128,8 @@ $ npx featurevisor find-duplicate-segments --authors
 ## Find usage
 
 Learn where/if certain segments and attributes are used in.
+
+For each of the `find-usage` commands below, you can optionally pass `--authors` to find who worked on the affected entities.
 
 ### Segment usage
 
@@ -198,6 +199,8 @@ $ npx featurevisor benchmark \
   --n=1000
 ```
 
+You can optionally pass `--schema-version=2` if you are using the new schema v2.
+
 ## Configuration
 
 To view the project [configuration](/docs/configuration):
@@ -250,6 +253,94 @@ $ npx featurevisor evaluate \
   --verbose
 ```
 
+You can optionally pass `--schema-version=2` if you are using the new schema v2.
+
+## List
+
+### List features
+
+To list all features in the project:
+
+```
+$ npx featurevisor list --features
+```
+
+Advanced search options:
+
+| Option                         | Description                                        |
+| ------------------------------ | -------------------------------------------------- |
+| `--archived=<true or false>`   | by [archived](/docs/features/#archiving) status    |
+| `--description=<pattern>`      | by description pattern                             |
+| `--disabledIn=<environment>`   | disabled in an [environment](/docs/environments)   |
+| `--enabledIn=<environment>`    | enabled in an [environment](/docs/environments)    |
+| `--json`                       | print as JSON                                      |
+| `--keyPattern=<pattern>`       | by key pattern                                     |
+| `--tag=<tag>`                  | by [tag](/docs/tags/)                              |
+| `--variable=<variableKey>`     | containing specific variable key                   |
+| `--variation=<variationValue>` | containing specific variation key                  |
+| `--with-tests`                 | with [test specs](/docs/testing)                   |
+| `--with-variables`             | with variables                                     |
+| `--with-variations`            | with [variations](/docs/features/#variations)      |
+| `--without-tests`              | without any test specs                             |
+| `--without-variables`          | without any [variables](/docs/features/#variables) |
+| `--without-variations`         | without any variations                             |
+
+### List segments
+
+To list all segments in the project:
+
+```
+$ npx featurevisor list --segments
+```
+
+Advanced search options:
+
+| Option                       | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| `--archived=<true or false>` | by [archived](/docs/segments/#archiving) status |
+| `--description=<pattern>`    | by description pattern                          |
+| `--json`                     | print as JSON                                   |
+| `--keyPattern=<pattern>`     | by key pattern                                  |
+| `--pretty`                   | pretty JSON                                     |
+| `--with-tests`               | with [test specs](/docs/testing)                |
+| `--without-tests`            | without any test specs                          |
+
+### List attributes
+
+To list all attributes in the project:
+
+```
+$ npx featurevisor list --attributes
+```
+
+Advanced search options:
+
+| Option                       | Description                                       |
+| ---------------------------- | ------------------------------------------------- |
+| `--archived=<true or false>` | by [archived](/docs/attributes/#archiving) status |
+| `--description=<pattern>`    | by description pattern                            |
+| `--json`                     | print as JSON                                     |
+| `--keyPattern=<pattern>`     | by key pattern                                    |
+| `--pretty`                   | pretty JSON                                       |
+
+### List tests
+
+To list all tests specs in the project:
+
+```
+$ npx featurevisor list --tests
+```
+
+Advanced search options:
+
+| Option                         | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `--applyMatrix`                | apply matrix for assertions                       |
+| `--assertionPattern=<pattern>` | by assertion's description pattern                |
+| `--json`                       | print as JSON                                     |
+| `--keyPattern=<pattern>`       | by key pattern of feature or segment being tested |
+| `--pretty`                     | pretty JSON                                       |
+
 ## Assess distribution
 
 To check if the gradual rollout of a feature and the weight distribution of its variations (if any exists) are going to work as expected in a real world application with real traffic against provided [context](/docs/sdks/javascript/#context), we can imitate that by running:
@@ -277,3 +368,25 @@ Further details about all the options:
 - `--verbose`: print the merged context for better debugging
 
 Everything is happening locally in memory without modifying any content anywhere. This command exists only to add to our confidence if questions arise about how effective traffic distribution in Featurevisor is.
+
+## Info
+
+Shows count of various entities in the project:
+
+```
+$ npx featurevisor info
+```
+
+## Version
+
+Get the current version number of Featurevisor CLI, and its relevant packages:
+
+```
+$ npx featurevisor --version
+```
+
+Or do:
+
+```
+$ npx featurevisor -v
+```

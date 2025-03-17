@@ -13,6 +13,7 @@ export interface Attribute {
   key: AttributeKey;
   type: AttributeType;
   capture?: boolean;
+  description?: string; // only available in YAML files
 }
 
 export type Operator =
@@ -77,6 +78,7 @@ export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey;
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
+  description?: string; // only available in YAML files
 }
 
 export type PlainGroupSegment = SegmentKey;
@@ -163,9 +165,11 @@ export interface Variation {
 }
 
 export interface VariableSchema {
+  deprecated?: boolean;
   key: VariableKey;
   type: VariableType;
   defaultValue: VariableValue;
+  description?: string; // only available in YAML files
 }
 
 export type FeatureKey = string;
@@ -241,7 +245,7 @@ export interface Feature {
   key: FeatureKey;
   deprecated?: boolean;
   required?: Required[];
-  variablesSchema?: VariableSchema[];
+  variablesSchema?: VariableSchema[] | Record<VariableKey, VariableSchema>;
   variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];
@@ -249,13 +253,29 @@ export interface Feature {
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
-export interface DatafileContent {
+export interface DatafileContentV1 {
   schemaVersion: string;
   revision: string;
   attributes: Attribute[];
   segments: Segment[];
   features: Feature[];
 }
+
+export interface DatafileContentV2 {
+  schemaVersion: string;
+  revision: string;
+  attributes: {
+    [key: AttributeKey]: Attribute;
+  };
+  segments: {
+    [key: SegmentKey]: Segment;
+  };
+  features: {
+    [key: FeatureKey]: Feature;
+  };
+}
+
+export type DatafileContent = DatafileContentV1 | DatafileContentV2;
 
 export interface OverrideFeature {
   enabled: boolean;
@@ -295,8 +315,10 @@ export interface Rule {
 
 export type Tag = string;
 
+export type Expose = boolean | Tag[];
+
 export interface Environment {
-  expose?: boolean | Tag[];
+  expose?: Expose;
   rules: Rule[];
   force?: Force[];
 }
@@ -317,9 +339,15 @@ export interface ParsedFeature {
   variablesSchema?: VariableSchema[];
   variations?: Variation[];
 
-  environments: {
+  // if using environments
+  environments?: {
     [key: EnvironmentKey]: Environment;
   };
+
+  // if not using environments
+  expose?: Expose;
+  rules?: Rule[];
+  force?: Force[];
 }
 
 /**
@@ -444,6 +472,10 @@ export interface SearchIndex {
     segment: string;
     attribute: string;
     commit: CommitHash;
+  };
+  projectConfig: {
+    tags: Tag[];
+    environments: EnvironmentKey[] | false;
   };
   entities: {
     attributes: (Attribute & {

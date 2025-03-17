@@ -11,6 +11,7 @@ import {
 import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
+import { Plugin } from "../cli";
 
 function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
@@ -49,12 +50,14 @@ function printHeader(message: string) {
 }
 
 export interface EvaluateOptions {
-  environment: string;
+  environment?: string;
   feature: string;
   context: Record<string, unknown>;
   print?: boolean;
   pretty?: boolean;
   verbose?: boolean;
+  schemaVersion?: string;
+  inflate?: number;
 }
 
 export interface Log {
@@ -66,14 +69,15 @@ export interface Log {
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
   const { datasource, projectConfig } = deps;
 
-  const existingState = await datasource.readState(options.environment);
+  const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
     projectConfig,
     datasource,
     {
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
-      environment: options.environment,
+      environment: options.environment || false,
+      inflate: options.inflate,
     },
     existingState,
   );
@@ -106,17 +110,21 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   const feature = f.getFeature(options.feature);
   if (feature?.variablesSchema) {
-    feature.variablesSchema.forEach((v) => {
+    const variableKeys = Array.isArray(feature.variablesSchema)
+      ? feature.variablesSchema
+      : Object.keys(feature.variablesSchema);
+
+    variableKeys.forEach((variableKey) => {
       const variableEvaluation = f.evaluateVariable(
         options.feature,
-        v.key,
+        variableKey,
         options.context as Context,
       );
 
-      variableEvaluationLogs[v.key] = [...logs];
+      variableEvaluationLogs[variableKey] = [...logs];
       logs = [];
 
-      variableEvaluations[v.key] = variableEvaluation;
+      variableEvaluations[variableKey] = variableEvaluation;
     });
   }
 
@@ -191,3 +199,32 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     console.log("No variables defined.");
   }
 }
+
+export const evaluatePlugin: Plugin = {
+  command: "evaluate",
+  handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    await evaluateFeature(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      {
+        environment: parsed.environment,
+        feature: parsed.feature,
+        context: parsed.context ? JSON.parse(parsed.context) : {},
+        print: parsed.print,
+        pretty: parsed.pretty,
+        verbose: parsed.verbose,
+      },
+    );
+  },
+  examples: [
+    {
+      command:
+        'evaluate --environment=production --feature=my_feature --context=\'{"userId": "123"}\'',
+      description: "evaluate a feature against provided context",
+    },
+  ],
+};

@@ -14,5 +14,9 @@ environments:
   production:
     rules:
       - key: "1"
-        segments: netherlands
+        segments: countries/netherlands
         percentage: 100
+
+      - key: "2"
+        segments: "*"
+        percentage: 0

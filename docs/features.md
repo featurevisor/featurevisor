@@ -649,7 +649,19 @@ deprecated: true
 
 Deprecating a feature will still include the feature in generated datafiles and SDKs will still be able to evaluate the feature, but evaluation will lead to showing a warning in the logs.
 
-This is done to help notify the developers to stop using the affected feature without breaking the application.
+Similarly, variables can also be deprecated:
+
+```yml
+# ...
+
+variablesSchema:
+  - key: bgColor
+    type: string
+    defaultValue: red
+    deprecated: true # mark as deprecated
+```
+
+This is done to help notify the developers to stop using the affected feature or its variable without breaking the application.
 
 ## Archiving
 

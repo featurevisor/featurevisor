@@ -4,6 +4,7 @@ import { BucketBy } from "@featurevisor/types";
 
 import { Parser, parsers } from "./parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
+import type { Plugin } from "../cli";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -26,7 +27,7 @@ export const DEFAULT_PRETTY_DATAFILE = false;
 
 export const DEFAULT_PARSER: Parser = "yml";
 
-export const SCHEMA_VERSION = "1";
+export const SCHEMA_VERSION = "1"; // default schema version
 
 export interface ProjectConfig {
   featuresDirectoryPath: string;
@@ -36,15 +37,26 @@ export interface ProjectConfig {
   testsDirectoryPath: string;
   stateDirectoryPath: string;
   outputDirectoryPath: string;
-  environments: string[];
+  siteExportDirectoryPath: string;
+
+  environments: string[] | false;
   tags: string[];
+
+  adapter: any; // @TODO: type this properly later
+  plugins: Plugin[];
+
   defaultBucketBy: BucketBy;
   parser: Parser;
+
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
-  siteExportDirectoryPath: string;
-  adapter: any; // @TODO: type this properly later
+
+  enforceCatchAllRule?: boolean;
+  maxVariableStringLength?: number;
+  maxVariableArrayStringifiedLength?: number;
+  maxVariableObjectStringifiedLength?: number;
+  maxVariableJSONStringifiedLength?: number;
 }
 
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
@@ -70,6 +82,14 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
     outputDirectoryPath: path.join(rootDirectoryPath, OUTPUT_DIRECTORY_NAME),
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
+
+    enforceCatchAllRule: false,
+    plugins: [],
+
+    maxVariableStringLength: undefined,
+    maxVariableArrayStringifiedLength: undefined,
+    maxVariableObjectStringifiedLength: undefined,
+    maxVariableJSONStringifiedLength: undefined,
   };
 
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
@@ -131,3 +151,28 @@ export function showProjectConfig(
     console.log(`  - ${key.padEnd(longestKeyLength, " ")}: ${projectConfig[key]}`);
   }
 }
+
+export const configPlugin: Plugin = {
+  command: "config",
+  handler: async ({ rootDirectoryPath, parsed }) => {
+    const projectConfig = getProjectConfig(rootDirectoryPath);
+    showProjectConfig(projectConfig, {
+      print: parsed.print,
+      pretty: parsed.pretty,
+    });
+  },
+  examples: [
+    {
+      command: "config",
+      description: "show the project configuration",
+    },
+    {
+      command: "config --print",
+      description: "show the project configuration as JSON",
+    },
+    {
+      command: "config --print --pretty",
+      description: "show the project configuration (as pretty JSON)",
+    },
+  ],
+};

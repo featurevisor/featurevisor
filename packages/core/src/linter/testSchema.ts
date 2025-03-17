@@ -59,24 +59,29 @@ export function getTestsZodSchema(
               // because of supporting matrix
               z.string(),
             ]),
-            environment: z.string().refine(
-              (value) => {
-                if (value.indexOf("${{") === 0) {
-                  // allow unknown strings for matrix
-                  return true;
-                }
+            environment: Array.isArray(projectConfig.environments)
+              ? z.string().refine(
+                  (value) => {
+                    if (value.indexOf("${{") === 0) {
+                      // allow unknown strings for matrix
+                      return true;
+                    }
 
-                // otherwise only known environments should be passed
-                if (projectConfig.environments.includes(value)) {
-                  return true;
-                }
+                    // otherwise only known environments should be passed
+                    if (
+                      Array.isArray(projectConfig.environments) &&
+                      projectConfig.environments.includes(value)
+                    ) {
+                      return true;
+                    }
 
-                return false;
-              },
-              (value) => ({
-                message: `Unknown environment "${value}"`,
-              }),
-            ),
+                    return false;
+                  },
+                  (value) => ({
+                    message: `Unknown environment "${value}"`,
+                  }),
+                )
+              : z.never().optional(),
             context: z.record(z.unknown()),
             expectedToBeEnabled: z.boolean(),
             expectedVariation: z.string().optional(),

@@ -65,47 +65,58 @@
           "maximum": 100
         },
         "variables": {
-          "type": "object",
-          "properties": {
-            "key": {
-              "type": "string",
-              "description": "Key of the variable."
-            },
-            "value": {
-              "$ref": "#/$defs/variable_value",
-              "description": "Value of the variable."
-            },
-            "overrides": {
-              "type": "object",
-              "properties": {
-                "conditions": {
-                  "$ref": "segment.json#/$defs/multiple_conditions",
-                  "description": "Embedded conditions for overriding the variable"
-                },
-                "segments": {
-                  "$ref": "#/$defs/segments",
-                  "description": "Embedded conditions for overriding the variable"
-                },
-                "value": {
-                  "$ref": "#/$defs/variable_value",
-                  "description": "Value of the override."
-                }
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "deprecated": {
+                "type": "boolean",
+                "description": "Indicates whether the variable is deprecated or not."
               },
-              "required": ["value"]
-            }
-          },
-          "description": "Variables for the variation.",
-          "required": ["key"]
+              "key": {
+                "type": "string",
+                "description": "Key of the variable."
+              },
+              "value": {
+                "$ref": "#/$defs/variable_value",
+                "description": "Value of the variable."
+              },
+              "overrides": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "conditions": {
+                      "$ref": "segment.json#/$defs/multiple_conditions",
+                      "description": "Embedded conditions for overriding the variable"
+                    },
+                    "segments": {
+                      "$ref": "#/$defs/segments",
+                      "description": "Embedded conditions for overriding the variable"
+                    },
+                    "value": {
+                      "$ref": "#/$defs/variable_value",
+                      "description": "Value of the override."
+                    }
+                  },
+                  "required": ["value"]
+                }
+              }
+            },
+            "description": "Variables for the variation.",
+            "required": ["key"]
+          }
         }
       },
       "description": "Variation for the feature.",
       "required": ["value"]
     },
     "segments": {
-      "oneOf": [
+      "anyOf": [
         { "$ref": "#/$defs/segments_everyone" },
         { "$ref": "#/$defs/segments_multiple" },
-        { "$ref": "#/$defs/segments_complex" }
+        { "$ref": "#/$defs/segments_complex" },
+        { "$ref": "#/$defs/segments_single" }
       ],
       "description": "Array of segment keys"
     },
@@ -185,24 +196,27 @@
       "description": "Default variation for the feature."
     },
     "variablesSchema": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string",
-          "description": "Key of the variable."
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Key of the variable."
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of this specific variable.",
+            "enum": ["string", "boolean", "integer", "double", "json", "array", "object"]
+          },
+          "defaultValue": {
+            "$ref": "#/$defs/variable_value",
+            "description": "Default value for this specific variable."
+          }
         },
-        "type": {
-          "type": "string",
-          "description": "Type of this specific variable.",
-          "enum": ["string", "boolean", "integer", "double", "json", "array", "object"]
-        },
-        "defaultValue": {
-          "$ref": "#/$defs/variable_value",
-          "description": "Default value for this specific variable."
-        }
-      },
-      "description": "Schema for the feature's variables.",
-      "required": ["type"]
+        "description": "Schema for the feature's variables.",
+        "required": ["type"]
+      }
     },
     "variations": {
       "type": "array",
@@ -263,7 +277,17 @@
                   "description": "Embedded segments"
                 },
                 "conditions": {
-                  "$ref": "segment.json#/$defs/multiple_conditions"
+                  "oneOf": [
+                    {
+                      "$ref": "segment.json#/$defs/multiple_conditions"
+                    },
+                    {
+                      "$ref": "segment.json#/$defs/complex_condition"
+                    },
+                    {
+                      "$ref": "segment.json#/$defs/plain_condition"
+                    }
+                  ]
                 },
                 "variation": {
                   "$ref": "#/$defs/variation_value",
@@ -285,5 +309,5 @@
     }
   },
   "description": "JSON Schema for creating Featurevisor feature, expressed in YAML",
-  "required": ["description", "tags", "defaultVariation", "variations"]
+  "required": ["description", "tags"]
 }

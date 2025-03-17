@@ -20,7 +20,10 @@ import { Adapter, DatafileOptions } from "./adapter";
 export class Datasource {
   private adapter: Adapter;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     this.adapter = new config.adapter(config, rootDirectoryPath);
   }
 
@@ -32,11 +35,11 @@ export class Datasource {
   /**
    * State
    */
-  readState(environment: EnvironmentKey): Promise<ExistingState> {
+  readState(environment: EnvironmentKey | false): Promise<ExistingState> {
     return this.adapter.readState(environment);
   }
 
-  writeState(environment: EnvironmentKey, existingState: ExistingState) {
+  writeState(environment: EnvironmentKey | false, existingState: ExistingState) {
     return this.adapter.writeState(environment, existingState);
   }
 

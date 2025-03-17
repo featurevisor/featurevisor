@@ -3,3 +3,4 @@ export * from "./instance";
 export * from "./logger";
 export * from "./conditions";
 export * from "./emitter";
+export * from "./evaluate";

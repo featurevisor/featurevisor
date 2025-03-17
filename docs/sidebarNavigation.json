@@ -40,8 +40,8 @@
       { "title": "JavaScript", "href": "/docs/sdks/javascript" },
       { "title": "Node.js", "href": "/docs/sdks/nodejs" },
       { "title": "Browser", "href": "/docs/sdks/browser" },
-      { "title": "Roku", "href": "/docs/sdks/roku" },
-      { "title": "Create your own", "href": "/docs/sdks/create" }
+      { "title": "Swift", "href": "/docs/sdks/swift" },
+      { "title": "Roku", "href": "/docs/sdks/roku" }
     ]
   },
   {
@@ -80,7 +80,12 @@
     "title": "Advanced",
     "links": [
       { "title": "CLI usage", "href": "/docs/cli" },
+      { "title": "Environments", "href": "/docs/environments" },
+      { "title": "Tagging features", "href": "/docs/tags" },
+      { "title": "Namespaces", "href": "/docs/namespaces" },
       { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers" },
+      { "title": "Plugins", "href": "/docs/plugins" },
+      { "title": "Datasource", "href": "/docs/datasource" },
       { "title": "Code generation", "href": "/docs/code-generation" },
       { "title": "Bucketing", "href": "/docs/bucketing" }
     ]
@@ -139,6 +144,7 @@
       { "title": "Glossary", "href": "/docs/glossary" },
       { "title": "Examples", "href": "/docs/examples" },
       { "title": "Contributing", "href": "/docs/contributing" },
+      { "title": "llms.txt", "href": "/docs/llms" },
       { "title": "GitHub", "href": "https://github.com/featurevisor/featurevisor" }
     ]
   }

@@ -3,6 +3,77 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.35.0](https://github.com/featurevisor/featurevisor/compare/v1.34.2...v1.35.0) (2025-03-13)
+
+
+### Features
+
+* list entities from CLI ([#349](https://github.com/featurevisor/featurevisor/issues/349)) ([160e151](https://github.com/featurevisor/featurevisor/commit/160e15103860be8a81a145d515e0ceb69a3cad79))
+
+
+
+
+
+# [1.33.0](https://github.com/featurevisor/featurevisor/compare/v1.32.0...v1.33.0) (2025-03-08)
+
+
+### Features
+
+* allow deprecating variables ([#345](https://github.com/featurevisor/featurevisor/issues/345)) ([cecbf5b](https://github.com/featurevisor/featurevisor/commit/cecbf5beb87d06d46c654c352910766f565e81b2))
+
+
+
+
+
+# [1.32.0](https://github.com/featurevisor/featurevisor/compare/v1.31.0...v1.32.0) (2025-02-26)
+
+
+### Features
+
+* optionally have no environments ([#344](https://github.com/featurevisor/featurevisor/issues/344)) ([20b14e6](https://github.com/featurevisor/featurevisor/commit/20b14e6bf0fb1decbda90c7cd38d85e54815fcd6))
+
+
+
+
+
+# [1.31.0](https://github.com/featurevisor/featurevisor/compare/v1.30.1...v1.31.0) (2025-02-13)
+
+
+### Features
+
+* variables schema as dictionary ([#343](https://github.com/featurevisor/featurevisor/issues/343)) ([18e8aed](https://github.com/featurevisor/featurevisor/commit/18e8aedab10ecdd68b7f0cbf911896b14ab37c91))
+
+
+
+
+
+## [1.29.2](https://github.com/featurevisor/featurevisor/compare/v1.29.1...v1.29.2) (2025-01-25)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
+# [1.28.0](https://github.com/featurevisor/featurevisor/compare/v1.27.6...v1.28.0) (2025-01-21)
+
+
+### Features
+
+* datafile schema v2 ([#334](https://github.com/featurevisor/featurevisor/issues/334)) ([ee91c78](https://github.com/featurevisor/featurevisor/commit/ee91c781ad8e3347c828cea63279f5b9931a24e7))
+
+
+
+
+
+## [1.27.5](https://github.com/featurevisor/featurevisor/compare/v1.27.4...v1.27.5) (2024-12-21)
+
+**Note:** Version bump only for package @featurevisor/types
+
+
+
+
+
 # [1.3.0](https://github.com/featurevisor/featurevisor/compare/v1.2.4...v1.3.0) (2024-01-23)
 
 

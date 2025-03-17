@@ -3,10 +3,10 @@ import { TestResult } from "@featurevisor/types";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 import { prettyDuration } from "./prettyDuration";
 
-export function printTestResult(testResult: TestResult, testFilePath, rootDirectoryPath) {
+export function printTestResult(testResult: TestResult, relativeTestFilePath, rootDirectoryPath) {
   console.log("");
 
-  const title = `Testing: ${testFilePath.replace(rootDirectoryPath, "")} (${prettyDuration(
+  const title = `Testing: ${relativeTestFilePath.replace(rootDirectoryPath, "")} (${prettyDuration(
     testResult.duration,
   )})`;
   console.log(title);

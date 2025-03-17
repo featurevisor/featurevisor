@@ -24,7 +24,7 @@ function Activity(props) {
         <>
           {entry.entities[0].type}{" "}
           <Link
-            to={`/${entry.entities[0].type}s/${entry.entities[0].key}`}
+            to={`/${entry.entities[0].type}s/${encodeURIComponent(entry.entities[0].key)}`}
             className="font-semibold text-gray-600"
           >
             {entry.entities[0].key}
@@ -50,7 +50,7 @@ function Activity(props) {
                 <li key={index}>
                   <span className="text-gray-400">{entity.type}</span>{" "}
                   <Link
-                    to={`/${entity.type}s/${entity.key}`}
+                    to={`/${entity.type}s/${encodeURIComponent(entity.key)}`}
                     className="font-semibold text-gray-500"
                   >
                     {entity.key}

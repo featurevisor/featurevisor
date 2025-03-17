@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
     "outDir": "./lib",
-    "target": "es5",
-    "lib": ["es2015"],
-    "module": "es2015",
+    "target": "es2015",
+    "lib": ["es2015", "DOM"],
+    "module": "ESNext",
     "declaration": true,
     "sourceMap": true,
-    "jsx": "react",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "jsx": "react"
   },
   "include": ["./packages/**/*.ts", "./packages/**/*.tsx"],
   "exclude": ["./packages/**/*.spec.ts", "./packages/**/*.spec.tsx"]

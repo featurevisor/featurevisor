@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as path from "path";
 
 import { TestSegment, TestFeature, DatafileContent } from "@featurevisor/types";
 
@@ -11,6 +12,7 @@ import { printTestResult } from "./printTestResult";
 
 import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
+import { Plugin } from "../cli";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -18,6 +20,8 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
+  schemaVersion?: string;
+  inflate?: number;
 }
 
 export interface TestPatterns {
@@ -33,9 +37,7 @@ export interface ExecutionResult {
   };
 }
 
-export interface DatafileContentByEnvironment {
-  [environment: string]: DatafileContent;
-}
+export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
 
 export async function executeTest(
   testFile: string,
@@ -46,7 +48,9 @@ export async function executeTest(
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
-  const testFilePath = datasource.getTestSpecName(testFile);
+  const relativeTestFilePath = path
+    .join(projectConfig.testsDirectoryPath, datasource.getTestSpecName(testFile))
+    .replace(rootDirectoryPath + path.sep, "");
 
   const t = await datasource.readTest(testFile);
 
@@ -90,11 +94,11 @@ export async function executeTest(
 
   if (!options.onlyFailures) {
     // show all
-    printTestResult(testResult, testFilePath, rootDirectoryPath);
+    printTestResult(testResult, relativeTestFilePath, rootDirectoryPath);
   } else {
     // show failed only
     if (!testResult.passed) {
-      printTestResult(testResult, testFilePath, rootDirectoryPath);
+      printTestResult(testResult, relativeTestFilePath, rootDirectoryPath);
     }
   }
 
@@ -148,22 +152,44 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  const datafileContentByEnvironment: DatafileContentByEnvironment = {};
+  const datafileContentByEnvironment: DatafileContentByEnvironment = new Map();
 
-  for (const environment of projectConfig.environments) {
-    const existingState = await datasource.readState(environment);
+  // with environments
+  if (Array.isArray(projectConfig.environments)) {
+    for (const environment of projectConfig.environments) {
+      const existingState = await datasource.readState(environment);
+      const datafileContent = await buildDatafile(
+        projectConfig,
+        datasource,
+        {
+          schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+          revision: "include-all-features",
+          environment: environment,
+          inflate: options.inflate,
+        },
+        existingState,
+      );
+
+      datafileContentByEnvironment.set(environment, datafileContent);
+    }
+  }
+
+  // no environments
+  if (projectConfig.environments === false) {
+    const existingState = await datasource.readState(false);
     const datafileContent = await buildDatafile(
       projectConfig,
       datasource,
       {
-        schemaVersion: SCHEMA_VERSION,
+        schemaVersion: options.schemaVersion || SCHEMA_VERSION,
         revision: "include-all-features",
-        environment: environment,
+        environment: false,
+        inflate: options.inflate,
       },
       existingState,
     );
 
-    datafileContentByEnvironment[environment] = datafileContent;
+    datafileContentByEnvironment.set(false, datafileContent);
   }
 
   for (const testFile of testFiles) {
@@ -211,3 +237,48 @@ export async function testProject(
 
   return hasError;
 }
+
+export const testPlugin: Plugin = {
+  command: "test",
+  handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    const hasError = await testProject(
+      {
+        rootDirectoryPath,
+        projectConfig,
+        datasource,
+        options: parsed,
+      },
+      parsed as TestProjectOptions,
+    );
+
+    if (hasError) {
+      return false;
+    }
+  },
+  examples: [
+    {
+      command: "test",
+      description: "run all tests",
+    },
+    {
+      command: "test --keyPattern=pattern",
+      description: "run tests matching key pattern",
+    },
+    {
+      command: "test --assertionPattern=pattern",
+      description: "run tests matching assertion pattern",
+    },
+    {
+      command: "test --onlyFailures",
+      description: "run only failed tests",
+    },
+    {
+      command: "test --showDatafile",
+      description: "show datafile content for each test",
+    },
+    {
+      command: "test --verbose",
+      description: "show all test results",
+    },
+  ],
+};

@@ -43,7 +43,7 @@ environments:
 We can create a new test spec for it in `tests` directory:
 
 ```yml
-# tests/foo.feature.yml
+# tests/features/foo.spec.yml
 feature: foo # your feature key
 assertions:
 
@@ -74,6 +74,8 @@ assertions:
 
 The `at` property is the bucketed value (in percentage form ranging from 0 to 100) that assertions will be run against. Read more in [Bucketing](/docs/bucketing).
 
+If your project has no [environments](/docs/environments), you can omit the `environment` property in your assertions.
+
 File names of test specs are not important, but we recommend using the same name as the feature key.
 
 ## Testing segments
@@ -94,7 +96,7 @@ conditions:
 We can create a new test spec in `tests` directory:
 
 ```yml
-# tests/netherlands.segment.yml
+# tests/segments/netherlands.spec.yml
 segment: netherlands # your segment key
 assertions:
   - description: Testing segment in NL
@@ -115,7 +117,7 @@ To make things more convenient when testing against a lof of different combinati
 For example, in a feature test spec:
 
 ```yml
-# tests/foo.feature.yml
+# tests/features/foo.spec.yml
 feature: foo
 assertions:
   - matrix:
@@ -143,7 +145,7 @@ Just because a lot of variables are used in above example, it doesn't mean you h
 You can do the same for segment test specs as well:
 
 ```yml
-# tests/netherlands.segment.yml
+# tests/segments/netherlands.spec.yml
 segment: netherlands # your segment key
 assertions:
   - matrix:
@@ -215,6 +217,14 @@ $ npx featurevisor test --onlyFailures
 ### `fast`
 
 This option has been deprecated, because test runner is now fast by default.
+
+### `schema-version`
+
+If you are using the new [schema v2](/docs/building-datafiles/#schema-v2), you can specify it like this:
+
+```
+$ npx featurevisor test --schema-version=2
+```
 
 ## NPM scripts
 

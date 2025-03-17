@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
@@ -19,23 +19,51 @@ import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
 
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm; // eslint-disable-line
+const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
-  environment: EnvironmentKey,
+  environment: EnvironmentKey | false,
 ): string {
-  return path.join(projectConfig.stateDirectoryPath, `existing-state-${environment}.json`);
+  const fileName = environment ? `existing-state-${environment}.json` : `existing-state.json`;
+
+  return path.join(projectConfig.stateDirectoryPath, fileName);
 }
 
 export function getRevisionFilePath(projectConfig: ProjectConfig): string {
   return path.join(projectConfig.stateDirectoryPath, `REVISION`);
 }
 
+export function getAllEntityFilePathsRecursively(directoryPath, extension) {
+  let entities: string[] = [];
+
+  if (!fs.existsSync(directoryPath)) {
+    return entities;
+  }
+
+  const files = fs.readdirSync(directoryPath);
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const filePath = path.join(directoryPath, file);
+
+    if (fs.statSync(filePath).isDirectory()) {
+      entities = entities.concat(getAllEntityFilePathsRecursively(filePath, extension));
+    } else if (file.endsWith(`.${extension}`)) {
+      entities.push(filePath);
+    }
+  }
+
+  return entities;
+}
+
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
-  constructor(private config: ProjectConfig, private rootDirectoryPath?: string) {
+  constructor(
+    private config: ProjectConfig,
+    private rootDirectoryPath?: string,
+  ) {
     super();
 
     this.parser = config.parser as CustomParser;
@@ -63,15 +91,19 @@ export class FilesystemAdapter extends Adapter {
 
   async listEntities(entityType: EntityType): Promise<string[]> {
     const directoryPath = this.getEntityDirectoryPath(entityType);
+    const filePaths = getAllEntityFilePathsRecursively(directoryPath, this.parser.extension);
 
-    if (!fs.existsSync(directoryPath)) {
-      return [];
-    }
+    return (
+      filePaths
+        // keep only the files with the right extension
+        .filter((filterPath) => filterPath.endsWith(`.${this.parser.extension}`))
 
-    return fs
-      .readdirSync(directoryPath)
-      .filter((fileName) => fileName.endsWith(`.${this.parser.extension}`))
-      .map((fileName) => fileName.replace(`.${this.parser.extension}`, ""));
+        // remove the entity directory path from beginning
+        .map((filePath) => filePath.replace(directoryPath + path.sep, ""))
+
+        // remove the extension from the end
+        .map((filterPath) => filterPath.replace(`.${this.parser.extension}`, ""))
+    );
   }
 
   async entityExists(entityType: EntityType, entityKey: string): Promise<boolean> {
@@ -180,8 +212,13 @@ export class FilesystemAdapter extends Adapter {
    */
   getDatafilePath(options: DatafileOptions): string {
     const fileName = `datafile-tag-${options.tag}.json`;
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
-    return path.join(this.config.outputDirectoryPath, options.environment, fileName);
+    if (options.environment) {
+      return path.join(dir, options.environment, fileName);
+    }
+
+    return path.join(dir, fileName);
   }
 
   async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
@@ -193,10 +230,11 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
-    const outputEnvironmentDirPath = path.join(
-      this.config.outputDirectoryPath,
-      options.environment,
-    );
+    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+
+    const outputEnvironmentDirPath = options.environment
+      ? path.join(dir, options.environment)
+      : dir;
     mkdirp.sync(outputEnvironmentDirPath);
 
     const outputFilePath = this.getDatafilePath(options);
@@ -208,7 +246,7 @@ export class FilesystemAdapter extends Adapter {
         : JSON.stringify(datafileContent),
     );
 
-    const root = path.resolve(this.config.outputDirectoryPath, "..");
+    const root = path.resolve(dir, "..");
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
     console.log(`     Datafile generated: ${shortPath}`);
@@ -217,13 +255,32 @@ export class FilesystemAdapter extends Adapter {
   /**
    * History
    */
-  getRawHistory(pathPatterns: string[]) {
+  async getRawHistory(pathPatterns: string[]): Promise<string> {
     const gitPaths = pathPatterns.join(" ");
 
     const logCommand = `git log --name-only --pretty=format:"%h|%an|%aI" --relative --no-merges -- ${gitPaths}`;
     const fullCommand = `(cd ${this.rootDirectoryPath} && ${logCommand})`;
 
-    return execSync(fullCommand, { encoding: "utf8" }).toString();
+    return new Promise(function (resolve, reject) {
+      const child = spawn(fullCommand, { shell: true });
+      let result = "";
+
+      child.stdout.on("data", function (data) {
+        result += data.toString();
+      });
+
+      child.stderr.on("data", function (data) {
+        console.error(data.toString());
+      });
+
+      child.on("close", function (code) {
+        if (code === 0) {
+          resolve(result);
+        } else {
+          reject(code);
+        }
+      });
+    });
   }
 
   getPathPatterns(entityType?: EntityType, entityKey?: string): string[] {
@@ -258,7 +315,7 @@ export class FilesystemAdapter extends Adapter {
 
   async listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]> {
     const pathPatterns = this.getPathPatterns(entityType, entityKey);
-    const rawHistory = this.getRawHistory(pathPatterns);
+    const rawHistory = await this.getRawHistory(pathPatterns);
 
     const fullHistory: HistoryEntry[] = [];
     const blocks = rawHistory.split("\n\n");

@@ -84,7 +84,7 @@ export function DisplayAttributeUsage() {
                 {attribute.usedInFeatures.map((feature) => {
                   return (
                     <li key={feature}>
-                      <Link to={`/features/${feature}`}>{feature}</Link>
+                      <Link to={`/features/${encodeURIComponent(feature)}`}>{feature}</Link>
                     </li>
                   );
                 })}
@@ -116,15 +116,15 @@ export function ShowAttribute() {
   const tabs = [
     {
       title: "Overview",
-      to: `/attributes/${attributeKey}`,
+      to: `/attributes/${encodeURIComponent(attributeKey)}`,
     },
     {
       title: "Usage",
-      to: `/attributes/${attributeKey}/usage`,
+      to: `/attributes/${encodeURIComponent(attributeKey)}/usage`,
     },
     {
       title: "History",
-      to: `/attributes/${attributeKey}/history`,
+      to: `/attributes/${encodeURIComponent(attributeKey)}/history`,
     },
   ];
 

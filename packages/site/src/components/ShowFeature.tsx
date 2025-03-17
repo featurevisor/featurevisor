@@ -16,7 +16,7 @@ import { Markdown } from "./Markdown";
 export function DisplayFeatureOverview() {
   const { feature } = useOutletContext() as any;
 
-  const environmentKeys = Object.keys(feature.environments).sort();
+  const environmentKeys = feature.environments ? Object.keys(feature.environments).sort() : [];
 
   const renderBucketBy = (bucketBy) => {
     if (typeof bucketBy === "string") {
@@ -110,11 +110,10 @@ export function DisplayFeatureForceTable() {
   const { feature } = useOutletContext() as any;
   const { environmentKey } = useParams();
 
-  if (
-    !environmentKey ||
-    !feature.environments[environmentKey] ||
-    !feature.environments[environmentKey].force
-  ) {
+  const envKey = environmentKey as string;
+  const force = feature.environments ? feature.environments[envKey].force : feature.force;
+
+  if (!force || force.length === 0) {
     return <p>n/a</p>;
   }
 
@@ -135,7 +134,7 @@ export function DisplayFeatureForceTable() {
       </thead>
 
       <tbody>
-        {feature.environments[environmentKey].force.map((force, index) => {
+        {force.map((force, index) => {
           return (
             <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
               <td className="py-4 pl-4 pr-3 text-sm text-gray-900">
@@ -185,7 +184,7 @@ export function DisplayFeatureForceTable() {
 
 export function DisplayFeatureForce() {
   const { feature } = useOutletContext() as any;
-  const environmentKeys = Object.keys(feature.environments).sort();
+  const environmentKeys = feature.environments ? Object.keys(feature.environments).sort() : [];
 
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
@@ -196,23 +195,29 @@ export function DisplayFeatureForce() {
 
   return (
     <>
-      <nav className="flex space-x-4" aria-label="Tabs">
-        {environmentTabs.map((tab) => (
-          <NavLink
-            key={tab.title}
-            to={tab.to}
-            className={({ isActive }) =>
-              [
-                isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
-                "rounded-md px-3 py-2 text-sm font-medium",
-              ].join(" ")
-            }
-          >
-            {tab.title}
-          </NavLink>
-        ))}
-      </nav>
+      {environmentKeys.length > 0 && (
+        <nav className="flex space-x-4" aria-label="Tabs">
+          {environmentTabs.map((tab) => (
+            <NavLink
+              key={tab.title}
+              to={tab.to}
+              className={({ isActive }) =>
+                [
+                  isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
+                  "rounded-md px-3 py-2 text-sm font-medium",
+                ].join(" ")
+              }
+            >
+              {tab.title}
+            </NavLink>
+          ))}
+        </nav>
+      )}
 
+      {/* no environments */}
+      {environmentKeys.length === 0 && <DisplayFeatureForceTable />}
+
+      {/* with environments */}
       <Outlet context={{ feature }} />
     </>
   );
@@ -222,23 +227,27 @@ export function DisplayFeatureRulesTable() {
   const { feature } = useOutletContext() as any;
   const { environmentKey } = useParams();
 
-  if (!environmentKey || !feature.environments[environmentKey]) {
+  const envKey = environmentKey as string;
+  const rules = feature.environments ? feature.environments[envKey].rules : feature.rules;
+  const expose = feature.environments ? feature.environments[envKey].expose : feature.expose;
+
+  if (!rules || rules.length === 0) {
     return <p>n/a</p>;
   }
 
   return (
     <div>
-      {feature.environments[environmentKey].expose === false && (
+      {expose === false && (
         <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
           Rules are not <a href="https://featurevisor.com/docs/features/#expose">exposed</a> in this
           environment.
         </p>
       )}
 
-      {Array.isArray(feature.environments[environmentKey].expose) && (
+      {Array.isArray(expose) && (
         <p className="mt-2 block rounded border-2 border-orange-300 bg-orange-200 p-3 text-sm text-gray-600">
           Rules are <a href="https://featurevisor.com/docs/features/#expose">exposed</a> for these
-          tags only: {feature.environments[environmentKey].expose.join(", ")}.
+          tags only: {expose.join(", ")}.
         </p>
       )}
 
@@ -258,7 +267,7 @@ export function DisplayFeatureRulesTable() {
         </thead>
 
         <tbody>
-          {feature.environments[environmentKey].rules.map((rule, index) => {
+          {rules.map((rule, index) => {
             return (
               <tr key={index} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
                 <td className="py-4 pl-4 pr-3 text-sm text-gray-900">{rule.percentage}%</td>
@@ -295,7 +304,7 @@ export function DisplayFeatureRulesTable() {
 
 export function DisplayFeatureRules() {
   const { feature } = useOutletContext() as any;
-  const environmentKeys = Object.keys(feature.environments).sort();
+  const environmentKeys = feature.environments ? Object.keys(feature.environments).sort() : [];
 
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
@@ -306,23 +315,29 @@ export function DisplayFeatureRules() {
 
   return (
     <>
-      <nav className="flex space-x-4" aria-label="Tabs">
-        {environmentTabs.map((tab) => (
-          <NavLink
-            key={tab.title}
-            to={tab.to}
-            className={({ isActive }) =>
-              [
-                isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
-                "rounded-md px-3 py-2 text-sm font-medium",
-              ].join(" ")
-            }
-          >
-            {tab.title}
-          </NavLink>
-        ))}
-      </nav>
+      {environmentKeys.length > 0 && (
+        <nav className="flex space-x-4" aria-label="Tabs">
+          {environmentTabs.map((tab) => (
+            <NavLink
+              key={tab.title}
+              to={tab.to}
+              className={({ isActive }) =>
+                [
+                  isActive ? "bg-gray-200 text-gray-800" : "text-gray-600 hover:text-gray-800",
+                  "rounded-md px-3 py-2 text-sm font-medium",
+                ].join(" ")
+              }
+            >
+              {tab.title}
+            </NavLink>
+          ))}
+        </nav>
+      )}
 
+      {/* no environments */}
+      {environmentKeys.length === 0 && <DisplayFeatureRulesTable />}
+
+      {/* with environments */}
       <Outlet context={{ feature }} />
     </>
   );
@@ -475,28 +490,28 @@ export function ShowFeature() {
   const tabs = [
     {
       title: "Overview",
-      to: `/features/${featureKey}`,
+      to: `/features/${encodeURIComponent(featureKey)}`,
       end: true,
     },
     {
       title: "Variations",
-      to: `/features/${featureKey}/variations`,
+      to: `/features/${encodeURIComponent(featureKey)}/variations`,
     },
     {
       title: "Variables",
-      to: `/features/${featureKey}/variables`,
+      to: `/features/${encodeURIComponent(featureKey)}/variables`,
     },
     {
       title: "Rules",
-      to: `/features/${featureKey}/rules`,
+      to: `/features/${encodeURIComponent(featureKey)}/rules`,
     },
     {
       title: "Force",
-      to: `/features/${featureKey}/force`,
+      to: `/features/${encodeURIComponent(featureKey)}/force`,
     },
     {
       title: "History",
-      to: `/features/${featureKey}/history`,
+      to: `/features/${encodeURIComponent(featureKey)}/history`,
     },
   ];
 
