@@ -86,7 +86,10 @@ export class FilesystemAdapter extends Adapter {
   getEntityPath(entityType: EntityType, entityKey: string): string {
     const basePath = this.getEntityDirectoryPath(entityType);
 
-    return path.join(basePath, `${entityKey}.${this.parser.extension}`);
+    // taking care of windows paths
+    const relativeEntityPath = entityKey.replace(/\//g, path.sep);
+
+    return path.join(basePath, `${relativeEntityPath}.${this.parser.extension}`);
   }
 
   async listEntities(entityType: EntityType): Promise<string[]> {
@@ -103,6 +106,9 @@ export class FilesystemAdapter extends Adapter {
 
         // remove the extension from the end
         .map((filterPath) => filterPath.replace(`.${this.parser.extension}`, ""))
+
+        // take care of windows paths
+        .map((filterPath) => filterPath.replace(/\\/g, "/"))
     );
   }
 
