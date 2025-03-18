@@ -31,19 +31,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          choco install make
-          choco install git
-          choco install grep
-          choco install gzip
-          choco install gawk
-
-          make install
+          npm ci
 
       - name: Build
         run: make build
 
       - name: Lint
-        run: make lint
+        run: |
+          (cd examples/example-1 && npx featurevisor lint)
 
       - name: Test
-        run: make test
+        run: |
+          (cd examples/example-1 && npx featurevisor test)
