@@ -1,13 +1,7 @@
 name: Checks (windows)
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-      - review_requested
+  workflow_dispatch:
 
 jobs:
   ci:
