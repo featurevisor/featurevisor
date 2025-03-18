@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.35.1](https://github.com/featurevisor/featurevisor/compare/v1.35.0...v1.35.1) (2025-03-18)
+
+
+### Bug Fixes
+
+* support Windows ([#351](https://github.com/featurevisor/featurevisor/issues/351)) ([68ecc61](https://github.com/featurevisor/featurevisor/commit/68ecc61fdd0c59138f2bef6a46d96a8c780797ae))
+
+
+
+
+
 # [1.35.0](https://github.com/featurevisor/featurevisor/compare/v1.34.2...v1.35.0) (2025-03-13)
 
 
