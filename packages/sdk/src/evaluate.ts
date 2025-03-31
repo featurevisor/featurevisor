@@ -648,6 +648,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       if (force && force.variation) {
         variationValue = force.variation;
+      } else if (matchedTraffic && matchedTraffic.variation) {
+        variationValue = matchedTraffic.variation;
       } else if (matchedAllocation && matchedAllocation.variation) {
         variationValue = matchedAllocation.variation;
       }
