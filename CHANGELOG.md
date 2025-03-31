@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.35.2](https://github.com/featurevisor/featurevisor/compare/v1.35.1...v1.35.2) (2025-03-31)
+
+
+### Bug Fixes
+
+* variable evaluation when variation is overridden from rule ([#352](https://github.com/featurevisor/featurevisor/issues/352)) ([9c7039d](https://github.com/featurevisor/featurevisor/commit/9c7039d3782c96af28122b64bedb1a0d28502e29))
+
+
+
+
+
 ## [1.35.1](https://github.com/featurevisor/featurevisor/compare/v1.35.0...v1.35.1) (2025-03-18)
 
 
