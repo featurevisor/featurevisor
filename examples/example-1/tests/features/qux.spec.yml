@@ -60,6 +60,8 @@ assertions:
       country: de
     expectedToBeEnabled: true
     expectedVariation: b
+    expectedVariables:
+      fooConfig: '{ "foo": "bar b" }' # stringified
 
   - at: 55 # (10 * 0.5) + 50
     environment: production
@@ -67,3 +69,5 @@ assertions:
       country: de
     expectedToBeEnabled: true
     expectedVariation: b
+    expectedVariables:
+      fooConfig: '{ "foo": "bar b" }' # stringified
