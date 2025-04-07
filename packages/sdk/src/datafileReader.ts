@@ -7,6 +7,7 @@ import {
   AttributeKey,
   SegmentKey,
   FeatureKey,
+  FeatureSegments,
 } from "@featurevisor/types";
 
 export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
@@ -29,9 +30,16 @@ export class DatafileReader {
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 
+  // fully parsed
+  private segmentsCache: Record<SegmentKey, Segment>;
+  private featureSegmentsCache: Record<string, FeatureSegments>;
+
   constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
+
+    this.segmentsCache = {};
+    this.featureSegmentsCache = {};
 
     if (this.schemaVersion === "2") {
       // v2
@@ -97,7 +105,13 @@ export class DatafileReader {
       return undefined;
     }
 
-    return parseJsonConditionsIfStringified(segment, "conditions");
+    if (this.segmentsCache[segmentKey]) {
+      return this.segmentsCache[segmentKey];
+    }
+
+    this.segmentsCache[segmentKey] = parseJsonConditionsIfStringified(segment, "conditions");
+
+    return this.segmentsCache[segmentKey];
   }
 
   getFeature(featureKey: FeatureKey): Feature | undefined {
