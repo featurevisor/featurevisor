@@ -7,7 +7,7 @@ import {
   AttributeKey,
   SegmentKey,
   FeatureKey,
-  FeatureSegments,
+  Traffic,
 } from "@featurevisor/types";
 
 export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
@@ -32,14 +32,14 @@ export class DatafileReader {
 
   // fully parsed
   private segmentsCache: Record<SegmentKey, Segment>;
-  private featureSegmentsCache: Record<string, FeatureSegments>;
+  private featureTrafficCache: Record<FeatureKey, Traffic[]>;
 
   constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
 
     this.segmentsCache = {};
-    this.featureSegmentsCache = {};
+    this.featureTrafficCache = {};
 
     if (this.schemaVersion === "2") {
       // v2
@@ -115,6 +115,33 @@ export class DatafileReader {
   }
 
   getFeature(featureKey: FeatureKey): Feature | undefined {
-    return this.features[featureKey];
+    const feature = this.features[featureKey];
+
+    if (!feature) {
+      return undefined;
+    }
+
+    if (this.featureTrafficCache[featureKey]) {
+      feature.traffic = this.featureTrafficCache[featureKey];
+
+      return feature;
+    }
+
+    if (Array.isArray(feature.traffic)) {
+      feature.traffic = feature.traffic.map((t) => {
+        if (
+          typeof t.segments === "string" &&
+          (t.segments.startsWith("{") || t.segments.startsWith("["))
+        ) {
+          return JSON.parse(t.segments);
+        }
+
+        return t.segments;
+      });
+
+      this.featureTrafficCache[featureKey] = feature.traffic;
+    }
+
+    return feature;
   }
 }
