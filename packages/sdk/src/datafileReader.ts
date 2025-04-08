@@ -133,10 +133,10 @@ export class DatafileReader {
           typeof t.segments === "string" &&
           (t.segments.startsWith("{") || t.segments.startsWith("["))
         ) {
-          return JSON.parse(t.segments);
+          t.segments = JSON.parse(t.segments);
         }
 
-        return t.segments;
+        return t;
       });
 
       this.featureTrafficCache[featureKey] = feature.traffic;
