@@ -74,10 +74,12 @@ export type Condition = PlainCondition | AndOrNotCondition;
 
 export type SegmentKey = string;
 
+export type Conditions = Condition | Condition[] | string; // string only when stringified for datafile
+
 export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey;
-  conditions: Condition | Condition[] | string; // string only when stringified for datafile
+  conditions: Conditions;
   description?: string; // only available in YAML files
 }
 

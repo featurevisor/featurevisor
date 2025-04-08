@@ -7,6 +7,7 @@ import {
   AttributeKey,
   SegmentKey,
   FeatureKey,
+  FeatureSegments,
   Traffic,
 } from "@featurevisor/types";
 
@@ -30,16 +31,18 @@ export class DatafileReader {
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 
-  // fully parsed
+  // fully parsed conditions
   private segmentsCache: Record<SegmentKey, Segment>;
-  private featureTrafficCache: Record<FeatureKey, Traffic[]>;
+
+  // key: featureKey.ruleKey
+  private featureSegmentsCache: Record<string, FeatureSegments>;
 
   constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
 
     this.segmentsCache = {};
-    this.featureTrafficCache = {};
+    this.featureSegmentsCache = {}; // Traffic.segments
 
     if (this.schemaVersion === "2") {
       // v2
@@ -121,25 +124,86 @@ export class DatafileReader {
       return undefined;
     }
 
-    if (this.featureTrafficCache[featureKey]) {
-      feature.traffic = this.featureTrafficCache[featureKey];
+    // rules
+    feature.traffic = feature.traffic.map((t) => {
+      const featureSegmentsKey = `${featureKey}.rule.${t.key}`;
 
-      return feature;
-    }
-
-    if (Array.isArray(feature.traffic)) {
-      feature.traffic = feature.traffic.map((t) => {
+      if (this.featureSegmentsCache[featureSegmentsKey]) {
+        t.segments = this.featureSegmentsCache[featureSegmentsKey];
+      } else {
         if (
           typeof t.segments === "string" &&
           (t.segments.startsWith("{") || t.segments.startsWith("["))
         ) {
-          t.segments = JSON.parse(t.segments);
+          const parsed = JSON.parse(t.segments);
+          this.featureSegmentsCache[featureSegmentsKey] = parsed;
+          t.segments = parsed;
+        }
+      }
+
+      return t;
+    });
+
+    // force
+    if (feature.force) {
+      feature.force = feature.force.map((f, fIndex) => {
+        const featureSegmentsKey = `${featureKey}.force.${fIndex}`;
+
+        if (this.featureSegmentsCache[featureSegmentsKey]) {
+          f.segments = this.featureSegmentsCache[featureSegmentsKey];
+        } else {
+          if (
+            typeof f.segments === "string" &&
+            (f.segments.startsWith("{") || f.segments.startsWith("["))
+          ) {
+            const parsed = JSON.parse(f.segments);
+            this.featureSegmentsCache[featureSegmentsKey] = parsed;
+            f.segments = parsed;
+          }
         }
 
-        return t;
-      });
+        // @TODO: handle conditions
 
-      this.featureTrafficCache[featureKey] = feature.traffic;
+        return f;
+      });
+    }
+
+    // variable overrides
+    if (feature.variations) {
+      feature.variations = feature.variations.map((variation) => {
+        if (variation.variables) {
+          variation.variables = variation.variables.map((variable) => {
+            if (variable.overrides) {
+              variable.overrides = variable.overrides.map((override, oIndex) => {
+                // @TODO: handle conditions
+
+                if (override.segments) {
+                  const featureSegmentsKey = `${featureKey}.variable.${variable.key}.${oIndex}`;
+
+                  if (this.featureSegmentsCache[featureSegmentsKey]) {
+                    override.segments = this.featureSegmentsCache[featureSegmentsKey];
+                  } else {
+                    if (
+                      typeof override.segments === "string" &&
+                      (override.segments.startsWith("{") || override.segments.startsWith("["))
+                    ) {
+                      const parsed = JSON.parse(override.segments);
+                      this.featureSegmentsCache[featureSegmentsKey] = parsed;
+                      override.segments = parsed;
+                    }
+                  }
+                }
+
+                return override;
+              });
+            }
+
+            return variable;
+          });
+        }
+
+        return variation;
+      });
     }
 
     return feature;
