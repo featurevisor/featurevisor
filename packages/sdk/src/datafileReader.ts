@@ -8,7 +8,7 @@ import {
   SegmentKey,
   FeatureKey,
   FeatureSegments,
-  Traffic,
+  Conditions,
 } from "@featurevisor/types";
 
 export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
@@ -31,17 +31,15 @@ export class DatafileReader {
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 
-  // fully parsed conditions
-  private segmentsCache: Record<SegmentKey, Segment>;
-
-  // key: featureKey.ruleKey
+  // fully parsed
+  private conditionsCache: Record<string, Conditions>;
   private featureSegmentsCache: Record<string, FeatureSegments>;
 
   constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
 
-    this.segmentsCache = {};
+    this.conditionsCache = {};
     this.featureSegmentsCache = {}; // Traffic.segments
 
     if (this.schemaVersion === "2") {
@@ -108,13 +106,16 @@ export class DatafileReader {
       return undefined;
     }
 
-    if (this.segmentsCache[segmentKey]) {
-      return this.segmentsCache[segmentKey];
+    const conditionsCacheKey = `segment.${segmentKey}`;
+
+    if (this.conditionsCache[conditionsCacheKey]) {
+      segment.conditions = this.conditionsCache[conditionsCacheKey];
+    } else {
+      segment.conditions = parseJsonConditionsIfStringified(segment, "conditions").conditions;
+      this.conditionsCache[conditionsCacheKey] = segment.conditions;
     }
 
-    this.segmentsCache[segmentKey] = parseJsonConditionsIfStringified(segment, "conditions");
-
-    return this.segmentsCache[segmentKey];
+    return segment;
   }
 
   getFeature(featureKey: FeatureKey): Feature | undefined {
