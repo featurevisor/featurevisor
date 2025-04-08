@@ -74,10 +74,12 @@ export type Condition = PlainCondition | AndOrNotCondition;
 
 export type SegmentKey = string;
 
+export type Conditions = Condition | Condition[] | string; // string only when stringified for datafile
+
 export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey;
-  conditions: Condition | Condition[] | string; // string only when stringified for datafile
+  conditions: Conditions;
   description?: string; // only available in YAML files
 }
 
@@ -124,7 +126,7 @@ export type VariableValue =
   | undefined;
 
 export interface VariableOverrideSegments {
-  segments: GroupSegment | GroupSegment[];
+  segments: FeatureSegments;
 }
 
 export interface VariableOverrideConditions {
@@ -147,7 +149,7 @@ export interface VariableOverride {
   // one of the below must be present in YAML files
   // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
+  segments?: FeatureSegments;
 }
 
 export interface Variable {
@@ -178,7 +180,7 @@ export interface Force {
   // one of the below must be present in YAML
   // @TODO: make it better with TypeScript
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
+  segments?: FeatureSegments;
 
   enabled?: boolean;
   variation?: VariationValue;
@@ -213,9 +215,11 @@ export interface Allocation {
   range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
 }
 
+export type FeatureSegments = GroupSegment | GroupSegment[] | "*";
+
 export interface Traffic {
   key: RuleKey;
-  segments: GroupSegment | GroupSegment[] | "*";
+  segments: FeatureSegments;
   percentage: Percentage;
 
   enabled?: boolean;
@@ -303,7 +307,7 @@ export type RuleKey = string;
 export interface Rule {
   key: RuleKey;
   description?: string; // only available in YAML
-  segments: GroupSegment | GroupSegment[];
+  segments: FeatureSegments;
   percentage: Weight;
 
   enabled?: boolean;
