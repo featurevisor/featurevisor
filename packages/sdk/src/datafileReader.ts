@@ -9,6 +9,7 @@ import {
   FeatureKey,
   FeatureSegments,
   Conditions,
+  Condition,
 } from "@featurevisor/types";
 
 export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
@@ -148,22 +149,35 @@ export class DatafileReader {
     // force
     if (feature.force) {
       feature.force = feature.force.map((f, fIndex) => {
-        const featureSegmentsKey = `${featureKey}.force.${fIndex}`;
+        if (f.segments) {
+          const featureSegmentsKey = `${featureKey}.force.${fIndex}`;
 
-        if (this.featureSegmentsCache[featureSegmentsKey]) {
-          f.segments = this.featureSegmentsCache[featureSegmentsKey];
-        } else {
-          if (
-            typeof f.segments === "string" &&
-            (f.segments.startsWith("{") || f.segments.startsWith("["))
-          ) {
-            const parsed = JSON.parse(f.segments);
-            this.featureSegmentsCache[featureSegmentsKey] = parsed;
-            f.segments = parsed;
+          if (this.featureSegmentsCache[featureSegmentsKey]) {
+            f.segments = this.featureSegmentsCache[featureSegmentsKey];
+          } else {
+            if (
+              typeof f.segments === "string" &&
+              (f.segments.startsWith("{") || f.segments.startsWith("["))
+            ) {
+              const parsed = JSON.parse(f.segments);
+              this.featureSegmentsCache[featureSegmentsKey] = parsed;
+              f.segments = parsed;
+            }
           }
         }
 
-        // @TODO: handle conditions
+        if (f.conditions) {
+          const conditionsCacheKey = `${featureKey}.force.${fIndex}`;
+
+          if (this.conditionsCache[conditionsCacheKey]) {
+            f.conditions = this.conditionsCache[conditionsCacheKey] as Condition | Condition[];
+          } else {
+            f.conditions = parseJsonConditionsIfStringified(f, "conditions").conditions as
+              | Condition
+              | Condition[];
+            this.conditionsCache[conditionsCacheKey] = f.conditions;
+          }
+        }
 
         return f;
       });
@@ -176,8 +190,6 @@ export class DatafileReader {
           variation.variables = variation.variables.map((variable) => {
             if (variable.overrides) {
               variable.overrides = variable.overrides.map((override, oIndex) => {
-                // @TODO: handle conditions
-
                 if (override.segments) {
                   const featureSegmentsKey = `${featureKey}.variable.${variable.key}.${oIndex}`;
 
@@ -192,6 +204,20 @@ export class DatafileReader {
                       this.featureSegmentsCache[featureSegmentsKey] = parsed;
                       override.segments = parsed;
                     }
+                  }
+                }
+
+                if (override.conditions) {
+                  const conditionsCacheKey = `${featureKey}.variable.${variable.key}.${oIndex}`;
+
+                  if (this.conditionsCache[conditionsCacheKey]) {
+                    override.conditions = this.conditionsCache[conditionsCacheKey] as
+                      | Condition
+                      | Condition[];
+                  } else {
+                    override.conditions = parseJsonConditionsIfStringified(override, "conditions")
+                      .conditions as Condition | Condition[];
+                    this.conditionsCache[conditionsCacheKey] = override.conditions;
                   }
                 }
 
