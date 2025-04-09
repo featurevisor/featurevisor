@@ -81,14 +81,6 @@ export async function buildDatafile(
   options: BuildOptions,
   existingState: ExistingState,
 ): Promise<DatafileContent> {
-  const datafileContent: DatafileContentV1 = {
-    schemaVersion: options.schemaVersion,
-    revision: options.revision,
-    attributes: [],
-    segments: [],
-    features: [],
-  };
-
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
@@ -398,10 +390,36 @@ export async function buildDatafile(
 
   // schema v1
   if (options.schemaVersion === "1") {
-    datafileContent.revision = "1";
-    datafileContent.attributes = attributes;
-    datafileContent.segments = segments;
-    datafileContent.features = features;
+    const datafileContent: DatafileContentV1 = {
+      schemaVersion: "1",
+      revision: options.revision,
+      attributes: attributes,
+      segments: segments,
+      features: features.map((feature) => {
+        if (feature.variablesSchema) {
+          if (!Array.isArray(feature.variablesSchema)) {
+            const variablesSchemaObject = feature.variablesSchema;
+            const variablesSchemaArray: VariableSchema[] = [];
+            const variableKeys = Object.keys(variablesSchemaObject);
+
+            for (const variableKey of variableKeys) {
+              const v = variablesSchemaObject[variableKey];
+              variablesSchemaArray.push({
+                key: variableKey,
+                type: v.type,
+                defaultValue: v.defaultValue,
+                deprecated: v.deprecated === true ? true : undefined,
+              });
+            }
+
+            // @TODO: fix this later
+            // feature.variablesSchema = variablesSchemaArray;
+          }
+        }
+
+        return feature;
+      }),
+    };
 
     return datafileContent;
   }
@@ -426,14 +444,6 @@ export async function buildDatafile(
   }, {});
 
   datafileContentV2.features = features.reduce((acc, feature) => {
-    if (Array.isArray(feature.variablesSchema)) {
-      feature.variablesSchema = feature.variablesSchema.reduce((vAcc, variableSchema) => {
-        vAcc[variableSchema.key] = variableSchema;
-
-        return vAcc;
-      }, {});
-    }
-
     acc[feature.key] = feature;
     return acc;
   }, {});

@@ -253,12 +253,16 @@ export interface Feature {
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
+export interface FeatureV1 extends Feature {
+  variableSchema?: VariableSchema[];
+}
+
 export interface DatafileContentV1 {
   schemaVersion: string;
   revision: string;
   attributes: Attribute[];
   segments: Segment[];
-  features: Feature[];
+  features: FeatureV1[];
 }
 
 export interface DatafileContentV2 {
