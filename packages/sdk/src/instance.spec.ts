@@ -1,4 +1,4 @@
-import { DatafileContent } from "@featurevisor/types";
+import { DatafileContent, DatafileContentV2 } from "@featurevisor/types";
 
 import { createInstance } from "./instance";
 import { createLogger } from "./logger";
@@ -11,99 +11,15 @@ describe("sdk: instance", function () {
   it("should create instance with datafile content", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [],
-        attributes: [],
-        segments: [],
+        features: {},
+        attributes: {},
+        segments: {},
       },
     });
 
     expect(typeof sdk.getVariation).toEqual("function");
-  });
-
-  it("should trigger onReady event once", function (done) {
-    let readyCount = 0;
-
-    const sdk = createInstance({
-      datafile: {
-        schemaVersion: "1",
-        revision: "1.0",
-        features: [],
-        attributes: [],
-        segments: [],
-      },
-      onReady: () => {
-        readyCount += 1;
-      },
-    });
-
-    setTimeout(() => {
-      expect(readyCount).toEqual(1);
-      expect(sdk.isReady()).toEqual(true);
-      done();
-    }, 0);
-  });
-
-  it("should resolve onReady method as Promise when initialized synchronously", function (done) {
-    let readyCount = 0;
-
-    const sdk = createInstance({
-      datafile: {
-        schemaVersion: "1",
-        revision: "1.0",
-        features: [],
-        attributes: [],
-        segments: [],
-      },
-      onReady: () => {
-        readyCount += 1;
-      },
-    });
-
-    setTimeout(() => {
-      sdk.onReady().then((f) => {
-        expect(f.isReady()).toEqual(true);
-        expect(readyCount).toEqual(1);
-
-        done();
-      });
-    }, 0);
-  });
-
-  it("should resolve onReady method as Promise, when fetching datafile remotely", function (done) {
-    let readyCount = 0;
-
-    const sdk = createInstance({
-      datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function () {
-        const content: DatafileContent = {
-          schemaVersion: "1",
-          revision: "1.0",
-          features: [],
-          attributes: [],
-          segments: [],
-        };
-
-        return new Promise(function (resolve) {
-          setTimeout(function () {
-            resolve(content);
-          }, 10);
-        });
-      },
-      onReady: () => {
-        readyCount += 1;
-      },
-    });
-
-    setTimeout(() => {
-      sdk.onReady().then((f) => {
-        expect(f.isReady()).toEqual(true);
-        expect(readyCount).toEqual(1);
-
-        done();
-      });
-    }, 0);
   });
 
   it("should configure plain bucketBy", function () {
@@ -111,10 +27,10 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -130,9 +46,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
@@ -156,10 +72,10 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: ["userId", "organizationId"],
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -175,9 +91,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
@@ -201,10 +117,10 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: { or: ["userId", "deviceId"] },
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -220,9 +136,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
         capturedBucketKey = bucketKey;
@@ -258,10 +174,10 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -277,9 +193,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
       interceptContext: function (context) {
         intercepted = true;
@@ -298,131 +214,32 @@ describe("sdk: instance", function () {
     expect(intercepted).toEqual(true);
   });
 
-  it("should activate feature", function () {
-    let activated = false;
-
-    const sdk = createInstance({
-      datafile: {
-        schemaVersion: "1",
-        revision: "1.0",
-        features: [
-          {
-            key: "test",
-            bucketBy: "userId",
-            variations: [{ value: "control" }, { value: "treatment" }],
-            traffic: [
-              {
-                key: "1",
-                segments: "*",
-                percentage: 100000,
-                allocation: [
-                  { variation: "control", range: [0, 100000] },
-                  { variation: "treatment", range: [0, 0] },
-                ],
-              },
-            ],
-          },
-        ],
-        attributes: [],
-        segments: [],
+  it("should initialize with sticky features", function (done) {
+    const datafileContent: DatafileContentV2 = {
+      schemaVersion: "2",
+      revision: "1.0",
+      features: {
+        test: {
+          key: "test",
+          bucketBy: "userId",
+          variations: [{ value: "control" }, { value: "treatment" }],
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+              allocation: [
+                { variation: "control", range: [0, 0] },
+                { variation: "treatment", range: [0, 100000] },
+              ],
+            },
+          ],
+        },
       },
-      onActivation: function () {
-        activated = true;
-      },
-    });
-
-    const variation = sdk.getVariation("test", {
-      userId: "123",
-    });
-
-    expect(activated).toEqual(false);
-    expect(variation).toEqual("control");
-
-    const activatedVariation = sdk.activate("test", {
-      userId: "123",
-    });
-
-    expect(activated).toEqual(true);
-    expect(activatedVariation).toEqual("control");
-  });
-
-  it("should refresh datafile", function (done) {
-    let revision = 1;
-    let refreshed = false;
-    let updatedViaOption = false;
-    let updatedViaEventListener = false;
-
-    function getDatafileContent(): DatafileContent {
-      const content: DatafileContent = {
-        schemaVersion: "1",
-        revision: revision.toString(),
-        features: [
-          {
-            key: "test",
-            bucketBy: "userId",
-            variations: [{ value: "control" }, { value: "treatment" }],
-            traffic: [
-              {
-                key: "1",
-                segments: "*",
-                percentage: 100000,
-                allocation: [
-                  { variation: "control", range: [0, 100000] },
-                  { variation: "treatment", range: [0, 0] },
-                ],
-              },
-            ],
-          },
-        ],
-        attributes: [],
-        segments: [],
-      };
-
-      revision += 1;
-
-      return content;
-    }
-
-    const sdk = createInstance({
-      datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function () {
-        return new Promise(function (resolve) {
-          resolve(getDatafileContent());
-        });
-      },
-      refreshInterval: 0.1,
-      onRefresh() {
-        refreshed = true;
-      },
-      onUpdate() {
-        updatedViaOption = true;
-      },
-    });
-
-    const onUpdateCallback = function () {
-      updatedViaEventListener = true;
+      attributes: {},
+      segments: {},
     };
 
-    sdk.on("update", onUpdateCallback);
-
-    expect(sdk.isReady()).toEqual(false);
-
-    setTimeout(function () {
-      expect(refreshed).toEqual(true);
-      expect(updatedViaOption).toEqual(true);
-      expect(updatedViaEventListener).toEqual(true);
-
-      sdk.off("update", onUpdateCallback);
-
-      expect(sdk.isReady()).toEqual(true);
-
-      sdk.stopRefreshing();
-
-      done();
-    }, 200);
-  });
-
-  it("should initialize with sticky features", function (done) {
     const sdk = createInstance({
       stickyFeatures: {
         test: {
@@ -433,39 +250,7 @@ describe("sdk: instance", function () {
           },
         },
       },
-      datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function () {
-        const content: DatafileContent = {
-          schemaVersion: "1",
-          revision: "1.0",
-          features: [
-            {
-              key: "test",
-              bucketBy: "userId",
-              variations: [{ value: "control" }, { value: "treatment" }],
-              traffic: [
-                {
-                  key: "1",
-                  segments: "*",
-                  percentage: 100000,
-                  allocation: [
-                    { variation: "control", range: [0, 0] },
-                    { variation: "treatment", range: [0, 100000] },
-                  ],
-                },
-              ],
-            },
-          ],
-          attributes: [],
-          segments: [],
-        };
-
-        return new Promise(function (resolve) {
-          setTimeout(function () {
-            resolve(content);
-          }, 50);
-        });
-      },
+      datafile: datafileContent,
     });
 
     // initially control
@@ -500,83 +285,13 @@ describe("sdk: instance", function () {
     }, 75);
   });
 
-  it("should initialize with initial features", function (done) {
-    const sdk = createInstance({
-      initialFeatures: {
-        test: {
-          enabled: true,
-          variation: "control",
-          variables: {
-            color: "red",
-          },
-        },
-      },
-      datafileUrl: "http://localhost:3000/datafile.json",
-      handleDatafileFetch: function () {
-        const content: DatafileContent = {
-          schemaVersion: "1",
-          revision: "1.0",
-          features: [
-            {
-              key: "test",
-              bucketBy: "userId",
-              variations: [{ value: "control" }, { value: "treatment" }],
-              traffic: [
-                {
-                  key: "1",
-                  segments: "*",
-                  percentage: 100000,
-                  allocation: [
-                    { variation: "control", range: [0, 0] },
-                    { variation: "treatment", range: [0, 100000] },
-                  ],
-                },
-              ],
-            },
-          ],
-          attributes: [],
-          segments: [],
-        };
-
-        return new Promise(function (resolve) {
-          setTimeout(function () {
-            resolve(content);
-          }, 50);
-        });
-      },
-    });
-
-    // initially control
-    expect(
-      sdk.getVariation("test", {
-        userId: "123",
-      }),
-    ).toEqual("control");
-    expect(
-      sdk.getVariable("test", "color", {
-        userId: "123",
-      }),
-    ).toEqual("red");
-
-    setTimeout(function () {
-      // treatment after fetching datafile
-      expect(
-        sdk.getVariation("test", {
-          userId: "123",
-        }),
-      ).toEqual("treatment");
-
-      done();
-    }, 75);
-  });
-
   it("should honour simple required features", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          requiredKey: {
             key: "requiredKey",
             bucketBy: "userId",
             traffic: [
@@ -589,7 +304,7 @@ describe("sdk: instance", function () {
             ],
           },
 
-          {
+          myKey: {
             key: "myKey",
             bucketBy: "userId",
             required: ["requiredKey"],
@@ -602,9 +317,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
     });
 
@@ -614,10 +329,10 @@ describe("sdk: instance", function () {
     // enabling required should enable the feature too
     const sdk2 = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          requiredKey: {
             key: "requiredKey",
             bucketBy: "userId",
             traffic: [
@@ -630,7 +345,7 @@ describe("sdk: instance", function () {
             ],
           },
 
-          {
+          myKey: {
             key: "myKey",
             bucketBy: "userId",
             required: ["requiredKey"],
@@ -643,9 +358,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
     });
     expect(sdk2.isEnabled("myKey")).toEqual(true);
@@ -655,10 +370,10 @@ describe("sdk: instance", function () {
     // should be disabled because required has different variation
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          requiredKey: {
             key: "requiredKey",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -675,7 +390,7 @@ describe("sdk: instance", function () {
             ],
           },
 
-          {
+          myKey: {
             key: "myKey",
             bucketBy: "userId",
             required: [
@@ -693,9 +408,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
     });
 
@@ -704,10 +419,10 @@ describe("sdk: instance", function () {
     // child should be enabled because required has desired variation
     const sdk2 = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          requiredKey: {
             key: "requiredKey",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -724,7 +439,7 @@ describe("sdk: instance", function () {
             ],
           },
 
-          {
+          myKey: {
             key: "myKey",
             bucketBy: "userId",
             required: [
@@ -742,9 +457,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
     });
     expect(sdk2.isEnabled("myKey")).toEqual(true);
@@ -755,10 +470,10 @@ describe("sdk: instance", function () {
 
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -774,7 +489,7 @@ describe("sdk: instance", function () {
               },
             ],
           },
-          {
+          deprecatedTest: {
             key: "deprecatedTest",
             deprecated: true,
             bucketBy: "userId",
@@ -791,9 +506,9 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
       logger: createLogger({
         handler: function (level, message) {
@@ -819,10 +534,10 @@ describe("sdk: instance", function () {
   it("should check if enabled for overridden flags from rules", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             traffic: [
@@ -841,10 +556,10 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [
-          {
+        },
+        attributes: {},
+        segments: {
+          netherlands: {
             key: "netherlands",
             conditions: JSON.stringify([
               {
@@ -854,7 +569,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-        ],
+        },
       },
     });
 
@@ -871,18 +586,18 @@ describe("sdk: instance", function () {
       },
 
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          mutex: {
             key: "mutex",
             bucketBy: "userId",
             ranges: [[0, 50000]],
             traffic: [{ key: "1", segments: "*", percentage: 50000, allocation: [] }],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        attributes: {},
+        segments: {},
       },
     });
 
@@ -899,10 +614,10 @@ describe("sdk: instance", function () {
   it("should get variation", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -928,7 +643,7 @@ describe("sdk: instance", function () {
               },
             ],
           },
-          {
+          testWithNoVariation: {
             key: "testWithNoVariation",
             bucketBy: "userId",
             traffic: [
@@ -940,10 +655,10 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [
-          {
+        },
+        attributes: {},
+        segments: {
+          netherlands: {
             key: "netherlands",
             conditions: JSON.stringify([
               {
@@ -953,7 +668,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-        ],
+        },
       },
     });
 
@@ -979,10 +694,10 @@ describe("sdk: instance", function () {
   it("should get variable", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variablesSchema: [
@@ -1136,13 +851,13 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [
-          { key: "userId", type: "string", capture: true },
-          { key: "country", type: "string" },
-        ],
-        segments: [
-          {
+        },
+        attributes: {
+          userId: { key: "userId", type: "string", capture: true },
+          country: { key: "country", type: "string" },
+        },
+        segments: {
+          netherlands: {
             key: "netherlands",
             conditions: JSON.stringify([
               {
@@ -1152,7 +867,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-          {
+          belgium: {
             key: "belgium",
             conditions: JSON.stringify([
               {
@@ -1162,7 +877,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-        ],
+        },
       },
     });
 
@@ -1259,14 +974,14 @@ describe("sdk: instance", function () {
   it("should get variables without any variations", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        attributes: [
-          { key: "userId", type: "string", capture: true },
-          { key: "country", type: "string" },
-        ],
-        segments: [
-          {
+        attributes: {
+          userId: { key: "userId", type: "string", capture: true },
+          country: { key: "country", type: "string" },
+        },
+        segments: {
+          netherlands: {
             key: "netherlands",
             conditions: JSON.stringify([
               {
@@ -1276,9 +991,9 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-        ],
-        features: [
-          {
+        },
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variablesSchema: [
@@ -1306,7 +1021,7 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
+        },
       },
     });
 
@@ -1333,10 +1048,10 @@ describe("sdk: instance", function () {
   it("should check if enabled for individually named segments", function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             traffic: [
@@ -1349,10 +1064,10 @@ describe("sdk: instance", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [
-          {
+        },
+        attributes: {},
+        segments: {
+          netherlands: {
             key: "netherlands",
             conditions: JSON.stringify([
               {
@@ -1362,7 +1077,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-          {
+          iphone: {
             key: "iphone",
             conditions: JSON.stringify([
               {
@@ -1372,7 +1087,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-          {
+          unitedStates: {
             key: "unitedStates",
             conditions: JSON.stringify([
               {
@@ -1382,7 +1097,7 @@ describe("sdk: instance", function () {
               },
             ]),
           },
-        ],
+        },
       },
     });
 
