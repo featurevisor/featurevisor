@@ -29,11 +29,11 @@ export class DatafileReader {
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 
-  constructor(datafileJson: DatafileContentV1 | DatafileContentV2) {
+  constructor(datafileJson: DatafileContentV2) {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
 
-    const datafileJsonV2 = datafileJson as DatafileContentV2;
+    const datafileJsonV2 = datafileJson;
 
     this.attributes = datafileJsonV2.attributes;
     this.segments = datafileJsonV2.segments;
@@ -46,16 +46,6 @@ export class DatafileReader {
 
   getSchemaVersion(): string {
     return this.schemaVersion;
-  }
-
-  getAllAttributes(): Attribute[] {
-    const result: Attribute[] = [];
-
-    Object.keys(this.attributes).forEach((key) => {
-      result.push(this.attributes[key]);
-    });
-
-    return result;
   }
 
   getAttribute(attributeKey: AttributeKey): Attribute | undefined {

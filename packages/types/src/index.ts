@@ -289,8 +289,6 @@ export interface StickyFeatures {
   [key: FeatureKey]: OverrideFeature;
 }
 
-export type InitialFeatures = StickyFeatures;
-
 /**
  * YAML-only type
  */

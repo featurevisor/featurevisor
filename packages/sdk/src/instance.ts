@@ -1,35 +1,19 @@
 import {
   Context,
-  DatafileContent,
   Feature,
   FeatureKey,
-  InitialFeatures,
   StickyFeatures,
   VariableType,
   VariableValue,
   VariationValue,
   VariableKey,
+  DatafileContentV2,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
-import { Emitter } from "./emitter";
 import { ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
 import { Evaluation, evaluate } from "./evaluate";
-
-export type ReadyCallback = () => void;
-
-export type ActivationCallback = (
-  featureName: string,
-  variation: VariationValue,
-  context: Context,
-  captureContext: Context,
-) => void;
-
-export interface Statuses {
-  ready: boolean;
-  refreshInProgress: boolean;
-}
 
 const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
 
@@ -39,40 +23,19 @@ export interface InstanceOptions {
   bucketKeySeparator?: string;
   configureBucketKey?: ConfigureBucketKey;
   configureBucketValue?: ConfigureBucketValue;
-  datafile?: DatafileContent | string;
-  datafileUrl?: string;
-  handleDatafileFetch?: (datafileUrl: string) => Promise<DatafileContent>;
-  initialFeatures?: InitialFeatures;
+  datafile: DatafileContentV2 | string;
   interceptContext?: InterceptContext;
   logger?: Logger;
-  onActivation?: ActivationCallback;
-  onReady?: ReadyCallback;
-  onRefresh?: () => void;
-  onUpdate?: () => void;
-  refreshInterval?: number; // seconds
   stickyFeatures?: StickyFeatures;
 }
 
-const emptyDatafile: DatafileContent = {
-  schemaVersion: "1",
+const emptyDatafile: DatafileContentV2 = {
+  schemaVersion: "2",
   revision: "unknown",
-  attributes: [],
-  segments: [],
-  features: [],
+  attributes: {},
+  segments: {},
+  features: {},
 };
-
-export type DatafileFetchHandler = (datafileUrl: string) => Promise<DatafileContent>;
-
-function fetchDatafileContent(
-  datafileUrl,
-  handleDatafileFetch?: DatafileFetchHandler,
-): Promise<DatafileContent> {
-  if (handleDatafileFetch) {
-    return handleDatafileFetch(datafileUrl);
-  }
-
-  return fetch(datafileUrl).then((res) => res.json());
-}
 
 type FieldType = string | VariableType;
 type ValueType = VariableValue;
@@ -110,104 +73,27 @@ export class FeaturevisorInstance {
   private bucketKeySeparator: string;
   private configureBucketKey?: ConfigureBucketKey;
   private configureBucketValue?: ConfigureBucketValue;
-  private datafileUrl?: string;
-  private handleDatafileFetch?: DatafileFetchHandler;
-  private initialFeatures?: InitialFeatures;
   private interceptContext?: InterceptContext;
   private logger: Logger;
-  private refreshInterval?: number; // seconds
   private stickyFeatures?: StickyFeatures;
 
   // internally created
   private datafileReader: DatafileReader;
-  private emitter: Emitter;
-  private statuses: Statuses;
-  private intervalId?: ReturnType<typeof setInterval>;
-
-  // exposed from emitter
-  public on: Emitter["addListener"];
-  public addListener: Emitter["addListener"];
-  public off: Emitter["removeListener"];
-  public removeListener: Emitter["removeListener"];
-  public removeAllListeners: Emitter["removeAllListeners"];
 
   constructor(options: InstanceOptions) {
     // from options
     this.bucketKeySeparator = options.bucketKeySeparator || DEFAULT_BUCKET_KEY_SEPARATOR;
     this.configureBucketKey = options.configureBucketKey;
     this.configureBucketValue = options.configureBucketValue;
-    this.datafileUrl = options.datafileUrl;
-    this.handleDatafileFetch = options.handleDatafileFetch;
-    this.initialFeatures = options.initialFeatures;
     this.interceptContext = options.interceptContext;
     this.logger = options.logger || createLogger();
-    this.refreshInterval = options.refreshInterval;
     this.stickyFeatures = options.stickyFeatures;
 
-    // internal
-    this.emitter = new Emitter();
-    this.statuses = {
-      ready: false,
-      refreshInProgress: false,
-    };
-
-    // register events
-    if (options.onReady) {
-      this.emitter.addListener("ready", options.onReady);
-    }
-
-    if (options.onRefresh) {
-      this.emitter.addListener("refresh", options.onRefresh);
-    }
-
-    if (options.onUpdate) {
-      this.emitter.addListener("update", options.onUpdate);
-    }
-
-    if (options.onActivation) {
-      this.emitter.addListener("activation", options.onActivation);
-    }
-
-    // expose emitter methods
-    const on = this.emitter.addListener.bind(this.emitter);
-    this.on = on;
-    this.addListener = on;
-
-    const off = this.emitter.removeListener.bind(this.emitter);
-    this.off = off;
-    this.removeListener = off;
-
-    this.removeAllListeners = this.emitter.removeAllListeners.bind(this.emitter);
-
     // datafile
-    if (options.datafileUrl) {
-      this.setDatafile(options.datafile || emptyDatafile);
-
-      fetchDatafileContent(options.datafileUrl, options.handleDatafileFetch)
-        .then((datafile) => {
-          this.setDatafile(datafile);
-
-          this.statuses.ready = true;
-          this.emitter.emit("ready");
-
-          if (this.refreshInterval) {
-            this.startRefreshing();
-          }
-        })
-        .catch((e) => {
-          this.logger.error("failed to fetch datafile", { error: e });
-        });
-    } else if (options.datafile) {
-      this.setDatafile(options.datafile);
-      this.statuses.ready = true;
-
-      setTimeout(() => {
-        this.emitter.emit("ready");
-      }, 0);
+    if (options.datafile) {
+      this.setDatafile(options.datafile as DatafileContentV2 | string);
     } else {
-      throw new Error(
-        "Featurevisor SDK instance cannot be created without both `datafile` and `datafileUrl` options",
-      );
+      throw new Error("Featurevisor SDK instance cannot be created without `datafile` option");
     }
   }
 
@@ -215,23 +101,7 @@ export class FeaturevisorInstance {
     this.logger.setLevels(levels);
   }
 
-  onReady(): Promise<FeaturevisorInstance> {
-    return new Promise((resolve) => {
-      if (this.statuses.ready) {
-        return resolve(this);
-      }
-
-      const cb = () => {
-        this.emitter.removeListener("ready", cb);
-
-        resolve(this);
-      };
-
-      this.emitter.addListener("ready", cb);
-    });
-  }
-
-  setDatafile(datafile: DatafileContent | string) {
+  setDatafile(datafile: DatafileContentV2 | string) {
     try {
       this.datafileReader = new DatafileReader(
         typeof datafile === "string" ? JSON.parse(datafile) : datafile,
@@ -256,78 +126,6 @@ export class FeaturevisorInstance {
   }
 
   /**
-   * Statuses
-   */
-  isReady(): boolean {
-    return this.statuses.ready;
-  }
-
-  /**
-   * Refresh
-   */
-  refresh() {
-    this.logger.debug("refreshing datafile");
-
-    if (this.statuses.refreshInProgress) {
-      return this.logger.warn("refresh in progress, skipping");
-    }
-
-    if (!this.datafileUrl) {
-      return this.logger.error("cannot refresh since `datafileUrl` is not provided");
-    }
-
-    this.statuses.refreshInProgress = true;
-
-    fetchDatafileContent(this.datafileUrl, this.handleDatafileFetch)
-      .then((datafile) => {
-        const currentRevision = this.getRevision();
-        const newRevision = datafile.revision;
-        const isNotSameRevision = currentRevision !== newRevision;
-
-        this.setDatafile(datafile);
-        this.logger.info("refreshed datafile");
-
-        this.emitter.emit("refresh");
-
-        if (isNotSameRevision) {
-          this.emitter.emit("update");
-        }
-
-        this.statuses.refreshInProgress = false;
-      })
-      .catch((e) => {
-        this.logger.error("failed to refresh datafile", { error: e });
-        this.statuses.refreshInProgress = false;
-      });
-  }
-
-  startRefreshing() {
-    if (!this.datafileUrl) {
-      return this.logger.error("cannot start refreshing since `datafileUrl` is not provided");
-    }
-
-    if (this.intervalId) {
-      return this.logger.warn("refreshing has already started");
-    }
-
-    if (!this.refreshInterval) {
-      return this.logger.warn("no `refreshInterval` option provided");
-    }
-
-    this.intervalId = setInterval(() => {
-      this.refresh();
-    }, this.refreshInterval * 1000);
-  }
-
-  stopRefreshing() {
-    if (!this.intervalId) {
-      return this.logger.warn("refreshing has not started yet");
-    }
-
-    clearInterval(this.intervalId);
-  }
-
-  /**
    * Flag
    */
   evaluateFlag(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
@@ -339,11 +137,9 @@ export class FeaturevisorInstance {
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      statuses: this.statuses,
       interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
-      initialFeatures: this.initialFeatures,
 
       bucketKeySeparator: this.bucketKeySeparator,
       configureBucketKey: this.configureBucketKey,
@@ -375,11 +171,9 @@ export class FeaturevisorInstance {
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      statuses: this.statuses,
       interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
-      initialFeatures: this.initialFeatures,
 
       bucketKeySeparator: this.bucketKeySeparator,
       configureBucketKey: this.configureBucketKey,
@@ -411,51 +205,6 @@ export class FeaturevisorInstance {
   }
 
   /**
-   * Activate
-   */
-  activate(featureKey: FeatureKey, context: Context = {}): VariationValue | undefined {
-    try {
-      const evaluation = this.evaluateVariation(featureKey, context);
-      const variationValue = evaluation.variation
-        ? evaluation.variation.value
-        : evaluation.variationValue;
-
-      if (typeof variationValue === "undefined") {
-        return undefined;
-      }
-
-      const finalContext = this.interceptContext ? this.interceptContext(context) : context;
-
-      const captureContext: Context = {};
-
-      const attributesForCapturing = this.datafileReader
-        .getAllAttributes()
-        .filter((a) => a.capture === true);
-
-      attributesForCapturing.forEach((a) => {
-        if (typeof finalContext[a.key] !== "undefined") {
-          captureContext[a.key] = context[a.key];
-        }
-      });
-
-      this.emitter.emit(
-        "activation",
-        featureKey,
-        variationValue,
-        finalContext,
-        captureContext,
-        evaluation,
-      );
-
-      return variationValue;
-    } catch (e) {
-      this.logger.error("activate", { featureKey, error: e });
-
-      return undefined;
-    }
-  }
-
-  /**
    * Variable
    */
   evaluateVariable(
@@ -472,11 +221,9 @@ export class FeaturevisorInstance {
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      statuses: this.statuses,
       interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
-      initialFeatures: this.initialFeatures,
 
       bucketKeySeparator: this.bucketKeySeparator,
       configureBucketKey: this.configureBucketKey,

@@ -15,7 +15,6 @@ import {
   VariableValue,
   VariableSchema,
   StickyFeatures,
-  InitialFeatures,
   Allocation,
 } from "@featurevisor/types";
 
@@ -30,7 +29,7 @@ import {
 } from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
-import type { Statuses, InterceptContext } from "./instance";
+import type { InterceptContext } from "./instance";
 
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
@@ -68,7 +67,6 @@ export interface Evaluation {
   force?: Force;
   required?: Required[];
   sticky?: OverrideFeature;
-  initial?: OverrideFeature;
 
   // variation
   variation?: Variation;
@@ -89,11 +87,9 @@ export interface EvaluateOptions {
 
   logger: Logger;
   datafileReader: DatafileReader;
-  statuses?: Statuses;
   interceptContext?: InterceptContext;
 
   stickyFeatures?: StickyFeatures;
-  initialFeatures?: InitialFeatures;
 
   bucketKeySeparator?: string;
   configureBucketKey?: ConfigureBucketKey;
@@ -109,9 +105,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     context,
     logger,
     datafileReader,
-    statuses,
     stickyFeatures,
-    initialFeatures,
     interceptContext,
     bucketKeySeparator,
     configureBucketKey,
@@ -133,9 +127,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         context,
         logger,
         datafileReader,
-        statuses,
         stickyFeatures,
-        initialFeatures,
         bucketKeySeparator,
         configureBucketKey,
         configureBucketValue,
@@ -204,60 +196,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             };
 
             logger.debug("using sticky variable", evaluation);
-
-            return evaluation;
-          }
-        }
-      }
-    }
-
-    /**
-     * Initial
-     */
-    if (statuses && !statuses.ready && initialFeatures && initialFeatures[key]) {
-      // flag
-      if (type === "flag" && typeof initialFeatures[key].enabled !== "undefined") {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          initial: initialFeatures[key],
-          enabled: initialFeatures[key].enabled,
-        };
-
-        logger.debug("using initial enabled", evaluation);
-
-        return evaluation;
-      }
-
-      // variation
-      if (type === "variation" && typeof initialFeatures[key].variation !== "undefined") {
-        const variationValue = initialFeatures[key].variation;
-
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          variationValue,
-        };
-
-        logger.debug("using initial variation", evaluation);
-
-        return evaluation;
-      }
-
-      // variable
-      if (variableKey) {
-        const variables = initialFeatures[key].variables;
-
-        if (variables) {
-          if (typeof variables[variableKey] !== "undefined") {
-            evaluation = {
-              featureKey: key,
-              reason: EvaluationReason.INITIAL,
-              variableKey,
-              variableValue: variables[variableKey],
-            };
-
-            logger.debug("using initial variable", evaluation);
 
             return evaluation;
           }
@@ -410,9 +348,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           context: finalContext,
           logger,
           datafileReader,
-          statuses,
           stickyFeatures,
-          initialFeatures,
           bucketKeySeparator,
           configureBucketKey,
           configureBucketValue,
@@ -430,9 +366,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             context: finalContext,
             logger,
             datafileReader,
-            statuses,
             stickyFeatures,
-            initialFeatures,
             bucketKeySeparator,
             configureBucketKey,
             configureBucketValue,

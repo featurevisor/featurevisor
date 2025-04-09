@@ -1,4 +1,4 @@
-import { Context } from "@featurevisor/types";
+import { Context, DatafileContentV2 } from "@featurevisor/types";
 import {
   Evaluation,
   createInstance,
@@ -84,7 +84,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   let logs: Log[] = [];
   const f = createInstance({
-    datafile: datafileContent,
+    datafile: datafileContent as DatafileContentV2,
     logger: createLogger({
       levels: ["error", "warn", "info", "debug"],
       handler: (level, message, details) => {

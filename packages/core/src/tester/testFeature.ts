@@ -1,5 +1,5 @@
 import {
-  DatafileContent,
+  DatafileContentV2,
   TestFeature,
   TestResult,
   TestResultAssertion,
@@ -64,7 +64,7 @@ export async function testFeature(
       }
 
       const sdk = createInstance({
-        datafile: datafileContent,
+        datafile: datafileContent as DatafileContentV2,
         configureBucketValue: () => {
           return assertion.at * (MAX_BUCKETED_NUMBER / 100);
         },
