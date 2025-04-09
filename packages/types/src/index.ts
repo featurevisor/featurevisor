@@ -334,7 +334,9 @@ export interface ParsedFeature {
 
   bucketBy: BucketBy;
 
-  variablesSchema?: VariableSchema[];
+  variablesSchema?: {
+    [key: string]: VariableSchema;
+  };
   variations?: Variation[];
 
   // if using environments

@@ -261,14 +261,19 @@ export async function buildDatafile(
       }
 
       if (parsedFeature.variablesSchema) {
-        feature.variablesSchema = parsedFeature.variablesSchema.map(function (v: VariableSchema) {
-          return {
+        const variableKeys = Object.keys(parsedFeature.variablesSchema);
+        feature.variablesSchema = {};
+
+        for (const variableKey of variableKeys) {
+          const v = parsedFeature.variablesSchema[variableKey];
+
+          feature.variablesSchema[variableKey] = {
             key: v.key,
             type: v.type,
             defaultValue: v.defaultValue,
             deprecated: v.deprecated === true ? true : undefined,
           };
-        });
+        }
       }
 
       if (force) {
