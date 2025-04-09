@@ -168,12 +168,7 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
           ? options.variable
           : [options.variable];
 
-        let variablesInFeature: string[] = [];
-        if (Array.isArray(parsedFeature.variablesSchema)) {
-          variablesInFeature = parsedFeature.variablesSchema.map((variable) => variable.key);
-        } else if (parsedFeature.variablesSchema) {
-          variablesInFeature = Object.keys(parsedFeature.variablesSchema);
-        }
+        let variablesInFeature: string[] = Object.keys(parsedFeature.variablesSchema || {});
 
         const hasVariables = lookForVariables.every((variable) =>
           variablesInFeature.includes(variable),

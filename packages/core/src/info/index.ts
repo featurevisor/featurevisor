@@ -22,7 +22,7 @@ export async function showProjectInfo(deps: Dependencies) {
     const feature = await datasource.readFeature(featureKey);
 
     if (feature.variablesSchema) {
-      variablesCount += feature.variablesSchema.length;
+      variablesCount += Object.keys(feature.variablesSchema).length;
     }
   }
 

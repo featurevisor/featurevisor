@@ -268,7 +268,7 @@ export async function buildDatafile(
           const v = parsedFeature.variablesSchema[variableKey];
 
           feature.variablesSchema[variableKey] = {
-            key: v.key,
+            key: variableKey, // @TODO: may be remove it
             type: v.type,
             defaultValue: v.defaultValue,
             deprecated: v.deprecated === true ? true : undefined,

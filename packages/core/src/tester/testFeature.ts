@@ -123,7 +123,7 @@ export async function testFeature(
 
           let passed;
 
-          const variableSchema = feature.variablesSchema?.find((v) => v.key === variableKey);
+          const variableSchema = feature.variablesSchema?.[variableKey];
 
           if (!variableSchema) {
             testResult.passed = false;
