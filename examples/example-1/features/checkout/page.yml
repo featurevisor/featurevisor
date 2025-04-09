@@ -5,15 +5,15 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: showPayments
+  showPayments:
     type: boolean
     defaultValue: false
 
-  - key: showShipping
+  showShipping:
     type: boolean
     defaultValue: false
 
-  - key: paymentMethods
+  paymentMethods:
     type: array
     defaultValue:
       - visa

@@ -5,10 +5,10 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: color
+  color:
     type: string
     defaultValue: "red"
-  - key: hero
+  hero:
     type: object
     defaultValue:
       title: Hero Title

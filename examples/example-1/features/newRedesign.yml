@@ -5,10 +5,10 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: foo
+  foo:
     type: string
     defaultValue: "default foo"
-  - key: bar
+  bar:
     type: string
     defaultValue: "default bar"
     deprecated: true

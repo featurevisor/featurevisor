@@ -5,8 +5,8 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - type: json
-    key: fooConfig
+  fooConfig:
+    type: json
     defaultValue: '{"foo": "bar"}'
 
 variations:

@@ -8,13 +8,13 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: bar
+  bar:
     type: string
     defaultValue: ""
-  - key: baz
+  baz:
     type: string
     defaultValue: ""
-  - key: qux
+  qux:
     type: boolean
     defaultValue: false
     description: This is a boolean variable

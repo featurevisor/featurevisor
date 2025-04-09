@@ -5,35 +5,35 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: position
+  position:
     type: string
     description: position of the sidebar
     defaultValue: left
-  - key: color
+  color:
     type: string
     defaultValue: red
-  - key: sections
+  sections:
     type: array
     defaultValue: []
-  - key: title
+  title:
     type: string
     defaultValue: "Sidebar Title"
-  - key: title2
+  title2:
     type: string
     defaultValue: "Sidebar Title 2"
-  - key: title3
+  title3:
     type: string
     defaultValue: "Sidebar Title 3"
-  - key: title4
+  title4:
     type: string
     defaultValue: "Sidebar Title 4"
-  - key: title5
+  title5:
     type: string
     defaultValue: "Sidebar Title 5"
-  - key: title6
+  title6:
     type: string
     defaultValue: "Sidebar Title 6"
-  - key: title7
+  title7:
     type: string
     defaultValue: "Sidebar Title 7"
 
