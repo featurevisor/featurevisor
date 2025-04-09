@@ -391,47 +391,47 @@ export async function buildDatafile(
     }
   }
 
-  // schema v2
-  if (options.schemaVersion === "2") {
-    // v2
-    const datafileContentV2: DatafileContentV2 = {
-      schemaVersion: "2",
-      revision: options.revision,
-      attributes: {},
-      segments: {},
-      features: {},
-    };
+  // schema v1
+  if (options.schemaVersion === "1") {
+    datafileContent.revision = "1";
+    datafileContent.attributes = attributes;
+    datafileContent.segments = segments;
+    datafileContent.features = features;
 
-    datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
-      acc[attribute.key] = attribute;
-      return acc;
-    }, {});
-
-    datafileContentV2.segments = segments.reduce((acc, segment) => {
-      acc[segment.key] = segment;
-      return acc;
-    }, {});
-
-    datafileContentV2.features = features.reduce((acc, feature) => {
-      if (Array.isArray(feature.variablesSchema)) {
-        feature.variablesSchema = feature.variablesSchema.reduce((vAcc, variableSchema) => {
-          vAcc[variableSchema.key] = variableSchema;
-
-          return vAcc;
-        }, {});
-      }
-
-      acc[feature.key] = feature;
-      return acc;
-    }, {});
-
-    return datafileContentV2;
+    return datafileContent;
   }
 
-  // default behaviour
-  datafileContent.attributes = attributes;
-  datafileContent.segments = segments;
-  datafileContent.features = features;
+  // schema v2
+  const datafileContentV2: DatafileContentV2 = {
+    schemaVersion: "2",
+    revision: options.revision,
+    attributes: {},
+    segments: {},
+    features: {},
+  };
 
-  return datafileContent;
+  datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
+    acc[attribute.key] = attribute;
+    return acc;
+  }, {});
+
+  datafileContentV2.segments = segments.reduce((acc, segment) => {
+    acc[segment.key] = segment;
+    return acc;
+  }, {});
+
+  datafileContentV2.features = features.reduce((acc, feature) => {
+    if (Array.isArray(feature.variablesSchema)) {
+      feature.variablesSchema = feature.variablesSchema.reduce((vAcc, variableSchema) => {
+        vAcc[variableSchema.key] = variableSchema;
+
+        return vAcc;
+      }, {});
+    }
+
+    acc[feature.key] = feature;
+    return acc;
+  }, {});
+
+  return datafileContentV2;
 }

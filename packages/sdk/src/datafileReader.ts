@@ -33,39 +33,11 @@ export class DatafileReader {
     this.schemaVersion = datafileJson.schemaVersion;
     this.revision = datafileJson.revision;
 
-    if (this.schemaVersion === "2") {
-      // v2
-      const datafileJsonV2 = datafileJson as DatafileContentV2;
+    const datafileJsonV2 = datafileJson as DatafileContentV2;
 
-      this.attributes = datafileJsonV2.attributes;
-      this.segments = datafileJsonV2.segments;
-      this.features = datafileJsonV2.features;
-    } else {
-      // v1
-      const datafileJsonV1 = datafileJson as DatafileContentV1;
-
-      this.attributes = {};
-      datafileJsonV1.attributes.forEach((a) => {
-        this.attributes[a.key] = a;
-      });
-
-      this.segments = {};
-      datafileJsonV1.segments.forEach((s) => {
-        this.segments[s.key] = s;
-      });
-
-      this.features = {};
-      datafileJsonV1.features.forEach((f) => {
-        if (Array.isArray(f.variablesSchema)) {
-          f.variablesSchema = f.variablesSchema.reduce((acc, variable) => {
-            acc[variable.key] = variable;
-            return acc;
-          }, {});
-        }
-
-        this.features[f.key] = f;
-      });
-    }
+    this.attributes = datafileJsonV2.attributes;
+    this.segments = datafileJsonV2.segments;
+    this.features = datafileJsonV2.features;
   }
 
   getRevision(): string {
