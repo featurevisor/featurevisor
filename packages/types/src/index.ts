@@ -166,7 +166,7 @@ export interface Variation {
 
 export interface VariableSchema {
   deprecated?: boolean;
-  key: VariableKey;
+  key?: VariableKey;
   type: VariableType;
   defaultValue: VariableValue;
   description?: string; // only available in YAML files
@@ -245,7 +245,7 @@ export interface Feature {
   key: FeatureKey;
   deprecated?: boolean;
   required?: Required[];
-  variablesSchema?: VariableSchema[] | Record<VariableKey, VariableSchema>;
+  variablesSchema?: Record<VariableKey, VariableSchema>;
   variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];

@@ -1,4 +1,4 @@
-import { DatafileContent, GroupSegment } from "@featurevisor/types";
+import { DatafileContentV2, GroupSegment } from "@featurevisor/types";
 
 import { DatafileReader } from "./datafileReader";
 import { allGroupSegmentsAreMatched } from "./segments";
@@ -80,15 +80,15 @@ describe("sdk: Segments", function () {
       },
     ];
 
-    const datafileContent: DatafileContent = {
-      schemaVersion: "1.0",
+    const datafileContent: DatafileContentV2 = {
+      schemaVersion: "2",
       revision: "1",
-      features: [],
-      attributes: [],
+      features: {},
+      attributes: {},
 
-      segments: [
+      segments: {
         // deviceType
-        {
+        mobileUsers: {
           key: "mobileUsers",
           conditions: [
             {
@@ -98,7 +98,7 @@ describe("sdk: Segments", function () {
             },
           ],
         },
-        {
+        desktopUsers: {
           key: "desktopUsers",
           conditions: [
             {
@@ -110,7 +110,7 @@ describe("sdk: Segments", function () {
         },
 
         // browser
-        {
+        chromeBrowser: {
           key: "chromeBrowser",
           conditions: [
             {
@@ -120,7 +120,7 @@ describe("sdk: Segments", function () {
             },
           ],
         },
-        {
+        firefoxBrowser: {
           key: "firefoxBrowser",
           conditions: [
             {
@@ -132,7 +132,7 @@ describe("sdk: Segments", function () {
         },
 
         // country
-        {
+        netherlands: {
           key: "netherlands",
           conditions: [
             {
@@ -142,7 +142,7 @@ describe("sdk: Segments", function () {
             },
           ],
         },
-        {
+        germany: {
           key: "germany",
           conditions: [
             {
@@ -154,7 +154,7 @@ describe("sdk: Segments", function () {
         },
 
         // version
-        {
+        "version_5.5": {
           key: "version_5.5",
           conditions: [
             {
@@ -173,7 +173,7 @@ describe("sdk: Segments", function () {
             },
           ],
         },
-      ],
+      },
     };
 
     const datafileReader = new DatafileReader(datafileContent);

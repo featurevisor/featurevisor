@@ -700,45 +700,45 @@ describe("sdk: instance", function () {
           test: {
             key: "test",
             bucketBy: "userId",
-            variablesSchema: [
-              {
+            variablesSchema: {
+              color: {
                 key: "color",
                 type: "string",
                 defaultValue: "red",
               },
-              {
+              showSidebar: {
                 key: "showSidebar",
                 type: "boolean",
                 defaultValue: false,
               },
-              {
+              sidebarTitle: {
                 key: "sidebarTitle",
                 type: "string",
                 defaultValue: "sidebar title",
               },
-              {
+              count: {
                 key: "count",
                 type: "integer",
                 defaultValue: 0,
               },
-              {
+              price: {
                 key: "price",
                 type: "double",
                 defaultValue: 9.99,
               },
-              {
+              paymentMethods: {
                 key: "paymentMethods",
                 type: "array",
                 defaultValue: ["paypal", "creditcard"],
               },
-              {
+              flatConfig: {
                 key: "flatConfig",
                 type: "object",
                 defaultValue: {
                   key: "value",
                 },
               },
-              {
+              nestedConfig: {
                 key: "nestedConfig",
                 type: "json",
                 defaultValue: JSON.stringify({
@@ -747,7 +747,7 @@ describe("sdk: instance", function () {
                   },
                 }),
               },
-            ],
+            },
             variations: [
               { value: "control" },
               {
@@ -996,13 +996,13 @@ describe("sdk: instance", function () {
           test: {
             key: "test",
             bucketBy: "userId",
-            variablesSchema: [
-              {
+            variablesSchema: {
+              color: {
                 key: "color",
                 type: "string",
                 defaultValue: "red",
               },
-            ],
+            },
             traffic: [
               {
                 key: "1",
