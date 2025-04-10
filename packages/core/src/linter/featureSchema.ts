@@ -382,33 +382,18 @@ export function getFeatureZodSchema(
           })
           .strict(),
       ]),
-      // @TODO: in v2, this will become a dictionary
       variablesSchema: z
-        .array(
+        .record(
           z
             .object({
               deprecated: z.boolean().optional(),
-              key: z
-                .string()
-                .min(1)
-                .refine((value) => value !== "variation", {
-                  message: `variable key cannot be "variation"`,
-                }),
               type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
               description: z.string().optional(),
               defaultValue: variableValueZodSchema,
             })
             .strict(),
         )
-        .refine(
-          (value) => {
-            const keys = value.map((v) => v.key);
-            return keys.length === new Set(keys).size;
-          },
-          (value) => ({
-            message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
-          }),
-        )
+        // @TODO: refine to not allow "variation" as variable key
         .optional(),
       variations: z
         .array(
@@ -475,18 +460,18 @@ export function getFeatureZodSchema(
         return;
       }
 
-      const allVariablesSchema = value.variablesSchema;
-      const variableSchemaByKey = {};
+      const variableSchemaByKey = value.variablesSchema;
 
-      // variablesSchema[n].defaultValue
-      allVariablesSchema.forEach((variableSchema, n) => {
-        variableSchemaByKey[variableSchema.key] = variableSchema;
+      // variablesSchema[key].defaultValue
+      const variableKeys = Object.keys(variableSchemaByKey);
+      variableKeys.forEach((variableKey) => {
+        const variableSchema = variableSchemaByKey[variableKey];
 
         superRefineVariableValue(
           projectConfig,
           variableSchema,
           variableSchema.defaultValue,
-          ["variablesSchema", n, "defaultValue"],
+          ["variablesSchema", variableKey, "defaultValue"],
           ctx,
         );
       });
