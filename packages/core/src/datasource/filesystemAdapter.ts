@@ -217,7 +217,7 @@ export class FilesystemAdapter extends Adapter {
    * Datafile
    */
   getDatafilePath(options: DatafileOptions): string {
-    const fileName = `datafile-tag-${options.tag}.json`;
+    const fileName = `featurevisor-tag-${options.tag}.json`;
     const dir = options.datafilesDir || this.config.outputDirectoryPath;
 
     if (options.environment) {

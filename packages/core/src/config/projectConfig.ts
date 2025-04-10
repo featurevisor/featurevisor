@@ -12,7 +12,7 @@ export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const GROUPS_DIRECTORY_NAME = "groups";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
-export const OUTPUT_DIRECTORY_NAME = "dist";
+export const OUTPUT_DIRECTORY_NAME = "datafiles";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
@@ -22,7 +22,7 @@ export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 
-export const DEFAULT_PRETTY_STATE = false;
+export const DEFAULT_PRETTY_STATE = true;
 export const DEFAULT_PRETTY_DATAFILE = false;
 
 export const DEFAULT_PARSER: Parser = "yml";
