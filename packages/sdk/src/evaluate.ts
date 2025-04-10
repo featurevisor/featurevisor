@@ -267,7 +267,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    const finalContext = interceptContext ? interceptContext(context) : context;
+    const finalContext = interceptContext ? interceptContext(context, key, variableKey) : context;
 
     /**
      * Forced

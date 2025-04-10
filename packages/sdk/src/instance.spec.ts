@@ -171,6 +171,8 @@ describe("sdk: instance", function () {
 
   it("should intercept context", function () {
     let intercepted = false;
+    let interceptedFeatureKey = "";
+    let interceptedVariableKey: string | undefined = "";
 
     const sdk = createInstance({
       datafile: {
@@ -197,8 +199,10 @@ describe("sdk: instance", function () {
         attributes: {},
         segments: {},
       },
-      interceptContext: function (context) {
+      interceptContext: function (context, featureKey, variableKey) {
         intercepted = true;
+        interceptedFeatureKey = featureKey;
+        interceptedVariableKey = variableKey;
 
         return {
           ...context,
@@ -212,6 +216,8 @@ describe("sdk: instance", function () {
 
     expect(variation).toEqual("control");
     expect(intercepted).toEqual(true);
+    expect(interceptedFeatureKey).toEqual("test");
+    expect(interceptedVariableKey).toEqual(undefined);
   });
 
   it("should initialize with sticky features", function (done) {
@@ -680,15 +686,15 @@ describe("sdk: instance", function () {
     expect(sdk.getVariation("test", { userId: "user-ch" })).toEqual("treatment");
 
     // non existing
-    expect(sdk.getVariation("nonExistingFeature", context)).toEqual(undefined);
+    expect(sdk.getVariation("nonExistingFeature", context)).toEqual(null);
 
     // disabled
-    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
-    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(undefined);
-    expect(sdk.getVariation("test", { userId: "123", country: "nl" })).toEqual(undefined);
+    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(null);
+    expect(sdk.getVariation("test", { userId: "user-gb" })).toEqual(null);
+    expect(sdk.getVariation("test", { userId: "123", country: "nl" })).toEqual(null);
 
     // no variation
-    expect(sdk.getVariation("testWithNoVariation", context)).toEqual(undefined);
+    expect(sdk.getVariation("testWithNoVariation", context)).toEqual(null);
   });
 
   it("should get variable", function () {
@@ -964,11 +970,11 @@ describe("sdk: instance", function () {
     });
 
     // non existing
-    expect(sdk.getVariable("test", "nonExisting", context)).toEqual(undefined);
-    expect(sdk.getVariable("nonExistingFeature", "nonExisting", context)).toEqual(undefined);
+    expect(sdk.getVariable("test", "nonExisting", context)).toEqual(null);
+    expect(sdk.getVariable("nonExistingFeature", "nonExisting", context)).toEqual(null);
 
     // disabled
-    expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(undefined);
+    expect(sdk.getVariable("test", "color", { userId: "user-gb" })).toEqual(null);
   });
 
   it("should get variables without any variations", function () {

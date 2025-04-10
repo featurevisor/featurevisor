@@ -17,7 +17,11 @@ import { Evaluation, evaluate } from "./evaluate";
 
 const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
 
-export type InterceptContext = (context: Context) => Context;
+export type InterceptContext = (
+  context: Context,
+  featureKey: string,
+  variableKey?: string,
+) => Context;
 
 export interface InstanceOptions {
   bucketKeySeparator?: string;
@@ -181,10 +185,7 @@ export class FeaturevisorInstance {
     });
   }
 
-  getVariation(
-    featureKey: FeatureKey | Feature,
-    context: Context = {},
-  ): VariationValue | undefined {
+  getVariation(featureKey: FeatureKey | Feature, context: Context = {}): VariationValue | null {
     try {
       const evaluation = this.evaluateVariation(featureKey, context);
 
@@ -196,11 +197,11 @@ export class FeaturevisorInstance {
         return evaluation.variation.value;
       }
 
-      return undefined;
+      return null;
     } catch (e) {
       this.logger.error("getVariation", { featureKey, error: e });
 
-      return undefined;
+      return null;
     }
   }
 
