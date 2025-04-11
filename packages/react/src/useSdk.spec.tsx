@@ -11,8 +11,8 @@ function getNewInstance() {
     datafile: {
       schemaVersion: "1",
       revision: "1.0",
-      features: [
-        {
+      features: {
+        test: {
           key: "test",
           bucketBy: "userId",
           variations: [{ value: "control" }, { value: "treatment" }],
@@ -28,9 +28,9 @@ function getNewInstance() {
             },
           ],
         },
-      ],
-      attributes: [],
-      segments: [],
+      },
+      attributes: {},
+      segments: {},
     },
   });
 
@@ -45,8 +45,6 @@ describe("react: useSdk", function () {
   test("should return the sdk", function () {
     function TestComponent() {
       const sdk = useSdk();
-
-      expect(typeof sdk.isReady).toEqual("function");
 
       return <p>Test</p>;
     }

@@ -11,8 +11,8 @@ function getNewInstance() {
     datafile: {
       schemaVersion: "1",
       revision: "1.0",
-      features: [
-        {
+      features: {
+        test: {
           key: "test",
           bucketBy: "userId",
           variations: [{ value: "control" }, { value: "b" }, { value: "c" }],
@@ -28,10 +28,9 @@ function getNewInstance() {
               ],
             },
           ],
-          variablesSchema: [
-            { key: "color", type: "string", defaultValue: "red" },
-            {
-              key: "hero",
+          variablesSchema: {
+            color: { type: "string", defaultValue: "red" },
+            hero: {
               type: "object",
               defaultValue: {
                 title: "Hero Title",
@@ -39,11 +38,11 @@ function getNewInstance() {
                 alignment: "center",
               },
             },
-          ],
+          },
         },
-      ],
-      attributes: [],
-      segments: [],
+      },
+      attributes: {},
+      segments: {},
     },
   });
 

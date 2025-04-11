@@ -11,8 +11,8 @@ function getNewInstance(enabled = true) {
     datafile: {
       schemaVersion: "1",
       revision: "1.0",
-      features: [
-        {
+      features: {
+        test: {
           key: "test",
           bucketBy: "userId",
           traffic: [
@@ -24,9 +24,9 @@ function getNewInstance(enabled = true) {
             },
           ],
         },
-      ],
-      attributes: [],
-      segments: [],
+      },
+      attributes: {},
+      segments: {},
     },
   });
 
