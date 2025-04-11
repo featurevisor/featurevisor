@@ -9,7 +9,7 @@ import { createInstance } from "@featurevisor/sdk";
 function getNewInstance() {
   const sdk = createInstance({
     datafile: {
-      schemaVersion: "1",
+      schemaVersion: "2",
       revision: "1.0",
       features: {
         test: {
