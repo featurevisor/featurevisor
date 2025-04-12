@@ -1,0 +1,38 @@
+description: Classic on/off switch
+tags:
+  - all
+
+bucketBy:
+  or:
+    - userId
+    - device
+
+environments:
+  staging:
+    rules:
+      - key: "1"
+        segments: "*"
+        percentage: 100
+  production:
+    expose: true
+    rules:
+      - key: "1"
+        segments:
+          or:
+            - countries/germany
+            - countries/netherlands
+            - countries/switzerland
+            - adult
+            - blackFridayWeekend
+            - desktop
+            - eu
+            - mobile
+            - qa
+            # - unknownDevice
+            - version_5.5
+            - version_gt5
+        percentage: 100
+
+      - key: "everyone"
+        segments: "*"
+        percentage: 0
