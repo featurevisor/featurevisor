@@ -1,12 +1,37 @@
 {
   "links": {
-    "attribute": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/attributes/{{key}}.yml",
-    "segment": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/segments/{{key}}.yml",
-    "feature": "https://github.com/featurevisor/featurevisor/blob/main/examples/example-1/features/{{key}}.yml",
+    "attribute": "https://github.com/featurevisor/featurevisor/blob/v2/examples/example-1/attributes/{{key}}.yml",
+    "segment": "https://github.com/featurevisor/featurevisor/blob/v2/examples/example-1/segments/{{key}}.yml",
+    "feature": "https://github.com/featurevisor/featurevisor/blob/v2/examples/example-1/features/{{key}}.yml",
     "commit": "https://github.com/featurevisor/featurevisor/commit/{{hash}}"
   },
+  "projectConfig": { "tags": ["all", "checkout"], "environments": ["staging", "production"] },
   "entities": {
     "attributes": [
+      {
+        "description": "User's age",
+        "type": "integer",
+        "key": "age",
+        "lastModified": {
+          "commit": "403eac0",
+          "timestamp": "2024-02-11T21:33:39+01:00",
+          "author": "Fahad Heylaal"
+        },
+        "usedInFeatures": [],
+        "usedInSegments": ["adult"]
+      },
+      {
+        "description": "continent name",
+        "type": "string",
+        "key": "continent",
+        "lastModified": {
+          "commit": "fc85214",
+          "timestamp": "2024-12-01T21:58:06+01:00",
+          "author": "Fahad Heylaal"
+        },
+        "usedInFeatures": [],
+        "usedInSegments": ["eu"]
+      },
       {
         "archived": false,
         "description": "country code in lower case (two lettered)",
@@ -18,7 +43,12 @@
           "author": "Fahad Heylaal"
         },
         "usedInFeatures": [],
-        "usedInSegments": ["germany", "netherlands", "switzerland"]
+        "usedInSegments": [
+          "countries/germany",
+          "countries/netherlands",
+          "countries/switzerland",
+          "eu"
+        ]
       },
       {
         "archived": false,
@@ -44,7 +74,7 @@
           "author": "Fahad Heylaal"
         },
         "usedInFeatures": ["foo"],
-        "usedInSegments": ["mobile", "unknownDevice"]
+        "usedInSegments": ["desktop", "mobile", "unknownDevice"]
       },
       {
         "archived": false,
@@ -70,7 +100,7 @@
           "timestamp": "2023-03-05T18:38:34+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["foo", "showBanner", "showPopup"],
+        "usedInFeatures": ["foo", "newRedesign", "showBanner", "showPopup"],
         "usedInSegments": ["qa"]
       },
       {
@@ -83,10 +113,21 @@
           "author": "Fahad Heylaal"
         },
         "usedInFeatures": [],
-        "usedInSegments": ["version_5.5"]
+        "usedInSegments": ["version_5.5", "version_gt5"]
       }
     ],
     "segments": [
+      {
+        "description": "Adult users who are 18 years or older",
+        "conditions": [{ "attribute": "age", "operator": "greaterThanOrEquals", "value": 18 }],
+        "key": "adult",
+        "lastModified": {
+          "commit": "403eac0",
+          "timestamp": "2024-02-11T21:33:39+01:00",
+          "author": "Fahad Heylaal"
+        },
+        "usedInFeatures": []
+      },
       {
         "archived": false,
         "description": "black friday weekend",
@@ -108,13 +149,55 @@
         "archived": false,
         "description": "users from Germany",
         "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "de" }] },
-        "key": "germany",
+        "key": "countries/germany",
+        "usedInFeatures": [
+          "bar",
+          "checkout/page",
+          "foo",
+          "newRedesign",
+          "pricing",
+          "qux",
+          "sidebar"
+        ]
+      },
+      {
+        "archived": false,
+        "description": "The Netherlands",
+        "conditions": [{ "attribute": "country", "operator": "equals", "value": "nl" }],
+        "key": "countries/netherlands",
+        "usedInFeatures": ["checkout/page", "foo", "newRedesign", "redesign", "sidebar"]
+      },
+      {
+        "archived": false,
+        "description": "users from Switzerland",
+        "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "ch" }] },
+        "key": "countries/switzerland",
+        "usedInFeatures": ["bar", "foo", "newRedesign", "sidebar"]
+      },
+      {
+        "description": "desktop users",
+        "conditions": [{ "attribute": "device", "operator": "equals", "value": "desktop" }],
+        "key": "desktop",
         "lastModified": {
-          "commit": "f529287",
-          "timestamp": "2023-03-05T18:38:34+01:00",
+          "commit": "9f198e2",
+          "timestamp": "2024-03-14T18:02:16+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["bar", "checkout", "foo", "qux", "sidebar"]
+        "usedInFeatures": ["showHeader"]
+      },
+      {
+        "description": "EU",
+        "conditions": [
+          { "attribute": "continent", "operator": "equals", "value": "europe" },
+          { "attribute": "country", "operator": "notIn", "value": ["gb"] }
+        ],
+        "key": "eu",
+        "lastModified": {
+          "commit": "fc85214",
+          "timestamp": "2024-12-01T21:58:06+01:00",
+          "author": "Fahad Heylaal"
+        },
+        "usedInFeatures": []
       },
       {
         "archived": false,
@@ -128,19 +211,7 @@
           "timestamp": "2023-03-05T18:38:34+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["foo"]
-      },
-      {
-        "archived": false,
-        "description": "The Netherlands",
-        "conditions": [{ "attribute": "country", "operator": "equals", "value": "nl" }],
-        "key": "netherlands",
-        "lastModified": {
-          "commit": "f529287",
-          "timestamp": "2023-03-05T18:38:34+01:00",
-          "author": "Fahad Heylaal"
-        },
-        "usedInFeatures": ["checkout", "foo", "redesign", "sidebar"]
+        "usedInFeatures": ["foo", "showHeader"]
       },
       {
         "description": "for testing force API in features",
@@ -151,19 +222,7 @@
           "timestamp": "2023-11-21T17:50:37+01:00",
           "author": "Fahad Heylaal"
         },
-        "usedInFeatures": ["showBanner", "showPopup"]
-      },
-      {
-        "archived": false,
-        "description": "users from Switzerland",
-        "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "ch" }] },
-        "key": "switzerland",
-        "lastModified": {
-          "commit": "f529287",
-          "timestamp": "2023-03-05T18:38:34+01:00",
-          "author": "Fahad Heylaal"
-        },
-        "usedInFeatures": ["bar", "foo", "sidebar"]
+        "usedInFeatures": ["newRedesign", "showBanner", "showPopup"]
       },
       {
         "archived": false,
@@ -194,6 +253,19 @@
           "author": "Fahad Heylaal"
         },
         "usedInFeatures": ["footer"]
+      },
+      {
+        "description": "Version greater than 5",
+        "conditions": [
+          { "attribute": "version", "operator": "semverGreaterThan", "value": "5.0.0" }
+        ],
+        "key": "version_gt5",
+        "lastModified": {
+          "commit": "9f198e2",
+          "timestamp": "2024-03-14T18:02:16+01:00",
+          "author": "Fahad Heylaal"
+        },
+        "usedInFeatures": ["showHeader"]
       }
     ],
     "features": [
@@ -201,10 +273,9 @@
         "description": "Example with object variable type",
         "tags": ["all"],
         "bucketBy": "userId",
-        "variablesSchema": [
-          { "key": "color", "type": "string", "defaultValue": "red" },
-          {
-            "key": "hero",
+        "variablesSchema": {
+          "color": { "type": "string", "defaultValue": "red" },
+          "hero": {
             "type": "object",
             "defaultValue": {
               "title": "Hero Title",
@@ -212,7 +283,7 @@
               "alignment": "center"
             }
           }
-        ],
+        },
         "variations": [
           { "value": "control", "weight": 33 },
           {
@@ -228,7 +299,7 @@
                 },
                 "overrides": [
                   {
-                    "segments": { "or": ["germany", "switzerland"] },
+                    "segments": { "or": ["countries/germany", "countries/switzerland"] },
                     "value": {
                       "title": "Hero Title for B in DE or CH",
                       "subtitle": "Hero Subtitle for B in DE of CH",
@@ -247,23 +318,26 @@
         },
         "key": "bar",
         "lastModified": {
-          "commit": "4f52136",
-          "timestamp": "2023-07-16T21:50:35+02:00",
+          "commit": "bc49fb7",
+          "timestamp": "2025-04-09T21:36:00+02:00",
           "author": "Fahad Heylaal"
         }
       },
       {
         "description": "Classic on/off switch",
         "tags": ["all"],
-        "bucketBy": "userId",
+        "bucketBy": { "or": ["userId", "device"] },
         "environments": {
           "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
-          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 80 }] }
+          "production": {
+            "expose": true,
+            "rules": [{ "key": "1", "segments": "*", "percentage": 80 }]
+          }
         },
         "key": "baz",
         "lastModified": {
-          "commit": "4f52136",
-          "timestamp": "2023-07-16T21:50:35+02:00",
+          "commit": "20b14e6",
+          "timestamp": "2025-02-26T21:46:26+01:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -271,24 +345,24 @@
         "description": "Testing variables without having any variations",
         "tags": ["all"],
         "bucketBy": "userId",
-        "variablesSchema": [
-          { "key": "showPayments", "type": "boolean", "defaultValue": false },
-          { "key": "showShipping", "type": "boolean", "defaultValue": false },
-          { "key": "paymentMethods", "type": "array", "defaultValue": ["visa", "mastercard"] }
-        ],
+        "variablesSchema": {
+          "showPayments": { "type": "boolean", "defaultValue": false },
+          "showShipping": { "type": "boolean", "defaultValue": false },
+          "paymentMethods": { "type": "array", "defaultValue": ["visa", "mastercard"] }
+        },
         "environments": {
           "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
           "production": {
             "rules": [
               {
                 "key": "1",
-                "segments": "netherlands",
+                "segments": "countries/netherlands",
                 "percentage": 100,
                 "variables": { "paymentMethods": ["ideal", "paypal"] }
               },
               {
                 "key": "2",
-                "segments": "germany",
+                "segments": "countries/germany",
                 "percentage": 100,
                 "variables": { "paymentMethods": ["sofort", "paypal"] }
               },
@@ -305,12 +379,7 @@
             ]
           }
         },
-        "key": "checkout",
-        "lastModified": {
-          "commit": "3144f20",
-          "timestamp": "2023-10-26T08:42:34+02:00",
-          "author": "Fahad Heylaal"
-        }
+        "key": "checkout/page"
       },
       {
         "description": "Enable discount in checkout flow",
@@ -343,11 +412,15 @@
         "description": "blah",
         "tags": ["all", "sign-in", "sign-up"],
         "bucketBy": "userId",
-        "variablesSchema": [
-          { "key": "bar", "type": "string", "defaultValue": "" },
-          { "key": "baz", "type": "string", "defaultValue": "" },
-          { "key": "qux", "type": "boolean", "defaultValue": false }
-        ],
+        "variablesSchema": {
+          "bar": { "type": "string", "defaultValue": "" },
+          "baz": { "type": "string", "defaultValue": "" },
+          "qux": {
+            "type": "boolean",
+            "defaultValue": false,
+            "description": "This is a boolean variable"
+          }
+        },
         "variations": [
           { "value": "control", "weight": 50 },
           {
@@ -358,13 +431,16 @@
                 "key": "bar",
                 "value": "bar_here",
                 "overrides": [
-                  { "segments": { "or": ["germany", "switzerland"] }, "value": "bar for DE or CH" }
+                  {
+                    "segments": { "or": ["countries/germany", "countries/switzerland"] },
+                    "value": "bar for DE or CH"
+                  }
                 ]
               },
               {
                 "key": "baz",
                 "value": "baz_here",
-                "overrides": [{ "segments": "netherlands", "value": "baz for NL" }]
+                "overrides": [{ "segments": "countries/netherlands", "value": "baz for NL" }]
               }
             ]
           }
@@ -397,7 +473,9 @@
             "rules": [
               {
                 "key": "1",
-                "segments": { "and": ["mobile", { "or": ["germany", "switzerland"] }] },
+                "segments": {
+                  "and": ["mobile", { "or": ["countries/germany", "countries/switzerland"] }]
+                },
                 "percentage": 80,
                 "variables": { "qux": true }
               },
@@ -407,8 +485,8 @@
         },
         "key": "foo",
         "lastModified": {
-          "commit": "9daf95b",
-          "timestamp": "2024-01-11T20:17:34+01:00",
+          "commit": "bc49fb7",
+          "timestamp": "2025-04-09T21:36:00+02:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -418,14 +496,17 @@
         "bucketBy": "userId",
         "environments": {
           "staging": {
-            "rules": [{ "key": "1", "segments": [{ "not": ["version_5.5"] }], "percentage": 100 }]
+            "rules": [
+              { "key": "1", "segments": [{ "not": ["version_5.5"] }], "percentage": 100 },
+              { "key": "2", "segments": "*", "percentage": 0 }
+            ]
           },
           "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 80 }] }
         },
         "key": "footer",
         "lastModified": {
-          "commit": "dd7fda3",
-          "timestamp": "2023-11-14T17:39:51+01:00",
+          "commit": "bfcd01a",
+          "timestamp": "2024-05-26T17:33:48+02:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -448,12 +529,92 @@
         }
       },
       {
+        "description": "Test forced with a variation, and variable overrides in it, without any active rolled out rule",
+        "tags": ["all"],
+        "bucketBy": "userId",
+        "variablesSchema": {
+          "foo": { "type": "string", "defaultValue": "default foo" },
+          "bar": { "type": "string", "defaultValue": "default bar", "deprecated": true }
+        },
+        "variations": [
+          { "value": "control", "weight": 50 },
+          {
+            "value": "treatment",
+            "weight": 50,
+            "variables": [
+              {
+                "key": "foo",
+                "value": "foo for treatment",
+                "overrides": [
+                  {
+                    "segments": { "or": ["countries/germany", "countries/switzerland"] },
+                    "value": "foo for treatment in DE or CH"
+                  }
+                ]
+              },
+              {
+                "key": "bar",
+                "value": "bar for treatment",
+                "overrides": [
+                  { "segments": "countries/netherlands", "value": "bar for treatment in NL" }
+                ]
+              }
+            ]
+          }
+        ],
+        "environments": {
+          "staging": {
+            "force": [
+              {
+                "conditions": [
+                  { "attribute": "userId", "operator": "equals", "value": "test-force-id" }
+                ],
+                "enabled": true,
+                "variation": "treatment"
+              }
+            ],
+            "rules": [{ "key": "1", "segments": "qa", "percentage": 0 }]
+          },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] }
+        },
+        "key": "newRedesign",
+        "lastModified": {
+          "commit": "bc49fb7",
+          "timestamp": "2025-04-09T21:36:00+02:00",
+          "author": "Fahad Heylaal"
+        }
+      },
+      {
+        "description": "Testing two variations with first one having weight of 0",
+        "tags": ["checkout"],
+        "bucketBy": "userId",
+        "variations": [
+          { "value": "control", "weight": 0 },
+          { "value": "treatment", "weight": 100 }
+        ],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": {
+            "rules": [
+              { "key": "1", "segments": "countries/germany", "percentage": 100 },
+              { "key": "2", "segments": "*", "percentage": 0 }
+            ]
+          }
+        },
+        "key": "pricing",
+        "lastModified": {
+          "commit": "561e24b",
+          "timestamp": "2025-03-09T22:29:20+01:00",
+          "author": "Fahad Heylaal"
+        }
+      },
+      {
         "description": "Variations with weights having decimal places",
         "tags": ["all"],
         "bucketBy": "userId",
-        "variablesSchema": [
-          { "type": "json", "key": "fooConfig", "defaultValue": "{\"foo\": \"bar\"}" }
-        ],
+        "variablesSchema": {
+          "fooConfig": { "type": "json", "defaultValue": "{\"foo\": \"bar\"}" }
+        },
         "variations": [
           { "value": "control", "weight": 33.34 },
           {
@@ -467,15 +628,15 @@
           "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 50 }] },
           "production": {
             "rules": [
-              { "key": "1", "segments": ["germany"], "percentage": 50, "variation": "b" },
+              { "key": "1", "segments": ["countries/germany"], "percentage": 50, "variation": "b" },
               { "key": "2", "segments": "*", "percentage": 50 }
             ]
           }
         },
         "key": "qux",
         "lastModified": {
-          "commit": "4f52136",
-          "timestamp": "2023-07-16T21:50:35+02:00",
+          "commit": "bc49fb7",
+          "timestamp": "2025-04-09T21:36:00+02:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -485,12 +646,17 @@
         "bucketBy": "userId",
         "environments": {
           "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
-          "production": { "rules": [{ "key": "1", "segments": "netherlands", "percentage": 100 }] }
+          "production": {
+            "rules": [
+              { "key": "1", "segments": "countries/netherlands", "percentage": 100 },
+              { "key": "2", "segments": "*", "percentage": 0 }
+            ]
+          }
         },
         "key": "redesign",
         "lastModified": {
-          "commit": "b3ad42c",
-          "timestamp": "2023-09-30T21:56:55+02:00",
+          "commit": "561e24b",
+          "timestamp": "2025-03-09T22:29:20+01:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -520,6 +686,42 @@
         }
       },
       {
+        "description": "For testing wrong semver parsing",
+        "tags": ["all"],
+        "bucketBy": ["userId"],
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": {
+            "rules": [
+              { "key": "desktop", "segments": ["version_gt5", "desktop"], "percentage": 100 },
+              { "key": "mobile", "segments": ["mobile"], "percentage": 100 },
+              { "key": "all", "segments": "*", "percentage": 0 }
+            ]
+          }
+        },
+        "key": "showHeader",
+        "lastModified": {
+          "commit": "9f198e2",
+          "timestamp": "2024-03-14T18:02:16+01:00",
+          "author": "Fahad Heylaal"
+        }
+      },
+      {
+        "description": "Classic on/off switch",
+        "tags": ["all"],
+        "bucketBy": "userId",
+        "environments": {
+          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 0 }] }
+        },
+        "key": "showNotification",
+        "lastModified": {
+          "commit": "07f1682",
+          "timestamp": "2025-01-30T18:00:29+01:00",
+          "author": "Fahad Heylaal"
+        }
+      },
+      {
         "description": "for testing force API in features",
         "tags": ["all"],
         "bucketBy": "userId",
@@ -534,12 +736,15 @@
             ],
             "rules": [{ "key": "1", "segments": "*", "percentage": 0 }]
           },
-          "production": { "rules": [{ "key": "1", "segments": "*", "percentage": 0 }] }
+          "production": {
+            "expose": false,
+            "rules": [{ "key": "1", "segments": "*", "percentage": 0 }]
+          }
         },
         "key": "showPopup",
         "lastModified": {
-          "commit": "a2aebe6",
-          "timestamp": "2023-11-21T17:50:37+01:00",
+          "commit": "20b14e6",
+          "timestamp": "2025-02-26T21:46:26+01:00",
           "author": "Fahad Heylaal"
         }
       },
@@ -547,17 +752,22 @@
         "description": "Show sidebar or not",
         "tags": ["all"],
         "bucketBy": "userId",
-        "variablesSchema": [
-          {
-            "key": "position",
+        "variablesSchema": {
+          "position": {
             "type": "string",
             "description": "position of the sidebar",
             "defaultValue": "left"
           },
-          { "key": "color", "type": "string", "defaultValue": "red" },
-          { "key": "sections", "type": "array", "defaultValue": [] },
-          { "key": "title", "type": "string", "defaultValue": "Sidebar Title" }
-        ],
+          "color": { "type": "string", "defaultValue": "red" },
+          "sections": { "type": "array", "defaultValue": [] },
+          "title": { "type": "string", "defaultValue": "Sidebar Title" },
+          "title2": { "type": "string", "defaultValue": "Sidebar Title 2" },
+          "title3": { "type": "string", "defaultValue": "Sidebar Title 3" },
+          "title4": { "type": "string", "defaultValue": "Sidebar Title 4" },
+          "title5": { "type": "string", "defaultValue": "Sidebar Title 5" },
+          "title6": { "type": "string", "defaultValue": "Sidebar Title 6" },
+          "title7": { "type": "string", "defaultValue": "Sidebar Title 7" }
+        },
         "variations": [
           { "value": "control", "weight": 10 },
           {
@@ -569,17 +779,20 @@
                 "key": "color",
                 "value": "red",
                 "overrides": [
-                  { "segments": ["germany"], "value": "yellow" },
-                  { "segments": ["switzerland"], "value": "white" }
+                  { "segments": ["countries/germany"], "value": "yellow" },
+                  { "segments": ["countries/switzerland"], "value": "white" }
                 ]
               },
               {
                 "key": "sections",
                 "value": ["home", "about", "contact"],
                 "overrides": [
-                  { "segments": ["germany"], "value": ["home", "about", "contact", "imprint"] },
                   {
-                    "segments": ["netherlands"],
+                    "segments": ["countries/germany"],
+                    "value": ["home", "about", "contact", "imprint"]
+                  },
+                  {
+                    "segments": ["countries/netherlands"],
                     "value": ["home", "about", "contact", "bitterballen"]
                   }
                 ]
@@ -588,7 +801,10 @@
           }
         ],
         "environments": {
-          "staging": { "rules": [{ "key": "1", "segments": "*", "percentage": 100 }] },
+          "staging": {
+            "expose": ["all"],
+            "rules": [{ "key": "1", "segments": "*", "percentage": 100 }]
+          },
           "production": {
             "rules": [
               {
@@ -602,8 +818,8 @@
         },
         "key": "sidebar",
         "lastModified": {
-          "commit": "2a1b73d",
-          "timestamp": "2023-10-05T18:27:51+02:00",
+          "commit": "bc49fb7",
+          "timestamp": "2025-04-09T21:36:00+02:00",
           "author": "Fahad Heylaal"
         }
       }
