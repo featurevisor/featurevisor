@@ -206,7 +206,7 @@ export function getFeaturesByQuery(query: Query, data: SearchIndex) {
         if (!feature.variablesSchema) {
           matched = false;
         } else {
-          const keysFromFeature = feature.variablesSchema.map((v: any) => v.key);
+          const keysFromFeature = Object.keys(feature.variablesSchema);
 
           if (query.variableKeys.some((k) => keysFromFeature.indexOf(k) === -1)) {
             matched = false;
