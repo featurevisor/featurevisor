@@ -422,7 +422,7 @@ export function DisplayFeatureVariations() {
 export function DisplayFeatureVariablesSchema() {
   const { feature } = useOutletContext() as any;
 
-  if (!feature.variablesSchema || feature.variablesSchema.length === 0) {
+  if (!feature.variablesSchema) {
     return <p>n/a</p>;
   }
 
@@ -440,32 +440,33 @@ export function DisplayFeatureVariablesSchema() {
       </thead>
 
       <tbody>
-        {feature.variablesSchema.map((variableSchema, index) => {
-          return (
-            <tr key={variableSchema.key} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.key}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.type}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.type === "string" ? (
-                  variableSchema.defaultValue
-                ) : (
-                  <pre>
-                    <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                      {JSON.stringify(variableSchema.defaultValue, null, 2)}
-                    </code>
-                  </pre>
-                )}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.description || <span>n/a</span>}
-              </td>
-            </tr>
-          );
-        })}
+        {feature.variablesSchema &&
+          Object.keys(feature.variablesSchema).map((variableKey, index) => {
+            const variableSchema = feature.variablesSchema[variableKey];
+
+            return (
+              <tr key={variableSchema.key} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">{variableKey}</td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.type}
+                </td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.type === "string" ? (
+                    variableSchema.defaultValue
+                  ) : (
+                    <pre>
+                      <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                        {JSON.stringify(variableSchema.defaultValue, null, 2)}
+                      </code>
+                    </pre>
+                  )}
+                </td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.description || <span>n/a</span>}
+                </td>
+              </tr>
+            );
+          })}
       </tbody>
     </table>
   );
