@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "1.35.2",
+  "version": "1.35.3",
   "description": "Core package of Featurevisor for Node.js usage",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -40,9 +40,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/sdk": "1.35.2",
-    "@featurevisor/site": "1.35.0",
-    "@featurevisor/types": "1.35.0",
+    "@featurevisor/sdk": "1.35.3",
+    "@featurevisor/site": "1.35.3",
+    "@featurevisor/types": "1.35.3",
     "axios": "^1.3.4",
     "js-yaml": "^4.1.0",
     "mkdirp": "^2.1.3",

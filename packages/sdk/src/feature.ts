@@ -8,6 +8,10 @@ export function getMatchedAllocation(
   traffic: Traffic,
   bucketValue: number,
 ): Allocation | undefined {
+  if (!traffic.allocation) {
+    return undefined;
+  }
+
   for (const allocation of traffic.allocation) {
     const [start, end] = allocation.range;
 

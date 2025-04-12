@@ -158,6 +158,8 @@ export function getTraffic(
       return true;
     });
 
+    // @TODO: in v2, remove "allocation" property if an empty array
+
     result.push(traffic);
   });
 
