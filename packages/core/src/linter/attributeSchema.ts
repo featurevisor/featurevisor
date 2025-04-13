@@ -6,7 +6,6 @@ export function getAttributeZodSchema() {
       archived: z.boolean().optional(),
       type: z.enum(["boolean", "string", "integer", "double", "date", "semver"]),
       description: z.string(),
-      capture: z.boolean().optional(),
     })
     .strict();
 

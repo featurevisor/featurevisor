@@ -859,7 +859,7 @@ describe("sdk: instance", function () {
           },
         },
         attributes: {
-          userId: { key: "userId", type: "string", capture: true },
+          userId: { key: "userId", type: "string" },
           country: { key: "country", type: "string" },
         },
         segments: {
@@ -983,7 +983,7 @@ describe("sdk: instance", function () {
         schemaVersion: "2",
         revision: "1.0",
         attributes: {
-          userId: { key: "userId", type: "string", capture: true },
+          userId: { key: "userId", type: "string" },
           country: { key: "country", type: "string" },
         },
         segments: {

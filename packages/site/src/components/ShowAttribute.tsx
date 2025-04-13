@@ -29,12 +29,6 @@ export function DisplayAttributeOverview() {
           <dt className="text-sm font-medium text-gray-500">Type</dt>
           <dd className="mt-1 text-sm text-gray-900">{attribute.type}</dd>
         </div>
-        <div>
-          <dt className="text-sm font-medium text-gray-500">Capture</dt>
-          <dd className="mt-1 text-sm text-gray-900">
-            {attribute.capture === true ? <span>Yes</span> : <span>No</span>}
-          </dd>
-        </div>
         <div className="col-span-2">
           <dt className="text-sm font-medium text-gray-500">Description</dt>
           <dd className="mt-1 text-sm text-gray-900">

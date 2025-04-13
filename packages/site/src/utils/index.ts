@@ -5,7 +5,6 @@ export interface Query {
   tags: string[];
   environments: string[];
   archived?: boolean;
-  capture?: boolean;
   hasVariations?: boolean;
   hasVariables?: boolean;
   variableKeys?: string[];
@@ -18,7 +17,6 @@ export function parseSearchQuery(queryString: string) {
     tags: [],
     environments: [],
     archived: undefined,
-    capture: undefined,
   };
 
   const parts = queryString.split(" ");
@@ -43,14 +41,6 @@ export function parseSearchQuery(queryString: string) {
         query.archived = true;
       } else if (archived === "false") {
         query.archived = false;
-      }
-    } else if (part.startsWith("capture:")) {
-      const capture = part.replace("capture:", "");
-
-      if (capture === "true") {
-        query.capture = true;
-      } else if (capture === "false") {
-        query.capture = false;
       }
     } else if (part.startsWith("variable:")) {
       const variableKey = part.replace("variable:", "");
@@ -249,16 +239,6 @@ export function getAttributesByQuery(query: Query, data: SearchIndex) {
         }
 
         if (!query.archived && a.archived === true) {
-          matched = false;
-        }
-      }
-
-      if (typeof query.capture === "boolean") {
-        if (query.capture && a.capture !== query.capture) {
-          matched = false;
-        }
-
-        if (!query.capture && a.capture === true) {
           matched = false;
         }
       }

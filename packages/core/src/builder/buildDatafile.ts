@@ -334,7 +334,7 @@ export async function buildDatafile(
         continue;
       }
 
-      if (attributeKeysUsedByTag.has(attributeKey) === false && !parsedAttribute.capture) {
+      if (attributeKeysUsedByTag.has(attributeKey) === false) {
         continue;
       }
 
@@ -342,10 +342,6 @@ export async function buildDatafile(
         key: attributeKey,
         type: parsedAttribute.type,
       };
-
-      if (parsedAttribute.capture === true) {
-        attribute.capture = true;
-      }
 
       attributes.push(attribute);
     }

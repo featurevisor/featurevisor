@@ -12,7 +12,6 @@ export interface Attribute {
   archived?: boolean; // only available in YAML files
   key: AttributeKey;
   type: AttributeType;
-  capture?: boolean;
   description?: string; // only available in YAML files
 }
 

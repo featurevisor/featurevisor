@@ -14,7 +14,6 @@ describe("sdk: DatafileReader", function () {
         userId: {
           key: "userId",
           type: "string",
-          capture: true,
         },
         country: {
           key: "country",
