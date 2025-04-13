@@ -33,11 +33,6 @@ export function ListAttributes() {
                     <div className="flex items-center justify-between">
                       <p className="text-md relative font-bold text-slate-600">
                         {attribute.key}{" "}
-                        {attribute.capture && (
-                          <span className="ml-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                            capture
-                          </span>
-                        )}
                         {attribute.archived && (
                           <span className="ml-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
                             archived
