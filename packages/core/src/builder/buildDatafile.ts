@@ -238,12 +238,14 @@ export async function buildDatafile(
           return {
             key: t.key,
             percentage: t.percentage,
-            allocation: t.allocation.map((a: Allocation) => {
-              return {
-                variation: a.variation,
-                range: a.range,
-              };
-            }),
+            allocation:
+              t.allocation &&
+              t.allocation.map((a: Allocation) => {
+                return {
+                  variation: a.variation,
+                  range: a.range,
+                };
+              }),
           };
         }),
       };

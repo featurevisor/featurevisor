@@ -108,7 +108,7 @@ export function getTraffic(
 
     let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));
 
-    if (existingTrafficRule && !needsRebucketing) {
+    if (existingTrafficRule && existingTrafficRule.allocation && !needsRebucketing) {
       // increase: build on top of existing allocations
       let existingSum = 0;
 
@@ -137,10 +137,12 @@ export function getTraffic(
         const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
 
         rangesToFill.forEach(function (range) {
-          traffic.allocation.push({
-            variation: variation.value,
-            range,
-          });
+          if (traffic.allocation) {
+            traffic.allocation.push({
+              variation: variation.value,
+              range,
+            });
+          }
         });
 
         updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
@@ -150,15 +152,19 @@ export function getTraffic(
       });
     }
 
-    traffic.allocation = traffic.allocation.filter((a) => {
-      if (a.range && a.range[0] === a.range[1]) {
-        return false;
+    if (traffic.allocation) {
+      traffic.allocation = traffic.allocation.filter((a) => {
+        if (a.range && a.range[0] === a.range[1]) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (traffic.allocation.length === 0) {
+        delete traffic.allocation;
       }
-
-      return true;
-    });
-
-    // @TODO: in v2, remove "allocation" property if an empty array
+    }
 
     result.push(traffic);
   });

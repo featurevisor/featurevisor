@@ -224,7 +224,7 @@ export interface Traffic {
     [key: string]: VariableValue;
   };
 
-  allocation: Allocation[]; // @TODO: in v2, make it optional
+  allocation?: Allocation[];
 }
 
 export type PlainBucketBy = AttributeKey;
@@ -367,7 +367,7 @@ export interface ExistingFeature {
     // @TODO: use Exclude with Traffic?
     key: RuleKey;
     percentage: Percentage;
-    allocation: Allocation[]; // @TODO: in v2, make it optional
+    allocation?: Allocation[];
   }[];
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
