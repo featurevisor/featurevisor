@@ -33,6 +33,7 @@ import type { InterceptContext } from "./instance";
 
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
+  NOT_FOUND_VARIABLE = "not_found_variable",
   NO_VARIATIONS = "no_variations",
   NO_MATCH = "no_match",
   DISABLED = "disabled",
@@ -213,7 +214,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     if (!feature) {
       evaluation = {
         featureKey: key,
-        reason: EvaluationReason.NOT_FOUND, // @TODO: make it type-specific
+        reason: EvaluationReason.NOT_FOUND,
       };
 
       logger.warn("feature not found", evaluation);
@@ -674,18 +675,32 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    if (type === "variable" && variableSchema) {
+    if (type === "variable") {
+      if (variableSchema) {
+        evaluation = {
+          featureKey: feature.key,
+          reason: EvaluationReason.DEFAULTED,
+          bucketKey,
+          bucketValue,
+          variableKey,
+          variableSchema,
+          variableValue: variableSchema.defaultValue,
+        };
+
+        logger.debug("using default value", evaluation);
+
+        return evaluation;
+      }
+
       evaluation = {
         featureKey: feature.key,
-        reason: EvaluationReason.DEFAULTED,
+        reason: EvaluationReason.NOT_FOUND_VARIABLE,
+        variableKey,
         bucketKey,
         bucketValue,
-        variableKey,
-        variableSchema,
-        variableValue: variableSchema.defaultValue,
       };
 
-      logger.debug("using default value", evaluation);
+      logger.debug("variable not found", evaluation);
 
       return evaluation;
     }
