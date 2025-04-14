@@ -120,7 +120,6 @@ export async function benchmarkFeature(
     console.log("");
     console.log("Features count:", Object.keys(datafileContent.features).length);
     console.log("Segments count:", Object.keys(datafileContent.segments).length);
-    console.log("Attributes count:", Object.keys(datafileContent.attributes).length);
   }
 
   console.log("");

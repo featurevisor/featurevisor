@@ -267,9 +267,6 @@ export interface DatafileContentV1 {
 export interface DatafileContentV2 {
   schemaVersion: string;
   revision: string;
-  attributes: {
-    [key: AttributeKey]: Attribute;
-  };
   segments: {
     [key: SegmentKey]: Segment;
   };

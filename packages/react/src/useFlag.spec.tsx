@@ -25,7 +25,6 @@ function getNewInstance(enabled = true) {
           ],
         },
       },
-      attributes: {},
       segments: {},
     },
   });

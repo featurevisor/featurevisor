@@ -35,7 +35,6 @@ export class DatafileReader {
 
     const datafileJsonV2 = datafileJson;
 
-    this.attributes = datafileJsonV2.attributes;
     this.segments = datafileJsonV2.segments;
     this.features = datafileJsonV2.features;
   }
@@ -46,10 +45,6 @@ export class DatafileReader {
 
   getSchemaVersion(): string {
     return this.schemaVersion;
-  }
-
-  getAttribute(attributeKey: AttributeKey): Attribute | undefined {
-    return this.attributes[attributeKey];
   }
 
   getSegment(segmentKey: SegmentKey): Segment | undefined {

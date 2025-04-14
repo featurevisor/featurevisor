@@ -36,7 +36,6 @@ export interface InstanceOptions {
 const emptyDatafile: DatafileContentV2 = {
   schemaVersion: "2",
   revision: "unknown",
-  attributes: {},
   segments: {},
   features: {},
 };

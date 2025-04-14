@@ -14,7 +14,6 @@ describe("sdk: instance", function () {
         schemaVersion: "2",
         revision: "1.0",
         features: {},
-        attributes: {},
         segments: {},
       },
     });
@@ -47,7 +46,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
@@ -92,7 +90,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
@@ -137,7 +134,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
       configureBucketKey: function (feature, context, bucketKey) {
@@ -196,7 +192,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
       interceptContext: function (context, featureKey, variableKey) {
@@ -242,7 +237,6 @@ describe("sdk: instance", function () {
           ],
         },
       },
-      attributes: {},
       segments: {},
     };
 
@@ -324,7 +318,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
     });
@@ -365,7 +358,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
     });
@@ -415,7 +407,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
     });
@@ -464,7 +455,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
     });
@@ -513,7 +503,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
       logger: createLogger({
@@ -563,7 +552,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {
           netherlands: {
             key: "netherlands",
@@ -602,7 +590,6 @@ describe("sdk: instance", function () {
             traffic: [{ key: "1", segments: "*", percentage: 50000, allocation: [] }],
           },
         },
-        attributes: {},
         segments: {},
       },
     });
@@ -662,7 +649,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {
           netherlands: {
             key: "netherlands",
@@ -858,10 +844,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {
-          userId: { key: "userId", type: "string" },
-          country: { key: "country", type: "string" },
-        },
         segments: {
           netherlands: {
             key: "netherlands",
@@ -982,10 +964,6 @@ describe("sdk: instance", function () {
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
-        attributes: {
-          userId: { key: "userId", type: "string" },
-          country: { key: "country", type: "string" },
-        },
         segments: {
           netherlands: {
             key: "netherlands",
@@ -1071,7 +1049,6 @@ describe("sdk: instance", function () {
             ],
           },
         },
-        attributes: {},
         segments: {
           netherlands: {
             key: "netherlands",

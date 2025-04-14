@@ -10,16 +10,6 @@ describe("sdk: DatafileReader", function () {
     const datafileJson: DatafileContent = {
       schemaVersion: "2",
       revision: "1",
-      attributes: {
-        userId: {
-          key: "userId",
-          type: "string",
-        },
-        country: {
-          key: "country",
-          type: "string",
-        },
-      },
       segments: {
         netherlands: {
           key: "netherlands",
@@ -77,7 +67,6 @@ describe("sdk: DatafileReader", function () {
 
     expect(reader.getRevision()).toEqual("1");
     expect(reader.getSchemaVersion()).toEqual("2");
-    expect(reader.getAttribute("userId")).toEqual(datafileJson.attributes.userId);
     expect(reader.getSegment("netherlands")).toEqual(datafileJson.segments.netherlands);
     expect((reader.getSegment("germany") as any).conditions[0].value).toEqual("de");
     expect(reader.getSegment("belgium")).toEqual(undefined);

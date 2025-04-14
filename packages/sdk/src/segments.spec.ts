@@ -84,7 +84,6 @@ describe("sdk: Segments", function () {
       schemaVersion: "2",
       revision: "1",
       features: {},
-      attributes: {},
 
       segments: {
         // deviceType

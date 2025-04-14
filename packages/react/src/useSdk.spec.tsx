@@ -29,7 +29,6 @@ function getNewInstance() {
           ],
         },
       },
-      attributes: {},
       segments: {},
     },
   });

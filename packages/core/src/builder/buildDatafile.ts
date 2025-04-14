@@ -426,15 +426,9 @@ export async function buildDatafile(
   const datafileContentV2: DatafileContentV2 = {
     schemaVersion: "2",
     revision: options.revision,
-    attributes: {},
     segments: {},
     features: {},
   };
-
-  datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
-    acc[attribute.key] = attribute;
-    return acc;
-  }, {});
 
   datafileContentV2.segments = segments.reduce((acc, segment) => {
     acc[segment.key] = segment;

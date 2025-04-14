@@ -28,7 +28,6 @@ describe("vue: index", function () {
             ],
           },
         },
-        attributes: {},
         segments: {},
       },
     });

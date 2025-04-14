@@ -41,7 +41,6 @@ function getNewInstance() {
           },
         },
       },
-      attributes: {},
       segments: {},
     },
   });
