@@ -1,13 +1,4 @@
-import {
-  Feature,
-  Segment,
-  DatafileContentV1,
-  DatafileContentV2,
-  Attribute,
-  AttributeKey,
-  SegmentKey,
-  FeatureKey,
-} from "@featurevisor/types";
+import { Feature, Segment, DatafileContentV2, SegmentKey, FeatureKey } from "@featurevisor/types";
 
 export function parseJsonConditionsIfStringified<T>(record: T, key: string): T {
   if (typeof record[key] === "string" && record[key] !== "*") {
@@ -25,7 +16,6 @@ export class DatafileReader {
   private schemaVersion: string;
   private revision: string;
 
-  private attributes: Record<AttributeKey, Attribute>;
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 

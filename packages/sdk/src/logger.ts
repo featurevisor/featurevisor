@@ -51,8 +51,8 @@ export class Logger {
   private handle: LogHandler;
 
   constructor(options: CreateLoggerOptions) {
-    this.levels = options.levels as LogLevel[];
-    this.handle = options.handler as LogHandler;
+    this.levels = options.levels || defaultLogLevels;
+    this.handle = options.handler || defaultLogHandler;
   }
 
   setLevels(levels: LogLevel[]) {
@@ -83,8 +83,5 @@ export class Logger {
 }
 
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const levels = options.levels || defaultLogLevels;
-  const logHandler = options.handler || defaultLogHandler;
-
-  return new Logger({ levels, handler: logHandler });
+  return new Logger(options);
 }
