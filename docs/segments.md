@@ -35,7 +35,7 @@ conditions:
 These operators are supported as conditions:
 
 | Operator                    | Type of attribute   | Description                   |
-|-----------------------------|---------------------|-------------------------------|
+| --------------------------- | ------------------- | ----------------------------- |
 | `equals`                    | any                 | Equals to                     |
 | `notEquals`                 | any                 | Not equals to                 |
 | `greaterThan`               | `integer`, `double` | Greater than                  |
@@ -56,6 +56,8 @@ These operators are supported as conditions:
 | `semverGreaterThanOrEquals` | `string`            | Semver greater than or equals |
 | `semverLessThan`            | `string`            | Semver less than              |
 | `semverLessThanOrEquals`    | `string`            | Semver less than or equals    |
+| `exists`                    | n/a                 | Attribute exists in context   |
+| `notExists`                 | n/a                 | Attribute does not exist      |
 
 Examples of each operator below:
 
@@ -265,6 +267,24 @@ conditions:
     value: 1.0.0
 ```
 
+### `exists`
+
+```yml
+# ...
+conditions:
+  - attribute: country
+    operator: exists
+```
+
+### `notExists`
+
+```yml
+# ...
+conditions:
+  - attribute: country
+    operator: notExists
+```
+
 ## Conditions
 
 Conditions can also be combined using `and`, `or`, and `not` operators.
@@ -318,18 +338,18 @@ conditions:
 # ...
 conditions:
   - and:
-    - attribute: device
-      operator: equals
-      value: iPhone
+      - attribute: device
+        operator: equals
+        value: iPhone
 
   - or:
-    - attribute: country
-      operator: equals
-      value: us
+      - attribute: country
+        operator: equals
+        value: us
 
-    - attribute: country
-      operator: equals
-      value: ca
+      - attribute: country
+        operator: equals
+        value: ca
 ```
 
 You can also nest `and`, `or`, and `not` operators:
@@ -338,14 +358,14 @@ You can also nest `and`, `or`, and `not` operators:
 # ...
 conditions:
   - not:
-    - or:
-      - attribute: country
-        operator: equals
-        value: us
+      - or:
+          - attribute: country
+            operator: equals
+            value: us
 
-      - attribute: country
-        operator: equals
-        value: ca
+          - attribute: country
+            operator: equals
+            value: ca
 ```
 
 ## Archiving

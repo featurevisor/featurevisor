@@ -72,6 +72,10 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
     } else if (operator === "lessThanOrEquals") {
       return valueInContext <= value;
     }
+  } else if (operator === "exists") {
+    return context.hasOwnProperty(attribute);
+  } else if (operator === "notExists") {
+    return !context.hasOwnProperty(attribute);
   }
 
   return false;

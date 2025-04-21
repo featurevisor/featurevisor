@@ -15,6 +15,7 @@ const semverOperators = [
 ];
 const dateOperators = ["before", "after"];
 const arrayOperators = ["in", "notIn"];
+const operatorsWithoutValue = ["exists", "notExists"];
 
 export function getConditionsZodSchema(
   projectConfig: ProjectConfig,
@@ -35,15 +36,11 @@ export function getConditionsZodSchema(
         ...semverOperators,
         ...dateOperators,
         ...arrayOperators,
+        ...operatorsWithoutValue,
       ]),
-      value: z.union([
-        z.string(),
-        z.array(z.string()),
-        z.number(),
-        z.boolean(),
-        z.date(),
-        z.null(),
-      ]),
+      value: z
+        .union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()])
+        .optional(),
     })
     .superRefine((data, context) => {
       // common
@@ -106,6 +103,15 @@ export function getConditionsZodSchema(
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: `when operator is "${data.operator}", value must be an array of strings`,
+          path: ["value"],
+        });
+      }
+
+      // operators without value
+      if (operatorsWithoutValue.includes(data.operator) && data.value !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value is not needed`,
           path: ["value"],
         });
       }

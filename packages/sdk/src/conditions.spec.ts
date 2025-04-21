@@ -49,18 +49,58 @@ describe("sdk: Conditions", function () {
       );
     });
 
-    it("should match with operator: startsWith", function () {
+    it("should match with operator: equals", function () {
       const conditions: Condition[] = [
         {
-          attribute: "name",
-          operator: "startsWith",
-          value: "Hello",
+          attribute: "browser_type",
+          operator: "equals",
+          value: "chrome",
         },
       ];
 
       // match
-      expect(allConditionsAreMatched(conditions, { name: "Hello World" }, logger)).toEqual(true);
-      expect(allConditionsAreMatched(conditions, { name: "Hello Universe" }, logger)).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, logger)).toEqual(true);
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        false,
+      );
+    });
+
+    it("should match with operator: exists", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "browser_type",
+          operator: "exists",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, logger)).toEqual(
+        true,
+      );
+
+      // not match
+      expect(allConditionsAreMatched(conditions, { not_browser_type: "chrome" }, logger)).toEqual(
+        false,
+      );
+    });
+
+    it("should match with operator: notExists", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "name",
+          operator: "notExists",
+        },
+      ];
+
+      // match
+      expect(allConditionsAreMatched(conditions, { not_name: "Hello World" }, logger)).toEqual(
+        true,
+      );
+      expect(allConditionsAreMatched(conditions, { not_name: "Hello Universe" }, logger)).toEqual(
+        true,
+      );
 
       // not match
       expect(allConditionsAreMatched(conditions, { name: "Hi World" }, logger)).toEqual(false);

@@ -18,6 +18,8 @@ export interface Attribute {
 export type Operator =
   | "equals"
   | "notEquals"
+  | "exists"
+  | "notExists"
 
   // numeric
   | "greaterThan"
@@ -52,7 +54,7 @@ export type ConditionValue = string | number | boolean | Date | null | undefined
 export interface PlainCondition {
   attribute: AttributeKey;
   operator: Operator;
-  value: ConditionValue;
+  value?: ConditionValue; // for all operators, except "exists" and "notExists"
 }
 
 export interface AndCondition {
