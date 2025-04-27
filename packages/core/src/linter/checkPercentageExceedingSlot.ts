@@ -22,7 +22,7 @@ export async function checkForFeatureExceedingGroupSlotPercentage(
 
       const parsedFeature = await datasource.readFeature(featureKey);
 
-      const environmentKeys = Object.keys(parsedFeature.environments);
+      const environmentKeys = Object.keys(parsedFeature.environments); // @TODO: check this
       for (const environmentKey of environmentKeys) {
         const environment = parsedFeature.environments[environmentKey];
         const rules = environment.rules;
