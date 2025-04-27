@@ -25,7 +25,7 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      - key: bar
+      - key: bar # @TODO: make it keyed like variablesSchema
         value: bar_here
         overrides:
           - segments:

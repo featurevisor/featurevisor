@@ -20,7 +20,7 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      - key: foo
+      - key: foo # @TODO: make it keyed like variablesSchema
         value: foo for treatment
         overrides:
           - segments:

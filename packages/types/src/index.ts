@@ -10,7 +10,7 @@ export type AttributeType = "boolean" | "string" | "integer" | "double" | "date"
 
 export interface Attribute {
   archived?: boolean; // only available in YAML files
-  key: AttributeKey;
+  key: AttributeKey; // @TODO: remove
   type: AttributeType;
   description?: string; // only available in YAML files
 }
@@ -54,7 +54,7 @@ export type ConditionValue = string | number | boolean | Date | null | undefined
 export interface PlainCondition {
   attribute: AttributeKey;
   operator: Operator;
-  value?: ConditionValue; // for all operators, except "exists" and "notExists"
+  value?: ConditionValue; // for all operators, except for "exists" and "notExists"
 }
 
 export interface AndCondition {
@@ -77,7 +77,7 @@ export type SegmentKey = string;
 
 export interface Segment {
   archived?: boolean; // only available in YAML files
-  key: SegmentKey;
+  key: SegmentKey; // @TODO: remove
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
   description?: string; // only available in YAML files
 }
@@ -132,15 +132,9 @@ export interface VariableOverrideConditions {
   conditions: Condition | Condition[];
 }
 
-export interface VariableOverrideBase {
-  value: VariableValue;
-}
-
 export type VariableOverrideSegmentsOrConditions =
   | VariableOverrideSegments
   | VariableOverrideConditions;
-
-// export type VariableOverride = VariableOverrideBase & VariableOverrideSegmentsOrConditions;
 
 export interface VariableOverride {
   value: VariableValue;
@@ -151,7 +145,7 @@ export interface VariableOverride {
 }
 
 export interface Variable {
-  key: VariableKey;
+  key: VariableKey; // @TODO: remove, because it should be keyed like variablesSchema
   value: VariableValue;
   description?: string; // only available in YAML files
   overrides?: VariableOverride[];
@@ -166,7 +160,7 @@ export interface Variation {
 
 export interface VariableSchema {
   deprecated?: boolean;
-  key?: VariableKey;
+  key?: VariableKey; // @TODO: remove
   type: VariableType;
   defaultValue: VariableValue;
   description?: string; // only available in YAML files
@@ -192,7 +186,7 @@ export interface Slot {
 }
 
 export interface Group {
-  key: string;
+  key: string; // @TODO: remove
   description: string;
   slots: Slot[];
 }
@@ -241,7 +235,7 @@ export interface RequiredWithVariation {
 export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
-  key: FeatureKey;
+  key: FeatureKey; // @TODO: remove
   deprecated?: boolean;
   required?: Required[];
   variablesSchema?: Record<VariableKey, VariableSchema>;
