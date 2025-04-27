@@ -261,6 +261,8 @@ export interface DatafileContentV1 {
 export interface DatafileContentV2 {
   schemaVersion: string;
   revision: string;
+  stickyFeatures?: StickyFeatures; // @TODO: implement this
+  force?: Force[]; // @TODO: consider this
   segments: {
     [key: SegmentKey]: Segment;
   };
