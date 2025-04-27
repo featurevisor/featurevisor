@@ -32,9 +32,7 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
 ) {
   let method = "log";
 
-  if (level === "debug") {
-    method = "log";
-  } else if (level === "info") {
+  if (level === "info") {
     method = "info";
   } else if (level === "warn") {
     method = "warn";

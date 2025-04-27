@@ -146,7 +146,6 @@ export interface VariableOverride {
   value: VariableValue;
 
   // one of the below must be present in YAML files
-  // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
 }
@@ -177,7 +176,6 @@ export type FeatureKey = string;
 
 export interface Force {
   // one of the below must be present in YAML
-  // @TODO: make it better with TypeScript
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
 
@@ -211,7 +209,7 @@ export type Range = [Percentage, Percentage]; // 0 to 100k
 
 export interface Allocation {
   variation: VariationValue;
-  range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
+  range: Range;
 }
 
 export interface Traffic {
@@ -357,12 +355,10 @@ export interface ParsedFeature {
  */
 export interface ExistingFeature {
   variations?: {
-    // @TODO: use Exclude with Variation?
     value: VariationValue;
     weight: Weight;
   }[];
   traffic: {
-    // @TODO: use Exclude with Traffic?
     key: RuleKey;
     percentage: Percentage;
     allocation?: Allocation[];
