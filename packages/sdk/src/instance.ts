@@ -27,7 +27,7 @@ export interface InstanceOptions {
   bucketKeySeparator?: string;
   configureBucketKey?: ConfigureBucketKey;
   configureBucketValue?: ConfigureBucketValue;
-  datafile: DatafileContentV2 | string;
+  datafile?: DatafileContentV2 | string;
   interceptContext?: InterceptContext;
   logger?: Logger;
   stickyFeatures?: StickyFeatures;
@@ -95,9 +95,9 @@ export class FeaturevisorInstance {
     // datafile
     if (options.datafile) {
       this.setDatafile(options.datafile as DatafileContentV2 | string);
-    } else {
-      throw new Error("Featurevisor SDK instance cannot be created without `datafile` option");
     }
+
+    this.logger.info("Featurevisor SDK initialized");
   }
 
   setLogLevels(levels: LogLevel[]) {
@@ -109,6 +109,8 @@ export class FeaturevisorInstance {
       this.datafileReader = new DatafileReader(
         typeof datafile === "string" ? JSON.parse(datafile) : datafile,
       );
+
+      this.logger.info("datafile set", { revision: this.datafileReader.getRevision() });
     } catch (e) {
       this.logger.error("could not parse datafile", { error: e });
     }

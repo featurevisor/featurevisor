@@ -18,9 +18,9 @@ export const loggerPrefix = "[Featurevisor]";
 export const defaultLogLevels: LogLevel[] = [
   // supported, but not enabled by default
   // "debug",
-  // "info",
 
   // enabled by default
+  "info",
   "warn",
   "error",
 ];
@@ -30,20 +30,19 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
   message,
   details = {},
 ) {
-  switch (level) {
-    case "debug":
-      console.log(loggerPrefix, message, details);
-      break;
-    case "info":
-      console.info(loggerPrefix, message, details);
-      break;
-    case "warn":
-      console.warn(loggerPrefix, message, details);
-      break;
-    case "error":
-      console.error(loggerPrefix, message, details);
-      break;
+  let method = "log";
+
+  if (level === "debug") {
+    method = "log";
+  } else if (level === "info") {
+    method = "info";
+  } else if (level === "warn") {
+    method = "warn";
+  } else if (level === "error") {
+    method = "error";
   }
+
+  console[method](loggerPrefix, message, details);
 };
 
 export class Logger {

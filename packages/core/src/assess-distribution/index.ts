@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 
 import { FeatureKey, AttributeKey, Context, DatafileContentV2 } from "@featurevisor/types";
-import { createInstance } from "@featurevisor/sdk";
+import { createInstance, createLogger } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
 import { buildDatafile } from "../builder";
@@ -108,6 +108,9 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
    */
   const f = createInstance({
     datafile: datafileContent as DatafileContentV2,
+    logger: createLogger({
+      levels: ["warn", "error"],
+    }),
   });
   console.log("\n\n...SDK initialized\n");
 

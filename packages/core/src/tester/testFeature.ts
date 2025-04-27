@@ -5,7 +5,7 @@ import {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { createInstance, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { createInstance, createLogger, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
@@ -68,6 +68,9 @@ export async function testFeature(
         configureBucketValue: () => {
           return assertion.at * (MAX_BUCKETED_NUMBER / 100);
         },
+        logger: createLogger({
+          levels: ["warn", "error"],
+        }),
       });
 
       if (options.verbose) {
