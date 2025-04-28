@@ -130,6 +130,20 @@ export class FeaturevisorInstance {
       : featureKey; // full feature provided
   }
 
+  // @TODO: bring "on" method back
+  //
+  // needed for at least listening to:
+  //
+  // - datafile updates
+  // - context changes (if we are setting context)
+
+  // @TODO: context methods
+  //
+  // - setContext(context, replace = false)
+  // - getContext()
+  //
+  // - withContext(context)
+
   /**
    * Flag
    */
@@ -186,6 +200,7 @@ export class FeaturevisorInstance {
     });
   }
 
+  // @TODO: consider default value as optional argument
   getVariation(featureKey: FeatureKey | Feature, context: Context = {}): VariationValue | null {
     try {
       const evaluation = this.evaluateVariation(featureKey, context);
@@ -233,6 +248,7 @@ export class FeaturevisorInstance {
     });
   }
 
+  // @TODO: consider default value as optional argument
   getVariable(
     featureKey: FeatureKey | Feature,
     variableKey: string,
