@@ -28,6 +28,7 @@ export interface InstanceOptions {
   configureBucketKey?: ConfigureBucketKey;
   configureBucketValue?: ConfigureBucketValue;
   datafile?: DatafileContentV2 | string;
+  context?: Context;
   interceptContext?: InterceptContext;
   logger?: Logger;
   stickyFeatures?: StickyFeatures;
@@ -76,6 +77,7 @@ export class FeaturevisorInstance {
   private bucketKeySeparator: string;
   private configureBucketKey?: ConfigureBucketKey;
   private configureBucketValue?: ConfigureBucketValue;
+  private context: Context = {};
   private interceptContext?: InterceptContext;
   private logger: Logger;
   private stickyFeatures?: StickyFeatures;
@@ -88,6 +90,7 @@ export class FeaturevisorInstance {
     this.bucketKeySeparator = options.bucketKeySeparator || DEFAULT_BUCKET_KEY_SEPARATOR;
     this.configureBucketKey = options.configureBucketKey;
     this.configureBucketValue = options.configureBucketValue;
+    this.context = options.context || {};
     this.interceptContext = options.interceptContext;
     this.logger = options.logger || createLogger();
     this.stickyFeatures = options.stickyFeatures;
@@ -130,19 +133,22 @@ export class FeaturevisorInstance {
       : featureKey; // full feature provided
   }
 
-  // @TODO: bring "on" method back
-  //
-  // needed for at least listening to:
-  //
-  // - datafile updates
-  // - context changes (if we are setting context)
-
   // @TODO: context methods
   //
   // - setContext(context, replace = false)
   // - getContext()
   //
   // - withContext(context)
+
+  setContext(context: Context, replace = false) {
+    if (replace) {
+      this.context = context;
+      this.logger.debug("context replaced", { context: this.context });
+    } else {
+      this.context = { ...this.context, ...context };
+      this.logger.debug("context updated", { context: this.context });
+    }
+  }
 
   getContext(context?: Context, featureKey?: FeatureKey, variableKey?: VariableKey): Context {
     let result: Context = {};
@@ -151,12 +157,26 @@ export class FeaturevisorInstance {
       result = { ...context };
     }
 
+    if (this.context) {
+      result = {
+        ...this.context,
+        ...result,
+      };
+    }
+
     if (this.interceptContext) {
       result = this.interceptContext(result, featureKey || "", variableKey);
     }
 
     return result;
   }
+
+  // @TODO: bring "on" method back
+  //
+  // needed for at least listening to:
+  //
+  // - datafile updates
+  // - context changes (if we are setting context)
 
   /**
    * Flag
