@@ -275,6 +275,7 @@ export class FeaturevisorInstance {
       };
     }
 
+    // @TODO: before/after hooks?
     if (this.interceptContext) {
       result = this.interceptContext(result, featureKey || "", variableKey);
     }
