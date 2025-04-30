@@ -75,6 +75,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
 export interface InstanceWithContextOptions {
   parent: FeaturevisorInstance;
   context: Context;
+  // @TODO: stickyFeatures?
 }
 
 export class FeaturevisorInstanceWithContext {
