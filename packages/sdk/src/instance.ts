@@ -135,9 +135,6 @@ export class FeaturevisorInstance {
 
   // @TODO: context methods
   //
-  // - setContext(context, replace = false)
-  // - getContext()
-  //
   // - withContext(context)
 
   setContext(context: Context, replace = false) {
