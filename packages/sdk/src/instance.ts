@@ -249,6 +249,13 @@ export class FeaturevisorInstance {
       : featureKey; // full feature provided
   }
 
+  // @TODO: bring "on" method back
+  //
+  // needed for at least listening to:
+  //
+  // - datafile updates
+  // - context changes (if we are setting context)
+
   /**
    * Context
    */
@@ -291,13 +298,6 @@ export class FeaturevisorInstance {
     });
   }
 
-  // @TODO: bring "on" method back
-  //
-  // needed for at least listening to:
-  //
-  // - datafile updates
-  // - context changes (if we are setting context)
-
   /**
    * Flag
    */
@@ -305,6 +305,7 @@ export class FeaturevisorInstance {
     return evaluate({
       type: "flag",
 
+      // @TODO: have a separate method for common arguments to evaluate()
       featureKey,
       context: this.getContext(context, featureKey as string),
 
