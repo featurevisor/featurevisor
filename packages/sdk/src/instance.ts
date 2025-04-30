@@ -144,19 +144,32 @@ export class FeaturevisorInstance {
   //
   // - withContext(context)
 
+  getContext(context?: Context, featureKey?: FeatureKey, variableKey?: VariableKey): Context {
+    let result: Context = {};
+
+    if (context) {
+      result = { ...context };
+    }
+
+    if (this.interceptContext) {
+      result = this.interceptContext(result, featureKey || "", variableKey);
+    }
+
+    return result;
+  }
+
   /**
    * Flag
    */
-  evaluateFlag(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
+  evaluateFlag(featureKey: FeatureKey, context: Context = {}): Evaluation {
     return evaluate({
       type: "flag",
 
       featureKey,
-      context,
+      context: this.getContext(context, featureKey as string),
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
 
@@ -166,7 +179,7 @@ export class FeaturevisorInstance {
     });
   }
 
-  isEnabled(featureKey: FeatureKey | Feature, context: Context = {}): boolean {
+  isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
     try {
       const evaluation = this.evaluateFlag(featureKey, context);
 
@@ -181,16 +194,15 @@ export class FeaturevisorInstance {
   /**
    * Variation
    */
-  evaluateVariation(featureKey: FeatureKey | Feature, context: Context = {}): Evaluation {
+  evaluateVariation(featureKey: FeatureKey, context: Context = {}): Evaluation {
     return evaluate({
       type: "variation",
 
       featureKey,
-      context,
+      context: this.getContext(context, featureKey as string),
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
 
@@ -201,7 +213,7 @@ export class FeaturevisorInstance {
   }
 
   // @TODO: consider default value as optional argument
-  getVariation(featureKey: FeatureKey | Feature, context: Context = {}): VariationValue | null {
+  getVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
     try {
       const evaluation = this.evaluateVariation(featureKey, context);
 
@@ -225,7 +237,7 @@ export class FeaturevisorInstance {
    * Variable
    */
   evaluateVariable(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: VariableKey,
     context: Context = {},
   ): Evaluation {
@@ -234,11 +246,10 @@ export class FeaturevisorInstance {
 
       featureKey,
       variableKey,
-      context,
+      context: this.getContext(context, featureKey as string, variableKey),
 
       logger: this.logger,
       datafileReader: this.datafileReader,
-      interceptContext: this.interceptContext,
 
       stickyFeatures: this.stickyFeatures,
 
@@ -250,7 +261,7 @@ export class FeaturevisorInstance {
 
   // @TODO: consider default value as optional argument
   getVariable(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): VariableValue | null {
@@ -278,7 +289,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableBoolean(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): boolean | null {
@@ -288,7 +299,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableString(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): string | null {
@@ -298,7 +309,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableInteger(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): number | null {
@@ -308,7 +319,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableDouble(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): number | null {
@@ -318,7 +329,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableArray(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): string[] | null {
@@ -328,7 +339,7 @@ export class FeaturevisorInstance {
   }
 
   getVariableObject<T>(
-    featureKey: FeatureKey | Feature,
+    featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
   ): T | null {
@@ -337,11 +348,7 @@ export class FeaturevisorInstance {
     return getValueByType(variableValue, "object") as T | null;
   }
 
-  getVariableJSON<T>(
-    featureKey: FeatureKey | Feature,
-    variableKey: string,
-    context: Context = {},
-  ): T | null {
+  getVariableJSON<T>(featureKey: FeatureKey, variableKey: string, context: Context = {}): T | null {
     const variableValue = this.getVariable(featureKey, variableKey, context);
 
     return getValueByType(variableValue, "json") as T | null;

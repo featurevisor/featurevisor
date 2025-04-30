@@ -29,7 +29,6 @@ import {
 } from "./feature";
 import { allConditionsAreMatched } from "./conditions";
 import { allGroupSegmentsAreMatched } from "./segments";
-import type { InterceptContext } from "./instance";
 
 export enum EvaluationReason {
   NOT_FOUND = "not_found",
@@ -88,7 +87,6 @@ export interface EvaluateOptions {
 
   logger: Logger;
   datafileReader: DatafileReader;
-  interceptContext?: InterceptContext;
 
   stickyFeatures?: StickyFeatures;
 
@@ -107,7 +105,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     logger,
     datafileReader,
     stickyFeatures,
-    interceptContext,
     bucketKeySeparator,
     configureBucketKey,
     configureBucketValue,
@@ -268,8 +265,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    const finalContext = interceptContext ? interceptContext(context, key, variableKey) : context;
-
     /**
      * Forced
      */
@@ -346,7 +341,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         const requiredEvaluation = evaluate({
           type: "flag",
           featureKey: requiredKey,
-          context: finalContext,
+          context,
           logger,
           datafileReader,
           stickyFeatures,
@@ -364,7 +359,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           const requiredVariationEvaluation = evaluate({
             type: "variation",
             featureKey: requiredKey,
-            context: finalContext,
+            context,
             logger,
             datafileReader,
             stickyFeatures,
@@ -406,7 +401,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
      */
     const { bucketKey, bucketValue } = getBucket({
       feature,
-      context: finalContext,
+      context,
       logger,
       bucketKeySeparator,
       configureBucketKey,
@@ -419,7 +414,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     if (type !== "flag") {
       const matched = getMatchedTrafficAndAllocation(
         feature.traffic,
-        finalContext,
+        context,
         bucketValue,
         datafileReader,
         logger,
@@ -428,7 +423,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       matchedTraffic = matched.matchedTraffic;
       matchedAllocation = matched.matchedAllocation;
     } else {
-      matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, datafileReader, logger);
+      matchedTraffic = getMatchedTraffic(feature.traffic, context, datafileReader, logger);
     }
 
     if (matchedTraffic) {
@@ -601,7 +596,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
                 if (o.conditions) {
                   return allConditionsAreMatched(
                     typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
-                    finalContext,
+                    context,
                     logger,
                   );
                 }
@@ -609,7 +604,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
                 if (o.segments) {
                   return allGroupSegmentsAreMatched(
                     parseFromStringifiedSegments(o.segments),
-                    finalContext,
+                    context,
                     datafileReader,
                     logger,
                   );
