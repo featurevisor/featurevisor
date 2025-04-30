@@ -72,6 +72,121 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+export interface InstanceWithContextOptions {
+  parent: FeaturevisorInstance;
+  context: Context;
+}
+
+export class FeaturevisorInstanceWithContext {
+  private parent: FeaturevisorInstance;
+  private context: Context;
+
+  constructor(options) {
+    this.parent = options.parent;
+    this.context = options.context;
+  }
+
+  // @TODO: setStickyFeatures?
+
+  isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
+    return this.parent.isEnabled(featureKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
+    return this.parent.getVariation(featureKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariable(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): VariableValue | null {
+    return this.parent.getVariable(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableBoolean(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): boolean | null {
+    return this.parent.getVariableBoolean(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableString(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): string | null {
+    return this.parent.getVariableString(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableInteger(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): number | null {
+    return this.parent.getVariableInteger(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableDouble(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): number | null {
+    return this.parent.getVariableDouble(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableArray(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): string[] | null {
+    return this.parent.getVariableArray(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableObject<T>(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+  ): T | null {
+    return this.parent.getVariableObject<T>(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+
+  getVariableJSON<T>(featureKey: FeatureKey, variableKey: string, context: Context = {}): T | null {
+    return this.parent.getVariableJSON<T>(featureKey, variableKey, {
+      ...this.context,
+      ...context,
+    });
+  }
+}
+
 export class FeaturevisorInstance {
   // from options
   private bucketKeySeparator: string;
@@ -133,10 +248,9 @@ export class FeaturevisorInstance {
       : featureKey; // full feature provided
   }
 
-  // @TODO: context methods
-  //
-  // - withContext(context)
-
+  /**
+   * Context
+   */
   setContext(context: Context, replace = false) {
     if (replace) {
       this.context = context;
@@ -166,6 +280,13 @@ export class FeaturevisorInstance {
     }
 
     return result;
+  }
+
+  withContext(context: Context): FeaturevisorInstanceWithContext {
+    return new FeaturevisorInstanceWithContext({
+      parent: this,
+      context: this.getContext(context),
+    });
   }
 
   // @TODO: bring "on" method back
