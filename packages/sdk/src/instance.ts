@@ -72,35 +72,65 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+export interface AdditionalOptions {
+  stickyFeatures?: StickyFeatures;
+}
+
 export interface InstanceWithContextOptions {
   parent: FeaturevisorInstance;
   context: Context;
-  // @TODO: stickyFeatures?
+  stickyFeatures?: StickyFeatures;
 }
 
 export class FeaturevisorInstanceWithContext {
   private parent: FeaturevisorInstance;
   private context: Context;
+  private stickyFeatures: StickyFeatures;
 
   constructor(options) {
     this.parent = options.parent;
     this.context = options.context;
+    this.stickyFeatures = options.stickyFeatures || {};
   }
 
-  // @TODO: setStickyFeatures?
+  setContext(context: Context, replace = false) {
+    if (replace) {
+      this.context = context;
+    } else {
+      this.context = { ...this.context, ...context };
+    }
+
+    // @TODO: how to deal with logs inside child instance?
+  }
+
+  setStickyFeatures(stickyFeatures: StickyFeatures) {
+    this.stickyFeatures = stickyFeatures;
+  }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
-    return this.parent.isEnabled(featureKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.isEnabled(
+      featureKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
-    return this.parent.getVariation(featureKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariation(
+      featureKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariable(
@@ -108,10 +138,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): VariableValue | null {
-    return this.parent.getVariable(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariable(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableBoolean(
@@ -119,10 +156,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): boolean | null {
-    return this.parent.getVariableBoolean(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableBoolean(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableString(
@@ -130,10 +174,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): string | null {
-    return this.parent.getVariableString(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableString(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableInteger(
@@ -141,10 +192,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): number | null {
-    return this.parent.getVariableInteger(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableInteger(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableDouble(
@@ -152,10 +210,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): number | null {
-    return this.parent.getVariableDouble(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableDouble(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableArray(
@@ -163,10 +228,17 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): string[] | null {
-    return this.parent.getVariableArray(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableArray(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableObject<T>(
@@ -174,17 +246,31 @@ export class FeaturevisorInstanceWithContext {
     variableKey: string,
     context: Context = {},
   ): T | null {
-    return this.parent.getVariableObject<T>(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableObject<T>(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 
   getVariableJSON<T>(featureKey: FeatureKey, variableKey: string, context: Context = {}): T | null {
-    return this.parent.getVariableJSON<T>(featureKey, variableKey, {
-      ...this.context,
-      ...context,
-    });
+    return this.parent.getVariableJSON<T>(
+      featureKey,
+      variableKey,
+      {
+        ...this.context,
+        ...context,
+      },
+      {
+        stickyFeatures: this.stickyFeatures,
+      },
+    );
   }
 }
 
@@ -262,11 +348,11 @@ export class FeaturevisorInstance {
   setContext(context: Context, replace = false) {
     if (replace) {
       this.context = context;
-      this.logger.debug("context replaced", { context: this.context });
     } else {
       this.context = { ...this.context, ...context };
-      this.logger.debug("context updated", { context: this.context });
     }
+
+    this.logger.debug(replace ? "context replaced" : "context updated", { context: this.context });
   }
 
   getContext(context?: Context, featureKey?: FeatureKey, variableKey?: VariableKey): Context {
@@ -291,10 +377,11 @@ export class FeaturevisorInstance {
     return result;
   }
 
-  withContext(context: Context): FeaturevisorInstanceWithContext {
+  withContext(context: Context, options: AdditionalOptions = {}): FeaturevisorInstanceWithContext {
     return new FeaturevisorInstanceWithContext({
       parent: this,
       context: this.getContext(context),
+      stickyFeatures: options.stickyFeatures,
     });
   }
 
@@ -304,6 +391,7 @@ export class FeaturevisorInstance {
   private getEvaluationDependencies(
     featureKey: FeatureKey,
     context: Context,
+    options: AdditionalOptions = {},
   ): EvaluateDependencies {
     return {
       context: this.getContext(context, featureKey as string),
@@ -311,7 +399,12 @@ export class FeaturevisorInstance {
       logger: this.logger,
       datafileReader: this.datafileReader,
 
-      stickyFeatures: this.stickyFeatures,
+      stickyFeatures: options.stickyFeatures
+        ? {
+            ...this.stickyFeatures,
+            ...options.stickyFeatures,
+          }
+        : this.stickyFeatures,
 
       bucketKeySeparator: this.bucketKeySeparator,
       configureBucketKey: this.configureBucketKey,
@@ -319,19 +412,27 @@ export class FeaturevisorInstance {
     };
   }
 
-  evaluateFlag(featureKey: FeatureKey, context: Context = {}): Evaluation {
+  evaluateFlag(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: AdditionalOptions = {},
+  ): Evaluation {
     return evaluate(
       {
         type: "flag",
         featureKey,
       },
-      this.getEvaluationDependencies(featureKey, context),
+      this.getEvaluationDependencies(featureKey, context, options),
     );
   }
 
-  isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
+  isEnabled(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: AdditionalOptions = {},
+  ): boolean {
     try {
-      const evaluation = this.evaluateFlag(featureKey, context);
+      const evaluation = this.evaluateFlag(featureKey, context, options);
 
       return evaluation.enabled === true;
     } catch (e) {
@@ -344,20 +445,28 @@ export class FeaturevisorInstance {
   /**
    * Variation
    */
-  evaluateVariation(featureKey: FeatureKey, context: Context = {}): Evaluation {
+  evaluateVariation(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: AdditionalOptions = {},
+  ): Evaluation {
     return evaluate(
       {
         type: "variation",
         featureKey,
       },
-      this.getEvaluationDependencies(featureKey, context),
+      this.getEvaluationDependencies(featureKey, context, options),
     );
   }
 
   // @TODO: consider default value as optional argument
-  getVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
+  getVariation(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: AdditionalOptions = {},
+  ): VariationValue | null {
     try {
-      const evaluation = this.evaluateVariation(featureKey, context);
+      const evaluation = this.evaluateVariation(featureKey, context, options);
 
       if (typeof evaluation.variationValue !== "undefined") {
         return evaluation.variationValue;
@@ -382,6 +491,7 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: VariableKey,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): Evaluation {
     return evaluate(
       {
@@ -389,7 +499,7 @@ export class FeaturevisorInstance {
         featureKey,
         variableKey,
       },
-      this.getEvaluationDependencies(featureKey, context),
+      this.getEvaluationDependencies(featureKey, context, options),
     );
   }
 
@@ -398,9 +508,10 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): VariableValue | null {
     try {
-      const evaluation = this.evaluateVariable(featureKey, variableKey, context);
+      const evaluation = this.evaluateVariable(featureKey, variableKey, context, options);
 
       if (typeof evaluation.variableValue !== "undefined") {
         if (
@@ -426,8 +537,9 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): boolean | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "boolean") as boolean | null;
   }
@@ -436,8 +548,9 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): string | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "string") as string | null;
   }
@@ -446,8 +559,9 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): number | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "integer") as number | null;
   }
@@ -456,8 +570,9 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): number | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "double") as number | null;
   }
@@ -466,8 +581,9 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): string[] | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "array") as string[] | null;
   }
@@ -476,14 +592,20 @@ export class FeaturevisorInstance {
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
+    options: AdditionalOptions = {},
   ): T | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "object") as T | null;
   }
 
-  getVariableJSON<T>(featureKey: FeatureKey, variableKey: string, context: Context = {}): T | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context);
+  getVariableJSON<T>(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+    options: AdditionalOptions = {},
+  ): T | null {
+    const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
     return getValueByType(variableValue, "json") as T | null;
   }
