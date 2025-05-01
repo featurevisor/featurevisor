@@ -78,6 +78,7 @@ export type SegmentKey = string;
 export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey; // @TODO: remove
+  // hash?: string; // @TODO: introduce in datafile only?
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
   description?: string; // only available in YAML files
 }
@@ -236,6 +237,7 @@ export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
   key: FeatureKey; // @TODO: remove
+  // hash?: string; // @TODO: introduce in datafile only?
   deprecated?: boolean;
   required?: Required[];
   variablesSchema?: Record<VariableKey, VariableSchema>;
