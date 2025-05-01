@@ -78,11 +78,7 @@ export interface Evaluation {
   variableSchema?: VariableSchema;
 }
 
-export interface EvaluateOptions {
-  type: EvaluationType;
-
-  featureKey: FeatureKey | Feature;
-  variableKey?: VariableKey;
+export interface EvaluateDependencies {
   context: Context;
 
   logger: Logger;
@@ -95,12 +91,16 @@ export interface EvaluateOptions {
   configureBucketValue?: ConfigureBucketValue;
 }
 
-export function evaluate(options: EvaluateOptions): Evaluation {
+export interface EvaluateOptions {
+  type: EvaluationType;
+  featureKey: FeatureKey;
+  variableKey?: VariableKey;
+}
+
+export function evaluate(options: EvaluateOptions, dependencies: EvaluateDependencies): Evaluation {
   let evaluation: Evaluation;
+  const { type, featureKey, variableKey } = options;
   const {
-    type,
-    featureKey,
-    variableKey,
     context,
     logger,
     datafileReader,
@@ -108,10 +108,10 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     bucketKeySeparator,
     configureBucketKey,
     configureBucketValue,
-  } = options;
+  } = dependencies;
 
   try {
-    const key = typeof featureKey === "string" ? featureKey : featureKey.key;
+    const key = featureKey;
 
     /**
      * Root flag evaluation
@@ -119,17 +119,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     let flag: Evaluation;
     if (type !== "flag") {
       // needed by variation and variable evaluations
-      flag = evaluate({
-        type: "flag",
-        featureKey: key,
-        context,
-        logger,
-        datafileReader,
-        stickyFeatures,
-        bucketKeySeparator,
-        configureBucketKey,
-        configureBucketValue,
-      });
+      flag = evaluate(
+        {
+          type: "flag",
+          featureKey: key,
+        },
+        dependencies,
+      );
 
       if (flag.enabled === false) {
         evaluation = {
@@ -338,17 +334,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           requiredVariation = required.variation;
         }
 
-        const requiredEvaluation = evaluate({
-          type: "flag",
-          featureKey: requiredKey,
-          context,
-          logger,
-          datafileReader,
-          stickyFeatures,
-          bucketKeySeparator,
-          configureBucketKey,
-          configureBucketValue,
-        });
+        const requiredEvaluation = evaluate(
+          {
+            type: "flag",
+            featureKey: requiredKey,
+          },
+          dependencies,
+        );
         const requiredIsEnabled = requiredEvaluation.enabled;
 
         if (!requiredIsEnabled) {
@@ -356,17 +348,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         }
 
         if (typeof requiredVariation !== "undefined") {
-          const requiredVariationEvaluation = evaluate({
-            type: "variation",
-            featureKey: requiredKey,
-            context,
-            logger,
-            datafileReader,
-            stickyFeatures,
-            bucketKeySeparator,
-            configureBucketKey,
-            configureBucketValue,
-          });
+          const requiredVariationEvaluation = evaluate(
+            {
+              type: "variation",
+              featureKey: requiredKey,
+            },
+            dependencies,
+          );
 
           let requiredVariationValue;
 
@@ -713,7 +701,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     return evaluation;
   } catch (e) {
     evaluation = {
-      featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
+      featureKey,
       reason: EvaluationReason.ERROR,
       error: e,
     };

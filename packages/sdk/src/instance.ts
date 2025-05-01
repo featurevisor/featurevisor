@@ -13,7 +13,7 @@ import {
 import { createLogger, Logger, LogLevel } from "./logger";
 import { DatafileReader } from "./datafileReader";
 import { ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
-import { Evaluation, evaluate } from "./evaluate";
+import { Evaluation, EvaluateDependencies, evaluate } from "./evaluate";
 
 const DEFAULT_BUCKET_KEY_SEPARATOR = ".";
 
@@ -301,12 +301,11 @@ export class FeaturevisorInstance {
   /**
    * Flag
    */
-  evaluateFlag(featureKey: FeatureKey, context: Context = {}): Evaluation {
-    return evaluate({
-      type: "flag",
-
-      // @TODO: have a separate method for common arguments to evaluate()
-      featureKey,
+  private getEvaluationDependencies(
+    featureKey: FeatureKey,
+    context: Context,
+  ): EvaluateDependencies {
+    return {
       context: this.getContext(context, featureKey as string),
 
       logger: this.logger,
@@ -317,7 +316,17 @@ export class FeaturevisorInstance {
       bucketKeySeparator: this.bucketKeySeparator,
       configureBucketKey: this.configureBucketKey,
       configureBucketValue: this.configureBucketValue,
-    });
+    };
+  }
+
+  evaluateFlag(featureKey: FeatureKey, context: Context = {}): Evaluation {
+    return evaluate(
+      {
+        type: "flag",
+        featureKey,
+      },
+      this.getEvaluationDependencies(featureKey, context),
+    );
   }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
@@ -336,21 +345,13 @@ export class FeaturevisorInstance {
    * Variation
    */
   evaluateVariation(featureKey: FeatureKey, context: Context = {}): Evaluation {
-    return evaluate({
-      type: "variation",
-
-      featureKey,
-      context: this.getContext(context, featureKey as string),
-
-      logger: this.logger,
-      datafileReader: this.datafileReader,
-
-      stickyFeatures: this.stickyFeatures,
-
-      bucketKeySeparator: this.bucketKeySeparator,
-      configureBucketKey: this.configureBucketKey,
-      configureBucketValue: this.configureBucketValue,
-    });
+    return evaluate(
+      {
+        type: "variation",
+        featureKey,
+      },
+      this.getEvaluationDependencies(featureKey, context),
+    );
   }
 
   // @TODO: consider default value as optional argument
@@ -382,22 +383,14 @@ export class FeaturevisorInstance {
     variableKey: VariableKey,
     context: Context = {},
   ): Evaluation {
-    return evaluate({
-      type: "variable",
-
-      featureKey,
-      variableKey,
-      context: this.getContext(context, featureKey as string, variableKey),
-
-      logger: this.logger,
-      datafileReader: this.datafileReader,
-
-      stickyFeatures: this.stickyFeatures,
-
-      bucketKeySeparator: this.bucketKeySeparator,
-      configureBucketKey: this.configureBucketKey,
-      configureBucketValue: this.configureBucketValue,
-    });
+    return evaluate(
+      {
+        type: "variable",
+        featureKey,
+        variableKey,
+      },
+      this.getEvaluationDependencies(featureKey, context),
+    );
   }
 
   // @TODO: consider default value as optional argument
