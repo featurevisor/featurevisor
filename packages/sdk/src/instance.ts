@@ -11,6 +11,7 @@ import {
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
+import { Emitter, EventCallback, EventName } from "./emitter";
 import { DatafileReader } from "./datafileReader";
 import { ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
 import { Evaluation, EvaluateDependencies, evaluate } from "./evaluate";
@@ -72,6 +73,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+// @TODO: name it better
 export interface AdditionalOptions {
   stickyFeatures?: StickyFeatures;
   // @TODO: defaultValue?
@@ -283,6 +285,7 @@ export class FeaturevisorInstance {
   private context: Context = {};
   private interceptContext?: InterceptContext;
   private logger: Logger;
+  private emitter: Emitter;
   private stickyFeatures?: StickyFeatures;
 
   // internally created
@@ -296,6 +299,7 @@ export class FeaturevisorInstance {
     this.context = options.context || {};
     this.interceptContext = options.interceptContext;
     this.logger = options.logger || createLogger();
+    this.emitter = new Emitter();
     this.stickyFeatures = options.stickyFeatures;
 
     // datafile
@@ -336,12 +340,9 @@ export class FeaturevisorInstance {
       : featureKey; // full feature provided
   }
 
-  // @TODO: bring "on" method back
-  //
-  // needed for at least listening to:
-  //
-  // - datafile updates
-  // - context changes (if we are setting context)
+  on(eventName: EventName, callback: EventCallback) {
+    return this.emitter.on(eventName, callback);
+  }
 
   /**
    * Context
