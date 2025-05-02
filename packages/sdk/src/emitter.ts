@@ -1,4 +1,4 @@
-export type EventName = "datafile_set" | "datafile_changed" | "context_set";
+export type EventName = "datafile_set" | "context_set" | "sticky_features_set";
 
 export interface EventDetails {
   [key: string]: string | number | boolean | string[];

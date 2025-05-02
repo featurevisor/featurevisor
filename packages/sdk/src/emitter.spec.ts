@@ -27,7 +27,7 @@ describe("Emitter", () => {
     expect(handledDetails[0]).toEqual({ key: "value" });
 
     // trigger unsubscribed event
-    emitter.trigger("datafile_changed", { key: "value2" });
+    emitter.trigger("sticky_features_set", { key: "value2" });
     expect(handledDetails.length).toBe(1);
 
     // unsubscribe

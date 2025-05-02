@@ -316,28 +316,50 @@ export class FeaturevisorInstance {
 
   setDatafile(datafile: DatafileContentV2 | string) {
     try {
+      const previousRevision = this.datafileReader.getRevision();
       this.datafileReader = new DatafileReader(
         typeof datafile === "string" ? JSON.parse(datafile) : datafile,
       );
+      const newRevision = this.datafileReader.getRevision();
 
-      this.logger.info("datafile set", { revision: this.datafileReader.getRevision() });
+      const details = {
+        revision: newRevision,
+        previousRevision,
+        changed: previousRevision !== newRevision,
+        // features: [], // @TODO: affected features
+      };
+
+      this.logger.info("datafile set", details);
+      this.emitter.trigger("datafile_set", details);
     } catch (e) {
       this.logger.error("could not parse datafile", { error: e });
     }
   }
 
   setStickyFeatures(stickyFeatures: StickyFeatures | undefined) {
+    const keysBefore = Object.keys(this.stickyFeatures || {});
+    const keysAfter = Object.keys(stickyFeatures || {});
+
+    const allKeys = [...keysBefore, ...keysAfter];
+    const uniqueFeaturesAffected = allKeys.filter(
+      (element, index) => allKeys.indexOf(element) === index,
+    );
+
     this.stickyFeatures = stickyFeatures;
+
+    this.emitter.trigger("sticky_features_set", {
+      featuresBefore: keysBefore,
+      featuresAfter: keysAfter,
+      features: uniqueFeaturesAffected,
+    });
   }
 
   getRevision(): string {
     return this.datafileReader.getRevision();
   }
 
-  getFeature(featureKey: string | Feature): Feature | undefined {
-    return typeof featureKey === "string"
-      ? this.datafileReader.getFeature(featureKey) // only key provided
-      : featureKey; // full feature provided
+  getFeature(featureKey: string): Feature | undefined {
+    return this.datafileReader.getFeature(featureKey);
   }
 
   on(eventName: EventName, callback: EventCallback) {
@@ -354,7 +376,13 @@ export class FeaturevisorInstance {
       this.context = { ...this.context, ...context };
     }
 
-    this.logger.debug(replace ? "context replaced" : "context updated", { context: this.context });
+    this.emitter.trigger("context_set", {
+      replaced: replace,
+    });
+    this.logger.debug(replace ? "context replaced" : "context updated", {
+      context: this.context,
+      replaced: replace,
+    });
   }
 
   getContext(context?: Context, featureKey?: FeatureKey, variableKey?: VariableKey): Context {
