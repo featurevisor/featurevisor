@@ -74,6 +74,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
 
 export interface AdditionalOptions {
   stickyFeatures?: StickyFeatures;
+  // @TODO: defaultValue?
 }
 
 export interface InstanceWithContextOptions {
