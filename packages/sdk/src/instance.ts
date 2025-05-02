@@ -73,6 +73,25 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
   }
 }
 
+function getParamsForStickyFeaturesSetEvent(
+  previousStickyFeatures: StickyFeatures = {},
+  newStickyFeatures: StickyFeatures = {},
+) {
+  const keysBefore = Object.keys(previousStickyFeatures);
+  const keysAfter = Object.keys(newStickyFeatures);
+
+  const allKeys = [...keysBefore, ...keysAfter];
+  const uniqueFeaturesAffected = allKeys.filter(
+    (element, index) => allKeys.indexOf(element) === index,
+  );
+
+  return {
+    featuresBefore: keysBefore,
+    featuresAfter: keysAfter,
+    features: uniqueFeaturesAffected,
+  };
+}
+
 // @TODO: name it better
 export interface AdditionalOptions {
   stickyFeatures?: StickyFeatures;
@@ -89,11 +108,25 @@ export class FeaturevisorInstanceWithContext {
   private parent: FeaturevisorInstance;
   private context: Context;
   private stickyFeatures: StickyFeatures;
+  private emitter: Emitter;
 
   constructor(options) {
     this.parent = options.parent;
     this.context = options.context;
     this.stickyFeatures = options.stickyFeatures || {};
+    this.emitter = new Emitter();
+  }
+
+  on(eventName: EventName, callback: EventCallback) {
+    if (eventName === "context_set" || eventName === "sticky_features_set") {
+      return this.emitter.on(eventName, callback);
+    }
+
+    return this.parent.on(eventName, callback);
+  }
+
+  close() {
+    this.emitter.clearAll();
   }
 
   setContext(context: Context, replace = false) {
@@ -103,11 +136,17 @@ export class FeaturevisorInstanceWithContext {
       this.context = { ...this.context, ...context };
     }
 
-    // @TODO: how to deal with logs inside child instance?
+    this.emitter.trigger("context_set", {
+      replaced: replace,
+    });
   }
 
   setStickyFeatures(stickyFeatures: StickyFeatures) {
+    const params = getParamsForStickyFeaturesSetEvent(this.stickyFeatures, stickyFeatures);
+
     this.stickyFeatures = stickyFeatures;
+
+    this.emitter.trigger("sticky_features_set", params);
   }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
@@ -337,21 +376,12 @@ export class FeaturevisorInstance {
   }
 
   setStickyFeatures(stickyFeatures: StickyFeatures | undefined) {
-    const keysBefore = Object.keys(this.stickyFeatures || {});
-    const keysAfter = Object.keys(stickyFeatures || {});
-
-    const allKeys = [...keysBefore, ...keysAfter];
-    const uniqueFeaturesAffected = allKeys.filter(
-      (element, index) => allKeys.indexOf(element) === index,
-    );
+    const params = getParamsForStickyFeaturesSetEvent(this.stickyFeatures, stickyFeatures);
 
     this.stickyFeatures = stickyFeatures;
 
-    this.emitter.trigger("sticky_features_set", {
-      featuresBefore: keysBefore,
-      featuresAfter: keysAfter,
-      features: uniqueFeaturesAffected,
-    });
+    this.logger.info("sticky features set", params);
+    this.emitter.trigger("sticky_features_set", params);
   }
 
   getRevision(): string {
@@ -364,6 +394,10 @@ export class FeaturevisorInstance {
 
   on(eventName: EventName, callback: EventCallback) {
     return this.emitter.on(eventName, callback);
+  }
+
+  close() {
+    this.emitter.clearAll();
   }
 
   /**
