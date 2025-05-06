@@ -104,7 +104,7 @@ export interface InstanceWithContextOptions {
   stickyFeatures?: StickyFeatures;
 }
 
-export class FeaturevisorInstanceWithContext {
+export class FeaturevisorChildInstance {
   private parent: FeaturevisorInstance;
   private context: Context;
   private stickyFeatures: StickyFeatures;
@@ -441,8 +441,8 @@ export class FeaturevisorInstance {
     return result;
   }
 
-  withContext(context: Context, options: AdditionalOptions = {}): FeaturevisorInstanceWithContext {
-    return new FeaturevisorInstanceWithContext({
+  withContext(context: Context, options: AdditionalOptions = {}): FeaturevisorChildInstance {
+    return new FeaturevisorChildInstance({
       parent: this,
       context: this.getContext(context),
       stickyFeatures: options.stickyFeatures,
