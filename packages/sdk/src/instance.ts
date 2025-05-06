@@ -365,7 +365,7 @@ export class FeaturevisorInstance {
         revision: newRevision,
         previousRevision,
         changed: previousRevision !== newRevision,
-        // features: [], // @TODO: affected features
+        // features: [], // @TODO: affected features (by hash + parent/required changes)
       };
 
       this.logger.info("datafile set", details);

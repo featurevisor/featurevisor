@@ -352,6 +352,7 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
+  // hash?: string; // @TODO: against environment
   variations?: {
     value: VariationValue;
     weight: Weight;
