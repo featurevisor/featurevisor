@@ -30,7 +30,7 @@ export interface InstanceOptions {
   configureBucketValue?: ConfigureBucketValue;
   datafile?: DatafileContentV2 | string;
   context?: Context;
-  interceptContext?: InterceptContext;
+  interceptContext?: InterceptContext; // @TODO: remove in favour of hooks?
   logger?: Logger;
   stickyFeatures?: StickyFeatures;
 }
@@ -141,6 +141,7 @@ export class FeaturevisorChildInstance {
     });
   }
 
+  // @TODO: `replace` argument?
   setStickyFeatures(stickyFeatures: StickyFeatures) {
     const params = getParamsForStickyFeaturesSetEvent(this.stickyFeatures, stickyFeatures);
 
@@ -326,6 +327,7 @@ export class FeaturevisorInstance {
   private logger: Logger;
   private emitter: Emitter;
   private stickyFeatures?: StickyFeatures;
+  // @TODO: hooks?
 
   // internally created
   private datafileReader: DatafileReader;
@@ -375,6 +377,10 @@ export class FeaturevisorInstance {
     }
   }
 
+  // @TODO: setPartialDatafile?
+  // @TODO: setForce?
+
+  // @TODO: `replace` argument?
   setStickyFeatures(stickyFeatures: StickyFeatures | undefined) {
     const params = getParamsForStickyFeaturesSetEvent(this.stickyFeatures, stickyFeatures);
 
