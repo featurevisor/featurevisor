@@ -453,6 +453,7 @@ export async function buildDatafile(
   }, {});
 
   datafileContentV2.features = features.reduce((acc, feature) => {
+    // @TODO: subset of feature only needed here for datafile
     acc[feature.key] = feature;
 
     // @TODO: finish implementation
