@@ -78,7 +78,7 @@ export type SegmentKey = string;
 export interface Segment {
   archived?: boolean; // only available in YAML files
   key: SegmentKey; // @TODO: remove
-  // hash?: string; // @TODO: introduce in datafile only?
+  hash?: string; // introduce in datafile only for change detection (@TODO: may not be needed here, and only needed for features)
   conditions: Condition | Condition[] | string; // string only when stringified for datafile
   description?: string; // only available in YAML files
 }
@@ -237,7 +237,7 @@ export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
   key: FeatureKey; // @TODO: remove
-  // hash?: string; // @TODO: introduce in datafile only?
+  hash?: string; // introduce in datafile only for change detection
   deprecated?: boolean;
   required?: Required[];
   variablesSchema?: Record<VariableKey, VariableSchema>;
@@ -352,7 +352,7 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
-  // hash?: string; // @TODO: against environment
+  hash?: string; // @TODO: hash for detecting if feature has changed
   variations?: {
     value: VariationValue;
     weight: Weight;

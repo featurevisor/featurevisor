@@ -41,6 +41,19 @@ export interface CustomDatafileOptions {
   inflate?: number;
 }
 
+function generateHashFromJSON(json: any): string {
+  // @TODO: use murmurhash here later, but with alphanumeric characters only
+  const jsonString = JSON.stringify(json);
+  let hash = 0;
+
+  for (let i = 0; i < jsonString.length; i++) {
+    hash = (hash << 5) - hash + jsonString.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+
+  return hash.toString();
+}
+
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
   let featuresToInclude;
 
@@ -430,15 +443,39 @@ export async function buildDatafile(
     features: {},
   };
 
+  // @TODO: populate hash values in entities for detecting changes
+
   datafileContentV2.segments = segments.reduce((acc, segment) => {
     acc[segment.key] = segment;
+    acc[segment.key].hash = generateHashFromJSON(segment); // @TODO: may not be needed
+
     return acc;
   }, {});
 
   datafileContentV2.features = features.reduce((acc, feature) => {
     acc[feature.key] = feature;
+
+    // @TODO: finish implementation
+    acc[feature.key].hash = generateHashFromJSON({
+      key: feature.key,
+
+      bucketBy: feature.bucketBy,
+      required: feature.required,
+      deprecated: feature.deprecated,
+      variablesSchema: feature.variablesSchema,
+      variations: feature.variations,
+      traffic: feature.traffic,
+      force: feature.force,
+      ranges: feature.ranges,
+
+      requiredFeatureHashes: [], // @TODO: required features, and their hashes. recursion involved here
+      usedSegmentHashes: [], // @TODO
+    });
+
     return acc;
   }, {});
+
+  // @TODO: update hashes in existingState
 
   return datafileContentV2;
 }
