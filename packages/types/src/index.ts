@@ -217,6 +217,10 @@ export interface Traffic {
   variables?: {
     [key: string]: VariableValue;
   };
+  // @TODO
+  // variationWeights?: {
+  //   [key: string]: Weight;
+  // };
 
   allocation?: Allocation[];
 }
@@ -307,6 +311,10 @@ export interface Rule {
   variables?: {
     [key: string]: VariableValue;
   };
+  // @TODO
+  // variationWeights?: {
+  //   [key: string]: Weight;
+  // };
 }
 
 export type Tag = string;
