@@ -71,6 +71,7 @@ export interface NotCondition {
 
 export type AndOrNotCondition = AndCondition | OrCondition | NotCondition;
 
+// @TODO: allow "*"
 export type Condition = PlainCondition | AndOrNotCondition;
 
 export type SegmentKey = string;
@@ -165,6 +166,7 @@ export interface VariableSchema {
   type: VariableType;
   defaultValue: VariableValue;
   description?: string; // only available in YAML files
+  // @TODO: useDefaultValueWhenDisabled?: boolean;
 }
 
 export type FeatureKey = string;
