@@ -20,7 +20,7 @@ variations:
     weight: 33
   - value: b
     weight: 33
-    variables:
+    variables: # @TODO: make it a dictionary
       - key: hero
         value:
           title: Hero Title for B
