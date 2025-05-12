@@ -41,9 +41,21 @@ export type Operator =
   | "semverLessThan"
   | "semverLessThanOrEquals"
 
+  // @TODO
+  // | "validSemver"
+  // | "notValidSemver"
+
   // date comparisons
   | "before"
   | "after"
+
+  // @TODO: when context[attribute] is array of strings
+  // | "includes"
+  // | "notIncludes"
+
+  // @TODO: regex
+  // | "matches"
+  // | "notMatches"
 
   // array of strings
   | "in"
