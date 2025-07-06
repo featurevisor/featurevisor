@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.35.4](https://github.com/featurevisor/featurevisor/compare/v1.35.3...v1.35.4) (2025-07-06)
+
+**Note:** Version bump only for package featurevisor
+
+
+
+
+
 ## [1.35.3](https://github.com/featurevisor/featurevisor/compare/v1.35.2...v1.35.3) (2025-04-12)
 
 **Note:** Version bump only for package featurevisor
