@@ -163,6 +163,7 @@ function superRefineVariableValue(
           });
         }
       }
+      // eslint-disable-next-line
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -177,7 +178,7 @@ function superRefineVariableValue(
 
 function refineForce({
   ctx,
-  parsedFeature,
+  parsedFeature, // eslint-disable-line
   variableSchemaByKey,
   variationValues,
   force,

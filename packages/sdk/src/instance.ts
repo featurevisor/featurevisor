@@ -162,20 +162,12 @@ export class FeaturevisorInstance {
   }
 
   getContext(context?: Context): Context {
-    let result: Context = {};
-
-    if (context) {
-      result = { ...context };
-    }
-
-    if (this.context) {
-      result = {
-        ...this.context,
-        ...result,
-      };
-    }
-
-    return result;
+    return context
+      ? {
+          ...this.context,
+          ...context,
+        }
+      : this.context;
   }
 
   spawn(context: Context = {}, options: OverrideOptions = {}): FeaturevisorChildInstance {

@@ -1,6 +1,5 @@
-import type { Context, Condition, PlainCondition, AttributeValue } from "@featurevisor/types";
+import type { Context, PlainCondition, AttributeValue } from "@featurevisor/types";
 
-import { Logger } from "./logger";
 import { GetRegex } from "./datafileReader";
 import { compareVersions } from "./compareVersions";
 

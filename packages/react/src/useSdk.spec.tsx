@@ -42,8 +42,10 @@ describe("react: useSdk", function () {
   });
 
   test("should return the sdk", function () {
+    let sdk;
+
     function TestComponent() {
-      const sdk = useSdk();
+      sdk = useSdk();
 
       return <p>Test</p>;
     }
@@ -55,5 +57,7 @@ describe("react: useSdk", function () {
     );
 
     expect(screen.getByText("Test")).toBeInTheDocument();
+
+    expect(sdk).toBeDefined();
   });
 });

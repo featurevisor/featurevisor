@@ -416,7 +416,7 @@ function printResult({ result, entityType, options }) {
 }
 
 export async function listProject(deps: Dependencies) {
-  const { rootDirectoryPath, projectConfig, datasource, options } = deps;
+  const { options } = deps;
 
   // features
   if (options.features) {

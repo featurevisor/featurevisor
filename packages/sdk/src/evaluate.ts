@@ -730,9 +730,6 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         if (variation && variation.variableOverrides && variation.variableOverrides[variableKey]) {
           const overrides = variation.variableOverrides[variableKey];
 
-          const getRegex = (regexString, regexFlags) =>
-            datafileReader.getRegex(regexString, regexFlags);
-
           const override = overrides.find((o) => {
             if (o.conditions) {
               return datafileReader.allConditionsAreMatched(

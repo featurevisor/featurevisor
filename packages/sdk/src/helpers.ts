@@ -26,6 +26,7 @@ export function getValueByType(value: ValueType, fieldType: FieldType): ValueTyp
       default:
         return value;
     }
+    // eslint-disable-next-line
   } catch (e) {
     return null;
   }

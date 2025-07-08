@@ -57,7 +57,6 @@ export function getParamsForDatafileSetEvent(
   }
 
   // checking against new datafile
-  const newFeatureKeysThatWereAdded: FeatureKey[] = [];
   for (const newFeatureKey of newFeatureKeys) {
     if (previousFeatureKeys.indexOf(newFeatureKey) === -1) {
       // feature was added in new datafile

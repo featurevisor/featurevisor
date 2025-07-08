@@ -4,7 +4,7 @@ export type EventDetails = Record<string, unknown>;
 
 export type EventCallback = (details: EventDetails) => void;
 
-export type Listeners = Record<EventName, EventCallback[]> | {};
+export type Listeners = Record<EventName, EventCallback[]> | {}; // eslint-disable-line
 
 export class Emitter {
   listeners: Listeners;
@@ -21,7 +21,6 @@ export class Emitter {
     const listeners = this.listeners[eventName];
     listeners.push(callback);
 
-    const self = this;
     let isActive = true;
 
     return function unsubscribe() {

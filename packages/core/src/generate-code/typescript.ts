@@ -47,30 +47,6 @@ function getRelativePath(from, to) {
   return relativePath;
 }
 
-function getFeaturevisorTypeFromValue(value) {
-  if (typeof value === "boolean") {
-    return "boolean";
-  }
-
-  if (typeof value === "string") {
-    return "string";
-  }
-
-  if (typeof value === "number") {
-    if (Number.isInteger(value)) {
-      return "integer";
-    }
-
-    return "double";
-  }
-
-  if (value instanceof Date) {
-    return "date";
-  }
-
-  throw new Error("Could not detect Featurevisor type from value");
-}
-
 const instanceSnippet = `
 import { FeaturevisorInstance } from "@featurevisor/sdk";
 

@@ -196,6 +196,7 @@ export class FilesystemAdapter extends Adapter {
       }
 
       return "0";
+      // eslint-disable-next-line
     } catch (e) {
       return "0";
     }

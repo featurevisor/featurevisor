@@ -466,14 +466,6 @@ export async function buildDatafile(
   });
 
   if (options.revisionFromHash) {
-    const featureHashes = Object.keys(datafileContentV2.features).reduce(
-      (acc, featureKey) => {
-        acc[featureKey] = datafileContentV2.features[featureKey].hash || "";
-        return acc;
-      },
-      {} as Record<FeatureKey, string>,
-    );
-
     const datafileHash = generateHashForDatafile(datafileContentV2);
     datafileContentV2.revision = `${datafileHash}`;
   }
