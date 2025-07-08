@@ -21,6 +21,38 @@ test-datafiles:
 	$(call exists,showBanner,./datafiles/production/featurevisor-tag-checkout.json)
 	$(call notExists,hidden,./datafiles/production/featurevisor-tag-all.json)
 
+test-assess-distribution:
+	@echo "Testing distribution files"
+	npx featurevisor assess-distribution --feature=foo --environment=staging    --populateUuid=userId --context='{"device": "mobile", "country": "nl"}' -n=1000
+	npx featurevisor assess-distribution --feature=foo --environment=production --populateUuid=userId --context='{"device": "mobile", "country": "nl"}' -n=1000
+	npx featurevisor assess-distribution --feature=foo --environment=production --populateUuid=userId --context='{"device": "mobile", "country": "de"}' -n=1000
+
+test-benchmark:
+	@echo "Testing benchmark files"
+	npx featurevisor benchmark --feature=foo --environment=staging --context='{"device": "mobile", "country": "nl"}' -n=1000
+
+test-evaluate:
+	@echo "Testing evaluation"
+	npx featurevisor evaluate --feature=foo --environment=staging --context='{"device": "mobile", "country": "nl"}'
+
 test:
 	npx featurevisor test
+
 	make test-datafiles
+	make test-assess-distribution
+	make test-benchmark
+	make test-evaluate
+
+	npx featurevisor find-duplicate-segments
+
+	npx featurevisor find-usage --segment=mobile
+	npx featurevisor find-usage --unusedSegments
+
+	npx featurevisor find-usage --attribute=country
+	npx featurevisor find-usage --unusedAttributes
+
+	npx featurevisor list --attributes
+	npx featurevisor list --segments
+	npx featurevisor list --features
+
+	npx featurevisor info
