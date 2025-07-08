@@ -65,11 +65,8 @@ import { useFlag } from '@featurevisor/react'
 
 function MyComponent(props) {
   const featureKey = 'myFeatureKey'
-  const context = {
-    // ...additional context
-  }
 
-  const isEnabled = useFlag(featureKey, context)
+  const isEnabled = useFlag(featureKey)
 
   if (isEnabled) {
     return <p>Feature is enabled</p>
@@ -84,22 +81,19 @@ function MyComponent(props) {
 Get a feature's evaluated variation:
 
 ```jsx
-import React from "react":
-import { useVariation } from "@featurevisor/react";
+import React from 'react':
+import { useVariation } from '@featurevisor/react';
 
 function MyComponent(props) {
-  const featureKey = "myFeatureKey";
-  const context = {
-    // ...additional context
-  };
+  const featureKey = 'myFeatureKey';
 
-  const variation = useVariation(featureKey, context);
+  const variation = useVariation(featureKey);
 
-  if (variation === "b") {
+  if (variation === 'b') {
     return <p>B variation</p>;
   }
 
-  if (variation === "c") {
+  if (variation === 'c') {
     return <p>C variation</p>;
   }
 
@@ -113,21 +107,59 @@ function MyComponent(props) {
 Get a feature's evaluated variable value:
 
 ```jsx
-import React from "react":
-import { useVariable } from "@featurevisor/react";
+import React from 'react':
+import { useVariable } from '@featurevisor/react';
 
 function MyComponent(props) {
-  const featureKey = "myFeatureKey";
-  const variableKey = "color";
-  const context = {
-    // ...additional context
-  };
+  const featureKey = 'myFeatureKey';
+  const variableKey = 'color';
 
-  const colorValue = useVariable(featureKey, variableKey, context);
+  const colorValue = useVariable(featureKey, variableKey);
 
   return <p>Color: {colorValue}</p>;
 };
 ```
+
+### useSdk
+
+In case you need to access the underlying Featurevisor SDK instance:
+
+```jsx
+import React from 'react'
+import { useSdk } from '@featurevisor/react'
+
+function MyComponent(props) {
+  const f = useSdk()
+
+  return <p>...</p>
+}
+```
+
+## Passing additional context
+
+All the evaluation hooks accept an optional argument for passing additional component-level context:
+
+```js
+const context = {
+  // ... additional context here in component
+}
+
+useFlag(featureKey, context)
+useVariation(featureKey, context)
+useVariable(featureKey, variableKey, context)
+```
+
+## Reactivity
+
+All the evaluation hooks are reactive. This means that your components will automatically re-render when:
+
+- a newer [datafile is set](/docs/sdks/javascript/#setting-datafile)
+- [context is set or updated](/docs/sdks/javascript/#context)
+- [sticky features are set or updated](/docs/sdks/javascript/#sticky)
+
+The re-rendering logic is smart enough to compare previously known value with the new evaluated value, and will only re-render the component if the value has changed.
+
+If you do not want any reactivity, you are better off using the Featurevisor SDK instance directly in your component.
 
 ## Optimization
 

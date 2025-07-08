@@ -1776,6 +1776,16 @@ const f = createInstance({
 
 Learn more in [JavaScript SDK](/docs/sdks/javascript/) page.
 
+## React SDK usage
+
+All the hooks are now reactive. Meaning, your components will automatically re-render when:
+
+- a newew datafile is set
+- context is set or updated
+- sticky features are set or updated
+
+Learn more in [React SDK](/docs/react/) page.
+
 ---
 
 ## Testing features
