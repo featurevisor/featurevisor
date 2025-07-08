@@ -1,8 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as mkdirp from "mkdirp";
-
 import { generateHistory } from "./generateHistory";
 import { getRepoDetails } from "./getRepoDetails";
 import { generateSiteSearchIndex } from "./generateSiteSearchIndex";
@@ -13,7 +11,7 @@ export async function exportSite(deps: Dependencies) {
 
   const hasError = false;
 
-  mkdirp.sync(projectConfig.siteExportDirectoryPath);
+  fs.mkdirSync(projectConfig.siteExportDirectoryPath, { recursive: true });
 
   const sitePackagePath = path.dirname(require.resolve("@featurevisor/site/package.json"));
 

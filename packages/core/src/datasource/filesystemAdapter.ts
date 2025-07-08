@@ -2,8 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { execSync, spawn } from "child_process";
 
-import * as mkdirp from "mkdirp";
-
 import type {
   ExistingState,
   EnvironmentKey,
@@ -127,7 +125,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = this.getEntityPath(entityType, entityKey);
 
     if (!fs.existsSync(this.getEntityDirectoryPath(entityType))) {
-      mkdirp.sync(this.getEntityDirectoryPath(entityType));
+      fs.mkdirSync(this.getEntityDirectoryPath(entityType), { recursive: true });
     }
 
     fs.writeFileSync(filePath, this.parser.stringify(entity));
@@ -164,7 +162,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = getExistingStateFilePath(this.config, environment);
 
     if (!fs.existsSync(this.config.stateDirectoryPath)) {
-      mkdirp.sync(this.config.stateDirectoryPath);
+      fs.mkdirSync(this.config.stateDirectoryPath, { recursive: true });
     }
     fs.writeFileSync(
       filePath,
@@ -206,7 +204,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = getRevisionFilePath(this.config);
 
     if (!fs.existsSync(this.config.stateDirectoryPath)) {
-      mkdirp.sync(this.config.stateDirectoryPath);
+      fs.mkdirSync(this.config.stateDirectoryPath, { recursive: true });
     }
 
     fs.writeFileSync(filePath, revision);
@@ -242,7 +240,7 @@ export class FilesystemAdapter extends Adapter {
     const outputEnvironmentDirPath = options.environment
       ? path.join(dir, options.environment)
       : dir;
-    mkdirp.sync(outputEnvironmentDirPath);
+    fs.mkdirSync(outputEnvironmentDirPath, { recursive: true });
 
     const outputFilePath = this.getDatafilePath(options);
 

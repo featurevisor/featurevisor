@@ -1,8 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as mkdirp from "mkdirp";
-
 import { generateTypeScriptCodeForProject } from "./typescript";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
@@ -32,7 +30,7 @@ export async function generateCodeForProject(
 
   if (!fs.existsSync(absolutePath)) {
     console.log(`Creating output directory: ${absolutePath}`);
-    mkdirp.sync(absolutePath);
+    fs.mkdirSync(absolutePath, { recursive: true });
   } else {
     console.log(`Output directory already exists at: ${absolutePath}`);
   }
