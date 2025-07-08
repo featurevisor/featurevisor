@@ -4,7 +4,7 @@ import { execSync, spawn } from "child_process";
 
 import * as mkdirp from "mkdirp";
 
-import {
+import type {
   ExistingState,
   EnvironmentKey,
   DatafileContent,

@@ -1,6 +1,12 @@
 import * as crypto from "crypto";
 
-import { FeatureKey, Feature, SegmentKey, Segment, DatafileContentV2 } from "@featurevisor/types";
+import type {
+  FeatureKey,
+  Feature,
+  SegmentKey,
+  Segment,
+  DatafileContent,
+} from "@featurevisor/types";
 
 import { extractSegmentsFromFeature } from "../utils";
 
@@ -83,7 +89,7 @@ export function generateHashForFeature(
   );
 }
 
-export function generateHashForDatafile(datafileContent: DatafileContentV2): string {
+export function generateHashForDatafile(datafileContent: DatafileContent): string {
   const featureHashes = Object.keys(datafileContent.features).reduce(
     (acc, featureKey) => {
       acc[featureKey] = datafileContent.features[featureKey].hash || "";

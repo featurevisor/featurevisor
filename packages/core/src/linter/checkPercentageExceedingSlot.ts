@@ -1,4 +1,4 @@
-import { Group, Rule } from "@featurevisor/types";
+import type { Group, Rule } from "@featurevisor/types";
 
 import { Datasource } from "../datasource";
 

@@ -5,6 +5,7 @@ import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
+import type { DatafileContent } from "@featurevisor/types";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -58,7 +59,7 @@ async function buildForEnvironment({
     );
 
     // write datafile for environment/tag
-    await datasource.writeDatafile(datafileContent, {
+    await datasource.writeDatafile(datafileContent as DatafileContent, {
       environment,
       tag,
       datafilesDir: cliOptions.datafilesDir,

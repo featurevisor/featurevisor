@@ -3,12 +3,12 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { createInstance } from "@featurevisor/sdk";
-import { DatafileContentV2 } from "@featurevisor/types";
+import { DatafileContent } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariable } from "./useVariable";
 
-function getNewDatafile(colorValue = "red"): DatafileContentV2 {
+function getNewDatafile(colorValue = "red"): DatafileContent {
   return {
     schemaVersion: "2",
     revision: "1.0",

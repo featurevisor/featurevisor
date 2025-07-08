@@ -1,4 +1,4 @@
-import { SearchIndex } from "@featurevisor/types";
+import type { SearchIndex } from "@featurevisor/types";
 
 export interface Query {
   keyword: string;

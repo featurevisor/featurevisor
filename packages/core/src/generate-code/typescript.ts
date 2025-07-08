@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { Attribute } from "@featurevisor/types";
+import type { Attribute } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
@@ -121,7 +121,7 @@ export async function generateTypeScriptCodeForProject(deps: Dependencies, outpu
     })
     .join("\n");
   const contextContent = `
-import { AttributeKey, AttributeValue } from "@featurevisor/types";
+import type { AttributeKey, AttributeValue } from "@featurevisor/types";
 
 export interface Context {
 ${attributeProperties}

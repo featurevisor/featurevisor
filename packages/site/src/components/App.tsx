@@ -36,7 +36,7 @@ import {
 } from "./ShowFeature";
 
 import { SearchIndexContext } from "../contexts/SearchIndexContext";
-import { SearchIndex } from "@featurevisor/types";
+import type { SearchIndex } from "@featurevisor/types";
 
 export function App() {
   const [fetchedSearchIndex, setSearchIndex] = React.useState(undefined);

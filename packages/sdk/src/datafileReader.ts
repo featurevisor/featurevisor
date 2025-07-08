@@ -1,7 +1,7 @@
 import type {
   Feature,
   Segment,
-  DatafileContentV2,
+  DatafileContent,
   SegmentKey,
   FeatureKey,
   Context,
@@ -18,7 +18,7 @@ import { Logger } from "./logger";
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
 export interface DatafileReaderOptions {
-  datafile: DatafileContentV2;
+  datafile: DatafileContent;
   logger: Logger;
 }
 

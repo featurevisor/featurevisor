@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { TestSegment, TestFeature, Test, DatafileContent } from "@featurevisor/types";
+import type { TestSegment, TestFeature, Test, DatafileContent } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
@@ -142,7 +142,7 @@ export async function testProject(
         existingState,
       );
 
-      datafileContentByEnvironment.set(environment, datafileContent);
+      datafileContentByEnvironment.set(environment, datafileContent as DatafileContent);
     }
   }
 
@@ -161,7 +161,7 @@ export async function testProject(
       existingState,
     );
 
-    datafileContentByEnvironment.set(false, datafileContent);
+    datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
   }
 
   const tests = await listEntities<Test>(

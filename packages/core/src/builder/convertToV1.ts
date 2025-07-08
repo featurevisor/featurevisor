@@ -1,4 +1,4 @@
-import {
+import type {
   DatafileContentV1,
   FeatureV1,
   VariableSchema,

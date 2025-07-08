@@ -8,7 +8,7 @@ import type {
   VariableValue,
   VariationValue,
   VariableKey,
-  DatafileContentV2,
+  DatafileContent,
 } from "@featurevisor/types";
 
 import { createLogger, Logger, LogLevel } from "./logger";
@@ -20,7 +20,7 @@ import { FeaturevisorChildInstance } from "./child";
 import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events";
 import { getValueByType } from "./helpers";
 
-const emptyDatafile: DatafileContentV2 = {
+const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
   revision: "unknown",
   segments: {},
@@ -35,7 +35,7 @@ export interface OverrideOptions {
 }
 
 export interface InstanceOptions {
-  datafile?: DatafileContentV2 | string;
+  datafile?: DatafileContent | string;
   context?: Context;
   logger?: Logger;
   sticky?: StickyFeatures;
@@ -85,7 +85,7 @@ export class FeaturevisorInstance {
     this.logger.setLevels(levels);
   }
 
-  setDatafile(datafile: DatafileContentV2 | string) {
+  setDatafile(datafile: DatafileContent | string) {
     try {
       const newDatafileReader = new DatafileReader({
         datafile: typeof datafile === "string" ? JSON.parse(datafile) : datafile,

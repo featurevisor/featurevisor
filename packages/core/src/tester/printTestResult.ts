@@ -1,4 +1,4 @@
-import { TestResult } from "@featurevisor/types";
+import type { TestResult } from "@featurevisor/types";
 
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 import { prettyDuration } from "./prettyDuration";

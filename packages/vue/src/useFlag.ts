@@ -1,4 +1,4 @@
-import { Context, FeatureKey } from "@featurevisor/types";
+import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk";
 

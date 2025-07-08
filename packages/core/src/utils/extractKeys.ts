@@ -1,4 +1,10 @@
-import { Condition, AttributeKey, GroupSegment, SegmentKey, Feature } from "@featurevisor/types";
+import type {
+  Condition,
+  AttributeKey,
+  GroupSegment,
+  SegmentKey,
+  Feature,
+} from "@featurevisor/types";
 
 export function extractSegmentsFromFeature(feature: Feature): Set<SegmentKey> {
   const result = new Set<SegmentKey>();

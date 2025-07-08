@@ -1,4 +1,4 @@
-import { AssertionMatrix, FeatureAssertion, SegmentAssertion } from "@featurevisor/types";
+import type { AssertionMatrix, FeatureAssertion, SegmentAssertion } from "@featurevisor/types";
 
 function generateCombinations(
   keys: string[],

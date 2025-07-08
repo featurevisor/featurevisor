@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
+import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk";
 import { onFeatureChange } from "./onFeatureChange";

@@ -1,5 +1,5 @@
 import { FeaturevisorInstance } from "@featurevisor/sdk";
-import { FeatureKey } from "@featurevisor/types";
+import type { FeatureKey } from "@featurevisor/types";
 
 export function onFeatureChange(sdk: FeaturevisorInstance, featureKey: FeatureKey, fn) {
   // datafile_set

@@ -1,4 +1,4 @@
-import { Range } from "@featurevisor/types";
+import type { Range } from "@featurevisor/types";
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
 describe("core: allocator", function () {

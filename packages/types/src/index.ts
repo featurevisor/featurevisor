@@ -318,8 +318,7 @@ export interface DatafileContentV1 {
   features: FeatureV1[];
 }
 
-// @TODO: rename it to only DatafileContent
-export interface DatafileContentV2 {
+export interface DatafileContent {
   schemaVersion: string;
   revision: string;
   segments: {
@@ -329,8 +328,6 @@ export interface DatafileContentV2 {
     [key: FeatureKey]: Feature;
   };
 }
-
-export type DatafileContent = DatafileContentV1 | DatafileContentV2;
 
 export interface EvaluatedFeature {
   enabled: boolean;

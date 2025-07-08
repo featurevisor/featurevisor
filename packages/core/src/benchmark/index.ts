@@ -1,4 +1,4 @@
-import { Context, DatafileContentV2 } from "@featurevisor/types";
+import type { Context, DatafileContent } from "@featurevisor/types";
 import { FeaturevisorInstance, createInstance, createLogger } from "@featurevisor/sdk";
 
 import { SCHEMA_VERSION } from "../config";
@@ -125,7 +125,7 @@ export async function benchmarkFeature(
   console.log("");
 
   const f = createInstance({
-    datafile: datafileContent as DatafileContentV2,
+    datafile: datafileContent as DatafileContent,
     logger: createLogger({
       levels: ["warn", "error"],
     }),

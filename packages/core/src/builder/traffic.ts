@@ -1,4 +1,11 @@
-import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
+import type {
+  Rule,
+  ExistingFeature,
+  Traffic,
+  Variation,
+  Range,
+  Percentage,
+} from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";

@@ -1,6 +1,6 @@
 import * as crypto from "crypto";
 
-import { HistoryEntry, SegmentKey } from "@featurevisor/types";
+import type { HistoryEntry, SegmentKey } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 

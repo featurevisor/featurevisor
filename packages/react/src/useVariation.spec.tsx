@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariation } from "./useVariation";
 import { createInstance } from "@featurevisor/sdk";
-import { DatafileContent } from "@featurevisor/types";
+import type { DatafileContent } from "@featurevisor/types";
 
 function getNewDatafile(variationValue = "control") {
   return {

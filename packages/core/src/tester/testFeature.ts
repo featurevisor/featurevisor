@@ -1,5 +1,5 @@
-import {
-  DatafileContentV2,
+import type {
+  DatafileContent,
   TestFeature,
   TestResult,
   TestResultAssertion,
@@ -68,7 +68,7 @@ export async function testFeature(
     }
 
     const sdk: FeaturevisorInstance = createInstance({
-      datafile: datafileContent as DatafileContentV2,
+      datafile: datafileContent as DatafileContent,
       sticky: assertion.sticky ? assertion.sticky : {},
       hooks: [
         {

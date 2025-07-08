@@ -1,4 +1,4 @@
-import { Range, Percentage } from "@featurevisor/types";
+import type { Range, Percentage } from "@featurevisor/types";
 
 export function getAllocation(availableRanges: Range[], fill: Percentage): Range[] {
   const result: Range[] = [];

@@ -4,7 +4,7 @@ import {
   Segment,
   Feature,
   DatafileContent,
-  DatafileContentV2,
+  DatafileContentV1,
   Variation,
   VariableOverride,
   Traffic,
@@ -40,7 +40,9 @@ export interface CustomDatafileOptions {
   inflate?: number;
 }
 
-export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
+export async function getCustomDatafile(
+  options: CustomDatafileOptions,
+): Promise<DatafileContent | DatafileContentV1> {
   let featuresToInclude;
 
   if (options.featureKey) {
@@ -80,7 +82,7 @@ export async function buildDatafile(
   datasource: Datasource,
   options: BuildOptions,
   existingState: ExistingState,
-): Promise<DatafileContent> {
+): Promise<DatafileContent | DatafileContentV1> {
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
@@ -408,7 +410,7 @@ export async function buildDatafile(
   }
 
   // schema v2
-  const datafileContentV2: DatafileContentV2 = {
+  const datafileContentV2: DatafileContent = {
     schemaVersion: "2",
     revision: options.revision,
     segments: {},

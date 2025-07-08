@@ -1,4 +1,4 @@
-import type { DatafileContent, DatafileContentV2, GroupSegment } from "@featurevisor/types";
+import type { DatafileContent, GroupSegment } from "@featurevisor/types";
 
 import { DatafileReader } from "./datafileReader";
 import { createLogger } from "./logger";
@@ -147,7 +147,7 @@ describe("sdk: DatafileReader", function () {
       },
     ];
 
-    const datafileContent: DatafileContentV2 = {
+    const datafileContent: DatafileContent = {
       schemaVersion: "2",
       revision: "1",
       features: {},

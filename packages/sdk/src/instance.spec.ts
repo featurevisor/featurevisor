@@ -1,4 +1,4 @@
-import type { DatafileContentV2 } from "@featurevisor/types";
+import type { DatafileContent } from "@featurevisor/types";
 
 import { createInstance } from "./instance";
 import { createLogger } from "./logger";
@@ -293,7 +293,7 @@ describe("sdk: instance", function () {
   });
 
   it("should initialize with sticky features", function (done) {
-    const datafileContent: DatafileContentV2 = {
+    const datafileContent: DatafileContent = {
       schemaVersion: "2",
       revision: "1.0",
       features: {

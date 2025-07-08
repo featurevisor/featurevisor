@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { HistoryEntry } from "@featurevisor/types";
+import type { HistoryEntry } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 export async function generateHistory(deps: Dependencies): Promise<HistoryEntry[]> {
