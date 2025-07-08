@@ -94,11 +94,15 @@ Path to the directory containing your [tests](/docs/testing/).
 
 Defaults to `<rootDir>/tests`.
 
-### `outputDirectoryPath`
+### `datafilesDirectoryPath`
 
 Path to the directory for your generated [datafiles](/docs/building-datafiles/).
 
 Defaults to `<rootDir>/dist`.
+
+### `datafileNamePattern`
+
+Defaults to `featurevisor-%s.json`.
 
 ### `stateDirectoryPath`
 

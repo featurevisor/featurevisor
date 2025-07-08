@@ -42,6 +42,8 @@ assertions:
       userId: someone-else
       country: us
     expectedToBeEnabled: false
+    expectedVariables:
+      foo: null
 
   - at: 40
     environment: staging

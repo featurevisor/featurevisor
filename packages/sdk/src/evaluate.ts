@@ -1,5 +1,4 @@
-import {
-  Feature,
+import type {
   FeatureKey,
   Context,
   BucketKey,
@@ -8,52 +7,53 @@ import {
   Traffic,
   Force,
   Required,
-  OverrideFeature,
   Variation,
   VariationValue,
   VariableKey,
   VariableValue,
   VariableSchema,
+  EvaluatedFeature,
   StickyFeatures,
-  InitialFeatures,
   Allocation,
 } from "@featurevisor/types";
 
 import { Logger } from "./logger";
+import { HooksManager } from "./hooks";
 import { DatafileReader } from "./datafileReader";
-import { getBucket, ConfigureBucketKey, ConfigureBucketValue } from "./bucket";
-import {
-  getMatchedTraffic,
-  getMatchedTrafficAndAllocation,
-  findForceFromFeature,
-  parseFromStringifiedSegments,
-} from "./feature";
-import { allConditionsAreMatched } from "./conditions";
-import { allGroupSegmentsAreMatched } from "./segments";
-import type { Statuses, InterceptContext } from "./instance";
+import { getBucketKey, getBucketedNumber } from "./bucketer";
 
 export enum EvaluationReason {
-  NOT_FOUND = "not_found",
-  NO_VARIATIONS = "no_variations",
-  NO_MATCH = "no_match",
-  DISABLED = "disabled",
-  REQUIRED = "required",
-  OUT_OF_RANGE = "out_of_range",
-  FORCED = "forced",
-  INITIAL = "initial",
-  STICKY = "sticky",
-  RULE = "rule",
-  ALLOCATED = "allocated",
-  DEFAULTED = "defaulted",
-  OVERRIDE = "override",
-  ERROR = "error",
+  // feature specific
+  FEATURE_NOT_FOUND = "feature_not_found", // feature is not found in datafile
+  DISABLED = "disabled", // feature is disabled
+  REQUIRED = "required", // required features are not enabled
+  OUT_OF_RANGE = "out_of_range", // out of range when mutually exclusive experiments are involved via Groups
+
+  // variations specific
+  NO_VARIATIONS = "no_variations", // feature has no variations
+  VARIATION_DISABLED = "variation_disabled", // feature is disabled, and variation's disabledVariationValue is used
+
+  // variable specific
+  VARIABLE_NOT_FOUND = "variable_not_found", // variable's schema is not defined in the feature
+  VARIABLE_DEFAULT = "variable_default", // default variable value used
+  VARIABLE_DISABLED = "variable_disabled", // feature is disabled, and variable's disabledValue is used
+  VARIABLE_OVERRIDE = "variable_override", // variable overridden from inside a variation
+
+  // common
+  NO_MATCH = "no_match", // no rules matched
+  FORCED = "forced", // against a forced rule
+  STICKY = "sticky", // against a sticky feature
+  RULE = "rule", // against a regular rule
+  ALLOCATED = "allocated", // regular allocation based on bucketing
+
+  ERROR = "error", // error
 }
 
 type EvaluationType = "flag" | "variation" | "variable";
 
 export interface Evaluation {
   // required
-  // type: EvaluationType; // @TODO: bring in later
+  type: EvaluationType;
   featureKey: FeatureKey;
   reason: EvaluationReason;
 
@@ -67,8 +67,7 @@ export interface Evaluation {
   forceIndex?: number;
   force?: Force;
   required?: Required[];
-  sticky?: OverrideFeature;
-  initial?: OverrideFeature;
+  sticky?: EvaluatedFeature;
 
   // variation
   variation?: Variation;
@@ -80,47 +79,95 @@ export interface Evaluation {
   variableSchema?: VariableSchema;
 }
 
-export interface EvaluateOptions {
-  type: EvaluationType;
-
-  featureKey: FeatureKey | Feature;
-  variableKey?: VariableKey;
+export interface EvaluateDependencies {
   context: Context;
 
   logger: Logger;
+  hooksManager: HooksManager;
   datafileReader: DatafileReader;
-  statuses?: Statuses;
-  interceptContext?: InterceptContext;
 
-  stickyFeatures?: StickyFeatures;
-  initialFeatures?: InitialFeatures;
+  // OverrideOptions
+  sticky?: StickyFeatures;
 
-  bucketKeySeparator?: string;
-  configureBucketKey?: ConfigureBucketKey;
-  configureBucketValue?: ConfigureBucketValue;
+  defaultVariationValue?: VariationValue;
+  defaultVariableValue?: VariableValue;
+}
+
+export interface EvaluateParams {
+  type: EvaluationType;
+  featureKey: FeatureKey;
+  variableKey?: VariableKey;
+}
+
+export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
+
+export function evaluateWithHooks(opts: EvaluateOptions): Evaluation {
+  try {
+    const { hooksManager } = opts;
+    const hooks = hooksManager.getAll();
+
+    // run before hooks
+    let options = opts;
+    for (const hook of hooksManager.getAll()) {
+      if (hook.before) {
+        options = hook.before(options);
+      }
+    }
+
+    // evaluate
+    let evaluation = evaluate(options);
+
+    // default: variation
+    if (
+      typeof options.defaultVariationValue !== "undefined" &&
+      evaluation.type === "variation" &&
+      typeof evaluation.variationValue === "undefined"
+    ) {
+      evaluation.variationValue = options.defaultVariationValue;
+    }
+
+    // default: variable
+    if (
+      typeof options.defaultVariableValue !== "undefined" &&
+      evaluation.type === "variable" &&
+      typeof evaluation.variableValue === "undefined"
+    ) {
+      evaluation.variableValue = options.defaultVariableValue;
+    }
+
+    // run after hooks
+    for (const hook of hooks) {
+      if (hook.after) {
+        evaluation = hook.after(evaluation, options);
+      }
+    }
+
+    return evaluation;
+  } catch (e) {
+    const { type, featureKey, variableKey, logger } = opts;
+
+    const evaluation: Evaluation = {
+      type,
+      featureKey,
+      variableKey,
+      reason: EvaluationReason.ERROR,
+      error: e,
+    };
+
+    logger.error("error during evaluation", evaluation);
+
+    return evaluation;
+  }
 }
 
 export function evaluate(options: EvaluateOptions): Evaluation {
+  const { type, featureKey, variableKey, context, logger, datafileReader, sticky, hooksManager } =
+    options;
+
+  const hooks = hooksManager.getAll();
   let evaluation: Evaluation;
-  const {
-    type,
-    featureKey,
-    variableKey,
-    context,
-    logger,
-    datafileReader,
-    statuses,
-    stickyFeatures,
-    initialFeatures,
-    interceptContext,
-    bucketKeySeparator,
-    configureBucketKey,
-    configureBucketValue,
-  } = options;
 
   try {
-    const key = typeof featureKey === "string" ? featureKey : featureKey.key;
-
     /**
      * Root flag evaluation
      */
@@ -128,24 +175,65 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     if (type !== "flag") {
       // needed by variation and variable evaluations
       flag = evaluate({
+        ...options,
         type: "flag",
-        featureKey: key,
-        context,
-        logger,
-        datafileReader,
-        statuses,
-        stickyFeatures,
-        initialFeatures,
-        bucketKeySeparator,
-        configureBucketKey,
-        configureBucketValue,
       });
 
       if (flag.enabled === false) {
         evaluation = {
-          featureKey: key,
+          type,
+          featureKey,
           reason: EvaluationReason.DISABLED,
         };
+
+        const feature = datafileReader.getFeature(featureKey);
+
+        // serve variable default value if feature is disabled (if explicitly specified)
+        if (type === "variable") {
+          if (
+            feature &&
+            variableKey &&
+            feature.variablesSchema &&
+            feature.variablesSchema[variableKey]
+          ) {
+            const variableSchema = feature.variablesSchema[variableKey];
+
+            if (typeof variableSchema.disabledValue !== "undefined") {
+              // disabledValue: <value>
+              evaluation = {
+                type,
+                featureKey,
+                reason: EvaluationReason.VARIABLE_DISABLED,
+                variableKey,
+                variableValue: variableSchema.disabledValue,
+                variableSchema,
+                enabled: false,
+              };
+            } else if (variableSchema.useDefaultWhenDisabled) {
+              // useDefaultWhenDisabled: true
+              evaluation = {
+                type,
+                featureKey,
+                reason: EvaluationReason.VARIABLE_DEFAULT,
+                variableKey,
+                variableValue: variableSchema.defaultValue,
+                variableSchema,
+                enabled: false,
+              };
+            }
+          }
+        }
+
+        // serve disabled variation value if feature is disabled (if explicitly specified)
+        if (type === "variation" && feature && feature.disabledVariationValue) {
+          evaluation = {
+            type,
+            featureKey,
+            reason: EvaluationReason.VARIATION_DISABLED,
+            variationValue: feature.disabledVariationValue,
+            enabled: false,
+          };
+        }
 
         logger.debug("feature is disabled", evaluation);
 
@@ -156,14 +244,15 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Sticky
      */
-    if (stickyFeatures && stickyFeatures[key]) {
+    if (sticky && sticky[featureKey]) {
       // flag
-      if (type === "flag" && typeof stickyFeatures[key].enabled !== "undefined") {
+      if (type === "flag" && typeof sticky[featureKey].enabled !== "undefined") {
         evaluation = {
-          featureKey: key,
+          type,
+          featureKey,
           reason: EvaluationReason.STICKY,
-          sticky: stickyFeatures[key],
-          enabled: stickyFeatures[key].enabled,
+          sticky: sticky[featureKey],
+          enabled: sticky[featureKey].enabled,
         };
 
         logger.debug("using sticky enabled", evaluation);
@@ -173,11 +262,12 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       // variation
       if (type === "variation") {
-        const variationValue = stickyFeatures[key].variation;
+        const variationValue = sticky[featureKey].variation;
 
         if (typeof variationValue !== "undefined") {
           evaluation = {
-            featureKey: key,
+            type,
+            featureKey,
             reason: EvaluationReason.STICKY,
             variationValue,
           };
@@ -190,74 +280,21 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       // variable
       if (variableKey) {
-        const variables = stickyFeatures[key].variables;
+        const variables = sticky[featureKey].variables;
 
         if (variables) {
           const result = variables[variableKey];
 
           if (typeof result !== "undefined") {
             evaluation = {
-              featureKey: key,
+              type,
+              featureKey,
               reason: EvaluationReason.STICKY,
               variableKey,
               variableValue: result,
             };
 
             logger.debug("using sticky variable", evaluation);
-
-            return evaluation;
-          }
-        }
-      }
-    }
-
-    /**
-     * Initial
-     */
-    if (statuses && !statuses.ready && initialFeatures && initialFeatures[key]) {
-      // flag
-      if (type === "flag" && typeof initialFeatures[key].enabled !== "undefined") {
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          initial: initialFeatures[key],
-          enabled: initialFeatures[key].enabled,
-        };
-
-        logger.debug("using initial enabled", evaluation);
-
-        return evaluation;
-      }
-
-      // variation
-      if (type === "variation" && typeof initialFeatures[key].variation !== "undefined") {
-        const variationValue = initialFeatures[key].variation;
-
-        evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.INITIAL,
-          variationValue,
-        };
-
-        logger.debug("using initial variation", evaluation);
-
-        return evaluation;
-      }
-
-      // variable
-      if (variableKey) {
-        const variables = initialFeatures[key].variables;
-
-        if (variables) {
-          if (typeof variables[variableKey] !== "undefined") {
-            evaluation = {
-              featureKey: key,
-              reason: EvaluationReason.INITIAL,
-              variableKey,
-              variableValue: variables[variableKey],
-            };
-
-            logger.debug("using initial variable", evaluation);
 
             return evaluation;
           }
@@ -274,8 +311,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     // feature: not found
     if (!feature) {
       evaluation = {
-        featureKey: key,
-        reason: EvaluationReason.NOT_FOUND, // @TODO: make it type-specific
+        type,
+        featureKey,
+        reason: EvaluationReason.FEATURE_NOT_FOUND,
       };
 
       logger.warn("feature not found", evaluation);
@@ -285,7 +323,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
     // feature: deprecated
     if (type === "flag" && feature.deprecated) {
-      logger.warn("feature is deprecated", { featureKey: feature.key });
+      logger.warn("feature is deprecated", { featureKey });
     }
 
     // variableSchema
@@ -299,8 +337,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // variable schema not found
       if (!variableSchema) {
         evaluation = {
-          featureKey: key,
-          reason: EvaluationReason.NOT_FOUND,
+          type,
+          featureKey,
+          reason: EvaluationReason.VARIABLE_NOT_FOUND,
           variableKey,
         };
 
@@ -311,7 +350,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       if (variableSchema.deprecated) {
         logger.warn("variable is deprecated", {
-          featureKey: feature.key,
+          featureKey,
           variableKey,
         });
       }
@@ -320,7 +359,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     // variation: no variations
     if (type === "variation" && (!feature.variations || feature.variations.length === 0)) {
       evaluation = {
-        featureKey: key,
+        type,
+        featureKey,
         reason: EvaluationReason.NO_VARIATIONS,
       };
 
@@ -329,18 +369,17 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    const finalContext = interceptContext ? interceptContext(context) : context;
-
     /**
      * Forced
      */
-    const { force, forceIndex } = findForceFromFeature(feature, context, datafileReader, logger);
+    const { force, forceIndex } = datafileReader.getMatchedForce(feature, context);
 
     if (force) {
       // flag
       if (type === "flag" && typeof force.enabled !== "undefined") {
         evaluation = {
-          featureKey: feature.key,
+          type,
+          featureKey,
           reason: EvaluationReason.FORCED,
           forceIndex,
           force,
@@ -358,7 +397,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
         if (variation) {
           evaluation = {
-            featureKey: feature.key,
+            type,
+            featureKey,
             reason: EvaluationReason.FORCED,
             forceIndex,
             force,
@@ -374,7 +414,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       // variable
       if (variableKey && force.variables && typeof force.variables[variableKey] !== "undefined") {
         evaluation = {
-          featureKey: feature.key,
+          type,
+          featureKey,
           reason: EvaluationReason.FORCED,
           forceIndex,
           force,
@@ -405,17 +446,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         }
 
         const requiredEvaluation = evaluate({
+          ...options,
           type: "flag",
           featureKey: requiredKey,
-          context: finalContext,
-          logger,
-          datafileReader,
-          statuses,
-          stickyFeatures,
-          initialFeatures,
-          bucketKeySeparator,
-          configureBucketKey,
-          configureBucketValue,
         });
         const requiredIsEnabled = requiredEvaluation.enabled;
 
@@ -425,17 +458,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
         if (typeof requiredVariation !== "undefined") {
           const requiredVariationEvaluation = evaluate({
+            ...options,
             type: "variation",
             featureKey: requiredKey,
-            context: finalContext,
-            logger,
-            datafileReader,
-            statuses,
-            stickyFeatures,
-            initialFeatures,
-            bucketKeySeparator,
-            configureBucketKey,
-            configureBucketValue,
           });
 
           let requiredVariationValue;
@@ -454,7 +479,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       if (!requiredFeaturesAreEnabled) {
         evaluation = {
-          featureKey: feature.key,
+          type,
+          featureKey,
           reason: EvaluationReason.REQUIRED,
           required: feature.required,
           enabled: requiredFeaturesAreEnabled,
@@ -469,34 +495,71 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Bucketing
      */
-    const { bucketKey, bucketValue } = getBucket({
-      feature,
-      context: finalContext,
+    // bucketKey
+    let bucketKey = getBucketKey({
+      featureKey,
+      bucketBy: feature.bucketBy,
+      context,
+
       logger,
-      bucketKeySeparator,
-      configureBucketKey,
-      configureBucketValue,
     });
+    for (const hook of hooks) {
+      if (hook.bucketKey) {
+        bucketKey = hook.bucketKey({
+          featureKey,
+          context,
+          bucketBy: feature.bucketBy,
+          bucketKey,
+        });
+      }
+    }
+
+    // bucketValue
+    let bucketValue = getBucketedNumber(bucketKey);
+
+    for (const hook of hooks) {
+      if (hook.bucketValue) {
+        bucketValue = hook.bucketValue({
+          featureKey,
+          bucketKey,
+          context,
+          bucketValue,
+        });
+      }
+    }
 
     let matchedTraffic: Traffic | undefined;
     let matchedAllocation: Allocation | undefined;
 
     if (type !== "flag") {
-      const matched = getMatchedTrafficAndAllocation(
-        feature.traffic,
-        finalContext,
-        bucketValue,
-        datafileReader,
-        logger,
-      );
+      matchedTraffic = datafileReader.getMatchedTraffic(feature.traffic, context);
 
-      matchedTraffic = matched.matchedTraffic;
-      matchedAllocation = matched.matchedAllocation;
+      if (matchedTraffic) {
+        matchedAllocation = datafileReader.getMatchedAllocation(matchedTraffic, bucketValue);
+      }
     } else {
-      matchedTraffic = getMatchedTraffic(feature.traffic, finalContext, datafileReader, logger);
+      matchedTraffic = datafileReader.getMatchedTraffic(feature.traffic, context);
     }
 
     if (matchedTraffic) {
+      // percentage: 0
+      if (matchedTraffic.percentage === 0) {
+        evaluation = {
+          type,
+          featureKey,
+          reason: EvaluationReason.RULE,
+          bucketKey,
+          bucketValue,
+          ruleKey: matchedTraffic.key,
+          traffic: matchedTraffic,
+          enabled: false,
+        };
+
+        logger.debug("matched rule with 0 percentage", evaluation);
+
+        return evaluation;
+      }
+
       // flag
       if (type === "flag") {
         // flag: check if mutually exclusive
@@ -508,7 +571,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           // matched
           if (matchedRange) {
             evaluation = {
-              featureKey: feature.key,
+              type,
+              featureKey,
               reason: EvaluationReason.ALLOCATED,
               bucketKey,
               bucketValue,
@@ -525,7 +589,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
           // no match
           evaluation = {
-            featureKey: feature.key,
+            type,
+            featureKey,
             reason: EvaluationReason.OUT_OF_RANGE,
             bucketKey,
             bucketValue,
@@ -540,8 +605,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         // flag: override from rule
         if (typeof matchedTraffic.enabled !== "undefined") {
           evaluation = {
-            featureKey: feature.key,
-            reason: EvaluationReason.OVERRIDE,
+            type,
+            featureKey,
+            reason: EvaluationReason.RULE,
             bucketKey,
             bucketValue,
             ruleKey: matchedTraffic.key,
@@ -557,7 +623,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         // treated as enabled because of matched traffic
         if (bucketValue <= matchedTraffic.percentage) {
           evaluation = {
-            featureKey: feature.key,
+            type,
+            featureKey,
             reason: EvaluationReason.RULE,
             bucketKey,
             bucketValue,
@@ -580,7 +647,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
           if (variation) {
             evaluation = {
-              featureKey: feature.key,
+              type,
+              featureKey,
               reason: EvaluationReason.RULE,
               bucketKey,
               bucketValue,
@@ -601,7 +669,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
           if (variation) {
             evaluation = {
-              featureKey: feature.key,
+              type,
+              featureKey,
               reason: EvaluationReason.ALLOCATED,
               bucketKey,
               bucketValue,
@@ -627,7 +696,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         typeof matchedTraffic.variables[variableKey] !== "undefined"
       ) {
         evaluation = {
-          featureKey: feature.key,
+          type,
+          featureKey,
           reason: EvaluationReason.RULE,
           bucketKey,
           bucketValue,
@@ -657,69 +727,73 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       if (variationValue && Array.isArray(feature.variations)) {
         const variation = feature.variations.find((v) => v.value === variationValue);
 
-        if (variation && variation.variables) {
-          const variableFromVariation = variation.variables.find((v) => v.key === variableKey);
+        if (variation && variation.variableOverrides && variation.variableOverrides[variableKey]) {
+          const overrides = variation.variableOverrides[variableKey];
 
-          if (variableFromVariation) {
-            if (variableFromVariation.overrides) {
-              const override = variableFromVariation.overrides.find((o) => {
-                if (o.conditions) {
-                  return allConditionsAreMatched(
-                    typeof o.conditions === "string" ? JSON.parse(o.conditions) : o.conditions,
-                    finalContext,
-                    logger,
-                  );
-                }
+          const getRegex = (regexString, regexFlags) =>
+            datafileReader.getRegex(regexString, regexFlags);
 
-                if (o.segments) {
-                  return allGroupSegmentsAreMatched(
-                    parseFromStringifiedSegments(o.segments),
-                    finalContext,
-                    datafileReader,
-                    logger,
-                  );
-                }
-
-                return false;
-              });
-
-              if (override) {
-                evaluation = {
-                  featureKey: feature.key,
-                  reason: EvaluationReason.OVERRIDE,
-                  bucketKey,
-                  bucketValue,
-                  ruleKey: matchedTraffic?.key,
-                  traffic: matchedTraffic,
-                  variableKey,
-                  variableSchema,
-                  variableValue: override.value,
-                };
-
-                logger.debug("variable override", evaluation);
-
-                return evaluation;
-              }
+          const override = overrides.find((o) => {
+            if (o.conditions) {
+              return datafileReader.allConditionsAreMatched(
+                typeof o.conditions === "string" && o.conditions !== "*"
+                  ? JSON.parse(o.conditions)
+                  : o.conditions,
+                context,
+              );
             }
 
-            if (typeof variableFromVariation.value !== "undefined") {
-              evaluation = {
-                featureKey: feature.key,
-                reason: EvaluationReason.ALLOCATED,
-                bucketKey,
-                bucketValue,
-                ruleKey: matchedTraffic?.key,
-                traffic: matchedTraffic,
-                variableKey,
-                variableSchema,
-                variableValue: variableFromVariation.value,
-              };
-
-              logger.debug("allocated variable", evaluation);
-
-              return evaluation;
+            if (o.segments) {
+              return datafileReader.allSegmentsAreMatched(
+                datafileReader.parseSegmentsIfStringified(o.segments),
+                context,
+              );
             }
+
+            return false;
+          });
+
+          if (override) {
+            evaluation = {
+              type,
+              featureKey,
+              reason: EvaluationReason.VARIABLE_OVERRIDE,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic?.key,
+              traffic: matchedTraffic,
+              variableKey,
+              variableSchema,
+              variableValue: override.value,
+            };
+
+            logger.debug("variable override", evaluation);
+
+            return evaluation;
           }
+        }
+
+        if (
+          variation &&
+          variation.variables &&
+          typeof variation.variables[variableKey] !== "undefined"
+        ) {
+          evaluation = {
+            type,
+            featureKey,
+            reason: EvaluationReason.ALLOCATED,
+            bucketKey,
+            bucketValue,
+            ruleKey: matchedTraffic?.key,
+            traffic: matchedTraffic,
+            variableKey,
+            variableSchema,
+            variableValue: variation.variables[variableKey],
+          };
+
+          logger.debug("allocated variable", evaluation);
+
+          return evaluation;
         }
       }
     }
@@ -729,7 +803,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
      */
     if (type === "variation") {
       evaluation = {
-        featureKey: feature.key,
+        type,
+        featureKey,
         reason: EvaluationReason.NO_MATCH,
         bucketKey,
         bucketValue,
@@ -740,24 +815,41 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       return evaluation;
     }
 
-    if (type === "variable" && variableSchema) {
+    if (type === "variable") {
+      if (variableSchema) {
+        evaluation = {
+          type,
+          featureKey,
+          reason: EvaluationReason.VARIABLE_DEFAULT,
+          bucketKey,
+          bucketValue,
+          variableKey,
+          variableSchema,
+          variableValue: variableSchema.defaultValue,
+        };
+
+        logger.debug("using default value", evaluation);
+
+        return evaluation;
+      }
+
       evaluation = {
-        featureKey: feature.key,
-        reason: EvaluationReason.DEFAULTED,
+        type,
+        featureKey,
+        reason: EvaluationReason.VARIABLE_NOT_FOUND,
+        variableKey,
         bucketKey,
         bucketValue,
-        variableKey,
-        variableSchema,
-        variableValue: variableSchema.defaultValue,
       };
 
-      logger.debug("using default value", evaluation);
+      logger.debug("variable not found", evaluation);
 
       return evaluation;
     }
 
     evaluation = {
-      featureKey: feature.key,
+      type,
+      featureKey,
       reason: EvaluationReason.NO_MATCH,
       bucketKey,
       bucketValue,
@@ -769,7 +861,9 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     return evaluation;
   } catch (e) {
     evaluation = {
-      featureKey: typeof featureKey === "string" ? featureKey : featureKey.key,
+      type,
+      featureKey,
+      variableKey,
       reason: EvaluationReason.ERROR,
       error: e,
     };

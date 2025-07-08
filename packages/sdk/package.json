@@ -49,8 +49,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "1.35.3",
-    "compare-versions": "^6.0.0-rc.1",
-    "murmurhash": "^2.0.1"
+    "@featurevisor/types": "1.35.3"
   }
 }

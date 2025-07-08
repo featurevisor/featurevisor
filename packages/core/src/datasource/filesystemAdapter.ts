@@ -19,8 +19,6 @@ import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
 
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
-
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
   environment: EnvironmentKey | false,
@@ -217,8 +215,10 @@ export class FilesystemAdapter extends Adapter {
    * Datafile
    */
   getDatafilePath(options: DatafileOptions): string {
-    const fileName = `datafile-tag-${options.tag}.json`;
-    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+    const pattern = this.config.datafileNamePattern || "featurevisor-%s.json";
+
+    const fileName = pattern.replace("%s", `tag-${options.tag}`);
+    const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     if (options.environment) {
       return path.join(dir, options.environment, fileName);
@@ -236,7 +236,7 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
-    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+    const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     const outputEnvironmentDirPath = options.environment
       ? path.join(dir, options.environment)

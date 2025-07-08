@@ -3,7 +3,6 @@ import type { Plugin } from "./cli";
 import { initPlugin } from "../init";
 import { lintPlugin } from "../linter";
 import { buildPlugin } from "../builder";
-import { restorePlugin } from "../restore";
 import { testPlugin } from "../tester";
 import { generateCodePlugin } from "../generate-code";
 import { findDuplicateSegmentsPlugin } from "../find-duplicate-segments";
@@ -23,7 +22,6 @@ export const nonProjectPlugins: Plugin[] = [initPlugin];
 export const projectBasedPlugins: Plugin[] = [
   lintPlugin,
   buildPlugin,
-  restorePlugin,
   testPlugin,
   generateCodePlugin,
   findDuplicateSegmentsPlugin,

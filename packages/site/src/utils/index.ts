@@ -5,7 +5,6 @@ export interface Query {
   tags: string[];
   environments: string[];
   archived?: boolean;
-  capture?: boolean;
   hasVariations?: boolean;
   hasVariables?: boolean;
   variableKeys?: string[];
@@ -18,7 +17,6 @@ export function parseSearchQuery(queryString: string) {
     tags: [],
     environments: [],
     archived: undefined,
-    capture: undefined,
   };
 
   const parts = queryString.split(" ");
@@ -43,14 +41,6 @@ export function parseSearchQuery(queryString: string) {
         query.archived = true;
       } else if (archived === "false") {
         query.archived = false;
-      }
-    } else if (part.startsWith("capture:")) {
-      const capture = part.replace("capture:", "");
-
-      if (capture === "true") {
-        query.capture = true;
-      } else if (capture === "false") {
-        query.capture = false;
       }
     } else if (part.startsWith("variable:")) {
       const variableKey = part.replace("variable:", "");
@@ -95,20 +85,20 @@ export function isEnabledInEnvironment(feature: any, environment: string) {
     return false;
   }
 
-  if (feature.environments) {
+  if (!Array.isArray(feature.rules)) {
     // with environments
-    if (!feature.environments[environment]) {
+    if (!feature.rules[environment]) {
       return false;
     }
 
-    if (feature.environments[environment].expose === false) {
+    if (feature.rules[environment].expose === false) {
       return false;
     }
 
-    if (feature.environments[environment].rules.some((rule: any) => rule.percentage > 0)) {
+    if (feature.rules[environment].some((rule: any) => rule.percentage > 0)) {
       return true;
     }
-  } else {
+  } else if (feature.rules) {
     // no environments
     if (feature.rules.some((rule: any) => rule.percentage > 0)) {
       return true;
@@ -120,7 +110,7 @@ export function isEnabledInEnvironment(feature: any, environment: string) {
 
 export function isEnabledInAnyEnvironment(feature: any) {
   // no environments
-  if (feature.rules) {
+  if (Array.isArray(feature.rules)) {
     if (feature.rules.some((rule: any) => rule.percentage > 0)) {
       return true;
     }
@@ -129,7 +119,7 @@ export function isEnabledInAnyEnvironment(feature: any) {
   }
 
   // with environments
-  const environments = Object.keys(feature.environments);
+  const environments = Object.keys(feature.rules);
 
   for (const environment of environments) {
     const isEnabled = isEnabledInEnvironment(feature, environment);
@@ -206,7 +196,7 @@ export function getFeaturesByQuery(query: Query, data: SearchIndex) {
         if (!feature.variablesSchema) {
           matched = false;
         } else {
-          const keysFromFeature = feature.variablesSchema.map((v: any) => v.key);
+          const keysFromFeature = Object.keys(feature.variablesSchema);
 
           if (query.variableKeys.some((k) => keysFromFeature.indexOf(k) === -1)) {
             matched = false;
@@ -249,16 +239,6 @@ export function getAttributesByQuery(query: Query, data: SearchIndex) {
         }
 
         if (!query.archived && a.archived === true) {
-          matched = false;
-        }
-      }
-
-      if (typeof query.capture === "boolean") {
-        if (query.capture && a.capture !== query.capture) {
-          matched = false;
-        }
-
-        if (!query.capture && a.capture === true) {
           matched = false;
         }
       }

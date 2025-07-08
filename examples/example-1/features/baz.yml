@@ -7,15 +7,15 @@ bucketBy:
     - userId
     - device
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100
   production:
-    expose: true
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 80
+    - key: "1"
+      segments: "*"
+      percentage: 80
+
+expose:
+  production: true

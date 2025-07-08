@@ -4,10 +4,8 @@ import {
   Segment,
   Feature,
   DatafileContent,
-  DatafileContentV1,
   DatafileContentV2,
   Variation,
-  Variable,
   VariableOverride,
   Traffic,
   SegmentKey,
@@ -18,7 +16,6 @@ import {
   ExistingState,
   FeatureKey,
   Allocation,
-  VariableSchema,
   Expose,
   Rule,
   Force,
@@ -27,9 +24,11 @@ import {
 import { ProjectConfig, SCHEMA_VERSION } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
+import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } from "./hashes";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
+import { convertToV1 } from "./convertToV1";
 
 export interface CustomDatafileOptions {
   featureKey?: string;
@@ -69,6 +68,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
 export interface BuildOptions {
   schemaVersion: string;
   revision: string;
+  revisionFromHash?: boolean;
   environment: string | false;
   tag?: string;
   features?: FeatureKey[];
@@ -81,14 +81,6 @@ export async function buildDatafile(
   options: BuildOptions,
   existingState: ExistingState,
 ): Promise<DatafileContent> {
-  const datafileContent: DatafileContentV1 = {
-    schemaVersion: options.schemaVersion,
-    revision: options.revision,
-    attributes: [],
-    segments: [],
-    features: [],
-  };
-
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
@@ -119,14 +111,14 @@ export async function buildDatafile(
       let rules: Rule[];
       let force: Force[] | undefined;
 
-      if (options.environment && parsedFeature.environments) {
-        expose = parsedFeature.environments[options.environment].expose;
-        rules = parsedFeature.environments[options.environment].rules;
-        force = parsedFeature.environments[options.environment].force;
+      if (options.environment) {
+        expose = parsedFeature.expose?.[options.environment] as Expose | undefined;
+        rules = parsedFeature.rules?.[options.environment] as Rule[];
+        force = parsedFeature.force?.[options.environment] as Force[] | undefined;
       } else {
-        expose = parsedFeature.expose;
+        expose = parsedFeature.expose as Expose | undefined;
         rules = parsedFeature.rules as Rule[];
-        force = parsedFeature.force;
+        force = parsedFeature.force as Force[] | undefined;
       }
 
       if (expose === false) {
@@ -151,66 +143,62 @@ export async function buildDatafile(
         deprecated: parsedFeature.deprecated === true ? true : undefined,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
         required: parsedFeature.required,
+        disabledVariationValue: parsedFeature.disabledVariationValue,
         variations: Array.isArray(parsedFeature.variations)
           ? parsedFeature.variations.map((variation: Variation) => {
               const mappedVariation: any = {
                 value: variation.value,
-                weight: variation.weight, // @TODO: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
+                weight: variation.weight, // @NOTE: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
+                variables: variation.variables,
+                variableOverrides: variation.variableOverrides,
               };
 
-              if (!variation.variables) {
-                return mappedVariation;
-              }
+              if (variation.variableOverrides) {
+                const variableOverrides = variation.variableOverrides;
+                const variableKeys = Object.keys(variableOverrides);
 
-              mappedVariation.variables = variation.variables.map((variable: Variable) => {
-                const mappedVariable: any = {
-                  key: variable.key,
-                  value: variable.value,
-                };
+                for (const variableKey of variableKeys) {
+                  mappedVariation.variableOverrides[variableKey] = variableOverrides[
+                    variableKey
+                  ].map((override: VariableOverride) => {
+                    if (typeof override.conditions !== "undefined") {
+                      const extractedAttributeKeys = extractAttributeKeysFromConditions(
+                        override.conditions,
+                      );
+                      extractedAttributeKeys.forEach((attributeKey) =>
+                        attributeKeysUsedByTag.add(attributeKey),
+                      );
 
-                if (!variable.overrides) {
-                  return mappedVariable;
+                      return {
+                        conditions:
+                          projectConfig.stringify && typeof override.conditions !== "string"
+                            ? JSON.stringify(override.conditions)
+                            : override.conditions,
+                        value: override.value,
+                      };
+                    }
+
+                    if (typeof override.segments !== "undefined") {
+                      const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
+                        override.segments as GroupSegment | GroupSegment[],
+                      );
+                      extractedSegmentKeys.forEach((segmentKey) =>
+                        segmentKeysUsedByTag.add(segmentKey),
+                      );
+
+                      return {
+                        segments:
+                          projectConfig.stringify && typeof override.segments !== "string"
+                            ? JSON.stringify(override.segments)
+                            : override.segments,
+                        value: override.value,
+                      };
+                    }
+
+                    return override;
+                  });
                 }
-
-                mappedVariable.overrides = variable.overrides.map((override: VariableOverride) => {
-                  if (typeof override.conditions !== "undefined") {
-                    const extractedAttributeKeys = extractAttributeKeysFromConditions(
-                      override.conditions,
-                    );
-                    extractedAttributeKeys.forEach((attributeKey) =>
-                      attributeKeysUsedByTag.add(attributeKey),
-                    );
-
-                    return {
-                      conditions: projectConfig.stringify
-                        ? JSON.stringify(override.conditions)
-                        : override.conditions,
-                      value: override.value,
-                    };
-                  }
-
-                  if (typeof override.segments !== "undefined") {
-                    const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(
-                      override.segments as GroupSegment | GroupSegment[],
-                    );
-                    extractedSegmentKeys.forEach((segmentKey) =>
-                      segmentKeysUsedByTag.add(segmentKey),
-                    );
-
-                    return {
-                      segments:
-                        typeof override.segments !== "string" && projectConfig.stringify
-                          ? JSON.stringify(override.segments)
-                          : override.segments,
-                      value: override.value,
-                    };
-                  }
-
-                  return override;
-                });
-
-                return mappedVariable;
-              });
+              }
 
               return mappedVariation;
             })
@@ -246,39 +234,60 @@ export async function buildDatafile(
           return {
             key: t.key,
             percentage: t.percentage,
-            allocation: t.allocation.map((a: Allocation) => {
-              return {
-                variation: a.variation,
-                range: a.range,
-              };
-            }),
+            allocation:
+              t.allocation &&
+              t.allocation.map((a: Allocation) => {
+                return {
+                  variation: a.variation,
+                  range: a.range,
+                };
+              }),
           };
         }),
       };
 
       if (featureIsInGroup[featureKey] === true) {
-        feature.ranges = featureRanges.get(feature.key);
+        feature.ranges = featureRanges.get(featureKey);
       }
 
       if (parsedFeature.variablesSchema) {
-        feature.variablesSchema = parsedFeature.variablesSchema.map(function (v: VariableSchema) {
-          return {
-            key: v.key,
+        const variableKeys = Object.keys(parsedFeature.variablesSchema);
+        feature.variablesSchema = {};
+
+        for (const variableKey of variableKeys) {
+          const v = parsedFeature.variablesSchema[variableKey];
+
+          feature.variablesSchema[variableKey] = {
+            key: variableKey,
             type: v.type,
             defaultValue: v.defaultValue,
             deprecated: v.deprecated === true ? true : undefined,
+            useDefaultWhenDisabled: v.useDefaultWhenDisabled === true ? true : undefined,
+            disabledValue: typeof v.disabledValue !== "undefined" ? v.disabledValue : undefined,
           };
-        });
+        }
       }
 
       if (force) {
-        feature.force = force;
-
-        feature.force?.forEach((f) => {
+        feature.force = force.map((f) => {
           if (f.segments) {
             const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(f.segments);
             extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
+
+            f.segments =
+              typeof f.segments !== "string" && projectConfig.stringify
+                ? JSON.stringify(f.segments)
+                : f.segments;
           }
+
+          if (f.conditions) {
+            f.conditions =
+              typeof f.conditions !== "string" && projectConfig.stringify
+                ? JSON.stringify(f.conditions)
+                : f.conditions;
+          }
+
+          return f;
         });
       }
 
@@ -335,7 +344,7 @@ export async function buildDatafile(
         continue;
       }
 
-      if (attributeKeysUsedByTag.has(attributeKey) === false && !parsedAttribute.capture) {
+      if (attributeKeysUsedByTag.has(attributeKey) === false) {
         continue;
       }
 
@@ -344,21 +353,17 @@ export async function buildDatafile(
         type: parsedAttribute.type,
       };
 
-      if (parsedAttribute.capture === true) {
-        attribute.capture = true;
-      }
-
       attributes.push(attribute);
     }
   }
 
   // inflate
-  if (options.inflate) {
+  if (options.inflate && options.inflate >= 2) {
     const allFeatureKeys = features.map((f) => f.key);
     const allSegmentKeys = segments.map((s) => s.key);
     const allAttributeKeys = attributes.map((a) => a.key);
 
-    for (let i = 0; i < options.inflate; i++) {
+    for (let i = 0; i < options.inflate - 1; i++) {
       // feature
       for (const featureKey of allFeatureKeys) {
         const originalFeature = features.find((f) => f.key === featureKey) as Feature;
@@ -391,47 +396,85 @@ export async function buildDatafile(
     }
   }
 
-  // schema v2
-  if (options.schemaVersion === "2") {
-    // v2
-    const datafileContentV2: DatafileContentV2 = {
-      schemaVersion: "2",
+  // schema v1
+  if (options.schemaVersion === "1") {
+    return convertToV1({
       revision: options.revision,
-      attributes: {},
-      segments: {},
-      features: {},
-    };
-
-    datafileContentV2.attributes = attributes.reduce((acc, attribute) => {
-      acc[attribute.key] = attribute;
-      return acc;
-    }, {});
-
-    datafileContentV2.segments = segments.reduce((acc, segment) => {
-      acc[segment.key] = segment;
-      return acc;
-    }, {});
-
-    datafileContentV2.features = features.reduce((acc, feature) => {
-      if (Array.isArray(feature.variablesSchema)) {
-        feature.variablesSchema = feature.variablesSchema.reduce((vAcc, variableSchema) => {
-          vAcc[variableSchema.key] = variableSchema;
-
-          return vAcc;
-        }, {});
-      }
-
-      acc[feature.key] = feature;
-      return acc;
-    }, {});
-
-    return datafileContentV2;
+      projectConfig,
+      attributes,
+      features,
+      segments,
+    });
   }
 
-  // default behaviour
-  datafileContent.attributes = attributes;
-  datafileContent.segments = segments;
-  datafileContent.features = features;
+  // schema v2
+  const datafileContentV2: DatafileContentV2 = {
+    schemaVersion: "2",
+    revision: options.revision,
+    segments: {},
+    features: {},
+  };
 
-  return datafileContent;
+  datafileContentV2.segments = segments.reduce((acc, segment) => {
+    // key check needed for supporting v1 datafile generation
+    if (segment.key) {
+      acc[segment.key] = segment;
+      delete acc[segment.key].key; // remove key from segment, as it is not needed in v2 datafile
+    }
+
+    return acc;
+  }, {});
+
+  datafileContentV2.features = features.reduce((acc, feature) => {
+    if (!feature.key) {
+      return acc;
+    }
+
+    const featureKey = feature.key as FeatureKey;
+    const featureV2 = feature;
+
+    // remove key, as it is not needed in v2 datafile
+    delete featureV2.key;
+
+    // remove variablesSchema[key].key
+    if (featureV2.variablesSchema) {
+      for (const [variableKey, variable] of Object.entries(featureV2.variablesSchema)) {
+        if (variable.key) {
+          delete featureV2.variablesSchema[variableKey].key;
+        }
+      }
+    }
+
+    acc[featureKey] = featureV2;
+
+    return acc;
+  }, {});
+
+  // add feature hashes for change detection
+  const segmentHashes = getSegmentHashes(datafileContentV2.segments);
+  Object.keys(datafileContentV2.features).forEach((featureKey) => {
+    const hash = generateHashForFeature(featureKey, datafileContentV2.features, segmentHashes);
+
+    datafileContentV2.features[featureKey].hash = hash;
+
+    // check needed to support --inflate option
+    if (existingState.features[featureKey]) {
+      existingState.features[featureKey].hash = hash;
+    }
+  });
+
+  if (options.revisionFromHash) {
+    const featureHashes = Object.keys(datafileContentV2.features).reduce(
+      (acc, featureKey) => {
+        acc[featureKey] = datafileContentV2.features[featureKey].hash || "";
+        return acc;
+      },
+      {} as Record<FeatureKey, string>,
+    );
+
+    const datafileHash = generateHashForDatafile(datafileContentV2);
+    datafileContentV2.revision = `${datafileHash}`;
+  }
+
+  return datafileContentV2;
 }

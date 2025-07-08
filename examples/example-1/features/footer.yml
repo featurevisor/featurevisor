@@ -4,20 +4,18 @@ tags:
 
 bucketBy: userId
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments:
-          - not:
-              - version_5.5
-        percentage: 100
+    - key: "1"
+      segments:
+        - not:
+            - version_5.5
+      percentage: 100
 
-      - key: "2"
-        segments: "*"
-        percentage: 0
+    - key: "2"
+      segments: "*"
+      percentage: 0
   production:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 80
+    - key: "1"
+      segments: "*"
+      percentage: 80

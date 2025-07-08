@@ -27,7 +27,7 @@ export class Datasource {
     this.adapter = new config.adapter(config, rootDirectoryPath);
   }
 
-  // @TODO: only site generator needs it, find a way to get it out of here later
+  // @NOTE: only site generator needs it, find a way to get it out of here later
   getExtension() {
     return (this.config.parser as CustomParser).extension;
   }
@@ -143,6 +143,27 @@ export class Datasource {
   // attributes
   listAttributes() {
     return this.adapter.listEntities("attribute");
+  }
+
+  async listFlattenedAttributes() {
+    const attributes = await this.listAttributes();
+    const result: string[] = [];
+
+    for (const key of attributes) {
+      const attribute = await this.readAttribute(key);
+
+      result.push(key);
+
+      if (attribute.type === "object") {
+        // @NOTE: in future, this can be recursive
+        const propertyKeys = Object.keys(attribute.properties || {});
+        for (const propertyKey of propertyKeys) {
+          result.push(`${key}.${propertyKey}`);
+        }
+      }
+    }
+
+    return result;
   }
 
   attributeExists(attributeKey: AttributeKey) {

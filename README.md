@@ -64,7 +64,7 @@
 
 # What is Featurevisor?
 
-Featurevisor is a solution for managing your feature flags, experiments, and remote config. It's built for developers, by developers.
+Featurevisor is a solution for managing your feature flags, experiments, and remote config declaratively via a Git repository.
 
 Workflow can be broken down into 3 steps:
 
@@ -93,8 +93,6 @@ SDK support:
 - [React](https://featurevisor.com/docs/react/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
-Swift and Kotlin SDKs are coming soon for native apps.
-
 # Quick start
 
 You are recommended to see a more detailed quick start guide here: [https://featurevisor.com/docs/quick-start/](https://featurevisor.com/docs/quick-start/).
@@ -122,20 +120,20 @@ See the building block guides here:
 
 ## Step 2: Build and deploy datafiles
 
-Once the project is ready, you can build your datafiles (JSON files containing configuration of your feature flags):
+Once the project is initialized, you can build your datafiles (JSON files containing configuration of your feature flags):
 
 ```
 $ npx featurevisor build
 ```
 
-You will find the output in `dist` directory, that you can upload to your CDN.
+You will find the output in `datafiles` directory, that you can upload to your CDN.
 
 See further guides here:
 
 - [Building datafiles](https://featurevisor.com/docs/building-datafiles/): how to build datafiles
 - [Deploying datafiles](https://featurevisor.com/docs/deployment/): how to deploy datafiles to your CDN
 
-A fully functioning example for deploying with Cloudflare and GitHub Actions (for free) is available [here](https://github.com/featurevisor/featurevisor-example-cloudflare).
+A fully functioning example for deploying with Cloudflare and GitHub Actions (for free) is available [here](https://featurevisor.com/docs/integrations/cloudflare-pages/).
 
 ## Step 3: Consume datafiles with Featurevisor SDKs
 
@@ -152,25 +150,30 @@ Now you can initialize the SDK with the URL of your datafile, and evaluate your 
 ```js
 import { createInstance } from "@featurevisor/sdk";
 
-// Initialize the SDK
+// fetch datafile
+const DATAFILE_URL = "https://cdn.yoursite.com/datafile.json";
+const datafileContent = await fetch(DATAFILE_URL)
+  .then((res) => res.json());
+
+// initialize the SDK
 const f = createInstance({
-  datafileUrl: "https://cdn.yoursite.com/datafile.json",
-  onReady: () => console.log("Datafile has been fetched and SDK is ready"),
+  datafile: datafileContent,
 });
 
-// Evaluate a feature flag
-const featureKey = "myFeature";
-const context = {
+// set user context
+f.setContext({
+  appVersion: "1.0.0",
   userId: "user-123",
   country: "nl",
-};
+});
 
-const isEnabled = f.isEnabled(featureKey, context);
-const variation = f.getVariation(featureKey, context);
-const variable  = f.getVariable(featureKey, "someVariableKey", context);
+// evaluate values
+const isEnabled = f.isEnabled("myFeatureKey");
+const variation = f.getVariation("myFeatureKey");
+const variable  = f.getVariable("myFeatureKey", "someVariableKey");
 ```
 
-Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/](https://featurevisor.com/docs/sdks/).
+Learn more about SDK usage here: [https://featurevisor.com/docs/sdks/javascript/](https://featurevisor.com/docs/sdks/javascript/).
 
 # Packages
 

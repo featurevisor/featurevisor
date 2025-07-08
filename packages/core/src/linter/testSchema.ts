@@ -82,10 +82,49 @@ export function getTestsZodSchema(
                   }),
                 )
               : z.never().optional(),
-            context: z.record(z.unknown()),
-            expectedToBeEnabled: z.boolean(),
-            expectedVariation: z.string().optional(),
+
+            // parent
+            sticky: z.record(z.record(z.any())).optional(),
+            context: z.record(z.unknown()).optional(),
+
+            defaultVariationValue: z.string().optional(),
+            defaultVariableValues: z.record(z.unknown()).optional(),
+
+            expectedToBeEnabled: z.boolean().optional(),
+            expectedVariation: z.string().nullable().optional(),
             expectedVariables: z.record(z.unknown()).optional(),
+            expectedEvaluations: z
+              .object({
+                flag: z.record(z.any()).optional(),
+                variation: z.record(z.any()).optional(),
+                variables: z.record(z.record(z.any())).optional(),
+              })
+              .optional(),
+
+            children: z
+              .array(
+                z.object({
+                  // copied from parent
+                  sticky: z.record(z.record(z.any())).optional(),
+                  context: z.record(z.unknown()).optional(),
+
+                  defaultVariationValue: z.string().optional(),
+                  defaultVariableValues: z.record(z.unknown()).optional(),
+
+                  expectedToBeEnabled: z.boolean().optional(),
+                  expectedVariation: z.string().nullable().optional(),
+                  expectedVariables: z.record(z.unknown()).optional(),
+
+                  expectedEvaluations: z
+                    .object({
+                      flag: z.record(z.any()).optional(),
+                      variation: z.record(z.any()).optional(),
+                      variables: z.record(z.record(z.any())).optional(),
+                    })
+                    .optional(),
+                }),
+              )
+              .optional(),
           })
           .strict(),
       ),

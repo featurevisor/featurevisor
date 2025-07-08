@@ -1,0 +1,35 @@
+feature: testDisabled
+assertions:
+  ##
+  # Staging enabled
+  #
+  - at: 10
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      foo: foo value
+      bar: bar value
+      baz: baz value
+
+  ##
+  # Production disabled
+  #
+  - at: 10
+    environment: production
+    expectedToBeEnabled: false
+    expectedVariation: null
+    expectedVariables:
+      foo: null
+      bar: bar value # useDefaultWhenDisabled
+      baz: baz value when feature is disabled # disabledValue
+
+  - at: 10
+    environment: production
+    defaultVariationValue: treatment
+    defaultVariableValues: # this is being tested here
+      foo: "default foo value"
+    expectedToBeEnabled: false
+    expectedVariation: treatment
+    expectedVariables:
+      foo: default foo value # because it was set in defaultVariableValues

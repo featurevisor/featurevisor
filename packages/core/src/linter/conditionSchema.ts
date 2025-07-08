@@ -4,7 +4,14 @@ import { ProjectConfig } from "../config";
 
 const commonOperators: [string, ...string[]] = ["equals", "notEquals"];
 const numericOperators = ["greaterThan", "greaterThanOrEquals", "lessThan", "lessThanOrEquals"];
-const stringOperators = ["contains", "notContains", "startsWith", "endsWith"];
+const stringOperators = [
+  "contains",
+  "notContains",
+  "startsWith",
+  "endsWith",
+  "includes",
+  "notIncludes",
+];
 const semverOperators = [
   "semverEquals",
   "semverNotEquals",
@@ -15,6 +22,8 @@ const semverOperators = [
 ];
 const dateOperators = ["before", "after"];
 const arrayOperators = ["in", "notIn"];
+const regexOperators = ["matches", "notMatches"];
+const operatorsWithoutValue = ["exists", "notExists"];
 
 export function getConditionsZodSchema(
   projectConfig: ProjectConfig,
@@ -35,15 +44,27 @@ export function getConditionsZodSchema(
         ...semverOperators,
         ...dateOperators,
         ...arrayOperators,
+        ...regexOperators,
+        ...operatorsWithoutValue,
       ]),
-      value: z.union([
-        z.string(),
-        z.array(z.string()),
-        z.number(),
-        z.boolean(),
-        z.date(),
-        z.null(),
-      ]),
+      value: z
+        .union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()])
+        .optional(),
+      regexFlags: z
+        .string()
+        .refine(
+          (value) => {
+            if (typeof value === "undefined") {
+              return true;
+            }
+
+            return /^[gimsuy]{1,}$/.test(value);
+          },
+          {
+            message: `regexFlags must of one or more of these characters: g, i, m, s, u, y`,
+          },
+        )
+        .optional(),
     })
     .superRefine((data, context) => {
       // common
@@ -109,6 +130,35 @@ export function getConditionsZodSchema(
           path: ["value"],
         });
       }
+
+      // regex
+      if (regexOperators.includes(data.operator)) {
+        if (typeof data.value !== "string") {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `when operator is "${data.operator}", value must be a string`,
+            path: ["value"],
+          });
+        }
+      } else {
+        // regex flags are not needed
+        if (data.regexFlags) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `when operator is nether "matches" nor "notMatches", regexFlags are not needed`,
+            path: ["regexFlags"],
+          });
+        }
+      }
+
+      // operators without value
+      if (operatorsWithoutValue.includes(data.operator) && data.value !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `when operator is "${data.operator}", value is not needed`,
+          path: ["value"],
+        });
+      }
     });
 
   const andOrNotConditionZodSchema = z.union([
@@ -129,9 +179,15 @@ export function getConditionsZodSchema(
       .strict(),
   ]);
 
+  const everyoneZodSchema = z.literal("*");
+
   const conditionZodSchema = z.union([andOrNotConditionZodSchema, plainConditionZodSchema]);
 
-  const conditionsZodSchema = z.union([conditionZodSchema, z.array(conditionZodSchema)]);
+  const conditionsZodSchema = z.union([
+    conditionZodSchema,
+    z.array(conditionZodSchema),
+    everyoneZodSchema,
+  ]);
 
   return conditionsZodSchema;
 }

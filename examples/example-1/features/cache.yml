@@ -1,0 +1,20 @@
+description: for testing child instances
+tags:
+  - all
+
+bucketBy: deviceId
+
+rules:
+  staging:
+    - key: "everyone"
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: "netherlands"
+      segments: "countries/netherlands"
+      percentage: 0
+
+    - key: "everyone"
+      segments: "*"
+      percentage: 100

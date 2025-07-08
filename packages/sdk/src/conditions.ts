@@ -1,19 +1,32 @@
-import { compareVersions } from "compare-versions";
-
-import { Context, Condition, PlainCondition } from "@featurevisor/types";
+import type { Context, Condition, PlainCondition, AttributeValue } from "@featurevisor/types";
 
 import { Logger } from "./logger";
+import { GetRegex } from "./datafileReader";
+import { compareVersions } from "./compareVersions";
 
-export function conditionIsMatched(condition: PlainCondition, context: Context): boolean {
-  const { attribute, operator, value } = condition;
+export function getValueFromContext(obj, path): AttributeValue {
+  if (path.indexOf(".") === -1) {
+    return obj[path];
+  }
+
+  return path.split(".").reduce((o, i) => (o ? o[i] : undefined), obj);
+}
+
+export function conditionIsMatched(
+  condition: PlainCondition,
+  context: Context,
+  getRegex: GetRegex,
+): boolean {
+  const { attribute, operator, value, regexFlags } = condition;
+  const contextValueFromPath = getValueFromContext(context, attribute) as AttributeValue;
 
   if (operator === "equals") {
-    return context[attribute] === value;
+    return contextValueFromPath === value;
   } else if (operator === "notEquals") {
-    return context[attribute] !== value;
+    return contextValueFromPath !== value;
   } else if (operator === "before" || operator === "after") {
     // date comparisons
-    const valueInContext = context[attribute] as string | Date;
+    const valueInContext = contextValueFromPath as string | Date;
 
     const dateInContext =
       valueInContext instanceof Date ? valueInContext : new Date(valueInContext);
@@ -24,19 +37,20 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
       : dateInContext > dateInCondition;
   } else if (
     Array.isArray(value) &&
-    (["string", "number"].indexOf(typeof context[attribute]) !== -1 || context[attribute] === null)
+    (["string", "number"].indexOf(typeof contextValueFromPath) !== -1 ||
+      contextValueFromPath === null)
   ) {
-    // array
-    const valueInContext = context[attribute] as string;
+    // in / notIn (where condition value is an array)
+    const valueInContext = contextValueFromPath as string;
 
     if (operator === "in") {
       return value.indexOf(valueInContext) !== -1;
     } else if (operator === "notIn") {
       return value.indexOf(valueInContext) === -1;
     }
-  } else if (typeof context[attribute] === "string" && typeof value === "string") {
+  } else if (typeof contextValueFromPath === "string" && typeof value === "string") {
     // string
-    const valueInContext = context[attribute] as string;
+    const valueInContext = contextValueFromPath as string;
 
     if (operator === "contains") {
       return valueInContext.indexOf(value) !== -1;
@@ -58,10 +72,16 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
       return compareVersions(valueInContext, value) === -1;
     } else if (operator === "semverLessThanOrEquals") {
       return compareVersions(valueInContext, value) <= 0;
+    } else if (operator === "matches") {
+      const regex = getRegex(value, regexFlags || "");
+      return regex.test(valueInContext);
+    } else if (operator === "notMatches") {
+      const regex = getRegex(value, regexFlags || "");
+      return !regex.test(valueInContext);
     }
-  } else if (typeof context[attribute] === "number" && typeof value === "number") {
+  } else if (typeof contextValueFromPath === "number" && typeof value === "number") {
     // numeric
-    const valueInContext = context[attribute] as number;
+    const valueInContext = contextValueFromPath as number;
 
     if (operator === "greaterThan") {
       return valueInContext > value;
@@ -72,55 +92,19 @@ export function conditionIsMatched(condition: PlainCondition, context: Context):
     } else if (operator === "lessThanOrEquals") {
       return valueInContext <= value;
     }
-  }
+  } else if (operator === "exists") {
+    return typeof contextValueFromPath !== "undefined";
+  } else if (operator === "notExists") {
+    return typeof contextValueFromPath === "undefined";
+  } else if (Array.isArray(contextValueFromPath) && typeof value === "string") {
+    // includes / notIncludes (where context value is an array)
+    const valueInContext = contextValueFromPath as string[];
 
-  return false;
-}
-
-export function allConditionsAreMatched(
-  conditions: Condition[] | Condition,
-  context: Context,
-  logger: Logger,
-): boolean {
-  if ("attribute" in conditions) {
-    try {
-      return conditionIsMatched(conditions, context);
-    } catch (e) {
-      logger.warn(e.message, {
-        error: e,
-        details: {
-          condition: conditions,
-          context,
-        },
-      });
-
-      return false;
+    if (operator === "includes") {
+      return valueInContext.indexOf(value) > -1;
+    } else if (operator === "notIncludes") {
+      return valueInContext.indexOf(value) === -1;
     }
-  }
-
-  if ("and" in conditions && Array.isArray(conditions.and)) {
-    return conditions.and.every((c) => allConditionsAreMatched(c, context, logger));
-  }
-
-  if ("or" in conditions && Array.isArray(conditions.or)) {
-    return conditions.or.some((c) => allConditionsAreMatched(c, context, logger));
-  }
-
-  if ("not" in conditions && Array.isArray(conditions.not)) {
-    return conditions.not.every(
-      () =>
-        allConditionsAreMatched(
-          {
-            and: conditions.not,
-          },
-          context,
-          logger,
-        ) === false,
-    );
-  }
-
-  if (Array.isArray(conditions)) {
-    return conditions.every((c) => allConditionsAreMatched(c, context, logger));
   }
 
   return false;

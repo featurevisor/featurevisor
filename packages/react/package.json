@@ -8,7 +8,8 @@
   "scripts": {
     "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
     "dist": "webpack --config ./webpack.config.js",
-    "build": "npm run transpile && npm run dist"
+    "build": "npm run transpile && npm run dist",
+    "test": "jest --config jest.config.js"
   },
   "author": {
     "name": "Fahad Heylaal",

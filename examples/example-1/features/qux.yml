@@ -5,8 +5,8 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - type: json
-    key: fooConfig
+  fooConfig:
+    type: json
     defaultValue: '{"foo": "bar"}'
 
 variations:
@@ -15,24 +15,21 @@ variations:
   - value: b
     weight: 33.33
     variables:
-      - key: fooConfig
-        value: '{"foo": "bar b"}'
+      fooConfig: '{"foo": "bar b"}'
   - value: c
     weight: 33.33
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 50
+    - key: "1"
+      segments: "*"
+      percentage: 50
   production:
-    rules:
-      - key: "1"
-        segments:
-          - countries/germany
-        percentage: 50
-        variation: b
-      - key: "2"
-        segments: "*"
-        percentage: 50
+    - key: "1"
+      segments:
+        - countries/germany
+      percentage: 50
+      variation: b
+    - key: "2"
+      segments: "*"
+      percentage: 50

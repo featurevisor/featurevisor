@@ -35,7 +35,7 @@ export async function exportSite(deps: Dependencies) {
 
   // copy datafiles
   fs.cpSync(
-    projectConfig.outputDirectoryPath,
+    projectConfig.datafilesDirectoryPath,
     path.join(projectConfig.siteExportDirectoryPath, "datafiles"),
     { recursive: true },
   );

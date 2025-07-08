@@ -12,6 +12,7 @@ assertions:
     context:
       country: nl
     expectedToBeEnabled: false
+    expectedVariation: control
 
   - at: 20
     environment: production

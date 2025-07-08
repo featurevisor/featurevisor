@@ -16,6 +16,13 @@ assertions:
         - mastercard
         - paypal
 
+    expectedEvaluations:
+      flag:
+        ruleKey: "3"
+      variables:
+        showPayments:
+          ruleKey: "3"
+
   ##
   # NL
   #
@@ -30,6 +37,22 @@ assertions:
       paymentMethods:
         - ideal
         - paypal
+
+    expectedEvaluations:
+      flag:
+        ruleKey: "1"
+
+  ##
+  # CH
+  #
+  - at: 80
+    environment: production
+    context:
+      country: ch
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        ruleKey: ch
 
   ##
   # DE

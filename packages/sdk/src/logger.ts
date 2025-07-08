@@ -18,9 +18,9 @@ export const loggerPrefix = "[Featurevisor]";
 export const defaultLogLevels: LogLevel[] = [
   // supported, but not enabled by default
   // "debug",
-  // "info",
 
   // enabled by default
+  "info",
   "warn",
   "error",
 ];
@@ -30,20 +30,17 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
   message,
   details = {},
 ) {
-  switch (level) {
-    case "debug":
-      console.log(loggerPrefix, message, details);
-      break;
-    case "info":
-      console.info(loggerPrefix, message, details);
-      break;
-    case "warn":
-      console.warn(loggerPrefix, message, details);
-      break;
-    case "error":
-      console.error(loggerPrefix, message, details);
-      break;
+  let method = "log";
+
+  if (level === "info") {
+    method = "info";
+  } else if (level === "warn") {
+    method = "warn";
+  } else if (level === "error") {
+    method = "error";
   }
+
+  console[method](loggerPrefix, message, details);
 };
 
 export class Logger {
@@ -51,8 +48,8 @@ export class Logger {
   private handle: LogHandler;
 
   constructor(options: CreateLoggerOptions) {
-    this.levels = options.levels as LogLevel[];
-    this.handle = options.handler as LogHandler;
+    this.levels = options.levels || defaultLogLevels;
+    this.handle = options.handler || defaultLogHandler;
   }
 
   setLevels(levels: LogLevel[]) {
@@ -83,8 +80,5 @@ export class Logger {
 }
 
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const levels = options.levels || defaultLogLevels;
-  const logHandler = options.handler || defaultLogHandler;
-
-  return new Logger({ levels, handler: logHandler });
+  return new Logger(options);
 }

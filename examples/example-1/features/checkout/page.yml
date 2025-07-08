@@ -5,52 +5,54 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: showPayments
+  showPayments:
     type: boolean
     defaultValue: false
 
-  - key: showShipping
+  showShipping:
     type: boolean
     defaultValue: false
 
-  - key: paymentMethods
+  paymentMethods:
     type: array
     defaultValue:
       - visa
       - mastercard
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100
 
   production:
-    rules:
-      - key: "1"
-        segments: countries/netherlands
-        percentage: 100
-        variables:
-          paymentMethods:
-            - ideal
-            - paypal
+    - key: "1"
+      segments: countries/netherlands
+      percentage: 100
+      variables:
+        paymentMethods:
+          - ideal
+          - paypal
 
-      - key: "2"
-        segments: countries/germany
-        percentage: 100
-        variables:
-          paymentMethods:
-            - sofort
-            - paypal
+    - key: "2"
+      segments: countries/germany
+      percentage: 100
+      variables:
+        paymentMethods:
+          - sofort
+          - paypal
 
-      - key: "3"
-        segments: "*"
-        percentage: 100
-        variables:
-          showPayments: true
-          showShipping: true
-          paymentMethods:
-            - visa
-            - mastercard
-            - paypal
+    - key: "ch"
+      segments: countries/switzerland
+      percentage: 0
+
+    - key: "3"
+      segments: "*"
+      percentage: 100
+      variables:
+        showPayments: true
+        showShipping: true
+        paymentMethods:
+          - visa
+          - mastercard
+          - paypal

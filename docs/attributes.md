@@ -27,21 +27,31 @@ These types are supported for attribute values:
 - `integer`
 - `double`
 - `date`
+- `array` (of strings)
+- `object` (flat object)
 
-## Capturing attributes
+### object
 
-This is useful for tracking purposes when we deal with feature activations using Featurevisor [SDKs](/docs/sdks#activation).
+When an attribute is of type `object`, it can have nested properties.
 
-Let's create a new attribute called `userId`:
+For example, if you want to create an attribute for `user` with some nested properties, you can do it like this:
 
 ```yml
-# attributes/userId.yml
-type: string
-description: User ID
-capture: true
+# attributes/user.yml
+description: User
+
+type: object
+
+properties:
+  id:
+    type: string
+    description: User ID
+  country:
+    type: string
+    description: User country
 ```
 
-If an attribute is marked as `capture: true`, then it will be captured by the SDKs when features are activated.
+When writing conditions for [segments](/docs/segments/), you can use the dot notation to access nested properties. For example, `user.id` or `user.country`.
 
 ## Archiving
 

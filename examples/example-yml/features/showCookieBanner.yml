@@ -4,20 +4,18 @@ tags:
 
 bucketBy: userId
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*" # enabled for everyone in staging only
-        percentage: 100
+    - key: everyone
+      segments: "*" # enabled for everyone in staging only
+      percentage: 100
 
   production:
-    rules:
-      - key: "1"
-        segments:
-          - netherlands # enabled in prod for NL only
-        percentage: 100
+    - key: nl
+      segments:
+        - netherlands # enabled in prod for NL only
+      percentage: 100
 
-      - key: "2"
-        segments: "*" # everyone else
-        percentage: 0
+    - key: everyone
+      segments: "*" # everyone else
+      percentage: 0

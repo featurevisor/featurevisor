@@ -73,8 +73,8 @@ export function applyCombinationToFeatureAssertion(
   );
 
   // context
-  flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
-    acc[key] = applyCombinationToValue(flattenedAssertion.context[key], combination);
+  flattenedAssertion.context = Object.keys(flattenedAssertion.context || {}).reduce((acc, key) => {
+    acc[key] = applyCombinationToValue(flattenedAssertion.context?.[key], combination);
 
     return acc;
   }, {});
@@ -105,9 +105,20 @@ export function getFeatureAssertionsFromMatrix(
 ): FeatureAssertion[] {
   if (!assertionWithMatrix.matrix) {
     const assertion = { ...assertionWithMatrix };
-    assertion.description = `Assertion #${aIndex + 1}:${assertion.environment ? ` (${assertion.environment})` : ""} ${
-      assertion.description || `at ${assertion.at}%`
-    }`;
+
+    let suffix;
+
+    if (assertion.environment) {
+      suffix = ` (${assertion.environment})`;
+    }
+
+    if (assertion.description) {
+      suffix = `: ${assertion.description}`;
+    } else {
+      suffix = `: at ${assertion.at}%`;
+    }
+
+    assertion.description = `Assertion #${aIndex + 1}${suffix}`;
 
     return [assertion];
   }
@@ -118,9 +129,20 @@ export function getFeatureAssertionsFromMatrix(
   for (let cIndex = 0; cIndex < combinations.length; cIndex++) {
     const combination = combinations[cIndex];
     const assertion = applyCombinationToFeatureAssertion(combination, assertionWithMatrix);
-    assertion.description = `Assertion #${aIndex + 1}:${assertion.environment ? ` (${assertion.environment})` : ""} ${
-      assertion.description || `at ${assertion.at}%`
-    }`;
+
+    let suffix;
+
+    if (assertion.environment) {
+      suffix = ` (${assertion.environment})`;
+    }
+
+    if (assertion.description) {
+      suffix = `: ${assertion.description}`;
+    } else {
+      suffix = `: at ${assertion.at}%`;
+    }
+
+    assertion.description = `Assertion #${aIndex + 1}${suffix}`;
 
     assertions.push(assertion);
   }
@@ -161,8 +183,8 @@ export function getSegmentAssertionsFromMatrix(
 ): SegmentAssertion[] {
   if (!assertionWithMatrix.matrix) {
     const assertion = { ...assertionWithMatrix };
-    assertion.description = `Assertion #${aIndex + 1}: ${
-      assertion.description || `#${aIndex + 1}`
+    assertion.description = `Assertion #${aIndex + 1}${
+      assertion.description ? `: ${assertion.description}` : ""
     }`;
 
     return [assertion];

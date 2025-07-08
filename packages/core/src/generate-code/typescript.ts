@@ -19,7 +19,7 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
     case "array":
       return "string[]";
     case "object":
-      return "any"; // @TODO: do a flat dictionary
+      return "any"; // @NOTE: do a flat dictionary
     case "json":
       return "any";
     default:
@@ -152,8 +152,10 @@ ${attributeProperties}
     let variableMethods = "";
 
     if (parsedFeature.variablesSchema) {
-      for (const variableSchema of parsedFeature.variablesSchema) {
-        const variableKey = variableSchema.key;
+      const variableKeys = Object.keys(parsedFeature.variablesSchema);
+
+      for (const variableKey of variableKeys) {
+        const variableSchema = parsedFeature.variablesSchema[variableKey];
         const variableType = variableSchema.type;
 
         const internalMethodName = `getVariable${

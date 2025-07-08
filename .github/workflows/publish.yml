@@ -42,6 +42,7 @@ jobs:
       - name: Bump version
         continue-on-error: true
         id: graduateRelease
+        # @TODO: npx lerna version 2.0.0 --force-publish --exact --yes
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
@@ -49,6 +50,7 @@ jobs:
 
       - name: Bump version fallback
         if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
+        # @TODO: npx lerna version 2.0.0 --force-publish --exact --yes
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"

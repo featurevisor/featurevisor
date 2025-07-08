@@ -35,7 +35,9 @@ conditions:
 These operators are supported as conditions:
 
 | Operator                    | Type of attribute   | Description                   |
-|-----------------------------|---------------------|-------------------------------|
+| --------------------------- | ------------------- | ----------------------------- |
+| `exists`                    |                     | Attribute exists in context   |
+| `notExists`                 |                     | Attribute does not exist      |
 | `equals`                    | any                 | Equals to                     |
 | `notEquals`                 | any                 | Not equals to                 |
 | `greaterThan`               | `integer`, `double` | Greater than                  |
@@ -50,12 +52,16 @@ These operators are supported as conditions:
 | `notIn`                     | `string`            | Not in array of strings       |
 | `before`                    | `string`, `date`    | Date comparison               |
 | `after`                     | `string`, `date`    | Date comparison               |
+| `matches`                   | `string`            | Matches regex pattern         |
+| `notMatches`                | `string`            | Does not match regex pattern  |
 | `semverEquals`              | `string`            | Semver equals to              |
 | `semverNotEquals`           | `string`            | Semver not equals to          |
 | `semverGreaterThan`         | `string`            | Semver greater than           |
 | `semverGreaterThanOrEquals` | `string`            | Semver greater than or equals |
 | `semverLessThan`            | `string`            | Semver less than              |
 | `semverLessThanOrEquals`    | `string`            | Semver less than or equals    |
+| `includes`                  | `array`             | Array includes value          |
+| `notIncludes`               | `array`             | Array does not include value  |
 
 Examples of each operator below:
 
@@ -265,6 +271,70 @@ conditions:
     value: 1.0.0
 ```
 
+### `exists`
+
+```yml
+# ...
+conditions:
+  - attribute: country
+    operator: exists
+```
+
+### `notExists`
+
+```yml
+# ...
+conditions:
+  - attribute: country
+    operator: notExists
+```
+
+### `includes`
+
+```yml
+# ...
+conditions:
+  - attribute: permissions
+    operator: includes
+    value: write
+```
+
+### `notIncludes`
+
+```yml
+# ...
+conditions:
+  - attribute: permissions
+    operator: notIncludes
+    value: write
+```
+
+### `matches`
+
+```yml
+# ...
+conditions:
+  - attribute: email
+    operator: matches
+    value: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+    # optional regex flags
+    regexFlags: i # case-insensitive
+```
+
+### `notMatches`
+
+```yml
+# ...
+conditions:
+  - attribute: email
+    operator: notMatches
+    value: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+    # optional regex flags
+    regexFlags: i # case-insensitive
+```
+
 ## Conditions
 
 Conditions can also be combined using `and`, `or`, and `not` operators.
@@ -318,18 +388,18 @@ conditions:
 # ...
 conditions:
   - and:
-    - attribute: device
-      operator: equals
-      value: iPhone
+      - attribute: device
+        operator: equals
+        value: iPhone
 
   - or:
-    - attribute: country
-      operator: equals
-      value: us
+      - attribute: country
+        operator: equals
+        value: us
 
-    - attribute: country
-      operator: equals
-      value: ca
+      - attribute: country
+        operator: equals
+        value: ca
 ```
 
 You can also nest `and`, `or`, and `not` operators:
@@ -338,14 +408,14 @@ You can also nest `and`, `or`, and `not` operators:
 # ...
 conditions:
   - not:
-    - or:
-      - attribute: country
-        operator: equals
-        value: us
+      - or:
+          - attribute: country
+            operator: equals
+            value: us
 
-      - attribute: country
-        operator: equals
-        value: ca
+          - attribute: country
+            operator: equals
+            value: ca
 ```
 
 ## Archiving

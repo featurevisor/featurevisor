@@ -8,10 +8,10 @@ describe("vue: index", function () {
   it("can set up sdk in app and then inject the sdk instance", async function () {
     const sdk = createInstance({
       datafile: {
-        schemaVersion: "1",
+        schemaVersion: "2",
         revision: "1.0",
-        features: [
-          {
+        features: {
+          test: {
             key: "test",
             bucketBy: "userId",
             variations: [{ value: "control" }, { value: "treatment" }],
@@ -27,9 +27,8 @@ describe("vue: index", function () {
               },
             ],
           },
-        ],
-        attributes: [],
-        segments: [],
+        },
+        segments: {},
       },
     });
 
@@ -69,5 +68,5 @@ describe("vue: index", function () {
     expect(revisionText).toEqual("1.0");
   });
 
-  // @TODO: add more tests that utilizes Composition API
+  // @NOTE: add more tests that utilizes Composition API
 });

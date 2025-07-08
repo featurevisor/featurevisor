@@ -1,4 +1,4 @@
-import { Context } from "@featurevisor/types";
+import { Context, DatafileContentV2 } from "@featurevisor/types";
 import {
   Evaluation,
   createInstance,
@@ -53,7 +53,7 @@ export interface EvaluateOptions {
   environment?: string;
   feature: string;
   context: Record<string, unknown>;
-  print?: boolean;
+  json?: boolean;
   pretty?: boolean;
   verbose?: boolean;
   schemaVersion?: string;
@@ -84,7 +84,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   let logs: Log[] = [];
   const f = createInstance({
-    datafile: datafileContent,
+    datafile: datafileContent as DatafileContentV2,
     logger: createLogger({
       levels: ["error", "warn", "info", "debug"],
       handler: (level, message, details) => {
@@ -134,7 +134,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     variables: variableEvaluations,
   };
 
-  if (options.print) {
+  if (options.json) {
     console.log(
       options.pretty ? JSON.stringify(allEvaluations, null, 2) : JSON.stringify(allEvaluations),
     );
@@ -214,7 +214,8 @@ export const evaluatePlugin: Plugin = {
         environment: parsed.environment,
         feature: parsed.feature,
         context: parsed.context ? JSON.parse(parsed.context) : {},
-        print: parsed.print,
+        // @NOTE: introduce optional --at?
+        json: parsed.json,
         pretty: parsed.pretty,
         verbose: parsed.verbose,
       },

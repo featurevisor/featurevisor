@@ -24,7 +24,7 @@ If your `featurevisor.config.js` file looks like this:
 module.exports = {
   tags: ["all"],
   environments: ["staging", "production"],
-}
+};
 ```
 
 Then the contents of your `dist` directory will look like this:
@@ -46,11 +46,27 @@ Next to datafiles, the build process will also generate some additional JSON fil
 
 By default, Featurevisor will increment the revision number as found in `.featurevisor/REVISION` file (learn more in [state files](/docs/state-files)).
 
+### Custom revision
+
 You can optionally customize the `revision` value when building datafiles by passing a `--revision` flag:
 
 ```
 $ npx featurevisor build --revision 1.2.3
 ```
+
+### Revision from hash
+
+If instead of an incremented revision, you want to use the hash of the individual datafile content, you can pass `--revision-from-hash`:
+
+```
+$ npx featurevisor build --revision-from-hash
+```
+
+If no features or segments changed in the datafile, the revision value will remain the same as before.
+
+This is useful for caching purposes.
+
+### No state files
 
 If you wish to build datafiles without making any changes to [state files](/docs/state-files), you can pass the `--no-state-files` flag:
 
@@ -78,7 +94,7 @@ If you are an SDK developer in other languages besides JavaScript, you may want 
 
 ## Datafiles directory
 
-By default, datafiles will be generated in the `dist` directory, or your custom directory if you have specified it under `outputDirectoryPath` in your [`featurevisor.config.js`](/docs/configuration/) file.
+By default, datafiles will be generated in the `datafiles` directory, or your custom directory if you have specified it under `datafilesDirectoryPath` in your [`featurevisor.config.js`](/docs/configuration/) file.
 
 You can optionally override it from CLI:
 

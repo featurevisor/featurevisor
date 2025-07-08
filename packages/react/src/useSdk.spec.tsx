@@ -9,10 +9,10 @@ import { createInstance } from "@featurevisor/sdk";
 function getNewInstance() {
   const sdk = createInstance({
     datafile: {
-      schemaVersion: "1",
+      schemaVersion: "2",
       revision: "1.0",
-      features: [
-        {
+      features: {
+        test: {
           key: "test",
           bucketBy: "userId",
           variations: [{ value: "control" }, { value: "treatment" }],
@@ -28,9 +28,8 @@ function getNewInstance() {
             },
           ],
         },
-      ],
-      attributes: [],
-      segments: [],
+      },
+      segments: {},
     },
   });
 
@@ -45,8 +44,6 @@ describe("react: useSdk", function () {
   test("should return the sdk", function () {
     function TestComponent() {
       const sdk = useSdk();
-
-      expect(typeof sdk.isReady).toEqual("function");
 
       return <p>Test</p>;
     }

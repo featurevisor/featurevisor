@@ -12,7 +12,8 @@ export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const GROUPS_DIRECTORY_NAME = "groups";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
-export const OUTPUT_DIRECTORY_NAME = "dist";
+export const DATAFILES_DIRECTORY_NAME = "datafiles";
+export const DATAFILE_NAME_PATTERN = "featurevisor-%s.json";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
@@ -22,12 +23,12 @@ export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 
-export const DEFAULT_PRETTY_STATE = false;
+export const DEFAULT_PRETTY_STATE = true;
 export const DEFAULT_PRETTY_DATAFILE = false;
 
 export const DEFAULT_PARSER: Parser = "yml";
 
-export const SCHEMA_VERSION = "1"; // default schema version
+export const SCHEMA_VERSION = "2"; // default schema version
 
 export interface ProjectConfig {
   featuresDirectoryPath: string;
@@ -36,13 +37,14 @@ export interface ProjectConfig {
   groupsDirectoryPath: string;
   testsDirectoryPath: string;
   stateDirectoryPath: string;
-  outputDirectoryPath: string;
+  datafilesDirectoryPath: string;
+  datafileNamePattern: string;
   siteExportDirectoryPath: string;
 
   environments: string[] | false;
   tags: string[];
 
-  adapter: any; // @TODO: type this properly later
+  adapter: any; // @NOTE: type this properly later
   plugins: Plugin[];
 
   defaultBucketBy: BucketBy;
@@ -80,7 +82,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
-    outputDirectoryPath: path.join(rootDirectoryPath, OUTPUT_DIRECTORY_NAME),
+    datafilesDirectoryPath: path.join(rootDirectoryPath, DATAFILES_DIRECTORY_NAME),
+    datafileNamePattern: DATAFILE_NAME_PATTERN,
     siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
 
     enforceCatchAllRule: false,
@@ -121,7 +124,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 }
 
 export interface ShowProjectConfigOptions {
-  print?: boolean;
+  json?: boolean;
   pretty?: boolean;
 }
 
@@ -129,7 +132,7 @@ export function showProjectConfig(
   projectConfig: ProjectConfig,
   options: ShowProjectConfigOptions = {},
 ) {
-  if (options.print) {
+  if (options.json) {
     console.log(
       options.pretty ? JSON.stringify(projectConfig, null, 2) : JSON.stringify(projectConfig),
     );
@@ -157,7 +160,7 @@ export const configPlugin: Plugin = {
   handler: async ({ rootDirectoryPath, parsed }) => {
     const projectConfig = getProjectConfig(rootDirectoryPath);
     showProjectConfig(projectConfig, {
-      print: parsed.print,
+      json: parsed.json,
       pretty: parsed.pretty,
     });
   },

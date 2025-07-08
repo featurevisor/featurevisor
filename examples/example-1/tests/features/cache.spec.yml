@@ -1,0 +1,23 @@
+feature: cache
+assertions:
+  - at: 10
+    environment: production
+    context: {}
+    expectedToBeEnabled: true
+
+    children:
+      - context:
+          country: "nl"
+        expectedToBeEnabled: false
+
+  - at: 10
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+
+  - at: 10
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: false

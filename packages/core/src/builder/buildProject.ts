@@ -8,12 +8,13 @@ import { Plugin } from "../cli";
 
 export interface BuildCLIOptions {
   revision?: string;
+  revisionFromHash?: boolean;
   schemaVersion?: string;
 
   // all three together
   environment?: string;
   feature?: string;
-  print?: boolean;
+  json?: boolean;
   pretty?: boolean;
   stateFiles?: boolean; // --no-state-files in CLI
   inflate?: number;
@@ -48,6 +49,7 @@ async function buildForEnvironment({
       {
         schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
         revision: nextRevision,
+        revisionFromHash: cliOptions.revisionFromHash,
         environment: environment,
         tag: tag,
         inflate: cliOptions.inflate,
@@ -85,7 +87,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * This way we centralize the datafile generation in one place,
    * while tests can be run anywhere else.
    */
-  if (cliOptions.environment && cliOptions.print) {
+  if (cliOptions.environment && cliOptions.json) {
     const datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
       environment: cliOptions.environment,

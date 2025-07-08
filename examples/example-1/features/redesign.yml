@@ -4,19 +4,17 @@ tags:
 
 bucketBy: userId
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100
 
   production:
-    rules:
-      - key: "1"
-        segments: countries/netherlands
-        percentage: 100
+    - key: "1"
+      segments: countries/netherlands
+      percentage: 100
 
-      - key: "2"
-        segments: "*"
-        percentage: 0
+    - key: "2"
+      segments: "*"
+      percentage: 0

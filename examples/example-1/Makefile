@@ -12,16 +12,15 @@ endef
 
 test-datafiles:
 	@echo "Testing staging datafiles"
-	$(call notExists,showBanner,./dist/staging/datafile-tag-all.json)
-	$(call exists,showBanner,./dist/staging/datafile-tag-checkout.json)
-	$(call exists,hidden,./dist/staging/datafile-tag-all.json)
+	$(call notExists,showBanner,./datafiles/staging/featurevisor-tag-all.json)
+	$(call exists,showBanner,./datafiles/staging/featurevisor-tag-checkout.json)
+	$(call exists,hidden,./datafiles/staging/featurevisor-tag-all.json)
 
 	@echo "\nTesting production datafiles"
-	$(call exists,showBanner,./dist/production/datafile-tag-all.json)
-	$(call exists,showBanner,./dist/production/datafile-tag-checkout.json)
-	$(call notExists,hidden,./dist/production/datafile-tag-all.json)
+	$(call exists,showBanner,./datafiles/production/featurevisor-tag-all.json)
+	$(call exists,showBanner,./datafiles/production/featurevisor-tag-checkout.json)
+	$(call notExists,hidden,./datafiles/production/featurevisor-tag-all.json)
 
 test:
 	npx featurevisor test
-	npx featurevisor test --schema-version=2
 	make test-datafiles

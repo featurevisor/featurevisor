@@ -155,6 +155,12 @@ $ npx featurevisor find-usage --unusedSegments
 $ npx featurevisor find-usage --unusedAttributes
 ```
 
+### Feature usage
+
+```
+$ npx featurevisor find-usage --feature=my_feature
+```
+
 ## Benchmarking
 
 You can measure how fast or slow your SDK evaluations are for particular features.

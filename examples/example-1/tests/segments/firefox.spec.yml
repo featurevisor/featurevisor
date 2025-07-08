@@ -1,0 +1,28 @@
+segment: firefox
+assertions:
+  ##
+  # Match
+  #
+  - context:
+      browser:
+        name: firefox
+        version: 100.0
+    expectedToMatch: true
+
+  ##
+  # Not match
+  #
+  - context:
+      browser:
+        name: chrome
+        version: 100.0
+    expectedToMatch: false
+
+  - context:
+      browser:
+        type: chrome
+    expectedToMatch: false
+
+  - context:
+      browser: firefox
+    expectedToMatch: false

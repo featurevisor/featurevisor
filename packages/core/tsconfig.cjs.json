@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.cjs.json",
   "compilerOptions": {
+    "target": "es2020",
     "outDir": "./lib"
   },
   "include": ["./src/**/*.ts"]

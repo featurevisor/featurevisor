@@ -2,13 +2,7 @@
 
 Static site generator for Featurevisor projects.
 
-Visit [https://featurevisor.com](https://featurevisor.com) for more information.
-
-## Installation
-
-```
-$ npm install --save @featurevisor/site
-```
+Visit [https://featurevisor.com/docs/site/](https://featurevisor.com/docs/site/) for more information.
 
 ## License
 

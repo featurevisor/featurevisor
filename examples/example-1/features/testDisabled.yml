@@ -1,0 +1,37 @@
+description: For testing variables when feature itself is disabled
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  foo:
+    type: string
+    defaultValue: foo value
+
+  bar:
+    type: string
+    defaultValue: bar value
+    useDefaultWhenDisabled: true
+
+  baz:
+    type: string
+    defaultValue: baz value
+    disabledValue: baz value when feature is disabled
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      segments: "*"
+      percentage: 0

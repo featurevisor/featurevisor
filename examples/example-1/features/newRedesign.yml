@@ -5,10 +5,10 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: foo
+  foo:
     type: string
     defaultValue: "default foo"
-  - key: bar
+  bar:
     type: string
     defaultValue: "default bar"
     deprecated: true
@@ -20,41 +20,40 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      - key: foo
-        value: foo for treatment
-        overrides:
-          - segments:
-              or:
-                - countries/germany
-                - countries/switzerland
-            value: foo for treatment in DE or CH
-      - key: bar
-        value: bar for treatment
-        overrides:
-          - segments: countries/netherlands
-            value: bar for treatment in NL
+      foo: foo for treatment
+      bar: bar for treatment
+    variableOverrides:
+      foo:
+        - segments:
+            or:
+              - countries/germany
+              - countries/switzerland
+          value: foo for treatment in DE or CH
+      bar:
+        - segments: countries/netherlands
+          value: bar for treatment in NL
 
-environments:
+force:
   staging:
-    force:
-      - conditions:
-          - attribute: userId
-            operator: equals
-            value: "test-force-id"
-        enabled: true
-        variation: treatment
-    rules:
-      - key: "1"
-        segments: qa
-        percentage: 0
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: "test-force-id"
+      enabled: true
+      variation: treatment
 
-      # # intentionally commented to prove it fails before fixing SDK
-      # - key: "1"
-      #   segments: "*"
-      #   percentage: 0
+rules:
+  staging:
+    - key: "1"
+      segments: qa
+      percentage: 0
+
+    # # intentionally commented to prove it fails before fixing SDK
+    # - key: "1"
+    #   segments: "*"
+    #   percentage: 0
 
   production:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100

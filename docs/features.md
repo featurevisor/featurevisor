@@ -325,7 +325,7 @@ Before assigning variable values, we must define the schema of our variables in 
 ```yml
 # ...
 variablesSchema:
-  - key: bgColor
+  bgColor:
     type: string
     defaultValue: red
 ```
@@ -341,8 +341,7 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      - key: bgColor
-        value: blue
+      bgColor: blue
 ```
 
 If users are bucketed in the `treatment` variation, they will get the `bgColor` variable value of `blue`. Otherwise they will fall back to the default value of `red` as defined in the variables schema.
@@ -387,12 +386,12 @@ variations:
   # ...
   - value: treatment
     weight: 100
+    variableOverrides:
+      bgColor:
+        - segments: netherlands
+          value: orange
     variables:
-      - key: bgColor
-        value: blue
-        overrides:
-          - segments: netherlands
-            value: orange
+      bgColor: blue
 ```
 
 If you want to embed overriding conditions directly within variations:
@@ -404,15 +403,15 @@ variations:
 
   - value: treatment
     weight: 100
+    variableOverrides:
+      bgColor:
+        - conditions:
+          - attribute: country
+            operator: equals
+            value: nl
+          value: orange
     variables:
-      - key: bgColor
-        value: blue
-        overrides:
-          - conditions:
-              - attribute: country
-                operator: equals
-                value: nl
-            value: orange
+      bgColor: blue
 ```
 
 ## Variable types
@@ -424,7 +423,7 @@ Examples of each type of variable:
 ```yml
 # ...
 variablesSchema:
-  - key: bgColor
+  bgColor:
     type: string
     defaultValue: red
 
@@ -433,8 +432,7 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: bgColor
-        value: blue
+      bgColor: blue
 ```
 
 ### `boolean`
@@ -442,7 +440,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: showSidebar
+  showSidebar:
     type: boolean
     defaultValue: false
 
@@ -451,8 +449,7 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: showSidebar
-        value: true
+      showSidebar: true
 ```
 
 ### `integer`
@@ -460,7 +457,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: position
+  position:
     type: integer
     defaultValue: 1
 
@@ -469,8 +466,7 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: position
-        value: 2
+      position: 2
 ```
 
 ### `double`
@@ -478,7 +474,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: amount
+  amount:
     type: double
     defaultValue: 9.99
 
@@ -487,8 +483,7 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: amount
-        value: 4.99
+      amount: 4.99
 ```
 
 ### `array`
@@ -496,7 +491,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: acceptedCards
+  acceptedCards:
     type: array
     defaultValue:
       - visa
@@ -507,10 +502,9 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: acceptedCards
-        value:
-          - visa
-          - amex
+      acceptedCards:
+        - visa
+        - amex
 ```
 
 ### `object`
@@ -518,7 +512,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: hero
+  hero:
     type: object
     defaultValue:
       title: Welcome
@@ -529,10 +523,9 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: hero
-        value:
-          title: Welcome to our website
-          subtitle: We are glad you are here
+      hero:
+        title: Welcome to our website
+        subtitle: We are glad you are here
 ```
 
 ### `json`
@@ -540,7 +533,7 @@ variations:
 ```yml
 # ...
 variablesSchema:
-  - key: hero
+  hero:
     type: json
     defaultValue: '{"title": "Welcome", "subtitle": "Welcome to our website"}'
 
@@ -549,8 +542,7 @@ variations:
   - value: treatment
     weight: 100
     variables:
-      - key: hero
-        value: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
+      hero: '{"title": "Welcome to our website", "subtitle": "We are glad you are here"}'
 ```
 
 ## Required
@@ -655,7 +647,7 @@ Similarly, variables can also be deprecated:
 # ...
 
 variablesSchema:
-  - key: bgColor
+  bgColor:
     type: string
     defaultValue: red
     deprecated: true # mark as deprecated

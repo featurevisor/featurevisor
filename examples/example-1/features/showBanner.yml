@@ -5,30 +5,32 @@ tags:
 
 bucketBy: userId
 
-environments:
+force:
   staging:
-    expose:
-      # this means, this feature:
-      #   - will exist in staging/datafile-tag-checkout.json only
-      #   - not exist in staging/datafile-tag-all.json
-      - checkout
-    force:
-      - segments: qa
-        enabled: true
+    - segments: qa
+      enabled: true
 
-      - conditions:
-          - attribute: userId
-            operator: equals
-            value: user-3
-        enabled: true
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 0
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: user-3
+      enabled: true
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 0
 
   production:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 0
+    - key: "1"
+      segments: "*"
+      percentage: 0
+
+expose:
+  staging:
+    # this means, this feature:
+    #   - will exist in datafiles/staging/featurevisor-tag-checkout.json only
+    #   - not exist in datafiles/staging/featurevisor-tag-all.json
+    - checkout
 # See README for additional test scripts for verifying the datafile generation
