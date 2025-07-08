@@ -32,7 +32,9 @@ import ReactDOM from 'react-dom'
 import { createInstance } from '@featurevisor/sdk'
 import { FeaturevisorProvider } from '@featurevisor/react'
 
-const datafileContent = fetch('https://cdn.yoursite.com/datafile.json')
+const DATAFILE_URL = '...'
+
+const datafileContent = await fetch(DATAFILE_URL)
   .then(response => response.json())
 
 const f = createInstance({
