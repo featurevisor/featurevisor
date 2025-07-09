@@ -43,7 +43,7 @@ describe("sdk: events", function () {
 
   describe("getParamsForDatafileSetEvent", function () {
     const logger = createLogger({
-      levels: [],
+      level: "error",
     });
 
     it("should get params for datafile set event: empty to new", function () {

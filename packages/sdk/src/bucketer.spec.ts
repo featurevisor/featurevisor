@@ -19,7 +19,7 @@ describe("sdk: Bucket", function () {
     });
 
     // these assertions will be copied to unit tests of SDKs ported to other languages,
-    // so we can keep consitent bucketing across all SDKs
+    // so we can keep consistent bucketing across all SDKs
     it("should return expected number for known keys", function () {
       const expectedResults = {
         foo: 20602,
@@ -40,7 +40,7 @@ describe("sdk: Bucket", function () {
 
   describe("getBucketKey", function () {
     const logger = createLogger({
-      levels: ["error", "warn"],
+      level: "warn",
     });
 
     it("should be a function", function () {

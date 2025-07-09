@@ -37,6 +37,7 @@ export interface OverrideOptions {
 export interface InstanceOptions {
   datafile?: DatafileContent | string;
   context?: Context;
+  logLevel?: LogLevel;
   logger?: Logger;
   sticky?: StickyFeatures;
   hooks?: Hook[];
@@ -56,7 +57,11 @@ export class FeaturevisorInstance {
   constructor(options: InstanceOptions) {
     // from options
     this.context = options.context || {};
-    this.logger = options.logger || createLogger();
+    this.logger =
+      options.logger ||
+      createLogger({
+        level: options.logLevel || Logger.defaultLevel,
+      });
     this.hooksManager = new HooksManager({
       hooks: options.hooks || [],
       logger: this.logger,
@@ -80,9 +85,8 @@ export class FeaturevisorInstance {
     this.logger.info("Featurevisor SDK initialized");
   }
 
-  // @TODO: improve
-  setLogLevels(levels: LogLevel[]) {
-    this.logger.setLevels(levels);
+  setLogLevel(level: LogLevel) {
+    this.logger.setLevel(level);
   }
 
   setDatafile(datafile: DatafileContent | string) {

@@ -9,21 +9,11 @@ export interface LogDetails {
 export type LogHandler = (level: LogLevel, message: LogMessage, details?: LogDetails) => void;
 
 export interface CreateLoggerOptions {
-  levels?: LogLevel[];
+  level?: LogLevel;
   handler?: LogHandler;
 }
 
 export const loggerPrefix = "[Featurevisor]";
-
-export const defaultLogLevels: LogLevel[] = [
-  // supported, but not enabled by default
-  // "debug",
-
-  // enabled by default
-  "info",
-  "warn",
-  "error",
-];
 
 export const defaultLogHandler: LogHandler = function defaultLogHandler(
   level,
@@ -44,22 +34,38 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
 };
 
 export class Logger {
-  private levels: LogLevel[];
+  static allLevels: LogLevel[] = [
+    // enabled by default
+    "error",
+    "warn",
+    "info",
+
+    // not enabled by default
+    "debug",
+  ];
+
+  static defaultLevel: LogLevel = "info";
+
+  private level: LogLevel;
   private handle: LogHandler;
 
   constructor(options: CreateLoggerOptions) {
-    this.levels = options.levels || defaultLogLevels;
+    this.level = options.level || Logger.defaultLevel;
     this.handle = options.handler || defaultLogHandler;
   }
 
-  setLevels(levels: LogLevel[]) {
-    this.levels = levels;
+  setLevel(level: LogLevel) {
+    this.level = level;
   }
 
   log(level: LogLevel, message: LogMessage, details?: LogDetails) {
-    if (this.levels.indexOf(level) !== -1) {
-      this.handle(level, message, details);
+    const shouldHandle = Logger.allLevels.indexOf(this.level) >= Logger.allLevels.indexOf(level);
+
+    if (!shouldHandle) {
+      return;
     }
+
+    this.handle(level, message, details);
   }
 
   debug(message: LogMessage, details?: LogDetails) {
