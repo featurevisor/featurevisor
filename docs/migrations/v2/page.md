@@ -1352,6 +1352,96 @@ const isFeatureEnabled = f.isEnabled(
 {% /column %}
 {% /row %}
 
+### Logging {% label="Breaking" labelType="error" %}
+
+Instead of passing all log [levels](/docs/sdks/javascript/#levels) individually, you can now pass a single level to the SDK.
+
+The set level will cover all the levels below it, so you can pass `debug` to cover all the levels together.
+
+#### Creating logger instance {% label="Breaking" labelType="error" %}
+
+{% row %}
+{% column %}
+
+```js {% title="Before" path="your-app/index.js" highlight="8-13" %}
+import {
+  createInstance,
+  createLogger
+} from '@featurevisor/sdk'
+
+const f = createInstance({
+  logger: createLogger({
+    levels: [
+      'debug',
+      'info',
+      'warn',
+      'error',
+    ],
+  })
+})
+```
+
+{% /column %}
+{% column %}
+
+```js {% title="After" path="your-app/index.js" highlight="8" %}
+import {
+  createInstance,
+  createLogger
+} from '@featurevisor/sdk'
+
+const f = createInstance({
+  logger: createLogger({
+    level: 'debug',
+  })
+})
+```
+
+Setting `debug` will now cover all the levels together, instead of having to pass them all individually.
+
+{% /column %}
+{% /row %}
+
+#### Passing log level when creating SDK instance {% label="New" labelType="success" %}
+
+Alternatively, you can also pass the log level directly when creating the SDK instance:
+
+```js {% path="your-app/index.js" highlight="4" %}
+import { createInstance } from '@featurevisor/sdk'
+
+const f = createInstance({
+  logLevel: 'debug',
+})
+```
+
+#### Setting log level after creating SDK instance {% label="Breaking" labelType="error" %}
+
+You can also change the log level after creating the SDK instance:
+
+{% row %}
+{% column %}
+
+```js {% title="Before" path="your-app/index.js" highlight="" %}
+f.setLogLevels([
+  'error',
+  'warn',
+  'info',
+  'debug',
+])
+```
+
+{% /column %}
+{% column %}
+
+```js {% title="After" path="your-app/index.js" highlight="8" %}
+f.setLogLevel('debug')
+```
+
+{% /column %}
+{% /row %}
+
+Read more in [Logging](/docs/sdks/javascript/#logging) section.
+
 ### Hooks {% label="New" labelType="success" %}
 
 Hooks are a set of new APIs allowing you to intercept the evaluation process and customize it.
