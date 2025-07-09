@@ -325,31 +325,45 @@ setTimeout(function () {
 
 ## Logging
 
-By default, Featurevisor SDKs will print out logs to the console for `warn` and `error` levels.
+By default, Featurevisor SDKs will print out logs to the console for `info` level and above.
 
 ### Levels
 
-You can customize it further:
+These are all the available log levels:
+
+- `error`
+- `warn`
+- `info`
+- `debug`
+
+### Customizing levels
+
+If you choose `debug` level to make the logs more verbose, you can set it at the time of SDK initialization.
+
+Setting `debug` level will print out all logs, including `info`, `warn`, and `error` levels.
 
 ```js
 import { createInstance, createLogger } from '@featurevisor/sdk'
 
 const f = createInstance({
   logger: createLogger({
-    levels: [
-      'error',
-      'warn',
-      'info',
-      'debug'
-    ],
+    level: 'debug',
   }),
 })
 ```
 
-You can also set log levels from instance afterwards:
+Alternatively, you can also set `logLevel` directly:
 
 ```js
-f.setLogLevels(['error', 'warn'])
+const f = createInstance({
+  logLevel: 'debug',
+})
+```
+
+You can also set log level from SDK instance afterwards:
+
+```js
+f.setLogLevel('debug')
 ```
 
 ### Handler
@@ -359,7 +373,7 @@ You can also pass your own log handler, if you do not wish to print the logs to 
 ```js
 const f = createInstance({
   logger: createLogger({
-    levels: ['error', 'warn', 'info', 'debug'],
+    level: 'info',
     handler: function (level, message, details) {
       // do something with the log
     },
