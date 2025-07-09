@@ -1,4 +1,4 @@
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug";
 
 export type LogMessage = string;
 
@@ -35,7 +35,7 @@ export const defaultLogHandler: LogHandler = function defaultLogHandler(
 
 export class Logger {
   static allLevels: LogLevel[] = [
-    // enabled by default
+    "fatal",
     "error",
     "warn",
     "info",

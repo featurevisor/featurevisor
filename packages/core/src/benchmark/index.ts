@@ -1,5 +1,5 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
-import { FeaturevisorInstance, createInstance, createLogger } from "@featurevisor/sdk";
+import { FeaturevisorInstance, createInstance } from "@featurevisor/sdk";
 
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
@@ -126,9 +126,7 @@ export async function benchmarkFeature(
 
   const f = createInstance({
     datafile: datafileContent as DatafileContent,
-    logger: createLogger({
-      levels: ["warn", "error"],
-    }),
+    logLevel: "warn",
   });
   console.log("...SDK initialized");
 

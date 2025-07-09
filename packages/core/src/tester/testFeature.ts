@@ -7,7 +7,6 @@ import type {
 } from "@featurevisor/types";
 import {
   createInstance,
-  createLogger,
   FeaturevisorInstance,
   LogLevel,
   MAX_BUCKETED_NUMBER,
@@ -60,11 +59,11 @@ export async function testFeature(
       console.log("");
     }
 
-    let logLevels: LogLevel[] = ["warn", "error"];
+    let logLevel: LogLevel = "warn";
     if (options.verbose) {
-      logLevels = ["debug", "info", "warn", "error"];
+      logLevel = "debug";
     } else if (options.quiet) {
-      logLevels = [];
+      logLevel = "fatal";
     }
 
     const sdk: FeaturevisorInstance = createInstance({
@@ -82,9 +81,7 @@ export async function testFeature(
           },
         },
       ],
-      logger: createLogger({
-        levels: logLevels,
-      }),
+      logLevel,
     });
 
     const feature = await datasource.readFeature(featureKey);

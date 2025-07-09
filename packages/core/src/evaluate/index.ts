@@ -86,7 +86,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   const f = createInstance({
     datafile: datafileContent as DatafileContent,
     logger: createLogger({
-      levels: ["error", "warn", "info", "debug"],
+      level: "debug",
       handler: (level, message, details) => {
         logs.push({
           level,

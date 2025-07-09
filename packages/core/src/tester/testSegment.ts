@@ -37,17 +37,17 @@ export async function testSegment(
     return testResult;
   }
 
-  let logLevels: LogLevel[] = ["error", "warn"];
+  let logLevel: LogLevel = "warn";
   if (options.verbose) {
-    logLevels = ["error", "warn", "info", "debug"];
+    logLevel = "debug";
   } else if (options.quiet) {
-    logLevels = [];
+    logLevel = "fatal";
   }
 
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
   const logger = createLogger({
-    levels: logLevels,
+    level: logLevel,
   });
   const datafileReader = new DatafileReader({
     datafile: {
