@@ -1,7 +1,7 @@
 import { createLogger, Logger, LogLevel, defaultLogHandler } from "./logger";
 
 describe("logger", () => {
-  let consoleSpy: jest.SpyInstance;
+  let consoleSpy: jest.SpyInstance; // eslint-disable-line
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, "log").mockImplementation();
