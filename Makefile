@@ -12,7 +12,7 @@ test:
 	npm test
 
 lint:
-	npx prettier examples/ packages/ --check
+	npx prettier examples/ packages/ docs/ --check
 	npx eslint .
 	npx lerna run lint
 
