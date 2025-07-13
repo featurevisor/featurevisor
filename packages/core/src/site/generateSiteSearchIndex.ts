@@ -1,4 +1,4 @@
-import {
+import type {
   HistoryEntry,
   SearchIndex,
   AttributeKey,
@@ -87,13 +87,15 @@ export async function generateSiteSearchIndex(
 
     if (Array.isArray(parsed.variations)) {
       parsed.variations.forEach((variation) => {
-        if (!variation.variables) {
+        if (!variation.variableOverrides) {
           return;
         }
 
-        variation.variables.forEach((v) => {
-          if (v.overrides) {
-            v.overrides.forEach((o) => {
+        Object.keys(variation.variableOverrides).forEach((variableKey) => {
+          const overrides = variation.variableOverrides?.[variableKey];
+
+          if (overrides) {
+            overrides.forEach((o) => {
               if (o.conditions) {
                 extractAttributeKeysFromConditions(o.conditions).forEach((attributeKey) => {
                   if (!attributesUsedInFeatures[attributeKey]) {
@@ -119,12 +121,28 @@ export async function generateSiteSearchIndex(
       });
     }
 
-    // with environments
-    if (parsed.environments) {
-      Object.keys(parsed.environments).forEach((environmentKey) => {
-        const env = parsed.environments[environmentKey];
+    // rules
+    if (parsed.rules) {
+      if (!Array.isArray(parsed.rules)) {
+        // with environments
+        Object.keys(parsed.rules).forEach((environmentKey) => {
+          const rules = parsed.rules?.[environmentKey];
 
-        env.rules.forEach((rule) => {
+          rules.forEach((rule) => {
+            if (rule.segments && rule.segments !== "*") {
+              extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
+                if (!segmentsUsedInFeatures[segmentKey]) {
+                  segmentsUsedInFeatures[segmentKey] = new Set();
+                }
+
+                segmentsUsedInFeatures[segmentKey].add(entityName);
+              });
+            }
+          });
+        });
+      } else {
+        // no environments
+        parsed.rules.forEach((rule) => {
           if (rule.segments && rule.segments !== "*") {
             extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
               if (!segmentsUsedInFeatures[segmentKey]) {
@@ -135,9 +153,15 @@ export async function generateSiteSearchIndex(
             });
           }
         });
+      }
+    }
 
-        if (env.force) {
-          env.force.forEach((force) => {
+    // force
+    if (parsed.force) {
+      if (!Array.isArray(parsed.force)) {
+        // with environments
+        Object.keys(parsed.force).forEach((environmentKey) => {
+          parsed.force?.[environmentKey].forEach((force) => {
             if (force.segments && force.segments !== "*") {
               extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
                 if (!segmentsUsedInFeatures[segmentKey]) {
@@ -158,47 +182,31 @@ export async function generateSiteSearchIndex(
               });
             }
           });
-        }
-      });
-    }
+        });
+      } else {
+        // no environments
+        parsed.force.forEach((force) => {
+          if (force.segments && force.segments !== "*") {
+            extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
+              if (!segmentsUsedInFeatures[segmentKey]) {
+                segmentsUsedInFeatures[segmentKey] = new Set();
+              }
 
-    // no environments
-    if (parsed.rules) {
-      parsed.rules.forEach((rule) => {
-        if (rule.segments && rule.segments !== "*") {
-          extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) => {
-            if (!segmentsUsedInFeatures[segmentKey]) {
-              segmentsUsedInFeatures[segmentKey] = new Set();
-            }
+              segmentsUsedInFeatures[segmentKey].add(entityName);
+            });
+          }
 
-            segmentsUsedInFeatures[segmentKey].add(entityName);
-          });
-        }
-      });
-    }
+          if (force.conditions) {
+            extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
+              if (!attributesUsedInFeatures[attributeKey]) {
+                attributesUsedInFeatures[attributeKey] = new Set();
+              }
 
-    if (parsed.force) {
-      parsed.force.forEach((force) => {
-        if (force.segments && force.segments !== "*") {
-          extractSegmentKeysFromGroupSegments(force.segments).forEach((segmentKey) => {
-            if (!segmentsUsedInFeatures[segmentKey]) {
-              segmentsUsedInFeatures[segmentKey] = new Set();
-            }
-
-            segmentsUsedInFeatures[segmentKey].add(entityName);
-          });
-        }
-
-        if (force.conditions) {
-          extractAttributeKeysFromConditions(force.conditions).forEach((attributeKey) => {
-            if (!attributesUsedInFeatures[attributeKey]) {
-              attributesUsedInFeatures[attributeKey] = new Set();
-            }
-
-            attributesUsedInFeatures[attributeKey].add(entityName);
-          });
-        }
-      });
+              attributesUsedInFeatures[attributeKey].add(entityName);
+            });
+          }
+        });
+      }
     }
 
     // push

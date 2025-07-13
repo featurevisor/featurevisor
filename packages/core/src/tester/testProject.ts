@@ -1,7 +1,6 @@
 import * as fs from "fs";
-import * as path from "path";
 
-import { TestSegment, TestFeature, DatafileContent } from "@featurevisor/types";
+import type { TestSegment, TestFeature, Test, DatafileContent } from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
@@ -13,6 +12,7 @@ import { printTestResult } from "./printTestResult";
 import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
+import { listEntities } from "../list";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -22,11 +22,6 @@ export interface TestProjectOptions {
   onlyFailures?: boolean;
   schemaVersion?: string;
   inflate?: number;
-}
-
-export interface TestPatterns {
-  keyPattern?: RegExp;
-  assertionPattern?: RegExp;
 }
 
 export interface ExecutionResult {
@@ -40,22 +35,18 @@ export interface ExecutionResult {
 export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
 
 export async function executeTest(
-  testFile: string,
+  test: Test,
   deps: Dependencies,
   options: TestProjectOptions,
-  patterns: TestPatterns,
   datafileContentByEnvironment: DatafileContentByEnvironment,
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
-  const relativeTestFilePath = path
-    .join(projectConfig.testsDirectoryPath, datasource.getTestSpecName(testFile))
-    .replace(rootDirectoryPath + path.sep, "");
+  const extension = datasource.getExtension();
+  const relativeTestFilePath = test.key + (extension ? `.${extension}` : "");
 
-  const t = await datasource.readTest(testFile);
-
-  const tAsSegment = t as TestSegment;
-  const tAsFeature = t as TestFeature;
+  const tAsSegment = test as TestSegment;
+  const tAsFeature = test as TestFeature;
   const key = tAsSegment.segment || tAsFeature.feature;
   const type = tAsSegment.segment ? "segment" : "feature";
 
@@ -68,26 +59,21 @@ export async function executeTest(
   };
 
   if (!key) {
-    console.error(`  => Invalid test: ${JSON.stringify(t)}`);
+    console.error(`  => Invalid test: ${JSON.stringify(test)}`);
     executionResult.passed = false;
 
     return executionResult;
   }
 
-  if (patterns.keyPattern && !patterns.keyPattern.test(key)) {
-    return;
-  }
-
   let testResult;
   if (type === "segment") {
-    testResult = await testSegment(datasource, tAsSegment, patterns);
+    testResult = await testSegment(datasource, tAsSegment, options);
   } else {
     testResult = await testFeature(
       datasource,
       projectConfig,
       tAsFeature,
       options,
-      patterns,
       datafileContentByEnvironment,
     );
   }
@@ -117,9 +103,9 @@ export async function executeTest(
 
 export async function testProject(
   deps: Dependencies,
-  options: TestProjectOptions = {},
+  testOptions: TestProjectOptions = {},
 ): Promise<boolean> {
-  const { projectConfig, datasource } = deps;
+  const { rootDirectoryPath, projectConfig, datasource, options } = deps;
 
   let hasError = false;
 
@@ -130,21 +116,7 @@ export async function testProject(
     return hasError;
   }
 
-  const testFiles = await datasource.listTests();
-
-  if (testFiles.length === 0) {
-    console.error(`No tests found in: ${projectConfig.testsDirectoryPath}`);
-    hasError = true;
-
-    return hasError;
-  }
-
   const startTime = Date.now();
-
-  const patterns: TestPatterns = {
-    keyPattern: options.keyPattern ? new RegExp(options.keyPattern) : undefined,
-    assertionPattern: options.assertionPattern ? new RegExp(options.assertionPattern) : undefined,
-  };
 
   let passedTestsCount = 0;
   let failedTestsCount = 0;
@@ -170,7 +142,7 @@ export async function testProject(
         existingState,
       );
 
-      datafileContentByEnvironment.set(environment, datafileContent);
+      datafileContentByEnvironment.set(environment, datafileContent as DatafileContent);
     }
   }
 
@@ -189,17 +161,24 @@ export async function testProject(
       existingState,
     );
 
-    datafileContentByEnvironment.set(false, datafileContent);
+    datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
   }
 
-  for (const testFile of testFiles) {
-    const executionResult = await executeTest(
-      testFile,
-      deps,
-      options,
-      patterns,
-      datafileContentByEnvironment,
-    );
+  const tests = await listEntities<Test>(
+    {
+      rootDirectoryPath,
+      projectConfig,
+      datasource,
+      options: {
+        ...testOptions,
+        applyMatrix: true,
+      },
+    },
+    "test",
+  );
+
+  for (const test of tests) {
+    const executionResult = await executeTest(test, deps, options, datafileContentByEnvironment);
 
     if (!executionResult) {
       continue;

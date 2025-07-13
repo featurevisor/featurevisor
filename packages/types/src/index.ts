@@ -1,24 +1,59 @@
 export type AttributeKey = string;
 
-export type AttributeValue = string | number | boolean | Date | null | undefined;
+export interface AttributeObjectValue {
+  [key: AttributeKey]: AttributeValue;
+}
+
+export type AttributeValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | undefined
+  | string[]
+  | AttributeObjectValue;
 
 export interface Context {
   [key: AttributeKey]: AttributeValue;
 }
 
-export type AttributeType = "boolean" | "string" | "integer" | "double" | "date" | "semver";
+export type AttributeType =
+  | "boolean"
+  | "string"
+  | "integer"
+  | "double"
+  | "date"
+  | "semver"
+  | "object"
+  | "array";
 
 export interface Attribute {
   archived?: boolean; // only available in YAML files
-  key: AttributeKey;
+  key?: AttributeKey; // needed for supporting v1 datafile generation
   type: AttributeType;
-  capture?: boolean;
   description?: string; // only available in YAML files
+  properties?: {
+    [key: AttributeKey]: {
+      type:
+        | "boolean"
+        | "string"
+        | "integer"
+        | "double"
+        | "date"
+        | "semver"
+        // | "object" // NOTE: avoid nesting for now
+        | "array";
+      description?: string;
+    };
+  };
 }
 
 export type Operator =
   | "equals"
   | "notEquals"
+  | "exists"
+  | "notExists"
 
   // numeric
   | "greaterThan"
@@ -45,6 +80,14 @@ export type Operator =
   | "after"
 
   // array of strings
+  | "includes"
+  | "notIncludes"
+
+  // regex
+  | "matches"
+  | "notMatches"
+
+  // array of strings
   | "in"
   | "notIn";
 
@@ -53,7 +96,8 @@ export type ConditionValue = string | number | boolean | Date | null | undefined
 export interface PlainCondition {
   attribute: AttributeKey;
   operator: Operator;
-  value: ConditionValue;
+  value?: ConditionValue; // for all operators, except for "exists" and "notExists"
+  regexFlags?: string; // for regex operators only (matches, notMatches)
 }
 
 export interface AndCondition {
@@ -70,14 +114,14 @@ export interface NotCondition {
 
 export type AndOrNotCondition = AndCondition | OrCondition | NotCondition;
 
-export type Condition = PlainCondition | AndOrNotCondition;
+export type Condition = PlainCondition | AndOrNotCondition | string;
 
 export type SegmentKey = string;
 
 export interface Segment {
   archived?: boolean; // only available in YAML files
-  key: SegmentKey;
-  conditions: Condition | Condition[] | string; // string only when stringified for datafile
+  key?: SegmentKey; // needed for supporting v1 datafile generation
+  conditions: Condition | Condition[]; // string only when stringified for datafile
   description?: string; // only available in YAML files
 }
 
@@ -131,61 +175,55 @@ export interface VariableOverrideConditions {
   conditions: Condition | Condition[];
 }
 
-export interface VariableOverrideBase {
-  value: VariableValue;
-}
-
 export type VariableOverrideSegmentsOrConditions =
   | VariableOverrideSegments
   | VariableOverrideConditions;
-
-// export type VariableOverride = VariableOverrideBase & VariableOverrideSegmentsOrConditions;
 
 export interface VariableOverride {
   value: VariableValue;
 
   // one of the below must be present in YAML files
-  // @TODO: try with above commented out TypeScript later
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[];
 }
 
-export interface Variable {
+export interface VariableV1 {
   key: VariableKey;
   value: VariableValue;
   description?: string; // only available in YAML files
   overrides?: VariableOverride[];
 }
 
+export interface VariationV1 {
+  description?: string; // only available in YAML files
+  value: VariationValue;
+  weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
+  variables?: VariableV1[];
+}
+
 export interface Variation {
   description?: string; // only available in YAML files
   value: VariationValue;
   weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
-  variables?: Variable[];
+  variables?: {
+    [key: VariableKey]: VariableValue;
+  };
+  variableOverrides?: {
+    [key: VariableKey]: VariableOverride[];
+  };
 }
 
 export interface VariableSchema {
   deprecated?: boolean;
-  key: VariableKey;
+  key?: VariableKey; // @NOTE: remove
   type: VariableType;
   defaultValue: VariableValue;
   description?: string; // only available in YAML files
+  useDefaultWhenDisabled?: boolean;
+  disabledValue?: VariableValue;
 }
 
 export type FeatureKey = string;
-
-export interface Force {
-  // one of the below must be present in YAML
-  // @TODO: make it better with TypeScript
-  conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
-
-  enabled?: boolean;
-  variation?: VariationValue;
-  variables?: {
-    [key: string]: VariableValue;
-  };
-}
 
 export interface Slot {
   feature: FeatureKey | false;
@@ -210,7 +248,7 @@ export type Range = [Percentage, Percentage]; // 0 to 100k
 
 export interface Allocation {
   variation: VariationValue;
-  range: Range; // @TODO: in future, turn it into `ranges`, so that Allocations with same variation do not repeat
+  range: Range;
 }
 
 export interface Traffic {
@@ -223,8 +261,11 @@ export interface Traffic {
   variables?: {
     [key: string]: VariableValue;
   };
+  variationWeights?: {
+    [key: string]: Weight;
+  };
 
-  allocation: Allocation[]; // @TODO: in v2, make it optional
+  allocation?: Allocation[];
 }
 
 export type PlainBucketBy = AttributeKey;
@@ -242,10 +283,12 @@ export interface RequiredWithVariation {
 export type Required = FeatureKey | RequiredWithVariation;
 
 export interface Feature {
-  key: FeatureKey;
+  key?: FeatureKey; // needed for supporting v1 datafile generation
+  hash?: string;
   deprecated?: boolean;
   required?: Required[];
-  variablesSchema?: VariableSchema[] | Record<VariableKey, VariableSchema>;
+  variablesSchema?: Record<VariableKey, VariableSchema>;
+  disabledVariationValue?: VariationValue;
   variations?: Variation[];
   bucketBy: BucketBy;
   traffic: Traffic[];
@@ -253,20 +296,31 @@ export interface Feature {
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
+export interface FeatureV1 {
+  key?: FeatureKey;
+  hash?: string;
+  deprecated?: boolean;
+  required?: Required[];
+  bucketBy: BucketBy;
+  traffic: Traffic[];
+  force?: Force[];
+  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
+
+  variablesSchema?: VariableSchema[];
+  variations?: VariationV1[];
+}
+
 export interface DatafileContentV1 {
   schemaVersion: string;
   revision: string;
   attributes: Attribute[];
   segments: Segment[];
-  features: Feature[];
+  features: FeatureV1[];
 }
 
-export interface DatafileContentV2 {
+export interface DatafileContent {
   schemaVersion: string;
   revision: string;
-  attributes: {
-    [key: AttributeKey]: Attribute;
-  };
   segments: {
     [key: SegmentKey]: Segment;
   };
@@ -275,9 +329,7 @@ export interface DatafileContentV2 {
   };
 }
 
-export type DatafileContent = DatafileContentV1 | DatafileContentV2;
-
-export interface OverrideFeature {
+export interface EvaluatedFeature {
   enabled: boolean;
   variation?: VariationValue;
   variables?: {
@@ -285,11 +337,11 @@ export interface OverrideFeature {
   };
 }
 
-export interface StickyFeatures {
-  [key: FeatureKey]: OverrideFeature;
+export interface EvaluatedFeatures {
+  [key: FeatureKey]: EvaluatedFeature;
 }
 
-export type InitialFeatures = StickyFeatures;
+export type StickyFeatures = EvaluatedFeatures;
 
 /**
  * YAML-only type
@@ -297,6 +349,8 @@ export type InitialFeatures = StickyFeatures;
 export type Weight = number; // 0 to 100
 
 export type EnvironmentKey = string; // ideally "production", "staging", "testing", or "development" only
+
+export type Tag = string;
 
 export type RuleKey = string;
 
@@ -311,16 +365,35 @@ export interface Rule {
   variables?: {
     [key: string]: VariableValue;
   };
+  variationWeights?: {
+    [key: string]: Weight;
+  };
 }
 
-export type Tag = string;
+export interface RulesByEnvironment {
+  [key: EnvironmentKey]: Rule[];
+}
+
+export interface Force {
+  // one of the below must be present in YAML
+  conditions?: Condition | Condition[];
+  segments?: GroupSegment | GroupSegment[];
+
+  enabled?: boolean;
+  variation?: VariationValue;
+  variables?: {
+    [key: string]: VariableValue;
+  };
+}
+
+export interface ForceByEnvironment {
+  [key: EnvironmentKey]: Force[];
+}
 
 export type Expose = boolean | Tag[];
 
-export interface Environment {
-  expose?: Expose;
-  rules: Rule[];
-  force?: Force[];
+export interface ExposeByEnvironment {
+  [key: EnvironmentKey]: Expose;
 }
 
 export interface ParsedFeature {
@@ -336,18 +409,14 @@ export interface ParsedFeature {
 
   bucketBy: BucketBy;
 
-  variablesSchema?: VariableSchema[];
+  disabledVariationValue?: VariationValue;
+
+  variablesSchema?: Record<VariableKey, VariableSchema>;
   variations?: Variation[];
 
-  // if using environments
-  environments?: {
-    [key: EnvironmentKey]: Environment;
-  };
-
-  // if not using environments
-  expose?: Expose;
-  rules?: Rule[];
-  force?: Force[];
+  expose?: ExposeByEnvironment | Expose;
+  force?: ForceByEnvironment | Force[];
+  rules?: RulesByEnvironment | Rule[];
 }
 
 /**
@@ -356,16 +425,15 @@ export interface ParsedFeature {
  * with consistent bucketing
  */
 export interface ExistingFeature {
+  hash?: string;
   variations?: {
-    // @TODO: use Exclude with Variation?
     value: VariationValue;
     weight: Weight;
   }[];
   traffic: {
-    // @TODO: use Exclude with Traffic?
     key: RuleKey;
     percentage: Percentage;
-    allocation: Allocation[]; // @TODO: in v2, make it optional
+    allocation?: Allocation[];
   }[];
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
@@ -385,20 +453,57 @@ export interface AssertionMatrix {
   [key: string]: AttributeValue[];
 }
 
-export interface FeatureAssertion {
-  matrix?: AssertionMatrix;
-  description?: string;
-  environment: EnvironmentKey;
-  at: Weight; // bucket weight: 0 to 100
-  context: Context;
-  expectedToBeEnabled: boolean;
+export interface ExpectedEvaluations {
+  flag?: Record<string, any>;
+  variation?: Record<string, any>;
+  variables?: {
+    [key: VariableKey]: Record<string, any>;
+  };
+}
+
+export interface FeatureChildAssertion {
+  sticky?: StickyFeatures;
+  context?: Context;
+
+  defaultVariationValue?: VariationValue;
+  defaultVariableValues?: {
+    [key: string]: VariableValue;
+  };
+
+  expectedToBeEnabled?: boolean;
   expectedVariation?: VariationValue;
   expectedVariables?: {
     [key: VariableKey]: VariableValue;
   };
+  expectedEvaluations?: ExpectedEvaluations;
+}
+
+export interface FeatureAssertion {
+  matrix?: AssertionMatrix;
+  description?: string;
+  environment: EnvironmentKey;
+  at?: Weight; // bucket weight: 0 to 100
+
+  sticky?: StickyFeatures;
+  context?: Context;
+
+  defaultVariationValue?: VariationValue;
+  defaultVariableValues?: {
+    [key: string]: VariableValue;
+  };
+
+  expectedToBeEnabled?: boolean;
+  expectedVariation?: VariationValue;
+  expectedVariables?: {
+    [key: VariableKey]: VariableValue;
+  };
+  expectedEvaluations?: ExpectedEvaluations;
+
+  children?: FeatureChildAssertion[];
 }
 
 export interface TestFeature {
+  key?: string; // file path
   feature: FeatureKey;
   assertions: FeatureAssertion[];
 }
@@ -411,6 +516,7 @@ export interface SegmentAssertion {
 }
 
 export interface TestSegment {
+  key?: string; // file path
   segment: SegmentKey;
   assertions: SegmentAssertion[];
 }
@@ -418,11 +524,16 @@ export interface TestSegment {
 export type Test = TestSegment | TestFeature;
 
 export interface TestResultAssertionError {
-  type: "flag" | "variation" | "variable" | "segment";
+  type: "flag" | "variation" | "variable" | "segment" | "evaluation";
   expected: string | number | boolean | Date | null | undefined;
   actual: string | number | boolean | Date | null | undefined;
   message?: string;
-  details?: object;
+  details?: {
+    evaluationType?: string; // e.g., "flag", "variation", "variable"
+    evaluationKey?: string; // e.g., "myFeatureKey", "myVariableKey"
+    childIndex?: number; // for children assertions
+    [key: string]: any;
+  };
 }
 
 export interface TestResultAssertion {

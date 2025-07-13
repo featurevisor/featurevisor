@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { SearchIndex } from "@featurevisor/types";
+import type { SearchIndex } from "@featurevisor/types";
 
 import { SearchIndexContext } from "../contexts/SearchIndexContext";
 

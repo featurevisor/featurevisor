@@ -163,6 +163,7 @@ function superRefineVariableValue(
           });
         }
       }
+      // eslint-disable-next-line
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -173,6 +174,131 @@ function superRefineVariableValue(
 
     return;
   }
+}
+
+function refineForce({
+  ctx,
+  parsedFeature, // eslint-disable-line
+  variableSchemaByKey,
+  variationValues,
+  force,
+  pathPrefix,
+  projectConfig,
+}) {
+  force.forEach((f, fN) => {
+    // force[n].variation
+    if (f.variation) {
+      if (variationValues.indexOf(f.variation) === -1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Unknown variation "${f.variation}" in force`,
+          path: [...pathPrefix, fN, "variation"],
+        });
+      }
+    }
+
+    // force[n].variables[key]
+    if (f.variables) {
+      Object.keys(f.variables).forEach((variableKey) => {
+        superRefineVariableValue(
+          projectConfig,
+          variableSchemaByKey[variableKey],
+          f.variables[variableKey],
+          pathPrefix.concat([fN, "variables", variableKey]),
+          ctx,
+        );
+      });
+    }
+  });
+}
+
+function refineRules({
+  ctx,
+  parsedFeature,
+  variableSchemaByKey,
+  variationValues,
+  rules,
+  pathPrefix,
+  projectConfig,
+}) {
+  rules.forEach((rule, ruleN) => {
+    // rules[n].variables[key]
+    if (rule.variables) {
+      Object.keys(rule.variables).forEach((variableKey) => {
+        superRefineVariableValue(
+          projectConfig,
+          variableSchemaByKey[variableKey],
+          rule.variables[variableKey],
+          pathPrefix.concat([ruleN, "variables", variableKey]),
+          ctx,
+        );
+      });
+    }
+
+    // rules[n].variationWeights
+    if (rule.variationWeights) {
+      if (!parsedFeature.variations) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Variation weights are overridden from rule, but no variations are present in feature.",
+          path: pathPrefix.concat([ruleN, "variationWeights"]),
+        });
+      } else {
+        const overriddenVariationValues = Object.keys(rule.variationWeights);
+        const overriddenVariationWeights: number[] = Object.values(rule.variationWeights);
+
+        // unique keys
+        if (overriddenVariationValues.length !== new Set(overriddenVariationValues).size) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Duplicate variation values found in variationWeights: " +
+              overriddenVariationValues.join(", "),
+            path: pathPrefix.concat([ruleN, "variationWeights"]),
+          });
+        }
+
+        // all original variations must be used
+        const missingVariations = variationValues.filter(
+          (v) => !overriddenVariationValues.includes(v),
+        );
+
+        if (missingVariations.length > 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Missing variations: " + missingVariations.join(", "),
+            path: pathPrefix.concat([ruleN, "variationWeights"]),
+          });
+        }
+
+        // unknown variations
+        const unknownVariations = overriddenVariationValues.filter(
+          (v) => !variationValues.includes(v),
+        );
+
+        if (unknownVariations.length > 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Variation weights contain unknown variations: " + unknownVariations.join(", "),
+            path: pathPrefix.concat([ruleN, "variationWeights"]),
+          });
+        }
+
+        // weights sum must be 100
+        const weightsSum = overriddenVariationWeights.reduce((sum, weight) => sum + weight, 0);
+
+        if (weightsSum !== 100) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Variation weights must sum to 100",
+            path: pathPrefix.concat([ruleN, "variationWeights"]),
+          });
+        }
+      }
+    }
+  });
 }
 
 export function getFeatureZodSchema(
@@ -243,6 +369,7 @@ export function getFeatureZodSchema(
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
           variables: z.record(variableValueZodSchema).optional(),
+          variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
     )
@@ -304,26 +431,6 @@ export function getFeatureZodSchema(
     )
     .optional();
 
-  const environmentZodSchema = z
-    .object({
-      expose: exposeSchema,
-      rules: rulesSchema,
-      force: forceSchema,
-    })
-    .strict();
-
-  let allEnvironmentsZodSchema: z.ZodTypeAny = z.never();
-
-  if (Array.isArray(projectConfig.environments)) {
-    const allEnvironmentsSchema = {};
-
-    projectConfig.environments.forEach((environmentKey) => {
-      allEnvironmentsSchema[environmentKey] = environmentZodSchema;
-    });
-
-    allEnvironmentsZodSchema = z.object(allEnvironmentsSchema).strict();
-  }
-
   const attributeKeyZodSchema = z.string().refine(
     (value) => value === "*" || availableAttributeKeys.includes(value),
     (value) => ({
@@ -338,11 +445,14 @@ export function getFeatureZodSchema(
     }),
   );
 
+  const environmentKeys = projectConfig.environments || [];
+
   const featureZodSchema = z
     .object({
       archived: z.boolean().optional(),
       deprecated: z.boolean().optional(),
       description: z.string(),
+
       tags: z
         .array(
           z.string().refine(
@@ -360,6 +470,7 @@ export function getFeatureZodSchema(
             message: "Duplicate tags found: " + value.join(", "),
           }),
         ),
+
       required: z
         .array(
           z.union([
@@ -373,6 +484,7 @@ export function getFeatureZodSchema(
           ]),
         )
         .optional(),
+
       bucketBy: z.union([
         attributeKeyZodSchema,
         z.array(attributeKeyZodSchema),
@@ -382,34 +494,24 @@ export function getFeatureZodSchema(
           })
           .strict(),
       ]),
-      // @TODO: in v2, this will become a dictionary
+
       variablesSchema: z
-        .array(
+        .record(
           z
             .object({
               deprecated: z.boolean().optional(),
-              key: z
-                .string()
-                .min(1)
-                .refine((value) => value !== "variation", {
-                  message: `variable key cannot be "variation"`,
-                }),
               type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
               description: z.string().optional(),
               defaultValue: variableValueZodSchema,
+              useDefaultWhenDisabled: z.boolean().optional(),
+              disabledValue: variableValueZodSchema.optional(),
             })
             .strict(),
         )
-        .refine(
-          (value) => {
-            const keys = value.map((v) => v.key);
-            return keys.length === new Set(keys).size;
-          },
-          (value) => ({
-            message: "Duplicate variable keys found: " + value.map((v) => v.key).join(", "),
-          }),
-        )
         .optional(),
+
+      disabledVariationValue: variationValueZodSchema.optional(),
+
       variations: z
         .array(
           z
@@ -417,32 +519,25 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               value: variationValueZodSchema,
               weight: z.number().min(0).max(100),
-              variables: z
-                .array(
-                  z
-                    .object({
-                      key: z.string().min(1),
-                      value: variableValueZodSchema,
-                      overrides: z
-                        .array(
-                          z.union([
-                            z
-                              .object({
-                                conditions: conditionsZodSchema,
-                                value: variableValueZodSchema,
-                              })
-                              .strict(),
-                            z
-                              .object({
-                                segments: groupSegmentsZodSchema,
-                                value: variableValueZodSchema,
-                              })
-                              .strict(),
-                          ]),
-                        )
-                        .optional(),
-                    })
-                    .strict(),
+              variables: z.record(variableValueZodSchema).optional(),
+              variableOverrides: z
+                .record(
+                  z.array(
+                    z.union([
+                      z
+                        .object({
+                          conditions: conditionsZodSchema,
+                          value: variableValueZodSchema,
+                        })
+                        .strict(),
+                      z
+                        .object({
+                          segments: groupSegmentsZodSchema,
+                          value: variableValueZodSchema,
+                        })
+                        .strict(),
+                    ]),
+                  ),
                 )
                 .optional(),
             })
@@ -459,94 +554,195 @@ export function getFeatureZodSchema(
         )
         .optional(),
 
-      // with environments
-      environments: Array.isArray(projectConfig.environments)
-        ? allEnvironmentsZodSchema
-        : z.never().optional(),
+      expose:
+        projectConfig.environments === false
+          ? exposeSchema.optional()
+          : z.record(z.enum(environmentKeys as [string, ...string[]]), exposeSchema).optional(),
 
-      // no environments
-      expose: projectConfig.environments === false ? exposeSchema : z.never().optional(),
-      rules: projectConfig.environments === false ? rulesSchema : z.never().optional(),
-      force: projectConfig.environments === false ? forceSchema : z.never().optional(),
+      force:
+        projectConfig.environments === false
+          ? forceSchema
+          : z.record(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
+
+      rules:
+        projectConfig.environments === false
+          ? rulesSchema
+          : z.record(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
     })
     .strict()
     .superRefine((value, ctx) => {
+      // disabledVariationValue
+      if (value.disabledVariationValue) {
+        if (!value.variations) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Disabled variation value is set, but no variations are present in feature.",
+            path: ["disabledVariationValue"],
+          });
+        } else {
+          const variationValues = value.variations.map((v) => v.value);
+
+          if (variationValues.indexOf(value.disabledVariationValue) === -1) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Disabled variation value "${value.disabledVariationValue}" is not one of the defined variations: ${variationValues.join(", ")}`,
+              path: ["disabledVariationValue"],
+            });
+          }
+        }
+      }
+
       if (!value.variablesSchema) {
         return;
       }
 
-      const allVariablesSchema = value.variablesSchema;
-      const variableSchemaByKey = {};
+      const variableSchemaByKey = value.variablesSchema;
+      const variationValues: string[] = [];
 
-      // variablesSchema[n].defaultValue
-      allVariablesSchema.forEach((variableSchema, n) => {
-        variableSchemaByKey[variableSchema.key] = variableSchema;
+      if (value.variations) {
+        value.variations.forEach((variation) => {
+          variationValues.push(variation.value);
+        });
+      }
 
+      // variablesSchema[key]
+      const variableKeys = Object.keys(variableSchemaByKey);
+      variableKeys.forEach((variableKey) => {
+        const variableSchema = variableSchemaByKey[variableKey];
+
+        if (variableKey === "variation") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable key "${variableKey}" is reserved and cannot be used.`,
+            path: ["variablesSchema", variableKey],
+          });
+        }
+
+        // defaultValue
         superRefineVariableValue(
           projectConfig,
           variableSchema,
           variableSchema.defaultValue,
-          ["variablesSchema", n, "defaultValue"],
+          ["variablesSchema", variableKey, "defaultValue"],
+          ctx,
+        );
+
+        // disabledValue
+        superRefineVariableValue(
+          projectConfig,
+          variableSchema,
+          variableSchema.defaultValue,
+          ["variablesSchema", variableKey, "disabledValue"],
           ctx,
         );
       });
 
-      // variations[n].variables[n].value
+      // variations
       if (value.variations) {
         value.variations.forEach((variation, variationN) => {
           if (!variation.variables) {
             return;
           }
 
-          variation.variables.forEach((variable, variableN) => {
+          // variations[n].variables[key]
+          for (const variableKey of Object.keys(variation.variables)) {
+            const variableValue = variation.variables[variableKey];
+
             superRefineVariableValue(
               projectConfig,
-              variableSchemaByKey[variable.key],
-              variable.value,
-              ["variations", variationN, "variables", variableN, "value"],
+              variableSchemaByKey[variableKey],
+              variableValue,
+              ["variations", variationN, "variables", variableKey],
               ctx,
             );
 
-            // variations[n].variables[n].overrides[n].value
-            if (variable.overrides) {
-              variable.overrides.forEach((override, overrideN) => {
-                superRefineVariableValue(
-                  projectConfig,
-                  variableSchemaByKey[variable.key],
-                  override.value,
-                  [
-                    "variations",
-                    variationN,
-                    "variables",
-                    variableN,
-                    "overrides",
-                    overrideN,
-                    "value",
-                  ],
-                  ctx,
-                );
-              });
+            // variations[n].variableOverrides[n].value
+            if (variation.variableOverrides) {
+              for (const variableKey of Object.keys(variation.variableOverrides)) {
+                const overrides = variation.variableOverrides[variableKey];
+
+                if (Array.isArray(overrides)) {
+                  overrides.forEach((override, overrideN) => {
+                    superRefineVariableValue(
+                      projectConfig,
+                      variableSchemaByKey[variableKey],
+                      override.value,
+                      [
+                        "variations",
+                        variationN,
+                        "variableOverrides",
+                        variableKey,
+                        overrideN,
+                        "value",
+                      ],
+                      ctx,
+                    );
+                  });
+                }
+              }
             }
-          });
+          }
         });
       }
 
-      // environments[key].rules[n].variables[key]
-      Object.keys(value.environments).forEach((environmentKey) => {
-        value.environments[environmentKey].rules.forEach((rule, ruleN) => {
-          if (rule.variables) {
-            Object.keys(rule.variables).forEach((variableKey) => {
-              superRefineVariableValue(
-                projectConfig,
-                variableSchemaByKey[variableKey],
-                rule.variables[variableKey],
-                ["environments", environmentKey, "rules", ruleN, "variables", variableKey],
-                ctx,
-              );
+      if (environmentKeys.length > 0) {
+        // with environments
+        for (const environmentKey of environmentKeys) {
+          // rules
+          if (value.rules && value.rules[environmentKey]) {
+            refineRules({
+              parsedFeature: value,
+              variableSchemaByKey,
+              variationValues,
+              rules: value.rules[environmentKey],
+              pathPrefix: ["rules", environmentKey],
+              ctx,
+              projectConfig,
             });
           }
-        });
-      });
+
+          // force
+          if (value.force && value.force[environmentKey]) {
+            refineForce({
+              parsedFeature: value,
+              variableSchemaByKey,
+              variationValues,
+              force: value.force[environmentKey],
+              pathPrefix: ["force", environmentKey],
+              ctx,
+              projectConfig,
+            });
+          }
+        }
+      } else {
+        // no environments
+
+        // rules
+        if (value.rules) {
+          refineRules({
+            parsedFeature: value,
+            variableSchemaByKey,
+            variationValues,
+            rules: value.rules,
+            pathPrefix: ["rules"],
+            ctx,
+            projectConfig,
+          });
+        }
+
+        // force
+        if (value.force) {
+          refineForce({
+            parsedFeature: value,
+            variableSchemaByKey,
+            variationValues,
+            force: value.force,
+            pathPrefix: ["force"],
+            ctx,
+            projectConfig,
+          });
+        }
+      }
     });
 
   return featureZodSchema;

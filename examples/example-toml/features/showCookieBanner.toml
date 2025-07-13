@@ -1,18 +1,18 @@
 description = "Show cookie banner to users from the Netherlands"
-tags = ["all"]
+tags = [ "all" ]
 bucketBy = "userId"
 
-[[environments.staging.rules]]
-key = "1"
+[[rules.staging]]
+key = "everyone"
 segments = "*"
 percentage = 100
 
-[[environments.production.rules]]
-key = "1"
-segments = ["netherlands"]
+[[rules.production]]
+key = "nl"
+segments = [ "netherlands" ]
 percentage = 100
 
-[[environments.production.rules]]
-key = "2"
+[[rules.production]]
+key = "everyone"
 segments = "*"
 percentage = 0

@@ -1,0 +1,47 @@
+description: Allow signup
+tags:
+  - all
+
+bucketBy: deviceId
+
+variablesSchema:
+  allowRegularSignUp:
+    type: boolean
+    defaultValue: true
+  allowGoogleSignUp:
+    type: boolean
+    defaultValue: false
+  allowGitHubSignUp:
+    type: boolean
+    defaultValue: false
+
+variations:
+  - value: control
+    weight: 50
+  - value: treatment
+    weight: 50
+    variables:
+      allowGoogleSignUp: true
+      allowGitHubSignUp: true
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: nl
+      segments:
+        - countries/netherlands
+      percentage: 100
+      variation: treatment
+    - key: ch
+      segments:
+        - countries/switzerland
+      percentage: 100
+      variationWeights:
+        control: 10
+        treatment: 90
+    - key: everyone
+      segments: everyone
+      percentage: 100

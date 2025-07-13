@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { Commit, EntityDiff, EntityType } from "@featurevisor/types";
+import type { Commit, EntityDiff, EntityType } from "@featurevisor/types";
 
 import { CustomParser, ProjectConfig } from "../config";
 

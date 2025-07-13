@@ -4,6 +4,8 @@ tags:
 
 bucketBy: userId
 
+disabledVariationValue: control
+
 variations:
   - value: control
     weight: 0
@@ -11,17 +13,15 @@ variations:
   - value: treatment
     weight: 100
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100
   production:
-    rules:
-      - key: "1"
-        segments: countries/germany
-        percentage: 100
-      - key: "2"
-        segments: "*"
-        percentage: 0
+    - key: "1"
+      segments: countries/germany
+      percentage: 100
+    - key: "2"
+      segments: "*"
+      percentage: 0

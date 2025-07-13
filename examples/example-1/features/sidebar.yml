@@ -5,35 +5,35 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: position
+  position:
     type: string
     description: position of the sidebar
     defaultValue: left
-  - key: color
+  color:
     type: string
     defaultValue: red
-  - key: sections
+  sections:
     type: array
     defaultValue: []
-  - key: title
+  title:
     type: string
     defaultValue: "Sidebar Title"
-  - key: title2
+  title2:
     type: string
     defaultValue: "Sidebar Title 2"
-  - key: title3
+  title3:
     type: string
     defaultValue: "Sidebar Title 3"
-  - key: title4
+  title4:
     type: string
     defaultValue: "Sidebar Title 4"
-  - key: title5
+  title5:
     type: string
     defaultValue: "Sidebar Title 5"
-  - key: title6
+  title6:
     type: string
     defaultValue: "Sidebar Title 6"
-  - key: title7
+  title7:
     type: string
     defaultValue: "Sidebar Title 7"
 
@@ -43,39 +43,37 @@ variations:
   - value: treatment
     weight: 90
     variables:
-      - key: position
-        value: right
-      - key: color
-        value: red
-        overrides:
-          - segments:
-              - countries/germany
-            value: yellow
-          - segments:
-              - countries/switzerland
-            value: white
-      - key: sections
-        value: ["home", "about", "contact"]
-        overrides:
-          - segments:
-              - countries/germany
-            value: ["home", "about", "contact", "imprint"]
-          - segments:
-              - countries/netherlands
-            value: ["home", "about", "contact", "bitterballen"]
+      position: right
+      color: red
+      sections: ["home", "about", "contact"]
+    variableOverrides:
+      color:
+        - segments:
+            - countries/germany
+          value: yellow
+        - segments:
+            - countries/switzerland
+          value: white
+      sections:
+        - segments:
+            - countries/germany
+          value: ["home", "about", "contact", "imprint"]
+        - segments:
+            - countries/netherlands
+          value: ["home", "about", "contact", "bitterballen"]
 
-environments:
+rules:
   staging:
-    expose:
-      - all
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+    - key: "1"
+      segments: "*"
+      percentage: 100
   production:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
-        variables:
-          title: Sidebar Title for production
+    - key: "1"
+      segments: "*"
+      percentage: 100
+      variables:
+        title: Sidebar Title for production
+
+expose:
+  staging:
+    - all

@@ -1,4 +1,4 @@
-import { FeatureKey, Required } from "@featurevisor/types";
+import type { FeatureKey, Required } from "@featurevisor/types";
 
 import { Datasource } from "../datasource";
 

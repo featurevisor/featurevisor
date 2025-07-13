@@ -1,0 +1,7 @@
+description: Chrome browser
+conditions:
+  - attribute: browser.name
+    operator: matches
+    value: "chrome|chromium"
+
+    regexFlags: i

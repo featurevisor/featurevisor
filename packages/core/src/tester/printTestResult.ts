@@ -1,4 +1,4 @@
-import { TestResult } from "@featurevisor/types";
+import type { TestResult } from "@featurevisor/types";
 
 import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
 import { prettyDuration } from "./prettyDuration";
@@ -35,16 +35,38 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
           return;
         }
 
+        let section: string = error.type;
+
+        if (error.type === "flag") {
+          section = "expectedToBeEnabled";
+        } else if (error.type === "variation") {
+          section = "expectedVariation";
+        } else if (error.type === "variable") {
+          section = "expectedVariables";
+        }
+
+        if (error.details && error.details.childIndex !== undefined) {
+          section = `children[${error.details.childIndex}].${section}`;
+        }
+
         if (error.type === "variable") {
           const variableKey = (error.details as any).variableKey;
 
-          console.log(CLI_FORMAT_RED, `    => variable key: ${variableKey}`);
+          console.log(CLI_FORMAT_RED, `    => ${section}.${variableKey}:`);
           console.log(CLI_FORMAT_RED, `       => expected: ${error.expected}`);
           console.log(CLI_FORMAT_RED, `       => received: ${error.actual}`);
         } else {
+          if (error.type === "evaluation") {
+            if (error.details && error.details.variableKey) {
+              section = `${section}.variables.${error.details.variableKey}.${error.details.evaluationKey}`;
+            } else if (error.details && error.details.evaluationType) {
+              section = `${section}.${error.details.evaluationType}.${error.details.evaluationKey}`;
+            }
+          }
+
           console.log(
             CLI_FORMAT_RED,
-            `    => ${error.type}: expected "${error.expected}", received "${error.actual}"`,
+            `    => ${section}: expected "${error.expected}", received "${error.actual}"`,
           );
         }
       });

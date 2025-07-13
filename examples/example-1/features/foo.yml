@@ -8,13 +8,13 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: bar
+  bar:
     type: string
     defaultValue: ""
-  - key: baz
+  baz:
     type: string
     defaultValue: ""
-  - key: qux
+  qux:
     type: boolean
     defaultValue: false
     description: This is a boolean variable
@@ -25,56 +25,55 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      - key: bar
-        value: bar_here
-        overrides:
-          - segments:
-              or:
-                - countries/germany
-                - countries/switzerland
-            value: bar for DE or CH
-      - key: baz
-        value: baz_here
-        overrides:
-          - segments: countries/netherlands
-            value: baz for NL
+      bar: bar_here
+      baz: baz_here
+    variableOverrides:
+      bar:
+        - segments:
+            or:
+              - countries/germany
+              - countries/switzerland
+          value: bar for DE or CH
+      baz:
+        - segments: countries/netherlands
+          value: baz for NL
 
-environments:
+force:
   staging:
-    force:
-      - conditions:
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: "test-force-id"
+      variation: treatment
+  production:
+    - conditions:
+        and:
           - attribute: userId
             operator: equals
-            value: "test-force-id"
-        variation: treatment
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 100
+            value: "123"
+          - attribute: device
+            operator: equals
+            value: "mobile"
+      variation: treatment
+      variables:
+        bar: yoooooo
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
   production:
-    force:
-      - conditions:
-          and:
-            - attribute: userId
-              operator: equals
-              value: "123"
-            - attribute: device
-              operator: equals
-              value: "mobile"
-        variation: treatment
-        variables:
-          bar: yoooooo
-    rules:
-      - key: "1"
-        segments:
-          and:
-            - mobile
-            - or:
-                - countries/germany
-                - countries/switzerland
-        percentage: 80
-        variables:
-          qux: true
-      - key: "2"
-        segments: "*"
-        percentage: 50
+    - key: "1"
+      segments:
+        and:
+          - mobile
+          - or:
+              - countries/germany
+              - countries/switzerland
+      percentage: 80
+      variables:
+        qux: true
+    - key: "2"
+      segments: "*"
+      percentage: 50

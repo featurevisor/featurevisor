@@ -1,4 +1,11 @@
-import { Rule, ExistingFeature, Traffic, Variation, Range, Percentage } from "@featurevisor/types";
+import type {
+  Rule,
+  ExistingFeature,
+  Traffic,
+  Variation,
+  Range,
+  Percentage,
+} from "@featurevisor/types";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
@@ -71,7 +78,7 @@ export function getTraffic(
 ): Traffic[] {
   const result: Traffic[] = [];
 
-  // @TODO: may be pass from builder directly?
+  // @NOTE: may be pass from builder directly?
   const availableRanges =
     ranges && ranges.length > 0 ? ranges : ([[0, MAX_BUCKETED_NUMBER]] as Range[]);
 
@@ -83,6 +90,7 @@ export function getTraffic(
       segments: parsedRule.segments,
       percentage: rulePercentage * (MAX_BUCKETED_NUMBER / 100),
       allocation: [],
+      variationWeights: parsedRule.variationWeights,
     };
 
     // overrides
@@ -104,11 +112,15 @@ export function getTraffic(
       !existingTrafficRule || // new rule
       variationsChanged || // variations changed
       rulePercentageDiff < 0 || // percentage decreased
-      rangesChanged; // belongs to a group, and group ranges changed
+      rangesChanged || // belongs to a group, and group ranges changed
+      // @NOTE: this means, if variationWeights is present, it will always rebucket.
+      // worth checking if we can maintain consistent bucketing for this use case as well.
+      // but this use case is unlikely to hit in practice because it doesn't matter if the feature itself is 100% rolled out.
+      traffic.variationWeights; // variation weights overridden
 
     let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));
 
-    if (existingTrafficRule && !needsRebucketing) {
+    if (existingTrafficRule && existingTrafficRule.allocation && !needsRebucketing) {
       // increase: build on top of existing allocations
       let existingSum = 0;
 
@@ -128,7 +140,13 @@ export function getTraffic(
 
     if (Array.isArray(variations)) {
       variations.forEach(function (variation) {
-        const weight = variation.weight as number;
+        let weight = variation.weight as number;
+
+        if (traffic.variationWeights && traffic.variationWeights[variation.value]) {
+          // override weight from rule
+          weight = traffic.variationWeights[variation.value];
+        }
+
         const percentage = weight * (MAX_BUCKETED_NUMBER / 100);
 
         const toFillValue = needsRebucketing
@@ -137,10 +155,12 @@ export function getTraffic(
         const rangesToFill = getAllocation(updatedAvailableRanges, toFillValue);
 
         rangesToFill.forEach(function (range) {
-          traffic.allocation.push({
-            variation: variation.value,
-            range,
-          });
+          if (traffic.allocation) {
+            traffic.allocation.push({
+              variation: variation.value,
+              range,
+            });
+          }
         });
 
         updatedAvailableRanges = getUpdatedAvailableRangesAfterFilling(
@@ -150,15 +170,19 @@ export function getTraffic(
       });
     }
 
-    traffic.allocation = traffic.allocation.filter((a) => {
-      if (a.range && a.range[0] === a.range[1]) {
-        return false;
+    if (traffic.allocation) {
+      traffic.allocation = traffic.allocation.filter((a) => {
+        if (a.range && a.range[0] === a.range[1]) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (traffic.allocation.length === 0) {
+        delete traffic.allocation;
       }
-
-      return true;
-    });
-
-    // @TODO: in v2, remove "allocation" property if an empty array
+    }
 
     result.push(traffic);
   });

@@ -1,4 +1,4 @@
-import { HistoryEntry, LastModified } from "@featurevisor/types";
+import type { HistoryEntry, LastModified } from "@featurevisor/types";
 
 export function getLastModifiedFromHistory(
   fullHistory: HistoryEntry[],

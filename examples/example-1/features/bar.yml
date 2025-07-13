@@ -5,10 +5,10 @@ tags:
 bucketBy: userId
 
 variablesSchema:
-  - key: color
+  color:
     type: string
     defaultValue: "red"
-  - key: hero
+  hero:
     type: object
     defaultValue:
       title: Hero Title
@@ -21,31 +21,29 @@ variations:
   - value: b
     weight: 33
     variables:
-      - key: hero
-        value:
-          title: Hero Title for B
-          subtitle: Hero Subtitle for B
-          alignment: center for B
-        overrides:
-          - segments:
-              or:
-                - countries/germany
-                - countries/switzerland
-            value:
-              title: Hero Title for B in DE or CH
-              subtitle: Hero Subtitle for B in DE of CH
-              alignment: center for B in DE or CH
+      hero:
+        title: Hero Title for B
+        subtitle: Hero Subtitle for B
+        alignment: center for B
+    variableOverrides:
+      hero:
+        - segments:
+            or:
+              - countries/germany
+              - countries/switzerland
+          value:
+            title: Hero Title for B in DE or CH
+            subtitle: Hero Subtitle for B in DE of CH
+            alignment: center for B in DE or CH
   - value: c
     weight: 34
 
-environments:
+rules:
   staging:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 50
+    - key: "1"
+      segments: "*"
+      percentage: 50
   production:
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 50
+    - key: "1"
+      segments: "*"
+      percentage: 50

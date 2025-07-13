@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { FeatureKey, Group, Range } from "@featurevisor/types";
+import type { FeatureKey, Group, Range } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";

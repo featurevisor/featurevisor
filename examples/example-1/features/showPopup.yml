@@ -4,25 +4,27 @@ tags:
 
 bucketBy: userId
 
-environments:
+force:
   staging:
-    force:
-      - segments: qa
-        enabled: true
+    - segments: qa
+      enabled: true
 
-      - conditions:
-          - attribute: userId
-            operator: equals
-            value: user-3
-        enabled: true
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 0
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: user-3
+      enabled: true
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 0
 
   production:
-    expose: false
-    rules:
-      - key: "1"
-        segments: "*"
-        percentage: 0
+    - key: "1"
+      segments: "*"
+      percentage: 0
+
+expose:
+  production: false

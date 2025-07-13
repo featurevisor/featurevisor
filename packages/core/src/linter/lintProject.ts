@@ -24,6 +24,9 @@ export interface LintProjectOptions {
 const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
 const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
 
+const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-/]+$/;
+const ATTRIBUTE_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, and -";
+
 async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
   const entries = await datasource.listHistoryEntries(entityType, entityKey);
   const authors: string[] = Array.from(new Set(entries.map((entry) => entry.author)));
@@ -88,7 +91,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("attribute", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!ATTRIBUTE_NAME_REGEX.test(key)) {
         console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
 
         if (options.authors) {
@@ -97,7 +100,7 @@ export async function lintProject(
         }
 
         console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
-        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log(CLI_FORMAT_RED, `     ${ATTRIBUTE_NAME_REGEX_ERROR}`);
         console.log("");
         hasError = true;
       }
@@ -137,11 +140,13 @@ export async function lintProject(
     }
   }
 
+  const flattenedAttributes = await datasource.listFlattenedAttributes();
+
   // lint segments
   const segments = await datasource.listSegments();
   const conditionsZodSchema = getConditionsZodSchema(
     projectConfig,
-    attributes as [string, ...string[]],
+    flattenedAttributes as [string, ...string[]],
   );
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
@@ -209,7 +214,7 @@ export async function lintProject(
   const featureZodSchema = getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
-    attributes as [string, ...string[]],
+    flattenedAttributes as [string, ...string[]],
     segments as [string, ...string[]],
     features as [string, ...string[]],
   );

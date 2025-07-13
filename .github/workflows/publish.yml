@@ -42,20 +42,26 @@ jobs:
       - name: Bump version
         continue-on-error: true
         id: graduateRelease
+        # @TODO: remove later
+        #   v2:      npx lerna version 2.0.0 --force-publish --exact --yes
+        #   regular: npx lerna version --conventional-commits --conventional-graduate --exact --yes
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes
+          npx lerna version 2.0.0 --force-publish --exact --yes
 
       - name: Bump version fallback
         if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
+        # @TODO: remove later
+        #   v2:      npx lerna version 2.0.0 --force-publish --exact --yes
+        #   regular: npx lerna version --conventional-commits --exact --yes
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
 
           echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
           git stash
-          npx lerna version --conventional-commits --exact --yes
+          npx lerna version 2.0.0 --force-publish --exact --yes
 
       - name: Publish
         run: |

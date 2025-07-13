@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { Attribute } from "@featurevisor/types";
+import type { Attribute } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
@@ -19,7 +19,7 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string) {
     case "array":
       return "string[]";
     case "object":
-      return "any"; // @TODO: do a flat dictionary
+      return "any"; // @NOTE: do a flat dictionary
     case "json":
       return "any";
     default:
@@ -45,30 +45,6 @@ function getRelativePath(from, to) {
   }
 
   return relativePath;
-}
-
-function getFeaturevisorTypeFromValue(value) {
-  if (typeof value === "boolean") {
-    return "boolean";
-  }
-
-  if (typeof value === "string") {
-    return "string";
-  }
-
-  if (typeof value === "number") {
-    if (Number.isInteger(value)) {
-      return "integer";
-    }
-
-    return "double";
-  }
-
-  if (value instanceof Date) {
-    return "date";
-  }
-
-  throw new Error("Could not detect Featurevisor type from value");
 }
 
 const instanceSnippet = `
@@ -121,7 +97,7 @@ export async function generateTypeScriptCodeForProject(deps: Dependencies, outpu
     })
     .join("\n");
   const contextContent = `
-import { AttributeKey, AttributeValue } from "@featurevisor/types";
+import type { AttributeKey, AttributeValue } from "@featurevisor/types";
 
 export interface Context {
 ${attributeProperties}
@@ -152,8 +128,10 @@ ${attributeProperties}
     let variableMethods = "";
 
     if (parsedFeature.variablesSchema) {
-      for (const variableSchema of parsedFeature.variablesSchema) {
-        const variableKey = variableSchema.key;
+      const variableKeys = Object.keys(parsedFeature.variablesSchema);
+
+      for (const variableKey of variableKeys) {
+        const variableSchema = parsedFeature.variablesSchema[variableKey];
         const variableType = variableSchema.type;
 
         const internalMethodName = `getVariable${

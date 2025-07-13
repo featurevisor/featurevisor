@@ -1,50 +1,49 @@
 import * as React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
+
+import { createInstance } from "@featurevisor/sdk";
+import { DatafileContent } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariable } from "./useVariable";
-import { createInstance } from "@featurevisor/sdk";
+
+function getNewDatafile(colorValue = "red"): DatafileContent {
+  return {
+    schemaVersion: "2",
+    revision: "1.0",
+    features: {
+      test: {
+        key: "test",
+        bucketBy: "userId",
+        traffic: [
+          {
+            key: "1",
+            segments: "*",
+            percentage: 100000,
+          },
+        ],
+        variablesSchema: {
+          color: { type: "string", defaultValue: colorValue },
+          hero: {
+            type: "object",
+            defaultValue: {
+              title: "Hero Title",
+              subtitle: "Hero Subtitle",
+              alignment: "center",
+            },
+          },
+        },
+        hash: Math.random().toString(10).substring(2, 15),
+      },
+    },
+    segments: {},
+  };
+}
 
 function getNewInstance() {
   const sdk = createInstance({
-    datafile: {
-      schemaVersion: "1",
-      revision: "1.0",
-      features: [
-        {
-          key: "test",
-          bucketBy: "userId",
-          variations: [{ value: "control" }, { value: "b" }, { value: "c" }],
-          traffic: [
-            {
-              key: "1",
-              segments: "*",
-              percentage: 100000,
-              allocation: [
-                { variation: "control", range: [0, 33000] },
-                { variation: "b", range: [33000, 66000] },
-                { variation: "c", range: [66000, 100000] },
-              ],
-            },
-          ],
-          variablesSchema: [
-            { key: "color", type: "string", defaultValue: "red" },
-            {
-              key: "hero",
-              type: "object",
-              defaultValue: {
-                title: "Hero Title",
-                subtitle: "Hero Subtitle",
-                alignment: "center",
-              },
-            },
-          ],
-        },
-      ],
-      attributes: [],
-      segments: [],
-    },
+    datafile: getNewDatafile(),
   });
 
   return sdk;
@@ -69,5 +68,33 @@ describe("react: useVariable", function () {
     );
 
     expect(screen.getByText("Red")).toBeInTheDocument();
+  });
+
+  test("should return the variable reactively", function () {
+    function TestComponent() {
+      const variable = useVariable("test", "color", { userId: "1" });
+
+      return variable === "red" ? <p>Red</p> : <p>Some other colour</p>;
+    }
+
+    const f = getNewInstance();
+
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByText("Red")).toBeInTheDocument();
+
+    // set new datafile
+    act(() => {
+      const newDatafile = getNewDatafile("blue"); // red => blue
+      f.setDatafile(newDatafile);
+    });
+
+    waitFor(() => {
+      expect(screen.getByText("Some other colour")).toBeInTheDocument();
+    });
   });
 });

@@ -2,9 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { execSync, spawn } from "child_process";
 
-import * as mkdirp from "mkdirp";
-
-import {
+import type {
   ExistingState,
   EnvironmentKey,
   DatafileContent,
@@ -18,8 +16,6 @@ import {
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig, CustomParser } from "../config";
 import { getCommit } from "../utils/git";
-
-const commitRegex = /^commit (\w+)\nAuthor: (.+) <(.+)>\nDate:   (.+)\n\n(.+)/gm;
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -129,7 +125,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = this.getEntityPath(entityType, entityKey);
 
     if (!fs.existsSync(this.getEntityDirectoryPath(entityType))) {
-      mkdirp.sync(this.getEntityDirectoryPath(entityType));
+      fs.mkdirSync(this.getEntityDirectoryPath(entityType), { recursive: true });
     }
 
     fs.writeFileSync(filePath, this.parser.stringify(entity));
@@ -166,7 +162,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = getExistingStateFilePath(this.config, environment);
 
     if (!fs.existsSync(this.config.stateDirectoryPath)) {
-      mkdirp.sync(this.config.stateDirectoryPath);
+      fs.mkdirSync(this.config.stateDirectoryPath, { recursive: true });
     }
     fs.writeFileSync(
       filePath,
@@ -198,6 +194,7 @@ export class FilesystemAdapter extends Adapter {
       }
 
       return "0";
+      // eslint-disable-next-line
     } catch (e) {
       return "0";
     }
@@ -207,7 +204,7 @@ export class FilesystemAdapter extends Adapter {
     const filePath = getRevisionFilePath(this.config);
 
     if (!fs.existsSync(this.config.stateDirectoryPath)) {
-      mkdirp.sync(this.config.stateDirectoryPath);
+      fs.mkdirSync(this.config.stateDirectoryPath, { recursive: true });
     }
 
     fs.writeFileSync(filePath, revision);
@@ -217,8 +214,10 @@ export class FilesystemAdapter extends Adapter {
    * Datafile
    */
   getDatafilePath(options: DatafileOptions): string {
-    const fileName = `datafile-tag-${options.tag}.json`;
-    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+    const pattern = this.config.datafileNamePattern || "featurevisor-%s.json";
+
+    const fileName = pattern.replace("%s", `tag-${options.tag}`);
+    const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     if (options.environment) {
       return path.join(dir, options.environment, fileName);
@@ -236,12 +235,12 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
-    const dir = options.datafilesDir || this.config.outputDirectoryPath;
+    const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     const outputEnvironmentDirPath = options.environment
       ? path.join(dir, options.environment)
       : dir;
-    mkdirp.sync(outputEnvironmentDirPath);
+    fs.mkdirSync(outputEnvironmentDirPath, { recursive: true });
 
     const outputFilePath = this.getDatafilePath(options);
 

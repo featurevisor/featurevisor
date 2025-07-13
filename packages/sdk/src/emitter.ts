@@ -1,53 +1,59 @@
-export type EventName = "ready" | "refresh" | "update" | "activation";
+export type EventName = "datafile_set" | "context_set" | "sticky_set";
 
-export interface Listeners {
-  [key: string]: Function[];
-}
+export type EventDetails = Record<string, unknown>;
+
+export type EventCallback = (details: EventDetails) => void;
+
+export type Listeners = Record<EventName, EventCallback[]> | {}; // eslint-disable-line
 
 export class Emitter {
-  private _listeners: Listeners;
+  listeners: Listeners;
 
   constructor() {
-    this._listeners = {};
+    this.listeners = {};
   }
 
-  public addListener(eventName: EventName, fn: Function): void {
-    if (typeof this._listeners[eventName] === "undefined") {
-      this._listeners[eventName] = [];
+  on(eventName: EventName, callback: EventCallback) {
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
     }
 
-    this._listeners[eventName].push(fn);
+    const listeners = this.listeners[eventName];
+    listeners.push(callback);
+
+    let isActive = true;
+
+    return function unsubscribe() {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+
+      const index = listeners.indexOf(callback);
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    };
   }
 
-  public removeListener(eventName: EventName, fn: Function): void {
-    if (typeof this._listeners[eventName] === "undefined") {
+  trigger(eventName: EventName, details: EventDetails = {}) {
+    const listeners = this.listeners[eventName];
+
+    if (!listeners) {
       return;
     }
 
-    const index = this._listeners[eventName].indexOf(fn);
-
-    if (index !== -1) {
-      this._listeners[eventName].splice(index, 1);
-    }
-  }
-
-  public removeAllListeners(eventName?: EventName): void {
-    if (eventName) {
-      this._listeners[eventName] = [];
-    } else {
-      Object.keys(this._listeners).forEach((key) => {
-        this._listeners[key] = [];
-      });
-    }
-  }
-
-  public emit(eventName: EventName, ...args: any[]): void {
-    if (typeof this._listeners[eventName] === "undefined") {
-      return;
-    }
-
-    this._listeners[eventName].forEach((fn) => {
-      fn(...args);
+    listeners.forEach(function (listener) {
+      try {
+        listener(details);
+      } catch (err) {
+        console.error(err);
+      }
     });
+  }
+
+  clearAll() {
+    this.listeners = {};
   }
 }

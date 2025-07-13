@@ -1,0 +1,9 @@
+description: browser
+
+type: object
+
+properties:
+  name:
+    type: string
+  version:
+    type: semver

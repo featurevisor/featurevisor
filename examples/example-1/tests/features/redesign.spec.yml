@@ -11,3 +11,12 @@ assertions:
     context:
       country: de
     expectedToBeEnabled: false
+
+  - at: 40
+    environment: production
+    sticky:
+      redesign:
+        enabled: true
+    context:
+      country: de
+    expectedToBeEnabled: true

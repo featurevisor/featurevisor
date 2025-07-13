@@ -3,7 +3,7 @@ import * as tar from "tar";
 
 import { Plugin } from "../cli";
 
-export const DEFAULT_EXAMPLE = "example-yml";
+export const DEFAULT_EXAMPLE = "yml";
 
 export const EXAMPLES_ORG_NAME = "fahad19";
 export const EXAMPLES_REPO_NAME = "featurevisor";
@@ -12,7 +12,7 @@ export const EXAMPLES_BRANCH_NAME = "main";
 export const EXAMPLES_TAR_URL = `https://codeload.github.com/${EXAMPLES_ORG_NAME}/${EXAMPLES_REPO_NAME}/tar.gz/${EXAMPLES_BRANCH_NAME}`;
 
 function getExamplePath(exampleName: string) {
-  return `${EXAMPLES_REPO_NAME}-${EXAMPLES_BRANCH_NAME}/examples/${exampleName}/`;
+  return `${EXAMPLES_REPO_NAME}-${EXAMPLES_BRANCH_NAME}/examples/example-${exampleName}/`;
 }
 
 export function initProject(

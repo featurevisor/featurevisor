@@ -111,7 +111,9 @@ export function DisplayFeatureForceTable() {
   const { environmentKey } = useParams();
 
   const envKey = environmentKey as string;
-  const force = feature.environments ? feature.environments[envKey].force : feature.force;
+
+  const force =
+    feature.force && !Array.isArray(feature.rules) ? feature.force[envKey] : feature.force;
 
   if (!force || force.length === 0) {
     return <p>n/a</p>;
@@ -184,7 +186,8 @@ export function DisplayFeatureForceTable() {
 
 export function DisplayFeatureForce() {
   const { feature } = useOutletContext() as any;
-  const environmentKeys = feature.environments ? Object.keys(feature.environments).sort() : [];
+  const environmentKeys =
+    feature.force && !Array.isArray(feature.force) ? Object.keys(feature.force).sort() : [];
 
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
@@ -228,8 +231,11 @@ export function DisplayFeatureRulesTable() {
   const { environmentKey } = useParams();
 
   const envKey = environmentKey as string;
-  const rules = feature.environments ? feature.environments[envKey].rules : feature.rules;
-  const expose = feature.environments ? feature.environments[envKey].expose : feature.expose;
+  const rules = !Array.isArray(feature.rules) ? feature.rules[envKey] : feature.rules;
+  const expose =
+    typeof feature.expose !== "undefined" && !Array.isArray(feature.rules)
+      ? feature.expose[envKey]
+      : feature.expose;
 
   if (!rules || rules.length === 0) {
     return <p>n/a</p>;
@@ -304,7 +310,7 @@ export function DisplayFeatureRulesTable() {
 
 export function DisplayFeatureRules() {
   const { feature } = useOutletContext() as any;
-  const environmentKeys = feature.environments ? Object.keys(feature.environments).sort() : [];
+  const environmentKeys = feature.rules ? Object.keys(feature.rules).sort() : [];
 
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
@@ -390,15 +396,17 @@ export function DisplayFeatureVariations() {
                 <th className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
                   {variation.variables && (
                     <ul className="list-inside list-disc text-left">
-                      {variation.variables.map((v) => {
+                      {Object.keys(variation.variables).map((variableKey) => {
+                        const variableValue = variation.variables[variableKey];
+
                         return (
-                          <li key={v.key}>
-                            <span className="font-semibold">{v.key}</span>:{" "}
-                            {typeof v.value === "string" ? (
-                              v.value
+                          <li key={variableKey}>
+                            <span className="font-semibold">{variableKey}</span>:{" "}
+                            {typeof variableValue === "string" ? (
+                              variableValue
                             ) : (
                               <pre className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                                <code>{JSON.stringify(v.value, null, 2)}</code>
+                                <code>{JSON.stringify(variableValue, null, 2)}</code>
                               </pre>
                             )}
                           </li>
@@ -422,7 +430,7 @@ export function DisplayFeatureVariations() {
 export function DisplayFeatureVariablesSchema() {
   const { feature } = useOutletContext() as any;
 
-  if (!feature.variablesSchema || feature.variablesSchema.length === 0) {
+  if (!feature.variablesSchema) {
     return <p>n/a</p>;
   }
 
@@ -440,32 +448,33 @@ export function DisplayFeatureVariablesSchema() {
       </thead>
 
       <tbody>
-        {feature.variablesSchema.map((variableSchema, index) => {
-          return (
-            <tr key={variableSchema.key} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.key}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.type}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.type === "string" ? (
-                  variableSchema.defaultValue
-                ) : (
-                  <pre>
-                    <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
-                      {JSON.stringify(variableSchema.defaultValue, null, 2)}
-                    </code>
-                  </pre>
-                )}
-              </td>
-              <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
-                {variableSchema.description || <span>n/a</span>}
-              </td>
-            </tr>
-          );
-        })}
+        {feature.variablesSchema &&
+          Object.keys(feature.variablesSchema).map((variableKey, index) => {
+            const variableSchema = feature.variablesSchema[variableKey];
+
+            return (
+              <tr key={variableSchema.key} className={index % 2 === 0 ? undefined : "bg-gray-50"}>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">{variableKey}</td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.type}
+                </td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.type === "string" ? (
+                    variableSchema.defaultValue
+                  ) : (
+                    <pre>
+                      <code className="rounded bg-gray-100 px-2 py-1 text-red-400">
+                        {JSON.stringify(variableSchema.defaultValue, null, 2)}
+                      </code>
+                    </pre>
+                  )}
+                </td>
+                <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-700">
+                  {variableSchema.description || <span>n/a</span>}
+                </td>
+              </tr>
+            );
+          })}
       </tbody>
     </table>
   );

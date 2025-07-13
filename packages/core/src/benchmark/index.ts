@@ -1,4 +1,4 @@
-import { Context } from "@featurevisor/types";
+import type { Context, DatafileContent } from "@featurevisor/types";
 import { FeaturevisorInstance, createInstance } from "@featurevisor/sdk";
 
 import { SCHEMA_VERSION } from "../config";
@@ -120,13 +120,13 @@ export async function benchmarkFeature(
     console.log("");
     console.log("Features count:", Object.keys(datafileContent.features).length);
     console.log("Segments count:", Object.keys(datafileContent.segments).length);
-    console.log("Attributes count:", Object.keys(datafileContent.attributes).length);
   }
 
   console.log("");
 
   const f = createInstance({
-    datafile: datafileContent,
+    datafile: datafileContent as DatafileContent,
+    logLevel: "warn",
   });
   console.log("...SDK initialized");
 

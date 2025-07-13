@@ -1,4 +1,4 @@
-import {
+import type {
   ParsedFeature,
   Segment,
   Attribute,
@@ -10,7 +10,7 @@ import {
 
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "../tester";
+import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -39,7 +39,7 @@ async function getEntitiesWithTests(
   };
 }
 
-async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
+export async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
 
   const result: T[] = [];
@@ -111,16 +111,10 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
       }
 
       // --disabledIn=<environment>
-      if (
-        options.disabledIn &&
-        parsedFeature.environments &&
-        parsedFeature.environments[options.disabledIn]
-      ) {
-        const disabledInEnvironment = parsedFeature.environments[options.disabledIn].rules.every(
-          (rule) => {
-            return rule.percentage === 0;
-          },
-        );
+      if (options.disabledIn && parsedFeature.rules && parsedFeature.rules[options.disabledIn]) {
+        const disabledInEnvironment = parsedFeature.rules[options.disabledIn].every((rule) => {
+          return rule.percentage === 0;
+        });
 
         if (!disabledInEnvironment) {
           continue;
@@ -128,16 +122,10 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
       }
 
       // --enabledIn=<environment>
-      if (
-        options.enabledIn &&
-        parsedFeature.environments &&
-        parsedFeature.environments[options.enabledIn]
-      ) {
-        const enabledInEnvironment = parsedFeature.environments[options.enabledIn].rules.some(
-          (rule) => {
-            return rule.percentage > 0;
-          },
-        );
+      if (options.enabledIn && parsedFeature.rules && parsedFeature.rules[options.enabledIn]) {
+        const enabledInEnvironment = parsedFeature.rules[options.enabledIn].some((rule) => {
+          return rule.percentage > 0;
+        });
 
         if (!enabledInEnvironment) {
           continue;
@@ -168,12 +156,7 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
           ? options.variable
           : [options.variable];
 
-        let variablesInFeature: string[] = [];
-        if (Array.isArray(parsedFeature.variablesSchema)) {
-          variablesInFeature = parsedFeature.variablesSchema.map((variable) => variable.key);
-        } else if (parsedFeature.variablesSchema) {
-          variablesInFeature = Object.keys(parsedFeature.variablesSchema);
-        }
+        let variablesInFeature: string[] = Object.keys(parsedFeature.variablesSchema || {});
 
         const hasVariables = lookForVariables.every((variable) =>
           variablesInFeature.includes(variable),
@@ -338,6 +321,11 @@ async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
       const testEntityType = (test as TestSegment).segment ? "segment" : "feature";
       let testAssertions = test.assertions;
 
+      // --entityType=<type>
+      if (options.entityType && options.entityType !== testEntityType) {
+        continue;
+      }
+
       // --apply-matrix
       if (options.applyMatrix) {
         if (testEntityType === "feature") {
@@ -428,7 +416,7 @@ function printResult({ result, entityType, options }) {
 }
 
 export async function listProject(deps: Dependencies) {
-  const { rootDirectoryPath, projectConfig, datasource, options } = deps;
+  const { options } = deps;
 
   // features
   if (options.features) {
