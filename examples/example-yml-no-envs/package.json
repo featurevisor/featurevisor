@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-yml-no-envs",
   "private": true,
-  "version": "1.35.3",
+  "version": "2.0.0",
   "description": "Featurevisor project with YAML definitions",
   "scripts": {
     "lint": "featurevisor lint",
@@ -13,6 +13,6 @@
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "1.35.3"
+    "@featurevisor/cli": "2.0.0"
   }
 }
