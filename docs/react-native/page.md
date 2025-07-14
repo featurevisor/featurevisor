@@ -44,8 +44,6 @@ export default function MyComponent() {
 
 ## Polyfills
 
-Because Featurevisor's JavaScript SDK uses `fetch` API internally, it can be used with React Native without any additional dependencies.
-
 The only extra polyfill you might need is for the `TextEncoder` API.
 
 You can consider using [`fastestsmallesttextencoderdecoder`](https://www.npmjs.com/package/fastestsmallesttextencoderdecoder) package for that.

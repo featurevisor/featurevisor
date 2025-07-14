@@ -11,14 +11,6 @@ nextjs:
         - url: /img/og/docs-frameworks-express.png
 ---
 
-{% callout type="warning" title="Featurevisor v1" %}
-
-This guide is written keeping Featurevisor v1 in mind.
-
-It will be updated to be v2-compatible soon.
-
-{% /callout %}
-
 Set up Featurevisor SDK instance in an Express.js application using a custom middleware, including TypeScript integration for evaluating feature flags. {% .lead %}
 
 ## Hello World application
@@ -59,7 +51,7 @@ Example app listening on port 3000
 
 ## Featurevisor integration
 
-We install the Featurevisor SDK first:
+We install the Featurevisor SDK now:
 
 ```
 $ npm install --save @featurevisor/sdk
@@ -74,17 +66,10 @@ const { createInstance } = require('@featurevisor/sdk')
 
 const PORT = 3000
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
-const REFRESH_INTERVAL = 60 * 5 // every 5 minutes
 
 const app = express()
 
-const f = createInstance({
-  datafileUrl: DATAFILE_URL,
-
-  // optionally refresh the datafile every 5 minutes,
-  // without having to restart the server
-  refreshInterval: REFRESH_INTERVAL,
-})
+const f = createInstance({})
 
 app.get('/', (req, res) => {
   const featureKey = 'myFeature'
@@ -99,9 +84,16 @@ app.get('/', (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}`)
-})
+fetch(DATAFILE_URL)
+  .then((response) => response.json())
+  .then((datafile) => {
+    f.setDatafile(datafile)
+
+    // we start the server only after the datafile is loaded
+    app.listen(PORT, () => {
+      console.log(`Example app listening on port ${PORT}`)
+    })
+  })
 ```
 
 ## Middleware
@@ -115,10 +107,7 @@ To solve this problem, we can create a custom middleware that will set the Featu
 
 // ...
 
-const f = createInstance({
-  datafileUrl: DATAFILE_URL,
-  refreshInterval: REFRESH_INTERVAL,
-})
+const f = createInstance({})
 
 app.use((req, res, next) => {
   req.f = f
@@ -163,6 +152,16 @@ declare namespace Express {
   }
 }
 ```
+
+## Refreshing datafile
+
+Because a server instance is meant to run for a long time, we might want to refresh the datafile periodically so that latest datafile is always used without needing to restart the server.
+
+See more documentation in [JavaScript SDK page](/docs/sdks/javascript/#interval-based-update).
+
+## Child instances
+
+If you are in need of request specific context isolation, you may want to look into spawning child instances from the primary Featurevisor SDK [here](/docs/sdks/javascript/#child-instance).
 
 ## Working repository
 

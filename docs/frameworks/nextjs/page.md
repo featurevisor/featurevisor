@@ -11,19 +11,9 @@ nextjs:
         - url: /img/og/docs-frameworks-nextjs.png
 ---
 
-{% callout type="warning" title="Featurevisor v1" %}
-
-This guide is written keeping Featurevisor v1 in mind.
-
-It will be updated to be v2-compatible soon.
-
-{% /callout %}
-
 Set up Featurevisor SDK in a Next.js application for evaluating feature flags targeting static site generation (SSG) and server-side rendering (SSR) strategies. {% .lead %}
 
 ## Rendering strategies
-
-This guide is focused on static site generation (SSG) and server-side rendering (SSR) using Pages Router of [Next.js](https://nextjs.org/docs).
 
 If you are looking for a client-side rendering (CSR) strategy, please refer to the [React.js](/docs/react) guide which comes with its own separate package for convenience.
 
@@ -57,20 +47,21 @@ import { createInstance } from '@featurevisor/sdk'
 
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
-let instance
+let initialFetchCompleted = false
+
+const f = createInstance({})
 
 export async function getInstance() {
-  if (instance) {
-    return instance
+  if (initialFetchCompleted) {
+    return f
   }
 
-  const f = createInstance({
-    datafileUrl: DATAFILE_URL,
-  })
+  const datafileContent = await fetch(DATAFILE_URL)
+    .then((response) => response.json())
+  f.setDatafile(datafileContent)
+  initialFetchCompleted = true
 
-  instance = await f.onReady()
-
-  return instance
+  return f
 }
 ```
 
@@ -84,7 +75,7 @@ If you are pre-rendering your pages at build time, you can use the `getStaticPro
 
 ```js
 // src/pages/index.js
-import { getInstance } from '../featurevisor'
+import { getInstance } from '@/featurevisor'
 
 export async function getStaticProps() {
   const featureKey = 'my_feature'
@@ -121,7 +112,7 @@ If you are rendering your pages on each request, you can use the `getServerSideP
 
 ```js
 // src/pages/index.js
-import { getInstance } from '../featurevisor'
+import { getInstance } from '@/featurevisor'
 
 export async function getServerSideProps() {
   const featureKey = 'my_feature'
@@ -168,7 +159,7 @@ If you are using App Router, you can do something like this:
 
 ```js
 // src/app/approuter/page.tsx
-import { getInstance } from '../../featurevisor'
+import { getInstance } from '@/featurevisor'
 
 export default async function Home() {
   const featureKey = 'my_feature'
