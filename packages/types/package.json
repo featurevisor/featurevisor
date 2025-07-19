@@ -2,13 +2,20 @@
   "name": "@featurevisor/types",
   "version": "2.0.0",
   "description": "Common Typescript types for Featurevisor",
-  "main": "dist/index.js",
-  "module": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js"
+    }
+  },
   "scripts": {
-    "transpile": "rimraf lib && tsc --project tsconfig.esm.json",
-    "dist": "webpack --config ./webpack.config.js",
-    "build": "npm run transpile && npm run dist",
+    "transpile": "echo 'Nothing to transpile'",
+    "dist": "echo 'Nothing to dist'",
+    "build": "echo 'Nothing to build'",
     "test": "echo 'Nothing to test in types package'"
   },
   "author": {
