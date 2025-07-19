@@ -15,7 +15,7 @@
   "scripts": {
     "transpile": "echo 'Nothing to transpile'",
     "dist": "echo 'Nothing to dist'",
-    "build": "echo 'Nothing to build'",
+    "build": "tsc ./src/index.d.ts",
     "test": "echo 'Nothing to test in types package'"
   },
   "author": {
