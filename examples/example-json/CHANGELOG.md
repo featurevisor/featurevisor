@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/featurevisor/featurevisor/compare/v2.0.0...v2.0.1) (2025-07-19)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
 ## [1.35.3](https://github.com/featurevisor/featurevisor/compare/v1.35.2...v1.35.3) (2025-04-12)
 
 **Note:** Version bump only for package @featurevisor/example-json

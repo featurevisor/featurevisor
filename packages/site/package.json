@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/site",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {
@@ -59,6 +59,6 @@
     "webpack-merge": "^5.10.0"
   },
   "dependencies": {
-    "@featurevisor/types": "2.0.0"
+    "@featurevisor/types": "2.0.1"
   }
 }

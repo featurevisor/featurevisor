@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/sdk",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Featurevisor SDK for Node.js and the browser",
   "main": "dist/index.cjs.js",
   "module": "dist/index.mjs",
@@ -49,6 +49,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "2.0.0"
+    "@featurevisor/types": "2.0.1"
   }
 }
