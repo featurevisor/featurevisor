@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-json",
   "private": true,
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Featurevisor project with JSON definitions",
   "scripts": {
     "lint": "featurevisor lint",
@@ -13,6 +13,6 @@
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "2.0.1"
+    "@featurevisor/cli": "2.0.2"
   }
 }
