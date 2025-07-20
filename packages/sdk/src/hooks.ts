@@ -1,7 +1,8 @@
-import type { BucketBy, BucketKey, BucketValue, Context, FeatureKey } from "@featurevisor/types";
+import type { BucketBy, Context, FeatureKey } from "@featurevisor/types";
 
 import type { EvaluateOptions, Evaluation } from "./evaluate";
 import type { Logger } from "./logger";
+import type { BucketKey, BucketValue } from "./bucketer";
 
 /**
  * bucketKey

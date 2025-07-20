@@ -1,8 +1,6 @@
 import type {
   FeatureKey,
   Context,
-  BucketKey,
-  BucketValue,
   RuleKey,
   Traffic,
   Force,
@@ -20,7 +18,7 @@ import type {
 import { Logger } from "./logger";
 import { HooksManager } from "./hooks";
 import { DatafileReader } from "./datafileReader";
-import { getBucketKey, getBucketedNumber } from "./bucketer";
+import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer";
 
 export enum EvaluationReason {
   // feature specific
