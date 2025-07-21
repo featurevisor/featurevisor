@@ -89,6 +89,8 @@ export interface EvaluateDependencies {
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
+
+  flagEvaluation?: Evaluation;
 }
 
 export interface EvaluateParams {
@@ -172,10 +174,12 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     let flag: Evaluation;
     if (type !== "flag") {
       // needed by variation and variable evaluations
-      flag = evaluate({
-        ...options,
-        type: "flag",
-      });
+      flag =
+        options.flagEvaluation ||
+        evaluate({
+          ...options,
+          type: "flag",
+        });
 
       if (flag.enabled === false) {
         evaluation = {
