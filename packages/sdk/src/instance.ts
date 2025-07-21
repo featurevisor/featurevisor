@@ -32,6 +32,8 @@ export interface OverrideOptions {
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
+
+  flagEvaluation?: Evaluation;
 }
 
 export interface InstanceOptions {
@@ -410,7 +412,7 @@ export class FeaturevisorInstance {
         enabled: flagEvaluation.enabled === true,
       };
 
-      const opts = {
+      const opts: OverrideOptions = {
         ...options,
         flagEvaluation, // pass to avoid re-evaluating the flag
       };
