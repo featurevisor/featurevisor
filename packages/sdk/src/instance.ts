@@ -439,6 +439,6 @@ export class FeaturevisorInstance {
   }
 }
 
-export function createInstance(options: InstanceOptions): FeaturevisorInstance {
+export function createInstance(options: InstanceOptions = {}): FeaturevisorInstance {
   return new FeaturevisorInstance(options);
 }
