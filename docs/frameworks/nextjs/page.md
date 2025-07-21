@@ -27,88 +27,152 @@ In your existing Next.js application:
 $ npm install --save flags @featurevisor/sdk
 ```
 
+## Naming conventions
+
+Because Featurevisor allows evaluating 3 different types of values against individual features, we need to establish a naming convention for the keys used in the Flags SDK:
+
+| Evaluation type | Value type | Key Format                   | Example                  |
+| --------------- | ---------- | ---------------------------- | ------------------------ |
+| Flag            | boolean    | `<featureKey>`               | `my_feature`             |
+| Variation       | string     | `<featureKey>:variation`     | `my_feature:variation`   |
+| Variable        | mixed      | `<featureKey>:<variableKey>` | `my_feature:my_variable` |
+
 ## Set up Featurevisor
 
-We will start by creating a new `src/featurevisor.ts` file:
+We will start by creating a new Featurevisor adapter using Flags SDK in the `src/featurevisor.ts` file:
 
 ```ts {% path="src/featurevisor.ts" %}
-import { createInstance } from '@featurevisor/sdk'
+import type { Adapter } from 'flags'
+import { createInstance, FeaturevisorInstance } from '@featurevisor/sdk'
 
-// Replace with your actual datafile URL
-const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
-
-const f = createInstance({})
-let initialFetchCompleted = false
-
-export function fetchAndSetDatafile() {
-  console.log('[Featurevisor] Fetching datafile from:', DATAFILE_URL)
-
-  const result = fetch(DATAFILE_URL)
-    .then((response) => response.json())
-    .then((datafile) => f.setDatafile(datafile))
-    .catch((error) =>
-      console.error('[Featurevisor] Error fetching datafile:', error)
-    )
-
-  initialFetchCompleted = true
-
-  return result
+export interface FeaturevisorAdapterOptions {
+  datafileUrl: string
+  refreshInterval?: number
+  f?: FeaturevisorInstance
 }
 
-export async function getInstance() {
-  if (initialFetchCompleted) {
-    return f
+export interface FeaturevisorEntitiesType {
+  userId?: string
+  // ...add more properties (attributes) for your context here
+}
+
+export function createFeaturevisorAdapter(options: FeaturevisorAdapterOptions) {
+  const f = options.f || createInstance({})
+  let initialFetchCompleted = false
+
+  // datafile fetcher
+  function fetchAndSetDatafile() {
+    console.log('[Featurevisor] Fetching datafile from:', options.datafileUrl)
+
+    const result = fetch(options.datafileUrl)
+      .then((response) => response.json())
+      .then((datafile) => {
+        f.setDatafile(datafile)
+        initialFetchCompleted = true
+      })
+      .catch((error) =>
+        console.error('[Featurevisor] Error fetching datafile:', error)
+      )
+
+    return result
   }
 
-  await fetchAndSetDatafile()
+  // datafile refresher (periodic update)
+  if (options.refreshInterval) {
+    setInterval(async () => {
+      await fetchAndSetDatafile()
+    }, options.refreshInterval)
+  }
 
-  return f
+  // adapter
+  return function featurevisorAdapter<
+    ValueType,
+    EntitiesType extends FeaturevisorEntitiesType
+  >(): Adapter<ValueType, EntitiesType> {
+    return {
+      async decide({ key, entities, headers, cookies }): Promise<ValueType> {
+        // ensure the datafile is fetched before making decisions
+        if (!initialFetchCompleted) {
+          await fetchAndSetDatafile()
+        }
+
+        const context = {
+          userId: entities?.userId,
+        }
+
+        // mapping passed key to Featurevisor SDK methods:
+        //
+        //   - '<featureKey>'               => f.isEnabled(key, context)
+        //   - '<featureKey>:variation'     => f.getVariation(key, context)
+        //   - '<featureKey>:<variableKey>' => f.getVariable(key, variableKey, context)
+        const [featureKey, variableKey] = key.split(':')
+
+        if (variableKey) {
+          if (variableKey === 'variation') {
+            // variation
+            return f.getVariation(featureKey, context) as ValueType
+          } else {
+            // variable
+            return f.getVariable(featureKey, variableKey, context) as ValueType
+          }
+        }
+
+        // flag
+        return f.isEnabled(featureKey, context) as ValueType
+      },
+    }
+  }
 }
 ```
 
 ## Flags SDK integration
 
-Now we can create a new `src/flags.ts` file to integrate with the Flags SDK:
+Now we can create a new `src/flags.ts` file for our individual features and their evaluations:
 
 ```ts {% path="src/flags.ts" %}
 import { flag } from 'flags/next'
-import { getInstance } from './featurevisor'
+import { createFeaturevisorAdapter } from './featurevisor'
 
-export const exampleFlag = flag({
-  key: 'exampleFlag',
-  identify: ({ headers, cookies }) => {
-    return {
-      userId: '123', // Replace with actual user ID
-      // ...additional context
-    }
-  },
-  async decide({ entities }) {
-    const f = await getInstance()
+// set up adapter
+const featurevisorAdapter = createFeaturevisorAdapter({
+  // replace with your Featurevisor project datafile URL
+  datafileUrl: 'https://cdn.yoursite.com/datafile.json',
 
-    const featureKey = 'my_feature' // Replace with your feature key
-    const context = {
-      userId: entities?.userId, // Use the user ID from the identify function
-      // ...additional context if needed
-    }
+  // if you want to periodically refresh the datafile
+  refreshInterval: 5 * 60 * 1000, // every 5 minutes
+})
 
-    return f.isEnabled(featureKey, context)
-  },
+// feature specific flags
+export const myFeatureFlag = flag({
+  // '<featureKey>' as the feature key alone to get its flag (boolean) status
+  key: 'my_feature',
+  adapter: featurevisorAdapter(),
+})
+
+export const myFeatureVariation = flag({
+  // '<featureKey>:variation' is to get the variation (string) of the feature
+  key: 'my_feature:variation',
+  adapter: featurevisorAdapter(),
+})
+
+export const myFeatureVariable = flag({
+  // '<featureKey>:<variableKey>' is to get the variable value of the feature
+  key: 'my_feature:variableKeyHere',
+  adapter: featurevisorAdapter(),
 })
 ```
-
-Learn more in [Context](/docs/sdks/javascript/#context) section.
 
 ## App Router
 
 If you're using the App Router, you can call the flag function from a page, component, or middleware to evaluate the flag:
 
 ```ts {% path="src/app/page.tsx" %}
-import { exampleFlag } from '../flags'
+import { myFeatureFlag } from '../flags'
 
 export default async function Page() {
-  const example = await exampleFlag()
+  const myFeature = await myFeatureFlag()
 
-  return <div>{example ? 'Flag is on' : 'Flag is off'}</div>
+  return <div>{myFeature ? 'Flag is on' : 'Flag is off'}</div>
 }
 ```
 
@@ -118,39 +182,23 @@ If you're using the Pages Router, you can call the flag function inside getServe
 
 ```ts {% path="src/pages/index.tsx" %}
 import type { InferGetServerSidePropsType, GetServerSideProps } from 'next'
-import { exampleFlag } from '../flags'
+import { myFeatureFlag } from '../flags'
 
 export const getServerSideProps = (async ({ req }) => {
-  const example = await exampleFlag(req)
+  const myFeature = await myFeatureFlag(req)
 
   return {
     props: {
-      example
+      myFeature
     }
   }
-}) satisfies GetServerSideProps<{ example: boolean }>
+}) satisfies GetServerSideProps<{ myFeature: boolean }>
 
 export default function Page({
-  example
+  myFeature
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <div>{example ? 'Flag is on' : 'Flag is off'}</div>
+  return <div>{myFeature ? 'Flag is on' : 'Flag is off'}</div>
 }
-```
-
-## Refreshing the datafile
-
-If you are using App Router, it is likely you would like to serve your latest Featurevisor project changes to your application without having to redeploy it.
-
-You can either do this by listening to the changes via a custom webhook, or by periodically fetching the datafile in the background:
-
-```ts {% path="src/featurevisor.ts" %}
-// ...existing code
-
-const REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
-
-setInterval(async () => {
-  await fetchAndSetDatafile()
-}, REFRESH_INTERVAL)
 ```
 
 ## Working repository
