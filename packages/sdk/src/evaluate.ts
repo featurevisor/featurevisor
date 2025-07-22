@@ -378,7 +378,7 @@ function evaluateForced(
 }
 
 function evaluateRequired(options: EvaluateOptions, feature: Feature): Evaluation | null {
-  const { type, featureKey, variableKey, context, logger, datafileReader } = options;
+  const { type, featureKey, logger } = options;
 
   if (type === "flag" && feature.required && feature.required.length > 0) {
     let evaluation: Evaluation;
@@ -902,10 +902,8 @@ function evaluateByBucketing(
 }
 
 export function evaluate(options: EvaluateOptions): Evaluation {
-  const { type, featureKey, variableKey, context, logger, datafileReader, sticky, hooksManager } =
-    options;
+  const { type, featureKey, variableKey, logger } = options;
 
-  const hooks = hooksManager.getAll();
   let evaluation: Evaluation;
 
   try {
