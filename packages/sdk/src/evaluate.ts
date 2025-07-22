@@ -298,21 +298,30 @@ function evaluateSticky(options: EvaluateOptions): Evaluation | null {
   return null;
 }
 
+interface EvaluateForcedResult {
+  evaluation?: Evaluation;
+  force?: Force;
+  forceIndex?: number;
+}
+
 function evaluateForced(
   options: EvaluateOptions,
   feature: Feature,
   variableSchema: VariableSchema | undefined,
-): Evaluation | null {
+): EvaluateForcedResult {
   const { type, featureKey, variableKey, context, logger, datafileReader } = options;
 
   const { force, forceIndex } = datafileReader.getMatchedForce(feature, context);
 
-  if (force) {
-    let evaluation: Evaluation;
+  const result: EvaluateForcedResult = {
+    force,
+    forceIndex,
+  };
 
+  if (force) {
     // flag
     if (type === "flag" && typeof force.enabled !== "undefined") {
-      evaluation = {
+      result.evaluation = {
         type,
         featureKey,
         reason: EvaluationReason.FORCED,
@@ -321,9 +330,9 @@ function evaluateForced(
         enabled: force.enabled,
       };
 
-      logger.debug("forced enabled found", evaluation);
+      logger.debug("forced enabled found", result.evaluation);
 
-      return evaluation;
+      return result;
     }
 
     // variation
@@ -331,7 +340,7 @@ function evaluateForced(
       const variation = feature.variations.find((v) => v.value === force.variation);
 
       if (variation) {
-        evaluation = {
+        result.evaluation = {
           type,
           featureKey,
           reason: EvaluationReason.FORCED,
@@ -340,15 +349,15 @@ function evaluateForced(
           variation,
         };
 
-        logger.debug("forced variation found", evaluation);
+        logger.debug("forced variation found", result.evaluation);
 
-        return evaluation;
+        return result;
       }
     }
 
     // variable
     if (variableKey && force.variables && typeof force.variables[variableKey] !== "undefined") {
-      evaluation = {
+      result.evaluation = {
         type,
         featureKey,
         reason: EvaluationReason.FORCED,
@@ -359,13 +368,13 @@ function evaluateForced(
         variableValue: force.variables[variableKey],
       };
 
-      logger.debug("forced variable", evaluation);
+      logger.debug("forced variable", result.evaluation);
 
-      return evaluation;
+      return result;
     }
   }
 
-  return null;
+  return result;
 }
 
 function evaluateRequired(options: EvaluateOptions, feature: Feature): Evaluation | null {
@@ -435,11 +444,21 @@ function evaluateRequired(options: EvaluateOptions, feature: Feature): Evaluatio
   return null;
 }
 
-function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evaluation | null {
+interface EvaluateByBucketingResult {
+  evaluation?: Evaluation;
+  bucketKey?: BucketKey;
+  bucketValue?: BucketValue;
+  matchedTraffic?: Traffic;
+  matchedAllocation?: Allocation;
+}
+
+function evaluateByBucketing(
+  options: EvaluateOptions,
+  feature: Feature,
+  force: Force | undefined,
+): EvaluateByBucketingResult {
   const { type, featureKey, context, variableKey, logger, datafileReader, hooksManager } = options;
   const hooks = hooksManager.getAll();
-
-  let evaluation: Evaluation;
 
   // bucketKey
   let bucketKey = getBucketKey({
@@ -487,10 +506,17 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
     matchedTraffic = datafileReader.getMatchedTraffic(feature.traffic, context);
   }
 
+  const result: EvaluateByBucketingResult = {
+    bucketKey,
+    bucketValue,
+    matchedTraffic,
+    matchedAllocation,
+  };
+
   if (matchedTraffic) {
     // percentage: 0
     if (matchedTraffic.percentage === 0) {
-      evaluation = {
+      result.evaluation = {
         type,
         featureKey,
         reason: EvaluationReason.RULE,
@@ -501,9 +527,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         enabled: false,
       };
 
-      logger.debug("matched rule with 0 percentage", evaluation);
+      logger.debug("matched rule with 0 percentage", result.evaluation);
 
-      return evaluation;
+      return result;
     }
 
     // flag
@@ -516,7 +542,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
 
         // matched
         if (matchedRange) {
-          evaluation = {
+          result.evaluation = {
             type,
             featureKey,
             reason: EvaluationReason.ALLOCATED,
@@ -527,13 +553,13 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
             enabled: typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
           };
 
-          logger.debug("matched", evaluation);
+          logger.debug("matched", result.evaluation);
 
-          return evaluation;
+          return result;
         }
 
         // no match
-        evaluation = {
+        result.evaluation = {
           type,
           featureKey,
           reason: EvaluationReason.OUT_OF_RANGE,
@@ -542,14 +568,14 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
           enabled: false,
         };
 
-        logger.debug("not matched", evaluation);
+        logger.debug("not matched", result.evaluation);
 
-        return evaluation;
+        return result;
       }
 
       // flag: override from rule
       if (typeof matchedTraffic.enabled !== "undefined") {
-        evaluation = {
+        result.evaluation = {
           type,
           featureKey,
           reason: EvaluationReason.RULE,
@@ -560,14 +586,14 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
           enabled: matchedTraffic.enabled,
         };
 
-        logger.debug("override from rule", evaluation);
+        logger.debug("override from rule", result.evaluation);
 
-        return evaluation;
+        return result;
       }
 
       // treated as enabled because of matched traffic
       if (bucketValue <= matchedTraffic.percentage) {
-        evaluation = {
+        result.evaluation = {
           type,
           featureKey,
           reason: EvaluationReason.RULE,
@@ -578,9 +604,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
           enabled: true,
         };
 
-        logger.debug("matched traffic", evaluation);
+        logger.debug("matched traffic", result.evaluation);
 
-        return evaluation;
+        return result;
       }
     }
 
@@ -591,7 +617,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         const variation = feature.variations.find((v) => v.value === matchedTraffic.variation);
 
         if (variation) {
-          evaluation = {
+          result.evaluation = {
             type,
             featureKey,
             reason: EvaluationReason.RULE,
@@ -602,9 +628,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
             variation,
           };
 
-          logger.debug("override from rule", evaluation);
+          logger.debug("override from rule", result.evaluation);
 
-          return evaluation;
+          return result;
         }
       }
 
@@ -613,7 +639,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         const variation = feature.variations.find((v) => v.value === matchedAllocation.variation);
 
         if (variation) {
-          evaluation = {
+          result.evaluation = {
             type,
             featureKey,
             reason: EvaluationReason.ALLOCATED,
@@ -624,9 +650,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
             variation,
           };
 
-          logger.debug("allocated variation", evaluation);
+          logger.debug("allocated variation", result.evaluation);
 
-          return evaluation;
+          return result;
         }
       }
     }
@@ -640,7 +666,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
       matchedTraffic.variables &&
       typeof matchedTraffic.variables[variableKey] !== "undefined"
     ) {
-      evaluation = {
+      result.evaluation = {
         type,
         featureKey,
         reason: EvaluationReason.RULE,
@@ -653,9 +679,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         variableValue: matchedTraffic.variables[variableKey],
       };
 
-      logger.debug("override from rule", evaluation);
+      logger.debug("override from rule", result.evaluation);
 
-      return evaluation;
+      return result;
     }
 
     // check variations
@@ -696,7 +722,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         });
 
         if (override) {
-          evaluation = {
+          result.evaluation = {
             type,
             featureKey,
             reason: EvaluationReason.VARIABLE_OVERRIDE,
@@ -709,9 +735,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
             variableValue: override.value,
           };
 
-          logger.debug("variable override", evaluation);
+          logger.debug("variable override", result.evaluation);
 
-          return evaluation;
+          return result;
         }
       }
 
@@ -720,7 +746,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         variation.variables &&
         typeof variation.variables[variableKey] !== "undefined"
       ) {
-        evaluation = {
+        result.evaluation = {
           type,
           featureKey,
           reason: EvaluationReason.ALLOCATED,
@@ -733,9 +759,9 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
           variableValue: variation.variables[variableKey],
         };
 
-        logger.debug("allocated variable", evaluation);
+        logger.debug("allocated variable", result.evaluation);
 
-        return evaluation;
+        return result;
       }
     }
   }
@@ -744,7 +770,7 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
    * Nothing matched
    */
   if (type === "variation") {
-    evaluation = {
+    result.evaluation = {
       type,
       featureKey,
       reason: EvaluationReason.NO_MATCH,
@@ -752,14 +778,14 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
       bucketValue,
     };
 
-    logger.debug("no matched variation", evaluation);
+    logger.debug("no matched variation", result.evaluation);
 
-    return evaluation;
+    return result;
   }
 
   if (type === "variable") {
     if (variableSchema) {
-      evaluation = {
+      result.evaluation = {
         type,
         featureKey,
         reason: EvaluationReason.VARIABLE_DEFAULT,
@@ -770,12 +796,12 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
         variableValue: variableSchema.defaultValue,
       };
 
-      logger.debug("using default value", evaluation);
+      logger.debug("using default value", result.evaluation);
 
-      return evaluation;
+      return result;
     }
 
-    evaluation = {
+    result.evaluation = {
       type,
       featureKey,
       reason: EvaluationReason.VARIABLE_NOT_FOUND,
@@ -784,12 +810,12 @@ function evaluateByBucketing(options: EvaluateOptions, feature: Feature): Evalua
       bucketValue,
     };
 
-    logger.debug("variable not found", evaluation);
+    logger.debug("variable not found", result.evaluation);
 
-    return evaluation;
+    return result;
   }
 
-  return null;
+  return result;
 }
 
 export function evaluate(options: EvaluateOptions): Evaluation {
@@ -898,9 +924,11 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Forced
      */
-    const forcedEvaluation = evaluateForced(options, feature, variableSchema);
-    if (forcedEvaluation) {
-      return forcedEvaluation;
+    const forcedResult = evaluateForced(options, feature, variableSchema);
+    const { force } = forcedResult;
+
+    if (forcedResult.evaluation) {
+      return forcedResult.evaluation;
     }
 
     /**
@@ -914,9 +942,11 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Bucketing
      */
-    const bucketingEvaluation = evaluateByBucketing(options, feature);
-    if (bucketingEvaluation) {
-      return bucketingEvaluation;
+    const bucketingResult = evaluateByBucketing(options, feature, force);
+    const { bucketKey, bucketValue } = bucketingResult;
+
+    if (bucketingResult.evaluation) {
+      return bucketingResult.evaluation;
     }
 
     evaluation = {
