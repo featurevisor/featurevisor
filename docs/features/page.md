@@ -23,6 +23,8 @@ The evaluated values can be either its:
 - **Variation** (`string`): a string value if you have a/b tests running
 - **Variables**: a set of key/value pairs (if any)
 
+You can learn more about how the evaluation logic works for each [here](#evaluation-flow).
+
 ## Create a Feature
 
 Let's say we have built a new sidebar in our application's UI, and we wish to roll it out gradually to our users.
@@ -873,3 +875,55 @@ expose:
 ```
 
 Ideally we never wish to keep `expose` property in our definitions, and it is only meant to serve our short term needs especially when we might be migrating from another feature management tool to Featurevisor.
+
+## Evaluation flow
+
+Understand how each type of evaluation works in Featurevisor:
+
+### Flag
+
+Flag here means the boolean value of the feature itself, meaning whether it is enabled or disabled.
+
+These are the sequential steps to evaluate a feature's flag value via its [SDKs](/docs/sdks/):
+
+1. If [sticky](/docs/sdks/javascript/#sticky) feature is available in SDK, use the boolean value from there
+1. If feature key does not exist in [datafile](/docs/building-datafiles/), the feature is evaluated as disabled
+1. If there are any [`required`](#required) (dependency) features, and they do not satisfy the conditions, the feature is evaluated as disabled
+1. If there are any [forced rules](#force), use the first one that matches the [context](/docs/sdks/javascript/#context) and use its `enabled` value
+1. Find the first [rule](#rules) that matches against the [context](/docs/sdks/javascript/#context) and use its `enabled` value, otherwise use [bucketing](/docs/bucketing/) logic to determine if the feature is enabled or not
+1. If no rules matched, the feature is evaluated as disabled
+
+### Variation
+
+1. If [sticky](/docs/sdks/javascript/#sticky) variation value is available in SDK, use the value from there
+
+1. If the feature's flag value is `false`:
+
+   1. The variation is evaluated as `null` by default
+   1. If [`disabledVariationValue`](#disabled-variation-value) is set, the variation is evaluated as that value
+
+1. If the feature's flag value is `true`:
+
+   1. If there are any [forced rules](#force), use the first one that matches the [context](/docs/sdks/javascript/#context), and use its `variation` value
+   1. If there are any [rules](#rules) that match against the [context](/docs/sdks/javascript/#context), use the rule's `variation` value, otherwise use [bucketing](/docs/bucketing/) logic to determine the variation value
+
+### Variable
+
+1. If [sticky](/docs/sdks/javascript/#sticky) variable value is available in SDK, use the value from there
+
+1. If the feature's flag value is `false`:
+
+   1. The variable is evaluated as `null` by default
+   1. If [`useDefaultWhenDisabled`](#default-when-disabled) is set, the variable is evaluated as its [`defaultValue`](#schema)
+   1. If [`disabledValue`](#disabled-variable-value) is set, the variable is evaluated as that specific value
+
+1. If the feature's flag value is `true`:
+
+   1. If there are any [forced rules](#force), use the first one that matches the [context](/docs/sdks/javascript/#context), and use its `variables` value (if any)
+   1. If there are any [rules](#rules) that match against the [context](/docs/sdks/javascript/#context), use the rule's `variables` value (if any)
+   1. If feature has [variations](#variations):
+
+      1. Evaluate the variation value first
+      1. If that specific variation has any variable overrides, use that value
+
+   1. Fall back to variable's [`defaultValue`](#schema)
