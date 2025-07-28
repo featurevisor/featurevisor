@@ -33,6 +33,7 @@
       { "title": "JavaScript", "href": "/docs/sdks/javascript/" },
       { "title": "Node.js", "href": "/docs/sdks/nodejs/" },
       { "title": "Browser", "href": "/docs/sdks/browser/" },
+      { "title": "PHP", "href": "/docs/sdks/php/" },
       { "title": "Swift", "href": "/docs/sdks/swift/" },
       { "title": "Roku", "href": "/docs/sdks/roku/" }
     ]
