@@ -18,6 +18,7 @@ Supported languages and runtimes:
 - [JavaScript](/docs/sdks/javascript)
 - [Node.js](/docs/sdks/nodejs)
 - [Browser](/docs/sdks/browser)
+- [PHP](/docs/sdks/php)
 - [Roku](/docs/sdks/roku)
 - [Swift](/docs/sdks/swift)
 

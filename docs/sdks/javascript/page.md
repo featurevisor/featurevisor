@@ -8,7 +8,7 @@ nextjs:
       title: JavaScript SDK
       description: Learn how to use Featurevisor JavaScript SDK
       images:
-        - url: /img/og/docs.png
+        - url: /img/og/docs-sdks-javascript.png
 ---
 
 Featurevisor's JavaScript SDK is universal, meaning it works in both [Node.js](/docs/sdks/nodejs) and [browser](/docs/sdks/browser) environments. {% .lead %}
