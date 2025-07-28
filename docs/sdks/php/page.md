@@ -607,7 +607,6 @@ $f->close();
 
 ## CLI usage
 
-
 This package also provides a CLI tool for running your Featurevisor project's test specs and benchmarking against this PHP SDK:
 
 ### Test
