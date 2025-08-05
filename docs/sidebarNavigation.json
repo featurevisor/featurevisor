@@ -34,6 +34,7 @@
       { "title": "Node.js", "href": "/docs/sdks/nodejs/" },
       { "title": "Browser", "href": "/docs/sdks/browser/" },
       { "title": "PHP", "href": "/docs/sdks/php/" },
+      { "title": "Java", "href": "/docs/sdks/java/" },
       { "title": "Swift", "href": "/docs/sdks/swift/" },
       { "title": "Roku", "href": "/docs/sdks/roku/" }
     ]

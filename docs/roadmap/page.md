@@ -18,7 +18,6 @@ Feature requests on [GitHub](https://github.com/featurevisor/featurevisor/issues
 ## Future plans
 
 - Expand SDK support targeting more backend development oriented languages:
-  - Java
   - Golang
   - Ruby
   - Python
@@ -33,6 +32,7 @@ Notable changes:
 
 ### 2025
 
+- August 5th, 2025: [Java SDK released](/docs/sdks/java)
 - July 29th, 2025: [PHP SDK released](/docs/sdks/php)
 - July 14th, 2025: [v2.0 stable released](/blog/v2-release) 🎉
 - March 9th, 2025: [Namespaces](/docs/namespaces)
