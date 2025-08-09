@@ -150,6 +150,7 @@
       { "title": "Examples", "href": "/docs/examples/" },
       { "title": "Contributing", "href": "/docs/contributing/" },
       { "title": "llms.txt", "href": "/docs/llms/" },
+      { "title": "Alternatives", "href": "/docs/alternatives/" },
       {
         "title": "GitHub",
         "href": "https://github.com/featurevisor/featurevisor/"
