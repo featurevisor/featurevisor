@@ -15,7 +15,8 @@ import { createLogger, Logger, LogLevel } from "./logger";
 import { HooksManager, Hook } from "./hooks";
 import { Emitter, EventCallback, EventName } from "./emitter";
 import { DatafileReader } from "./datafileReader";
-import { Evaluation, EvaluateDependencies, evaluateWithHooks } from "./evaluate";
+import { evaluateWithHooks } from "./evaluate";
+import { Evaluation, EvaluateDependencies } from "./evaluation";
 import { FeaturevisorChildInstance } from "./child";
 import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events";
 import { getValueByType } from "./helpers";
@@ -32,6 +33,8 @@ export interface OverrideOptions {
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
+
+  flagEvaluation?: Evaluation;
 }
 
 export interface InstanceOptions {
@@ -190,6 +193,8 @@ export class FeaturevisorInstance {
     options: OverrideOptions = {},
   ): EvaluateDependencies {
     return {
+      ...options,
+
       context: this.getContext(context),
 
       logger: this.logger,
@@ -203,8 +208,6 @@ export class FeaturevisorInstance {
             ...options.sticky,
           }
         : this.sticky,
-      defaultVariationValue: options.defaultVariationValue,
-      defaultVariableValue: options.defaultVariableValue,
     };
   }
 
@@ -404,13 +407,20 @@ export class FeaturevisorInstance {
     const keys = featureKeys.length > 0 ? featureKeys : this.datafileReader.getFeatureKeys();
     for (const featureKey of keys) {
       // isEnabled
+      const flagEvaluation = this.evaluateFlag(featureKey, context, options);
+
       const evaluatedFeature: EvaluatedFeature = {
-        enabled: this.isEnabled(featureKey, context, options),
+        enabled: flagEvaluation.enabled === true,
+      };
+
+      const opts: OverrideOptions = {
+        ...options,
+        flagEvaluation, // pass to avoid re-evaluating the flag
       };
 
       // variation
       if (this.datafileReader.hasVariations(featureKey)) {
-        const variation = this.getVariation(featureKey, context, options);
+        const variation = this.getVariation(featureKey, context, opts);
 
         if (variation) {
           evaluatedFeature.variation = variation;
@@ -427,7 +437,7 @@ export class FeaturevisorInstance {
             featureKey,
             variableKey,
             context,
-            options,
+            opts,
           );
         }
       }
