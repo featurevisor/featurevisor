@@ -89,10 +89,13 @@ Supported features:
 SDK support:
 
 - [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
+- [Go](https://featurevisor.com/docs/sdks/go/)
 - [PHP](https://featurevisor.com/docs/sdks/php/)
 - [Java](https://featurevisor.com/docs/sdks/java/)
 - [Swift](https://featurevisor.com/docs/sdks/swift/)
 - [React](https://featurevisor.com/docs/react/)
+- [React Native](https://featurevisor.com/docs/react-native/)
+- [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
 # Quick start
