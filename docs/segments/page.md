@@ -367,6 +367,8 @@ Conditions can also be combined using `and`, `or`, and `not` operators.
 
 ### `and`
 
+When using `and`, it means all the direct children conditions under it must match against provided [context](/docs/sdks/javascript/#context).
+
 ```yml {% highlight="3" %}
 # ...
 conditions:
@@ -380,7 +382,11 @@ conditions:
       value: iPhone
 ```
 
+By default if `and` is not specified directly under `conditions`, it is implied.
+
 ### `or`
+
+When using `or`, it means at least one of the direct children conditions under it must match against provided [context](/docs/sdks/javascript/#context).
 
 ```yml {% highlight="3" %}
 # ...
