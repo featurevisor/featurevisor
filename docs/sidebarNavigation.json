@@ -35,6 +35,7 @@
       { "title": "Browser", "href": "/docs/sdks/browser/" },
       { "title": "Go", "href": "/docs/sdks/go/" },
       { "title": "PHP", "href": "/docs/sdks/php/" },
+      { "title": "Ruby", "href": "/docs/sdks/ruby/" },
       { "title": "Java", "href": "/docs/sdks/java/" },
       { "title": "Swift", "href": "/docs/sdks/swift/" },
       { "title": "Roku", "href": "/docs/sdks/roku/" }
