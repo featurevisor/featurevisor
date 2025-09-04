@@ -7,4 +7,3 @@ conditions:
       - attribute: browser.version
         operator: equals
         value: "1.0"
-
