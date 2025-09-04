@@ -1,0 +1,10 @@
+description: Not Chrome v1 browser
+conditions:
+  - not:
+      - attribute: browser.name
+        operator: equals
+        value: chrome
+      - attribute: browser.version
+        operator: equals
+        value: "1.0"
+
