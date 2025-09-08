@@ -1,0 +1,30 @@
+segment: notChromeV1
+assertions:
+  ##
+  # Match
+  #
+  - context:
+      browser:
+        name: chrome
+    expectedToMatch: true
+
+  - context:
+      browser:
+        name: chrome
+        version: "2.0"
+    expectedToMatch: true
+
+  - context:
+      browser:
+        name: firefox
+        version: "1.0"
+    expectedToMatch: true
+
+  ##
+  # Not match
+  #
+  - context:
+      browser:
+        name: chrome
+        version: "1.0"
+    expectedToMatch: false
