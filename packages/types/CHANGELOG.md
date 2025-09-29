@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.1.2](https://github.com/featurevisor/featurevisor/compare/v2.1.1...v2.1.2) (2025-09-29)
+
+
+### Bug Fixes
+
+* formatting in types package ([#372](https://github.com/featurevisor/featurevisor/issues/372)) ([ab4ca96](https://github.com/featurevisor/featurevisor/commit/ab4ca96a10a12cab901b4054f005cab5b49e11a1))
+
+
+
+
+
 ## [2.0.3](https://github.com/featurevisor/featurevisor/compare/v2.0.2...v2.0.3) (2025-07-20)
 
 **Note:** Version bump only for package @featurevisor/types
