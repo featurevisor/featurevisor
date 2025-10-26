@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0](https://github.com/featurevisor/featurevisor/compare/v2.2.0...v2.3.0) (2025-10-26)
+
+
+### Features
+
+* allow configuring REVISION file name ([#375](https://github.com/featurevisor/featurevisor/issues/375)) ([d44f0c9](https://github.com/featurevisor/featurevisor/commit/d44f0c982c3d3b6959c5a6b9dd90c4ae4a3ea9c8))
+
+
+
+
+
 # [2.2.0](https://github.com/featurevisor/featurevisor/compare/v2.1.2...v2.2.0) (2025-10-26)
 
 **Note:** Version bump only for package @featurevisor/example-1
