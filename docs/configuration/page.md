@@ -114,6 +114,12 @@ Defaults to `<rootDir>/dist`.
 
 Defaults to `featurevisor-%s.json`.
 
+### `revisionFileName`
+
+Defaults to `REVISION`.
+
+Name of the file that will be used to store the [revision](/docs/building-datafiles/) number of your project.
+
 ### `stateDirectoryPath`
 
 Path to the directory containing your state.

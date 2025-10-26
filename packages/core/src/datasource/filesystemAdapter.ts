@@ -26,10 +26,8 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, fileName);
 }
 
-export const REVISION_FILE_NAME = "REVISION";
-
 export function getRevisionFilePath(projectConfig: ProjectConfig): string {
-  return path.join(projectConfig.stateDirectoryPath, REVISION_FILE_NAME);
+  return path.join(projectConfig.stateDirectoryPath, projectConfig.revisionFileName);
 }
 
 export function getAllEntityFilePathsRecursively(directoryPath, extension) {
@@ -213,7 +211,10 @@ export class FilesystemAdapter extends Adapter {
     fs.writeFileSync(filePath, revision);
 
     // write to datafiles directory, as part of the build process
-    fs.writeFileSync(path.join(this.config.datafilesDirectoryPath, REVISION_FILE_NAME), revision);
+    fs.writeFileSync(
+      path.join(this.config.datafilesDirectoryPath, this.config.revisionFileName),
+      revision,
+    );
   }
 
   /**

@@ -5,6 +5,7 @@ module.exports = {
   prettyState: true,
   prettyDatafile: true,
   // enforceCatchAllRule: true,
+  // revisionFileName: "REVISION.txt",
 
   plugins: [require("./plugins/example")],
 };
