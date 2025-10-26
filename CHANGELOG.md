@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0](https://github.com/featurevisor/featurevisor/compare/v2.1.2...v2.2.0) (2025-10-26)
+
+
+### Features
+
+* create REVISION file as part of build ([#374](https://github.com/featurevisor/featurevisor/issues/374)) ([0dccfb5](https://github.com/featurevisor/featurevisor/commit/0dccfb512d5cd1f1b87d60fdc8410cd2c0da82b1))
+
+
+
+
+
 ## [2.1.2](https://github.com/featurevisor/featurevisor/compare/v2.1.1...v2.1.2) (2025-09-29)
 
 
