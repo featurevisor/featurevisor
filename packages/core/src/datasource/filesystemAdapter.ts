@@ -26,8 +26,10 @@ export function getExistingStateFilePath(
   return path.join(projectConfig.stateDirectoryPath, fileName);
 }
 
+export const REVISION_FILE_NAME = "REVISION";
+
 export function getRevisionFilePath(projectConfig: ProjectConfig): string {
-  return path.join(projectConfig.stateDirectoryPath, `REVISION`);
+  return path.join(projectConfig.stateDirectoryPath, REVISION_FILE_NAME);
 }
 
 export function getAllEntityFilePathsRecursively(directoryPath, extension) {
@@ -203,11 +205,15 @@ export class FilesystemAdapter extends Adapter {
   async writeRevision(revision: string): Promise<void> {
     const filePath = getRevisionFilePath(this.config);
 
+    // write to state directory
     if (!fs.existsSync(this.config.stateDirectoryPath)) {
       fs.mkdirSync(this.config.stateDirectoryPath, { recursive: true });
     }
 
     fs.writeFileSync(filePath, revision);
+
+    // write to datafiles directory, as part of the build process
+    fs.writeFileSync(path.join(this.config.datafilesDirectoryPath, REVISION_FILE_NAME), revision);
   }
 
   /**
