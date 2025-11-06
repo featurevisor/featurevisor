@@ -80,7 +80,9 @@ describe("sdk: DatafileReader", function () {
     expect((reader.getSegment("germany") as any).conditions[0].value).toEqual("de");
     expect(reader.getSegment("belgium")).toEqual(undefined);
     expect(reader.getFeature("test")).toEqual(datafileJson.features.test);
+    expect(reader.getVariableKeys("test")).toEqual([]);
     expect(reader.getFeature("test2")).toEqual(undefined);
+    expect(reader.getVariableKeys("test2")).toEqual([]);
   });
 
   describe("segments", function () {
