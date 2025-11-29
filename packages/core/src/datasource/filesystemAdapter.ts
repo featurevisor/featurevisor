@@ -223,7 +223,10 @@ export class FilesystemAdapter extends Adapter {
   getDatafilePath(options: DatafileOptions): string {
     const pattern = this.config.datafileNamePattern || "featurevisor-%s.json";
 
-    const fileName = pattern.replace("%s", `tag-${options.tag}`);
+    const fileName = options.scope
+      ? pattern.replace("%s", `scope-${options.scope.name}`)
+      : pattern.replace("%s", `tag-${options.tag}`);
+
     const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     if (options.environment) {

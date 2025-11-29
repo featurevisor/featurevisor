@@ -72,7 +72,7 @@ export interface BuildOptions {
   revision: string;
   revisionFromHash?: boolean;
   environment: string | false;
-  tag?: string;
+  tag?: string; // @TODO: support multiple tags later
   features?: FeatureKey[];
   inflate?: number;
 }

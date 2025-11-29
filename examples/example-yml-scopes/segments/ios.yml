@@ -1,0 +1,5 @@
+description: Target iOS devices
+conditions:
+  - attribute: platform
+    operator: equals
+    value: ios
