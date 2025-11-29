@@ -66,6 +66,17 @@ describe("sdk: DatafileReader", function () {
             },
           ],
         },
+        testWithNoVariations: {
+          key: "testWithNoVariations",
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+            },
+          ],
+        },
       },
     };
 
@@ -79,10 +90,18 @@ describe("sdk: DatafileReader", function () {
     expect(reader.getSegment("netherlands")).toEqual(datafileJson.segments.netherlands);
     expect((reader.getSegment("germany") as any).conditions[0].value).toEqual("de");
     expect(reader.getSegment("belgium")).toEqual(undefined);
+
     expect(reader.getFeature("test")).toEqual(datafileJson.features.test);
     expect(reader.getVariableKeys("test")).toEqual([]);
     expect(reader.getFeature("test2")).toEqual(undefined);
     expect(reader.getVariableKeys("test2")).toEqual([]);
+
+    expect(reader.hasVariations("testWithNoVariations")).toEqual(false);
+    expect(reader.hasVariations("unknownFeature")).toEqual(false);
+
+    expect(reader.allSegmentsAreMatched("*", {})).toEqual(true);
+    expect(reader.allSegmentsAreMatched("unknownSegment", {})).toEqual(false);
+    expect(reader.allSegmentsAreMatched({ and: ["unknownSegment"] }, {})).toEqual(false);
   });
 
   describe("segments", function () {
