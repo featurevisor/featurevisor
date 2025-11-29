@@ -250,15 +250,36 @@ describe("core: buildScopedDatafile", function () {
       tier: "premium",
       country: "us",
     });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
-    expect(scoped1.features.feature1.traffic[0].segments).toBe("*");
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Only one condition matches
     const scoped2 = buildScopedDatafile(originalDatafileContent, {
       tier: "premium",
       country: "uk",
     });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("OR segments: at least one must match", function () {
@@ -290,16 +311,54 @@ describe("core: buildScopedDatafile", function () {
 
     // First segment matches
     const scoped1 = buildScopedDatafile(originalDatafileContent, { tier: "premium" });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
-    expect(scoped1.features.feature1.traffic[0].segments).toBe("*");
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-or-enterprise",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Second segment matches
     const scoped2 = buildScopedDatafile(originalDatafileContent, { tier: "enterprise" });
-    expect(scoped2.features.feature1.traffic.length).toBe(1);
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-or-enterprise",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Neither matches
     const scoped3 = buildScopedDatafile(originalDatafileContent, { tier: "free" });
-    expect(scoped3.features).toEqual({});
+    expect(scoped3).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("NOT segments: segment must not match", function () {
@@ -328,11 +387,33 @@ describe("core: buildScopedDatafile", function () {
 
     // Not beta - should match
     const scoped1 = buildScopedDatafile(originalDatafileContent, { environment: "production" });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "not-beta",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Is beta - should not match
     const scoped2 = buildScopedDatafile(originalDatafileContent, { environment: "beta" });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("nested AND/OR/NOT combinations", function () {
@@ -376,7 +457,24 @@ describe("core: buildScopedDatafile", function () {
       country: "us",
       environment: "production",
     });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "complex",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Fails: is beta
     const scoped2 = buildScopedDatafile(originalDatafileContent, {
@@ -384,7 +482,12 @@ describe("core: buildScopedDatafile", function () {
       country: "us",
       environment: "beta",
     });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
 
     // Fails: wrong country
     const scoped3 = buildScopedDatafile(originalDatafileContent, {
@@ -392,7 +495,12 @@ describe("core: buildScopedDatafile", function () {
       country: "uk",
       environment: "production",
     });
-    expect(scoped3.features).toEqual({});
+    expect(scoped3).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("array of segments: implicit AND", function () {
@@ -427,14 +535,36 @@ describe("core: buildScopedDatafile", function () {
       tier: "premium",
       country: "us",
     });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Only one matches
     const scoped2 = buildScopedDatafile(originalDatafileContent, {
       tier: "premium",
       country: "uk",
     });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   // ============================================
@@ -461,12 +591,31 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped1 = buildScopedDatafile(originalDatafileContent, { userId: "admin123" });
-    expect(scoped1.features.feature1.force).toBeDefined();
-    expect(scoped1.features.feature1.force!.length).toBe(1);
-    expect(scoped1.features.feature1.force![0].conditions).toBe("*");
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { userId: "user456" });
-    expect(scoped2.features.feature1).toBeUndefined();
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("force rules: with segments matching", function () {
@@ -493,12 +642,31 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped1 = buildScopedDatafile(originalDatafileContent, { role: "admin" });
-    expect(scoped1.features.feature1.force).toBeDefined();
-    expect(scoped1.features.feature1.force!.length).toBe(1);
-    expect(scoped1.features.feature1.force![0].segments).toBe("*");
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              segments: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { role: "user" });
-    expect(scoped2.features.feature1).toBeUndefined();
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("force rules: with both conditions and segments (OR logic)", function () {
@@ -527,18 +695,57 @@ describe("core: buildScopedDatafile", function () {
 
     // Matches via conditions
     const scoped1 = buildScopedDatafile(originalDatafileContent, { userId: "admin123" });
-    expect(scoped1.features.feature1.force).toBeDefined();
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              segments: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     // Matches via segments
     const scoped2 = buildScopedDatafile(originalDatafileContent, { role: "admin" });
-    expect(scoped2.features.feature1.force).toBeDefined();
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              segments: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     // Neither matches
     const scoped3 = buildScopedDatafile(originalDatafileContent, {
       userId: "user456",
       role: "user",
     });
-    expect(scoped3.features.feature1).toBeUndefined();
+    expect(scoped3).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("force rules: multiple force rules, some matching", function () {
@@ -574,17 +781,63 @@ describe("core: buildScopedDatafile", function () {
 
     // First force matches
     const scoped1 = buildScopedDatafile(originalDatafileContent, { userId: "admin123" });
-    expect(scoped1.features.feature1.force!.length).toBe(1);
-    expect(scoped1.features.feature1.force![0].variation).toBe("enabled");
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     // Second force matches
     const scoped2 = buildScopedDatafile(originalDatafileContent, { role: "admin" });
-    expect(scoped2.features.feature1.force!.length).toBe(1);
-    expect(scoped2.features.feature1.force![0].variation).toBe("disabled");
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              segments: "*",
+              variation: "disabled",
+            },
+          ],
+        },
+      },
+    });
 
     // Third force matches
     const scoped3 = buildScopedDatafile(originalDatafileContent, { userId: "user999" });
-    expect(scoped3.features.feature1.force!.length).toBe(1);
+    expect(scoped3).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
   });
 
   // ============================================
@@ -632,22 +885,104 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped1 = buildScopedDatafile(originalDatafileContent, { country: "us" });
-    expect(scoped1.features.feature1.variations![0].variableOverrides).toBeDefined();
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.message.length).toBe(1);
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.message[0].value).toBe(
-      "Hello from US",
-    );
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.message[0].conditions).toBe(
-      "*",
-    );
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                message: "Hello",
+              },
+              variableOverrides: {
+                message: [
+                  {
+                    conditions: "*",
+                    value: "Hello from US",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { country: "uk" });
-    expect(scoped2.features.feature1.variations![0].variableOverrides!.message[0].value).toBe(
-      "Hello from UK",
-    );
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                message: "Hello",
+              },
+              variableOverrides: {
+                message: [
+                  {
+                    conditions: "*",
+                    value: "Hello from UK",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
 
     const scoped3 = buildScopedDatafile(originalDatafileContent, { country: "ca" });
-    expect(scoped3.features.feature1.variations![0].variableOverrides).toBeUndefined();
+    expect(scoped3).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                message: "Hello",
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("variable overrides: with segments matching", function () {
@@ -691,13 +1026,68 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped1 = buildScopedDatafile(originalDatafileContent, { tier: "premium" });
-    expect(scoped1.features.feature1.variations![0].variableOverrides).toBeDefined();
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.discount[0].segments).toBe(
-      "*",
-    );
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                discount: 0,
+              },
+              variableOverrides: {
+                discount: [
+                  {
+                    segments: "*",
+                    value: 20,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { tier: "free" });
-    expect(scoped2.features.feature1.variations![0].variableOverrides).toBeUndefined();
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                discount: 0,
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("variable overrides: multiple overrides, some matching", function () {
@@ -750,13 +1140,77 @@ describe("core: buildScopedDatafile", function () {
 
     // First override matches
     const scoped1 = buildScopedDatafile(originalDatafileContent, { country: "us" });
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.price.length).toBe(1);
-    expect(scoped1.features.feature1.variations![0].variableOverrides!.price[0].value).toBe(90);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                price: 100,
+              },
+              variableOverrides: {
+                price: [
+                  {
+                    conditions: "*",
+                    value: 90,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
 
     // Second override matches
     const scoped2 = buildScopedDatafile(originalDatafileContent, { tier: "premium" });
-    expect(scoped2.features.feature1.variations![0].variableOverrides!.price.length).toBe(1);
-    expect(scoped2.features.feature1.variations![0].variableOverrides!.price[0].value).toBe(80);
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                price: 100,
+              },
+              variableOverrides: {
+                price: [
+                  {
+                    segments: "*",
+                    value: 80,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   // ============================================
@@ -794,7 +1248,12 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { platform: "web" });
-    expect(scoped.features).toEqual({});
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("feature with only force, no traffic", function () {
@@ -817,11 +1276,31 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped1 = buildScopedDatafile(originalDatafileContent, { userId: "admin" });
-    expect(scoped1.features.feature1).toBeDefined();
-    expect(scoped1.features.feature1.force).toBeDefined();
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { userId: "user" });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("multiple features: some matching, some not", function () {
@@ -874,10 +1353,35 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { platform: "web" });
-    expect(Object.keys(scoped.features).length).toBe(2);
-    expect(scoped.features.feature1).toBeDefined();
-    expect(scoped.features.feature3).toBeDefined();
-    expect(scoped.features.feature2).toBeUndefined();
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "web",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+        feature3: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("complex nested conditions in segments", function () {
@@ -920,7 +1424,24 @@ describe("core: buildScopedDatafile", function () {
       status: "active",
       country: "us",
     });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Nested condition fails
     const scoped2 = buildScopedDatafile(originalDatafileContent, {
@@ -928,7 +1449,12 @@ describe("core: buildScopedDatafile", function () {
       status: "inactive",
       country: "us",
     });
-    expect(scoped2.features).toEqual({});
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("schema version v2: segments as object", function () {
@@ -956,10 +1482,24 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { platform: "web" });
-    expect(scoped.schemaVersion).toBe("2");
-    expect(Array.isArray(scoped.segments)).toBe(false);
-    expect(typeof scoped.segments).toBe("object");
-    expect(Object.keys(scoped.segments).length).toBe(0);
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "web",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("missing context attributes: should not match", function () {
@@ -987,7 +1527,12 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, {});
-    expect(scoped.features).toEqual({});
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {},
+    });
   });
 
   test("multiple context attributes: complex matching", function () {
@@ -1026,7 +1571,24 @@ describe("core: buildScopedDatafile", function () {
       country: "us",
       platform: "web",
     });
-    expect(scoped1.features.feature1.traffic.length).toBe(1);
+    expect(scoped1).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us-web",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
 
     // Extra context attributes should not affect matching
     const scoped2 = buildScopedDatafile(originalDatafileContent, {
@@ -1036,7 +1598,24 @@ describe("core: buildScopedDatafile", function () {
       userId: "123",
       email: "test@example.com",
     });
-    expect(scoped2.features.feature1.traffic.length).toBe(1);
+    expect(scoped2).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us-web",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("stringified segments: should parse and match", function () {
@@ -1067,8 +1646,24 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { tier: "premium", country: "us" });
-    expect(scoped.features.feature1.traffic.length).toBe(1);
-    expect(scoped.features.feature1.traffic[0].segments).toBe("*");
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("stringified conditions: should parse and match", function () {
@@ -1093,8 +1688,26 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { userId: "admin123" });
-    expect(scoped.features.feature1.force).toBeDefined();
-    expect(scoped.features.feature1.force!.length).toBe(1);
+    // Note: stringified conditions remain as strings when they match
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: JSON.stringify([
+                { attribute: "userId", operator: "equals", value: "admin123" },
+              ]),
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("variations without variableOverrides: should preserve", function () {
@@ -1132,9 +1745,38 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { platform: "web" });
-    expect(scoped.features.feature1.variations).toBeDefined();
-    expect(scoped.features.feature1.variations!.length).toBe(2);
-    expect(scoped.features.feature1.variations![0].variableOverrides).toBeUndefined();
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                message: "Hello",
+              },
+            },
+            {
+              value: "treatment",
+              variables: {
+                message: "Hi",
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("feature with empty traffic array and matching force", function () {
@@ -1157,9 +1799,23 @@ describe("core: buildScopedDatafile", function () {
     };
 
     const scoped = buildScopedDatafile(originalDatafileContent, { userId: "admin" });
-    expect(scoped.features.feature1).toBeDefined();
-    expect(scoped.features.feature1.traffic.length).toBe(0);
-    expect(scoped.features.feature1.force).toBeDefined();
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: [
+            {
+              conditions: "*",
+              variation: "enabled",
+            },
+          ],
+        },
+      },
+    });
   });
 
   test("complex real-world scenario: e-commerce feature", function () {
@@ -1248,12 +1904,58 @@ describe("core: buildScopedDatafile", function () {
       userId: "user123",
     });
 
-    expect(scoped.features.checkout).toBeDefined();
-    expect(scoped.features.checkout.traffic.length).toBe(2); // premium-us and all
-    expect(scoped.features.checkout.force).toBeDefined();
-    expect(scoped.features.checkout.force!.length).toBe(1); // not beta matches
-    expect(scoped.features.checkout.variations![0].variableOverrides).toBeDefined();
-    expect(scoped.features.checkout.variations![0].variableOverrides!.discount.length).toBe(1);
-    expect(scoped.features.checkout.variations![0].variableOverrides!.message.length).toBe(1);
+    expect(scoped).toEqual({
+      schemaVersion: "2",
+      revision: "1",
+      segments: {},
+      features: {
+        checkout: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "premium-us",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+            {
+              key: "all",
+              segments: "*",
+              percentage: 25000,
+              allocation: [],
+            },
+          ],
+          force: [
+            {
+              segments: "*",
+              variation: "enabled",
+            },
+          ],
+          variations: [
+            {
+              value: "control",
+              variables: {
+                discount: 0,
+                message: "Welcome",
+              },
+              variableOverrides: {
+                discount: [
+                  {
+                    segments: "*",
+                    value: 20,
+                  },
+                ],
+                message: [
+                  {
+                    conditions: "*",
+                    value: "Welcome to US",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 });
