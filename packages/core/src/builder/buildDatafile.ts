@@ -20,9 +20,9 @@ import {
   Rule,
   Force,
   Context,
-  PlainCondition,
-  AttributeValue,
 } from "@featurevisor/types";
+
+import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
 import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
 import { Datasource } from "../datasource";
@@ -476,220 +476,6 @@ export async function buildDatafile(
   return datafileContentV2;
 }
 
-// Helper function to get value from context (supports dot notation)
-function getValueFromContext(obj: Context, path: string): AttributeValue {
-  if (path.indexOf(".") === -1) {
-    return obj[path];
-  }
-
-  return path.split(".").reduce((o, i) => (o ? o[i] : undefined), obj as any);
-}
-
-// Helper function to evaluate a plain condition
-function conditionIsMatched(condition: PlainCondition, context: Context): boolean {
-  const { attribute, operator, value, regexFlags } = condition;
-  const contextValueFromPath = getValueFromContext(context, attribute) as AttributeValue;
-
-  if (operator === "equals") {
-    return contextValueFromPath === value;
-  } else if (operator === "notEquals") {
-    return contextValueFromPath !== value;
-  } else if (operator === "before" || operator === "after") {
-    // date comparisons
-    const valueInContext = contextValueFromPath as string | Date;
-    const dateInContext =
-      valueInContext instanceof Date ? valueInContext : new Date(valueInContext);
-    const dateInCondition = value instanceof Date ? value : new Date(value as string);
-
-    return operator === "before"
-      ? dateInContext < dateInCondition
-      : dateInContext > dateInCondition;
-  } else if (
-    Array.isArray(value) &&
-    (["string", "number"].indexOf(typeof contextValueFromPath) !== -1 ||
-      contextValueFromPath === null)
-  ) {
-    // in / notIn (where condition value is an array)
-    const valueInContext = contextValueFromPath as string;
-
-    if (operator === "in") {
-      return value.indexOf(valueInContext) !== -1;
-    } else if (operator === "notIn") {
-      return value.indexOf(valueInContext) === -1;
-    }
-  } else if (typeof contextValueFromPath === "string" && typeof value === "string") {
-    // string
-    const valueInContext = contextValueFromPath as string;
-
-    if (operator === "contains") {
-      return valueInContext.indexOf(value) !== -1;
-    } else if (operator === "notContains") {
-      return valueInContext.indexOf(value) === -1;
-    } else if (operator === "startsWith") {
-      return valueInContext.startsWith(value);
-    } else if (operator === "endsWith") {
-      return valueInContext.endsWith(value);
-    } else if (operator === "matches") {
-      const regex = new RegExp(value, regexFlags || "");
-      return regex.test(valueInContext);
-    } else if (operator === "notMatches") {
-      const regex = new RegExp(value, regexFlags || "");
-      return !regex.test(valueInContext);
-    }
-  } else if (typeof contextValueFromPath === "number" && typeof value === "number") {
-    // numeric
-    const valueInContext = contextValueFromPath as number;
-
-    if (operator === "greaterThan") {
-      return valueInContext > value;
-    } else if (operator === "greaterThanOrEquals") {
-      return valueInContext >= value;
-    } else if (operator === "lessThan") {
-      return valueInContext < value;
-    } else if (operator === "lessThanOrEquals") {
-      return valueInContext <= value;
-    }
-  } else if (operator === "exists") {
-    return typeof contextValueFromPath !== "undefined";
-  } else if (operator === "notExists") {
-    return typeof contextValueFromPath === "undefined";
-  } else if (Array.isArray(contextValueFromPath) && typeof value === "string") {
-    // includes / notIncludes (where context value is an array)
-    const valueInContext = contextValueFromPath as string[];
-
-    if (operator === "includes") {
-      return valueInContext.indexOf(value) > -1;
-    } else if (operator === "notIncludes") {
-      return valueInContext.indexOf(value) === -1;
-    }
-  }
-
-  return false;
-}
-
-// Helper function to evaluate conditions recursively
-function allConditionsAreMatched(
-  conditions: Condition | Condition[],
-  context: Context,
-  segments: Record<SegmentKey, Segment>,
-): boolean {
-  if (typeof conditions === "string") {
-    if (conditions === "*") {
-      return true;
-    }
-    return false;
-  }
-
-  if ("attribute" in conditions) {
-    try {
-      return conditionIsMatched(conditions, context);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  if ("and" in conditions && Array.isArray(conditions.and)) {
-    return conditions.and.every((c) => allConditionsAreMatched(c, context, segments));
-  }
-
-  if ("or" in conditions && Array.isArray(conditions.or)) {
-    return conditions.or.some((c) => allConditionsAreMatched(c, context, segments));
-  }
-
-  if ("not" in conditions && Array.isArray(conditions.not)) {
-    return conditions.not.every(
-      () =>
-        allConditionsAreMatched({ and: conditions.not } as Condition, context, segments) === false,
-    );
-  }
-
-  if (Array.isArray(conditions)) {
-    return conditions.every((c) => allConditionsAreMatched(c, context, segments));
-  }
-
-  return false;
-}
-
-// Helper function to evaluate if a segment matches the context
-function segmentIsMatched(
-  segment: Segment,
-  context: Context,
-  segments: Record<SegmentKey, Segment>,
-): boolean {
-  // Parse conditions if stringified
-  let conditions = segment.conditions;
-  if (typeof conditions === "string") {
-    if (conditions === "*") {
-      return true;
-    }
-    try {
-      conditions = JSON.parse(conditions);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  return allConditionsAreMatched(conditions as Condition | Condition[], context, segments);
-}
-
-// Helper function to evaluate group segments
-function allSegmentsAreMatched(
-  groupSegments: GroupSegment | GroupSegment[] | "*",
-  context: Context,
-  segments: Record<SegmentKey, Segment>,
-): boolean {
-  if (groupSegments === "*") {
-    return true;
-  }
-
-  if (typeof groupSegments === "string") {
-    // Parse if stringified
-    let segmentKey = groupSegments;
-    if (segmentKey.startsWith("{") || segmentKey.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(segmentKey);
-        return allSegmentsAreMatched(parsed, context, segments);
-      } catch (e) {
-        return false;
-      }
-    }
-
-    const segment = segments[segmentKey];
-    if (segment) {
-      return segmentIsMatched(segment, context, segments);
-    }
-    return false;
-  }
-
-  if (typeof groupSegments === "object") {
-    if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
-      return groupSegments.and.every((groupSegment) =>
-        allSegmentsAreMatched(groupSegment, context, segments),
-      );
-    }
-
-    if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
-      return groupSegments.or.some((groupSegment) =>
-        allSegmentsAreMatched(groupSegment, context, segments),
-      );
-    }
-
-    if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
-      return groupSegments.not.every(
-        (groupSegment) => allSegmentsAreMatched(groupSegment, context, segments) === false,
-      );
-    }
-  }
-
-  if (Array.isArray(groupSegments)) {
-    return groupSegments.every((groupSegment) =>
-      allSegmentsAreMatched(groupSegment, context, segments),
-    );
-  }
-
-  return false;
-}
-
 export function buildScopedDatafile(
   originalDatafileContent: DatafileContent,
   context: Context,
@@ -700,6 +486,13 @@ export function buildScopedDatafile(
     segments: {},
     features: {},
   };
+
+  // Create a DatafileReader instance to reuse SDK's evaluation logic
+  const logger = createLogger({ level: "fatal" }); // Silent logger for scoping
+  const datafileReader = new DatafileReader({
+    datafile: originalDatafileContent,
+    logger,
+  });
 
   // Track which segments are actually used
   const usedSegmentKeys = new Set<SegmentKey>();
@@ -715,25 +508,18 @@ export function buildScopedDatafile(
     // Filter traffic rules - only keep those that match the context
     if (feature.traffic) {
       for (const traffic of feature.traffic) {
-        // Parse segments if stringified
-        let segmentsToCheck = traffic.segments;
-        if (
-          typeof segmentsToCheck === "string" &&
-          (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
-        ) {
-          try {
-            segmentsToCheck = JSON.parse(segmentsToCheck);
-          } catch (e) {
-            // If parsing fails, treat as segment key
-          }
+        // Handle "*" case explicitly, then parse segments if stringified using SDK's method
+        let segmentsToCheck: GroupSegment | GroupSegment[] | "*";
+        if (traffic.segments === "*") {
+          segmentsToCheck = "*";
+        } else {
+          segmentsToCheck = datafileReader.parseSegmentsIfStringified(
+            traffic.segments as GroupSegment | GroupSegment[],
+          );
         }
 
-        // Check if segments match the context
-        const matches = allSegmentsAreMatched(
-          segmentsToCheck,
-          context,
-          originalDatafileContent.segments,
-        );
+        // Check if segments match the context using SDK's method
+        const matches = datafileReader.allSegmentsAreMatched(segmentsToCheck, context);
 
         if (matches) {
           // Add to scoped feature with segments simplified to "*"
@@ -751,7 +537,7 @@ export function buildScopedDatafile(
                 usedSegmentKeys.add(seg);
               }
             });
-          } else if (typeof segmentsToCheck === "object") {
+          } else if (typeof segmentsToCheck === "object" && segmentsToCheck !== null) {
             // Handle and/or/not group segments
             const extractSegmentKeys = (gs: GroupSegment): SegmentKey[] => {
               if (typeof gs === "string") {
@@ -780,42 +566,26 @@ export function buildScopedDatafile(
         let matches = false;
 
         if (force.conditions) {
-          // Parse conditions if stringified
-          let conditionsToCheck = force.conditions;
-          if (typeof conditionsToCheck === "string") {
-            try {
-              conditionsToCheck = JSON.parse(conditionsToCheck);
-            } catch (e) {
-              // If parsing fails, skip
-            }
-          }
+          // Parse conditions if stringified using SDK's method
+          const conditionsToCheck = datafileReader.parseConditionsIfStringified(force.conditions);
 
-          matches = allConditionsAreMatched(
-            conditionsToCheck,
-            context,
-            originalDatafileContent.segments,
-          );
+          // Check if conditions match the context using SDK's method
+          matches = datafileReader.allConditionsAreMatched(conditionsToCheck, context);
         }
 
         if (force.segments) {
-          // Parse segments if stringified
-          let segmentsToCheck = force.segments;
-          if (
-            typeof segmentsToCheck === "string" &&
-            (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
-          ) {
-            try {
-              segmentsToCheck = JSON.parse(segmentsToCheck);
-            } catch (e) {
-              // If parsing fails, treat as segment key
-            }
+          // Handle "*" case explicitly, then parse segments if stringified using SDK's method
+          let segmentsToCheck: GroupSegment | GroupSegment[] | "*";
+          if (force.segments === "*") {
+            segmentsToCheck = "*";
+          } else {
+            segmentsToCheck = datafileReader.parseSegmentsIfStringified(
+              force.segments as GroupSegment | GroupSegment[],
+            );
           }
 
-          const segmentsMatch = allSegmentsAreMatched(
-            segmentsToCheck,
-            context,
-            originalDatafileContent.segments,
-          );
+          // Check if segments match the context using SDK's method
+          const segmentsMatch = datafileReader.allSegmentsAreMatched(segmentsToCheck, context);
 
           // If conditions were checked, use OR logic; otherwise use segments result
           matches = matches || segmentsMatch;
@@ -863,41 +633,30 @@ export function buildScopedDatafile(
               let matches = false;
 
               if (override.conditions) {
-                // Parse conditions if stringified
-                let conditionsToCheck = override.conditions;
-                if (typeof conditionsToCheck === "string") {
-                  try {
-                    conditionsToCheck = JSON.parse(conditionsToCheck);
-                  } catch (e) {
-                    // If parsing fails, skip
-                  }
-                }
-
-                matches = allConditionsAreMatched(
-                  conditionsToCheck,
-                  context,
-                  originalDatafileContent.segments,
+                // Parse conditions if stringified using SDK's method
+                const conditionsToCheck = datafileReader.parseConditionsIfStringified(
+                  override.conditions,
                 );
+
+                // Check if conditions match the context using SDK's method
+                matches = datafileReader.allConditionsAreMatched(conditionsToCheck, context);
               }
 
               if (override.segments) {
-                // Parse segments if stringified
-                let segmentsToCheck = override.segments;
-                if (
-                  typeof segmentsToCheck === "string" &&
-                  (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
-                ) {
-                  try {
-                    segmentsToCheck = JSON.parse(segmentsToCheck);
-                  } catch (e) {
-                    // If parsing fails, treat as segment key
-                  }
+                // Handle "*" case explicitly, then parse segments if stringified using SDK's method
+                let segmentsToCheck: GroupSegment | GroupSegment[] | "*";
+                if (override.segments === "*") {
+                  segmentsToCheck = "*";
+                } else {
+                  segmentsToCheck = datafileReader.parseSegmentsIfStringified(
+                    override.segments as GroupSegment | GroupSegment[],
+                  );
                 }
 
-                const segmentsMatch = allSegmentsAreMatched(
+                // Check if segments match the context using SDK's method
+                const segmentsMatch = datafileReader.allSegmentsAreMatched(
                   segmentsToCheck,
                   context,
-                  originalDatafileContent.segments,
                 );
 
                 // If conditions were checked, use OR logic; otherwise use segments result
