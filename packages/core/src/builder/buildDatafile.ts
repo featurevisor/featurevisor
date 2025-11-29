@@ -19,9 +19,10 @@ import {
   Expose,
   Rule,
   Force,
+  Context,
 } from "@featurevisor/types";
 
-import { ProjectConfig, SCHEMA_VERSION } from "../config";
+import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } from "./hashes";
@@ -72,7 +73,7 @@ export interface BuildOptions {
   revision: string;
   revisionFromHash?: boolean;
   environment: string | false;
-  tag?: string;
+  tag?: string; // @TODO: support multiple tags later
   features?: FeatureKey[];
   inflate?: number;
 }
@@ -471,4 +472,28 @@ export async function buildDatafile(
   }
 
   return datafileContentV2;
+}
+
+export function buildScopedDatafile(
+  originalDatafileContent: DatafileContent,
+  context: Context,
+): DatafileContent {
+  const scopedDatafileContent = {
+    ...originalDatafileContent,
+  };
+
+  // @TODO: remove redundant conditions from segments
+  // @TODO: remove redundant conditions from environment rules
+  // @TODO: remove redundant conditions from environment force
+  // @TODO: remove redundant conditions from variation overrides
+
+  // @TODO: remove redundant segments from environment rules
+  // @TODO: remove redundant segments from environment force
+  // @TODO: remove redundant segments from variation overrides
+
+  // @TODO: remove redundant rules
+  // @TODO: remove redundant segments
+  // @TODO: remove redundant attributes
+
+  return scopedDatafileContent;
 }
