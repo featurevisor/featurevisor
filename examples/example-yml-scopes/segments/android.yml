@@ -1,0 +1,5 @@
+description: Target Android devices
+conditions:
+  - attribute: platform
+    operator: equals
+    value: android

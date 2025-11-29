@@ -1,0 +1,5 @@
+description: Target browsers
+conditions:
+  - attribute: platform
+    operator: equals
+    value: web
