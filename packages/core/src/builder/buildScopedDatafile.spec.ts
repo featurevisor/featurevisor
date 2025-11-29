@@ -466,7 +466,7 @@ describe("core: buildScopedDatafile", function () {
     expect(scoped1.features.feature1.force![0].conditions).toBe("*");
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { userId: "user456" });
-    expect(scoped2.features.feature1.force).toBeUndefined();
+    expect(scoped2.features.feature1).toBeUndefined();
   });
 
   test("force rules: with segments matching", function () {
@@ -498,7 +498,7 @@ describe("core: buildScopedDatafile", function () {
     expect(scoped1.features.feature1.force![0].segments).toBe("*");
 
     const scoped2 = buildScopedDatafile(originalDatafileContent, { role: "user" });
-    expect(scoped2.features.feature1.force).toBeUndefined();
+    expect(scoped2.features.feature1).toBeUndefined();
   });
 
   test("force rules: with both conditions and segments (OR logic)", function () {
@@ -538,7 +538,7 @@ describe("core: buildScopedDatafile", function () {
       userId: "user456",
       role: "user",
     });
-    expect(scoped3.features.feature1.force).toBeUndefined();
+    expect(scoped3.features.feature1).toBeUndefined();
   });
 
   test("force rules: multiple force rules, some matching", function () {
