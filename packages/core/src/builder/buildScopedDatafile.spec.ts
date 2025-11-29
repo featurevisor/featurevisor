@@ -1,7 +1,7 @@
 import { DatafileContent } from "@featurevisor/types";
-import { buildScopedDatafile } from "./buildDatafile";
+import { buildScopedDatafile } from "./buildScopedDatafile";
 
-describe("core: buildDatafile", function () {
+describe("core: buildScopedDatafile", function () {
   test("buildScopedDatafile is a function", function () {
     expect(buildScopedDatafile).toBeInstanceOf(Function);
   });

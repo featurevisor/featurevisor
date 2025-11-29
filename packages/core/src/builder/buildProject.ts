@@ -2,7 +2,8 @@ import { SCHEMA_VERSION, ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
-import { buildDatafile, getCustomDatafile, buildScopedDatafile } from "./buildDatafile";
+import { buildDatafile, getCustomDatafile } from "./buildDatafile";
+import { buildScopedDatafile } from "./buildScopedDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import type { Scope } from "../config";
