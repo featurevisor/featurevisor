@@ -4,7 +4,6 @@ import {
   Feature,
   Variation,
   VariableOverride,
-  Traffic,
   Force,
   SegmentKey,
   GroupSegment,
@@ -121,10 +120,7 @@ export function buildScopedDatafile(
           }
 
           // Check if segments match the context using SDK's method
-          const segmentsMatch = datafileReader.allSegmentsAreMatched(
-            segmentsToCheck,
-            context,
-          );
+          const segmentsMatch = datafileReader.allSegmentsAreMatched(segmentsToCheck, context);
 
           // If conditions were checked, use OR logic; otherwise use segments result
           matches = matches || segmentsMatch;
@@ -261,4 +257,3 @@ export function buildScopedDatafile(
 
   return scopedDatafileContent;
 }
-

@@ -21,7 +21,7 @@ import {
   Force,
 } from "@featurevisor/types";
 
-import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
+import { ProjectConfig, SCHEMA_VERSION } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } from "./hashes";
