@@ -20,6 +20,8 @@ import {
   Rule,
   Force,
   Context,
+  PlainCondition,
+  AttributeValue,
 } from "@featurevisor/types";
 
 import { ProjectConfig, SCHEMA_VERSION, Scope } from "../config";
@@ -474,26 +476,490 @@ export async function buildDatafile(
   return datafileContentV2;
 }
 
+// Helper function to get value from context (supports dot notation)
+function getValueFromContext(obj: Context, path: string): AttributeValue {
+  if (path.indexOf(".") === -1) {
+    return obj[path];
+  }
+
+  return path.split(".").reduce((o, i) => (o ? o[i] : undefined), obj as any);
+}
+
+// Helper function to evaluate a plain condition
+function conditionIsMatched(condition: PlainCondition, context: Context): boolean {
+  const { attribute, operator, value, regexFlags } = condition;
+  const contextValueFromPath = getValueFromContext(context, attribute) as AttributeValue;
+
+  if (operator === "equals") {
+    return contextValueFromPath === value;
+  } else if (operator === "notEquals") {
+    return contextValueFromPath !== value;
+  } else if (operator === "before" || operator === "after") {
+    // date comparisons
+    const valueInContext = contextValueFromPath as string | Date;
+    const dateInContext =
+      valueInContext instanceof Date ? valueInContext : new Date(valueInContext);
+    const dateInCondition = value instanceof Date ? value : new Date(value as string);
+
+    return operator === "before"
+      ? dateInContext < dateInCondition
+      : dateInContext > dateInCondition;
+  } else if (
+    Array.isArray(value) &&
+    (["string", "number"].indexOf(typeof contextValueFromPath) !== -1 ||
+      contextValueFromPath === null)
+  ) {
+    // in / notIn (where condition value is an array)
+    const valueInContext = contextValueFromPath as string;
+
+    if (operator === "in") {
+      return value.indexOf(valueInContext) !== -1;
+    } else if (operator === "notIn") {
+      return value.indexOf(valueInContext) === -1;
+    }
+  } else if (typeof contextValueFromPath === "string" && typeof value === "string") {
+    // string
+    const valueInContext = contextValueFromPath as string;
+
+    if (operator === "contains") {
+      return valueInContext.indexOf(value) !== -1;
+    } else if (operator === "notContains") {
+      return valueInContext.indexOf(value) === -1;
+    } else if (operator === "startsWith") {
+      return valueInContext.startsWith(value);
+    } else if (operator === "endsWith") {
+      return valueInContext.endsWith(value);
+    } else if (operator === "matches") {
+      const regex = new RegExp(value, regexFlags || "");
+      return regex.test(valueInContext);
+    } else if (operator === "notMatches") {
+      const regex = new RegExp(value, regexFlags || "");
+      return !regex.test(valueInContext);
+    }
+  } else if (typeof contextValueFromPath === "number" && typeof value === "number") {
+    // numeric
+    const valueInContext = contextValueFromPath as number;
+
+    if (operator === "greaterThan") {
+      return valueInContext > value;
+    } else if (operator === "greaterThanOrEquals") {
+      return valueInContext >= value;
+    } else if (operator === "lessThan") {
+      return valueInContext < value;
+    } else if (operator === "lessThanOrEquals") {
+      return valueInContext <= value;
+    }
+  } else if (operator === "exists") {
+    return typeof contextValueFromPath !== "undefined";
+  } else if (operator === "notExists") {
+    return typeof contextValueFromPath === "undefined";
+  } else if (Array.isArray(contextValueFromPath) && typeof value === "string") {
+    // includes / notIncludes (where context value is an array)
+    const valueInContext = contextValueFromPath as string[];
+
+    if (operator === "includes") {
+      return valueInContext.indexOf(value) > -1;
+    } else if (operator === "notIncludes") {
+      return valueInContext.indexOf(value) === -1;
+    }
+  }
+
+  return false;
+}
+
+// Helper function to evaluate conditions recursively
+function allConditionsAreMatched(
+  conditions: Condition | Condition[],
+  context: Context,
+  segments: Record<SegmentKey, Segment>,
+): boolean {
+  if (typeof conditions === "string") {
+    if (conditions === "*") {
+      return true;
+    }
+    return false;
+  }
+
+  if ("attribute" in conditions) {
+    try {
+      return conditionIsMatched(conditions, context);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if ("and" in conditions && Array.isArray(conditions.and)) {
+    return conditions.and.every((c) => allConditionsAreMatched(c, context, segments));
+  }
+
+  if ("or" in conditions && Array.isArray(conditions.or)) {
+    return conditions.or.some((c) => allConditionsAreMatched(c, context, segments));
+  }
+
+  if ("not" in conditions && Array.isArray(conditions.not)) {
+    return conditions.not.every(
+      () =>
+        allConditionsAreMatched({ and: conditions.not } as Condition, context, segments) === false,
+    );
+  }
+
+  if (Array.isArray(conditions)) {
+    return conditions.every((c) => allConditionsAreMatched(c, context, segments));
+  }
+
+  return false;
+}
+
+// Helper function to evaluate if a segment matches the context
+function segmentIsMatched(
+  segment: Segment,
+  context: Context,
+  segments: Record<SegmentKey, Segment>,
+): boolean {
+  // Parse conditions if stringified
+  let conditions = segment.conditions;
+  if (typeof conditions === "string") {
+    if (conditions === "*") {
+      return true;
+    }
+    try {
+      conditions = JSON.parse(conditions);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return allConditionsAreMatched(conditions as Condition | Condition[], context, segments);
+}
+
+// Helper function to evaluate group segments
+function allSegmentsAreMatched(
+  groupSegments: GroupSegment | GroupSegment[] | "*",
+  context: Context,
+  segments: Record<SegmentKey, Segment>,
+): boolean {
+  if (groupSegments === "*") {
+    return true;
+  }
+
+  if (typeof groupSegments === "string") {
+    // Parse if stringified
+    let segmentKey = groupSegments;
+    if (segmentKey.startsWith("{") || segmentKey.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(segmentKey);
+        return allSegmentsAreMatched(parsed, context, segments);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const segment = segments[segmentKey];
+    if (segment) {
+      return segmentIsMatched(segment, context, segments);
+    }
+    return false;
+  }
+
+  if (typeof groupSegments === "object") {
+    if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
+      return groupSegments.and.every((groupSegment) =>
+        allSegmentsAreMatched(groupSegment, context, segments),
+      );
+    }
+
+    if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
+      return groupSegments.or.some((groupSegment) =>
+        allSegmentsAreMatched(groupSegment, context, segments),
+      );
+    }
+
+    if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
+      return groupSegments.not.every(
+        (groupSegment) => allSegmentsAreMatched(groupSegment, context, segments) === false,
+      );
+    }
+  }
+
+  if (Array.isArray(groupSegments)) {
+    return groupSegments.every((groupSegment) =>
+      allSegmentsAreMatched(groupSegment, context, segments),
+    );
+  }
+
+  return false;
+}
+
 export function buildScopedDatafile(
   originalDatafileContent: DatafileContent,
   context: Context,
 ): DatafileContent {
-  const scopedDatafileContent = {
-    ...originalDatafileContent,
+  const scopedDatafileContent: DatafileContent = {
+    schemaVersion: originalDatafileContent.schemaVersion,
+    revision: originalDatafileContent.revision,
+    segments: {},
+    features: {},
   };
 
-  // @TODO: remove redundant conditions from segments
-  // @TODO: remove redundant conditions from environment rules
-  // @TODO: remove redundant conditions from environment force
-  // @TODO: remove redundant conditions from variation overrides
+  // Track which segments are actually used
+  const usedSegmentKeys = new Set<SegmentKey>();
 
-  // @TODO: remove redundant segments from environment rules
-  // @TODO: remove redundant segments from environment force
-  // @TODO: remove redundant segments from variation overrides
+  // Process features
+  for (const [featureKey, feature] of Object.entries(originalDatafileContent.features)) {
+    const scopedFeature: Feature = {
+      ...feature,
+      traffic: [],
+      force: feature.force ? [] : undefined,
+    };
 
-  // @TODO: remove redundant rules
-  // @TODO: remove redundant segments
-  // @TODO: remove redundant attributes
+    // Filter traffic rules - only keep those that match the context
+    if (feature.traffic) {
+      for (const traffic of feature.traffic) {
+        // Parse segments if stringified
+        let segmentsToCheck = traffic.segments;
+        if (
+          typeof segmentsToCheck === "string" &&
+          (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
+        ) {
+          try {
+            segmentsToCheck = JSON.parse(segmentsToCheck);
+          } catch (e) {
+            // If parsing fails, treat as segment key
+          }
+        }
+
+        // Check if segments match the context
+        const matches = allSegmentsAreMatched(
+          segmentsToCheck,
+          context,
+          originalDatafileContent.segments,
+        );
+
+        if (matches) {
+          // Add to scoped feature with segments simplified to "*"
+          scopedFeature.traffic.push({
+            ...traffic,
+            segments: "*",
+          });
+
+          // Track used segments (extract segment keys from the original segments)
+          if (typeof segmentsToCheck === "string" && segmentsToCheck !== "*") {
+            usedSegmentKeys.add(segmentsToCheck as SegmentKey);
+          } else if (Array.isArray(segmentsToCheck)) {
+            segmentsToCheck.forEach((seg) => {
+              if (typeof seg === "string") {
+                usedSegmentKeys.add(seg);
+              }
+            });
+          } else if (typeof segmentsToCheck === "object") {
+            // Handle and/or/not group segments
+            const extractSegmentKeys = (gs: GroupSegment): SegmentKey[] => {
+              if (typeof gs === "string") {
+                return [gs];
+              }
+              if (typeof gs === "object") {
+                if ("and" in gs || "or" in gs) {
+                  const arr = ("and" in gs ? gs.and : gs.or) as GroupSegment[];
+                  return arr.flatMap(extractSegmentKeys);
+                }
+                if ("not" in gs) {
+                  return gs.not.flatMap(extractSegmentKeys);
+                }
+              }
+              return [];
+            };
+            extractSegmentKeys(segmentsToCheck).forEach((key) => usedSegmentKeys.add(key));
+          }
+        }
+      }
+    }
+
+    // Filter force rules - only keep those that match the context
+    if (feature.force) {
+      for (const force of feature.force) {
+        let matches = false;
+
+        if (force.conditions) {
+          // Parse conditions if stringified
+          let conditionsToCheck = force.conditions;
+          if (typeof conditionsToCheck === "string") {
+            try {
+              conditionsToCheck = JSON.parse(conditionsToCheck);
+            } catch (e) {
+              // If parsing fails, skip
+            }
+          }
+
+          matches = allConditionsAreMatched(
+            conditionsToCheck,
+            context,
+            originalDatafileContent.segments,
+          );
+        }
+
+        if (force.segments) {
+          // Parse segments if stringified
+          let segmentsToCheck = force.segments;
+          if (
+            typeof segmentsToCheck === "string" &&
+            (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
+          ) {
+            try {
+              segmentsToCheck = JSON.parse(segmentsToCheck);
+            } catch (e) {
+              // If parsing fails, treat as segment key
+            }
+          }
+
+          const segmentsMatch = allSegmentsAreMatched(
+            segmentsToCheck,
+            context,
+            originalDatafileContent.segments,
+          );
+
+          // If conditions were checked, use OR logic; otherwise use segments result
+          matches = matches || segmentsMatch;
+
+          // Track used segments
+          if (typeof segmentsToCheck === "string" && segmentsToCheck !== "*") {
+            usedSegmentKeys.add(segmentsToCheck as SegmentKey);
+          }
+        }
+
+        if (matches) {
+          const scopedForce: Force = { ...force };
+
+          // Simplify segments to "*" if they match
+          if (scopedForce.segments) {
+            scopedForce.segments = "*";
+          }
+
+          // Simplify conditions to "*" if they match (though conditions are less common in force)
+          if (scopedForce.conditions && typeof scopedForce.conditions !== "string") {
+            scopedForce.conditions = "*";
+          }
+
+          scopedFeature.force!.push(scopedForce);
+        }
+      }
+
+      if (scopedFeature.force!.length === 0) {
+        scopedFeature.force = undefined;
+      }
+    }
+
+    // Filter variable overrides in variations
+    if (feature.variations) {
+      scopedFeature.variations = feature.variations.map((variation) => {
+        const scopedVariation: Variation = { ...variation };
+
+        if (variation.variableOverrides) {
+          scopedVariation.variableOverrides = {};
+
+          for (const [variableKey, overrides] of Object.entries(variation.variableOverrides)) {
+            const scopedOverrides: VariableOverride[] = [];
+
+            for (const override of overrides) {
+              let matches = false;
+
+              if (override.conditions) {
+                // Parse conditions if stringified
+                let conditionsToCheck = override.conditions;
+                if (typeof conditionsToCheck === "string") {
+                  try {
+                    conditionsToCheck = JSON.parse(conditionsToCheck);
+                  } catch (e) {
+                    // If parsing fails, skip
+                  }
+                }
+
+                matches = allConditionsAreMatched(
+                  conditionsToCheck,
+                  context,
+                  originalDatafileContent.segments,
+                );
+              }
+
+              if (override.segments) {
+                // Parse segments if stringified
+                let segmentsToCheck = override.segments;
+                if (
+                  typeof segmentsToCheck === "string" &&
+                  (segmentsToCheck.startsWith("{") || segmentsToCheck.startsWith("["))
+                ) {
+                  try {
+                    segmentsToCheck = JSON.parse(segmentsToCheck);
+                  } catch (e) {
+                    // If parsing fails, treat as segment key
+                  }
+                }
+
+                const segmentsMatch = allSegmentsAreMatched(
+                  segmentsToCheck,
+                  context,
+                  originalDatafileContent.segments,
+                );
+
+                // If conditions were checked, use OR logic; otherwise use segments result
+                matches = matches || segmentsMatch;
+
+                // Track used segments
+                if (typeof segmentsToCheck === "string" && segmentsToCheck !== "*") {
+                  usedSegmentKeys.add(segmentsToCheck as SegmentKey);
+                }
+              }
+
+              if (matches) {
+                const scopedOverride: VariableOverride = { ...override };
+
+                // Simplify segments to "*" if they match
+                if (scopedOverride.segments) {
+                  scopedOverride.segments = "*";
+                }
+
+                // Simplify conditions to "*" if they match
+                if (scopedOverride.conditions && typeof scopedOverride.conditions !== "string") {
+                  scopedOverride.conditions = "*";
+                }
+
+                scopedOverrides.push(scopedOverride);
+              }
+            }
+
+            if (scopedOverrides.length > 0) {
+              scopedVariation.variableOverrides[variableKey] = scopedOverrides;
+            }
+          }
+
+          // Remove variableOverrides if empty
+          if (Object.keys(scopedVariation.variableOverrides).length === 0) {
+            delete scopedVariation.variableOverrides;
+          }
+        }
+
+        return scopedVariation;
+      });
+    }
+
+    // Only add feature if it has traffic rules or force rules
+    if (
+      scopedFeature.traffic.length > 0 ||
+      (scopedFeature.force && scopedFeature.force.length > 0)
+    ) {
+      scopedDatafileContent.features[featureKey] = scopedFeature;
+    }
+  }
+
+  // Only include segments that are actually used
+  // Since we're simplifying matching segments to "*", we don't need to include any segments
+  // in the scoped datafile (they're all replaced with "*")
+  // For v1 format, return empty array; for v2 format, return empty object
+  if (originalDatafileContent.schemaVersion === "1") {
+    // For v1 format, segments should be an array
+    (scopedDatafileContent as any).segments = [];
+  } else {
+    scopedDatafileContent.segments = {};
+  }
 
   return scopedDatafileContent;
 }
