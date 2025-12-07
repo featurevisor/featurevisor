@@ -1,0 +1,62 @@
+feature: showBanner
+assertions:
+  ##
+  # Enabled
+  #
+  - at: 10
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20, 30]
+      platform: [web]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, the feature should be enabled for web"
+    context:
+      platform: ${{ platform }}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20, 30]
+      platform: [ios]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, the feature should be enabled for ios"
+    context:
+      platform: ${{ platform }}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20]
+      platform: [android]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, the feature should be enabled for android"
+    context:
+      platform: ${{ platform }}
+    expectedToBeEnabled: true
+
+  ##
+  # Disabled
+  #
+  - matrix:
+      at: [60, 80, 90]
+      platform: [ios]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, the feature should be disabled for ios"
+    context:
+      platform: ${{ platform }}
+    expectedToBeEnabled: false
+
+  - matrix:
+      at: [40, 50, 60]
+      platform: [android]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, the feature should be disabled for android"
+    context:
+      platform: ${{ platform }}
+    expectedToBeEnabled: false
