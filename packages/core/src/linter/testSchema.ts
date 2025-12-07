@@ -82,6 +82,7 @@ export function getTestsZodSchema(
                   }),
                 )
               : z.never().optional(),
+            scope: z.string().optional(), // @TODO: allow only known scopes later
 
             // parent
             sticky: z.record(z.record(z.any())).optional(),
