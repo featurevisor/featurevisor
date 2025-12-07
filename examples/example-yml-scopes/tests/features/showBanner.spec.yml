@@ -60,3 +60,62 @@ assertions:
     context:
       platform: ${{ platform }}
     expectedToBeEnabled: false
+
+  ##
+  # Enabled (with scope)
+  #
+  # No additional context is needed to be passed
+  #
+
+  # enabled
+  - at: 10
+    environment: staging
+    scope: browsers
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20, 30, 40, 80, 100]
+    at: ${{ at }}
+    environment: production
+    scope: browsers
+    description: "At ${{ at }}% in production, the feature should be enabled for browsers scope"
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20, 30, 40]
+    at: ${{ at }}
+    environment: production
+    scope: ios
+    description: "At ${{ at }}% in production, the feature should be enabled for ios scope"
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 20]
+    at: ${{ at }}
+    environment: production
+    scope: ios
+    description: "At ${{ at }}% in production, the feature should be enabled for android scope"
+    context: {}
+    expectedToBeEnabled: true
+
+  # disabled
+  - matrix:
+      at: [60, 80]
+    at: ${{ at }}
+    environment: production
+    scope: ios
+    description: "At ${{ at }}% in production, the feature should be disabled for ios scope"
+    context: {}
+    expectedToBeEnabled: false
+
+  - matrix:
+      at: [40, 80]
+    at: ${{ at }}
+    environment: production
+    scope: android
+    description: "At ${{ at }}% in production, the feature should be disabled for android scope"
+    context: {}
+    expectedToBeEnabled: false
