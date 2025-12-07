@@ -44,6 +44,7 @@ export interface FeatureAssertion {
   matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
+  scope?: string;
   at?: Weight; // bucket weight: 0 to 100
 
   sticky?: StickyFeatures;

@@ -51,7 +51,15 @@ export async function testFeature(
       errors: [],
     };
 
-    const datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
+    let datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
+
+    if (assertion.scope) {
+      datafileContent = datafileContentByEnvironment.get(
+        assertion.environment
+          ? `${assertion.environment}scope-${assertion.scope}`
+          : `scope-${assertion.scope}`,
+      );
+    }
 
     if (options.showDatafile) {
       console.log("");

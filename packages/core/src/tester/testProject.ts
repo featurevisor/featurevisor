@@ -9,7 +9,7 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
-import { buildDatafile } from "../builder";
+import { buildDatafile, buildScopedDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
@@ -32,6 +32,7 @@ export interface ExecutionResult {
   };
 }
 
+// the key can be either "<EnvironmentKey>" or "<EnvironmentKey>scope-<Scope>"
 export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
 
 export async function executeTest(
@@ -143,6 +144,35 @@ export async function testProject(
       );
 
       datafileContentByEnvironment.set(environment, datafileContent as DatafileContent);
+
+      // by scope
+      if (projectConfig.scopes) {
+        for (const scope of projectConfig.scopes) {
+          const existingState = await datasource.readState(environment);
+          const datafileContent = await buildDatafile(
+            projectConfig,
+            datasource,
+            {
+              schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+              revision: "include-scoped-features",
+              environment: environment,
+              inflate: options.inflate,
+              tag: scope.tag,
+            },
+            existingState,
+          );
+
+          const scopedDatafileContent = buildScopedDatafile(
+            datafileContent as DatafileContent,
+            scope.context,
+          );
+
+          datafileContentByEnvironment.set(
+            `${environment}-scope-${scope.name}`,
+            scopedDatafileContent,
+          );
+        }
+      }
     }
   }
 
@@ -162,6 +192,31 @@ export async function testProject(
     );
 
     datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
+
+    if (projectConfig.scopes) {
+      for (const scope of projectConfig.scopes) {
+        const existingState = await datasource.readState(false);
+        const datafileContent = await buildDatafile(
+          projectConfig,
+          datasource,
+          {
+            schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+            revision: "include-scoped-features",
+            environment: false,
+            inflate: options.inflate,
+            tag: scope.tag,
+          },
+          existingState,
+        );
+
+        const scopedDatafileContent = buildScopedDatafile(
+          datafileContent as DatafileContent,
+          scope.context,
+        );
+
+        datafileContentByEnvironment.set(`scope-${scope.name}`, scopedDatafileContent);
+      }
+    }
   }
 
   const tests = await listEntities<Test>(
