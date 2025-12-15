@@ -56,7 +56,7 @@ export async function testFeature(
     if (assertion.scope) {
       datafileContent = datafileContentByEnvironment.get(
         assertion.environment
-          ? `${assertion.environment}scope-${assertion.scope}`
+          ? `${assertion.environment}-scope-${assertion.scope}`
           : `scope-${assertion.scope}`,
       );
     }
