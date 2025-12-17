@@ -104,7 +104,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -278,7 +283,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -357,7 +367,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -412,7 +427,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -486,7 +506,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
 
     // Fails: wrong country
@@ -499,7 +524,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -563,7 +593,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -614,7 +649,13 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: undefined,
+        },
+      },
     });
   });
 
@@ -665,7 +706,13 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: undefined,
+        },
+      },
     });
   });
 
@@ -744,7 +791,13 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: undefined,
+        },
+      },
     });
   });
 
@@ -1252,7 +1305,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -1299,7 +1357,13 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+          force: undefined,
+        },
+      },
     });
   });
 
@@ -1368,6 +1432,10 @@ describe("core: buildScopedDatafile", function () {
               allocation: [],
             },
           ],
+        },
+        feature2: {
+          bucketBy: "userId",
+          traffic: [],
         },
         feature3: {
           bucketBy: "userId",
@@ -1453,7 +1521,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
@@ -1531,7 +1604,12 @@ describe("core: buildScopedDatafile", function () {
       schemaVersion: "2",
       revision: "1",
       segments: {},
-      features: {},
+      features: {
+        feature1: {
+          bucketBy: "userId",
+          traffic: [],
+        },
+      },
     });
   });
 
