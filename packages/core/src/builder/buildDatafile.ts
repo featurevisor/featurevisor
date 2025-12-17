@@ -38,6 +38,7 @@ export interface CustomDatafileOptions {
   revision?: string;
   schemaVersion?: string;
   inflate?: number;
+  // @TODO: support scope name here
 }
 
 export async function getCustomDatafile(
@@ -67,12 +68,23 @@ export async function getCustomDatafile(
   return datafileContent;
 }
 
+export interface BuildOrTags {
+  or: string[];
+}
+
+export interface BuildAndTags {
+  and: string[];
+}
+
+export type BuildTags = BuildOrTags | BuildAndTags | string[];
+
 export interface BuildOptions {
   schemaVersion: string;
   revision: string;
   revisionFromHash?: boolean;
   environment: string | false;
-  tag?: string; // @TODO: support multiple tags later
+  tag?: string;
+  tags?: BuildTags;
   features?: FeatureKey[];
   inflate?: number;
 }
@@ -103,6 +115,31 @@ export async function buildDatafile(
 
       if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
         continue;
+      }
+
+      if (options.tags) {
+        // plain array of tags: treat as OR tags
+        if (Array.isArray(options.tags)) {
+          if (options.tags.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
+            continue;
+          }
+        }
+
+        // OR tags
+        const orTags = options.tags as BuildOrTags;
+        if (orTags.or) {
+          if (orTags.or.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
+            continue;
+          }
+        }
+
+        // AND tags
+        const andTags = options.tags as BuildAndTags;
+        if (andTags.and) {
+          if (andTags.and.every((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
+            continue;
+          }
+        }
       }
 
       if (options.features && options.features.indexOf(featureKey) === -1) {

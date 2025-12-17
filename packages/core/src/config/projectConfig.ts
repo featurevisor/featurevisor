@@ -5,6 +5,7 @@ import type { BucketBy, Context, Tag } from "@featurevisor/types";
 import { Parser, parsers } from "./parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import type { Plugin } from "../cli";
+import type { BuildTags } from "../builder/buildDatafile";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -34,7 +35,8 @@ export const SCHEMA_VERSION = "2"; // default schema version
 export interface Scope {
   name: string;
   context: Context;
-  tag: Tag; // @TODO: support multiple tags later
+  tag?: Tag;
+  tags?: BuildTags;
 }
 
 export interface ProjectConfig {

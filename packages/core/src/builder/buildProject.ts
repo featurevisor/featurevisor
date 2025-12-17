@@ -75,7 +75,6 @@ async function buildForEnvironment({
   // by scope
   if (scopes) {
     for (const scope of scopes) {
-      const { tag, context } = scope;
       console.log(`\n  => Scope: ${scope.name}`);
 
       const datafileContent = await buildDatafile(
@@ -86,7 +85,8 @@ async function buildForEnvironment({
           revision: nextRevision,
           revisionFromHash: cliOptions.revisionFromHash,
           environment: environment,
-          tag: tag,
+          tag: scope.tag,
+          tags: scope.tags,
           inflate: cliOptions.inflate,
         },
         existingState,
@@ -94,13 +94,13 @@ async function buildForEnvironment({
 
       const scopedDatafileContent = buildScopedDatafile(
         datafileContent as DatafileContent,
-        context,
+        scope.context,
       );
 
       // write scoped datafile
       await datasource.writeDatafile(scopedDatafileContent, {
         environment,
-        tag,
+        tag: scope.tag,
         scope: scope,
         datafilesDir: cliOptions.datafilesDir,
       });
@@ -137,6 +137,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       datasource,
       revision: cliOptions.revision,
       schemaVersion: cliOptions.schemaVersion,
+      // @TODO: support scope name here
     });
 
     if (cliOptions.pretty) {

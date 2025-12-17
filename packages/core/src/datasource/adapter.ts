@@ -12,7 +12,7 @@ import type { Scope } from "../config";
 
 export interface DatafileOptions {
   environment: EnvironmentKey | false;
-  tag: string;
+  tag?: string;
   scope?: Scope;
   datafilesDir?: string;
 }

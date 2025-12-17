@@ -158,6 +158,7 @@ export async function testProject(
               environment: environment,
               inflate: options.inflate,
               tag: scope.tag,
+              tags: scope.tags,
             },
             existingState,
           );
@@ -205,6 +206,7 @@ export async function testProject(
             environment: false,
             inflate: options.inflate,
             tag: scope.tag,
+            tags: scope.tags,
           },
           existingState,
         );

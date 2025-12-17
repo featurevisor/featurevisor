@@ -18,12 +18,11 @@ module.exports = {
       tag: "android",
       context: { platform: "android" },
     },
-    // @TODO: support multiple tags later
-    // {
-    //   name: "mobile",
-    //   tag: "mobile",
-    //   context: {},
-    // },
+    {
+      name: "web-and-mobile",
+      tags: ["web", "mobile"],
+      context: {},
+    },
   ],
   prettyState: true,
   prettyDatafile: true, // enabled for readability while developing
