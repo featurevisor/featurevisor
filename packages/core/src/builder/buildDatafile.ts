@@ -120,24 +120,31 @@ export async function buildDatafile(
       if (options.tags) {
         // plain array of tags: treat as OR tags
         if (Array.isArray(options.tags)) {
-          if (options.tags.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
+          if (
+            options.tags.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
+          ) {
             continue;
           }
-        }
-
-        // OR tags
-        const orTags = options.tags as BuildOrTags;
-        if (orTags.or) {
-          if (orTags.or.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
-            continue;
+        } else {
+          // OR tags
+          const orTags = options.tags as BuildOrTags;
+          if (orTags.or) {
+            if (
+              orTags.or.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
+            ) {
+              continue;
+            }
           }
-        }
 
-        // AND tags
-        const andTags = options.tags as BuildAndTags;
-        if (andTags.and) {
-          if (andTags.and.every((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1)) {
-            continue;
+          // AND tags
+          const andTags = options.tags as BuildAndTags;
+          if (andTags.and) {
+            if (
+              andTags.and.every((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) ===
+              false
+            ) {
+              continue;
+            }
           }
         }
       }

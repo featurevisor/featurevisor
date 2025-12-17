@@ -235,13 +235,8 @@ export function buildScopedDatafile(
       });
     }
 
-    // Only add feature if it has traffic rules or force rules
-    if (
-      scopedFeature.traffic.length > 0 ||
-      (scopedFeature.force && scopedFeature.force.length > 0)
-    ) {
-      scopedDatafileContent.features[featureKey] = scopedFeature;
-    }
+    // always keep feature, even if traffic/force are empty
+    scopedDatafileContent.features[featureKey] = scopedFeature;
   }
 
   // Only include segments that are actually used

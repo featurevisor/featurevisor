@@ -18,9 +18,27 @@ module.exports = {
       tag: "android",
       context: { platform: "android" },
     },
+
+    // multiple tags
+    {
+      name: "web-or-mobile-simple",
+      tags: {
+        or: ["web", "ios"],
+      },
+      context: {},
+    },
+    {
+      name: "web-or-mobile-explicit",
+      tags: {
+        or: ["web", "ios"],
+      },
+      context: {},
+    },
     {
       name: "web-and-mobile",
-      tags: ["web", "mobile"],
+      tags: {
+        and: ["web", "ios"],
+      },
       context: {},
     },
   ],
