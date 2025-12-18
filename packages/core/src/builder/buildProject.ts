@@ -23,6 +23,9 @@ export interface BuildCLIOptions {
   stateFiles?: boolean; // --no-state-files in CLI
   inflate?: number;
   datafilesDir?: string;
+
+  tag?: string;
+  scope?: string; // scope name only
 }
 
 async function buildForEnvironment({
@@ -130,15 +133,24 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * while tests can be run anywhere else.
    */
   if (cliOptions.environment && cliOptions.json) {
-    const datafileContent = await getCustomDatafile({
+    const scope = cliOptions.scope
+      ? projectConfig.scopes?.find((scope) => scope.name === cliOptions.scope)
+      : undefined;
+
+    let datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
       environment: cliOptions.environment,
       projectConfig,
       datasource,
       revision: cliOptions.revision,
       schemaVersion: cliOptions.schemaVersion,
-      // @TODO: support scope name here
+      tag: cliOptions.tag,
+      tags: scope?.tags,
     });
+
+    if (scope) {
+      datafileContent = buildScopedDatafile(datafileContent as DatafileContent, scope.context);
+    }
 
     if (cliOptions.pretty) {
       console.log(JSON.stringify(datafileContent, null, 2));
