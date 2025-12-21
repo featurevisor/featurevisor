@@ -1,5 +1,6 @@
 description: Checkout feature
 tags:
+  - all
   - ios
 
 bucketBy: userId
