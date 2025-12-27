@@ -48,5 +48,13 @@ describe("core: buildScopedConditions", function () {
         value: "chrome",
       },
     ]);
+
+    // context: { platform: "web", browser: "chrome" }
+    expect(
+      buildScopedConditions(originalConditions, {
+        platform: "web",
+        browser: "chrome",
+      }),
+    ).toEqual(["*", "*"]);
   });
 });

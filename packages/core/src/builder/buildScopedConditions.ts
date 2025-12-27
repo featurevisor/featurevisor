@@ -33,9 +33,16 @@ function buildScopedCondition(
     return condition;
   }
 
+  // @TODO: AND
+  // @TODO: OR
+  // @TODO: NOT
+
   const matched = datafileReader.allConditionsAreMatched(condition, context);
 
   if (matched) {
+    // @TODO: if inside AND, remove the condition entirely
+    // @TODO: if inside OR, keep it as "*"
+    // @TODO: if inside NOT, ...
     return "*";
   }
 
