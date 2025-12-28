@@ -122,20 +122,24 @@ function MyComponent(props) {
 };
 ```
 
-### useSdk
+### useFeaturevisor
 
-In case you need to access the underlying Featurevisor SDK instance:
+In case you need to access the underlying Featurevisor SDK instance directly:
 
 ```jsx
 import React from 'react'
-import { useSdk } from '@featurevisor/react'
+import { useFeaturevisor } from '@featurevisor/react'
 
 function MyComponent(props) {
-  const f = useSdk()
+  const f = useFeaturevisor()
 
   return <p>...</p>
 }
 ```
+
+### useSdk
+
+Alias of `useFeaturevisor` hook.
 
 ## Passing additional context
 
