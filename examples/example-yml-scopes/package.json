@@ -13,6 +13,6 @@
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {
-    "@featurevisor/cli": "2.3.3"
+    "@featurevisor/cli": "2.5.0"
   }
 }
