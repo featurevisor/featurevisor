@@ -28,8 +28,14 @@ export function Header() {
         <Link to="/" className="text-gray-50">
           <img
             alt="Featurevisor"
-            src="/favicon-128.png"
+            src="/favicon-256.png"
             className="absolute top-4 -ml-2 w-[36px]"
+          />
+
+          <img
+            alt="Featurevisor"
+            src="/logo-text.png"
+            className="absolute top-[26px] pl-[50px] -ml-2 w-[220px] hidden md:inline-block"
           />
         </Link>
 
