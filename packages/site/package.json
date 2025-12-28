@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/site",
-  "version": "2.1.2",
+  "version": "2.5.0",
   "description": "Static site for Featurevisor",
   "main": "dist",
   "scripts": {

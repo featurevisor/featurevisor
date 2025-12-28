@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.5.0](https://github.com/featurevisor/featurevisor/compare/v2.4.0...v2.5.0) (2025-12-28)
+
+
+### Features
+
+* generated catalog site with logo ([#381](https://github.com/featurevisor/featurevisor/issues/381)) ([c5be3c6](https://github.com/featurevisor/featurevisor/commit/c5be3c6ff0062d1afcaba16ae1426683ca7b1c65))
+
+
+
+
+
 # [2.4.0](https://github.com/featurevisor/featurevisor/compare/v2.3.3...v2.4.0) (2025-12-28)
 
 
