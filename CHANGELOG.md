@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0](https://github.com/featurevisor/featurevisor/compare/v2.3.3...v2.4.0) (2025-12-28)
+
+
+### Features
+
+* useFeaturevisor hook in React package ([#380](https://github.com/featurevisor/featurevisor/issues/380)) ([5dedf70](https://github.com/featurevisor/featurevisor/commit/5dedf70fc79e5e6a1dd4b136c6ba08ea2deebc51))
+
+
+
+
+
 ## [2.3.3](https://github.com/featurevisor/featurevisor/compare/v2.3.2...v2.3.3) (2025-11-29)
 
 **Note:** Version bump only for package featurevisor
