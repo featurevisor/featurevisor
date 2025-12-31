@@ -1,4 +1,11 @@
-import type { Condition, Context, DatafileContent } from "@featurevisor/types";
+import type {
+  Condition,
+  AndCondition,
+  OrCondition,
+  NotCondition,
+  Context,
+  DatafileContent,
+} from "@featurevisor/types";
 import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
 const emptyDatafile: DatafileContent = {
@@ -17,33 +24,50 @@ export function buildScopedConditions(
     logger: createLogger({ level: "fatal" }),
   });
 
-  if (Array.isArray(conditions)) {
-    return conditions.map((condition) => buildScopedCondition(condition, context, datafileReader));
-  }
-
   return buildScopedCondition(conditions, context, datafileReader);
 }
 
 function buildScopedCondition(
-  condition: Condition,
+  condition: Condition | Condition[],
   context: Context,
   datafileReader: DatafileReader,
-): Condition {
+): Condition | Condition[] {
   if (condition === "*") {
     return condition;
   }
 
-  // @TODO: AND
-  // @TODO: OR
-  // @TODO: NOT
+  if (Array.isArray(condition)) {
+    return condition.map((c) => buildScopedCondition(c, context, datafileReader)) as Condition[];
+  }
 
-  const matched = datafileReader.allConditionsAreMatched(condition, context);
+  if (typeof condition === "object") {
+    // plain condition
+    if ("attribute" in condition) {
+      const matched = datafileReader.allConditionsAreMatched(condition, context);
 
-  if (matched) {
-    // @TODO: if inside AND, remove the condition entirely
-    // @TODO: if inside OR, keep it as "*"
-    // @TODO: if inside NOT, ...
-    return "*";
+      if (matched) {
+        return "*";
+      }
+    }
+
+    // AND, OR, NOT conditions
+    if ("and" in condition) {
+      return {
+        and: condition.and.map((c) => buildScopedCondition(c, context, datafileReader)),
+      } as AndCondition;
+    }
+
+    if ("or" in condition) {
+      return {
+        or: condition.or.map((c) => buildScopedCondition(c, context, datafileReader)),
+      } as OrCondition;
+    }
+
+    if ("not" in condition) {
+      return {
+        not: condition.not.map((c) => buildScopedCondition(c, context, datafileReader)),
+      } as NotCondition;
+    }
   }
 
   return condition;
