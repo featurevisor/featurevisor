@@ -27,7 +27,42 @@ export function buildScopedConditions(
   return buildScopedCondition(conditions, context, datafileReader);
 }
 
-function buildScopedCondition(
+export function removeRedundantConditions(
+  conditions: Condition | Condition[],
+): Condition | Condition[] {
+  if (conditions === "*") {
+    return conditions;
+  }
+
+  if (Array.isArray(conditions)) {
+    return conditions.map((c) => removeRedundantConditions(c)) as Condition[];
+  }
+
+  if (typeof conditions === "object") {
+    // @TODO: remove redundant conditions here
+    if ("and" in conditions) {
+      return {
+        and: conditions.and.map((c) => removeRedundantConditions(c)),
+      } as AndCondition;
+    }
+
+    if ("or" in conditions) {
+      return {
+        or: conditions.or.map((c) => removeRedundantConditions(c)),
+      } as OrCondition;
+    }
+
+    if ("not" in conditions) {
+      return {
+        not: conditions.not.map((c) => removeRedundantConditions(c)),
+      } as NotCondition;
+    }
+  }
+
+  return conditions;
+}
+
+export function buildScopedCondition(
   condition: Condition | Condition[],
   context: Context,
   datafileReader: DatafileReader,
