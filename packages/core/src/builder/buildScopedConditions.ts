@@ -35,26 +35,60 @@ export function removeRedundantConditions(
   }
 
   if (Array.isArray(conditions)) {
-    return conditions.map((c) => removeRedundantConditions(c)) as Condition[];
+    // Recursively process each condition
+    const processed = conditions.map((c) => removeRedundantConditions(c)) as Condition[];
+
+    // Filter out "*" values
+    const filtered = processed.filter((c) => c !== "*");
+
+    // If all were "*", return "*"
+    if (filtered.length === 0) {
+      return "*";
+    }
+
+    return filtered;
   }
 
   if (typeof conditions === "object") {
-    // @TODO: remove redundant conditions here
     if ("and" in conditions) {
+      const processed = conditions.and.map((c) => removeRedundantConditions(c)) as Condition[];
+      const filtered = processed.filter((c) => c !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
       return {
-        and: conditions.and.map((c) => removeRedundantConditions(c)),
+        and: filtered,
       } as AndCondition;
     }
 
     if ("or" in conditions) {
+      const processed = conditions.or.map((c) => removeRedundantConditions(c)) as Condition[];
+      const filtered = processed.filter((c) => c !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
       return {
-        or: conditions.or.map((c) => removeRedundantConditions(c)),
+        or: filtered,
       } as OrCondition;
     }
 
     if ("not" in conditions) {
+      const processed = conditions.not.map((c) => removeRedundantConditions(c)) as Condition[];
+      const filtered = processed.filter((c) => c !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
       return {
-        not: conditions.not.map((c) => removeRedundantConditions(c)),
+        not: filtered,
       } as NotCondition;
     }
   }
