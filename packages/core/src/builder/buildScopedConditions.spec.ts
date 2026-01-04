@@ -3,7 +3,7 @@ import type { Condition, DatafileContent } from "@featurevisor/types";
 import { buildScopedCondition } from "./buildScopedConditions";
 import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
-describe("core: buildScopedCondition (singular)", function () {
+describe("core: buildScopedConditions", function () {
   const emptyDatafile: DatafileContent = {
     schemaVersion: "2",
     revision: "unknown",
@@ -16,70 +16,72 @@ describe("core: buildScopedCondition (singular)", function () {
     logger: createLogger({ level: "fatal" }),
   });
 
-  test("buildScopedCondition is a function", function () {
-    expect(buildScopedCondition).toBeInstanceOf(Function);
-  });
+  describe("buildScopedCondition (singular)", function () {
+    test("buildScopedCondition is a function", function () {
+      expect(buildScopedCondition).toBeInstanceOf(Function);
+    });
 
-  test("and conditions", function () {
-    const originalConditions: Condition[] = [
-      {
-        attribute: "platform",
-        operator: "equals",
-        value: "web",
-      },
-      {
-        attribute: "browser",
-        operator: "equals",
-        value: "chrome",
-      },
-    ];
-
-    //  context: {}
-    expect(
-      buildScopedCondition(
-        originalConditions,
+    test("and conditions", function () {
+      const originalConditions: Condition[] = [
         {
-          platform: "web",
+          attribute: "platform",
+          operator: "equals",
+          value: "web",
         },
-        datafileReader,
-      ),
-    ).toEqual([
-      "*",
-      {
-        attribute: "browser",
-        operator: "equals",
-        value: "chrome",
-      },
-    ]);
-
-    // context: { platform: "web" }
-    expect(
-      buildScopedCondition(
-        originalConditions,
         {
-          platform: "web",
+          attribute: "browser",
+          operator: "equals",
+          value: "chrome",
         },
-        datafileReader,
-      ),
-    ).toEqual([
-      "*",
-      {
-        attribute: "browser",
-        operator: "equals",
-        value: "chrome",
-      },
-    ]);
+      ];
 
-    // context: { platform: "web", browser: "chrome" }
-    expect(
-      buildScopedCondition(
-        originalConditions,
+      //  context: {}
+      expect(
+        buildScopedCondition(
+          originalConditions,
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual([
+        "*",
         {
-          platform: "web",
-          browser: "chrome",
+          attribute: "browser",
+          operator: "equals",
+          value: "chrome",
         },
-        datafileReader,
-      ),
-    ).toEqual(["*", "*"]);
+      ]);
+
+      // context: { platform: "web" }
+      expect(
+        buildScopedCondition(
+          originalConditions,
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual([
+        "*",
+        {
+          attribute: "browser",
+          operator: "equals",
+          value: "chrome",
+        },
+      ]);
+
+      // context: { platform: "web", browser: "chrome" }
+      expect(
+        buildScopedCondition(
+          originalConditions,
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual(["*", "*"]);
+    });
   });
 });
