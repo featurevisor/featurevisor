@@ -1,10 +1,23 @@
-import type { Condition } from "@featurevisor/types";
+import type { Condition, DatafileContent } from "@featurevisor/types";
 
-import { buildScopedConditions } from "./buildScopedConditions";
+import { buildScopedCondition } from "./buildScopedConditions";
+import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
-describe("core: buildScopedConditions", function () {
-  test("buildScopedConditions is a function", function () {
-    expect(buildScopedConditions).toBeInstanceOf(Function);
+describe("core: buildScopedCondition (singular)", function () {
+  const emptyDatafile: DatafileContent = {
+    schemaVersion: "2",
+    revision: "unknown",
+    segments: {},
+    features: {},
+  };
+
+  const datafileReader = new DatafileReader({
+    datafile: emptyDatafile,
+    logger: createLogger({ level: "fatal" }),
+  });
+
+  test("buildScopedCondition is a function", function () {
+    expect(buildScopedCondition).toBeInstanceOf(Function);
   });
 
   test("and conditions", function () {
@@ -23,9 +36,13 @@ describe("core: buildScopedConditions", function () {
 
     //  context: {}
     expect(
-      buildScopedConditions(originalConditions, {
-        platform: "web",
-      }),
+      buildScopedCondition(
+        originalConditions,
+        {
+          platform: "web",
+        },
+        datafileReader,
+      ),
     ).toEqual([
       "*",
       {
@@ -37,9 +54,13 @@ describe("core: buildScopedConditions", function () {
 
     // context: { platform: "web" }
     expect(
-      buildScopedConditions(originalConditions, {
-        platform: "web",
-      }),
+      buildScopedCondition(
+        originalConditions,
+        {
+          platform: "web",
+        },
+        datafileReader,
+      ),
     ).toEqual([
       "*",
       {
@@ -51,10 +72,14 @@ describe("core: buildScopedConditions", function () {
 
     // context: { platform: "web", browser: "chrome" }
     expect(
-      buildScopedConditions(originalConditions, {
-        platform: "web",
-        browser: "chrome",
-      }),
+      buildScopedCondition(
+        originalConditions,
+        {
+          platform: "web",
+          browser: "chrome",
+        },
+        datafileReader,
+      ),
     ).toEqual(["*", "*"]);
   });
 });
