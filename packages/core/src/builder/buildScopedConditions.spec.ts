@@ -1,6 +1,6 @@
 import type { Condition, DatafileContent } from "@featurevisor/types";
 
-import { buildScopedCondition } from "./buildScopedConditions";
+import { buildScopedCondition, removeRedundantConditions } from "./buildScopedConditions";
 import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
 describe("core: buildScopedConditions", function () {
@@ -82,6 +82,12 @@ describe("core: buildScopedConditions", function () {
           datafileReader,
         ),
       ).toEqual(["*", "*"]);
+    });
+  });
+
+  describe("removeRedundantConditions", function () {
+    test("removeRedundantConditions is a function", function () {
+      expect(removeRedundantConditions).toBeInstanceOf(Function);
     });
   });
 });
