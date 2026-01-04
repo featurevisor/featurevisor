@@ -21,7 +21,45 @@ describe("core: buildScopedConditions", function () {
       expect(buildScopedCondition).toBeInstanceOf(Function);
     });
 
-    test("and conditions", function () {
+    test("simple cases", function () {
+      // "*" remains "*"
+      expect(buildScopedCondition("*", {}, datafileReader)).toEqual("*");
+
+      // Plain condition that matches
+      expect(
+        buildScopedCondition(
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual("*");
+
+      // Plain condition that doesn't match
+      expect(
+        buildScopedCondition(
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            platform: "mobile",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        attribute: "platform",
+        operator: "equals",
+        value: "web",
+      });
+
+      // Array of conditions
       const originalConditions: Condition[] = [
         {
           attribute: "platform",
@@ -35,7 +73,7 @@ describe("core: buildScopedConditions", function () {
         },
       ];
 
-      //  context: {}
+      // Partial match
       expect(
         buildScopedCondition(
           originalConditions,
@@ -53,25 +91,7 @@ describe("core: buildScopedConditions", function () {
         },
       ]);
 
-      // context: { platform: "web" }
-      expect(
-        buildScopedCondition(
-          originalConditions,
-          {
-            platform: "web",
-          },
-          datafileReader,
-        ),
-      ).toEqual([
-        "*",
-        {
-          attribute: "browser",
-          operator: "equals",
-          value: "chrome",
-        },
-      ]);
-
-      // context: { platform: "web", browser: "chrome" }
+      // Full match
       expect(
         buildScopedCondition(
           originalConditions,
@@ -82,6 +102,907 @@ describe("core: buildScopedConditions", function () {
           datafileReader,
         ),
       ).toEqual(["*", "*"]);
+
+      // No match
+      expect(
+        buildScopedCondition(
+          originalConditions,
+          {
+            platform: "mobile",
+            browser: "safari",
+          },
+          datafileReader,
+        ),
+      ).toEqual([
+        {
+          attribute: "platform",
+          operator: "equals",
+          value: "web",
+        },
+        {
+          attribute: "browser",
+          operator: "equals",
+          value: "chrome",
+        },
+      ]);
+    });
+
+    test("AND conditions", function () {
+      // AND with all matching conditions
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "chrome",
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: ["*", "*"],
+      });
+
+      // AND with partial match
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "chrome",
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            attribute: "browser",
+            operator: "equals",
+            value: "chrome",
+          },
+        ],
+      });
+
+      // AND with no matches
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "chrome",
+              },
+            ],
+          },
+          {
+            platform: "mobile",
+            browser: "safari",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            attribute: "browser",
+            operator: "equals",
+            value: "chrome",
+          },
+        ],
+      });
+
+      // AND with "*" in it
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              "*",
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: ["*", "*"],
+      });
+    });
+
+    test("OR conditions", function () {
+      // OR with all matching conditions
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "mobile",
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: ["*", { attribute: "platform", operator: "equals", value: "mobile" }],
+      });
+
+      // OR with partial match (first matches)
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "chrome",
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [
+          "*",
+          {
+            attribute: "browser",
+            operator: "equals",
+            value: "chrome",
+          },
+        ],
+      });
+
+      // OR with no matches
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "mobile",
+              },
+            ],
+          },
+          {
+            platform: "desktop",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "mobile",
+          },
+        ],
+      });
+    });
+
+    test("NOT conditions", function () {
+      // NOT with matching condition (should not match)
+      expect(
+        buildScopedCondition(
+          {
+            not: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        not: ["*"],
+      });
+
+      // NOT with non-matching condition
+      expect(
+        buildScopedCondition(
+          {
+            not: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+            ],
+          },
+          {
+            platform: "mobile",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        not: [
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+        ],
+      });
+
+      // NOT with multiple conditions
+      expect(
+        buildScopedCondition(
+          {
+            not: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "chrome",
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        not: ["*", "*"],
+      });
+    });
+
+    test("nested AND conditions", function () {
+      // Nested AND with all matching
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                and: [
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "chrome",
+                  },
+                  {
+                    attribute: "version",
+                    operator: "equals",
+                    value: "1.0",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+            version: "1.0",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            and: ["*", "*"],
+          },
+        ],
+      });
+
+      // Nested AND with partial match
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                and: [
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "chrome",
+                  },
+                  {
+                    attribute: "version",
+                    operator: "equals",
+                    value: "1.0",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            and: [
+              "*",
+              {
+                attribute: "version",
+                operator: "equals",
+                value: "1.0",
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    test("nested OR conditions", function () {
+      // Nested OR with matching
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                or: [
+                  {
+                    attribute: "platform",
+                    operator: "equals",
+                    value: "mobile",
+                  },
+                  {
+                    attribute: "platform",
+                    operator: "equals",
+                    value: "desktop",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [
+          "*",
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "mobile",
+              },
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "desktop",
+              },
+            ],
+          },
+        ],
+      });
+
+      // Nested OR with inner match
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                or: [
+                  {
+                    attribute: "platform",
+                    operator: "equals",
+                    value: "mobile",
+                  },
+                  {
+                    attribute: "platform",
+                    operator: "equals",
+                    value: "desktop",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "mobile",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            or: [
+              "*",
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "desktop",
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    test("nested NOT conditions", function () {
+      // Nested NOT
+      expect(
+        buildScopedCondition(
+          {
+            not: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                not: [
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "chrome",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        not: [
+          "*",
+          {
+            not: ["*"],
+          },
+        ],
+      });
+    });
+
+    test("mixed nested conditions", function () {
+      // AND with nested OR
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                or: [
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "chrome",
+                  },
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "firefox",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            or: [
+              "*",
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "firefox",
+              },
+            ],
+          },
+        ],
+      });
+
+      // OR with nested AND
+      expect(
+        buildScopedCondition(
+          {
+            or: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                and: [
+                  {
+                    attribute: "platform",
+                    operator: "equals",
+                    value: "mobile",
+                  },
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "chrome",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "mobile",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {
+            and: ["*", "*"],
+          },
+        ],
+      });
+
+      // AND with nested NOT
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                not: [
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "safari",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            not: [
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "safari",
+              },
+            ],
+          },
+        ],
+      });
+
+      // Complex nested structure
+      expect(
+        buildScopedCondition(
+          {
+            and: [
+              {
+                attribute: "platform",
+                operator: "equals",
+                value: "web",
+              },
+              {
+                or: [
+                  {
+                    and: [
+                      {
+                        attribute: "browser",
+                        operator: "equals",
+                        value: "chrome",
+                      },
+                      {
+                        attribute: "version",
+                        operator: "equals",
+                        value: "1.0",
+                      },
+                    ],
+                  },
+                  {
+                    attribute: "browser",
+                    operator: "equals",
+                    value: "firefox",
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+            version: "1.0",
+          },
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            or: [
+              {
+                and: ["*", "*"],
+              },
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "firefox",
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    test("arrays with nested conditions", function () {
+      // Array with AND condition
+      expect(
+        buildScopedCondition(
+          [
+            {
+              attribute: "platform",
+              operator: "equals",
+              value: "web",
+            },
+            {
+              and: [
+                {
+                  attribute: "browser",
+                  operator: "equals",
+                  value: "chrome",
+                },
+                {
+                  attribute: "version",
+                  operator: "equals",
+                  value: "1.0",
+                },
+              ],
+            },
+          ],
+          {
+            platform: "web",
+            browser: "chrome",
+            version: "1.0",
+          },
+          datafileReader,
+        ),
+      ).toEqual([
+        "*",
+        {
+          and: ["*", "*"],
+        },
+      ]);
+
+      // Array with OR condition
+      expect(
+        buildScopedCondition(
+          [
+            {
+              attribute: "platform",
+              operator: "equals",
+              value: "web",
+            },
+            {
+              or: [
+                {
+                  attribute: "browser",
+                  operator: "equals",
+                  value: "chrome",
+                },
+                {
+                  attribute: "browser",
+                  operator: "equals",
+                  value: "firefox",
+                },
+              ],
+            },
+          ],
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          datafileReader,
+        ),
+      ).toEqual([
+        "*",
+        {
+          or: [
+            "*",
+            {
+              attribute: "browser",
+              operator: "equals",
+              value: "firefox",
+            },
+          ],
+        },
+      ]);
+    });
+
+    test("edge cases", function () {
+      // Empty context
+      expect(
+        buildScopedCondition(
+          {
+            attribute: "platform",
+            operator: "equals",
+            value: "web",
+          },
+          {},
+          datafileReader,
+        ),
+      ).toEqual({
+        attribute: "platform",
+        operator: "equals",
+        value: "web",
+      });
+
+      // Empty array
+      expect(buildScopedCondition([], {}, datafileReader)).toEqual([]);
+
+      // "*" in array
+      expect(
+        buildScopedCondition(
+          [
+            "*",
+            {
+              attribute: "platform",
+              operator: "equals",
+              value: "web",
+            },
+          ],
+          {
+            platform: "web",
+          },
+          datafileReader,
+        ),
+      ).toEqual(["*", "*"]);
+
+      // AND with empty array
+      expect(
+        buildScopedCondition(
+          {
+            and: [],
+          },
+          {},
+          datafileReader,
+        ),
+      ).toEqual({
+        and: [],
+      });
+
+      // OR with empty array
+      expect(
+        buildScopedCondition(
+          {
+            or: [],
+          },
+          {},
+          datafileReader,
+        ),
+      ).toEqual({
+        or: [],
+      });
     });
   });
 
