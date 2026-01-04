@@ -4,16 +4,8 @@ import type {
   OrCondition,
   NotCondition,
   Context,
-  DatafileContent,
 } from "@featurevisor/types";
-import { DatafileReader } from "@featurevisor/sdk";
-
-const emptyDatafile: DatafileContent = {
-  schemaVersion: "2",
-  revision: "unknown",
-  segments: {},
-  features: {},
-};
+import type { DatafileReader } from "@featurevisor/sdk";
 
 export function buildScopedConditions(
   datafileReader: DatafileReader,

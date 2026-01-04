@@ -24,6 +24,11 @@ export function buildScopedGroupSegments(
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
 ): GroupSegment | GroupSegment[] {
+  // @TODO: remove later
+  if (!context) {
+    return groupSegments;
+  }
+
   // @TODO: implement
   return groupSegments;
 }
