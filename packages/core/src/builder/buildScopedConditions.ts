@@ -24,7 +24,10 @@ export function buildScopedConditions(
     logger: createLogger({ level: "fatal" }),
   });
 
-  return buildScopedCondition(conditions, context, datafileReader);
+  const scoped = buildScopedCondition(conditions, context, datafileReader);
+  const removed = removeRedundantConditions(scoped);
+
+  return removed;
 }
 
 export function removeRedundantConditions(
