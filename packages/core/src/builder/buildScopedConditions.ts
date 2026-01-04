@@ -6,7 +6,7 @@ import type {
   Context,
   DatafileContent,
 } from "@featurevisor/types";
-import { DatafileReader, createLogger } from "@featurevisor/sdk";
+import { DatafileReader } from "@featurevisor/sdk";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -16,15 +16,11 @@ const emptyDatafile: DatafileContent = {
 };
 
 export function buildScopedConditions(
+  datafileReader: DatafileReader,
   conditions: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {
-  const datafileReader = new DatafileReader({
-    datafile: emptyDatafile,
-    logger: createLogger({ level: "fatal" }),
-  });
-
-  const scoped = buildScopedCondition(conditions, context, datafileReader);
+  const scoped = buildScopedCondition(datafileReader, conditions, context);
   const removed = removeRedundantConditions(scoped);
 
   return removed;
@@ -100,16 +96,16 @@ export function removeRedundantConditions(
 }
 
 export function buildScopedCondition(
+  datafileReader: DatafileReader,
   condition: Condition | Condition[],
   context: Context,
-  datafileReader: DatafileReader,
 ): Condition | Condition[] {
   if (condition === "*") {
     return condition;
   }
 
   if (Array.isArray(condition)) {
-    return condition.map((c) => buildScopedCondition(c, context, datafileReader)) as Condition[];
+    return condition.map((c) => buildScopedCondition(datafileReader, c, context)) as Condition[];
   }
 
   if (typeof condition === "object") {
@@ -125,19 +121,19 @@ export function buildScopedCondition(
     // AND, OR, NOT conditions
     if ("and" in condition) {
       return {
-        and: condition.and.map((c) => buildScopedCondition(c, context, datafileReader)),
+        and: condition.and.map((c) => buildScopedCondition(datafileReader, c, context)),
       } as AndCondition;
     }
 
     if ("or" in condition) {
       return {
-        or: condition.or.map((c) => buildScopedCondition(c, context, datafileReader)),
+        or: condition.or.map((c) => buildScopedCondition(datafileReader, c, context)),
       } as OrCondition;
     }
 
     if ("not" in condition) {
       return {
-        not: condition.not.map((c) => buildScopedCondition(c, context, datafileReader)),
+        not: condition.not.map((c) => buildScopedCondition(datafileReader, c, context)),
       } as NotCondition;
     }
   }

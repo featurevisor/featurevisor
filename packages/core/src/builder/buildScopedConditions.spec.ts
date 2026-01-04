@@ -27,11 +27,12 @@ describe("core: buildScopedConditions", function () {
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedConditions("*", {})).toEqual("*");
+      expect(buildScopedConditions(datafileReader, "*", {})).toEqual("*");
 
       // Plain condition that matches
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
@@ -46,6 +47,7 @@ describe("core: buildScopedConditions", function () {
       // Plain condition that doesn't match
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
@@ -64,6 +66,7 @@ describe("core: buildScopedConditions", function () {
       // Array of conditions - partial match (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -91,6 +94,7 @@ describe("core: buildScopedConditions", function () {
       // Array of conditions - full match (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -113,6 +117,7 @@ describe("core: buildScopedConditions", function () {
       // Array of conditions - no match
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -148,6 +153,7 @@ describe("core: buildScopedConditions", function () {
       // AND with all matching conditions (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -172,6 +178,7 @@ describe("core: buildScopedConditions", function () {
       // AND with partial match (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -203,6 +210,7 @@ describe("core: buildScopedConditions", function () {
       // AND with no matches
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -240,6 +248,7 @@ describe("core: buildScopedConditions", function () {
       // AND with "*" in it (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               "*",
@@ -263,6 +272,7 @@ describe("core: buildScopedConditions", function () {
       // So testing with different attributes that both match
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -287,6 +297,7 @@ describe("core: buildScopedConditions", function () {
       // OR with partial match (redundant "*" removed, but OR structure remains)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -318,6 +329,7 @@ describe("core: buildScopedConditions", function () {
       // OR with no matches
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -356,6 +368,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with matching condition (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             not: [
               {
@@ -374,6 +387,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with non-matching condition
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             not: [
               {
@@ -400,6 +414,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with multiple conditions (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             not: [
               {
@@ -426,6 +441,7 @@ describe("core: buildScopedConditions", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -460,6 +476,7 @@ describe("core: buildScopedConditions", function () {
       // Nested AND with partial match (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -507,6 +524,7 @@ describe("core: buildScopedConditions", function () {
       // Nested OR with outer match (redundant "*" removed, but inner OR remains)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -556,6 +574,7 @@ describe("core: buildScopedConditions", function () {
       // Nested OR with inner match (redundant "*" removed, but outer OR remains)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -607,6 +626,7 @@ describe("core: buildScopedConditions", function () {
       // Nested NOT (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             not: [
               {
@@ -637,6 +657,7 @@ describe("core: buildScopedConditions", function () {
       // AND with nested OR (redundant "*" removed, but OR structure remains if not all match)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -682,6 +703,7 @@ describe("core: buildScopedConditions", function () {
       // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [
               {
@@ -723,6 +745,7 @@ describe("core: buildScopedConditions", function () {
       // AND with nested NOT (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -763,6 +786,7 @@ describe("core: buildScopedConditions", function () {
       // Complex nested structure (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [
               {
@@ -820,6 +844,7 @@ describe("core: buildScopedConditions", function () {
       // Array with AND condition (redundant "*" removed)
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -852,6 +877,7 @@ describe("core: buildScopedConditions", function () {
       // Array with OR condition (redundant "*" removed, but OR structure remains if not all match)
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -895,6 +921,7 @@ describe("core: buildScopedConditions", function () {
       // Empty context
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
@@ -909,11 +936,12 @@ describe("core: buildScopedConditions", function () {
       });
 
       // Empty array (all "*" becomes "*")
-      expect(buildScopedConditions([], {})).toEqual("*");
+      expect(buildScopedConditions(datafileReader, [], {})).toEqual("*");
 
       // "*" in array with matching condition (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           [
             "*",
             {
@@ -931,6 +959,7 @@ describe("core: buildScopedConditions", function () {
       // AND with empty array (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             and: [],
           },
@@ -941,6 +970,7 @@ describe("core: buildScopedConditions", function () {
       // OR with empty array (all "*" becomes "*")
       expect(
         buildScopedConditions(
+          datafileReader,
           {
             or: [],
           },
@@ -957,11 +987,12 @@ describe("core: buildScopedConditions", function () {
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedCondition("*", {}, datafileReader)).toEqual("*");
+      expect(buildScopedCondition(datafileReader, "*", {})).toEqual("*");
 
       // Plain condition that matches
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
@@ -970,13 +1001,13 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual("*");
 
       // Plain condition that doesn't match
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
@@ -985,7 +1016,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "mobile",
           },
-          datafileReader,
         ),
       ).toEqual({
         attribute: "platform",
@@ -1009,13 +1039,9 @@ describe("core: buildScopedConditions", function () {
 
       // Partial match
       expect(
-        buildScopedCondition(
-          originalConditions,
-          {
-            platform: "web",
-          },
-          datafileReader,
-        ),
+        buildScopedCondition(datafileReader, originalConditions, {
+          platform: "web",
+        }),
       ).toEqual([
         "*",
         {
@@ -1027,26 +1053,18 @@ describe("core: buildScopedConditions", function () {
 
       // Full match
       expect(
-        buildScopedCondition(
-          originalConditions,
-          {
-            platform: "web",
-            browser: "chrome",
-          },
-          datafileReader,
-        ),
+        buildScopedCondition(datafileReader, originalConditions, {
+          platform: "web",
+          browser: "chrome",
+        }),
       ).toEqual(["*", "*"]);
 
       // No match
       expect(
-        buildScopedCondition(
-          originalConditions,
-          {
-            platform: "mobile",
-            browser: "safari",
-          },
-          datafileReader,
-        ),
+        buildScopedCondition(datafileReader, originalConditions, {
+          platform: "mobile",
+          browser: "safari",
+        }),
       ).toEqual([
         {
           attribute: "platform",
@@ -1065,6 +1083,7 @@ describe("core: buildScopedConditions", function () {
       // AND with all matching conditions
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1083,7 +1102,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: ["*", "*"],
@@ -1092,6 +1110,7 @@ describe("core: buildScopedConditions", function () {
       // AND with partial match
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1109,7 +1128,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1125,6 +1143,7 @@ describe("core: buildScopedConditions", function () {
       // AND with no matches
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1143,7 +1162,6 @@ describe("core: buildScopedConditions", function () {
             platform: "mobile",
             browser: "safari",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1163,6 +1181,7 @@ describe("core: buildScopedConditions", function () {
       // AND with "*" in it
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               "*",
@@ -1176,7 +1195,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: ["*", "*"],
@@ -1187,6 +1205,7 @@ describe("core: buildScopedConditions", function () {
       // OR with all matching conditions
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1204,7 +1223,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: ["*", { attribute: "platform", operator: "equals", value: "mobile" }],
@@ -1213,6 +1231,7 @@ describe("core: buildScopedConditions", function () {
       // OR with partial match (first matches)
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1230,7 +1249,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: [
@@ -1246,6 +1264,7 @@ describe("core: buildScopedConditions", function () {
       // OR with no matches
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1263,7 +1282,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "desktop",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: [
@@ -1285,6 +1303,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with matching condition (should not match)
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             not: [
               {
@@ -1297,7 +1316,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         not: ["*"],
@@ -1306,6 +1324,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with non-matching condition
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             not: [
               {
@@ -1318,7 +1337,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "mobile",
           },
-          datafileReader,
         ),
       ).toEqual({
         not: [
@@ -1333,6 +1351,7 @@ describe("core: buildScopedConditions", function () {
       // NOT with multiple conditions
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             not: [
               {
@@ -1351,7 +1370,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         not: ["*", "*"],
@@ -1362,6 +1380,7 @@ describe("core: buildScopedConditions", function () {
       // Nested AND with all matching
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1390,7 +1409,6 @@ describe("core: buildScopedConditions", function () {
             browser: "chrome",
             version: "1.0",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1404,6 +1422,7 @@ describe("core: buildScopedConditions", function () {
       // Nested AND with partial match
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1431,7 +1450,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1454,6 +1472,7 @@ describe("core: buildScopedConditions", function () {
       // Nested OR with matching
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1480,7 +1499,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: [
@@ -1505,6 +1523,7 @@ describe("core: buildScopedConditions", function () {
       // Nested OR with inner match
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1531,7 +1550,6 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "mobile",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: [
@@ -1558,6 +1576,7 @@ describe("core: buildScopedConditions", function () {
       // Nested NOT
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             not: [
               {
@@ -1580,7 +1599,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         not: [
@@ -1596,6 +1614,7 @@ describe("core: buildScopedConditions", function () {
       // AND with nested OR
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1623,7 +1642,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1644,6 +1662,7 @@ describe("core: buildScopedConditions", function () {
       // OR with nested AND
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [
               {
@@ -1671,7 +1690,6 @@ describe("core: buildScopedConditions", function () {
             platform: "mobile",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         or: [
@@ -1689,6 +1707,7 @@ describe("core: buildScopedConditions", function () {
       // AND with nested NOT
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1711,7 +1730,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1731,6 +1749,7 @@ describe("core: buildScopedConditions", function () {
       // Complex nested structure
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [
               {
@@ -1768,7 +1787,6 @@ describe("core: buildScopedConditions", function () {
             browser: "chrome",
             version: "1.0",
           },
-          datafileReader,
         ),
       ).toEqual({
         and: [
@@ -1793,6 +1811,7 @@ describe("core: buildScopedConditions", function () {
       // Array with AND condition
       expect(
         buildScopedCondition(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -1819,7 +1838,6 @@ describe("core: buildScopedConditions", function () {
             browser: "chrome",
             version: "1.0",
           },
-          datafileReader,
         ),
       ).toEqual([
         "*",
@@ -1831,6 +1849,7 @@ describe("core: buildScopedConditions", function () {
       // Array with OR condition
       expect(
         buildScopedCondition(
+          datafileReader,
           [
             {
               attribute: "platform",
@@ -1856,7 +1875,6 @@ describe("core: buildScopedConditions", function () {
             platform: "web",
             browser: "chrome",
           },
-          datafileReader,
         ),
       ).toEqual([
         "*",
@@ -1877,13 +1895,13 @@ describe("core: buildScopedConditions", function () {
       // Empty context
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             attribute: "platform",
             operator: "equals",
             value: "web",
           },
           {},
-          datafileReader,
         ),
       ).toEqual({
         attribute: "platform",
@@ -1892,11 +1910,12 @@ describe("core: buildScopedConditions", function () {
       });
 
       // Empty array
-      expect(buildScopedCondition([], {}, datafileReader)).toEqual([]);
+      expect(buildScopedCondition(datafileReader, [], {})).toEqual([]);
 
       // "*" in array
       expect(
         buildScopedCondition(
+          datafileReader,
           [
             "*",
             {
@@ -1908,18 +1927,17 @@ describe("core: buildScopedConditions", function () {
           {
             platform: "web",
           },
-          datafileReader,
         ),
       ).toEqual(["*", "*"]);
 
       // AND with empty array
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             and: [],
           },
           {},
-          datafileReader,
         ),
       ).toEqual({
         and: [],
@@ -1928,11 +1946,11 @@ describe("core: buildScopedConditions", function () {
       // OR with empty array
       expect(
         buildScopedCondition(
+          datafileReader,
           {
             or: [],
           },
           {},
-          datafileReader,
         ),
       ).toEqual({
         or: [],
