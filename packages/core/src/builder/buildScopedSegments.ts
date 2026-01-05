@@ -21,7 +21,75 @@ export function buildScopedSegments(
 export function removeRedundantGroupSegments(
   groupSegments: GroupSegment | GroupSegment[],
 ): GroupSegment | GroupSegment[] {
-  // @TODO: implement
+  if (groupSegments === "*") {
+    return groupSegments;
+  }
+
+  if (Array.isArray(groupSegments)) {
+    // Recursively process each group segment
+    const processed = groupSegments.map((gs) => removeRedundantGroupSegments(gs)) as GroupSegment[];
+
+    // Filter out "*" values
+    const filtered = processed.filter((gs) => gs !== "*");
+
+    // If all were "*", return "*"
+    if (filtered.length === 0) {
+      return "*";
+    }
+
+    return filtered;
+  }
+
+  if (typeof groupSegments === "object") {
+    if ("and" in groupSegments) {
+      const processed = groupSegments.and.map((gs) =>
+        removeRedundantGroupSegments(gs),
+      ) as GroupSegment[];
+      const filtered = processed.filter((gs) => gs !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
+      return {
+        and: filtered,
+      } as AndGroupSegment;
+    }
+
+    if ("or" in groupSegments) {
+      const processed = groupSegments.or.map((gs) =>
+        removeRedundantGroupSegments(gs),
+      ) as GroupSegment[];
+      const filtered = processed.filter((gs) => gs !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
+      return {
+        or: filtered,
+      } as OrGroupSegment;
+    }
+
+    if ("not" in groupSegments) {
+      const processed = groupSegments.not.map((gs) =>
+        removeRedundantGroupSegments(gs),
+      ) as GroupSegment[];
+      const filtered = processed.filter((gs) => gs !== "*");
+
+      // If all were "*", return "*"
+      if (filtered.length === 0) {
+        return "*";
+      }
+
+      return {
+        not: filtered,
+      } as NotGroupSegment;
+    }
+  }
+
   return groupSegments;
 }
 

@@ -30,6 +30,333 @@ describe("core: buildScopedSegments", function () {
     test("removeRedundantGroupSegments is a function", function () {
       expect(removeRedundantGroupSegments).toBeInstanceOf(Function);
     });
+
+    test("simple cases", function () {
+      // * is *
+      expect(removeRedundantGroupSegments("*")).toEqual("*");
+
+      // [*, *, *] is "*"
+      expect(removeRedundantGroupSegments(["*", "*", "*"])).toEqual("*");
+
+      // Array with mixed group segments
+      expect(removeRedundantGroupSegments(["*", "web", "*", "chrome"])).toEqual(["web", "chrome"]);
+    });
+
+    test("AND group segments", function () {
+      // All "*" in AND
+      expect(removeRedundantGroupSegments({ and: ["*", "*", "*"] })).toEqual("*");
+
+      // Mixed with "*" in AND
+      expect(
+        removeRedundantGroupSegments({
+          and: ["*", "web", "*"],
+        }),
+      ).toEqual({
+        and: ["web"],
+      });
+
+      // Multiple non-* group segments in AND
+      expect(
+        removeRedundantGroupSegments({
+          and: ["*", "web", "*", "chrome", "*"],
+        }),
+      ).toEqual({
+        and: ["web", "chrome"],
+      });
+    });
+
+    test("OR group segments", function () {
+      // All "*" in OR
+      expect(removeRedundantGroupSegments({ or: ["*", "*", "*"] })).toEqual("*");
+
+      // Mixed with "*" in OR
+      expect(
+        removeRedundantGroupSegments({
+          or: ["*", "web", "*"],
+        }),
+      ).toEqual({
+        or: ["web"],
+      });
+
+      // Multiple non-* group segments in OR
+      expect(
+        removeRedundantGroupSegments({
+          or: ["*", "web", "*", "mobile", "*"],
+        }),
+      ).toEqual({
+        or: ["web", "mobile"],
+      });
+    });
+
+    test("NOT group segments", function () {
+      // All "*" in NOT
+      expect(removeRedundantGroupSegments({ not: ["*", "*", "*"] })).toEqual("*");
+
+      // Mixed with "*" in NOT
+      expect(
+        removeRedundantGroupSegments({
+          not: ["*", "web", "*"],
+        }),
+      ).toEqual({
+        not: ["web"],
+      });
+    });
+
+    test("nested AND group segments", function () {
+      // Nested AND with all "*"
+      expect(
+        removeRedundantGroupSegments({
+          and: ["*", { and: ["*", "*", "*"] }, "*"],
+        }),
+      ).toEqual("*");
+
+      // Nested AND with mixed group segments
+      expect(
+        removeRedundantGroupSegments({
+          and: [
+            "*",
+            "web",
+            {
+              and: ["*", "chrome", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        and: [
+          "web",
+          {
+            and: ["chrome"],
+          },
+        ],
+      });
+
+      // Deeply nested AND
+      expect(
+        removeRedundantGroupSegments({
+          and: [
+            "*",
+            {
+              and: [
+                "*",
+                {
+                  and: ["*", "*", "*"],
+                },
+                "*",
+              ],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual("*");
+    });
+
+    test("nested OR group segments", function () {
+      // Nested OR with all "*"
+      expect(
+        removeRedundantGroupSegments({
+          or: ["*", { or: ["*", "*", "*"] }, "*"],
+        }),
+      ).toEqual("*");
+
+      // Nested OR with mixed group segments
+      expect(
+        removeRedundantGroupSegments({
+          or: [
+            "*",
+            "web",
+            {
+              or: ["*", "mobile", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        or: [
+          "web",
+          {
+            or: ["mobile"],
+          },
+        ],
+      });
+    });
+
+    test("nested NOT group segments", function () {
+      // Nested NOT with all "*"
+      expect(
+        removeRedundantGroupSegments({
+          not: ["*", { not: ["*", "*", "*"] }, "*"],
+        }),
+      ).toEqual("*");
+
+      // Nested NOT with mixed group segments
+      expect(
+        removeRedundantGroupSegments({
+          not: [
+            "*",
+            "web",
+            {
+              not: ["*", "chrome", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        not: [
+          "web",
+          {
+            not: ["chrome"],
+          },
+        ],
+      });
+    });
+
+    test("mixed nested group segments", function () {
+      // AND with nested OR
+      expect(
+        removeRedundantGroupSegments({
+          and: [
+            "*",
+            "web",
+            {
+              or: ["*", "chrome", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        and: [
+          "web",
+          {
+            or: ["chrome"],
+          },
+        ],
+      });
+
+      // OR with nested AND
+      expect(
+        removeRedundantGroupSegments({
+          or: [
+            "*",
+            "web",
+            {
+              and: ["*", "chrome", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        or: [
+          "web",
+          {
+            and: ["chrome"],
+          },
+        ],
+      });
+
+      // AND with nested NOT
+      expect(
+        removeRedundantGroupSegments({
+          and: [
+            "*",
+            "web",
+            {
+              not: ["*", "mobile", "*"],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        and: [
+          "web",
+          {
+            not: ["mobile"],
+          },
+        ],
+      });
+
+      // Complex nested structure
+      expect(
+        removeRedundantGroupSegments({
+          and: [
+            "*",
+            "web",
+            {
+              or: [
+                "*",
+                {
+                  and: ["*", "chrome", "*"],
+                },
+                "*",
+              ],
+            },
+            "*",
+          ],
+        }),
+      ).toEqual({
+        and: [
+          "web",
+          {
+            or: [
+              {
+                and: ["chrome"],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    test("arrays with nested group segments", function () {
+      // Array with nested AND
+      expect(
+        removeRedundantGroupSegments([
+          "*",
+          {
+            and: ["*", "web", "*"],
+          },
+          "*",
+        ]),
+      ).toEqual([
+        {
+          and: ["web"],
+        },
+      ]);
+
+      // Array with multiple nested group segments
+      expect(
+        removeRedundantGroupSegments([
+          "*",
+          "web",
+          {
+            or: ["*", "chrome", "*"],
+          },
+          "*",
+        ]),
+      ).toEqual([
+        "web",
+        {
+          or: ["chrome"],
+        },
+      ]);
+    });
+
+    test("edge cases", function () {
+      // Single group segment after filtering
+      expect(
+        removeRedundantGroupSegments({
+          and: ["*", "web", "*"],
+        }),
+      ).toEqual({
+        and: ["web"],
+      });
+
+      // Plain string group segment (no change)
+      expect(removeRedundantGroupSegments("web")).toEqual("web");
+
+      // Array with single non-* group segment
+      expect(removeRedundantGroupSegments(["*", "web", "*"])).toEqual(["web"]);
+    });
   });
 
   describe("buildScopedGroupSegments", function () {
