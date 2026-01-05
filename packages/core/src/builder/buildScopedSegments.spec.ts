@@ -1,4 +1,4 @@
-import type { GroupSegment, DatafileContent } from "@featurevisor/types";
+import type { DatafileContent } from "@featurevisor/types";
 
 import {
   buildScopedSegments,
@@ -8,18 +8,6 @@ import {
 import { DatafileReader, createLogger } from "@featurevisor/sdk";
 
 describe("core: buildScopedSegments", function () {
-  const emptyDatafile: DatafileContent = {
-    schemaVersion: "2",
-    revision: "unknown",
-    segments: {},
-    features: {},
-  };
-
-  const datafileReader = new DatafileReader({
-    datafile: emptyDatafile,
-    logger: createLogger({ level: "fatal" }),
-  });
-
   describe("buildScopedSegments", function () {
     const datafileWithSegments: DatafileContent = {
       schemaVersion: "2",
