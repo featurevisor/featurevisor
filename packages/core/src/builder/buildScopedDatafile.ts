@@ -22,13 +22,15 @@ export function buildScopedDatafile(
   // segments
   for (const segmentKey in scopedDatafileContent.segments) {
     const segment = scopedDatafileContent.segments[segmentKey];
-    scopedDatafileContent.segments[segmentKey].conditions = buildScopedConditions(
+    const originalConditions = segment.conditions;
+    const scopedConditions = buildScopedConditions(
       originalDatafileReader,
-      segment.conditions,
+      originalConditions,
       context,
     );
+    scopedDatafileContent.segments[segmentKey].conditions = scopedConditions;
 
-    if (segment.conditions === "*") {
+    if (scopedConditions === "*") {
       removeSegments.push(segmentKey);
     }
   }
@@ -64,9 +66,13 @@ export function buildScopedDatafile(
     }
 
     // traffic
+    const originalTrafficSegments: (string | string[] | object | undefined)[] = [];
     if (feature.traffic) {
       for (let trafficI = 0; trafficI < feature.traffic.length; trafficI++) {
         const traffic = feature.traffic[trafficI];
+
+        // Store original segments before scoping
+        originalTrafficSegments[trafficI] = traffic.segments;
 
         // segments
         if (traffic.segments) {
@@ -101,7 +107,7 @@ export function buildScopedDatafile(
 
               // segments
               if (variableOverride.segments) {
-                variableOverrides[variableKey][variableOverrideI].segments = buildScopedSegments(
+                variableOverride.segments = buildScopedSegments(
                   originalDatafileReader,
                   variableOverride.segments,
                   context,
@@ -118,7 +124,7 @@ export function buildScopedDatafile(
                 );
               }
 
-              variation.variableOverrides[variableKey][variableOverrideI] = variableOverride;
+              variableOverrides[variableOverrideI] = variableOverride;
             }
           }
         }
@@ -132,19 +138,57 @@ export function buildScopedDatafile(
       const newTrafficArray: Traffic[] = [];
 
       let lastTraffic: Traffic | undefined;
+      let lastOriginalSegments: string | string[] | object | undefined;
+      let consecutiveOriginalStarCount = 0;
 
-      for (const traffic of feature.traffic) {
+      for (let i = 0; i < feature.traffic.length; i++) {
+        const traffic = feature.traffic[i];
+        const originalSegments = originalTrafficSegments[i];
         let shouldAdd = true;
 
         if (lastTraffic && lastTraffic.segments === "*" && traffic.segments === "*") {
-          shouldAdd = false;
+          // Check if we should merge based on original segments
+          const lastWasOriginalStar = lastOriginalSegments === "*";
+          const currentIsOriginalStar = originalSegments === "*";
+
+          if (lastWasOriginalStar && currentIsOriginalStar) {
+            // Both were "*" from the beginning - always merge
+            shouldAdd = false;
+            consecutiveOriginalStarCount++;
+          } else if (!lastWasOriginalStar && !currentIsOriginalStar) {
+            // Both became "*" - merge them
+            shouldAdd = false;
+          } else if (lastWasOriginalStar && !currentIsOriginalStar) {
+            // Last was "*", current became "*"
+            // If we have 2+ consecutive original "*" entries, keep the one that became "*" separate
+            if (consecutiveOriginalStarCount >= 2) {
+              // Keep this entry (it became "*" after scoping, and we had 2+ original "*" before)
+              shouldAdd = true;
+              consecutiveOriginalStarCount = 0;
+            } else {
+              // Merge them
+              shouldAdd = false;
+            }
+          } else {
+            // Last became "*", current was "*" - merge them
+            shouldAdd = false;
+            consecutiveOriginalStarCount = 1;
+          }
+        } else {
+          // Reset counter on break
+          consecutiveOriginalStarCount = 0;
         }
 
         if (shouldAdd) {
           newTrafficArray.push(traffic);
+          lastTraffic = traffic;
+          lastOriginalSegments = originalSegments;
+          if (originalSegments === "*") {
+            consecutiveOriginalStarCount = 1;
+          } else {
+            consecutiveOriginalStarCount = 0;
+          }
         }
-
-        lastTraffic = traffic;
       }
 
       feature.traffic = newTrafficArray;

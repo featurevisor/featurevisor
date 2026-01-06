@@ -210,7 +210,20 @@ describe("core: buildScopedDatafile", function () {
 
       const result = buildScopedDatafile(datafile, { browser: "chrome" });
 
-      expect(result.segments).toEqual({});
+      expect(result.segments).toEqual({
+        browser: {
+          conditions: {
+            // @TODO: this OR (with only one child) can become a single (AND) condition
+            or: [
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "firefox",
+              },
+            ],
+          },
+        },
+      });
     });
 
     test("segment with array of conditions - all match", function () {
