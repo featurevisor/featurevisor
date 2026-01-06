@@ -112,14 +112,6 @@ export function buildScopedCondition(
 
     // AND, OR, NOT conditions
     if ("and" in condition) {
-      // Check if the AND condition as a whole matches
-      // If all conditions in AND match, the whole AND matches
-      const andMatches = datafileReader.allConditionsAreMatched(condition, context);
-
-      if (andMatches) {
-        return "*";
-      }
-
       return {
         and: condition.and.map((c) => buildScopedCondition(datafileReader, c, context)),
       } as AndCondition;

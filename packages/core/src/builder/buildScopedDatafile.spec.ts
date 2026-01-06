@@ -2202,7 +2202,19 @@ describe("core: buildScopedDatafile", function () {
       const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual({
+        and: [
+          {
+            or: [
+              {
+                attribute: "browser",
+                operator: "equals",
+                value: "firefox",
+              },
+            ],
+          },
+        ],
+      });
     });
 
     test("datafile immutability - original not modified", function () {
