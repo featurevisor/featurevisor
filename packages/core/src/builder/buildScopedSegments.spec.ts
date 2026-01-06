@@ -1305,5 +1305,269 @@ describe("core: buildScopedSegments", function () {
         }),
       ).toEqual("premium");
     });
+
+    test("removeSegments parameter", function () {
+      // Simple segment in removeSegments
+      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, ["web"])).toEqual("*");
+
+      // Segment not in removeSegments
+      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, ["mobile"])).toEqual(
+        "web",
+      );
+
+      // Array with one segment in removeSegments
+      expect(
+        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, ["web"]),
+      ).toEqual(["*", "chrome"]);
+
+      // Array with all segments in removeSegments
+      expect(
+        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, [
+          "web",
+          "chrome",
+        ]),
+      ).toEqual(["*", "*"]);
+
+      // Array with multiple segments, some in removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          ["web", "chrome", "mobile", "safari"],
+          {},
+          ["web", "mobile"],
+        ),
+      ).toEqual(["*", "chrome", "*", "safari"]);
+
+      // AND group segment with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            and: ["web", "chrome"],
+          },
+          {},
+          ["web"],
+        ),
+      ).toEqual({
+        and: ["*", "chrome"],
+      });
+
+      // AND group segment with all segments in removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            and: ["web", "chrome"],
+          },
+          {},
+          ["web", "chrome"],
+        ),
+      ).toEqual({
+        and: ["*", "*"],
+      });
+
+      // OR group segment with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            or: ["web", "chrome"],
+          },
+          {},
+          ["web"],
+        ),
+      ).toEqual({
+        or: ["*", "chrome"],
+      });
+
+      // OR group segment with all segments in removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            or: ["web", "chrome"],
+          },
+          {},
+          ["web", "chrome"],
+        ),
+      ).toEqual({
+        or: ["*", "*"],
+      });
+
+      // NOT group segment with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            not: ["web", "chrome"],
+          },
+          {},
+          ["web"],
+        ),
+      ).toEqual({
+        not: ["*", "chrome"],
+      });
+
+      // NOT group segment with all segments in removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            not: ["web", "chrome"],
+          },
+          {},
+          ["web", "chrome"],
+        ),
+      ).toEqual({
+        not: ["*", "*"],
+      });
+
+      // Nested AND with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            and: [
+              "web",
+              {
+                and: ["chrome", "us"],
+              },
+            ],
+          },
+          {},
+          ["web"],
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            and: ["chrome", "us"],
+          },
+        ],
+      });
+
+      // Nested OR with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            or: [
+              "web",
+              {
+                or: ["chrome", "safari"],
+              },
+            ],
+          },
+          {},
+          ["chrome"],
+        ),
+      ).toEqual({
+        or: [
+          "web",
+          {
+            or: ["*", "safari"],
+          },
+        ],
+      });
+
+      // Mixed nested structure with removeSegments
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            and: [
+              "web",
+              {
+                or: ["chrome", "safari"],
+              },
+              {
+                not: ["mobile"],
+              },
+            ],
+          },
+          {},
+          ["web", "safari"],
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            or: ["chrome", "*"],
+          },
+          {
+            not: ["mobile"],
+          },
+        ],
+      });
+
+      // removeSegments combined with matching context
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          ["web", "chrome"],
+          {
+            platform: "web",
+          },
+          ["chrome"],
+        ),
+      ).toEqual(["*", "*"]);
+
+      // removeSegments with segment that would match context
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          ["web", "chrome"],
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          ["web"],
+        ),
+      ).toEqual(["*", "*"]);
+
+      // Complex: removeSegments, context matching, and nested structures
+      expect(
+        buildScopedGroupSegments(
+          datafileReaderWithSegments,
+          {
+            and: [
+              "web",
+              {
+                or: ["chrome", "safari", "mobile"],
+              },
+              "us",
+            ],
+          },
+          {
+            platform: "web",
+            browser: "chrome",
+          },
+          ["us"],
+        ),
+      ).toEqual({
+        and: [
+          "*",
+          {
+            or: ["*", "safari", "mobile"],
+          },
+          "*",
+        ],
+      });
+
+      // Empty removeSegments array (should behave like no removeSegments)
+      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, [])).toEqual("web");
+
+      // removeSegments with segment that doesn't exist in datafile
+      expect(
+        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "nonexistent"], {}, [
+          "nonexistent",
+        ]),
+      ).toEqual(["web", "*"]);
+
+      // removeSegments with "*" in array (should still work)
+      expect(
+        buildScopedGroupSegments(datafileReaderWithSegments, ["*", "web", "chrome"], {}, ["web"]),
+      ).toEqual(["*", "*", "chrome"]);
+    });
   });
 });

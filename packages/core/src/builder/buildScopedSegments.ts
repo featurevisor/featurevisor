@@ -11,8 +11,9 @@ export function buildScopedSegments(
   datafileReader: DatafileReader,
   segments: GroupSegment | GroupSegment[],
   context: Context,
+  removeSegments: string[] = [],
 ): GroupSegment | GroupSegment[] {
-  const scoped = buildScopedGroupSegments(datafileReader, segments, context);
+  const scoped = buildScopedGroupSegments(datafileReader, segments, context, removeSegments);
   const removed = removeRedundantGroupSegments(scoped);
 
   return removed;
@@ -97,6 +98,7 @@ export function buildScopedGroupSegments(
   datafileReader: DatafileReader,
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
+  removeSegments: string[] = [],
 ): GroupSegment | GroupSegment[] {
   if (groupSegments === "*") {
     return groupSegments;
@@ -104,11 +106,15 @@ export function buildScopedGroupSegments(
 
   if (Array.isArray(groupSegments)) {
     return groupSegments.map((gs) =>
-      buildScopedGroupSegments(datafileReader, gs, context),
+      buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
     ) as GroupSegment[];
   }
 
   if (typeof groupSegments === "string") {
+    if (removeSegments.includes(groupSegments)) {
+      return "*";
+    }
+
     const matched = datafileReader.allSegmentsAreMatched(groupSegments, context);
 
     if (matched) {
@@ -121,7 +127,7 @@ export function buildScopedGroupSegments(
     if ("and" in groupSegments) {
       return {
         and: groupSegments.and.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context),
+          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as AndGroupSegment;
     }
@@ -129,7 +135,7 @@ export function buildScopedGroupSegments(
     if ("or" in groupSegments) {
       return {
         or: groupSegments.or.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context),
+          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as OrGroupSegment;
     }
@@ -137,7 +143,7 @@ export function buildScopedGroupSegments(
     if ("not" in groupSegments) {
       return {
         not: groupSegments.not.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context),
+          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as NotGroupSegment;
     }

@@ -17,6 +17,8 @@ export function buildScopedDatafile(
     JSON.stringify(originalDatafileContent),
   );
 
+  const removeSegments: string[] = [];
+
   // segments
   for (const segmentKey in scopedDatafileContent.segments) {
     const segment = scopedDatafileContent.segments[segmentKey];
@@ -25,6 +27,10 @@ export function buildScopedDatafile(
       segment.conditions,
       context,
     );
+
+    if (segment.conditions === "*") {
+      removeSegments.push(segmentKey);
+    }
   }
 
   // features
@@ -42,6 +48,7 @@ export function buildScopedDatafile(
             originalDatafileReader,
             force.segments,
             context,
+            removeSegments,
           );
         }
 
@@ -67,6 +74,7 @@ export function buildScopedDatafile(
             originalDatafileReader,
             traffic.segments,
             context,
+            removeSegments,
           );
         }
       }
@@ -97,6 +105,7 @@ export function buildScopedDatafile(
                   originalDatafileReader,
                   variableOverride.segments,
                   context,
+                  removeSegments,
                 );
               }
 
@@ -144,10 +153,10 @@ export function buildScopedDatafile(
     scopedDatafileContent.features[featureKey] = feature;
   }
 
-  // Phase 2:
-  //
-  // - remove segments with "*" as conditions, and replace those segments usage with "*" in feature's group segments
-  // - find unused segments and remove them
+  // remove segments
+  for (const removeSegment of removeSegments) {
+    delete scopedDatafileContent.segments[removeSegment];
+  }
 
   return scopedDatafileContent;
 }
