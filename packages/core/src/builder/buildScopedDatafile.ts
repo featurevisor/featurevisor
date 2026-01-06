@@ -125,7 +125,11 @@ export function buildScopedDatafile(
       let lastTraffic: Traffic | undefined;
 
       for (const traffic of feature.traffic) {
-        const shouldAdd = true; // @TODO: implement
+        let shouldAdd = true;
+
+        if (lastTraffic && lastTraffic.segments === "*" && traffic.segments === "*") {
+          shouldAdd = false;
+        }
 
         if (shouldAdd) {
           newTrafficArray.push(traffic);
