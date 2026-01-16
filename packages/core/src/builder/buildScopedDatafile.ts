@@ -137,57 +137,26 @@ export function buildScopedDatafile(
     if (feature.traffic) {
       const newTrafficArray: Traffic[] = [];
 
-      let lastTraffic: Traffic | undefined;
-      let lastOriginalSegments: string | string[] | object | undefined;
-      let consecutiveOriginalStarCount = 0;
+      let lastAddedTraffic: Traffic | undefined;
 
       for (let i = 0; i < feature.traffic.length; i++) {
-        const traffic = feature.traffic[i];
-        const originalSegments = originalTrafficSegments[i];
         let shouldAdd = true;
+        const currentTraffic = feature.traffic[i];
 
-        if (lastTraffic && lastTraffic.segments === "*" && traffic.segments === "*") {
-          // Check if we should merge based on original segments
-          const lastWasOriginalStar = lastOriginalSegments === "*";
-          const currentIsOriginalStar = originalSegments === "*";
-
-          if (lastWasOriginalStar && currentIsOriginalStar) {
-            // Both were "*" from the beginning - always merge
-            shouldAdd = false;
-            consecutiveOriginalStarCount++;
-          } else if (!lastWasOriginalStar && !currentIsOriginalStar) {
-            // Both became "*" - merge them
-            shouldAdd = false;
-          } else if (lastWasOriginalStar && !currentIsOriginalStar) {
-            // Last was "*", current became "*"
-            // If we have 2+ consecutive original "*" entries, keep the one that became "*" separate
-            if (consecutiveOriginalStarCount >= 2) {
-              // Keep this entry (it became "*" after scoping, and we had 2+ original "*" before)
-              shouldAdd = true;
-              consecutiveOriginalStarCount = 0;
-            } else {
-              // Merge them
-              shouldAdd = false;
-            }
-          } else {
-            // Last became "*", current was "*" - merge them
-            shouldAdd = false;
-            consecutiveOriginalStarCount = 1;
-          }
+        if (!lastAddedTraffic) {
+          shouldAdd = true;
         } else {
-          // Reset counter on break
-          consecutiveOriginalStarCount = 0;
+          if (lastAddedTraffic.segments === "*" && currentTraffic.segments === "*") {
+            shouldAdd = false;
+          } else {
+            shouldAdd = true;
+          }
         }
 
         if (shouldAdd) {
-          newTrafficArray.push(traffic);
-          lastTraffic = traffic;
-          lastOriginalSegments = originalSegments;
-          if (originalSegments === "*") {
-            consecutiveOriginalStarCount = 1;
-          } else {
-            consecutiveOriginalStarCount = 0;
-          }
+          newTrafficArray.push(currentTraffic);
+
+          lastAddedTraffic = currentTraffic;
         }
       }
 

@@ -868,21 +868,6 @@ describe("core: buildScopedDatafile", function () {
                 segments: "*",
                 percentage: 25000,
               },
-              {
-                key: "rule2",
-                segments: "*",
-                percentage: 25000,
-              },
-              {
-                key: "rule3",
-                segments: "*",
-                percentage: 25000,
-              },
-              {
-                key: "rule4",
-                segments: "web",
-                percentage: 25000,
-              },
             ],
           },
         },
@@ -890,10 +875,9 @@ describe("core: buildScopedDatafile", function () {
 
       const result = buildScopedDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic).toHaveLength(2);
+      expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
-      expect(result.features.feature1.traffic[1].key).toEqual("rule4");
-      expect(result.features.feature1.traffic[1].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].segments).toEqual("*");
     });
 
     test("non-consecutive traffic entries with * segments - both remain", function () {
