@@ -174,6 +174,8 @@ export async function testProject(
           );
         }
       }
+
+      // @TODO: by tag
     }
   }
 
@@ -194,6 +196,7 @@ export async function testProject(
 
     datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
 
+    // by scope
     if (projectConfig.scopes) {
       for (const scope of projectConfig.scopes) {
         const existingState = await datasource.readState(false);
@@ -219,6 +222,8 @@ export async function testProject(
         datafileContentByEnvironment.set(`scope-${scope.name}`, scopedDatafileContent);
       }
     }
+
+    // @TODO: by tag
   }
 
   const tests = await listEntities<Test>(

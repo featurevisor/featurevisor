@@ -53,13 +53,12 @@ export async function testFeature(
 
     let datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
 
-    if (assertion.scope) {
-      datafileContent = datafileContentByEnvironment.get(
-        assertion.environment
-          ? `${assertion.environment}-scope-${assertion.scope}`
-          : `scope-${assertion.scope}`,
-      );
+    const scopedDatafileKey = `${assertion.environment}-scope-${assertion.scope}`;
+    if (assertion.scope && datafileContentByEnvironment.has(scopedDatafileKey)) {
+      datafileContent = datafileContentByEnvironment.get(scopedDatafileKey);
     }
+
+    // @TODO: do similar like `scope`, but for `tag`
 
     if (options.showDatafile) {
       console.log("");
