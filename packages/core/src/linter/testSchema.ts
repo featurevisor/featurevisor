@@ -84,6 +84,7 @@ export function getTestsZodSchema(
                   }),
                 )
               : z.never().optional(),
+            // @TODO: add tag later, similar to `scope` below
             scope: z
               .string()
               .refine(
