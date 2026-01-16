@@ -33,13 +33,13 @@ export interface ExecutionResult {
 }
 
 // the key can be either "<EnvironmentKey>" or "<EnvironmentKey>scope-<Scope>"
-export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
+export type DatafileContentByKey = Map<string | false, DatafileContent>;
 
 export async function executeTest(
   test: Test,
   deps: Dependencies,
   options: TestProjectOptions,
-  datafileContentByEnvironment: DatafileContentByEnvironment,
+  datafileContentByKey: DatafileContentByKey,
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
@@ -75,7 +75,7 @@ export async function executeTest(
       projectConfig,
       tAsFeature,
       options,
-      datafileContentByEnvironment,
+      datafileContentByKey,
     );
   }
 
@@ -125,7 +125,7 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  const datafileContentByEnvironment: DatafileContentByEnvironment = new Map();
+  const datafileContentByKey: DatafileContentByKey = new Map();
 
   // with environments
   if (Array.isArray(projectConfig.environments)) {
@@ -143,7 +143,7 @@ export async function testProject(
         existingState,
       );
 
-      datafileContentByEnvironment.set(environment, datafileContent as DatafileContent);
+      datafileContentByKey.set(environment, datafileContent as DatafileContent);
 
       // by scope
       if (projectConfig.scopes) {
@@ -168,10 +168,7 @@ export async function testProject(
             scope.context,
           );
 
-          datafileContentByEnvironment.set(
-            `${environment}-scope-${scope.name}`,
-            scopedDatafileContent,
-          );
+          datafileContentByKey.set(`${environment}-scope-${scope.name}`, scopedDatafileContent);
         }
       }
 
@@ -194,7 +191,7 @@ export async function testProject(
       existingState,
     );
 
-    datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
+    datafileContentByKey.set(false, datafileContent as DatafileContent);
 
     // by scope
     if (projectConfig.scopes) {
@@ -219,7 +216,7 @@ export async function testProject(
           scope.context,
         );
 
-        datafileContentByEnvironment.set(`scope-${scope.name}`, scopedDatafileContent);
+        datafileContentByKey.set(`scope-${scope.name}`, scopedDatafileContent);
       }
     }
 
@@ -240,7 +237,7 @@ export async function testProject(
   );
 
   for (const test of tests) {
-    const executionResult = await executeTest(test, deps, options, datafileContentByEnvironment);
+    const executionResult = await executeTest(test, deps, options, datafileContentByKey);
 
     if (!executionResult) {
       continue;

@@ -17,14 +17,14 @@ import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
 
 import { checkIfArraysAreEqual, checkIfObjectsAreEqual } from "./helpers";
-import type { DatafileContentByEnvironment } from "./testProject";
+import type { DatafileContentByKey } from "./testProject";
 
 export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
   options: { verbose?: boolean; quiet?: boolean; showDatafile?: boolean; [key: string]: any } = {},
-  datafileContentByEnvironment: DatafileContentByEnvironment,
+  datafileContentByKey: DatafileContentByKey,
 ): Promise<TestResult> {
   const testStartTime = Date.now();
   const featureKey = test.feature;
@@ -51,11 +51,11 @@ export async function testFeature(
       errors: [],
     };
 
-    let datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
+    let datafileContent = datafileContentByKey.get(assertion.environment || false);
 
     const scopedDatafileKey = `${assertion.environment}-scope-${assertion.scope}`;
-    if (assertion.scope && datafileContentByEnvironment.has(scopedDatafileKey)) {
-      datafileContent = datafileContentByEnvironment.get(scopedDatafileKey);
+    if (assertion.scope && datafileContentByKey.has(scopedDatafileKey)) {
+      datafileContent = datafileContentByKey.get(scopedDatafileKey);
     }
 
     // @TODO: do similar like `scope`, but for `tag`
