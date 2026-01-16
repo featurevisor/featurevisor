@@ -143,14 +143,12 @@ export function buildScopedDatafile(
         let shouldAdd = true;
         const currentTraffic = feature.traffic[i];
 
-        if (!lastAddedTraffic) {
-          shouldAdd = true;
-        } else {
-          if (lastAddedTraffic.segments === "*" && currentTraffic.segments === "*") {
-            shouldAdd = false;
-          } else {
-            shouldAdd = true;
-          }
+        if (
+          lastAddedTraffic &&
+          lastAddedTraffic.segments === "*" &&
+          currentTraffic.segments === "*"
+        ) {
+          shouldAdd = false;
         }
 
         if (shouldAdd) {
