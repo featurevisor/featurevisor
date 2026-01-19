@@ -117,6 +117,36 @@ What's happening above is, we are letting Featurevisor know to:
 - and removing redundant rules that do not apply
 - after applying the partially known context `{ platform: "ios" }`
 
+## Complex scenarios
+
+While above scenario is quite simple, scopes can be created for more complex scenarios as well with larger contexts.
+
+Imagine creating a scope for:
+
+- iOS users
+- in the Netherlands
+- who are on a premium subscription plan
+
+In that case, the scope configuration would look like this:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  // ...
+
+  scopes: [
+    {
+      name: "ios-nl-premium",
+      tag: "ios",
+      context: {
+        platform: "ios",
+        country: "nl",
+        subscription: "premium"
+      },
+    },
+  ],
+}
+```
+
 ## Build scoped datafiles
 
 Run the same `build` command as usual:
