@@ -22,6 +22,7 @@ export interface TestProjectOptions {
   onlyFailures?: boolean;
   schemaVersion?: string;
   inflate?: number;
+  withScopes?: boolean;
 }
 
 export interface ExecutionResult {
@@ -146,7 +147,7 @@ export async function testProject(
       datafileContentByKey.set(environment, datafileContent as DatafileContent);
 
       // by scope
-      if (projectConfig.scopes) {
+      if (projectConfig.scopes && options.withScopes) {
         for (const scope of projectConfig.scopes) {
           const existingState = await datasource.readState(environment);
           const datafileContent = await buildDatafile(
@@ -194,7 +195,7 @@ export async function testProject(
     datafileContentByKey.set(false, datafileContent as DatafileContent);
 
     // by scope
-    if (projectConfig.scopes) {
+    if (projectConfig.scopes && options.withScopes) {
       for (const scope of projectConfig.scopes) {
         const existingState = await datasource.readState(false);
         const datafileContent = await buildDatafile(
