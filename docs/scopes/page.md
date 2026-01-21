@@ -189,4 +189,48 @@ const f = createInstance({
 
 ## Testing scopes
 
-@TODO
+Because scopes produce separate [datafiles](/docs/building-datafiles), it is important that we have the ability to [test](/docs/testing/) our feature assertions against the scoped datafiles.
+
+When defining your test specs for features, you can optionally opt to test with scopes by passing the `scope` property to the assertion:
+
+```yml {% path="tests/features/showBanner.spec.yml" %}
+feature: showBanner
+assertions:
+  ##
+  # Testing without scopes
+  #
+  - at: 10
+    environment: production
+    context:
+      platform: web
+    expectedToBeEnabled: true
+
+  ##
+  # Testing with scopes
+  #
+  - scope: browsers # the name of the scope to test against
+    at: 10
+    context: {} # no additional context is needed to be passed
+    expectedToBeEnabled: true
+```
+
+## Running tests with scopes
+
+Because scoped datafiles are separate from [tagged datafiles](/docs/tags/) and require additional build step, we need to pass the `--with-scopes` option when testing:
+
+```{% title="Command" %}
+$ npx featurevisor test --with-scopes
+```
+
+If we do not pass this option, the tests will still run and succeed, but the scope's context will be fed to the evaluation context to imitate the behavior of testing with scopes, without actually building the scoped datafiles in memory.
+
+## Benefits
+
+If you have a complex product with feature configuration targeting:
+
+- Several countries
+- Several device types
+- Several subscription plans
+- ...many more
+
+Then scopes can help generate more targeted datafiles that are significantly smaller in size, reducing the amount of data that needs to be downloaded and parsed by your application in the runtime.
