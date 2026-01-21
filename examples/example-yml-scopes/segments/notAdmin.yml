@@ -1,0 +1,6 @@
+description: Users who are NOT admins
+conditions:
+  not:
+    - attribute: userRole
+      operator: equals
+      value: admin

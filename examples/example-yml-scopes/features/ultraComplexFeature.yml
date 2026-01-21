@@ -1,0 +1,191 @@
+description: Ultra complex feature with deeply nested segments, multiple rules, force entries, and variable overrides
+tags:
+  - all
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+variablesSchema:
+  theme:
+    type: string
+    defaultValue: light
+  fontSize:
+    type: integer
+    defaultValue: 14
+  layout:
+    type: string
+    defaultValue: standard
+  animation:
+    type: string
+    defaultValue: none
+
+variations:
+  - value: control
+    weight: 40
+    variables:
+      theme: light
+      fontSize: 14
+      layout: standard
+      animation: none
+    variableOverrides:
+      theme:
+        - value: dark
+          segments: premiumUsers
+        - value: auto
+          segments: chromeUsers
+        - value: dark
+          segments:
+            and: [premiumUsers, chromeUsers]
+      fontSize:
+        - value: 16
+          segments: premiumUsers
+        - value: 18
+          segments: premiumChromeUsers
+      layout:
+        - value: compact
+          segments:
+            or: [premiumUsers, adminUsers]
+        - value: expanded
+          segments: chromeUsers
+      animation:
+        - value: fade
+          segments:
+            and: [premiumUsers, chromeUsers]
+
+  - value: treatment
+    weight: 40
+    variables:
+      theme: dark
+      fontSize: 16
+      layout: expanded
+      animation: slide
+    variableOverrides:
+      theme:
+        - value: light
+          segments: premiumUsers
+        - value: dark
+          segments:
+            or: [chromeUsers, firefoxUsers]
+      fontSize:
+        - value: 18
+          segments: premiumChromeUsers
+        - value: 20
+          segments:
+            and: [premiumUsers, adminUsers]
+      layout:
+        - value: minimal
+          segments: chromeUsers
+        - value: full
+          segments:
+            or: [premiumUsers, adminUsers]
+
+  - value: experimental
+    weight: 20
+    variables:
+      theme: auto
+      fontSize: 14
+      layout: minimal
+      animation: none
+    variableOverrides:
+      theme:
+        - value: dark
+          segments: premiumChromeUsers
+      fontSize:
+        - value: 16
+          segments:
+            and: [premiumUsers, chromeUsers]
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    # Premium Chrome users - highest priority
+    - key: premium-chrome-complex
+      segments:
+        and: [premiumUsers, chromeUsers]
+      percentage: 100
+
+    # Premium OR Admin users
+    - key: premium-or-admin
+      segments:
+        or: [premiumUsers, adminUsers]
+      percentage: 90
+
+    # Premium users on web or mobile
+    - key: premium-web-mobile
+      segments: premiumWebOrMobile
+      percentage: 85
+
+    # Chrome OR Firefox browsers
+    - key: chrome-or-firefox
+      segments:
+        or: [chromeUsers, chromeOrFirefox]
+      percentage: 75
+
+    # Non-premium Chrome users
+    - key: non-premium-chrome
+      segments: nonPremiumChrome
+      percentage: 65
+
+    # Chrome users (simple)
+    - key: chrome-simple
+      segments: chromeUsers
+      percentage: 55
+
+    # Premium users (simple)
+    - key: premium-simple
+      segments: premiumUsers
+      percentage: 45
+
+    # Not admin users
+    - key: not-admin
+      segments: notAdmin
+      percentage: 35
+
+    # Complex nested segment
+    - key: complex-nested
+      segments: complexNested
+      percentage: 25
+
+    # Everyone else
+    - key: everyone-else
+      segments: "*"
+      percentage: 15
+
+force:
+  production:
+    # Premium Chrome users with admin role get experimental (most specific, must come first)
+    - segments:
+          and: [premiumChromeUsers, adminUsers]
+      enabled: true
+      variation: experimental
+      variables:
+        theme: dark
+        fontSize: 18
+        layout: full
+
+    # Premium OR Admin on Chrome (must come before general admin)
+    - segments:
+          and:
+            - or: [premiumUsers, adminUsers]
+            - chromeUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 18
+
+    # Admin users always get treatment (general case, comes last)
+    - segments: adminUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 20
+        layout: full
+        animation: slide

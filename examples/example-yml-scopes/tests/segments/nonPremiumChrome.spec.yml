@@ -1,0 +1,49 @@
+segment: nonPremiumChrome
+assertions:
+  - description: Free Chrome user should match
+    context:
+      subscription: free
+      browser: chrome
+    expectedToMatch: true
+
+  - description: Basic Chrome user should match
+    context:
+      subscription: basic
+      browser: chrome
+    expectedToMatch: true
+
+  - description: Premium Chrome user should NOT match
+    context:
+      subscription: premium
+      browser: chrome
+    expectedToMatch: false
+
+  - description: Free Firefox user should NOT match
+    context:
+      subscription: free
+      browser: firefox
+    expectedToMatch: false
+
+  - description: Premium Firefox user should NOT match
+    context:
+      subscription: premium
+      browser: firefox
+    expectedToMatch: false
+
+  - matrix:
+      subscription: [free, basic]
+      browser: [chrome]
+    description: ${{ subscription }} Chrome user should match
+    context:
+      subscription: ${{ subscription }}
+      browser: ${{ browser }}
+    expectedToMatch: true
+
+  - matrix:
+      subscription: [premium]
+      browser: [chrome, firefox, safari]
+    description: Premium ${{ browser }} user should NOT match
+    context:
+      subscription: ${{ subscription }}
+      browser: ${{ browser }}
+    expectedToMatch: false

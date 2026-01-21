@@ -1,0 +1,9 @@
+description: Premium users OR admin users
+conditions:
+  or:
+    - attribute: subscription
+      operator: equals
+      value: premium
+    - attribute: userRole
+      operator: equals
+      value: admin

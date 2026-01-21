@@ -1,0 +1,46 @@
+segment: premiumOrAdmin
+assertions:
+  - description: Premium user should match
+    context:
+      subscription: premium
+    expectedToMatch: true
+
+  - description: Admin user should match
+    context:
+      userRole: admin
+    expectedToMatch: true
+
+  - description: Premium admin user should match
+    context:
+      subscription: premium
+      userRole: admin
+    expectedToMatch: true
+
+  - description: Free user should not match
+    context:
+      subscription: free
+      userRole: user
+    expectedToMatch: false
+
+  - description: Regular user should not match
+    context:
+      userRole: user
+    expectedToMatch: false
+
+  - matrix:
+      subscription: [premium]
+      userRole: [user, admin, guest]
+    description: Premium user with role ${{ userRole }} should match
+    context:
+      subscription: ${{ subscription }}
+      userRole: ${{ userRole }}
+    expectedToMatch: true
+
+  - matrix:
+      subscription: [free, basic]
+      userRole: [admin]
+    description: Admin user with subscription ${{ subscription }} should match
+    context:
+      subscription: ${{ subscription }}
+      userRole: ${{ userRole }}
+    expectedToMatch: true

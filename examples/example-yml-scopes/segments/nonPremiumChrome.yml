@@ -1,0 +1,10 @@
+description: Chrome users who are NOT premium
+conditions:
+  and:
+    - attribute: browser
+      operator: equals
+      value: chrome
+    - not:
+        - attribute: subscription
+          operator: equals
+          value: premium

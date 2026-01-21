@@ -1,0 +1,5 @@
+description: Users on Firefox browser
+conditions:
+  - attribute: browser
+    operator: equals
+    value: firefox
