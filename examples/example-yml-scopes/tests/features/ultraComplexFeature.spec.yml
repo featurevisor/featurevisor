@@ -442,7 +442,7 @@ assertions:
 
   ##
   # Variable overrides - Treatment variation with premium users
-  # Note: At 90%, with 40/40/20 weights (control/treatment/experimental), 
+  # Note: At 90%, with 40/40/20 weights (control/treatment/experimental),
   # 0-40% = control, 40-80% = treatment, 80-100% = experimental
   # So 90% falls in experimental range
   - at: 90

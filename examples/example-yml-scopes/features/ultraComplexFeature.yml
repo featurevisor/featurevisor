@@ -161,7 +161,7 @@ force:
   production:
     # Premium Chrome users with admin role get experimental (most specific, must come first)
     - segments:
-          and: [premiumChromeUsers, adminUsers]
+        and: [premiumChromeUsers, adminUsers]
       enabled: true
       variation: experimental
       variables:
@@ -171,9 +171,9 @@ force:
 
     # Premium OR Admin on Chrome (must come before general admin)
     - segments:
-          and:
-            - or: [premiumUsers, adminUsers]
-            - chromeUsers
+        and:
+          - or: [premiumUsers, adminUsers]
+          - chromeUsers
       enabled: true
       variation: treatment
       variables:
