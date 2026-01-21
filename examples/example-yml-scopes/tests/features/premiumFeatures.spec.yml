@@ -1,0 +1,54 @@
+feature: premiumFeatures
+assertions:
+  ##
+  # Staging - everyone enabled
+  #
+  - at: 50
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  - at: 50
+    environment: staging
+    context:
+      subscription: premium
+    expectedToBeEnabled: true
+
+  - at: 50
+    environment: staging
+    context:
+      subscription: free
+    expectedToBeEnabled: true
+
+  ##
+  # Production - premium users only
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, premium user should be enabled"
+    context:
+      subscription: premium
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, free user should be disabled"
+    context:
+      subscription: free
+    expectedToBeEnabled: false
+
+  ##
+  # Testing with premium scope
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    scope: premium
+    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    context: {}
+    expectedToBeEnabled: true

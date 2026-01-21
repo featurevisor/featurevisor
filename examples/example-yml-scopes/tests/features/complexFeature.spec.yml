@@ -1,0 +1,226 @@
+feature: complexFeature
+assertions:
+  ##
+  # Staging - everyone enabled
+  #
+  - at: 50
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  ##
+  # Production - premium Chrome users (100%)
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, premium Chrome user should be enabled"
+    context:
+      subscription: premium
+      browser: chrome
+    expectedToBeEnabled: true
+
+  ##
+  # Production - premium only users (80%)
+  #
+  - matrix:
+      at: [10, 50, 70]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, premium non-Chrome user should be enabled"
+    context:
+      subscription: premium
+      browser: firefox
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [81, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, premium non-Chrome user should be disabled"
+    context:
+      subscription: premium
+      browser: firefox
+    expectedToBeEnabled: false
+
+  ##
+  # Production - Chrome only users (60%)
+  #
+  - matrix:
+      at: [10, 50]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, Chrome non-premium user should be enabled"
+    context:
+      subscription: free
+      browser: chrome
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [61, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, Chrome non-premium user should be disabled"
+    context:
+      subscription: free
+      browser: chrome
+    expectedToBeEnabled: false
+
+  ##
+  # Production - everyone else (30%)
+  #
+  - matrix:
+      at: [10, 20]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, regular user should be enabled"
+    context:
+      subscription: free
+      browser: firefox
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [40, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, regular user should be disabled"
+    context:
+      subscription: free
+      browser: firefox
+    expectedToBeEnabled: false
+
+  ##
+  # Force - admin users always get treatment
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, admin user should be enabled with treatment variation"
+    context:
+      userId: "admin-user-123"
+      userRole: admin
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      theme: dark
+      fontSize: 18
+
+  ##
+  # Variations and variable overrides - premium users (control variation)
+  #
+  - at: 10
+    environment: production
+    description: "Premium user at 10% should get control variation with dark theme override"
+    context:
+      userId: "premium-user-123"
+      subscription: premium
+      browser: firefox
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      theme: dark
+      fontSize: 16
+
+  ##
+  # Variations and variable overrides - Chrome users (control variation)
+  #
+  - at: 10
+    environment: production
+    description: "Chrome user at 10% should get control variation with auto theme override"
+    context:
+      userId: "chrome-user-123"
+      subscription: free
+      browser: chrome
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      theme: auto
+      fontSize: 14
+
+  ##
+  # Variations and variable overrides - premium Chrome users (control variation)
+  #
+  - at: 10
+    environment: production
+    description: "Premium Chrome user at 10% should get control variation with premium overrides"
+    context:
+      userId: "premium-chrome-user-123"
+      subscription: premium
+      browser: chrome
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      theme: dark
+      fontSize: 16
+
+  ##
+  # Variations and variable overrides - premium Chrome users (treatment variation)
+  #
+  - at: 90
+    environment: production
+    description: "Premium Chrome user at 90% should get treatment variation with premium Chrome overrides"
+    context:
+      userId: "premium-chrome-user-456"
+      subscription: premium
+      browser: chrome
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      theme: light
+      fontSize: 18
+
+  ##
+  # Testing with premium scope
+  #
+  - matrix:
+      at: [10, 50, 70]
+    at: ${{ at }}
+    environment: production
+    scope: premium
+    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [81, 90]
+    at: ${{ at }}
+    environment: production
+    scope: premium
+    description: "At ${{ at }}% in production with premium scope, should be disabled"
+    context: {}
+    expectedToBeEnabled: false
+
+  ##
+  # Testing with chrome scope
+  #
+  - matrix:
+      at: [10, 50]
+    at: ${{ at }}
+    environment: production
+    scope: chrome
+    description: "At ${{ at }}% in production with chrome scope, should be enabled"
+    context: {}
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [61, 90]
+    at: ${{ at }}
+    environment: production
+    scope: chrome
+    description: "At ${{ at }}% in production with chrome scope, should be disabled"
+    context: {}
+    expectedToBeEnabled: false
+
+  ##
+  # Testing with premium-chrome scope
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    scope: premium-chrome
+    description: "At ${{ at }}% in production with premium-chrome scope, should be enabled"
+    context: {}
+    expectedToBeEnabled: true

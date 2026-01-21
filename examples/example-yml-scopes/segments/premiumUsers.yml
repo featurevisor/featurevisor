@@ -1,0 +1,5 @@
+description: Users with premium subscription
+conditions:
+  - attribute: subscription
+    operator: equals
+    value: premium

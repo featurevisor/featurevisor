@@ -1,0 +1,76 @@
+description: Complex feature with variations and variable overrides
+tags:
+  - all
+  - web
+  - ios
+
+bucketBy: userId
+
+variablesSchema:
+  theme:
+    type: string
+    defaultValue: light
+  fontSize:
+    type: integer
+    defaultValue: 14
+
+variations:
+  - value: control
+    weight: 50
+    variables:
+      theme: light
+      fontSize: 14
+    variableOverrides:
+      theme:
+        - value: dark
+          segments: premiumUsers
+        - value: auto
+          segments: chromeUsers
+      fontSize:
+        - value: 16
+          segments: premiumUsers
+
+  - value: treatment
+    weight: 50
+    variables:
+      theme: dark
+      fontSize: 16
+    variableOverrides:
+      theme:
+        - value: light
+          segments: premiumUsers
+      fontSize:
+        - value: 18
+          segments: premiumChromeUsers
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: premium-chrome
+      segments: premiumChromeUsers
+      percentage: 100
+
+    - key: premium-only
+      segments: premiumUsers
+      percentage: 80
+
+    - key: chrome-only
+      segments: chromeUsers
+      percentage: 60
+
+    - key: everyone-else
+      segments: "*"
+      percentage: 30
+
+force:
+  production:
+    - segments: adminUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 18

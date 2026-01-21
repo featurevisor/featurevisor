@@ -1,0 +1,5 @@
+description: Users on Chrome browser
+conditions:
+  - attribute: browser
+    operator: equals
+    value: chrome

@@ -1,0 +1,2 @@
+description: Browser type (chrome, firefox, safari, edge)
+type: string

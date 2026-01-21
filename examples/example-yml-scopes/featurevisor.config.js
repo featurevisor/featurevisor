@@ -46,6 +46,26 @@ module.exports = {
       },
       context: {},
     },
+
+    // new scopes for subscription and browser
+    {
+      name: "premium",
+      tag: "all",
+      context: { subscription: "premium" },
+    },
+    {
+      name: "chrome",
+      tag: "web",
+      context: { browser: "chrome" },
+    },
+    {
+      name: "premium-chrome",
+      tag: "web",
+      context: {
+        subscription: "premium",
+        browser: "chrome",
+      },
+    },
   ],
   prettyState: true,
   prettyDatafile: true, // enabled for readability while developing

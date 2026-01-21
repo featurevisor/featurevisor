@@ -1,0 +1,51 @@
+feature: browserOptimization
+assertions:
+  ##
+  # Staging - everyone enabled
+  #
+  - at: 50
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  ##
+  # Production - Chrome users
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, Chrome user should be enabled"
+    context:
+      browser: chrome
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 50]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, Firefox user should be enabled"
+    context:
+      browser: firefox
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [60, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, Firefox user should be disabled"
+    context:
+      browser: firefox
+    expectedToBeEnabled: false
+
+  ##
+  # Testing with chrome scope
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    scope: chrome
+    description: "At ${{ at }}% in production with chrome scope, should be enabled"
+    context: {}
+    expectedToBeEnabled: true
