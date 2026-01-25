@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/featurevisor/featurevisor/compare/v2.5.0...v2.6.0) (2026-01-25)
+
+
+### Features
+
+* Scopes ([#379](https://github.com/featurevisor/featurevisor/issues/379)) ([363f0ce](https://github.com/featurevisor/featurevisor/commit/363f0ce77fa5bfaf152c4098135c3d8bdb96af14))
+
+
+
+
+
 # [2.5.0](https://github.com/featurevisor/featurevisor/compare/v2.4.0...v2.5.0) (2025-12-28)
 
 
