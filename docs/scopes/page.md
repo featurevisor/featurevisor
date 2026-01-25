@@ -11,7 +11,7 @@ nextjs:
         - url: /img/og/docs-scopes.png
 ---
 
-Scopes allow you to create more targeted and smaller datafiles. {% .lead %}
+Scopes are a way to generate smaller and more optimized [datafiles](/docs/building-datafiles/) for your applications to achieve quicker downloads, reduced memory footprint, and faster local evaluations. {% .lead %}
 
 ![Scopes](/img/og/docs-scopes.png)
 
@@ -23,7 +23,7 @@ Featurevisor always supported:
 - Allowing creation of [datafiles](/docs/building-datafiles) per each tag
 - Enabling individual application(s) to load only the features they [need](/docs/sdks/javascript)
 
-But that still meant the application(s) had to fetch all the [rules](/docs/features/#rules) belonging to those tagged [features](/docs/features), even if some of those rules (and their corresponding [segments](/docs/segments)) are not relevant for intended application and its users.
+But that still meant the application(s) had to fetch all the [rules](/docs/features/#rules) belonging to those tagged [features](/docs/features), even if some of those rules (and their corresponding [segments](/docs/segments)) were not relevant for intended application and its users.
 
 ## Example scenario
 
@@ -87,7 +87,7 @@ datafiles/
 
 Even though the datafiles are created per each [tag](/docs/tags/), the features inside them still contain all three rules for all three segments.
 
-But our iOS application already knows that the user is on an iOS device, so it didn't have to load the rules for `web` and `android` segments targeting the `platform` attribute.
+But our web application already knows that the user is in a web browser, so it didn't have to load the rules for `ios` and `android` segments targeting the `platform` attribute.
 
 This is where scopes come in handy.
 
@@ -112,13 +112,13 @@ module.exports = {
   scopes: [
     // we are letting Featurevisor know to
     // create a new scoped datafile
-    // by picking features tagged with `ios`
+    // by picking features tagged with `web`
     // and removing redundant rules that do not matter
-    // after applying the partially known context `{ platform: "ios" }`
+    // after applying the partially known context `{ platform: "web" }`
     {
-      name: "ios",
-      tag: "ios",
-      context: { platform: "ios" },
+      name: "browsers",
+      tag: "web",
+      context: { platform: "web" },
     },
   ],
 }
@@ -127,9 +127,9 @@ module.exports = {
 What's happening above is, we are letting Featurevisor know to:
 
 - create a new scoped datafile (next to existing tagged ones)
-- by picking features tagged with `ios`
+- by picking features tagged with `web`
 - and removing redundant rules and segments from them
-- after applying the partially known context `{ platform: "ios" }`
+- after applying the partially known context `{ platform: "web" }`
 
 ## Complex scenarios
 
@@ -137,7 +137,7 @@ While above scenario is quite simple, scopes can also be created for more comple
 
 Imagine creating a scope for:
 
-- iOS users
+- web users
 - in the Netherlands
 - who are on a premium subscription plan
 
@@ -145,7 +145,7 @@ The partially known context could be expressed like this below:
 
 ```js
 const context = {
-  platform: "ios",
+  platform: "web",
   country: "nl",
   subscription: "premium",
 }
@@ -159,10 +159,10 @@ module.exports = {
 
   scopes: [
     {
-      name: "ios-nl-premium",
-      tag: "ios",
+      name: "browsers-nl-premium",
+      tag: "web",
       context: {
-        platform: "ios",
+        platform: "web",
         country: "nl",
         subscription: "premium"
       },
@@ -184,15 +184,15 @@ You will now find the new scoped datafile in the `datafiles` directory:
 ```{% title="Directory structure" highlight="3" %}
 datafiles/
 ├── production/
-│   └── featurevisor-scope-ios.json
+│   └── featurevisor-scope-browsers.json
 │   └── featurevisor-tag-web.json
 │   └── featurevisor-tag-ios.json
 │   └── featurevisor-tag-android.json
 ```
 
-Notice the new scoped datafile `featurevisor-scope-ios.json`.
+Notice the new scoped datafile `featurevisor-scope-browsers.json`.
 
-Unlike the tagged datafile `featurevisor-tag-ios.json`, the scoped datafile does not contain the rules for the `web` and `android` segments anymore.
+Unlike the tagged datafile `featurevisor-tag-web.json`, the scoped datafile does not contain the rules for the `ios` and `android` segments anymore.
 
 This is because the scoped datafile is created after applying the partially known context to all the relevant features and segments, and removes anything that are not needed any more.
 
@@ -205,7 +205,7 @@ Consume the new scoped datafile just like how you would a tagged one:
 ```js {% path="your-app/index.js" highlight="3" %}
 import { createInstance } from '@featurevisor/sdk'
 
-const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-scope-ios.json'
+const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-scope-browsers.json'
 const datafileContent = await fetch(datafileUrl).then((res) => res.json())
 
 const f = createInstance({
@@ -256,23 +256,90 @@ It is opt-in only for improved confidence level.
 
 ## Advanced scopes
 
-Picking features in scopes can go beyond specifying a single tag.
-
-### All features
-
-@TODO
+Picking features in scopes can go beyond specifying a single tag alone.
 
 ### Single tag
 
-@TODO
+To include features of a single tag:
+
+```js {% path="featurevisor.config.js" highlight="7" %}
+module.exports = {
+  // ...
+
+  scopes: [
+    {
+      name: 'browsers',
+      tag: 'web',
+      context: { platform: 'web' },
+    },
+  ],
+}
+```
 
 ### Multiple tags
 
-@TODO
+To include features belonging to multiple tags together (like an AND condition):
+
+```js {% path="featurevisor.config.js" highlight="7-10" %}
+module.exports = {
+  // ...
+
+  scopes: [
+    {
+      name: 'mobile',
+      tags: [
+        'ios',
+        'android',
+      ],
+      context: {},
+    },
+  ],
+}
+```
+
+It is alright for scopes to have an empty `context`, if we don't want any further optimizations.
 
 ### Conditional tags
 
-@TODO
+To include features that matches any of the tags (like an OR condition):
+
+```js {% path="featurevisor.config.js" highlight="7-12" %}
+module.exports = {
+  // ...
+
+  scopes: [
+    {
+      name: 'paid-users',
+      tags: {
+        or: [
+          'ios',
+          'android',
+        ],
+      },
+      context: {},
+    },
+  ],
+}
+```
+
+Similar to `or`, `and` can be used for picking features in a scope having multiple tags together.
+
+### All features
+
+If we wish to include all the features from our Featurevisor [project](/docs/projects), we can skip mentioning the `tag` or `tags` property altogether:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  // ...
+
+  scopes: [
+    {
+      name: 'ios',
+      context: { platform: 'ios' },
+    },
+  ],
+}
+```
 
 ## Benefits
 
@@ -282,10 +349,12 @@ Scopes are perfect for:
 - Global products with country-specific features
 - SaaS products with tiered subscriptions
 - Enterprise products with role-based access
-- Any product where context is known early (device type, user tier, region, etc)
+- Any product where context is partially known early (device type, user tier, region, etc)
 
-They help generate more targeted datafiles that are significantly smaller in size, reducing the amount of data that needs to be:
+They help generate more targeted and optimized [datafiles](/docs/building-datafiles/) that are significantly smaller in size, reducing the amount of data that needs to be:
 
 - **Downloaded**: saving bandwidth costs
-- **Parsed**: improving memory footprint, and
+- **Kept in memory**: improving memory footprint, and
 - **Processed**: avoiding unnecessary computation when evaluating features
+
+All of it resulting in a much faster performance in your applications affecting your users positively.
