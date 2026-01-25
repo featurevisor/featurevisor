@@ -17,14 +17,22 @@ import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";
 
 import { checkIfArraysAreEqual, checkIfObjectsAreEqual } from "./helpers";
-import type { DatafileContentByEnvironment } from "./testProject";
+import type { DatafileContentByKey } from "./testProject";
+
+export interface TestFeatureOptions {
+  verbose?: boolean;
+  quiet?: boolean;
+  showDatafile?: boolean;
+  withScopes?: boolean;
+  [key: string]: any;
+}
 
 export async function testFeature(
   datasource: Datasource,
   projectConfig: ProjectConfig,
   test: TestFeature,
-  options: { verbose?: boolean; quiet?: boolean; showDatafile?: boolean; [key: string]: any } = {},
-  datafileContentByEnvironment: DatafileContentByEnvironment,
+  options: TestFeatureOptions = {},
+  datafileContentByKey: DatafileContentByKey,
 ): Promise<TestResult> {
   const testStartTime = Date.now();
   const featureKey = test.feature;
@@ -51,7 +59,14 @@ export async function testFeature(
       errors: [],
     };
 
-    const datafileContent = datafileContentByEnvironment.get(assertion.environment || false);
+    let datafileContent = datafileContentByKey.get(assertion.environment || false);
+
+    const scopedDatafileKey = `${assertion.environment}-scope-${assertion.scope}`;
+    if (assertion.scope && datafileContentByKey.has(scopedDatafileKey)) {
+      datafileContent = datafileContentByKey.get(scopedDatafileKey);
+    }
+
+    // @TODO: do similar like `scope`, but for `tag`
 
     if (options.showDatafile) {
       console.log("");
@@ -92,15 +107,39 @@ export async function testFeature(
       return testResult;
     }
 
+    let context = {};
+
+    if (assertion.scope) {
+      if (!options.withScopes) {
+        // if not testing with scoped datafiles,
+        // then we need to add the scope's context to the context
+        const scope = projectConfig.scopes?.find((s) => s.name === assertion.scope);
+
+        if (scope) {
+          context = {
+            ...(scope.context || {}),
+            ...context,
+          };
+        }
+      }
+    }
+
     if (assertion.context) {
-      sdk.setContext(assertion.context);
+      context = {
+        ...context,
+        ...assertion.context,
+      };
+    }
+
+    if (context) {
+      sdk.setContext(context);
     }
 
     /**
      * expectedToBeEnabled
      */
     function testExpectedToBeEnabled(sdk, assertion, details = {}) {
-      const isEnabled = sdk.isEnabled(featureKey, assertion.context || {});
+      const isEnabled = sdk.isEnabled(featureKey, context);
 
       if (isEnabled !== assertion.expectedToBeEnabled) {
         testResult.passed = false;
@@ -128,7 +167,7 @@ export async function testFeature(
         overrideOptions.defaultVariationValue = assertion.defaultVariationValue;
       }
 
-      const variation = sdk.getVariation(featureKey, assertion.context || {}, overrideOptions);
+      const variation = sdk.getVariation(featureKey, context, overrideOptions);
 
       if (variation !== assertion.expectedVariation) {
         testResult.passed = false;
@@ -160,12 +199,7 @@ export async function testFeature(
           overrideOptions.defaultVariableValue = assertion.defaultVariableValues[variableKey];
         }
 
-        const actualValue = sdk.getVariable(
-          featureKey,
-          variableKey,
-          assertion.context || {},
-          overrideOptions,
-        );
+        const actualValue = sdk.getVariable(featureKey, variableKey, context, overrideOptions);
 
         let passed;
 
@@ -271,12 +305,12 @@ export async function testFeature(
       }
 
       if (assertion.expectedEvaluations.flag) {
-        const evaluation = sdk.evaluateFlag(featureKey, assertion.context || {});
+        const evaluation = sdk.evaluateFlag(featureKey, context);
         testEvaluation("flag", evaluation, assertion.expectedEvaluations.flag);
       }
 
       if (assertion.expectedEvaluations.variation) {
-        const evaluation = sdk.evaluateVariation(featureKey, assertion.context || {});
+        const evaluation = sdk.evaluateVariation(featureKey, context);
         testEvaluation("variation", evaluation, assertion.expectedEvaluations.variation);
       }
 
@@ -284,7 +318,7 @@ export async function testFeature(
         const variableKeys = Object.keys(assertion.expectedEvaluations.variables);
 
         for (const variableKey of variableKeys) {
-          const evaluation = sdk.evaluateVariable(featureKey, variableKey, assertion.context || {});
+          const evaluation = sdk.evaluateVariable(featureKey, variableKey, context);
           testEvaluation(
             "variable",
             evaluation,

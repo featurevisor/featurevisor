@@ -9,7 +9,7 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
-import { buildDatafile } from "../builder";
+import { buildDatafile, buildScopedDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
@@ -22,6 +22,7 @@ export interface TestProjectOptions {
   onlyFailures?: boolean;
   schemaVersion?: string;
   inflate?: number;
+  withScopes?: boolean;
 }
 
 export interface ExecutionResult {
@@ -32,13 +33,14 @@ export interface ExecutionResult {
   };
 }
 
-export type DatafileContentByEnvironment = Map<string | false, DatafileContent>;
+// the key can be either "<EnvironmentKey>" or "<EnvironmentKey>scope-<Scope>"
+export type DatafileContentByKey = Map<string | false, DatafileContent>;
 
 export async function executeTest(
   test: Test,
   deps: Dependencies,
   options: TestProjectOptions,
-  datafileContentByEnvironment: DatafileContentByEnvironment,
+  datafileContentByKey: DatafileContentByKey,
 ): Promise<ExecutionResult | undefined> {
   const { datasource, projectConfig, rootDirectoryPath } = deps;
 
@@ -74,7 +76,7 @@ export async function executeTest(
       projectConfig,
       tAsFeature,
       options,
-      datafileContentByEnvironment,
+      datafileContentByKey,
     );
   }
 
@@ -124,7 +126,7 @@ export async function testProject(
   let passedAssertionsCount = 0;
   let failedAssertionsCount = 0;
 
-  const datafileContentByEnvironment: DatafileContentByEnvironment = new Map();
+  const datafileContentByKey: DatafileContentByKey = new Map();
 
   // with environments
   if (Array.isArray(projectConfig.environments)) {
@@ -142,7 +144,36 @@ export async function testProject(
         existingState,
       );
 
-      datafileContentByEnvironment.set(environment, datafileContent as DatafileContent);
+      datafileContentByKey.set(environment, datafileContent as DatafileContent);
+
+      // by scope
+      if (projectConfig.scopes && options.withScopes) {
+        for (const scope of projectConfig.scopes) {
+          const existingState = await datasource.readState(environment);
+          const datafileContent = await buildDatafile(
+            projectConfig,
+            datasource,
+            {
+              schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+              revision: "include-scoped-features",
+              environment: environment,
+              inflate: options.inflate,
+              tag: scope.tag,
+              tags: scope.tags,
+            },
+            existingState,
+          );
+
+          const scopedDatafileContent = buildScopedDatafile(
+            datafileContent as DatafileContent,
+            scope.context,
+          );
+
+          datafileContentByKey.set(`${environment}-scope-${scope.name}`, scopedDatafileContent);
+        }
+      }
+
+      // @TODO: by tag
     }
   }
 
@@ -161,7 +192,36 @@ export async function testProject(
       existingState,
     );
 
-    datafileContentByEnvironment.set(false, datafileContent as DatafileContent);
+    datafileContentByKey.set(false, datafileContent as DatafileContent);
+
+    // by scope
+    if (projectConfig.scopes && options.withScopes) {
+      for (const scope of projectConfig.scopes) {
+        const existingState = await datasource.readState(false);
+        const datafileContent = await buildDatafile(
+          projectConfig,
+          datasource,
+          {
+            schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+            revision: "include-scoped-features",
+            environment: false,
+            inflate: options.inflate,
+            tag: scope.tag,
+            tags: scope.tags,
+          },
+          existingState,
+        );
+
+        const scopedDatafileContent = buildScopedDatafile(
+          datafileContent as DatafileContent,
+          scope.context,
+        );
+
+        datafileContentByKey.set(`scope-${scope.name}`, scopedDatafileContent);
+      }
+    }
+
+    // @TODO: by tag
   }
 
   const tests = await listEntities<Test>(
@@ -178,7 +238,7 @@ export async function testProject(
   );
 
   for (const test of tests) {
-    const executionResult = await executeTest(test, deps, options, datafileContentByEnvironment);
+    const executionResult = await executeTest(test, deps, options, datafileContentByKey);
 
     if (!executionResult) {
       continue;

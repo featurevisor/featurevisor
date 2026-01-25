@@ -96,6 +96,13 @@ export function applyCombinationToFeatureAssertion(
     );
   }
 
+  // scope
+  if (flattenedAssertion.scope) {
+    flattenedAssertion.scope = applyCombinationToValue(flattenedAssertion.scope, combination);
+  }
+
+  // @TODO: support `tag` later, similar to `scope` above
+
   return flattenedAssertion;
 }
 

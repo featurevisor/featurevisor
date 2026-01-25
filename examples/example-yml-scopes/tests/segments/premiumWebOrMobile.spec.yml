@@ -1,0 +1,49 @@
+segment: premiumWebOrMobile
+assertions:
+  - description: Premium web user should match
+    context:
+      subscription: premium
+      platform: web
+    expectedToMatch: true
+
+  - description: Premium iOS user should match
+    context:
+      subscription: premium
+      platform: ios
+    expectedToMatch: true
+
+  - description: Premium Android user should match
+    context:
+      subscription: premium
+      platform: android
+    expectedToMatch: true
+
+  - description: Free web user should NOT match
+    context:
+      subscription: free
+      platform: web
+    expectedToMatch: false
+
+  - description: Premium desktop user should NOT match
+    context:
+      subscription: premium
+      platform: desktop
+    expectedToMatch: false
+
+  - matrix:
+      subscription: [premium]
+      platform: [web, ios, android]
+    description: Premium ${{ platform }} user should match
+    context:
+      subscription: ${{ subscription }}
+      platform: ${{ platform }}
+    expectedToMatch: true
+
+  - matrix:
+      subscription: [free, basic]
+      platform: [web, ios, android]
+    description: ${{ subscription }} ${{ platform }} user should NOT match
+    context:
+      subscription: ${{ subscription }}
+      platform: ${{ platform }}
+    expectedToMatch: false

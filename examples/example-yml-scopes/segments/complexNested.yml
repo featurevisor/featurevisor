@@ -1,0 +1,18 @@
+description: Complex nested conditions - (premium AND chrome) OR (admin AND not firefox)
+conditions:
+  or:
+    - and:
+        - attribute: subscription
+          operator: equals
+          value: premium
+        - attribute: browser
+          operator: equals
+          value: chrome
+    - and:
+        - attribute: userRole
+          operator: equals
+          value: admin
+        - not:
+            - attribute: browser
+              operator: equals
+              value: firefox

@@ -3,8 +3,11 @@ import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
+import { buildScopedDatafile } from "./buildScopedDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
+import type { Scope } from "../config";
+
 import type { DatafileContent } from "@featurevisor/types";
 
 export interface BuildCLIOptions {
@@ -20,6 +23,9 @@ export interface BuildCLIOptions {
   stateFiles?: boolean; // --no-state-files in CLI
   inflate?: number;
   datafilesDir?: string;
+
+  tag?: string;
+  scope?: string; // scope name only
 }
 
 async function buildForEnvironment({
@@ -28,6 +34,7 @@ async function buildForEnvironment({
   nextRevision,
   environment,
   tags,
+  scopes,
   cliOptions,
 }: {
   projectConfig: ProjectConfig;
@@ -35,12 +42,14 @@ async function buildForEnvironment({
   nextRevision: string;
   environment: string | false;
   tags: string[];
+  scopes?: Scope[];
   cliOptions: BuildCLIOptions;
 }) {
   console.log(`\nBuilding datafiles for environment: ${environment}`);
 
   const existingState = await datasource.readState(environment);
 
+  // by tag
   for (const tag of tags) {
     console.log(`\n  => Tag: ${tag}`);
 
@@ -66,6 +75,41 @@ async function buildForEnvironment({
     });
   }
 
+  // by scope
+  if (scopes) {
+    for (const scope of scopes) {
+      console.log(`\n  => Scope: ${scope.name}`);
+
+      const datafileContent = await buildDatafile(
+        projectConfig,
+        datasource,
+        {
+          schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
+          revision: nextRevision,
+          revisionFromHash: cliOptions.revisionFromHash,
+          environment: environment,
+          tag: scope.tag,
+          tags: scope.tags,
+          inflate: cliOptions.inflate,
+        },
+        existingState,
+      );
+
+      const scopedDatafileContent = buildScopedDatafile(
+        datafileContent as DatafileContent,
+        scope.context,
+      );
+
+      // write scoped datafile
+      await datasource.writeDatafile(scopedDatafileContent, {
+        environment,
+        tag: scope.tag,
+        scope: scope,
+        datafilesDir: cliOptions.datafilesDir,
+      });
+    }
+  }
+
   if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
     // write state for environment
     await datasource.writeState(environment, existingState);
@@ -89,14 +133,24 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * while tests can be run anywhere else.
    */
   if (cliOptions.environment && cliOptions.json) {
-    const datafileContent = await getCustomDatafile({
+    const scope = cliOptions.scope
+      ? projectConfig.scopes?.find((scope) => scope.name === cliOptions.scope)
+      : undefined;
+
+    let datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
       environment: cliOptions.environment,
       projectConfig,
       datasource,
       revision: cliOptions.revision,
       schemaVersion: cliOptions.schemaVersion,
+      tag: cliOptions.tag,
+      tags: scope?.tags,
     });
+
+    if (scope) {
+      datafileContent = buildScopedDatafile(datafileContent as DatafileContent, scope.context);
+    }
 
     if (cliOptions.pretty) {
       console.log(JSON.stringify(datafileContent, null, 2));
@@ -110,8 +164,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   /**
    * Regular build process that writes to disk.
    */
-  const tags = projectConfig.tags;
-  const environments = projectConfig.environments;
+  const { tags, environments, scopes } = projectConfig;
 
   const currentRevision = await datasource.readRevision();
   console.log("\nCurrent revision:", currentRevision);
@@ -128,6 +181,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         nextRevision,
         environment,
         tags,
+        scopes,
         cliOptions,
       });
     }
@@ -141,6 +195,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       nextRevision,
       environment: false,
       tags,
+      scopes,
       cliOptions,
     });
   }

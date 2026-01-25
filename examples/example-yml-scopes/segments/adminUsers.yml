@@ -1,0 +1,5 @@
+description: Admin users
+conditions:
+  - attribute: userRole
+    operator: equals
+    value: admin

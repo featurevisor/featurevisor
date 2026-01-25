@@ -1,0 +1,17 @@
+description: Checkout feature
+tags:
+  - all
+  - ios
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 0

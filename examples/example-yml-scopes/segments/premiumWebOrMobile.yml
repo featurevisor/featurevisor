@@ -1,0 +1,16 @@
+description: Premium users on web OR mobile platforms
+conditions:
+  and:
+    - attribute: subscription
+      operator: equals
+      value: premium
+    - or:
+        - attribute: platform
+          operator: equals
+          value: web
+        - attribute: platform
+          operator: equals
+          value: ios
+        - attribute: platform
+          operator: equals
+          value: android

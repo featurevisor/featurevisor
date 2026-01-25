@@ -1,0 +1,70 @@
+segment: complexNested
+assertions:
+  - description: Premium Chrome user should match (first OR branch)
+    context:
+      subscription: premium
+      browser: chrome
+    expectedToMatch: true
+
+  - description: Admin non-Firefox user should match (second OR branch)
+    context:
+      userRole: admin
+      browser: chrome
+    expectedToMatch: true
+
+  - description: Admin Safari user should match (second OR branch)
+    context:
+      userRole: admin
+      browser: safari
+    expectedToMatch: true
+
+  - description: Premium Firefox user should NOT match
+    context:
+      subscription: premium
+      browser: firefox
+    expectedToMatch: false
+
+  - description: Admin Firefox user should NOT match
+    context:
+      userRole: admin
+      browser: firefox
+    expectedToMatch: false
+
+  - description: Free Chrome user should NOT match
+    context:
+      subscription: free
+      browser: chrome
+    expectedToMatch: false
+
+  - description: Regular Chrome user should NOT match
+    context:
+      userRole: user
+      browser: chrome
+    expectedToMatch: false
+
+  - matrix:
+      subscription: [premium]
+      browser: [chrome]
+    description: Premium Chrome should match
+    context:
+      subscription: ${{ subscription }}
+      browser: ${{ browser }}
+    expectedToMatch: true
+
+  - matrix:
+      userRole: [admin]
+      browser: [chrome, safari, edge]
+    description: Admin ${{ browser }} should match
+    context:
+      userRole: ${{ userRole }}
+      browser: ${{ browser }}
+    expectedToMatch: true
+
+  - matrix:
+      userRole: [admin]
+      browser: [firefox]
+    description: Admin Firefox should NOT match
+    context:
+      userRole: ${{ userRole }}
+      browser: ${{ browser }}
+    expectedToMatch: false

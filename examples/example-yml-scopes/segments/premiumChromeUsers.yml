@@ -1,0 +1,9 @@
+description: Premium users on Chrome browser
+conditions:
+  and:
+    - attribute: subscription
+      operator: equals
+      value: premium
+    - attribute: browser
+      operator: equals
+      value: chrome

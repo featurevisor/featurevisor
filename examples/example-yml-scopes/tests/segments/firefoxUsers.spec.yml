@@ -1,0 +1,25 @@
+segment: firefoxUsers
+assertions:
+  - description: Firefox user should match
+    context:
+      browser: firefox
+    expectedToMatch: true
+
+  - description: Chrome user should NOT match
+    context:
+      browser: chrome
+    expectedToMatch: false
+
+  - description: Safari user should NOT match
+    context:
+      browser: safari
+    expectedToMatch: false
+
+  - matrix:
+      browser: [firefox]
+      platform: [web]
+    description: Firefox user on ${{ platform }} should match
+    context:
+      browser: ${{ browser }}
+      platform: ${{ platform }}
+    expectedToMatch: true

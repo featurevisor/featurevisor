@@ -1,0 +1,21 @@
+description: Admin dashboard features
+tags:
+  - all
+  - web
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: admin-users
+      segments: adminUsers
+      percentage: 100
+
+    - key: regular-users
+      segments: "*"
+      percentage: 0

@@ -1,0 +1,35 @@
+description: New redesign feature
+tags:
+  - all
+  - web
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: nl-web
+      segments:
+        - netherlands
+        - web
+      percentage: 100
+
+    - key: nl-ios
+      segments:
+        - netherlands
+        - ios
+      percentage: 100
+
+    - key: nl-android
+      segments:
+        - netherlands
+        - android
+      percentage: 100
+
+    - key: everyone
+      segments: "*"
+      percentage: 0

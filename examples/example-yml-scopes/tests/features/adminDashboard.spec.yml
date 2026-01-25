@@ -1,0 +1,39 @@
+feature: adminDashboard
+assertions:
+  ##
+  # Staging - everyone enabled
+  #
+  - at: 50
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  ##
+  # Production - admin users only
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, admin user should be enabled"
+    context:
+      userRole: admin
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, regular user should be disabled"
+    context:
+      userRole: user
+    expectedToBeEnabled: false
+
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    description: "At ${{ at }}% in production, guest user should be disabled"
+    context:
+      userRole: guest
+    expectedToBeEnabled: false

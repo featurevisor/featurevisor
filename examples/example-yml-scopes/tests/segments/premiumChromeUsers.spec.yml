@@ -1,0 +1,25 @@
+segment: premiumChromeUsers
+assertions:
+  - description: Premium Chrome user should match
+    context:
+      subscription: premium
+      browser: chrome
+    expectedToMatch: true
+
+  - description: Premium Firefox user should not match
+    context:
+      subscription: premium
+      browser: firefox
+    expectedToMatch: false
+
+  - description: Free Chrome user should not match
+    context:
+      subscription: free
+      browser: chrome
+    expectedToMatch: false
+
+  - description: Premium Safari user should not match
+    context:
+      subscription: premium
+      browser: safari
+    expectedToMatch: false

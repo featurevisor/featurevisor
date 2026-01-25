@@ -1,0 +1,25 @@
+segment: premiumUsers
+assertions:
+  - description: Premium user should match
+    context:
+      subscription: premium
+    expectedToMatch: true
+
+  - description: Free user should not match
+    context:
+      subscription: free
+    expectedToMatch: false
+
+  - description: Basic user should not match
+    context:
+      subscription: basic
+    expectedToMatch: false
+
+  - matrix:
+      subscription: [premium]
+      platform: [web, ios, android]
+    description: Premium user on ${{ platform }} should match
+    context:
+      subscription: ${{ subscription }}
+      platform: ${{ platform }}
+    expectedToMatch: true

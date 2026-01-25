@@ -7,6 +7,8 @@ export function getTestsZodSchema(
   availableFeatureKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
 ) {
+  const scopeNames = projectConfig.scopes ? projectConfig.scopes.map((scope) => scope.name) : [];
+
   const matrixZodSchema = z.record(
     z.array(
       z.union([
@@ -82,6 +84,16 @@ export function getTestsZodSchema(
                   }),
                 )
               : z.never().optional(),
+            // @TODO: add tag later, similar to `scope` below
+            scope: z
+              .string()
+              .refine(
+                (value) => scopeNames.includes(value),
+                (value) => ({
+                  message: `Unknown scope "${value}"`,
+                }),
+              )
+              .optional(),
 
             // parent
             sticky: z.record(z.record(z.any())).optional(),

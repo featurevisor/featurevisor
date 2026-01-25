@@ -1,0 +1,30 @@
+segment: notAdmin
+assertions:
+  - description: Regular user should match
+    context:
+      userRole: user
+    expectedToMatch: true
+
+  - description: Guest user should match
+    context:
+      userRole: guest
+    expectedToMatch: true
+
+  - description: Admin user should NOT match
+    context:
+      userRole: admin
+    expectedToMatch: false
+
+  - matrix:
+      userRole: [user, guest]
+    description: ${{ userRole }} should match
+    context:
+      userRole: ${{ userRole }}
+    expectedToMatch: true
+
+  - matrix:
+      userRole: [admin]
+    description: ${{ userRole }} should NOT match
+    context:
+      userRole: ${{ userRole }}
+    expectedToMatch: false

@@ -81,6 +81,10 @@ If your project has no [environments](/docs/environments), you can omit the `env
 
 File names of test specs are not important, but we recommend using the same name as the feature key.
 
+### Scopes
+
+Learn more in [Scopes](/docs/scopes) page for testing features against scoped datafiles.
+
 ## Testing segments
 
 Similar to features, we can write test specs to test our segments as well.
@@ -235,6 +239,14 @@ If you are interested to see only the test specs that fail:
 
 ```{% title="Command" %}
 $ npx featurevisor test --onlyFailures
+```
+
+### `withScopes`
+
+To run tests against [scopes](/docs/scopes):
+
+```{% title="Command" %}
+$ npx featurevisor test --withScopes
 ```
 
 ## NPM scripts

@@ -1,0 +1,16 @@
+segment: adminUsers
+assertions:
+  - description: Admin user should match
+    context:
+      userRole: admin
+    expectedToMatch: true
+
+  - description: Regular user should not match
+    context:
+      userRole: user
+    expectedToMatch: false
+
+  - description: Guest user should not match
+    context:
+      userRole: guest
+    expectedToMatch: false

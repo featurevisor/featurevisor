@@ -1,0 +1,9 @@
+description: Chrome OR Firefox browsers
+conditions:
+  or:
+    - attribute: browser
+      operator: equals
+      value: chrome
+    - attribute: browser
+      operator: equals
+      value: firefox

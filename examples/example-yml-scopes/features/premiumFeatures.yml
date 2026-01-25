@@ -1,0 +1,23 @@
+description: Premium features for premium subscribers
+tags:
+  - all
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: premium-users
+      segments: premiumUsers
+      percentage: 100
+
+    - key: regular-users
+      segments: "*"
+      percentage: 0
