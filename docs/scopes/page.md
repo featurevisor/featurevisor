@@ -85,7 +85,7 @@ datafiles/
 
 ### Redundant rules
 
-Even though the datafiles are created per each [tag](/docs/tags/), the features inside them still contain all three rules for all three segments.
+Even though the datafiles are created per each [tag](/docs/tags/), the features inside them still contain all three original rules targeting three different segments.
 
 But our web application already knows that the user is in a web browser, so it didn't have to load the rules for `ios` and `android` segments targeting the `platform` attribute.
 
