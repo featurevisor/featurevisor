@@ -113,6 +113,12 @@ You can optionally override it from CLI:
 $ npx featurevisor build --datafiles-dir=./custom-directory
 ```
 
+## Scopes
+
+The same `build` command will also generate scoped datafiles if you have defined them in your [configuration](/docs/configuration/) file.
+
+Learn more in [Scopes](/docs/scopes) page.
+
 ## Schema version
 
 If you are using older Featurevisor v1 SDKs, you can build datafiles in the v1 schema format by passing the `--schema=version=1` flag:

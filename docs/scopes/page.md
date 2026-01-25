@@ -11,7 +11,7 @@ nextjs:
         - url: /img/og/docs-scopes.png
 ---
 
-Scopes are a way to generate smaller and more optimized [datafiles](/docs/building-datafiles/) for your applications to achieve quicker downloads, reduced memory footprint, and faster local evaluations. {% .lead %}
+Scopes are a way to generate smaller and more optimized [datafiles](/docs/building-datafiles/) for your applications to achieve **quicker downloads**, with a **reduced memory footprint**, and **faster local evaluations**. {% .lead %}
 
 ![Scopes](/img/og/docs-scopes.png)
 

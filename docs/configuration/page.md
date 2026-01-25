@@ -74,6 +74,12 @@ module.exports = {
 
 Read more in [Environments](/docs/environments) page.
 
+### Scopes
+
+Scopes allow creating smaller and more optimized [datafiles](/docs/building-datafiles).
+
+Read more in [Scopes](/docs/scopes) page.
+
 ### `attributesDirectoryPath`
 
 Path to the directory containing your [attributes](/docs/attributes/).
