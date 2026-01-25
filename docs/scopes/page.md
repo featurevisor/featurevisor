@@ -341,6 +341,16 @@ module.exports = {
 }
 ```
 
+## Comparison
+
+To avoid confusing scopes with some other terms used in Featurevisor, it's recommended to learn more about them in depth:
+
+- [Environments](/docs/environments/): different sets of rules per feature, like against staging or production
+- [Tags](/docs/tags): allows tagging individual features, which end up in tagged [datafiles](/docs/building-datafiles/)
+- [Namespaces](/docs/namespaces): purely for hierarchical organization of features, which acts as prefixes of feature keys.
+
+Scopes are used to create smaller datafiles out of bigger (tagged) datafiles.
+
 ## Benefits
 
 Scopes are perfect for:
