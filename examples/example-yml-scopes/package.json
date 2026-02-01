@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "featurevisor lint",
     "build": "featurevisor build",
-    "test": "featurevisor test",
+    "test": "featurevisor test --only-failures && featurevisor test --only-failures --with-scopes",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
