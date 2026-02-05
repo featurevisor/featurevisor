@@ -3,6 +3,64 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.7](https://github.com/featurevisor/featurevisor/compare/v2.6.6...v2.6.7) (2026-02-05)
+
+
+### Bug Fixes
+
+* trigger publish ([00ef864](https://github.com/featurevisor/featurevisor/commit/00ef864de50df54d258e0dccbd010005b18aa338))
+* upgrade to Lerna v9 ([756f3ad](https://github.com/featurevisor/featurevisor/commit/756f3ada646d0ab3d7c2bd685ce7bfe2748b56b2))
+
+
+
+
+
+## [2.6.6](https://github.com/featurevisor/featurevisor/compare/v2.6.5...v2.6.6) (2026-02-05)
+
+**Note:** Version bump only for package featurevisor
+
+
+
+
+
+## [2.6.5](https://github.com/featurevisor/featurevisor/compare/v2.6.4...v2.6.5) (2026-02-05)
+
+**Note:** Version bump only for package featurevisor
+
+
+
+
+
+## [2.6.4](https://github.com/featurevisor/featurevisor/compare/v2.6.3...v2.6.4) (2026-02-05)
+
+**Note:** Version bump only for package featurevisor
+
+
+
+
+
+## [2.6.3](https://github.com/featurevisor/featurevisor/compare/v2.6.2...v2.6.3) (2026-02-05)
+
+
+### Bug Fixes
+
+* trigger publish ([1c9be6a](https://github.com/featurevisor/featurevisor/commit/1c9be6aa5ba10403bedd8a4b7caa54953c72e774))
+
+
+
+
+
+## [2.6.2](https://github.com/featurevisor/featurevisor/compare/v2.6.1...v2.6.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* update types ([#384](https://github.com/featurevisor/featurevisor/issues/384)) ([579049a](https://github.com/featurevisor/featurevisor/commit/579049a2d1efaa17032fe680f83576197cebcf68))
+
+
+
+
+
 ## [2.6.1](https://github.com/featurevisor/featurevisor/compare/v2.6.0...v2.6.1) (2026-02-01)
 
 **Note:** Version bump only for package featurevisor

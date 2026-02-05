@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/react",
-  "version": "2.6.0",
+  "version": "2.6.7",
   "description": "React package for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",
@@ -41,8 +41,8 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "dependencies": {
-    "@featurevisor/sdk": "2.6.0",
-    "@featurevisor/types": "2.6.0"
+    "@featurevisor/sdk": "2.6.7",
+    "@featurevisor/types": "2.6.7"
   },
   "license": "MIT",
   "devDependencies": {

@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   ci:
     name: Publish
@@ -18,6 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -48,7 +53,7 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes
+          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Bump version fallback
         if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
@@ -61,10 +66,15 @@ jobs:
 
           echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
           git stash
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes
+          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Publish
         run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-          npm config set access public
+          unset NODE_AUTH_TOKEN
+          rm -f .npmrc
+          npm config delete always-auth 2>/dev/null || true
           npx lerna publish --no-private from-git --yes
+
+      - name: Push back to GitHub
+        run: |
+          git push --follow-tags
