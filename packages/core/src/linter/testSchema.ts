@@ -84,7 +84,15 @@ export function getTestsZodSchema(
                   }),
                 )
               : z.never().optional(),
-            // @TODO: add tag later, similar to `scope` below
+            tag: z
+              .string()
+              .refine(
+                (value) => projectConfig.tags.includes(value),
+                (value) => ({
+                  message: `Unknown tag "${value}"`,
+                }),
+              )
+              .optional(),
             scope: z
               .string()
               .refine(

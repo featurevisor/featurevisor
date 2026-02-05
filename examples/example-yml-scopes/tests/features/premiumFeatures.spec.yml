@@ -52,3 +52,25 @@ assertions:
     description: "At ${{ at }}% in production with premium scope, should be enabled"
     context: {}
     expectedToBeEnabled: true
+
+  ##
+  # Testing against tag: web
+  #
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    tag: web
+    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    context:
+      subscription: premium
+    expectedToBeEnabled: true
+
+  - matrix:
+      at: [10, 50, 90]
+    at: ${{ at }}
+    environment: production
+    tag: web
+    description: "At ${{ at }}% in production, should be disabled"
+    context: {}
+    expectedToBeEnabled: false

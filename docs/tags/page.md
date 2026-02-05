@@ -78,3 +78,27 @@ const f = createInstance({
 ```
 
 Learn more about [SDKs](/docs/sdks).
+
+## Testing features against tags
+
+Similar to [scopes](/docs/scopes), features can also be [tested](/docs/testing) against tags.
+
+When writing a feature's test spec, make use of the `tag` property:
+
+```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
+feature: my_feature
+
+assertions:
+  - environment: production
+    at: 90
+    context:
+      country: nl
+    tag: web
+    expectedToBeEnabled: true
+```
+
+To run the tests against tagged datafiles for assertions making use of the `tag` property, run:
+
+```
+$ npx featurevisor test --with-tags
+```

@@ -15,6 +15,16 @@ Features and segments can grow into complex configuration very fast, and it's im
 
 We can write test specs in the same expressive way as we defined our features and segments to test them in great detail.
 
+## Running tests
+
+Use the Featurevisor CLI to run your tests:
+
+```{% title="Command" %}
+$ npx featurevisor test
+```
+
+If any of your assertions fail in any test specs, it will terminate with a non-zero exit code.
+
 ## Testing features
 
 Assuming we already have a `foo` feature in `features/foo.yml`:
@@ -80,10 +90,6 @@ The `at` property is the bucketed value (in percentage form ranging from 0 to 10
 If your project has no [environments](/docs/environments), you can omit the `environment` property in your assertions.
 
 File names of test specs are not important, but we recommend using the same name as the feature key.
-
-### Scopes
-
-Learn more in [Scopes](/docs/scopes) page for testing features against scoped datafiles.
 
 ## Testing segments
 
@@ -168,15 +174,64 @@ assertions:
 
 This helps us cover more scenarios by having to write less code in our specs.
 
-## Running tests
+## Testing against datafile
 
-Use the Featurevisor CLI to run your tests:
+When running tests, Featurevisor CLI will produce a datafile in memory containing your entire project's features. This is handy to make the tests run quickly by default.
 
-```{% title="Command" %}
-$ npx featurevisor test
+But to gain more confidence like a real end user, we may also want to execute your individual assertions against a tagged or scoped datafiles.
+
+Learn more in:
+
+- [Tags](/docs/tags)
+- [Scopes](/docs/scopes)
+
+### Against a tag
+
+If testing a feature against a particular [tag](/docs/tags), the test spec can be written as follows:
+
+```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
+feature: my_feature
+
+assertions:
+  - environment: production
+    at: 90
+    context:
+      country: nl
+    tag: web
+    expectedToBeEnabled: true
 ```
 
-If any of your assertions fail in any test specs, it will terminate with a non-zero exit code.
+And run:
+
+```{% title="Command" %}
+$ npx featurevisor test --with-tags
+```
+
+This will make sure the assertion is run against the datafile for tag `web` in `production` environment.
+
+### Against a scope
+
+If testing against a particular [scope](/docs/scopes), here's an example of the spec:
+
+```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
+feature: my_feature
+
+assertions:
+  - environment: production
+    at: 90
+    context:
+      country: nl
+    scope: browsers
+    expectedToBeEnabled: true
+```
+
+And run:
+
+```{% title="Command" %}
+$ npx featurevisor test --with-scopes
+```
+
+The extra option in CLI will make sure the individual assertion is run against the scoped datafile, just like how your application might consume it.
 
 ## CLI options
 
@@ -239,6 +294,14 @@ If you are interested to see only the test specs that fail:
 
 ```{% title="Command" %}
 $ npx featurevisor test --onlyFailures
+```
+
+### `withTags`
+
+To run tests against [tags](/docs/tags):
+
+```{% title="Command" %}
+$ npx featurevisor test --withTags
 ```
 
 ### `withScopes`

@@ -45,7 +45,7 @@ export interface FeatureAssertion {
   description?: string;
   environment: EnvironmentKey;
   scope?: string;
-  // @TODO: support `tag` later, similar to `scope` above
+  tag?: string;
   at?: Weight; // bucket weight: 0 to 100
 
   sticky?: StickyFeatures;
