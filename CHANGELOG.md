@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.7](https://github.com/featurevisor/featurevisor/compare/v2.6.6...v2.6.7) (2026-02-05)
+
+
+### Bug Fixes
+
+* trigger publish ([00ef864](https://github.com/featurevisor/featurevisor/commit/00ef864de50df54d258e0dccbd010005b18aa338))
+* upgrade to Lerna v9 ([756f3ad](https://github.com/featurevisor/featurevisor/commit/756f3ada646d0ab3d7c2bd685ce7bfe2748b56b2))
+
+
+
+
+
 ## [2.6.6](https://github.com/featurevisor/featurevisor/compare/v2.6.5...v2.6.6) (2026-02-05)
 
 **Note:** Version bump only for package featurevisor
