@@ -2,7 +2,7 @@
 
 > Common TypeScript typings for Featurevisor packages
 
-Visit [https://featurevisor.com](https://featurevisor.com) for more information
+Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ## License
 
