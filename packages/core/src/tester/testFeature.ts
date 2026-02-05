@@ -61,12 +61,17 @@ export async function testFeature(
 
     let datafileContent = datafileContentByKey.get(assertion.environment || false);
 
+    // scope
     const scopedDatafileKey = `${assertion.environment}-scope-${assertion.scope}`;
     if (assertion.scope && datafileContentByKey.has(scopedDatafileKey)) {
       datafileContent = datafileContentByKey.get(scopedDatafileKey);
     }
 
-    // @TODO: do similar like `scope`, but for `tag`
+    // tag
+    const taggedDatafileKey = `${assertion.environment}-tag-${assertion.tag}`;
+    if (assertion.tag && datafileContentByKey.has(taggedDatafileKey)) {
+      datafileContent = datafileContentByKey.get(taggedDatafileKey);
+    }
 
     if (options.showDatafile) {
       console.log("");

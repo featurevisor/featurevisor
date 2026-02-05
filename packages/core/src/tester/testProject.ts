@@ -23,6 +23,7 @@ export interface TestProjectOptions {
   schemaVersion?: string;
   inflate?: number;
   withScopes?: boolean;
+  withTags?: boolean;
 }
 
 export interface ExecutionResult {
@@ -173,7 +174,26 @@ export async function testProject(
         }
       }
 
-      // @TODO: by tag
+      // by tag
+      if (projectConfig.tags && options.withTags) {
+        for (const tag of projectConfig.tags) {
+          const existingState = await datasource.readState(environment);
+          const datafileContent = (await buildDatafile(
+            projectConfig,
+            datasource,
+            {
+              schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+              revision: "include-tagged-features",
+              environment: environment,
+              inflate: options.inflate,
+              tag: tag,
+            },
+            existingState,
+          )) as DatafileContent;
+
+          datafileContentByKey.set(`${environment}-tag-${tag}`, datafileContent);
+        }
+      }
     }
   }
 
@@ -221,7 +241,26 @@ export async function testProject(
       }
     }
 
-    // @TODO: by tag
+    // by tag
+    if (projectConfig.tags && options.withTags) {
+      for (const tag of projectConfig.tags) {
+        const existingState = await datasource.readState(false);
+        const datafileContent = (await buildDatafile(
+          projectConfig,
+          datasource,
+          {
+            schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+            revision: "include-tagged-features",
+            environment: false,
+            inflate: options.inflate,
+            tag: tag,
+          },
+          existingState,
+        )) as DatafileContent;
+
+        datafileContentByKey.set(`tag-${tag}`, datafileContent);
+      }
+    }
   }
 
   const tests = await listEntities<Test>(

@@ -101,7 +101,10 @@ export function applyCombinationToFeatureAssertion(
     flattenedAssertion.scope = applyCombinationToValue(flattenedAssertion.scope, combination);
   }
 
-  // @TODO: support `tag` later, similar to `scope` above
+  // tag
+  if (flattenedAssertion.tag) {
+    flattenedAssertion.tag = applyCombinationToValue(flattenedAssertion.tag, combination);
+  }
 
   return flattenedAssertion;
 }
