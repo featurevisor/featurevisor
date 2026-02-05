@@ -53,7 +53,7 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes
+          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Bump version fallback
         if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
@@ -66,7 +66,13 @@ jobs:
 
           echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
           git stash
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes
+          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Publish
-        run: npx lerna publish --no-private from-git --yes
+        run: |
+          npm config delete always-auth 2>/dev/null || true
+          npx lerna publish --no-private from-git --yes
+
+      - name: Push back to GitHub
+        run: |
+          git push --follow-tags
