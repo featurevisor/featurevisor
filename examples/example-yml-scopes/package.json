@@ -6,7 +6,10 @@
   "scripts": {
     "lint": "featurevisor lint",
     "build": "featurevisor build",
-    "test": "featurevisor test --only-failures && featurevisor test --only-failures --with-scopes",
+    "test:all": "featurevisor test --only-failures",
+    "test:tags": "featurevisor test --only-failures --with-tags",
+    "test:scopes": "featurevisor test --only-failures --with-scopes",
+    "test": "npm run test:all && npm run test:tags && npm run test:scopes",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
