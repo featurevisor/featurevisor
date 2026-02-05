@@ -70,6 +70,8 @@ jobs:
 
       - name: Publish
         run: |
+          unset NODE_AUTH_TOKEN
+          rm -f .npmrc
           npm config delete always-auth 2>/dev/null || true
           npx lerna publish --no-private from-git --yes
 
