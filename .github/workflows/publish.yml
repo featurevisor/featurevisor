@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   ci:
     name: Publish
