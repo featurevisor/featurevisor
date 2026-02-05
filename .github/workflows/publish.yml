@@ -71,4 +71,4 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
           npm config set access public
-          npx lerna publish --no-private from-git --yes
+          NODE_AUTH_TOKEN="" npx lerna publish --no-private from-git --yes
