@@ -63,7 +63,7 @@ arr:
       const beforeYaml =
         `
 foo: 1 # foo comment here
-extra: keepthis
+extra: blah
 nested:
   a: x
   b: y
