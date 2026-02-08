@@ -14,7 +14,8 @@ import type {
 } from "@featurevisor/types";
 
 import { Adapter, DatafileOptions } from "./adapter";
-import { ProjectConfig, CustomParser } from "../config";
+import { ProjectConfig } from "../config";
+import { CustomParser } from "../parsers";
 import { getCommit } from "../utils/git";
 
 export function getExistingStateFilePath(
@@ -128,7 +129,7 @@ export class FilesystemAdapter extends Adapter {
       fs.mkdirSync(this.getEntityDirectoryPath(entityType), { recursive: true });
     }
 
-    fs.writeFileSync(filePath, this.parser.stringify(entity));
+    fs.writeFileSync(filePath, this.parser.stringify(entity, filePath));
 
     return entity;
   }

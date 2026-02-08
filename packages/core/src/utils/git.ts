@@ -2,7 +2,8 @@ import * as path from "path";
 
 import type { Commit, EntityDiff, EntityType } from "@featurevisor/types";
 
-import { CustomParser, ProjectConfig } from "../config";
+import { ProjectConfig } from "../config";
+import { CustomParser } from "../parsers";
 
 function parseGitCommitShowOutput(gitShowOutput: string) {
   const result = {
