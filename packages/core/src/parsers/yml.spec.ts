@@ -72,9 +72,17 @@ nested:
   a: x
   b: y # b comment
 array:
-  - one
-  - two
+  - one # one
+  - two # two
+  - three # three
 `.trim() + "\n";
+
+      const newContent = {
+        foo: 42,
+        bar: "new",
+        nested: { b: "updated", c: "added" },
+        array: ["two", "three", "four"],
+      };
 
       const afterYaml =
         `
@@ -87,18 +95,13 @@ nested:
   b: updated # b comment
   c: added
 array:
-  - 3
-  - 4
+  - two # two
+  - three # three
+  - four
 `.trim() + "\n";
 
       fs.writeFileSync(tempFile, beforeYaml);
 
-      const newContent = {
-        foo: 42,
-        bar: "new",
-        nested: { b: "updated", c: "added" },
-        array: [3, 4],
-      };
       const output = ymlParser.stringify(newContent, tempFile);
 
       expect(output).toBe(afterYaml);

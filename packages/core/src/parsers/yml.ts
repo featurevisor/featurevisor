@@ -1,7 +1,7 @@
 import * as fs from "fs";
 
 import { parse, parseDocument, stringify } from "yaml";
-import type { Pair, YAMLMap } from "yaml/types";
+import type { Pair, YAMLMap, YAMLSeq } from "yaml/types";
 import { Scalar as ScalarCtor } from "yaml/types";
 
 import type { CustomParser } from "./index";
@@ -32,6 +32,22 @@ function isYamlMap(node: unknown): node is YAMLMap {
   return node != null && typeof node === "object" && Array.isArray((node as YAMLMap).items);
 }
 
+function isYamlSeq(node: unknown): node is YAMLSeq {
+  return node != null && typeof node === "object" && Array.isArray((node as YAMLSeq).items);
+}
+
+function seqItemValueKey(item: unknown): string {
+  if (item == null) return String(item);
+  const n = item as { value?: unknown; toJSON?: () => unknown };
+  if (typeof n.value !== "undefined") return JSON.stringify(n.value);
+  if (typeof n.toJSON === "function") return JSON.stringify(n.toJSON());
+  return JSON.stringify(item);
+}
+
+function primitiveValueKey(v: unknown): string {
+  return JSON.stringify(v);
+}
+
 function createValueWithComments(
   schema: { createNode: (v: unknown) => unknown; createPair: (k: unknown, v: unknown) => Pair },
   oldNode: unknown,
@@ -47,7 +63,20 @@ function createValueWithComments(
     return node;
   }
   if (Array.isArray(newValue)) {
-    return schema.createNode(newValue);
+    const oldSeq = isYamlSeq(oldNode) ? (oldNode as YAMLSeq) : null;
+    const oldItemsByValue = new Map<string, unknown>();
+    if (oldSeq && oldSeq.items) {
+      for (const item of oldSeq.items) {
+        oldItemsByValue.set(seqItemValueKey(item), item);
+      }
+    }
+    const newSeq = schema.createNode([]) as YAMLSeq;
+    for (const el of newValue) {
+      const oldItem = oldItemsByValue.get(primitiveValueKey(el));
+      const itemNode = createValueWithComments(schema, oldItem, el);
+      newSeq.add(itemNode);
+    }
+    return newSeq;
   }
   // newValue is a plain object; preserve comments from old map if present
   const oldMap = isYamlMap(oldNode) ? (oldNode as YAMLMap) : null;
