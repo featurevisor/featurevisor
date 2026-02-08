@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.9.0](https://github.com/featurevisor/featurevisor/compare/v2.8.0...v2.9.0) (2026-02-08)
+
+
+### Features
+
+* upgrade tar for init ([#386](https://github.com/featurevisor/featurevisor/issues/386)) ([a35db5f](https://github.com/featurevisor/featurevisor/commit/a35db5fefdbd543771263c7fff6d4f8b06b86119))
+
+
+
+
+
 # [2.8.0](https://github.com/featurevisor/featurevisor/compare/v2.7.0...v2.8.0) (2026-02-08)
 
 
