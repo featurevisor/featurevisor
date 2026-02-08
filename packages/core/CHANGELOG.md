@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.8.0](https://github.com/featurevisor/featurevisor/compare/v2.7.0...v2.8.0) (2026-02-08)
+
+
+### Features
+
+* YAML parser to preserve comments and ordering when writing ([#385](https://github.com/featurevisor/featurevisor/issues/385)) ([01daaec](https://github.com/featurevisor/featurevisor/commit/01daaec7a7e872c528b30a886a92894a6adbfac3))
+
+
+
+
+
 # [2.7.0](https://github.com/featurevisor/featurevisor/compare/v2.6.7...v2.7.0) (2026-02-05)
 
 
