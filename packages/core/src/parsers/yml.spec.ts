@@ -70,7 +70,7 @@ extra: blah
 #
 nested:
   a: x
-  b: y
+  b: y # b comment
 array:
   - one
   - two
@@ -84,7 +84,7 @@ bar: new
 # Comment above nested
 #
 nested:
-  b: updated
+  b: updated # b comment
   c: added
 array:
   - 3
