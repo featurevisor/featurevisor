@@ -60,13 +60,16 @@ arr:
     });
 
     it("should merge new object into existing YAML file, preserving unrelated fields", () => {
-      // Existing file:
-      //   foo: 1
-      //   extra: keepthis
-      fs.writeFileSync(
-        tempFile,
-        `foo: 1\nextra: keepthis\nnested:\n  a: x\n  b: y\narray:\n  - one\n  - two\n`,
-      );
+      fs.writeFileSync(tempFile, `
+foo: 1
+extra: keepthis
+nested:
+  a: x
+  b: y
+array:
+  - one
+  - two
+`.trim() + "\n");
 
       // New content: update foo, add new bar, update nested.b, add nested.c, replace array
       const newContent = {
@@ -96,11 +99,17 @@ arr:
       const obj = { hello: "world", test: [1, 2, 3] };
       const output = ymlParser.stringify(obj, tempFile);
 
-      expect(output.trim()).toBe("hello: world\ntest:\n  - 1\n  - 2\n  - 3");
+      expect(output.trim()).toBe(`hello: world
+test:
+  - 1
+  - 2
+  - 3`);
     });
 
     it("should throw if trying to set YAML document root to a primitive", () => {
-      fs.writeFileSync(tempFile, "foo: bar\n");
+      fs.writeFileSync(tempFile, `
+foo: bar
+`.trim() + "\n");
       // Deep merging tries to set root to string: should throw from yml.ts check
       expect(() => {
         ymlParser.stringify("primitive", tempFile);
@@ -112,12 +121,15 @@ arr:
       const obj = { only: "in-memory" };
       const output = ymlParser.stringify(obj, fakeFilePath);
 
-      expect(output.trim()).toBe("only: in-memory");
+      expect(output.trim()).toBe(`only: in-memory`);
       expect(fs.existsSync(fakeFilePath)).toBe(false); // should not create the file
     });
 
     it("should not mutate the original YAML file", () => {
-      fs.writeFileSync(tempFile, "foo: unchanged\nbar: before\n");
+      fs.writeFileSync(tempFile, `
+foo: unchanged
+bar: before
+`.trim() + "\n");
       const before = fs.readFileSync(tempFile, "utf8");
 
       const obj = { bar: "after" };
