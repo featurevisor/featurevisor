@@ -25,6 +25,12 @@ const arrayOperators = ["in", "notIn"];
 const regexOperators = ["matches", "notMatches"];
 const operatorsWithoutValue = ["exists", "notExists"];
 
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|([+\-]\d{2}:\d{2})))?$/;
+
+function isIsoDateString(value: string): boolean {
+  return isoDateRegex.test(value);
+}
+
 export function getConditionsZodSchema(
   projectConfig: ProjectConfig,
   availableAttributeKeys: [string, ...string[]],
@@ -114,12 +120,43 @@ export function getConditionsZodSchema(
       }
 
       // date
-      if (dateOperators.includes(data.operator) && !(data.value instanceof Date)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `when operator is "${data.operator}", value must be a date`,
-          path: ["value"],
-        });
+      if (dateOperators.includes(data.operator)) {
+        // Value is required and must not be undefined or null
+        if (typeof data.value === "undefined" || data.value === null || data.value === "") {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `when operator is "${data.operator}", value must be provided`,
+            path: ["value"],
+          });
+        } else if (typeof data.value === "string") {
+          // If it's a string, must be valid ISO 8601
+          if (!isIsoDateString(data.value)) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `when operator is "${data.operator}", value must be a stringified date in ISO 8601 format`,
+              path: ["value"],
+            });
+          } else {
+            // valid ISO 8601 string -- no issue
+          }
+        } else if (data.value instanceof Date) {
+          // If it's a Date, must be valid
+          if (isNaN(data.value.getTime())) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `when operator is "${data.operator}", value is a Date but invalid`,
+              path: ["value"],
+            });
+          }
+          // Valid JS Date -- no issue
+        } else {
+          // NOT a string, NOT a Date
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `when operator is "${data.operator}", value must be a stringified date in ISO 8601 format or a valid Date object`,
+            path: ["value"],
+          });
+        }
       }
 
       // array
