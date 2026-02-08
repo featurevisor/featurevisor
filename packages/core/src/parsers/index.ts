@@ -4,7 +4,7 @@ import { ymlParser } from "./yml";
 export interface CustomParser {
   extension: string;
   parse: <T>(content: string, filePath?: string) => T;
-  stringify: (content: any) => string;
+  stringify: (content: any, filePath?: string) => string;
 }
 
 /**
