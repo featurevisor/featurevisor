@@ -64,7 +64,12 @@ export const ymlParser: CustomParser = {
       return stringify(content);
     }
 
-    const doc = parseDocument(fs.readFileSync(filePath, "utf8"));
+    const fileContent = fs.readFileSync(filePath, "utf8");
+    if (!fileContent.trim()) {
+      return stringify(content);
+    }
+
+    const doc = parseDocument(fileContent);
     const newDoc = saveYamlWithPreservation(doc, content);
 
     return newDoc.toString();
