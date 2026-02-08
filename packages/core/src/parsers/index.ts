@@ -1,4 +1,5 @@
-import * as YAML from "yaml";
+import { jsonParser } from "./json";
+import { ymlParser } from "./yml";
 
 export interface CustomParser {
   extension: string;
@@ -12,27 +13,8 @@ export interface CustomParser {
  * and a function that takes file content as string and returns parsed object as the value.
  */
 export const parsers: { [key: string]: CustomParser } = {
-  // YAML
-  yml: {
-    extension: "yml",
-    parse: function <T>(content: string): T {
-      return YAML.parse(content) as T;
-    },
-    stringify: function (content: any) {
-      return YAML.stringify(content);
-    },
-  },
-
-  // JSON
-  json: {
-    extension: "json",
-    parse: function <T>(content: string): T {
-      return JSON.parse(content) as T;
-    },
-    stringify: function (content: any) {
-      return JSON.stringify(content, null, 2);
-    },
-  },
+  yml: ymlParser,
+  json: jsonParser,
 };
 
 export type BuiltInParser = keyof typeof parsers; // keys of parsers object
