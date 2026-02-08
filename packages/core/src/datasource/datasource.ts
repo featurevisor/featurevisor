@@ -13,7 +13,8 @@ import type {
   EntityType,
 } from "@featurevisor/types";
 
-import { ProjectConfig, CustomParser } from "../config";
+import { ProjectConfig } from "../config";
+import { CustomParser } from "../parsers";
 
 import { Adapter, DatafileOptions } from "./adapter";
 

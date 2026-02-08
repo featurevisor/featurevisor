@@ -1,4 +1,5 @@
 export * from "./config";
+export * from "./parsers";
 export * from "./linter";
 export * from "./builder";
 export * from "./tester";

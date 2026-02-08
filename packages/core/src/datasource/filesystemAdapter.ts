@@ -14,7 +14,8 @@ import type {
 } from "@featurevisor/types";
 
 import { Adapter, DatafileOptions } from "./adapter";
-import { ProjectConfig, CustomParser } from "../config";
+import { ProjectConfig } from "../config";
+import { CustomParser } from "../parsers";
 import { getCommit } from "../utils/git";
 
 export function getExistingStateFilePath(

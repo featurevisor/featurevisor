@@ -2,7 +2,7 @@ import * as path from "path";
 
 import type { BucketBy, Context, Tag } from "@featurevisor/types";
 
-import { Parser, parsers } from "./parsers";
+import { Parser, parsers } from "../parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import type { Plugin } from "../cli";
 import type { BuildTags } from "../builder/buildDatafile";
