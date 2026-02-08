@@ -64,6 +64,10 @@ arr:
         `
 foo: 1 # foo comment here
 extra: blah
+
+##
+# Comment above nested
+#
 nested:
   a: x
   b: y
@@ -76,6 +80,9 @@ array:
         `
 foo: 42 # foo comment here
 bar: new
+##
+# Comment above nested
+#
 nested:
   b: updated
   c: added
