@@ -1,4 +1,10 @@
-import * as YAML from "js-yaml";
+import * as YAML from "yaml";
+
+export interface CustomParser {
+  extension: string;
+  parse: <T>(content: string, filePath?: string) => T;
+  stringify: (content: any) => string;
+}
 
 /**
  * If we want to add more built-in parsers,
@@ -10,10 +16,10 @@ export const parsers: { [key: string]: CustomParser } = {
   yml: {
     extension: "yml",
     parse: function <T>(content: string): T {
-      return YAML.load(content) as T;
+      return YAML.parse(content) as T;
     },
     stringify: function (content: any) {
-      return YAML.dump(content);
+      return YAML.stringify(content);
     },
   },
 
@@ -30,11 +36,5 @@ export const parsers: { [key: string]: CustomParser } = {
 };
 
 export type BuiltInParser = keyof typeof parsers; // keys of parsers object
-
-export interface CustomParser {
-  extension: string;
-  parse: <T>(content: string, filePath?: string) => T;
-  stringify: (content: any) => string;
-}
 
 export type Parser = BuiltInParser | CustomParser;
