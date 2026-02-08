@@ -48,8 +48,5 @@
     "yaml": "^1.10.2",
     "yargs": "^17.7.2",
     "zod": "^3.22.4"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.5"
   }
 }
