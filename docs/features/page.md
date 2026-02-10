@@ -19,9 +19,9 @@ The goal of creating a feature is to be able to evaluate its values in your appl
 
 The evaluated values can be either its:
 
-- **Flag** (`boolean`): its own on/off status
-- **Variation** (`string`): a string value if you have a/b tests running
-- **Variables**: a set of key/value pairs (if any)
+- **[Flags](/docs/flags/)** (`boolean`): its own on/off status
+- **[Variations](/docs/variations/)** (`string`): a string value if you have a/b tests running
+- **[Variables](/docs/variables/)**: a set of key/value pairs (if any)
 
 You can learn more about how the evaluation logic works for each [here](#evaluation-flow).
 
