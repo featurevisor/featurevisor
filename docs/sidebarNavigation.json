@@ -28,6 +28,14 @@
     ]
   },
   {
+    "title": "Types of evaluation",
+    "links": [
+      { "title": "Flags", "href": "/docs/flags/" },
+      { "title": "Variations", "href": "/docs/variations/" },
+      { "title": "Variables", "href": "/docs/variables/" }
+    ]
+  },
+  {
     "title": "SDKs",
     "links": [
       { "title": "JavaScript", "href": "/docs/sdks/javascript/" },
