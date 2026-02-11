@@ -445,6 +445,26 @@ $ npx featurevisor exists \
 
 ## Create
 
+### Create attribute
+
+```
+$ npx featurevisor create \
+    --attribute=my_attribute \
+    --description="My attribute description" \
+    --type=string
+```
+
+### Create segment
+
+```
+$ npx featurevisor create \
+    --segment=my_segment \
+    --description="My segment description" \
+    --conditions='[{"attribute": "country", "operator": "equals", "value": "nl"}]'
+```
+
+### Create feature
+
 @TODO
 
 ## Update
