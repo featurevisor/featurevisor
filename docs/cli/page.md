@@ -421,13 +421,26 @@ $ npx featurevisor exists --feature=my_feature
 ### Variation exists
 
 ```
-$ npx featurevisor exists --feature=my_feature --variation=my_variation
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --variation=my_variation
 ```
 
 ### Variable exists
 
 ```
-$ npx featurevisor exists --feature=my_feature --variable=my_variable
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --variable=my_variable
+```
+
+### Rule exists
+
+```
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --environment=production \
+    --rule=my_rule_key
 ```
 
 ## Create
