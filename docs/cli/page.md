@@ -393,3 +393,67 @@ Or do:
 ```
 $ npx featurevisor -v
 ```
+
+## Exists
+
+@TODO
+
+Check if an entity exists.
+
+### Attribute exists
+
+```
+$ npx featurevisor exists --attribute=my_attribute
+```
+
+### Segment exists
+
+```
+$ npx featurevisor exists --segment=my_segment
+```
+
+### Feature exists
+
+```
+$ npx featurevisor exists --feature=my_feature
+```
+
+### Variation exists
+
+```
+$ npx featurevisor exists --feature=my_feature --variation=my_variation
+```
+
+### Variable exists
+
+```
+$ npx featurevisor exists --feature=my_feature --variable=my_variable
+```
+
+## Create
+
+@TODO
+
+## Update
+
+@TODO
+
+## Archive
+
+@TODO
+
+## Unarchive
+
+@TODO
+
+## Deprecate
+
+@TODO
+
+## Undeprecate
+
+@TODO
+
+## Delete
+
+@TODO
