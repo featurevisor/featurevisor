@@ -445,6 +445,8 @@ $ npx featurevisor exists \
 
 ## Create
 
+@TODO
+
 ### Create attribute
 
 ```
@@ -465,7 +467,15 @@ $ npx featurevisor create \
 
 ### Create feature
 
-@TODO
+```
+$ npx featurevisor create \
+    --feature=my_feature \
+    --description="My feature description" \
+    --tags=web,mobile \
+    --bucketBy=userId \
+    --variations='[{"value": "control", "weight": 50}, {"value": "treatment", "weight": 50}]' \
+    --variablesSchema='{ "myVariable": { "type": "string", "defaultValue": "default value" } }'
+```
 
 ## Update
 
