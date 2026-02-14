@@ -500,6 +500,7 @@ export function getFeatureZodSchema(
           z
             .object({
               deprecated: z.boolean().optional(),
+              // @TODO: adapt it with new typed schema for arrays and objects
               type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
               description: z.string().optional(),
               defaultValue: variableValueZodSchema,
