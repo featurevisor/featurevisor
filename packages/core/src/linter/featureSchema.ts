@@ -21,13 +21,20 @@ function isArrayOfStrings(value) {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+function getVariableLabel(variableSchema, variableKey, path) {
+  return variableKey ?? variableSchema?.key ?? (path.length > 0 ? String(path[path.length - 1]) : "variable");
+}
+
 function superRefineVariableValue(
   projectConfig: ProjectConfig,
   variableSchema,
   variableValue,
   path,
   ctx,
+  variableKey?: string,
 ) {
+  const label = getVariableLabel(variableSchema, variableKey, path);
+
   if (!variableSchema) {
     let message = `Unknown variable with value: ${variableValue}`;
 
@@ -53,7 +60,7 @@ function superRefineVariableValue(
     if (typeof variableValue !== "string") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
         path,
       });
     }
@@ -64,7 +71,7 @@ function superRefineVariableValue(
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${variableSchema.key}" value is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableStringLength}`,
+        message: `Variable "${label}" value is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableStringLength}`,
         path,
       });
     }
@@ -77,7 +84,7 @@ function superRefineVariableValue(
     if (typeof variableValue !== "number") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
         path,
       });
     }
@@ -90,7 +97,7 @@ function superRefineVariableValue(
     if (typeof variableValue !== "boolean") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): ${variableValue}`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
         path,
       });
     }
@@ -100,12 +107,35 @@ function superRefineVariableValue(
 
   // array
   if (variableSchema.type === "array") {
-    if (!Array.isArray(variableValue) || !isArrayOfStrings(variableValue)) {
+    if (!Array.isArray(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
         path,
       });
+      return;
+    }
+
+    const itemSchema = variableSchema.items;
+    if (itemSchema) {
+      variableValue.forEach((item, index) => {
+        superRefineVariableValue(
+          projectConfig,
+          itemSchema,
+          item,
+          [...path, index],
+          ctx,
+          undefined,
+        );
+      });
+    } else {
+      if (!isArrayOfStrings(variableValue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid value for variable "${label}" (${variableSchema.type}): when \`items\` is not set, array must contain only strings. \n\n${variableValue}\n\n`,
+          path,
+        });
+      }
     }
 
     if (projectConfig.maxVariableArrayStringifiedLength) {
@@ -114,7 +144,7 @@ function superRefineVariableValue(
       if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Variable "${variableSchema.key}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
+          message: `Variable "${label}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
           path,
         });
       }
@@ -128,7 +158,7 @@ function superRefineVariableValue(
     if (typeof variableValue !== "object" || !isFlatObject(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
         path,
       });
     }
@@ -139,7 +169,7 @@ function superRefineVariableValue(
       if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Variable "${variableSchema.key}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
+          message: `Variable "${label}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
           path,
         });
       }
@@ -159,7 +189,7 @@ function superRefineVariableValue(
         if (stringified.length > projectConfig.maxVariableJSONStringifiedLength) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Variable "${variableSchema.key}" JSON is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
+            message: `Variable "${label}" JSON is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
             path,
           });
         }
@@ -168,7 +198,7 @@ function superRefineVariableValue(
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${variableSchema.key}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
         path,
       });
     }
@@ -207,6 +237,7 @@ function refineForce({
           f.variables[variableKey],
           pathPrefix.concat([fN, "variables", variableKey]),
           ctx,
+          variableKey,
         );
       });
     }
@@ -232,6 +263,7 @@ function refineRules({
           rule.variables[variableKey],
           pathPrefix.concat([ruleN, "variables", variableKey]),
           ctx,
+          variableKey,
         );
       });
     }
@@ -622,16 +654,20 @@ export function getFeatureZodSchema(
           variableSchema.defaultValue,
           ["variablesSchema", variableKey, "defaultValue"],
           ctx,
+          variableKey,
         );
 
-        // disabledValue
-        superRefineVariableValue(
-          projectConfig,
-          variableSchema,
-          variableSchema.defaultValue,
-          ["variablesSchema", variableKey, "disabledValue"],
-          ctx,
-        );
+        // disabledValue (only when present)
+        if (variableSchema.disabledValue !== undefined) {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema,
+            variableSchema.disabledValue,
+            ["variablesSchema", variableKey, "disabledValue"],
+            ctx,
+            variableKey,
+          );
+        }
       });
 
       // variations
@@ -651,6 +687,7 @@ export function getFeatureZodSchema(
               variableValue,
               ["variations", variationN, "variables", variableKey],
               ctx,
+              variableKey,
             );
 
             // variations[n].variableOverrides[n].value
@@ -673,6 +710,7 @@ export function getFeatureZodSchema(
                         "value",
                       ],
                       ctx,
+                      variableKey,
                     );
                   });
                 }
