@@ -1,7 +1,7 @@
 import type { BucketBy } from "./bucket";
 import type { Condition } from "./condition";
 import type { GroupSegment } from "./segment";
-import type { PropertyType, Value, PropertySchema } from "./schema";
+import type { PropertyType, Value, PropertySchema } from "./property";
 
 export type VariationValue = string;
 

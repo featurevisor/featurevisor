@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
+import { valueZodSchema, propertyTypeEnum, getPropertyZodSchema } from "./propertySchema";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -308,21 +309,10 @@ export function getFeatureZodSchema(
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
 ) {
+  const propertyZodSchema = getPropertyZodSchema(projectConfig);
+  const variableValueZodSchema = valueZodSchema;
+
   const variationValueZodSchema = z.string().min(1);
-  const variableValueZodSchema = z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.array(z.string()),
-    z.record(z.unknown()).refine(
-      (value) => {
-        return isFlatObject(value);
-      },
-      {
-        message: "object is not flat",
-      },
-    ),
-  ]);
 
   const plainGroupSegment = z.string().refine(
     (value) => value === "*" || availableSegmentKeys.includes(value),
@@ -368,7 +358,7 @@ export function getFeatureZodSchema(
 
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(),
+          variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
           variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -416,7 +406,7 @@ export function getFeatureZodSchema(
             segments: groupSegmentsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
           })
           .strict(),
         z
@@ -424,7 +414,7 @@ export function getFeatureZodSchema(
             conditions: conditionsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
           })
           .strict(),
       ]),
@@ -500,12 +490,18 @@ export function getFeatureZodSchema(
           z
             .object({
               deprecated: z.boolean().optional(),
-              // @TODO: adapt it with new typed schema for arrays and objects
-              type: z.enum(["string", "integer", "boolean", "double", "array", "object", "json"]),
+
+              // @TODO: make the linting adapt per type change
+              type: z.union([z.literal("json"), propertyTypeEnum]),
+              items: propertyZodSchema.optional(),
+              properties: z.record(propertyZodSchema).optional(),
+
               description: z.string().optional(),
+
               defaultValue: variableValueZodSchema,
-              useDefaultWhenDisabled: z.boolean().optional(),
               disabledValue: variableValueZodSchema.optional(),
+
+              useDefaultWhenDisabled: z.boolean().optional(),
             })
             .strict(),
         )

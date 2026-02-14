@@ -9,4 +9,4 @@ export * from "./segment";
 export * from "./site";
 export * from "./state";
 export * from "./test";
-export * from "./schema";
+export * from "./property";
