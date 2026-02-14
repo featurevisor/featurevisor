@@ -125,7 +125,7 @@ function superRefineVariableValue(
           item,
           [...path, index],
           ctx,
-          undefined,
+          variableKey,
         );
       });
     } else {
@@ -155,12 +155,60 @@ function superRefineVariableValue(
 
   // object
   if (variableSchema.type === "object") {
-    if (typeof variableValue !== "object" || !isFlatObject(variableValue)) {
+    if (typeof variableValue !== "object" || variableValue === null || Array.isArray(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): expected a plain object. \n\n${variableValue}\n\n`,
         path,
       });
+      return;
+    }
+
+    if (!isFlatObject(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid value for variable "${label}" (${variableSchema.type}): object must be flat (no nested objects or arrays). \n\n${variableValue}\n\n`,
+        path,
+      });
+      return;
+    }
+
+    const schemaProperties = variableSchema.properties;
+    if (schemaProperties && typeof schemaProperties === "object") {
+      const requiredKeys =
+        variableSchema.required && variableSchema.required.length > 0
+          ? variableSchema.required
+          : Object.keys(schemaProperties);
+
+      for (const key of requiredKeys) {
+        if (!Object.prototype.hasOwnProperty.call(variableValue, key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Missing required property "${key}" in variable "${label}"`,
+            path: [...path, key],
+          });
+        }
+      }
+
+      for (const key of Object.keys(variableValue)) {
+        const propSchema = schemaProperties[key];
+        if (!propSchema) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Unknown property "${key}" in variable "${label}" (not in schema)`,
+            path: [...path, key],
+          });
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            propSchema,
+            variableValue[key],
+            [...path, key],
+            ctx,
+            key,
+          );
+        }
+      }
     }
 
     if (projectConfig.maxVariableObjectStringifiedLength) {
