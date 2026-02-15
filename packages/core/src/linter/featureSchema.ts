@@ -50,14 +50,7 @@ function refineVariableValueArray(
 
   if (itemSchema) {
     variableValue.forEach((item, index) => {
-      superRefineVariableValue(
-        projectConfig,
-        itemSchema,
-        item,
-        [...path, index],
-        ctx,
-        variableKey,
-      );
+      superRefineVariableValue(projectConfig, itemSchema, item, [...path, index], ctx, variableKey);
     });
   } else {
     if (!isArrayOfStrings(variableValue)) {
@@ -294,14 +287,7 @@ function superRefineVariableValue(
       });
       return;
     }
-    refineVariableValueArray(
-      projectConfig,
-      variableSchema,
-      variableValue,
-      path,
-      ctx,
-      variableKey,
-    );
+    refineVariableValueArray(projectConfig, variableSchema, variableValue, path, ctx, variableKey);
     return;
   }
 
@@ -555,7 +541,7 @@ export function getFeatureZodSchema(
 
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
+          variables: z.record(variableValueZodSchema).optional(),
           variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -603,7 +589,7 @@ export function getFeatureZodSchema(
             segments: groupSegmentsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
+            variables: z.record(variableValueZodSchema).optional(),
           })
           .strict(),
         z
@@ -611,7 +597,7 @@ export function getFeatureZodSchema(
             conditions: conditionsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(), // @TODO: lint per variable type
+            variables: z.record(variableValueZodSchema).optional(),
           })
           .strict(),
       ]),
