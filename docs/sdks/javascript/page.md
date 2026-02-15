@@ -203,7 +203,7 @@ f.getVariableBoolean(featureKey, variableKey, context = {})
 f.getVariableString(featureKey, variableKey, context = {})
 f.getVariableInteger(featureKey, variableKey, context = {})
 f.getVariableDouble(featureKey, variableKey, context = {})
-f.getVariableArray(featureKey, variableKey, context = {})
+f.getVariableArray<T>(featureKey, variableKey, context = {})
 f.getVariableObject<T>(featureKey, variableKey, context = {})
 f.getVariableJSON<T>(featureKey, variableKey, context = {})
 ```

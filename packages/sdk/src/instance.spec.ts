@@ -1147,6 +1147,338 @@ describe("sdk: instance", function () {
     ).toEqual("orange");
   });
 
+  describe("array and object variables", function () {
+    const arrayAndObjectDatafile: DatafileContent = {
+      schemaVersion: "2",
+      revision: "1.0",
+      features: {
+        withArray: {
+          key: "withArray",
+          bucketBy: "userId",
+          variablesSchema: {
+            simpleArray: {
+              key: "simpleArray",
+              type: "array",
+              defaultValue: ["red", "blue", "green"],
+            },
+            simpleStringArray: {
+              key: "simpleStringArray",
+              type: "array",
+              defaultValue: ["red", "blue", "green"],
+            },
+            objectArray: {
+              key: "objectArray",
+              type: "array",
+              defaultValue: [
+                { color: "red", opacity: 100 },
+                { color: "blue", opacity: 90 },
+                { color: "green", opacity: 95 },
+              ],
+            },
+          },
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+        withObject: {
+          key: "withObject",
+          bucketBy: "userId",
+          variablesSchema: {
+            themeConfig: {
+              key: "themeConfig",
+              type: "object",
+              defaultValue: {
+                theme: "light",
+                darkMode: false,
+              },
+            },
+            layoutConfig: {
+              key: "layoutConfig",
+              type: "object",
+              defaultValue: {
+                width: 1200,
+                align: "center",
+              },
+            },
+            headerConfig: {
+              key: "headerConfig",
+              type: "object",
+              defaultValue: {
+                style: { fontSize: 18, bold: true },
+                title: "Welcome",
+              },
+            },
+            contentConfig: {
+              key: "contentConfig",
+              type: "object",
+              defaultValue: {
+                tags: ["news", "featured"],
+                count: 2,
+              },
+            },
+            panelConfig: {
+              key: "panelConfig",
+              type: "object",
+              defaultValue: {
+                sections: [
+                  { id: "hero", visible: true },
+                  { id: "sidebar", visible: false },
+                ],
+              },
+            },
+            deepConfig: {
+              key: "deepConfig",
+              type: "object",
+              defaultValue: {
+                level1: {
+                  level2: {
+                    value: "deep",
+                    count: 1,
+                  },
+                },
+              },
+            },
+            mixedConfig: {
+              key: "mixedConfig",
+              type: "object",
+              defaultValue: {
+                name: "mixed",
+                enabled: true,
+                meta: {
+                  score: 0.95,
+                  items: ["a", "b"],
+                },
+              },
+            },
+          },
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      },
+      segments: {},
+    };
+
+    const context = { userId: "user-1" };
+
+    it("should get array variables via getVariable and getVariableArray (no generics)", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      const simpleArray = sdk.getVariable("withArray", "simpleArray", context);
+      expect(simpleArray).toEqual(["red", "blue", "green"]);
+
+      const simpleArrayTyped = sdk.getVariableArray("withArray", "simpleArray", context);
+      expect(simpleArrayTyped).toEqual(["red", "blue", "green"]);
+
+      const simpleStringArray = sdk.getVariable("withArray", "simpleStringArray", context);
+      expect(simpleStringArray).toEqual(["red", "blue", "green"]);
+
+      const simpleStringArrayTyped = sdk.getVariableArray("withArray", "simpleStringArray", context);
+      expect(simpleStringArrayTyped).toEqual(["red", "blue", "green"]);
+
+      const objectArray = sdk.getVariable("withArray", "objectArray", context);
+      expect(objectArray).toEqual([
+        { color: "red", opacity: 100 },
+        { color: "blue", opacity: 90 },
+        { color: "green", opacity: 95 },
+      ]);
+
+      const objectArrayTyped = sdk.getVariableArray("withArray", "objectArray", context);
+      expect(objectArrayTyped).toEqual([
+        { color: "red", opacity: 100 },
+        { color: "blue", opacity: 90 },
+        { color: "green", opacity: 95 },
+      ]);
+    });
+
+    it("should get array variables with generics for type safety", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      const stringArray = sdk.getVariableArray<string[]>("withArray", "simpleArray", context);
+      expect(stringArray).toEqual(["red", "blue", "green"]);
+      if (stringArray) {
+        const first: string = stringArray[0];
+        expect(first).toBe("red");
+      }
+
+      interface ColorOpacity {
+        color: string;
+        opacity: number;
+      }
+      const objectArray = sdk.getVariableArray<ColorOpacity[]>(
+        "withArray",
+        "objectArray",
+        context,
+      );
+      expect(objectArray).toEqual([
+        { color: "red", opacity: 100 },
+        { color: "blue", opacity: 90 },
+        { color: "green", opacity: 95 },
+      ]);
+      if (objectArray && objectArray.length > 0) {
+        const first: ColorOpacity = objectArray[0];
+        expect(first.color).toBe("red");
+        expect(first.opacity).toBe(100);
+      }
+    });
+
+    it("should get object variables via getVariable and getVariableObject (no generics)", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      const themeConfig = sdk.getVariable("withObject", "themeConfig", context);
+      expect(themeConfig).toEqual({ theme: "light", darkMode: false });
+
+      const themeConfigTyped = sdk.getVariableObject("withObject", "themeConfig", context);
+      expect(themeConfigTyped).toEqual({ theme: "light", darkMode: false });
+
+      const layoutConfig = sdk.getVariable("withObject", "layoutConfig", context);
+      expect(layoutConfig).toEqual({ width: 1200, align: "center" });
+
+      const headerConfig = sdk.getVariable("withObject", "headerConfig", context);
+      expect(headerConfig).toEqual({
+        style: { fontSize: 18, bold: true },
+        title: "Welcome",
+      });
+
+      const contentConfig = sdk.getVariable("withObject", "contentConfig", context);
+      expect(contentConfig).toEqual({
+        tags: ["news", "featured"],
+        count: 2,
+      });
+
+      const panelConfig = sdk.getVariableObject("withObject", "panelConfig", context);
+      expect(panelConfig).toEqual({
+        sections: [
+          { id: "hero", visible: true },
+          { id: "sidebar", visible: false },
+        ],
+      });
+
+      const deepConfig = sdk.getVariableObject("withObject", "deepConfig", context);
+      expect(deepConfig).toEqual({
+        level1: {
+          level2: {
+            value: "deep",
+            count: 1,
+          },
+        },
+      });
+
+      const mixedConfig = sdk.getVariableObject("withObject", "mixedConfig", context);
+      expect(mixedConfig).toEqual({
+        name: "mixed",
+        enabled: true,
+        meta: {
+          score: 0.95,
+          items: ["a", "b"],
+        },
+      });
+    });
+
+    it("should get object variables with generics for type safety", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      interface ThemeConfig {
+        theme: string;
+        darkMode: boolean;
+      }
+      const themeConfig = sdk.getVariableObject<ThemeConfig>(
+        "withObject",
+        "themeConfig",
+        context,
+      );
+      expect(themeConfig).toEqual({ theme: "light", darkMode: false });
+      if (themeConfig) {
+        expect(themeConfig.theme).toBe("light");
+        expect(themeConfig.darkMode).toBe(false);
+      }
+
+      interface HeaderConfig {
+        style: { fontSize: number; bold: boolean };
+        title: string;
+      }
+      const headerConfig = sdk.getVariableObject<HeaderConfig>(
+        "withObject",
+        "headerConfig",
+        context,
+      );
+      expect(headerConfig).toEqual({
+        style: { fontSize: 18, bold: true },
+        title: "Welcome",
+      });
+      if (headerConfig) {
+        expect(headerConfig.style.fontSize).toBe(18);
+        expect(headerConfig.title).toBe("Welcome");
+      }
+
+      interface PanelSection {
+        id: string;
+        visible: boolean;
+      }
+      interface PanelConfig {
+        sections: PanelSection[];
+      }
+      const panelConfig = sdk.getVariableObject<PanelConfig>(
+        "withObject",
+        "panelConfig",
+        context,
+      );
+      expect(panelConfig?.sections).toHaveLength(2);
+      expect(panelConfig?.sections[0]).toEqual({ id: "hero", visible: true });
+    });
+
+    it("should return null for getVariableArray and getVariableObject when variable or feature missing", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      expect(sdk.getVariableArray("withArray", "nonExisting", context)).toBeNull();
+      expect(sdk.getVariableObject("withObject", "nonExisting", context)).toBeNull();
+      expect(sdk.getVariableArray("nonExistingFeature", "simpleArray", context)).toBeNull();
+      expect(sdk.getVariableObject("nonExistingFeature", "themeConfig", context)).toBeNull();
+    });
+
+    it("should include array and object variables in getAllEvaluations", function () {
+      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+
+      const all = sdk.getAllEvaluations(context);
+
+      expect(all.withArray).toBeDefined();
+      expect(all.withArray?.enabled).toBe(true);
+      expect(all.withArray?.variables?.simpleArray).toEqual(["red", "blue", "green"]);
+      expect(all.withArray?.variables?.simpleStringArray).toEqual(["red", "blue", "green"]);
+      expect(all.withArray?.variables?.objectArray).toEqual([
+        { color: "red", opacity: 100 },
+        { color: "blue", opacity: 90 },
+        { color: "green", opacity: 95 },
+      ]);
+
+      expect(all.withObject).toBeDefined();
+      expect(all.withObject?.enabled).toBe(true);
+      expect(all.withObject?.variables?.themeConfig).toEqual({
+        theme: "light",
+        darkMode: false,
+      });
+      expect(all.withObject?.variables?.headerConfig).toEqual({
+        style: { fontSize: 18, bold: true },
+        title: "Welcome",
+      });
+      expect(all.withObject?.variables?.mixedConfig).toEqual({
+        name: "mixed",
+        enabled: true,
+        meta: { score: 0.95, items: ["a", "b"] },
+      });
+    });
+  });
+
   it("should check if enabled for individually named segments", function () {
     const sdk = createInstance({
       datafile: {
