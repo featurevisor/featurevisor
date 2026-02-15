@@ -123,17 +123,29 @@ function generateVariableTypeDeclarations(
         declarations.push(
           `${INDENT_NS}export interface ${itemTypeName} {\n${entries}\n${INDENT_NS}}`,
         );
-        const returnType = `${itemTypeName}[]`;
-        return { declarations, returnTypeName: returnType, genericArg: returnType };
+        // getVariableArray<T> returns T[] | null, so generic is item type
+        return {
+          declarations,
+          returnTypeName: `${itemTypeName}[]`,
+          genericArg: itemTypeName,
+        };
       }
-      // array of primitive (e.g. string)
+      // array of primitive (e.g. string): emit item type only, use item[] in methods
       const itemType = propertySchemaToTypeScriptType(items);
-      declarations.push(`${INDENT_NS}export type ${typeName} = ${itemType}[];`);
-      return { declarations, returnTypeName: typeName, genericArg: typeName };
+      declarations.push(`${INDENT_NS}export type ${itemTypeName} = ${itemType};`);
+      return {
+        declarations,
+        returnTypeName: `${itemTypeName}[]`,
+        genericArg: itemTypeName,
+      };
     }
-    // array without items (default string[])
-    declarations.push(`${INDENT_NS}export type ${typeName} = string[];`);
-    return { declarations, returnTypeName: typeName, genericArg: typeName };
+    // array without items (default string[]): emit item type only
+    declarations.push(`${INDENT_NS}export type ${itemTypeName} = string;`);
+    return {
+      declarations,
+      returnTypeName: `${itemTypeName}[]`,
+      genericArg: itemTypeName,
+    };
   }
 
   // primitive: boolean, string, integer, double
