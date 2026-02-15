@@ -1308,7 +1308,7 @@ describe("sdk: instance", function () {
     it("should get array variables with generics for type safety", function () {
       const sdk = createInstance({ datafile: arrayAndObjectDatafile });
 
-      const stringArray = sdk.getVariableArray<string[]>("withArray", "simpleArray", context);
+      const stringArray = sdk.getVariableArray<string>("withArray", "simpleArray", context);
       expect(stringArray).toEqual(["red", "blue", "green"]);
       if (stringArray) {
         const first: string = stringArray[0];
@@ -1319,7 +1319,7 @@ describe("sdk: instance", function () {
         color: string;
         opacity: number;
       }
-      const objectArray = sdk.getVariableArray<ColorOpacity[]>("withArray", "objectArray", context);
+      const objectArray = sdk.getVariableArray<ColorOpacity>("withArray", "objectArray", context);
       expect(objectArray).toEqual([
         { color: "red", opacity: 100 },
         { color: "blue", opacity: 90 },

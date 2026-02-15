@@ -205,12 +205,12 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariableArray<T = string[]>(
+  getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): T | null {
+  ): T[] | null {
     return this.parent.getVariableArray<T>(
       featureKey,
       variableKey,

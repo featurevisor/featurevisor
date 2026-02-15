@@ -361,15 +361,15 @@ export class FeaturevisorInstance {
     return getValueByType(variableValue, "double") as number | null;
   }
 
-  getVariableArray<T = string[]>(
+  getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): T | null {
+  ): T[] | null {
     const variableValue = this.getVariable(featureKey, variableKey, context, options);
 
-    return getValueByType(variableValue, "array") as T | null;
+    return getValueByType(variableValue, "array") as T[] | null;
   }
 
   getVariableObject<T>(
