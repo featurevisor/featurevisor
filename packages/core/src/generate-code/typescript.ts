@@ -116,7 +116,7 @@ function generateVariableTypeDeclarations(
   variableSchema: VariableSchema,
 ): { declarations: string[]; returnTypeName: string; genericArg: string } {
   const typeName = getPascalCase(variableKey) + "Variable";
-  const itemTypeName = getPascalCase(variableKey) + "Item";
+  const itemTypeName = getPascalCase(variableKey) + "VariableItem";
   const type = variableSchema.type;
   const declarations: string[] = [];
 
@@ -132,13 +132,15 @@ function generateVariableTypeDeclarations(
         .map(([k, v]) => {
           const propType = propertySchemaToTypeScriptType(v as PropertySchema);
           const optional = requiredSet.size > 0 && !requiredSet.has(k);
-          return optional ? `    ${k}?: ${propType};` : `    ${k}: ${propType};`;
+          return optional
+            ? `${INDENT_NS_BODY}${k}?: ${propType};`
+            : `${INDENT_NS_BODY}${k}: ${propType};`;
         })
         .join("\n");
-      declarations.push(`  export interface ${typeName} {\n${entries}\n  }`);
+      declarations.push(`${INDENT_NS}export interface ${typeName} {\n${entries}\n${INDENT_NS}}`);
       return { declarations, returnTypeName: typeName, genericArg: typeName };
     }
-    declarations.push(`  export type ${typeName} = Record<string, unknown>;`);
+    declarations.push(`${INDENT_NS}export type ${typeName} = Record<string, unknown>;`);
     return { declarations, returnTypeName: typeName, genericArg: typeName };
   }
 
@@ -151,26 +153,30 @@ function generateVariableTypeDeclarations(
           .map(([k, v]) => {
             const propType = propertySchemaToTypeScriptType(v);
             const optional = requiredSet.size > 0 && !requiredSet.has(k);
-            return optional ? `    ${k}?: ${propType};` : `    ${k}: ${propType};`;
+            return optional
+              ? `${INDENT_NS_BODY}${k}?: ${propType};`
+              : `${INDENT_NS_BODY}${k}: ${propType};`;
           })
           .join("\n");
-        declarations.push(`  export interface ${itemTypeName} {\n${entries}\n  }`);
+        declarations.push(
+          `${INDENT_NS}export interface ${itemTypeName} {\n${entries}\n${INDENT_NS}}`,
+        );
         const returnType = `${itemTypeName}[]`;
         return { declarations, returnTypeName: returnType, genericArg: returnType };
       }
       // array of primitive (e.g. string)
       const itemType = propertySchemaToTypeScriptType(items);
-      declarations.push(`  export type ${typeName} = ${itemType}[];`);
+      declarations.push(`${INDENT_NS}export type ${typeName} = ${itemType}[];`);
       return { declarations, returnTypeName: typeName, genericArg: typeName };
     }
     // array without items (default string[])
-    declarations.push(`  export type ${typeName} = string[];`);
+    declarations.push(`${INDENT_NS}export type ${typeName} = string[];`);
     return { declarations, returnTypeName: typeName, genericArg: typeName };
   }
 
   // primitive: boolean, string, integer, double
   const primitiveType = convertFeaturevisorTypeToTypeScriptType(type);
-  declarations.push(`  export type ${typeName} = ${primitiveType};`);
+  declarations.push(`${INDENT_NS}export type ${typeName} = ${primitiveType};`);
   return { declarations, returnTypeName: typeName, genericArg: typeName };
 }
 
@@ -193,6 +199,10 @@ function getRelativePath(from, to) {
 
   return relativePath;
 }
+
+// Indentation for generated namespace content (2 spaces per level)
+const INDENT_NS = "  ";
+const INDENT_NS_BODY = "    ";
 
 const instanceSnippet = `
 import { FeaturevisorInstance } from "@featurevisor/sdk";
@@ -292,30 +302,31 @@ ${attributeProperties}
           variableType === "json" ? "JSON" : getPascalCase(variableType)
         }`;
 
-        const hasGeneric = variableType === "json" || variableType === "array" || variableType === "object";
+        const hasGeneric =
+          variableType === "json" || variableType === "array" || variableType === "object";
         if (variableType === "json") {
           variableMethods += `
 
-  export function get${getPascalCase(variableKey)}<T = unknown>(context: Context = {}): T | null {
-    return getInstance().${internalMethodName}<T>(key, "${variableKey}", context);
-  }`;
+${INDENT_NS}export function get${getPascalCase(variableKey)}<T = unknown>(context: Context = {}): T | null {
+${INDENT_NS_BODY}return getInstance().${internalMethodName}<T>(key, "${variableKey}", context);
+${INDENT_NS}}`;
         } else if (hasGeneric) {
           variableMethods += `
 
-  export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
-    return getInstance().${internalMethodName}<${genericArg}>(key, "${variableKey}", context);
-  }`;
+${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
+${INDENT_NS_BODY}return getInstance().${internalMethodName}<${genericArg}>(key, "${variableKey}", context);
+${INDENT_NS}}`;
         } else {
           variableMethods += `
 
-  export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
-    return getInstance().${internalMethodName}(key, "${variableKey}", context);
-  }`;
+${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
+${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context);
+${INDENT_NS}}`;
         }
       }
 
       if (allDeclarations.length > 0) {
-        variableTypeDeclarations = "\n\n  // Variable types (from variablesSchema)\n" + allDeclarations.join("\n\n");
+        variableTypeDeclarations = "\n\n" + allDeclarations.join("\n\n");
       }
     }
 
@@ -324,15 +335,15 @@ import { Context } from "./Context";
 import { getInstance } from "./instance";
 
 export namespace ${namespaceValue} {
-  export const key = "${featureKey}";${variableTypeDeclarations}
+${INDENT_NS}export const key = "${featureKey}";${variableTypeDeclarations}
 
-  export function isEnabled(context: Context = {}) {
-    return getInstance().isEnabled(key, context);
-  }
+${INDENT_NS}export function isEnabled(context: Context = {}) {
+${INDENT_NS_BODY}return getInstance().isEnabled(key, context);
+${INDENT_NS}}
 
-  export function getVariation(context: Context = {}) {
-    return getInstance().getVariation(key, context);
-  }${variableMethods}
+${INDENT_NS}export function getVariation(context: Context = {}) {
+${INDENT_NS_BODY}return getInstance().getVariation(key, context);
+${INDENT_NS}}${variableMethods}
 }
 `.trimStart();
 
