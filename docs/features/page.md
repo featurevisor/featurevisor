@@ -562,7 +562,20 @@ variablesSchema:
 
 #### `array`
 
-If `items` is not set, the array will be treated as an array of strings by default. This is very similar to how JSON Schema works.
+By default, arrays are treated as arrays of strings:
+
+```yml
+# ...
+
+variablesSchema:
+  acceptedCards:
+    type: array
+    defaultValue:
+      - visa
+      - mastercard
+```
+
+Similar to JSON Schema, you can also define the schema for the items in the array explicitly:
 
 ```yml
 # ...
@@ -577,7 +590,7 @@ variablesSchema:
       - mastercard
 ```
 
-You could also have an array of objects:
+Here is an example of an array of objects:
 
 ```yml
 # ...
