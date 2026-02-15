@@ -36,7 +36,7 @@ export function getPropertyZodSchema(_projectConfig: ProjectConfig) {
         // enum?: Value[]; const?: Value;
         // Numeric: maximum?, minimum?
         // String: maxLength?, minLength?, pattern?
-        items: propertyZodSchema.optional(), // @TODO: allow array of items in future | PropertySchema[]
+        items: propertyZodSchema.optional(),
         // maxItems?, minItems?, uniqueItems?
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), propertyZodSchema).optional(),

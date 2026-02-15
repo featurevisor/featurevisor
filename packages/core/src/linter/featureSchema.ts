@@ -10,7 +10,11 @@ function isArrayOfStrings(value) {
 }
 
 function getVariableLabel(variableSchema, variableKey, path) {
-  return variableKey ?? variableSchema?.key ?? (path.length > 0 ? String(path[path.length - 1]) : "variable");
+  return (
+    variableKey ??
+    variableSchema?.key ??
+    (path.length > 0 ? String(path[path.length - 1]) : "variable")
+  );
 }
 
 function superRefineVariableValue(
@@ -143,7 +147,11 @@ function superRefineVariableValue(
 
   // object
   if (variableSchema.type === "object") {
-    if (typeof variableValue !== "object" || variableValue === null || Array.isArray(variableValue)) {
+    if (
+      typeof variableValue !== "object" ||
+      variableValue === null ||
+      Array.isArray(variableValue)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${label}" (${variableSchema.type}): expected a plain object. \n\n${variableValue}\n\n`,
