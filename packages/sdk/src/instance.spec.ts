@@ -1283,7 +1283,11 @@ describe("sdk: instance", function () {
       const simpleStringArray = sdk.getVariable("withArray", "simpleStringArray", context);
       expect(simpleStringArray).toEqual(["red", "blue", "green"]);
 
-      const simpleStringArrayTyped = sdk.getVariableArray("withArray", "simpleStringArray", context);
+      const simpleStringArrayTyped = sdk.getVariableArray(
+        "withArray",
+        "simpleStringArray",
+        context,
+      );
       expect(simpleStringArrayTyped).toEqual(["red", "blue", "green"]);
 
       const objectArray = sdk.getVariable("withArray", "objectArray", context);
@@ -1315,11 +1319,7 @@ describe("sdk: instance", function () {
         color: string;
         opacity: number;
       }
-      const objectArray = sdk.getVariableArray<ColorOpacity[]>(
-        "withArray",
-        "objectArray",
-        context,
-      );
+      const objectArray = sdk.getVariableArray<ColorOpacity[]>("withArray", "objectArray", context);
       expect(objectArray).toEqual([
         { color: "red", opacity: 100 },
         { color: "blue", opacity: 90 },
@@ -1392,11 +1392,7 @@ describe("sdk: instance", function () {
         theme: string;
         darkMode: boolean;
       }
-      const themeConfig = sdk.getVariableObject<ThemeConfig>(
-        "withObject",
-        "themeConfig",
-        context,
-      );
+      const themeConfig = sdk.getVariableObject<ThemeConfig>("withObject", "themeConfig", context);
       expect(themeConfig).toEqual({ theme: "light", darkMode: false });
       if (themeConfig) {
         expect(themeConfig.theme).toBe("light");
@@ -1428,11 +1424,7 @@ describe("sdk: instance", function () {
       interface PanelConfig {
         sections: PanelSection[];
       }
-      const panelConfig = sdk.getVariableObject<PanelConfig>(
-        "withObject",
-        "panelConfig",
-        context,
-      );
+      const panelConfig = sdk.getVariableObject<PanelConfig>("withObject", "panelConfig", context);
       expect(panelConfig?.sections).toHaveLength(2);
       expect(panelConfig?.sections[0]).toEqual({ id: "hero", visible: true });
     });
