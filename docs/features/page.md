@@ -659,13 +659,13 @@ variablesSchema:
             type: string
           url:
             type: string
-  defaultValue:
-    background:
-      image: /img/hero-background.png
-      color: red
-    cta:
-      title: Get started
-      url: /get-started
+    defaultValue:
+      background:
+        image: /img/hero-background.png
+        color: red
+      cta:
+        title: Get started
+        url: /get-started
 ```
 
 #### `json`
