@@ -512,8 +512,8 @@ These types of variables are allowed:
 - `boolean`
 - `integer`
 - `double`
-- `array` (of strings)
-- `object` (flat objects only)
+- `array`
+- `object`
 - `json` (any valid JSON in stringified form)
 
 #### `string`
@@ -562,6 +562,8 @@ variablesSchema:
 
 #### `array`
 
+By default, arrays are treated as arrays of strings:
+
 ```yml
 # ...
 
@@ -573,7 +575,47 @@ variablesSchema:
       - mastercard
 ```
 
+Similar to JSON Schema, you can also define the schema for the items in the array explicitly:
+
+```yml
+# ...
+
+variablesSchema:
+  acceptedCards:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - visa
+      - mastercard
+```
+
+Here is an example of an array of objects:
+
+```yml
+# ...
+
+variablesSchema:
+  navLinks:
+    type: array
+    items:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+    defaultValue:
+      - title: Home
+        url: /
+
+      - title: Contact
+        url: /contact
+```
+
 #### `object`
+
+If no additional `properties` are defined similar to JSON Schema format, then the object is treated as a flat object (primitive values only):
 
 ```yml
 # ...
@@ -584,6 +626,59 @@ variablesSchema:
     defaultValue:
       title: Welcome
       subtitle: Welcome to our website
+```
+
+Alternatively, you can define the object with `properties` and `required` properties for more strict linting:
+
+```yml
+# ...
+
+variablesSchema:
+  hero:
+    type: object
+    properties:
+      title:
+        type: string
+      subtitle:
+        type: string
+    required:
+      - title
+      - subtitle
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our website
+```
+
+Nested objects can also be defined with their own `properties` and `required` properties (similar to JSON Schema format):
+
+```yml
+# ...
+
+variablesSchema:
+  hero:
+    type: object
+    properties:
+      background:
+        type: object
+        properties:
+          image:
+            type: string
+          color:
+            type: string
+      cta:
+        type: object
+        properties:
+          title:
+            type: string
+          url:
+            type: string
+    defaultValue:
+      background:
+        image: /img/hero-background.png
+        color: red
+      cta:
+        title: Get started
+        url: /get-started
 ```
 
 #### `json`

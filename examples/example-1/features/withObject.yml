@@ -1,0 +1,134 @@
+description: Exhaustive example of object variables with nested types (objects, arrays, primitives)
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  themeConfig:
+    type: object
+    properties:
+      theme:
+        type: string
+      darkMode:
+        type: boolean
+    defaultValue:
+      theme: light
+      darkMode: false
+
+  layoutConfig:
+    type: object
+    properties:
+      width:
+        type: integer
+      align:
+        type: string
+    defaultValue:
+      width: 1200
+      align: center
+
+  headerConfig:
+    type: object
+    properties:
+      style:
+        type: object
+        properties:
+          fontSize:
+            type: integer
+          bold:
+            type: boolean
+      title:
+        type: string
+    defaultValue:
+      style:
+        fontSize: 18
+        bold: true
+      title: Welcome
+
+  contentConfig:
+    type: object
+    properties:
+      tags:
+        type: array
+        items:
+          type: string
+      count:
+        type: integer
+    defaultValue:
+      tags:
+        - news
+        - featured
+      count: 2
+
+  panelConfig:
+    type: object
+    properties:
+      sections:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            visible:
+              type: boolean
+    defaultValue:
+      sections:
+        - id: hero
+          visible: true
+        - id: sidebar
+          visible: false
+
+  deepConfig:
+    type: object
+    properties:
+      level1:
+        type: object
+        properties:
+          level2:
+            type: object
+            properties:
+              value:
+                type: string
+              count:
+                type: integer
+    defaultValue:
+      level1:
+        level2:
+          value: deep
+          count: 1
+
+  mixedConfig:
+    type: object
+    properties:
+      name:
+        type: string
+      enabled:
+        type: boolean
+      meta:
+        type: object
+        properties:
+          score:
+            type: double
+          items:
+            type: array
+            items:
+              type: string
+    defaultValue:
+      name: mixed
+      enabled: true
+      meta:
+        score: 0.95
+        items:
+          - a
+          - b
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 50
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 50

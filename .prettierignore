@@ -1,4 +1,6 @@
 packages/*/dist
 packages/*/lib
 
+examples/*/src
+
 CHANGELOG.md

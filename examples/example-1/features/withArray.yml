@@ -1,0 +1,49 @@
+description: Testing feature with object variable type
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  simpleArray:
+    type: array
+    defaultValue:
+      - red
+      - blue
+      - green
+
+  simpleStringArray: # same as above, but with explicit items type
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - red
+      - blue
+      - green
+
+  objectArray: # with typed objects as array items
+    type: array
+    items:
+      type: object
+      properties:
+        color:
+          type: string
+        opacity:
+          type: integer
+    defaultValue:
+      - color: red
+        opacity: 100
+      - color: blue
+        opacity: 90
+      - color: green
+        opacity: 95
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 50
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 50

@@ -1,27 +1,15 @@
 import type { BucketBy } from "./bucket";
 import type { Condition } from "./condition";
 import type { GroupSegment } from "./segment";
+import type { PropertyType, Value, PropertySchema } from "./property";
 
 export type VariationValue = string;
 
 export type VariableKey = string;
-export type VariableType =
-  | "boolean"
-  | "string"
-  | "integer"
-  | "double"
-  | "array"
-  | "object"
-  | "json";
-export interface VariableObjectValue {
-  [key: string]: VariableValue;
-}
+export type VariableType = PropertyType | "json";
 export type VariableValue =
-  | boolean
-  | string
-  | number
-  | string[]
-  | VariableObjectValue
+  | Value
+  // @TODO: consider removing below items
   | null
   | undefined;
 
@@ -75,7 +63,13 @@ export interface VariableSchema {
   deprecated?: boolean;
   key?: VariableKey; // @NOTE: remove
   type: VariableType;
+
+  properties?: PropertySchema; // if type is object
+  required?: PropertySchema["required"]; // if type is object
+  items?: PropertySchema["items"]; // if type is array
+
   defaultValue: VariableValue;
+  // nullable?: boolean; // @TODO: consider in future
   description?: string; // only available in YAML files
   useDefaultWhenDisabled?: boolean;
   disabledValue?: VariableValue;
