@@ -134,6 +134,7 @@ ${attributeProperties}
         const variableSchema = parsedFeature.variablesSchema[variableKey];
         const variableType = variableSchema.type;
 
+        // @TODO: handle type updates for arrays and objects
         const internalMethodName = `getVariable${
           variableType === "json" ? "JSON" : getPascalCase(variableType)
         }`;
