@@ -5,8 +5,17 @@ import { valueZodSchema, propertyTypeEnum, getPropertyZodSchema } from "./proper
 
 const tagRegex = /^[a-z0-9-]+$/;
 
-function isArrayOfStrings(value) {
+function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function isFlatObjectValue(value: unknown): boolean {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
 }
 
 function getVariableLabel(variableSchema, variableKey, path) {
@@ -15,6 +24,140 @@ function getVariableLabel(variableSchema, variableKey, path) {
     variableSchema?.key ??
     (path.length > 0 ? String(path[path.length - 1]) : "variable")
   );
+}
+
+function typeOfValue(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+/**
+ * Validates a variable value against an array schema. Recursively validates each item
+ * when the schema defines `items` (nested arrays/objects use the same refinement).
+ */
+function refineVariableValueArray(
+  projectConfig: ProjectConfig,
+  variableSchema: { items?: unknown; type: string },
+  variableValue: unknown[],
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
+  variableKey?: string,
+): void {
+  const label = getVariableLabel(variableSchema, variableKey, path);
+  const itemSchema = variableSchema.items;
+
+  if (itemSchema) {
+    variableValue.forEach((item, index) => {
+      superRefineVariableValue(
+        projectConfig,
+        itemSchema,
+        item,
+        [...path, index],
+        ctx,
+        variableKey,
+      );
+    });
+  } else {
+    if (!isArrayOfStrings(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type array): when \`items\` is not set, array must contain only strings; found non-string element.`,
+        path,
+      });
+    }
+  }
+
+  if (projectConfig.maxVariableArrayStringifiedLength) {
+    const stringified = JSON.stringify(variableValue);
+    if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
+        path,
+      });
+    }
+  }
+}
+
+/**
+ * Validates a variable value against an object schema. Recursively validates each property
+ * when the schema defines `properties` (nested objects/arrays use the same refinement).
+ */
+function refineVariableValueObject(
+  projectConfig: ProjectConfig,
+  variableSchema: {
+    properties?: Record<string, unknown>;
+    required?: string[];
+    type: string;
+  },
+  variableValue: Record<string, unknown>,
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
+  variableKey?: string,
+): void {
+  const label = getVariableLabel(variableSchema, variableKey, path);
+  const schemaProperties = variableSchema.properties;
+
+  if (schemaProperties && typeof schemaProperties === "object") {
+    const requiredKeys =
+      variableSchema.required && variableSchema.required.length > 0
+        ? variableSchema.required
+        : Object.keys(schemaProperties);
+
+    for (const key of requiredKeys) {
+      if (!Object.prototype.hasOwnProperty.call(variableValue, key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Missing required property "${key}" in variable "${label}"`,
+          path: [...path, key],
+        });
+      }
+    }
+
+    for (const key of Object.keys(variableValue)) {
+      const propSchema = schemaProperties[key];
+      if (!propSchema) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Unknown property "${key}" in variable "${label}" (not in schema)`,
+          path: [...path, key],
+        });
+      } else {
+        superRefineVariableValue(
+          projectConfig,
+          propSchema,
+          variableValue[key],
+          [...path, key],
+          ctx,
+          key,
+        );
+      }
+    }
+  } else {
+    for (const key of Object.keys(variableValue)) {
+      const propValue = variableValue[key];
+      if (!isFlatObjectValue(propValue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Variable "${label}" is a flat object (no \`properties\` in schema); property "${key}" must be a primitive (string, number, boolean, or null), got: ${typeof propValue}`,
+          path: [...path, key],
+        });
+      }
+    }
+  }
+
+  if (projectConfig.maxVariableObjectStringifiedLength) {
+    const stringified = JSON.stringify(variableValue);
+    if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
+        path,
+      });
+    }
+  }
 }
 
 function superRefineVariableValue(
@@ -28,15 +171,11 @@ function superRefineVariableValue(
   const label = getVariableLabel(variableSchema, variableKey, path);
 
   if (!variableSchema) {
-    let message = `Unknown variable with value: ${variableValue}`;
-
-    if (path.length > 0) {
-      const lastPath = path[path.length - 1];
-
-      if (typeof lastPath === "string") {
-        message = `Unknown variable "${lastPath}" with value: ${variableValue}`;
-      }
-    }
+    const variableName =
+      path.length > 0 && typeof path[path.length - 1] === "string"
+        ? String(path[path.length - 1])
+        : "variable";
+    const message = `Variable "${variableName}" is used but not defined in variablesSchema. Define it under variablesSchema first, then use it here.`;
 
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -47,14 +186,28 @@ function superRefineVariableValue(
     return;
   }
 
-  // string
-  if (variableSchema.type === "string") {
+  // Require a value (no undefined) for every variable usage
+  if (variableValue === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${label}" value is required (got undefined).`,
+      path,
+    });
+    return;
+  }
+
+  const expectedType = variableSchema.type;
+  const gotType = typeOfValue(variableValue);
+
+  // string — only string allowed
+  if (expectedType === "string") {
     if (typeof variableValue !== "string") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
+        message: `Variable "${label}" (type string) must be a string; got ${gotType}.`,
         path,
       });
+      return;
     }
 
     if (
@@ -71,82 +224,89 @@ function superRefineVariableValue(
     return;
   }
 
-  // integer, double
-  if (["integer", "double"].indexOf(variableSchema.type) > -1) {
+  // integer — only integer number allowed (no NaN, no Infinity, no float)
+  if (expectedType === "integer") {
     if (typeof variableValue !== "number") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
-        path,
-      });
-    }
-
-    return;
-  }
-
-  // boolean
-  if (variableSchema.type === "boolean") {
-    if (typeof variableValue !== "boolean") {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): ${variableValue}`,
-        path,
-      });
-    }
-
-    return;
-  }
-
-  // array
-  if (variableSchema.type === "array") {
-    if (!Array.isArray(variableValue)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Variable "${label}" (type integer) must be a number; got ${gotType}.`,
         path,
       });
       return;
     }
-
-    const itemSchema = variableSchema.items;
-    if (itemSchema) {
-      variableValue.forEach((item, index) => {
-        superRefineVariableValue(
-          projectConfig,
-          itemSchema,
-          item,
-          [...path, index],
-          ctx,
-          variableKey,
-        );
+    if (!Number.isFinite(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be a finite number; got ${variableValue}.`,
+        path,
       });
-    } else {
-      if (!isArrayOfStrings(variableValue)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Invalid value for variable "${label}" (${variableSchema.type}): when \`items\` is not set, array must contain only strings. \n\n${variableValue}\n\n`,
-          path,
-        });
-      }
+      return;
     }
-
-    if (projectConfig.maxVariableArrayStringifiedLength) {
-      const stringified = JSON.stringify(variableValue);
-
-      if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Variable "${label}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
-          path,
-        });
-      }
+    if (!Number.isInteger(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be an integer; got ${variableValue}.`,
+        path,
+      });
     }
-
     return;
   }
 
-  // object
-  if (variableSchema.type === "object") {
+  // double — only finite number allowed
+  if (expectedType === "double") {
+    if (typeof variableValue !== "number") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be a number; got ${gotType}.`,
+        path,
+      });
+      return;
+    }
+    if (!Number.isFinite(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be a finite number; got ${variableValue}.`,
+        path,
+      });
+    }
+    return;
+  }
+
+  // boolean — only boolean allowed
+  if (expectedType === "boolean") {
+    if (typeof variableValue !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type boolean) must be a boolean; got ${gotType}.`,
+        path,
+      });
+    }
+    return;
+  }
+
+  // array — only array allowed; without items schema = array of strings
+  if (expectedType === "array") {
+    if (!Array.isArray(variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type array) must be an array; got ${gotType}.`,
+        path,
+      });
+      return;
+    }
+    refineVariableValueArray(
+      projectConfig,
+      variableSchema,
+      variableValue,
+      path,
+      ctx,
+      variableKey,
+    );
+    return;
+  }
+
+  // object — only plain object allowed (no null, no array)
+  if (expectedType === "object") {
     if (
       typeof variableValue !== "object" ||
       variableValue === null ||
@@ -154,77 +314,40 @@ function superRefineVariableValue(
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): expected a plain object. \n\n${variableValue}\n\n`,
+        message: `Variable "${label}" (type object) must be a plain object; got ${gotType}.`,
         path,
       });
       return;
     }
-
-    const schemaProperties = variableSchema.properties;
-    if (schemaProperties && typeof schemaProperties === "object") {
-      const requiredKeys =
-        variableSchema.required && variableSchema.required.length > 0
-          ? variableSchema.required
-          : Object.keys(schemaProperties);
-
-      for (const key of requiredKeys) {
-        if (!Object.prototype.hasOwnProperty.call(variableValue, key)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Missing required property "${key}" in variable "${label}"`,
-            path: [...path, key],
-          });
-        }
-      }
-
-      for (const key of Object.keys(variableValue)) {
-        const propSchema = schemaProperties[key];
-        if (!propSchema) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Unknown property "${key}" in variable "${label}" (not in schema)`,
-            path: [...path, key],
-          });
-        } else {
-          superRefineVariableValue(
-            projectConfig,
-            propSchema,
-            variableValue[key],
-            [...path, key],
-            ctx,
-            key,
-          );
-        }
-      }
-    }
-
-    if (projectConfig.maxVariableObjectStringifiedLength) {
-      const stringified = JSON.stringify(variableValue);
-
-      if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Variable "${label}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
-          path,
-        });
-      }
-    }
-
+    refineVariableValueObject(
+      projectConfig,
+      variableSchema,
+      variableValue as Record<string, unknown>,
+      path,
+      ctx,
+      variableKey,
+    );
     return;
   }
 
-  // json
-  if (variableSchema.type === "json") {
+  // json — only string containing valid JSON allowed
+  if (expectedType === "json") {
+    if (typeof variableValue !== "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type json) must be a string (JSON string); got ${gotType}.`,
+        path,
+      });
+      return;
+    }
     try {
-      JSON.parse(variableValue as string);
+      JSON.parse(variableValue);
 
       if (projectConfig.maxVariableJSONStringifiedLength) {
-        const stringified = variableValue;
-
-        if (stringified.length > projectConfig.maxVariableJSONStringifiedLength) {
+        if (variableValue.length > projectConfig.maxVariableJSONStringifiedLength) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Variable "${label}" JSON is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
+            message: `Variable "${label}" JSON is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
             path,
           });
         }
@@ -233,13 +356,20 @@ function superRefineVariableValue(
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): \n\n${variableValue}\n\n`,
+        message: `Variable "${label}" (type json) must be a valid JSON string; parse failed.`,
         path,
       });
     }
 
     return;
   }
+
+  // Unknown variable type — schema is invalid or unsupported
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: `Variable "${label}" has unknown or unsupported type "${String(expectedType)}" in variablesSchema.`,
+    path,
+  });
 }
 
 function refineForce({
@@ -558,9 +688,10 @@ export function getFeatureZodSchema(
             .object({
               deprecated: z.boolean().optional(),
 
-              // @TODO: make the linting adapt per type change
               type: z.union([z.literal("json"), propertyTypeEnum]),
+              // array: when omitted, treated as array of strings
               items: propertyZodSchema.optional(),
+              // object: when omitted, treated as flat object (primitive values only)
               properties: z.record(propertyZodSchema).optional(),
 
               description: z.string().optional(),
