@@ -602,7 +602,20 @@ variablesSchema:
 
 #### `object`
 
-Objects can be flat:
+If no additional `properties` are defined similar to JSON Schema format, then the object is treated as a flat object (primitive values only):
+
+```yml
+# ...
+
+variablesSchema:
+  hero:
+    type: object
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our website
+```
+
+Alternatively, you can define the object with `properties` and `required` properties for more strict linting:
 
 ```yml
 # ...
@@ -623,7 +636,7 @@ variablesSchema:
       subtitle: Welcome to our website
 ```
 
-Or even nested:
+Nested objects can also be defined with their own `properties` and `required` properties (similar to JSON Schema format):
 
 ```yml
 # ...
