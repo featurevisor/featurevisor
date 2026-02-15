@@ -5,18 +5,6 @@ import { valueZodSchema, propertyTypeEnum, getPropertyZodSchema } from "./proper
 
 const tagRegex = /^[a-z0-9-]+$/;
 
-function isFlatObject(value) {
-  let isFlat = true;
-
-  Object.keys(value).forEach((key) => {
-    if (typeof value[key] === "object") {
-      isFlat = false;
-    }
-  });
-
-  return isFlat;
-}
-
 function isArrayOfStrings(value) {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
@@ -159,15 +147,6 @@ function superRefineVariableValue(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Invalid value for variable "${label}" (${variableSchema.type}): expected a plain object. \n\n${variableValue}\n\n`,
-        path,
-      });
-      return;
-    }
-
-    if (!isFlatObject(variableValue)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Invalid value for variable "${label}" (${variableSchema.type}): object must be flat (no nested objects or arrays). \n\n${variableValue}\n\n`,
         path,
       });
       return;
