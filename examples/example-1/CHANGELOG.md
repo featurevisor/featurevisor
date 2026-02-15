@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.10.0](https://github.com/featurevisor/featurevisor/compare/v2.9.0...v2.10.0) (2026-02-15)
+
+
+### Features
+
+* typed arrays and objects as variables ([#388](https://github.com/featurevisor/featurevisor/issues/388)) ([5909f42](https://github.com/featurevisor/featurevisor/commit/5909f42b93c55a71d3f43fd7a2a58287ac82af7f))
+
+
+
+
+
 # [2.9.0](https://github.com/featurevisor/featurevisor/compare/v2.8.0...v2.9.0) (2026-02-08)
 
 **Note:** Version bump only for package @featurevisor/example-1
