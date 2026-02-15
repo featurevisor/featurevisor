@@ -1,8 +1,6 @@
 import type { PropertySchema, Value } from "@featurevisor/types";
 import { z } from "zod";
 
-import { ProjectConfig } from "../config";
-
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
 export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   z.union([
@@ -27,7 +25,7 @@ export const propertyTypeEnum = z.enum([
   "array",
 ]);
 
-export function getPropertyZodSchema(_projectConfig: ProjectConfig) {
+export function getPropertyZodSchema() {
   const propertyZodSchema: z.ZodType<PropertySchema> = z.lazy(() =>
     z
       .object({

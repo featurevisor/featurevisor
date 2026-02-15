@@ -70,44 +70,6 @@ function propertySchemaToTypeScriptType(schema: PropertySchema): string {
 }
 
 /**
- * Converts a VariableSchema to the TypeScript return type for its getter.
- * Uses structured items/properties when present for full type safety.
- */
-function variableSchemaToTypeScriptType(variableSchema: VariableSchema): string {
-  const type = variableSchema.type;
-
-  if (type === "json") {
-    return "T"; // generic, caller supplies T
-  }
-
-  if (type === "object") {
-    const props = variableSchema.properties;
-    if (props && typeof props === "object" && Object.keys(props).length > 0) {
-      const requiredSet = new Set((variableSchema.required as string[]) || []);
-      const entries = Object.entries(props)
-        .map(([k, v]) => {
-          const propType = propertySchemaToTypeScriptType(v as PropertySchema);
-          const optional = requiredSet.size > 0 && !requiredSet.has(k);
-          return optional ? `${k}?: ${propType}` : `${k}: ${propType}`;
-        })
-        .join("; ");
-      return `{ ${entries} }`;
-    }
-    return "Record<string, unknown>";
-  }
-
-  if (type === "array") {
-    if (variableSchema.items) {
-      const itemType = propertySchemaToTypeScriptType(variableSchema.items as PropertySchema);
-      return `${itemType}[]`;
-    }
-    return "string[]";
-  }
-
-  return convertFeaturevisorTypeToTypeScriptType(type);
-}
-
-/**
  * Generates TypeScript type/interface declarations and metadata for a variable.
  * Returns declarations to emit (interface or type alias) plus the type name and generic to use in the getter.
  */

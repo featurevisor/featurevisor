@@ -376,7 +376,7 @@ export function getFeatureZodSchema(
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
 ) {
-  const propertyZodSchema = getPropertyZodSchema(projectConfig);
+  const propertyZodSchema = getPropertyZodSchema();
   const variableValueZodSchema = valueZodSchema;
 
   const variationValueZodSchema = z.string().min(1);
