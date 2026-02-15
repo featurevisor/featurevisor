@@ -512,8 +512,8 @@ These types of variables are allowed:
 - `boolean`
 - `integer`
 - `double`
-- `array` (of strings)
-- `object` (flat objects only)
+- `array`
+- `object`
 - `json` (any valid JSON in stringified form)
 
 #### `string`
@@ -562,18 +562,47 @@ variablesSchema:
 
 #### `array`
 
+If `items` is not set, the array will be treated as an array of strings by default. This is very similar to how JSON Schema works.
+
 ```yml
 # ...
 
 variablesSchema:
   acceptedCards:
     type: array
+    items:
+      type: string
     defaultValue:
       - visa
       - mastercard
 ```
 
+You could also have an array of objects:
+
+```yml
+# ...
+
+variablesSchema:
+  navLinks:
+    type: array
+    items:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+    defaultValue:
+      - title: Home
+        url: /
+
+      - title: Contact
+        url: /contact
+```
+
 #### `object`
+
+Objects can be flat:
 
 ```yml
 # ...
@@ -581,9 +610,49 @@ variablesSchema:
 variablesSchema:
   hero:
     type: object
+    properties:
+      title:
+        type: string
+      subtitle:
+        type: string
+    required:
+      - title
+      - subtitle
     defaultValue:
       title: Welcome
       subtitle: Welcome to our website
+```
+
+Or even nested:
+
+```yml
+# ...
+
+variablesSchema:
+  hero:
+    type: object
+    properties:
+      background:
+        type: object
+        properties:
+          image:
+            type: string
+          color:
+            type: string
+      cta:
+        type: object
+        properties:
+          title:
+            type: string
+          url:
+            type: string
+  defaultValue:
+    background:
+      image: /img/hero-background.png
+      color: red
+    cta:
+      title: Get started
+      url: /get-started
 ```
 
 #### `json`
