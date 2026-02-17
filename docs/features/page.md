@@ -575,7 +575,7 @@ variablesSchema:
       - mastercard
 ```
 
-Similar to JSON Schema, you can also define the schema for the items in the array explicitly:
+Similar to [JSON Schema](https://json-schema.org), you can also define the schema for the items in the array explicitly:
 
 ```yml
 # ...
@@ -615,7 +615,7 @@ variablesSchema:
 
 #### `object`
 
-If no additional `properties` are defined similar to JSON Schema format, then the object is treated as a flat object (primitive values only):
+If no additional `properties` are defined similar to [JSON Schema](https://json-schema.org) format, then the object is treated as a flat object (primitive values only):
 
 ```yml
 # ...
