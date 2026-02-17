@@ -96,7 +96,9 @@ function refineVariableValueObject(
   if (schemaProperties && typeof schemaProperties === "object") {
     const requiredKeys =
       variableSchema.required && variableSchema.required.length > 0
-        ? variableSchema.required
+        ? variableSchema.required.filter((k) =>
+            Object.prototype.hasOwnProperty.call(schemaProperties, k),
+          )
         : Object.keys(schemaProperties);
 
     for (const key of requiredKeys) {
@@ -679,6 +681,8 @@ export function getFeatureZodSchema(
               items: propertyZodSchema.optional(),
               // object: when omitted, treated as flat object (primitive values only)
               properties: z.record(propertyZodSchema).optional(),
+              // object: optional list of required property names
+              required: z.array(z.string()).optional(),
 
               description: z.string().optional(),
 
@@ -687,7 +691,28 @@ export function getFeatureZodSchema(
 
               useDefaultWhenDisabled: z.boolean().optional(),
             })
-            .strict(),
+            .strict()
+            .superRefine((variableSchema, ctx) => {
+              // When type is object, required may only list keys that exist in properties
+              if (
+                variableSchema.type !== "object" ||
+                !variableSchema.required?.length ||
+                !variableSchema.properties ||
+                typeof variableSchema.properties !== "object"
+              ) {
+                return;
+              }
+              const allowedKeys = Object.keys(variableSchema.properties);
+              variableSchema.required.forEach((key, index) => {
+                if (!allowedKeys.includes(key)) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Unknown required field "${key}". \`required\` must only contain property names defined in \`properties\`. Allowed: ${allowedKeys.length ? allowedKeys.join(", ") : "(none)"}.`,
+                    path: ["required", index],
+                  });
+                }
+              });
+            }),
         )
         .optional(),
 

@@ -23,6 +23,8 @@ variablesSchema:
         type: integer
       align:
         type: string
+    required:
+      - width
     defaultValue:
       width: 1200
       align: center
