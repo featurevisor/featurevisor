@@ -39,6 +39,8 @@ variablesSchema:
             type: integer
           bold:
             type: boolean
+        required:
+          - fontSize
       title:
         type: string
     defaultValue:
