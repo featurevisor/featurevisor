@@ -56,7 +56,7 @@ function propertySchemaToTypeScriptType(schema: PropertySchema): string {
         const entries = Object.entries(props)
           .map(([k, v]) => {
             const propType = propertySchemaToTypeScriptType(v);
-            const optional = requiredSet.size > 0 && !requiredSet.has(k);
+            const optional = !requiredSet.has(k);
             return optional ? `${k}?: ${propType}` : `${k}: ${propType}`;
           })
           .join("; ");
@@ -93,7 +93,7 @@ function generateVariableTypeDeclarations(
       const entries = Object.entries(props)
         .map(([k, v]) => {
           const propType = propertySchemaToTypeScriptType(v as PropertySchema);
-          const optional = requiredSet.size > 0 && !requiredSet.has(k);
+          const optional = !requiredSet.has(k);
           return optional
             ? `${INDENT_NS_BODY}${k}?: ${propType};`
             : `${INDENT_NS_BODY}${k}: ${propType};`;
@@ -114,7 +114,7 @@ function generateVariableTypeDeclarations(
         const entries = Object.entries(items.properties)
           .map(([k, v]) => {
             const propType = propertySchemaToTypeScriptType(v);
-            const optional = requiredSet.size > 0 && !requiredSet.has(k);
+            const optional = !requiredSet.has(k);
             return optional
               ? `${INDENT_NS_BODY}${k}?: ${propType};`
               : `${INDENT_NS_BODY}${k}: ${propType};`;

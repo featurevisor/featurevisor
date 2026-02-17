@@ -23,6 +23,8 @@ variablesSchema:
         type: integer
       align:
         type: string
+    required:
+      - width
     defaultValue:
       width: 1200
       align: center
@@ -37,8 +39,12 @@ variablesSchema:
             type: integer
           bold:
             type: boolean
+        required:
+          - fontSize
       title:
         type: string
+    required:
+      - style
     defaultValue:
       style:
         fontSize: 18

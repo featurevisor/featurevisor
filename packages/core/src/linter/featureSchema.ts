@@ -26,6 +26,69 @@ function getVariableLabel(variableSchema, variableKey, path) {
   );
 }
 
+/**
+ * Recursively validates that every `required` array (at this level and in nested
+ * object/array schemas) only contains keys that exist in the same level's `properties`.
+ * Adds Zod issues with the correct path for invalid required field names.
+ */
+function refineRequiredKeysInSchema(
+  schema: {
+    type?: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+    items?: unknown;
+  },
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+
+  const effectiveType = schema.type;
+  const properties = schema.properties;
+  const required = schema.required;
+  const items = schema.items;
+
+  if (
+    effectiveType === "object" &&
+    Array.isArray(required) &&
+    required.length > 0 &&
+    properties &&
+    typeof properties === "object"
+  ) {
+    const allowedKeys = Object.keys(properties);
+    required.forEach((key, index) => {
+      if (!allowedKeys.includes(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Unknown required field "${key}". \`required\` must only contain property names defined in \`properties\`. Allowed: ${allowedKeys.length ? allowedKeys.join(", ") : "(none)"}.`,
+          path: [...pathPrefix, "required", index],
+        });
+      }
+    });
+  }
+
+  if (properties && typeof properties === "object") {
+    for (const key of Object.keys(properties)) {
+      const nested = properties[key];
+      if (nested && typeof nested === "object") {
+        refineRequiredKeysInSchema(
+          nested as Parameters<typeof refineRequiredKeysInSchema>[0],
+          [...pathPrefix, "properties", key],
+          ctx,
+        );
+      }
+    }
+  }
+
+  if (items && typeof items === "object" && !Array.isArray(items)) {
+    refineRequiredKeysInSchema(
+      items as Parameters<typeof refineRequiredKeysInSchema>[0],
+      [...pathPrefix, "items"],
+      ctx,
+    );
+  }
+}
+
 function typeOfValue(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
@@ -96,7 +159,9 @@ function refineVariableValueObject(
   if (schemaProperties && typeof schemaProperties === "object") {
     const requiredKeys =
       variableSchema.required && variableSchema.required.length > 0
-        ? variableSchema.required
+        ? variableSchema.required.filter((k) =>
+            Object.prototype.hasOwnProperty.call(schemaProperties, k),
+          )
         : Object.keys(schemaProperties);
 
     for (const key of requiredKeys) {
@@ -679,6 +744,8 @@ export function getFeatureZodSchema(
               items: propertyZodSchema.optional(),
               // object: when omitted, treated as flat object (primitive values only)
               properties: z.record(propertyZodSchema).optional(),
+              // object: optional list of required property names
+              required: z.array(z.string()).optional(),
 
               description: z.string().optional(),
 
@@ -687,7 +754,15 @@ export function getFeatureZodSchema(
 
               useDefaultWhenDisabled: z.boolean().optional(),
             })
-            .strict(),
+            .strict()
+            .superRefine((variableSchema, ctx) => {
+              // Validate required ⊆ properties at this level and in all nested object schemas
+              refineRequiredKeysInSchema(
+                variableSchema as Parameters<typeof refineRequiredKeysInSchema>[0],
+                [],
+                ctx,
+              );
+            }),
         )
         .optional(),
 
