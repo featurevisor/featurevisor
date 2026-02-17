@@ -43,6 +43,8 @@ variablesSchema:
           - fontSize
       title:
         type: string
+    required:
+      - style
     defaultValue:
       style:
         fontSize: 18
