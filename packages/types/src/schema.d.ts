@@ -1,5 +1,4 @@
 export type SchemaKey = string;
-export type Schema = PropertySchema;
 
 export type ObjectValue = { [key: string]: Value };
 export type Value =
@@ -10,7 +9,7 @@ export type Value =
   | ObjectValue
   | Value[];
 
-export type PropertyType =
+export type SchemaType =
   | "boolean"
   | "string"
   | "integer"
@@ -22,12 +21,12 @@ export type PropertyType =
   | "array";
 
 // adapted JSON Schema for Featurevisor
-export interface PropertySchema {
+export interface Schema {
   // Basic metadata
   description?: string;
 
   // General validation keywords
-  type?: PropertyType;
+  type?: SchemaType;
   // enum?: Value[];
   // const?: Value;
 
@@ -41,14 +40,14 @@ export interface PropertySchema {
   // pattern?: string;
 
   // Array validation keywords
-  items?: PropertySchema; // @TODO: allow array of items in future | PropertySchema[];
+  items?: Schema;
   // maxItems?: number;
   // minItems?: number;
   // uniqueItems?: boolean;
 
   // Object validation keywords
   required?: string[];
-  properties?: { [key: string]: PropertySchema };
+  properties?: { [key: string]: Schema };
 
   // Annotations
   // default?: Value;

@@ -1,4 +1,4 @@
-import type { PropertySchema, Value } from "@featurevisor/types";
+import type { Schema, Value } from "@featurevisor/types";
 import { z } from "zod";
 
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
@@ -26,7 +26,7 @@ export const propertyTypeEnum = z.enum([
 ]);
 
 export function getPropertyZodSchema() {
-  const propertyZodSchema: z.ZodType<PropertySchema> = z.lazy(() =>
+  const propertyZodSchema: z.ZodType<Schema> = z.lazy(() =>
     z
       .object({
         description: z.string().optional(),

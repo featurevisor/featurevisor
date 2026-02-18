@@ -1,12 +1,12 @@
 import type { BucketBy } from "./bucket";
 import type { Condition } from "./condition";
 import type { GroupSegment } from "./segment";
-import type { PropertyType, Value, PropertySchema } from "./property";
+import type { SchemaType, Value, Schema } from "./schema";
 
 export type VariationValue = string;
 
 export type VariableKey = string;
-export type VariableType = PropertyType | "json";
+export type VariableType = SchemaType | "json";
 export type VariableValue =
   | Value
   // @TODO: consider removing below items
@@ -64,9 +64,9 @@ export interface VariableSchema {
   key?: VariableKey; // @NOTE: remove
   type: VariableType;
 
-  properties?: PropertySchema; // if type is object
-  required?: PropertySchema["required"]; // if type is object
-  items?: PropertySchema["items"]; // if type is array
+  properties?: Schema; // if type is object
+  required?: Schema["required"]; // if type is object
+  items?: Schema["items"]; // if type is array
 
   defaultValue: VariableValue;
   // nullable?: boolean; // @TODO: consider in future
