@@ -1,3 +1,4 @@
+export type SchemaKey = string;
 export type Schema = PropertySchema;
 
 export type ObjectValue = { [key: string]: Value };

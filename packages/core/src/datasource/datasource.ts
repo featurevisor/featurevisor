@@ -11,6 +11,8 @@ import type {
   AttributeKey,
   DatafileContent,
   EntityType,
+  SchemaKey,
+  Schema,
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
@@ -202,6 +204,27 @@ export class Datasource {
 
   deleteGroup(groupKey: string) {
     return this.adapter.deleteEntity("group", groupKey);
+  }
+
+  // schemas
+  listSchemas() {
+    return this.adapter.listEntities("schema");
+  }
+
+  schemaExists(schemaKey: SchemaKey) {
+    return this.adapter.entityExists("schema", schemaKey);
+  }
+
+  readSchema(schemaKey: SchemaKey) {
+    return this.adapter.readEntity<Schema>("schema", schemaKey);
+  }
+
+  writeSchema(schemaKey: SchemaKey, schema: Schema) {
+    return this.adapter.writeEntity<Schema>("schema", schemaKey, schema);
+  }
+
+  deleteSchema(schemaKey: SchemaKey) {
+    return this.adapter.deleteEntity("schema", schemaKey);
   }
 
   // tests

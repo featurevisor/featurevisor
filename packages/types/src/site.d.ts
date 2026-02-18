@@ -2,7 +2,7 @@ import type { Attribute } from "./attribute";
 import type { Segment, SegmentKey } from "./segment";
 import type { Tag, EnvironmentKey, FeatureKey, ParsedFeature } from "./feature";
 
-export type EntityType = "attribute" | "segment" | "feature" | "group" | "test";
+export type EntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
 
 export type CommitHash = string;
 
