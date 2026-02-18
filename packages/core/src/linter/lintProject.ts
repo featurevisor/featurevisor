@@ -6,6 +6,7 @@ import { getConditionsZodSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureZodSchema } from "./featureSchema";
+import { getSchemaZodSchema } from "./schema";
 import { getTestsZodSchema } from "./testSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
@@ -54,6 +55,8 @@ export async function lintProject(
       fullPath = path.join(projectConfig.featuresDirectoryPath, fileName);
     } else if (type === "group") {
       fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
+    } else if (type === "schema") {
+      fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
     } else if (type === "test") {
       fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
     } else {
@@ -374,6 +377,69 @@ export async function lintProject(
 
   // @TODO: feature cannot exist in multiple groups
 
+  // lint schemas
+  const schemas = await datasource.listSchemas();
+  const schemaZodSchema = getSchemaZodSchema();
+
+  if (!options.entityType || options.entityType === "schema") {
+    const filteredKeys = !keyPattern ? schemas : schemas.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      console.log(`Linting ${filteredKeys.length} schemas...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("schema", key);
+
+      if (!ENTITY_NAME_REGEX.test(key)) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "schema", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log(CLI_FORMAT_RED, `  => Error: Invalid name: "${key}"`);
+        console.log(CLI_FORMAT_RED, `     ${ENTITY_NAME_REGEX_ERROR}`);
+        console.log("");
+        hasError = true;
+      }
+
+      try {
+        const parsed = await datasource.readSchema(key);
+
+        const result = schemaZodSchema.safeParse(parsed);
+
+        if (!result.success) {
+          console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+          if (options.authors) {
+            const authors = await getAuthorsOfEntity(datasource, "schema", key);
+            console.log(`     Authors: ${authors.join(", ")}\n`);
+          }
+
+          if ("error" in result) {
+            printZodError(result.error);
+          }
+
+          hasError = true;
+        }
+      } catch (e) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
+
+        if (options.authors) {
+          const authors = await getAuthorsOfEntity(datasource, "schema", key);
+          console.log(`     Authors: ${authors.join(", ")}\n`);
+        }
+
+        console.log("");
+        console.log(e);
+
+        hasError = true;
+      }
+    }
+  }
+
   // lint tests
   const tests = await datasource.listTests();
 
@@ -486,6 +552,10 @@ export const lintPlugin: Plugin = {
     {
       command: "lint --entityType=group",
       description: "lint only groups",
+    },
+    {
+      command: "lint --entityType=schema",
+      description: "lint only schemas",
     },
     {
       command: "lint --entityType=test",
