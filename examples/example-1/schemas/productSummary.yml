@@ -1,0 +1,19 @@
+description: Product summary for listings and recommendations (references money and image)
+type: object
+
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  sku:
+    type: string
+  price:
+    schema: money
+  image:
+    schema: image
+
+required:
+  - id
+  - name
+  - price

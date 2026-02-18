@@ -1,0 +1,15 @@
+description: Discount or promotion (code, type, value)
+type: object
+
+properties:
+  code:
+    type: string
+  type:
+    type: string
+  value:
+    type: double
+
+required:
+  - code
+  - type
+  - value

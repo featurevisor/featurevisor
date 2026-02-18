@@ -1,0 +1,173 @@
+# Feature-management focused: config and experimentation variables for ecommerce at scale.
+# Reusable schemas for thresholds, promos, spotlight product, hero image, banner copy;
+# inline vars for toggles, limits, rollout (allowed countries), and checkout config.
+description: Ecommerce feature management – thresholds, promos, spotlight product, hero/banner config, toggles, rollout
+tags:
+  - all
+  - ecommerce
+
+bucketBy: userId
+
+variablesSchema:
+  # ========== Reusable schemas (feature config / experimentation) ==========
+
+  freeShippingThreshold:
+    schema: money
+    defaultValue:
+      amount: 50.0
+      currency: USD
+
+  trialCredit:
+    schema: money
+    defaultValue:
+      amount: 0
+      currency: USD
+
+  appliedDiscount:
+    schema: discount
+    defaultValue:
+      code: "WELCOME10"
+      type: "percentage"
+      value: 10.0
+
+  featuredProduct:
+    schema: productSummary
+    defaultValue:
+      id: "prod-1"
+      name: "Featured Widget"
+      sku: "WIDGET-001"
+      price:
+        amount: 29.99
+        currency: USD
+      image:
+        url: "https://example.com/widget.jpg"
+        alt: "Featured Widget"
+
+  heroImage:
+    schema: image
+    defaultValue:
+      url: "https://example.com/hero.jpg"
+      alt: "Hero"
+
+  promoBanner:
+    schema: promoBanner
+    defaultValue:
+      message: "Free shipping on orders over $50"
+      cta:
+        title: "Shop now"
+        url: /
+
+  # ========== Inline – toggles, limits, rollout, checkout config ==========
+
+  storeName:
+    type: string
+    defaultValue: "Featurevisor Store"
+
+  enableReviews:
+    type: boolean
+    defaultValue: true
+
+  maxCartSize:
+    type: integer
+    defaultValue: 10
+
+  defaultCurrency:
+    type: string
+    defaultValue: "USD"
+
+  checkoutConfig:
+    type: object
+    properties:
+      allowGuestCheckout:
+        type: boolean
+      requirePhone:
+        type: boolean
+    defaultValue:
+      allowGuestCheckout: true
+      requirePhone: false
+
+  allowedCountries:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - US
+      - CA
+      - GB
+
+  bannerMessage:
+    type: string
+    defaultValue: "Free shipping on orders over $50"
+
+variations:
+  - value: control
+    weight: 50
+    variables:
+      storeName: "Control Store"
+      freeShippingThreshold:
+        amount: 50.0
+        currency: USD
+      trialCredit:
+        amount: 0
+        currency: USD
+      featuredProduct:
+        id: "prod-1"
+        name: "Control Featured"
+        sku: "CF-001"
+        price:
+          amount: 24.99
+          currency: USD
+      appliedDiscount:
+        code: "SAVE5"
+        type: "fixed"
+        value: 5.0
+      promoBanner:
+        message: "Save $5 on your first order"
+        cta:
+          title: "Claim offer"
+          url: /promo/save5
+      enableReviews: true
+      checkoutConfig:
+        allowGuestCheckout: true
+        requirePhone: false
+
+  - value: treatment
+    weight: 50
+    variables:
+      storeName: "Treatment Store"
+      freeShippingThreshold:
+        amount: 75.0
+        currency: USD
+      trialCredit:
+        amount: 10.0
+        currency: USD
+      featuredProduct:
+        id: "prod-1"
+        name: "Treatment Featured"
+        sku: "TF-001"
+        price:
+          amount: 22.99
+          currency: USD
+      appliedDiscount:
+        code: "SAVE10"
+        type: "percentage"
+        value: 10.0
+      promoBanner:
+        message: "10% off – limited time"
+        cta:
+          title: "Get 10% off"
+          url: /promo/save10
+      enableReviews: true
+      checkoutConfig:
+        allowGuestCheckout: false
+        requirePhone: true
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 100
