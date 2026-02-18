@@ -40,6 +40,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         properties: z.record(z.string(), schemaZodSchema).optional(),
         // Annotations: default?: Value; examples?: Value[];
 
+        // @TODO: check if infinite recursion scenarios should be allowed
         schema: z
           .string()
           .refine(
