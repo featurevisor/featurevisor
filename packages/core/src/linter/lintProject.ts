@@ -379,7 +379,7 @@ export async function lintProject(
 
   // lint schemas
   const schemas = await datasource.listSchemas();
-  const schemaZodSchema = getSchemaZodSchema();
+  const schemaZodSchema = getSchemaZodSchema(schemas);
 
   if (!options.entityType || options.entityType === "schema") {
     const filteredKeys = !keyPattern ? schemas : schemas.filter((key) => keyPattern.test(key));

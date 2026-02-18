@@ -1,4 +1,4 @@
-import type { Schema, Value } from "@featurevisor/types";
+import type { Schema, SchemaKey, Value } from "@featurevisor/types";
 import { z } from "zod";
 
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
@@ -25,7 +25,7 @@ export const propertyTypeEnum = z.enum([
   "array",
 ]);
 
-export function getSchemaZodSchema() {
+export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
   const schemaZodSchema: z.ZodType<Schema> = z.lazy(() =>
     z
       .object({
@@ -39,6 +39,16 @@ export function getSchemaZodSchema() {
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), schemaZodSchema).optional(),
         // Annotations: default?: Value; examples?: Value[];
+
+        schema: z
+          .string()
+          .refine(
+            (value) => schemaKeys.includes(value),
+            (value) => ({
+              message: `Unknown schema "${value}"`,
+            }),
+          )
+          .optional(),
       })
       .strict(),
   );

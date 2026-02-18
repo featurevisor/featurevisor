@@ -52,4 +52,7 @@ export interface Schema {
   // Annotations
   // default?: Value;
   // examples?: Value[];
+
+  // when referencing another Schema by name
+  schema?: SchemaKey;
 }
