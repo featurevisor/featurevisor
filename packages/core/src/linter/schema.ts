@@ -25,8 +25,8 @@ export const propertyTypeEnum = z.enum([
   "array",
 ]);
 
-export function getPropertyZodSchema() {
-  const propertyZodSchema: z.ZodType<Schema> = z.lazy(() =>
+export function getSchemaZodSchema() {
+  const schemaZodSchema: z.ZodType<Schema> = z.lazy(() =>
     z
       .object({
         description: z.string().optional(),
@@ -34,14 +34,14 @@ export function getPropertyZodSchema() {
         // enum?: Value[]; const?: Value;
         // Numeric: maximum?, minimum?
         // String: maxLength?, minLength?, pattern?
-        items: propertyZodSchema.optional(),
+        items: schemaZodSchema.optional(),
         // maxItems?, minItems?, uniqueItems?
         required: z.array(z.string()).optional(),
-        properties: z.record(z.string(), propertyZodSchema).optional(),
+        properties: z.record(z.string(), schemaZodSchema).optional(),
         // Annotations: default?: Value; examples?: Value[];
       })
       .strict(),
   );
 
-  return propertyZodSchema;
+  return schemaZodSchema;
 }

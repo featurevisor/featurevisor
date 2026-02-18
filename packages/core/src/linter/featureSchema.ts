@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import { valueZodSchema, propertyTypeEnum, getPropertyZodSchema } from "./propertySchema";
+import { valueZodSchema, propertyTypeEnum, getSchemaZodSchema } from "./schema";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -557,7 +557,7 @@ export function getFeatureZodSchema(
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
 ) {
-  const propertyZodSchema = getPropertyZodSchema();
+  const schemaZodSchema = getSchemaZodSchema();
   const variableValueZodSchema = valueZodSchema;
 
   const variationValueZodSchema = z.string().min(1);
@@ -741,9 +741,9 @@ export function getFeatureZodSchema(
 
               type: z.union([z.literal("json"), propertyTypeEnum]),
               // array: when omitted, treated as array of strings
-              items: propertyZodSchema.optional(),
+              items: schemaZodSchema.optional(),
               // object: when omitted, treated as flat object (primitive values only)
-              properties: z.record(propertyZodSchema).optional(),
+              properties: z.record(schemaZodSchema).optional(),
               // object: optional list of required property names
               required: z.array(z.string()).optional(),
 
