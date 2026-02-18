@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, Schema, VariableSchema } from "@featurevisor/types";
+import type { Attribute, Schema, VariableSchema, VariableSchemaWithInline } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): string {
@@ -70,16 +70,31 @@ function schemaToTypeScriptType(schema: Schema): string {
 }
 
 /**
+ * Resolve variable schema to the schema shape used for code gen (inline or from schema reference).
+ */
+function getEffectiveVariableSchema(
+  variableSchema: VariableSchema,
+  schemasByKey: Record<string, Schema>,
+): VariableSchemaWithInline | Schema | undefined {
+  if ("schema" in variableSchema && variableSchema.schema) {
+    return schemasByKey[variableSchema.schema];
+  }
+  return variableSchema as VariableSchemaWithInline;
+}
+
+/**
  * Generates TypeScript type/interface declarations and metadata for a variable.
  * Returns declarations to emit (interface or type alias) plus the type name and generic to use in the getter.
  */
 function generateVariableTypeDeclarations(
   variableKey: string,
   variableSchema: VariableSchema,
+  schemasByKey: Record<string, Schema>,
 ): { declarations: string[]; returnTypeName: string; genericArg: string } {
   const typeName = getPascalCase(variableKey) + "Variable";
   const itemTypeName = getPascalCase(variableKey) + "VariableItem";
-  const type = variableSchema.type;
+  const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+  const type = effective?.type;
   const declarations: string[] = [];
 
   if (type === "json") {
@@ -87,9 +102,11 @@ function generateVariableTypeDeclarations(
   }
 
   if (type === "object") {
-    const props = variableSchema.properties;
+    const props = effective && "properties" in effective ? effective.properties : undefined;
     if (props && typeof props === "object" && Object.keys(props).length > 0) {
-      const requiredSet = new Set((variableSchema.required as string[]) || []);
+      const requiredSet = new Set(
+        (effective && "required" in effective ? effective.required : undefined) || [],
+      );
       const entries = Object.entries(props)
         .map(([k, v]) => {
           const propType = schemaToTypeScriptType(v as Schema);
@@ -107,8 +124,9 @@ function generateVariableTypeDeclarations(
   }
 
   if (type === "array") {
-    if (variableSchema.items) {
-      const items = variableSchema.items as Schema;
+    const itemsSchema = effective && "items" in effective ? effective.items : undefined;
+    if (itemsSchema) {
+      const items = itemsSchema as Schema;
       if (items.type === "object" && items.properties && Object.keys(items.properties).length > 0) {
         const requiredSet = new Set(items.required || []);
         const entries = Object.entries(items.properties)
@@ -148,8 +166,10 @@ function generateVariableTypeDeclarations(
     };
   }
 
-  // primitive: boolean, string, integer, double
-  const primitiveType = convertFeaturevisorTypeToTypeScriptType(type);
+  // primitive: boolean, string, integer, double (or unknown when schema ref unresolved)
+  const primitiveType = type
+    ? convertFeaturevisorTypeToTypeScriptType(type)
+    : "unknown";
   declarations.push(`${INDENT_NS}export type ${typeName} = ${primitiveType};`);
   return { declarations, returnTypeName: typeName, genericArg: typeName };
 }
@@ -246,6 +266,17 @@ ${attributeProperties}
   const featureNamespaces: string[] = [];
   const featureFiles = await datasource.listFeatures();
 
+  // Load schemas for resolving variable schema references
+  const schemaKeys = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemaKeys) {
+    try {
+      schemasByKey[key] = await datasource.readSchema(key);
+    } catch {
+      // Schema file may be invalid; skip for code gen
+    }
+  }
+
   for (const featureKey of featureFiles) {
     const parsedFeature = await datasource.readFeature(featureKey);
 
@@ -265,15 +296,17 @@ ${attributeProperties}
 
       for (const variableKey of variableKeys) {
         const variableSchema = parsedFeature.variablesSchema[variableKey];
-        const variableType = variableSchema.type;
+        const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+        const variableType = effective?.type;
         const { declarations, returnTypeName, genericArg } = generateVariableTypeDeclarations(
           variableKey,
           variableSchema,
+          schemasByKey,
         );
         allDeclarations.push(...declarations);
 
         const internalMethodName = `getVariable${
-          variableType === "json" ? "JSON" : getPascalCase(variableType)
+          variableType === "json" ? "JSON" : getPascalCase(variableType ?? "string")
         }`;
 
         const hasGeneric =

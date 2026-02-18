@@ -1,7 +1,7 @@
 import type { BucketBy } from "./bucket";
 import type { Condition } from "./condition";
 import type { GroupSegment } from "./segment";
-import type { SchemaType, Value, Schema } from "./schema";
+import type { SchemaType, Value, Schema, SchemaKey } from "./schema";
 
 export type VariationValue = string;
 
@@ -59,7 +59,20 @@ export interface Variation {
   };
 }
 
-export interface VariableSchema {
+/** Variable schema that references a reusable schema by key. No type/properties/required/items. */
+export interface VariableSchemaWithReference {
+  deprecated?: boolean;
+  key?: VariableKey; // @NOTE: remove
+  schema: SchemaKey;
+
+  defaultValue: VariableValue;
+  description?: string; // only available in YAML files
+  useDefaultWhenDisabled?: boolean;
+  disabledValue?: VariableValue;
+}
+
+/** Variable schema with inline type and optional structure. */
+export interface VariableSchemaWithInline {
   deprecated?: boolean;
   key?: VariableKey; // @NOTE: remove
   type: VariableType;
@@ -69,8 +82,25 @@ export interface VariableSchema {
   items?: Schema["items"]; // if type is array
 
   defaultValue: VariableValue;
-  // nullable?: boolean; // @TODO: consider in future
   description?: string; // only available in YAML files
+  useDefaultWhenDisabled?: boolean;
+  disabledValue?: VariableValue;
+}
+
+/** Either a reference to a reusable schema or an inline variable schema. */
+export type VariableSchema = VariableSchemaWithReference | VariableSchemaWithInline;
+
+/**
+ * Variable schema as emitted in the datafile (schema refs resolved to type only).
+ * Used by SDK and datafile; only `type` is kept from the schema for datafile size.
+ */
+export interface ResolvedVariableSchema {
+  deprecated?: boolean;
+  key?: VariableKey;
+  type: VariableType;
+
+  defaultValue: VariableValue;
+  description?: string;
   useDefaultWhenDisabled?: boolean;
   disabledValue?: VariableValue;
 }

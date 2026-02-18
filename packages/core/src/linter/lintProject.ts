@@ -1,6 +1,8 @@
 // for use in node only
 import * as path from "path";
 
+import type { Schema } from "@featurevisor/types";
+
 import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
@@ -212,6 +214,17 @@ export async function lintProject(
     }
   }
 
+  // List schemas and load parsed schemas for feature variable validation (schema references)
+  const schemas = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemas) {
+    try {
+      schemasByKey[key] = await datasource.readSchema(key);
+    } catch {
+      // Schema file may be invalid; skip for feature variable resolution
+    }
+  }
+
   // lint features
   const features = await datasource.listFeatures();
   const featureZodSchema = getFeatureZodSchema(
@@ -220,6 +233,8 @@ export async function lintProject(
     flattenedAttributes as [string, ...string[]],
     segments as [string, ...string[]],
     features as [string, ...string[]],
+    schemas,
+    schemasByKey,
   );
 
   if (!options.entityType || options.entityType === "feature") {
@@ -377,8 +392,7 @@ export async function lintProject(
 
   // @TODO: feature cannot exist in multiple groups
 
-  // lint schemas
-  const schemas = await datasource.listSchemas();
+  // lint schemas (schemas and schemasByKey already loaded above for feature linting)
   const schemaZodSchema = getSchemaZodSchema(schemas);
 
   if (!options.entityType || options.entityType === "schema") {

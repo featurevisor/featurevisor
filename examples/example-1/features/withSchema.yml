@@ -1,0 +1,299 @@
+description: Exhaustive example using reusable schemas (link, color, hero, navLinks) plus inline variable schemas
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  # --- Reusable schema references (from schemas/ directory) ---
+
+  singleLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: /
+
+  themeColor:
+    schema: color
+    defaultValue:
+      hex: "#ffffff"
+      opacity: 100
+
+  heroBlock:
+    schema: hero
+    defaultValue:
+      title: Welcome
+      subtitle: Get started
+
+  navLinks:
+    schema: navLinks
+    defaultValue:
+      - title: Home
+        url: /
+      - title: About
+        url: /about
+      - title: Contact
+        url: /contact
+
+  # --- Inline (manually defined) variable schemas ---
+
+  pageTitle:
+    type: string
+    defaultValue: "Default Title"
+
+  enabled:
+    type: boolean
+    defaultValue: true
+
+  itemCount:
+    type: integer
+    defaultValue: 0
+
+  score:
+    type: double
+    defaultValue: 0.0
+
+  settings:
+    type: object
+    properties:
+      theme:
+        type: string
+      compact:
+        type: boolean
+    defaultValue:
+      theme: light
+      compact: true
+
+  tagList:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - default
+      - schema-demo
+
+  linkPair:
+    type: array
+    items:
+      schema: link
+    defaultValue:
+      - title: First
+        url: /first
+      - title: Second
+        url: /second
+
+variations:
+  - value: control
+    weight: 50
+    variables:
+      pageTitle: "Control Title"
+      enabled: true
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+
+  - value: treatment
+    weight: 50
+    variables:
+      pageTitle: "Treatment Title"
+      enabled: true
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+
+rules:
+  staging:
+    # Rule order matters: first matching rule wins. More specific segments first, catch-all last.
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        pageTitle: "Germany Title"
+        singleLink:
+          title: "DE Link"
+          url: /de
+        themeColor:
+          hex: "#dd0000"
+          opacity: 100
+        heroBlock:
+          title: "Willkommen"
+          subtitle: "Deutschland"
+        navLinks:
+          - title: Start
+            url: /de
+          - title: Über uns
+            url: /de/about
+        settings:
+          theme: dark
+          compact: true
+        tagList:
+          - de
+          - germany
+        linkPair:
+          - title: Erste
+            url: /de/first
+          - title: Zweite
+            url: /de/second
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        pageTitle: "NL/CH Title"
+        singleLink:
+          title: "NL/CH Link"
+          url: /nl-ch
+        themeColor:
+          hex: "#ff8800"
+          opacity: 90
+        heroBlock:
+          title: "NL or CH Hero"
+          subtitle: "Multi-country"
+        navLinks:
+          - title: Home
+            url: /
+          - title: Contact
+            url: /contact
+        enabled: true
+        itemCount: 10
+        settings:
+          theme: light
+          compact: false
+        tagList:
+          - nl-ch
+        linkPair:
+          - title: First
+            url: /first
+          - title: Second
+            url: /second
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Mobile EU"
+        singleLink:
+          title: "Mobile Link"
+          url: /mobile
+        themeColor:
+          hex: "#0000aa"
+          opacity: 80
+        heroBlock:
+          title: "Mobile EU Hero"
+          subtitle: "EU mobile users"
+        navLinks:
+          - title: Mobile Nav
+            url: /m
+        enabled: true
+        itemCount: 1
+        score: 1.0
+        settings:
+          theme: dark
+          compact: true
+        tagList:
+          - mobile
+          - eu
+        linkPair:
+          - title: One
+            url: /one
+
+    - key: desktop_eu
+      segments:
+        and:
+          - desktop
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Desktop EU"
+        themeColor:
+          hex: "#008800"
+          opacity: 95
+        heroBlock:
+          title: "Desktop EU Hero"
+          subtitle: "EU desktop"
+        enabled: false
+        itemCount: 99
+        score: 99.5
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        pageTitle: "Germany (Prod)"
+        singleLink:
+          title: "DE Prod"
+          url: /de/prod
+        themeColor:
+          hex: "#dd0000"
+          opacity: 100
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        pageTitle: "NL/CH (Prod)"
+        itemCount: 42
+        score: 4.2
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Mobile EU (Prod)"
+        enabled: false
+        tagList:
+          - prod
+          - mobile-eu
+
+    - key: everyone
+      segments: "*"
+      percentage: 100

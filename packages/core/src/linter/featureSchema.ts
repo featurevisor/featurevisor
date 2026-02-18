@@ -1,3 +1,4 @@
+import type { Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
@@ -24,6 +25,20 @@ function getVariableLabel(variableSchema, variableKey, path) {
     variableSchema?.key ??
     (path.length > 0 ? String(path[path.length - 1]) : "variable")
   );
+}
+
+/**
+ * Resolve variable schema to the Schema used for value validation.
+ * When variable has `schema` (reference), returns the parsed Schema from schemasByKey; otherwise returns the inline variable schema.
+ */
+function resolveVariableSchema(
+  variableSchema: { schema?: string; type?: string; items?: unknown; properties?: unknown; required?: string[] },
+  schemasByKey?: Record<string, Schema>,
+): { type?: string; items?: unknown; properties?: unknown; required?: string[] } | null {
+  if (variableSchema.schema) {
+    return schemasByKey?.[variableSchema.schema] ?? null;
+  }
+  return variableSchema as { type?: string; items?: unknown; properties?: unknown; required?: string[] };
 }
 
 /**
@@ -107,13 +122,22 @@ function refineVariableValueArray(
   path: (string | number)[],
   ctx: z.RefinementCtx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
   const itemSchema = variableSchema.items;
 
   if (itemSchema) {
     variableValue.forEach((item, index) => {
-      superRefineVariableValue(projectConfig, itemSchema, item, [...path, index], ctx, variableKey);
+      superRefineVariableValue(
+        projectConfig,
+        itemSchema,
+        item,
+        [...path, index],
+        ctx,
+        variableKey,
+        schemasByKey,
+      );
     });
   } else {
     if (!isArrayOfStrings(variableValue)) {
@@ -152,6 +176,7 @@ function refineVariableValueObject(
   path: (string | number)[],
   ctx: z.RefinementCtx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
   const schemaProperties = variableSchema.properties;
@@ -190,6 +215,7 @@ function refineVariableValueObject(
           [...path, key],
           ctx,
           key,
+          schemasByKey,
         );
       }
     }
@@ -225,6 +251,7 @@ function superRefineVariableValue(
   path,
   ctx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ) {
   const label = getVariableLabel(variableSchema, variableKey, path);
 
@@ -244,6 +271,20 @@ function superRefineVariableValue(
     return;
   }
 
+  const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
+  if (variableSchema.schema && effectiveSchema === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Schema "${variableSchema.schema}" could not be loaded for value validation.`,
+      path,
+    });
+    return;
+  }
+
+  if (!effectiveSchema) {
+    return;
+  }
+
   // Require a value (no undefined) for every variable usage
   if (variableValue === undefined) {
     ctx.addIssue({
@@ -254,7 +295,7 @@ function superRefineVariableValue(
     return;
   }
 
-  const expectedType = variableSchema.type;
+  const expectedType = effectiveSchema.type;
   const gotType = typeOfValue(variableValue);
 
   // string — only string allowed
@@ -352,7 +393,15 @@ function superRefineVariableValue(
       });
       return;
     }
-    refineVariableValueArray(projectConfig, variableSchema, variableValue, path, ctx, variableKey);
+    refineVariableValueArray(
+      projectConfig,
+      effectiveSchema as { items?: unknown; type: string },
+      variableValue,
+      path,
+      ctx,
+      variableKey,
+      schemasByKey,
+    );
     return;
   }
 
@@ -372,11 +421,16 @@ function superRefineVariableValue(
     }
     refineVariableValueObject(
       projectConfig,
-      variableSchema,
+      effectiveSchema as {
+        properties?: Record<string, unknown>;
+        required?: string[];
+        type: string;
+      },
       variableValue as Record<string, unknown>,
       path,
       ctx,
       variableKey,
+      schemasByKey,
     );
     return;
   }
@@ -431,6 +485,7 @@ function refineForce({
   force,
   pathPrefix,
   projectConfig,
+  schemasByKey,
 }) {
   force.forEach((f, fN) => {
     // force[n].variation
@@ -454,6 +509,7 @@ function refineForce({
           pathPrefix.concat([fN, "variables", variableKey]),
           ctx,
           variableKey,
+          schemasByKey,
         );
       });
     }
@@ -468,6 +524,7 @@ function refineRules({
   rules,
   pathPrefix,
   projectConfig,
+  schemasByKey,
 }) {
   rules.forEach((rule, ruleN) => {
     // rules[n].variables[key]
@@ -480,6 +537,7 @@ function refineRules({
           pathPrefix.concat([ruleN, "variables", variableKey]),
           ctx,
           variableKey,
+          schemasByKey,
         );
       });
     }
@@ -556,8 +614,10 @@ export function getFeatureZodSchema(
   availableAttributeKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
+  availableSchemaKeys: string[] = [],
+  schemasByKey: Record<string, Schema> = {},
 ) {
-  const schemaZodSchema = getSchemaZodSchema();
+  const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
 
   const variationValueZodSchema = z.string().min(1);
@@ -739,12 +799,19 @@ export function getFeatureZodSchema(
             .object({
               deprecated: z.boolean().optional(),
 
-              type: z.union([z.literal("json"), propertyTypeEnum]),
-              // array: when omitted, treated as array of strings
+              // Reference to a reusable schema (mutually exclusive with type/properties/required/items)
+              schema: z
+                .string()
+                .refine(
+                  (value) => availableSchemaKeys.includes(value),
+                  (value) => ({ message: `Unknown schema "${value}"` }),
+                )
+                .optional(),
+
+              // Inline schema (mutually exclusive with schema)
+              type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
               items: schemaZodSchema.optional(),
-              // object: when omitted, treated as flat object (primitive values only)
               properties: z.record(schemaZodSchema).optional(),
-              // object: optional list of required property names
               required: z.array(z.string()).optional(),
 
               description: z.string().optional(),
@@ -756,6 +823,45 @@ export function getFeatureZodSchema(
             })
             .strict()
             .superRefine((variableSchema, ctx) => {
+              const hasRef = "schema" in variableSchema && variableSchema.schema != null;
+              const hasInline =
+                "type" in variableSchema &&
+                variableSchema.type != null &&
+                variableSchema.type !== undefined;
+              if (hasRef && hasInline) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `properties`, `required`, `items`). Use one or the other.",
+                  path: [],
+                });
+                return;
+              }
+              if (hasRef) {
+                if (
+                  "type" in variableSchema ||
+                  "properties" in variableSchema ||
+                  "required" in variableSchema ||
+                  "items" in variableSchema
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "When `schema` is set, do not set `type`, `properties`, `required`, or `items`.",
+                    path: [],
+                  });
+                }
+                return;
+              }
+              if (!hasInline) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema must have either `schema` (reference to a schema key) or `type` (inline schema).",
+                  path: [],
+                });
+                return;
+              }
               // Validate required ⊆ properties at this level and in all nested object schemas
               refineRequiredKeysInSchema(
                 variableSchema as Parameters<typeof refineRequiredKeysInSchema>[0],
@@ -882,6 +988,7 @@ export function getFeatureZodSchema(
           ["variablesSchema", variableKey, "defaultValue"],
           ctx,
           variableKey,
+          schemasByKey,
         );
 
         // disabledValue (only when present)
@@ -893,6 +1000,7 @@ export function getFeatureZodSchema(
             ["variablesSchema", variableKey, "disabledValue"],
             ctx,
             variableKey,
+            schemasByKey,
           );
         }
       });
@@ -915,6 +1023,7 @@ export function getFeatureZodSchema(
               ["variations", variationN, "variables", variableKey],
               ctx,
               variableKey,
+              schemasByKey,
             );
 
             // variations[n].variableOverrides[n].value
@@ -938,6 +1047,7 @@ export function getFeatureZodSchema(
                       ],
                       ctx,
                       variableKey,
+                      schemasByKey,
                     );
                   });
                 }
@@ -960,6 +1070,7 @@ export function getFeatureZodSchema(
               pathPrefix: ["rules", environmentKey],
               ctx,
               projectConfig,
+              schemasByKey,
             });
           }
 
@@ -973,6 +1084,7 @@ export function getFeatureZodSchema(
               pathPrefix: ["force", environmentKey],
               ctx,
               projectConfig,
+              schemasByKey,
             });
           }
         }
@@ -989,6 +1101,7 @@ export function getFeatureZodSchema(
             pathPrefix: ["rules"],
             ctx,
             projectConfig,
+            schemasByKey,
           });
         }
 
@@ -1002,6 +1115,7 @@ export function getFeatureZodSchema(
             pathPrefix: ["force"],
             ctx,
             projectConfig,
+            schemasByKey,
           });
         }
       }

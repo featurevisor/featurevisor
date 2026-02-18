@@ -9,7 +9,7 @@ import type {
   VariationValue,
   VariableKey,
   VariableValue,
-  VariableSchema,
+  ResolvedVariableSchema,
   EvaluatedFeature,
   StickyFeatures,
   Allocation,
@@ -74,7 +74,7 @@ export interface Evaluation {
   // variable
   variableKey?: VariableKey;
   variableValue?: VariableValue;
-  variableSchema?: VariableSchema;
+  variableSchema?: ResolvedVariableSchema;
 }
 
 export interface EvaluateDependencies {
@@ -324,8 +324,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       logger.warn("feature is deprecated", { featureKey });
     }
 
-    // variableSchema
-    let variableSchema: VariableSchema | undefined;
+    // variableSchema (from datafile, always resolved)
+    let variableSchema: ResolvedVariableSchema | undefined;
 
     if (variableKey) {
       if (feature.variablesSchema && feature.variablesSchema[variableKey]) {

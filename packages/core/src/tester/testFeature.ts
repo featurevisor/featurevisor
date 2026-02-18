@@ -104,8 +104,8 @@ export async function testFeature(
       logLevel,
     });
 
-    const feature = await datasource.readFeature(featureKey);
-    if (!feature) {
+    const parsedFeature = await datasource.readFeature(featureKey);
+    if (!parsedFeature) {
       testResult.notFound = true;
       testResult.passed = false;
 
@@ -208,7 +208,9 @@ export async function testFeature(
 
         let passed;
 
-        const variableSchema = feature.variablesSchema?.[variableKey];
+        // Use feature from datafile so variable schema is always resolved (ResolvedVariableSchema)
+        const featureFromDatafile = datafileContent?.features?.[featureKey];
+        const variableSchema = featureFromDatafile?.variablesSchema?.[variableKey];
 
         if (!variableSchema) {
           testResult.passed = false;

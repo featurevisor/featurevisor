@@ -1,0 +1,353 @@
+# Exhaustive test for withSchema feature: schema references (link, color, hero, navLinks),
+# inline variable schemas, and rule-level variable overrides with complex segments (and/or).
+feature: withSchema
+assertions:
+  # ========== Variation-based (no context: matches "everyone" rule, no variable overrides) ==========
+  # --- Staging: bucket at 25 -> control variation ---
+  - at: 25
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      pageTitle: "Control Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+
+  # --- Staging: bucket at 75 -> treatment variation ---
+  - at: 75
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      pageTitle: "Treatment Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+
+  # --- Production: bucket at 25 -> control variation ---
+  - at: 25
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      pageTitle: "Control Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+
+  # --- Production: bucket at 75 -> treatment variation ---
+  - at: 75
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      pageTitle: "Treatment Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+
+  # --- Partial assertion (variation-based) ---
+  - at: 10
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariables:
+      itemCount: 0
+      score: 0.0
+      enabled: true
+
+  # ========== Rule variable overrides: complex segments ==========
+  # --- Staging: Germany segment -> rule "germany" overrides (schema + inline vars) ---
+  - at: 50
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Germany Title"
+      singleLink:
+        title: "DE Link"
+        url: /de
+      themeColor:
+        hex: "#dd0000"
+        opacity: 100
+      heroBlock:
+        title: "Willkommen"
+        subtitle: "Deutschland"
+      navLinks:
+        - title: Start
+          url: /de
+        - title: Über uns
+          url: /de/about
+      settings:
+        theme: dark
+        compact: true
+      tagList:
+        - de
+        - germany
+      linkPair:
+        - title: Erste
+          url: /de/first
+        - title: Zweite
+          url: /de/second
+
+  # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
+  - at: 50
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH Title"
+      singleLink:
+        title: "NL/CH Link"
+        url: /nl-ch
+      themeColor:
+        hex: "#ff8800"
+        opacity: 90
+      heroBlock:
+        title: "NL or CH Hero"
+        subtitle: "Multi-country"
+      navLinks:
+        - title: Home
+          url: /
+        - title: Contact
+          url: /contact
+      enabled: true
+      itemCount: 10
+      settings:
+        theme: light
+        compact: false
+      tagList:
+        - nl-ch
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+
+  # --- Staging: Switzerland -> same rule "nl_or_ch" ---
+  - at: 50
+    environment: staging
+    context:
+      country: ch
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH Title"
+      singleLink:
+        title: "NL/CH Link"
+        url: /nl-ch
+      heroBlock:
+        title: "NL or CH Hero"
+        subtitle: "Multi-country"
+      itemCount: 10
+      tagList:
+        - nl-ch
+
+  # --- Staging: Mobile + EU (and: mobile, eu) -> rule "mobile_eu" ---
+  - at: 50
+    environment: staging
+    context:
+      device: mobile
+      continent: europe
+      country: fr
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Mobile EU"
+      singleLink:
+        title: "Mobile Link"
+        url: /mobile
+      themeColor:
+        hex: "#0000aa"
+        opacity: 80
+      heroBlock:
+        title: "Mobile EU Hero"
+        subtitle: "EU mobile users"
+      navLinks:
+        - title: Mobile Nav
+          url: /m
+      enabled: true
+      itemCount: 1
+      score: 1.0
+      settings:
+        theme: dark
+        compact: true
+      tagList:
+        - mobile
+        - eu
+      linkPair:
+        - title: One
+          url: /one
+
+  # --- Staging: Desktop + EU (and: desktop, eu) -> rule "desktop_eu" ---
+  - at: 50
+    environment: staging
+    context:
+      device: desktop
+      continent: europe
+      country: fr
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Desktop EU"
+      themeColor:
+        hex: "#008800"
+        opacity: 95
+      heroBlock:
+        title: "Desktop EU Hero"
+        subtitle: "EU desktop"
+      enabled: false
+      itemCount: 99
+      score: 99.5
+
+  # --- Staging: US (no specific segment) -> "everyone" rule, variation-based variables ---
+  - at: 25
+    environment: staging
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      pageTitle: "Control Title"
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+
+  # --- Production: Germany -> rule "germany" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Germany (Prod)"
+      singleLink:
+        title: "DE Prod"
+        url: /de/prod
+      themeColor:
+        hex: "#dd0000"
+        opacity: 100
+
+  # --- Production: NL/CH -> rule "nl_or_ch" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH (Prod)"
+      itemCount: 42
+      score: 4.2
+
+  # --- Production: Mobile EU -> rule "mobile_eu" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      device: mobile
+      continent: europe
+      country: it
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Mobile EU (Prod)"
+      enabled: false
+      tagList:
+        - prod
+        - mobile-eu
