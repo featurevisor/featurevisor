@@ -38,7 +38,7 @@ function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Sc
 }
 
 /**
- * Converts a PropertySchema (items or properties entry) to a TypeScript type string.
+ * Converts a Schema (items or properties entry) to a TypeScript type string.
  * Handles nested object/array and resolves schema references recursively.
  */
 function schemaToTypeScriptType(schema: Schema, schemasByKey: Record<string, Schema>): string {

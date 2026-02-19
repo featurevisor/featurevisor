@@ -91,6 +91,8 @@ export function getCommit(
       type = "feature";
     } else if (relativeDir === projectConfig.groupsDirectoryPath) {
       type = "group";
+    } else if (relativeDir === projectConfig.schemasDirectoryPath) {
+      type = "schema";
     } else if (relativeDir === projectConfig.testsDirectoryPath) {
       type = "test";
     } else {
