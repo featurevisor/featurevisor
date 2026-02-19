@@ -773,6 +773,10 @@ variations:
       bgColor: blue
 ```
 
+### Reusable schemas
+
+Learn more in [schemas](/docs/schemas/) page.
+
 ## Required
 
 A feature can be dependent on one or more other features. This is useful when you want to make sure that a feature is only allowed to continue its evaluation if the other required features are also evaluated as enabled first.

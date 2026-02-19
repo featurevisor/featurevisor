@@ -173,10 +173,10 @@ description: List of links schema
 type: array
 
 items:
-  schema: link
+  schema: link # plural "links" referencing singular "link"
 ```
 
-And then reference it directly without needing `items` property:
+And then reference it directly in our feature:
 
 ```yml {% path="features/my_feature.yml" highlight="5" %}
 # ...
@@ -195,7 +195,7 @@ variablesSchema:
 
 ## Linting schemas
 
-Because of strict linting that's supported out of the box in Featurevisor, we can find issues early if we provided any wrong value for the variables anywhere in our feature definitions:
+Because of strict linting that's supported out of the box in Featurevisor, we can find issues early if we mistakenly provided any wrong value for the variables anywhere in our feature definitions:
 
 ```{% title="Command" %}
 $ npx featurevisor lint
@@ -205,4 +205,4 @@ Learn more in [Linting](/docs/linting) page.
 
 ## Code generation
 
-Even with the usage of reusable schemas, [code generation](/docs/code-generation) takes care of generating types for the features and its variables out of the box for added safety and developer experience.
+Even with the usage of reusable schemas, [code generation](/docs/code-generation) takes care of generating types for the features and its variables out of the box for optionally added safety and improved developer experience.
