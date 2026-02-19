@@ -28,11 +28,22 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): stri
 }
 
 /**
- * Converts a PropertySchema (items or properties entry) to a TypeScript type string.
- * Handles nested object/array with structured items and properties.
+ * Resolve a schema to its full definition, following schema references (schema: key).
  */
-function schemaToTypeScriptType(schema: Schema): string {
-  const type = schema.type;
+function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Schema {
+  if (schema.schema && schemasByKey[schema.schema]) {
+    return resolveSchema(schemasByKey[schema.schema], schemasByKey);
+  }
+  return schema;
+}
+
+/**
+ * Converts a PropertySchema (items or properties entry) to a TypeScript type string.
+ * Handles nested object/array and resolves schema references recursively.
+ */
+function schemaToTypeScriptType(schema: Schema, schemasByKey: Record<string, Schema>): string {
+  const resolved = resolveSchema(schema, schemasByKey);
+  const type = resolved.type;
   if (!type) {
     return "unknown";
   }
@@ -45,17 +56,17 @@ function schemaToTypeScriptType(schema: Schema): string {
     case "double":
       return "number";
     case "array":
-      if (schema.items) {
-        return `(${schemaToTypeScriptType(schema.items)})[]`;
+      if (resolved.items) {
+        return `(${schemaToTypeScriptType(resolved.items, schemasByKey)})[]`;
       }
       return "string[]";
     case "object": {
-      const props = schema.properties;
+      const props = resolved.properties;
       if (props && typeof props === "object" && Object.keys(props).length > 0) {
-        const requiredSet = new Set(schema.required || []);
+        const requiredSet = new Set(resolved.required || []);
         const entries = Object.entries(props)
           .map(([k, v]) => {
-            const propType = schemaToTypeScriptType(v);
+            const propType = schemaToTypeScriptType(v as Schema, schemasByKey);
             const optional = !requiredSet.has(k);
             return optional ? `${k}?: ${propType}` : `${k}: ${propType}`;
           })
@@ -102,14 +113,15 @@ function generateVariableTypeDeclarations(
   }
 
   if (type === "object") {
-    const props = effective && "properties" in effective ? effective.properties : undefined;
+    const resolvedEffective = effective && "properties" in effective
+      ? (resolveSchema(effective as Schema, schemasByKey) as Schema)
+      : undefined;
+    const props = resolvedEffective?.properties;
     if (props && typeof props === "object" && Object.keys(props).length > 0) {
-      const requiredSet = new Set(
-        (effective && "required" in effective ? effective.required : undefined) || [],
-      );
+      const requiredSet = new Set(resolvedEffective?.required || []);
       const entries = Object.entries(props)
         .map(([k, v]) => {
-          const propType = schemaToTypeScriptType(v as Schema);
+          const propType = schemaToTypeScriptType(v as Schema, schemasByKey);
           const optional = !requiredSet.has(k);
           return optional
             ? `${INDENT_NS_BODY}${k}?: ${propType};`
@@ -124,14 +136,18 @@ function generateVariableTypeDeclarations(
   }
 
   if (type === "array") {
-    const itemsSchema = effective && "items" in effective ? effective.items : undefined;
+    const itemsSchema = effective && "items" in effective ? (effective.items as Schema) : undefined;
     if (itemsSchema) {
-      const items = itemsSchema as Schema;
-      if (items.type === "object" && items.properties && Object.keys(items.properties).length > 0) {
-        const requiredSet = new Set(items.required || []);
-        const entries = Object.entries(items.properties)
+      const resolvedItems = resolveSchema(itemsSchema, schemasByKey);
+      if (
+        resolvedItems.type === "object" &&
+        resolvedItems.properties &&
+        Object.keys(resolvedItems.properties).length > 0
+      ) {
+        const requiredSet = new Set(resolvedItems.required || []);
+        const entries = Object.entries(resolvedItems.properties)
           .map(([k, v]) => {
-            const propType = schemaToTypeScriptType(v);
+            const propType = schemaToTypeScriptType(v as Schema, schemasByKey);
             const optional = !requiredSet.has(k);
             return optional
               ? `${INDENT_NS_BODY}${k}?: ${propType};`
@@ -141,15 +157,13 @@ function generateVariableTypeDeclarations(
         declarations.push(
           `${INDENT_NS}export interface ${itemTypeName} {\n${entries}\n${INDENT_NS}}`,
         );
-        // getVariableArray<T> returns T[] | null, so generic is item type
         return {
           declarations,
           returnTypeName: `${itemTypeName}[]`,
           genericArg: itemTypeName,
         };
       }
-      // array of primitive (e.g. string): emit item type only, use item[] in methods
-      const itemType = schemaToTypeScriptType(items);
+      const itemType = schemaToTypeScriptType(resolvedItems, schemasByKey);
       declarations.push(`${INDENT_NS}export type ${itemTypeName} = ${itemType};`);
       return {
         declarations,
@@ -157,7 +171,6 @@ function generateVariableTypeDeclarations(
         genericArg: itemTypeName,
       };
     }
-    // array without items (default string[]): emit item type only
     declarations.push(`${INDENT_NS}export type ${itemTypeName} = string;`);
     return {
       declarations,
