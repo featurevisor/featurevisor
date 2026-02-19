@@ -70,6 +70,7 @@
       { "title": "Tagging features", "href": "/docs/tags/" },
       { "title": "Scopes", "href": "/docs/scopes/" },
       { "title": "Namespaces", "href": "/docs/namespaces/" },
+      { "title": "Reusable schemas", "href": "/docs/schemas/" },
       { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers/" },
       { "title": "Plugins", "href": "/docs/plugins/" },
       { "title": "Datasource", "href": "/docs/datasource/" },
