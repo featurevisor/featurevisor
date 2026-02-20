@@ -46,26 +46,42 @@ function constToLiteralType(constVal: unknown): string | null {
   return null;
 }
 
+/** Emit a TypeScript union of literal types for an enum array (primitives only), or null. */
+function enumToUnionType(enumArr: unknown[]): string | null {
+  if (enumArr.length === 0) return null;
+  const literals: string[] = [];
+  for (const v of enumArr) {
+    const lit = constToLiteralType(v);
+    if (lit === null) return null;
+    literals.push(lit);
+  }
+  return literals.join(" | ");
+}
+
 /**
  * Converts a Schema (items or properties entry) to a TypeScript type string.
  * Handles nested object/array and resolves schema references recursively.
- * When schema has primitive `const`, emits a literal type.
+ * When schema has primitive `const` or `enum`, emits a literal or union type.
  */
 function schemaToTypeScriptType(schema: Schema, schemasByKey: Record<string, Schema>): string {
   const resolved = resolveSchema(schema, schemasByKey);
   const literalFromConst = resolved.const !== undefined ? constToLiteralType(resolved.const) : null;
+  const unionFromEnum =
+    resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0
+      ? enumToUnionType(resolved.enum)
+      : null;
   const type = resolved.type;
   if (!type) {
-    return literalFromConst ?? "unknown";
+    return literalFromConst ?? unionFromEnum ?? "unknown";
   }
   switch (type) {
     case "boolean":
-      return literalFromConst ?? "boolean";
+      return literalFromConst ?? unionFromEnum ?? "boolean";
     case "string":
-      return literalFromConst ?? "string";
+      return literalFromConst ?? unionFromEnum ?? "string";
     case "integer":
     case "double":
-      return literalFromConst ?? "number";
+      return literalFromConst ?? unionFromEnum ?? "number";
     case "array":
       if (resolved.items) {
         return `(${schemaToTypeScriptType(resolved.items, schemasByKey)})[]`;
@@ -192,20 +208,26 @@ function generateVariableTypeDeclarations(
   }
 
   // primitive: boolean, string, integer, double (or unknown when schema ref unresolved)
-  // When schema has primitive const, emit literal type
+  // When schema has primitive const or enum, emit literal or union type
   const effectiveConst =
     effective && "const" in effective && (effective as Schema).const !== undefined
       ? (effective as Schema).const
       : undefined;
+  const effectiveEnum =
+    effective && "enum" in effective && Array.isArray((effective as Schema).enum)
+      ? (effective as Schema).enum
+      : undefined;
   const literalType = effectiveConst !== undefined ? constToLiteralType(effectiveConst) : null;
+  const enumUnion =
+    effectiveEnum && effectiveEnum.length > 0 ? enumToUnionType(effectiveEnum) : null;
   const primitiveType =
-    literalType ?? (type ? convertFeaturevisorTypeToTypeScriptType(type) : "unknown");
+    literalType ?? enumUnion ?? (type ? convertFeaturevisorTypeToTypeScriptType(type) : "unknown");
   declarations.push(`${INDENT_NS}export type ${typeName} = ${primitiveType};`);
   return {
     declarations,
     returnTypeName: typeName,
     genericArg: typeName,
-    isLiteralType: literalType !== null,
+    isLiteralType: literalType !== null || enumUnion !== null,
   };
 }
 

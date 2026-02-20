@@ -108,6 +108,37 @@ variablesSchema:
       kind: "active"
       label: "Default"
 
+  # --- enum: inline and reusable schema ---
+  theme:
+    type: string
+    enum:
+      - light
+      - dark
+    defaultValue: light
+
+  themeVariant:
+    schema: themeEnum
+    defaultValue: light
+
+  # --- object with a property using enum ---
+  themeConfig:
+    type: object
+    properties:
+      theme:
+        type: string
+        enum:
+          - light
+          - dark
+          - system
+      label:
+        type: string
+    required:
+      - theme
+      - label
+    defaultValue:
+      theme: light
+      label: "Default"
+
 variations:
   - value: control
     weight: 50
@@ -116,6 +147,11 @@ variations:
       enabled: true
       statusInfo:
         kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
         label: "Control"
       singleLink:
         title: Control Link
@@ -144,6 +180,11 @@ variations:
       enabled: true
       statusInfo:
         kind: "active"
+        label: "Treatment"
+      theme: dark
+      themeVariant: dark
+      themeConfig:
+        theme: dark
         label: "Treatment"
       singleLink:
         title: Treatment Link
@@ -200,6 +241,11 @@ rules:
             url: /de/second
         statusInfo:
           kind: "active"
+          label: "Deutsch"
+        theme: light
+        themeVariant: system
+        themeConfig:
+          theme: light
           label: "Deutsch"
 
     - key: nl_or_ch

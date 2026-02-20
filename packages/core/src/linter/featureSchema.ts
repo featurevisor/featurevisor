@@ -2,7 +2,7 @@ import type { Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import { valueZodSchema, propertyTypeEnum, getSchemaZodSchema } from "./schema";
+import { valueZodSchema, propertyTypeEnum, getSchemaZodSchema, refineEnumMatchesType } from "./schema";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -38,10 +38,18 @@ function resolveVariableSchema(
     items?: unknown;
     properties?: unknown;
     required?: string[];
+    enum?: unknown[];
     const?: unknown;
   },
   schemasByKey?: Record<string, Schema>,
-): { type?: string; items?: unknown; properties?: unknown; required?: string[]; const?: unknown } | null {
+): {
+  type?: string;
+  items?: unknown;
+  properties?: unknown;
+  required?: string[];
+  enum?: unknown[];
+  const?: unknown;
+} | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
   }
@@ -50,6 +58,7 @@ function resolveVariableSchema(
     items?: unknown;
     properties?: unknown;
     required?: string[];
+    enum?: unknown[];
     const?: unknown;
   };
 }
@@ -323,6 +332,19 @@ function superRefineVariableValue(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Variable "${label}" must equal the constant value defined in schema (got ${JSON.stringify(variableValue)}).`,
+        path,
+      });
+    }
+    return;
+  }
+
+  const effectiveEnum = (effectiveSchema as { enum?: unknown[] }).enum;
+  if (effectiveEnum !== undefined && Array.isArray(effectiveEnum) && effectiveEnum.length > 0) {
+    const allowed = effectiveEnum.some((v) => valueDeepEqual(variableValue, v));
+    if (!allowed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must be one of the allowed enum values (got ${JSON.stringify(variableValue)}).`,
         path,
       });
     }
@@ -857,6 +879,7 @@ export function getFeatureZodSchema(
               items: schemaZodSchema.optional(),
               properties: z.record(schemaZodSchema).optional(),
               required: z.array(z.string()).optional(),
+              enum: z.array(variableValueZodSchema).optional(),
               const: variableValueZodSchema.optional(),
 
               description: z.string().optional(),
@@ -1016,6 +1039,16 @@ export function getFeatureZodSchema(
       const variableKeys = Object.keys(variableSchemaByKey);
       variableKeys.forEach((variableKey) => {
         const variableSchema = variableSchemaByKey[variableKey];
+
+        // When type and enum are both present, all enum values must match the type
+        const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
+        if (effectiveSchema && effectiveSchema.type && Array.isArray(effectiveSchema.enum) && effectiveSchema.enum.length > 0) {
+          refineEnumMatchesType(
+            effectiveSchema as Parameters<typeof refineEnumMatchesType>[0],
+            ["variablesSchema", variableKey],
+            ctx,
+          );
+        }
 
         if (variableKey === "variation") {
           ctx.addIssue({

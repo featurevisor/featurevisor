@@ -27,7 +27,7 @@ export interface Schema {
 
   // General validation keywords
   type?: SchemaType;
-  // enum?: Value[];
+  enum?: Value[];
   const?: Value;
 
   // Numeric validation keywords
