@@ -215,14 +215,25 @@ required:
 
 We can use the `const` property to define a constant value for a particular property in the schema:
 
-```yml {% path="schemas/mySchema.yml" highlight="5" %}
+```yml {% path="schemas/mySchema.yml" highlight="3" %}
 description: Schema description...
-type: object
+type: string
 
-properties:
-  name:
-    type: string
-    const: "constant value here
+const: "constant value here"
+```
+
+### enum
+
+We can use the `enum` property to define a list of allowed values for a particular property in the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="4-7" %}
+description: Schema description...
+type: string
+
+enum:
+  - value1
+  - value2
+  - value3
 ```
 
 ## Linting based on schemas
