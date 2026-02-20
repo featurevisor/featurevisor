@@ -242,12 +242,16 @@ We can use the `oneOf` property to allow a value to match **exactly one** of sev
 
 This is only supported at the reusable schema level (in `schemas/` directory), not in inline variable schemas inside features.
 
+One of the primitive types:
+
 ```yml {% path="schemas/stringOrNumber.yml" %}
 description: Value is either a string or an integer
 oneOf:
   - type: string
   - type: integer
 ```
+
+Mixing with other schemas:
 
 ```yml {% path="schemas/idOrLink.yml" %}
 description: Either a string id or a full link object
@@ -262,8 +266,17 @@ For array items, you can use `items` property to reference the `oneOf` schema:
 description: Mixed list of strings and integers
 type: array
 
+# by referencing schema that already uses `oneOf` internally
 items:
   schema: stringOrNumber
+
+# or by defining `oneOf` directly:
+items:
+  oneOf:
+    - type: string
+    - type: integer
+    - schema: link # reference another schema by name
+    - schema: someOtherSchema
 ```
 
 ## Linting based on schemas
