@@ -193,7 +193,39 @@ variablesSchema:
         url: /contact
 ```
 
-## Linting schemas
+## Advanced usage
+
+### required
+
+The `required` property is used to define the properties that are required in the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="8-9" %}
+description: Schema description...
+type: object
+
+properties:
+  name:
+    type: string
+
+required:
+  - name
+```
+
+### const
+
+We can use the `const` property to define a constant value for a particular property in the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="5" %}
+description: Schema description...
+type: object
+
+properties:
+  name:
+    type: string
+    const: "constant value here
+```
+
+## Linting based on schemas
 
 Because of strict linting that's supported out of the box in Featurevisor, we can find issues early if we mistakenly provided any wrong value for the variables anywhere in our feature definitions:
 
