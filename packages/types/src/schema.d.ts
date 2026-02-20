@@ -55,4 +55,7 @@ export interface Schema {
 
   // when referencing another Schema by name
   schema?: SchemaKey;
+
+  // oneOf: value must match exactly one of the given schemas (reusable Schema level only)
+  oneOf?: Schema[];
 }

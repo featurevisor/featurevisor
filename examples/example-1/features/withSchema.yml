@@ -139,6 +139,26 @@ variablesSchema:
       theme: light
       label: "Default"
 
+  # --- oneOf: reusable schema only (string | number, or id | link) ---
+  stringOrNumberVar:
+    schema: stringOrNumber
+    defaultValue: "id-1"
+
+  mixedList:
+    type: array
+    items:
+      schema: stringOrNumber
+    defaultValue:
+      - "a"
+      - 1
+      - "b"
+
+  refOrLink:
+    schema: idOrLink
+    defaultValue:
+      title: Home
+      url: /
+
 variations:
   - value: control
     weight: 50
@@ -153,6 +173,11 @@ variations:
       themeConfig:
         theme: light
         label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
       singleLink:
         title: Control Link
         url: /control
@@ -186,6 +211,14 @@ variations:
       themeConfig:
         theme: dark
         label: "Treatment"
+      stringOrNumberVar: 42
+      mixedList:
+        - 1
+        - 2
+        - "three"
+      refOrLink:
+        title: Treatment Link
+        url: /treatment
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -247,6 +280,13 @@ rules:
         themeConfig:
           theme: light
           label: "Deutsch"
+        stringOrNumberVar: 99
+        mixedList:
+          - "de"
+          - 1
+        refOrLink:
+          title: Start
+          url: /de
 
     - key: nl_or_ch
       segments:

@@ -40,6 +40,7 @@ function resolveVariableSchema(
     required?: string[];
     enum?: unknown[];
     const?: unknown;
+    oneOf?: unknown[];
   },
   schemasByKey?: Record<string, Schema>,
 ): {
@@ -49,6 +50,7 @@ function resolveVariableSchema(
   required?: string[];
   enum?: unknown[];
   const?: unknown;
+  oneOf?: unknown[];
 } | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
@@ -60,7 +62,90 @@ function resolveVariableSchema(
     required?: string[];
     enum?: unknown[];
     const?: unknown;
+    oneOf?: unknown[];
   };
+}
+
+/** Resolve a schema by following schema references (schema: key). Used for nested schemas that may have oneOf. */
+function resolveSchemaRefs(
+  schema: { schema?: string; [k: string]: unknown },
+  schemasByKey?: Record<string, Schema>,
+): { [k: string]: unknown } {
+  if (schema.schema && schemasByKey?.[schema.schema]) {
+    return resolveSchemaRefs(schemasByKey[schema.schema] as { schema?: string; [k: string]: unknown }, schemasByKey);
+  }
+  return schema;
+}
+
+/**
+ * Returns true if the value matches the given schema (const, enum, type, object properties, array items, or exactly one of oneOf).
+ * Used for oneOf validation: value must match exactly one branch.
+ */
+function valueMatchesSchema(
+  schema: { [k: string]: unknown },
+  value: unknown,
+  schemasByKey?: Record<string, Schema>,
+): boolean {
+  const resolved = resolveSchemaRefs(schema, schemasByKey) as {
+    type?: string;
+    const?: unknown;
+    enum?: unknown[];
+    oneOf?: unknown[];
+    properties?: Record<string, unknown>;
+    required?: string[];
+    items?: unknown;
+  };
+
+  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    const matchCount = resolved.oneOf.filter((branch) =>
+      valueMatchesSchema(branch as { [k: string]: unknown }, value, schemasByKey),
+    ).length;
+    return matchCount === 1;
+  }
+
+  if (resolved.const !== undefined) {
+    return valueDeepEqual(value, resolved.const);
+  }
+
+  if (resolved.enum !== undefined && Array.isArray(resolved.enum)) {
+    return resolved.enum.some((e) => valueDeepEqual(value, e));
+  }
+
+  const type = resolved.type;
+  if (!type) return false;
+
+  if (type === "string") return typeof value === "string";
+  if (type === "boolean") return typeof value === "boolean";
+  if (type === "integer") return typeof value === "number" && Number.isInteger(value);
+  if (type === "double") return typeof value === "number";
+  if (type === "json") return typeof value === "string";
+
+  if (type === "object") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const props = resolved.properties;
+    if (!props || typeof props !== "object") return true;
+    const obj = value as Record<string, unknown>;
+    const required = new Set(resolved.required || []);
+    for (const key of required) {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
+      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey)) return false;
+    }
+    for (const key of Object.keys(obj)) {
+      const propSchema = props[key];
+      if (!propSchema) return false;
+      if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey)) return false;
+    }
+    return true;
+  }
+
+  if (type === "array") {
+    if (!Array.isArray(value)) return false;
+    const itemSchema = resolved.items;
+    if (!itemSchema || typeof itemSchema !== "object") return value.every((v) => typeof v === "string");
+    return value.every((item) => valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey));
+  }
+
+  return false;
 }
 
 /** Deep equality for variable values (primitives, plain objects, arrays). */
@@ -142,6 +227,15 @@ function refineRequiredKeysInSchema(
       [...pathPrefix, "items"],
       ctx,
     );
+  }
+
+  const oneOf = (schema as { oneOf?: unknown[] }).oneOf;
+  if (oneOf && Array.isArray(oneOf)) {
+    oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineRequiredKeysInSchema(branch as Parameters<typeof refineRequiredKeysInSchema>[0], [...pathPrefix, "oneOf", i], ctx);
+      }
+    });
   }
 }
 
@@ -323,6 +417,27 @@ function superRefineVariableValue(
   }
 
   if (!effectiveSchema) {
+    return;
+  }
+
+  const effectiveOneOf = (effectiveSchema as { oneOf?: unknown[] }).oneOf;
+  if (effectiveOneOf !== undefined && Array.isArray(effectiveOneOf) && effectiveOneOf.length > 0) {
+    const matchCount = effectiveOneOf.filter((branch) =>
+      valueMatchesSchema(branch as { [k: string]: unknown }, variableValue, schemasByKey),
+    ).length;
+    if (matchCount === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (got ${JSON.stringify(variableValue)}; matched none).`,
+        path,
+      });
+    } else if (matchCount > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (matched ${matchCount}).`,
+        path,
+      });
+    }
     return;
   }
 

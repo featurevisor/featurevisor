@@ -37,6 +37,21 @@ assertions:
           url: /first
         - title: Second
           url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
+        label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
 
   # --- Staging: bucket at 75 -> treatment variation ---
   - at: 75
@@ -72,6 +87,24 @@ assertions:
           url: /first
         - title: Second
           url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Treatment"
+      theme: dark
+      themeVariant: dark
+      themeConfig:
+        theme: dark
+        label: "Treatment"
+      stringOrNumberVar: 42
+      mixedList:
+        - 1
+        - 2
+        - "three"
+      refOrLink:
+        title: Treatment Link
+        url: /treatment
 
   # --- Production: bucket at 25 -> control variation ---
   - at: 25
@@ -107,6 +140,21 @@ assertions:
           url: /first
         - title: Second
           url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
+        label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
 
   # --- Production: bucket at 75 -> treatment variation ---
   - at: 75
@@ -186,6 +234,23 @@ assertions:
           url: /de/first
         - title: Zweite
           url: /de/second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Deutsch"
+      theme: light
+      themeVariant: system
+      themeConfig:
+        theme: light
+        label: "Deutsch"
+      stringOrNumberVar: 99
+      mixedList:
+        - "de"
+        - 1
+      refOrLink:
+        title: Start
+        url: /de
 
   # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
   - at: 50

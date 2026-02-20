@@ -21,17 +21,20 @@ function valueMatchesType(v: unknown, type: string): boolean {
   }
 }
 
+type SchemaLike = {
+  type?: string;
+  enum?: unknown[];
+  items?: unknown;
+  properties?: Record<string, unknown>;
+  oneOf?: unknown[];
+};
+
 /**
  * Recursively validates that when a schema has both `type` and `enum`, every enum value matches the type.
- * Adds Zod issues for any mismatch (e.g. mixed types in enum).
+ * Also recurses into oneOf branches.
  */
 export function refineEnumMatchesType(
-  schema: {
-    type?: string;
-    enum?: unknown[];
-    items?: unknown;
-    properties?: Record<string, unknown>;
-  },
+  schema: SchemaLike,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
 ): void {
@@ -51,16 +54,19 @@ export function refineEnumMatchesType(
     }
   }
   if (schema.items && typeof schema.items === "object") {
-    refineEnumMatchesType(schema.items as Parameters<typeof refineEnumMatchesType>[0], [...pathPrefix, "items"], ctx);
+    refineEnumMatchesType(schema.items as SchemaLike, [...pathPrefix, "items"], ctx);
   }
   if (schema.properties && typeof schema.properties === "object") {
     for (const k of Object.keys(schema.properties)) {
-      refineEnumMatchesType(
-        schema.properties[k] as Parameters<typeof refineEnumMatchesType>[0],
-        [...pathPrefix, "properties", k],
-        ctx,
-      );
+      refineEnumMatchesType(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
     }
+  }
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineEnumMatchesType(branch as SchemaLike, [...pathPrefix, "oneOf", i], ctx);
+      }
+    });
   }
 }
 
@@ -104,7 +110,6 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         properties: z.record(z.string(), schemaZodSchema).optional(),
         // Annotations: default?: Value; examples?: Value[];
 
-        // @TODO: check if infinite recursion scenarios should be allowed
         schema: z
           .string()
           .refine(
@@ -114,6 +119,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
             }),
           )
           .optional(),
+        oneOf: z.array(schemaZodSchema).min(1).optional(),
       })
       .strict()
       .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx)),

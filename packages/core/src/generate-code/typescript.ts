@@ -61,10 +61,14 @@ function enumToUnionType(enumArr: unknown[]): string | null {
 /**
  * Converts a Schema (items or properties entry) to a TypeScript type string.
  * Handles nested object/array and resolves schema references recursively.
- * When schema has primitive `const` or `enum`, emits a literal or union type.
+ * When schema has `oneOf`, emits a union of each branch type. When schema has primitive `const` or `enum`, emits a literal or union type.
  */
 function schemaToTypeScriptType(schema: Schema, schemasByKey: Record<string, Schema>): string {
   const resolved = resolveSchema(schema, schemasByKey);
+  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    const parts = resolved.oneOf.map((branch) => schemaToTypeScriptType(branch as Schema, schemasByKey));
+    return parts.join(" | ");
+  }
   const literalFromConst = resolved.const !== undefined ? constToLiteralType(resolved.const) : null;
   const unionFromEnum =
     resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0
@@ -129,7 +133,13 @@ function generateVariableTypeDeclarations(
   variableKey: string,
   variableSchema: VariableSchema,
   schemasByKey: Record<string, Schema>,
-): { declarations: string[]; returnTypeName: string; genericArg: string; isLiteralType?: boolean } {
+): {
+  declarations: string[];
+  returnTypeName: string;
+  genericArg: string;
+  isLiteralType?: boolean;
+  useGetVariable?: boolean;
+} {
   const typeName = getPascalCase(variableKey) + "Variable";
   const itemTypeName = getPascalCase(variableKey) + "VariableItem";
   const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
@@ -138,6 +148,23 @@ function generateVariableTypeDeclarations(
 
   if (type === "json") {
     return { declarations: [], returnTypeName: "T", genericArg: "T" };
+  }
+
+  const effectiveOneOf = effective && "oneOf" in effective && Array.isArray((effective as Schema).oneOf)
+    ? (effective as Schema).oneOf
+    : undefined;
+  if (effectiveOneOf && effectiveOneOf.length > 0 && !type) {
+    const unionType = effectiveOneOf
+      .map((branch) => schemaToTypeScriptType(branch as Schema, schemasByKey))
+      .join(" | ");
+    declarations.push(`${INDENT_NS}export type ${typeName} = ${unionType};`);
+    return {
+      declarations,
+      returnTypeName: typeName,
+      genericArg: typeName,
+      isLiteralType: true,
+      useGetVariable: true,
+    };
   }
 
   if (type === "object") {
@@ -355,7 +382,7 @@ ${attributeProperties}
         const variableSchema = parsedFeature.variablesSchema[variableKey];
         const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
         const variableType = effective?.type;
-        const { declarations, returnTypeName, genericArg, isLiteralType } =
+        const { declarations, returnTypeName, genericArg, isLiteralType, useGetVariable } =
           generateVariableTypeDeclarations(variableKey, variableSchema, schemasByKey);
         allDeclarations.push(...declarations);
 
@@ -366,7 +393,13 @@ ${attributeProperties}
         const hasGeneric =
           variableType === "json" || variableType === "array" || variableType === "object";
         const literalAssertion = isLiteralType ? ` as ${returnTypeName} | null` : "";
-        if (variableType === "json") {
+        if (useGetVariable) {
+          variableMethods += `
+
+${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
+${INDENT_NS_BODY}return getInstance().getVariable(key, "${variableKey}", context)${literalAssertion};
+${INDENT_NS}}`;
+        } else if (variableType === "json") {
           variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}<T = unknown>(context: Context = {}): T | null {

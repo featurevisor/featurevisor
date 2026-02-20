@@ -236,6 +236,36 @@ enum:
   - value3
 ```
 
+### oneOf
+
+We can use the `oneOf` property to allow a value to match **exactly one** of several schemas.
+
+This is only supported at the reusable schema level (in `schemas/` directory), not in inline variable schemas inside features.
+
+```yml {% path="schemas/stringOrNumber.yml" %}
+description: Value is either a string or an integer
+oneOf:
+  - type: string
+  - type: integer
+```
+
+```yml {% path="schemas/idOrLink.yml" %}
+description: Either a string id or a full link object
+oneOf:
+  - type: string
+  - schema: link # reference another schema by name
+```
+
+For array items, you can use `items` property to reference the `oneOf` schema:
+
+```yml {% path="schemas/mixedList.yml" %}
+description: Mixed list of strings and integers
+type: array
+
+items:
+  schema: stringOrNumber
+```
+
 ## Linting based on schemas
 
 Because of strict linting that's supported out of the box in Featurevisor, we can find issues early if we mistakenly provided any wrong value for the variables anywhere in our feature definitions:
