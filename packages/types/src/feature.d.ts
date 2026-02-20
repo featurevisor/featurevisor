@@ -80,6 +80,7 @@ export interface VariableSchemaWithInline {
   properties?: Schema; // if type is object
   required?: Schema["required"]; // if type is object
   items?: Schema["items"]; // if type is array
+  const?: VariableValue;
 
   defaultValue: VariableValue;
   description?: string; // only available in YAML files

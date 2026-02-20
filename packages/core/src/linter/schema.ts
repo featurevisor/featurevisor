@@ -31,7 +31,8 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
       .object({
         description: z.string().optional(),
         type: propertyTypeEnum.optional(),
-        // enum?: Value[]; const?: Value;
+        // enum?: Value[];
+        const: valueZodSchema.optional(),
         // Numeric: maximum?, minimum?
         // String: maxLength?, minLength?, pattern?
         items: schemaZodSchema.optional(),

@@ -82,12 +82,41 @@ variablesSchema:
       - title: Second
         url: /second
 
+  # --- const: inline and reusable schema ---
+  status:
+    type: string
+    const: "active"
+    defaultValue: "active"
+
+  draftStatus:
+    schema: statusConst
+    defaultValue: "draft"
+
+  # --- object with a property using const ---
+  statusInfo:
+    type: object
+    properties:
+      kind:
+        type: string
+        const: "active"
+      label:
+        type: string
+    required:
+      - kind
+      - label
+    defaultValue:
+      kind: "active"
+      label: "Default"
+
 variations:
   - value: control
     weight: 50
     variables:
       pageTitle: "Control Title"
       enabled: true
+      statusInfo:
+        kind: "active"
+        label: "Control"
       singleLink:
         title: Control Link
         url: /control
@@ -113,6 +142,9 @@ variations:
     variables:
       pageTitle: "Treatment Title"
       enabled: true
+      statusInfo:
+        kind: "active"
+        label: "Treatment"
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -166,6 +198,9 @@ rules:
             url: /de/first
           - title: Zweite
             url: /de/second
+        statusInfo:
+          kind: "active"
+          label: "Deutsch"
 
     - key: nl_or_ch
       segments:

@@ -37,24 +37,35 @@ function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Sc
   return schema;
 }
 
+/** Emit a TypeScript literal type for a primitive const value, or null if not a primitive. */
+function constToLiteralType(constVal: unknown): string | null {
+  if (constVal === null || constVal === undefined) return null;
+  if (typeof constVal === "string") return JSON.stringify(constVal);
+  if (typeof constVal === "number") return String(constVal);
+  if (typeof constVal === "boolean") return constVal ? "true" : "false";
+  return null;
+}
+
 /**
  * Converts a Schema (items or properties entry) to a TypeScript type string.
  * Handles nested object/array and resolves schema references recursively.
+ * When schema has primitive `const`, emits a literal type.
  */
 function schemaToTypeScriptType(schema: Schema, schemasByKey: Record<string, Schema>): string {
   const resolved = resolveSchema(schema, schemasByKey);
+  const literalFromConst = resolved.const !== undefined ? constToLiteralType(resolved.const) : null;
   const type = resolved.type;
   if (!type) {
-    return "unknown";
+    return literalFromConst ?? "unknown";
   }
   switch (type) {
     case "boolean":
-      return "boolean";
+      return literalFromConst ?? "boolean";
     case "string":
-      return "string";
+      return literalFromConst ?? "string";
     case "integer":
     case "double":
-      return "number";
+      return literalFromConst ?? "number";
     case "array":
       if (resolved.items) {
         return `(${schemaToTypeScriptType(resolved.items, schemasByKey)})[]`;
@@ -96,12 +107,13 @@ function getEffectiveVariableSchema(
 /**
  * Generates TypeScript type/interface declarations and metadata for a variable.
  * Returns declarations to emit (interface or type alias) plus the type name and generic to use in the getter.
+ * When isLiteralType is true, the getter return must be asserted so the SDK's primitive return type matches the literal.
  */
 function generateVariableTypeDeclarations(
   variableKey: string,
   variableSchema: VariableSchema,
   schemasByKey: Record<string, Schema>,
-): { declarations: string[]; returnTypeName: string; genericArg: string } {
+): { declarations: string[]; returnTypeName: string; genericArg: string; isLiteralType?: boolean } {
   const typeName = getPascalCase(variableKey) + "Variable";
   const itemTypeName = getPascalCase(variableKey) + "VariableItem";
   const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
@@ -180,11 +192,21 @@ function generateVariableTypeDeclarations(
   }
 
   // primitive: boolean, string, integer, double (or unknown when schema ref unresolved)
-  const primitiveType = type
-    ? convertFeaturevisorTypeToTypeScriptType(type)
-    : "unknown";
+  // When schema has primitive const, emit literal type
+  const effectiveConst =
+    effective && "const" in effective && (effective as Schema).const !== undefined
+      ? (effective as Schema).const
+      : undefined;
+  const literalType = effectiveConst !== undefined ? constToLiteralType(effectiveConst) : null;
+  const primitiveType =
+    literalType ?? (type ? convertFeaturevisorTypeToTypeScriptType(type) : "unknown");
   declarations.push(`${INDENT_NS}export type ${typeName} = ${primitiveType};`);
-  return { declarations, returnTypeName: typeName, genericArg: typeName };
+  return {
+    declarations,
+    returnTypeName: typeName,
+    genericArg: typeName,
+    isLiteralType: literalType !== null,
+  };
 }
 
 function getPascalCase(str) {
@@ -311,11 +333,8 @@ ${attributeProperties}
         const variableSchema = parsedFeature.variablesSchema[variableKey];
         const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
         const variableType = effective?.type;
-        const { declarations, returnTypeName, genericArg } = generateVariableTypeDeclarations(
-          variableKey,
-          variableSchema,
-          schemasByKey,
-        );
+        const { declarations, returnTypeName, genericArg, isLiteralType } =
+          generateVariableTypeDeclarations(variableKey, variableSchema, schemasByKey);
         allDeclarations.push(...declarations);
 
         const internalMethodName = `getVariable${
@@ -324,6 +343,7 @@ ${attributeProperties}
 
         const hasGeneric =
           variableType === "json" || variableType === "array" || variableType === "object";
+        const literalAssertion = isLiteralType ? ` as ${returnTypeName} | null` : "";
         if (variableType === "json") {
           variableMethods += `
 
@@ -340,7 +360,7 @@ ${INDENT_NS}}`;
           variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
-${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context);
+${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context)${literalAssertion};
 ${INDENT_NS}}`;
         }
       }

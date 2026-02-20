@@ -32,13 +32,45 @@ function getVariableLabel(variableSchema, variableKey, path) {
  * When variable has `schema` (reference), returns the parsed Schema from schemasByKey; otherwise returns the inline variable schema.
  */
 function resolveVariableSchema(
-  variableSchema: { schema?: string; type?: string; items?: unknown; properties?: unknown; required?: string[] },
+  variableSchema: {
+    schema?: string;
+    type?: string;
+    items?: unknown;
+    properties?: unknown;
+    required?: string[];
+    const?: unknown;
+  },
   schemasByKey?: Record<string, Schema>,
-): { type?: string; items?: unknown; properties?: unknown; required?: string[] } | null {
+): { type?: string; items?: unknown; properties?: unknown; required?: string[]; const?: unknown } | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
   }
-  return variableSchema as { type?: string; items?: unknown; properties?: unknown; required?: string[] };
+  return variableSchema as {
+    type?: string;
+    items?: unknown;
+    properties?: unknown;
+    required?: string[];
+    const?: unknown;
+  };
+}
+
+/** Deep equality for variable values (primitives, plain objects, arrays). */
+function valueDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+  if (typeof a === "object" && typeof b === "object") {
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((v, i) => valueDeepEqual(v, b[i]));
+    }
+    const keysA = Object.keys(a as object).sort();
+    const keysB = Object.keys(b as object).sort();
+    if (keysA.length !== keysB.length || keysA.some((k, i) => k !== keysB[i])) return false;
+    return keysA.every((k) => valueDeepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+  }
+  return false;
 }
 
 /**
@@ -282,6 +314,18 @@ function superRefineVariableValue(
   }
 
   if (!effectiveSchema) {
+    return;
+  }
+
+  const effectiveConst = (effectiveSchema as { const?: unknown }).const;
+  if (effectiveConst !== undefined) {
+    if (!valueDeepEqual(variableValue, effectiveConst)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must equal the constant value defined in schema (got ${JSON.stringify(variableValue)}).`,
+        path,
+      });
+    }
     return;
   }
 
@@ -813,6 +857,7 @@ export function getFeatureZodSchema(
               items: schemaZodSchema.optional(),
               properties: z.record(schemaZodSchema).optional(),
               required: z.array(z.string()).optional(),
+              const: variableValueZodSchema.optional(),
 
               description: z.string().optional(),
 
