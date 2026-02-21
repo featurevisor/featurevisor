@@ -159,6 +159,13 @@ variablesSchema:
       title: Home
       url: /
 
+  # --- oneOf: inline (no schema reference) ---
+  inlineStringOrNumber:
+    oneOf:
+      - type: string
+      - type: integer
+    defaultValue: 100
+
 variations:
   - value: control
     weight: 50
@@ -178,6 +185,7 @@ variations:
         - "x"
         - 10
       refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
       singleLink:
         title: Control Link
         url: /control
@@ -219,6 +227,7 @@ variations:
       refOrLink:
         title: Treatment Link
         url: /treatment
+      inlineStringOrNumber: 200
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -287,6 +296,7 @@ rules:
         refOrLink:
           title: Start
           url: /de
+        inlineStringOrNumber: 50
 
     - key: nl_or_ch
       segments:

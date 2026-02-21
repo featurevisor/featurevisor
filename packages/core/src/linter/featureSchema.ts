@@ -996,6 +996,7 @@ export function getFeatureZodSchema(
               required: z.array(z.string()).optional(),
               enum: z.array(variableValueZodSchema).optional(),
               const: variableValueZodSchema.optional(),
+              oneOf: z.array(schemaZodSchema).min(1).optional(),
 
               description: z.string().optional(),
 
@@ -1011,11 +1012,15 @@ export function getFeatureZodSchema(
                 "type" in variableSchema &&
                 variableSchema.type != null &&
                 variableSchema.type !== undefined;
-              if (hasRef && hasInline) {
+              const hasOneOf =
+                "oneOf" in variableSchema &&
+                Array.isArray(variableSchema.oneOf) &&
+                variableSchema.oneOf.length > 0;
+              if (hasRef && (hasInline || hasOneOf)) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message:
-                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `properties`, `required`, `items`). Use one or the other.",
+                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `oneOf`, `properties`, `required`, `items`). Use one or the other.",
                   path: [],
                 });
                 return;
@@ -1025,22 +1030,32 @@ export function getFeatureZodSchema(
                   "type" in variableSchema ||
                   "properties" in variableSchema ||
                   "required" in variableSchema ||
-                  "items" in variableSchema
+                  "items" in variableSchema ||
+                  "oneOf" in variableSchema
                 ) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
-                      "When `schema` is set, do not set `type`, `properties`, `required`, or `items`.",
+                      "When `schema` is set, do not set `type`, `oneOf`, `properties`, `required`, or `items`.",
                     path: [],
                   });
                 }
                 return;
               }
-              if (!hasInline) {
+              if (!hasInline && !hasOneOf) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message:
-                    "Variable schema must have either `schema` (reference to a schema key) or `type` (inline schema).",
+                    "Variable schema must have either `schema` (reference to a schema key), `type` (inline schema), or `oneOf` (inline oneOf schemas).",
+                  path: [],
+                });
+                return;
+              }
+              if (hasInline && hasOneOf) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema cannot have both `type` and `oneOf` at the top level. Use one or the other.",
                   path: [],
                 });
                 return;

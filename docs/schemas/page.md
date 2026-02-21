@@ -240,8 +240,6 @@ enum:
 
 We can use the `oneOf` property to allow a value to match **exactly one** of several schemas.
 
-This is only supported at the reusable schema level (in `schemas/` directory), not in inline variable schemas inside features.
-
 One of the primitive types:
 
 ```yml {% path="schemas/stringOrNumber.yml" %}

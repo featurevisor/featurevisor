@@ -75,11 +75,12 @@ export interface VariableSchemaWithReference {
 export interface VariableSchemaWithInline {
   deprecated?: boolean;
   key?: VariableKey; // @NOTE: remove
-  type: VariableType;
+  type?: VariableType; // required when not using oneOf
 
   properties?: Schema; // if type is object
   required?: Schema["required"]; // if type is object
   items?: Schema["items"]; // if type is array
+  oneOf?: Schema[]; // value must match exactly one of these (mutually exclusive with type at top level when used)
   enum?: Value[];
   const?: VariableValue;
 

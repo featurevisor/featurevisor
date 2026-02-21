@@ -52,6 +52,7 @@ assertions:
         - "x"
         - 10
       refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
 
   # --- Staging: bucket at 75 -> treatment variation ---
   - at: 75
@@ -105,6 +106,7 @@ assertions:
       refOrLink:
         title: Treatment Link
         url: /treatment
+      inlineStringOrNumber: 200
 
   # --- Production: bucket at 25 -> control variation ---
   - at: 25
@@ -155,6 +157,7 @@ assertions:
         - "x"
         - 10
       refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
 
   # --- Production: bucket at 75 -> treatment variation ---
   - at: 75
@@ -251,6 +254,7 @@ assertions:
       refOrLink:
         title: Start
         url: /de
+      inlineStringOrNumber: 50
 
   # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
   - at: 50
