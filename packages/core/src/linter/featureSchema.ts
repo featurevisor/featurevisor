@@ -43,6 +43,9 @@ function resolveVariableSchema(
     oneOf?: unknown[];
     minimum?: number;
     maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
   },
   schemasByKey?: Record<string, Schema>,
 ): {
@@ -55,6 +58,9 @@ function resolveVariableSchema(
   oneOf?: unknown[];
   minimum?: number;
   maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
 } | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
@@ -69,6 +75,9 @@ function resolveVariableSchema(
     oneOf?: unknown[];
     minimum?: number;
     maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
   };
 }
 
@@ -102,6 +111,9 @@ function valueMatchesSchema(
     items?: unknown;
     minimum?: number;
     maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
   };
 
   if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
@@ -122,7 +134,20 @@ function valueMatchesSchema(
   const type = resolved.type;
   if (!type) return false;
 
-  if (type === "string") return typeof value === "string";
+  if (type === "string") {
+    if (typeof value !== "string") return false;
+    const s = value as string;
+    if (resolved.minLength !== undefined && s.length < resolved.minLength) return false;
+    if (resolved.maxLength !== undefined && s.length > resolved.maxLength) return false;
+    if (resolved.pattern !== undefined) {
+      try {
+        if (!new RegExp(resolved.pattern).test(s)) return false;
+      } catch {
+        return true;
+      }
+    }
+    return true;
+  }
   if (type === "boolean") return typeof value === "boolean";
   if (type === "integer") {
     if (typeof value !== "number" || !Number.isInteger(value)) return false;
@@ -497,7 +522,7 @@ function superRefineVariableValue(
   const expectedType = effectiveSchema.type;
   const gotType = typeOfValue(variableValue);
 
-  // string — only string allowed
+  // string — only string allowed; schema minLength/maxLength/pattern applied when set
   if (expectedType === "string") {
     if (typeof variableValue !== "string") {
       ctx.addIssue({
@@ -506,6 +531,37 @@ function superRefineVariableValue(
         path,
       });
       return;
+    }
+
+    const strMinLen = (effectiveSchema as { minLength?: number }).minLength;
+    const strMaxLen = (effectiveSchema as { maxLength?: number }).maxLength;
+    const strPattern = (effectiveSchema as { pattern?: string }).pattern;
+    if (strMinLen !== undefined && variableValue.length < strMinLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type string) length (${variableValue.length}) is less than \`minLength\` (${strMinLen}).`,
+        path,
+      });
+    }
+    if (strMaxLen !== undefined && variableValue.length > strMaxLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type string) length (${variableValue.length}) is greater than \`maxLength\` (${strMaxLen}).`,
+        path,
+      });
+    }
+    if (strPattern !== undefined) {
+      try {
+        if (!new RegExp(strPattern).test(variableValue)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${label}" (type string) does not match \`pattern\`.`,
+            path,
+          });
+        }
+      } catch {
+        // invalid regex already reported at schema parse time
+      }
     }
 
     if (
@@ -1051,6 +1107,9 @@ export function getFeatureZodSchema(
               oneOf: z.array(schemaZodSchema).min(1).optional(),
               minimum: z.number().optional(),
               maximum: z.number().optional(),
+              minLength: z.number().optional(),
+              maxLength: z.number().optional(),
+              pattern: z.string().optional(),
 
               description: z.string().optional(),
 

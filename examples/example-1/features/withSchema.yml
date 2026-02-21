@@ -193,6 +193,22 @@ variablesSchema:
     schema: boundedConst
     defaultValue: 5
 
+  # --- minLength/maxLength/pattern: reusable schemas ---
+  slugVar:
+    schema: slugString
+    defaultValue: "home"
+
+  promoCodeVar:
+    schema: promoCode
+    defaultValue: "WELCOME"
+
+  # --- minLength/maxLength: inline string (no pattern) ---
+  shortLabel:
+    type: string
+    minLength: 1
+    maxLength: 10
+    defaultValue: "OK"
+
 variations:
   - value: control
     weight: 50
@@ -218,6 +234,9 @@ variations:
       levelInline: 3
       discountRateInline: 0.1
       fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
       singleLink:
         title: Control Link
         url: /control
@@ -265,6 +284,9 @@ variations:
       levelInline: 8
       discountRateInline: 0.9
       fixedLevel: 5
+      slugVar: "treatment-page"
+      promoCodeVar: "TREAT2024"
+      shortLabel: "Treatment"
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -339,6 +361,9 @@ rules:
         levelInline: 10
         discountRateInline: 1.0
         fixedLevel: 5
+        slugVar: "de-home"
+        promoCodeVar: "DE2024"
+        shortLabel: "Germany"
 
     - key: nl_or_ch
       segments:
@@ -379,6 +404,9 @@ rules:
         levelInline: 5
         discountRateInline: 0.5
         fixedLevel: 5
+        slugVar: "nl-ch"
+        promoCodeVar: "NLCH24"
+        shortLabel: "NL/CH"
 
     - key: mobile_eu
       segments:
@@ -417,6 +445,9 @@ rules:
         levelInline: 1
         discountRateInline: 0
         fixedLevel: 5
+        slugVar: "mobile-eu"
+        promoCodeVar: "MOB-EU"
+        shortLabel: "Mobile"
 
     - key: desktop_eu
       segments:
@@ -440,6 +471,9 @@ rules:
         levelInline: 9
         discountRateInline: 0.99
         fixedLevel: 5
+        slugVar: "desktop-eu"
+        promoCodeVar: "DESK-EU"
+        shortLabel: "Desktop"
 
     - key: everyone
       segments: "*"
@@ -462,6 +496,9 @@ rules:
         levelInline: 10
         discountRateInline: 1.0
         fixedLevel: 5
+        slugVar: "de-prod"
+        promoCodeVar: "DEPROD"
+        shortLabel: "DE Prod"
 
     - key: nl_or_ch
       segments:
@@ -478,6 +515,9 @@ rules:
         levelInline: 4
         discountRateInline: 0.42
         fixedLevel: 5
+        slugVar: "nl-ch-prod"
+        promoCodeVar: "NLCH42"
+        shortLabel: "NL-CH"
 
     - key: mobile_eu
       segments:
@@ -496,6 +536,9 @@ rules:
         levelInline: 2
         discountRateInline: 0.1
         fixedLevel: 5
+        slugVar: "mobile-prod"
+        promoCodeVar: "MOB10"
+        shortLabel: "Mob"
 
     - key: everyone
       segments: "*"

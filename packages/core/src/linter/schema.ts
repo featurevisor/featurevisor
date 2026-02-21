@@ -27,6 +27,9 @@ type SchemaLike = {
   const?: unknown;
   minimum?: number;
   maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
   items?: unknown;
   properties?: Record<string, unknown>;
   oneOf?: unknown[];
@@ -152,6 +155,122 @@ export function refineMinimumMaximum(
   }
 }
 
+/**
+ * Validates that when a schema has type "string", minLength <= maxLength when both set,
+ * pattern is a valid RegExp (if set), and const/enum string values satisfy length and pattern.
+ */
+export function refineStringLengthPattern(
+  schema: SchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+  const type = schema.type;
+  const minLen = schema.minLength;
+  const maxLen = schema.maxLength;
+  const patternStr = schema.pattern;
+  const isString = type === "string";
+  if (isString && minLen !== undefined && maxLen !== undefined && minLen > maxLen) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `When \`type\` is "string", \`minLength\` (${minLen}) must be less than or equal to \`maxLength\` (${maxLen}).`,
+      path: [...pathPrefix, "minLength"],
+    });
+  }
+  if (isString && patternStr !== undefined) {
+    try {
+      new RegExp(patternStr);
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`pattern\` must be a valid ECMA-262 regular expression; "${patternStr}" is invalid.`,
+        path: [...pathPrefix, "pattern"],
+      });
+    }
+  }
+  const testString = (s: string): { minOk: boolean; maxOk: boolean; patternOk: boolean } => {
+    const minOk = minLen === undefined || s.length >= minLen;
+    const maxOk = maxLen === undefined || s.length <= maxLen;
+    let patternOk = true;
+    if (patternStr !== undefined) {
+      try {
+        patternOk = new RegExp(patternStr).test(s);
+      } catch {
+        patternOk = true;
+      }
+    }
+    return { minOk, maxOk, patternOk };
+  };
+  if (isString && schema.const !== undefined && typeof schema.const === "string") {
+    const { minOk, maxOk, patternOk } = testString(schema.const);
+    if (!minOk) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`const\` value length (${schema.const.length}) is less than \`minLength\` (${minLen}).`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+    if (!maxOk) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`const\` value length (${schema.const.length}) is greater than \`maxLength\` (${maxLen}).`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+    if (!patternOk) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`const\` value does not match \`pattern\`.`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+  }
+  if (isString && Array.isArray(schema.enum) && schema.enum.length > 0) {
+    for (let i = 0; i < schema.enum.length; i++) {
+      const v = schema.enum[i];
+      if (typeof v === "string") {
+        const { minOk, maxOk, patternOk } = testString(v);
+        if (!minOk) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Enum value at index ${i} length (${v.length}) is less than \`minLength\` (${minLen}).`,
+            path: [...pathPrefix, "enum", i],
+          });
+        }
+        if (!maxOk) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Enum value at index ${i} length (${v.length}) is greater than \`maxLength\` (${maxLen}).`,
+            path: [...pathPrefix, "enum", i],
+          });
+        }
+        if (!patternOk) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Enum value at index ${i} does not match \`pattern\`.`,
+            path: [...pathPrefix, "enum", i],
+          });
+        }
+      }
+    }
+  }
+  if (schema.items && typeof schema.items === "object") {
+    refineStringLengthPattern(schema.items as SchemaLike, [...pathPrefix, "items"], ctx);
+  }
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const k of Object.keys(schema.properties)) {
+      refineStringLengthPattern(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+    }
+  }
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineStringLengthPattern(branch as SchemaLike, [...pathPrefix, "oneOf", i], ctx);
+      }
+    });
+  }
+}
+
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
 export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   z.union([
@@ -186,7 +305,9 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         const: valueZodSchema.optional(),
         minimum: z.number().optional(),
         maximum: z.number().optional(),
-        // String: maxLength?, minLength?, pattern?
+        minLength: z.number().optional(),
+        maxLength: z.number().optional(),
+        pattern: z.string().optional(),
         items: schemaZodSchema.optional(),
         // maxItems?, minItems?, uniqueItems?
         required: z.array(z.string()).optional(),
@@ -206,7 +327,8 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
       })
       .strict()
       .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx))
-      .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx)),
+      .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx))
+      .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx)),
   );
 
   return schemaZodSchema;

@@ -34,10 +34,10 @@ export interface Schema {
   maximum?: number;
   minimum?: number;
 
-  // String validation keywords
-  // maxLength?: number;
-  // minLength?: number;
-  // pattern?: string;
+  // String validation keywords (when type is "string")
+  maxLength?: number;
+  minLength?: number;
+  pattern?: string;
 
   // Array validation keywords
   items?: Schema;

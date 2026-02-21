@@ -268,6 +268,60 @@ minimum: 0
 maximum: 100
 ```
 
+### minLength
+
+For `type: string`, you can use `minLength` to require a minimum character length:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: string
+
+minLength: 1
+```
+
+### maxLength
+
+For `type: string`, you can use `maxLength` to allow a maximum character length:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: string
+
+maxLength: 100
+```
+
+Both `minLength` and `maxLength` can be used together:
+
+```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+description: Schema description...
+type: string
+
+minLength: 1
+maxLength: 100
+```
+
+### pattern
+
+For `type: string`, you can use `pattern` to require the value to match an ECMA-262 regular expression:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: string
+
+pattern: "^[a-z0-9-]+$"
+```
+
+You can combine `pattern` with `minLength` and `maxLength`:
+
+```yml {% path="schemas/mySchema.yml" highlight="3-5" %}
+description: Schema description...
+type: string
+
+minLength: 3
+maxLength: 20
+pattern: "^[a-zA-Z0-9_]+$"
+```
+
 ### oneOf
 
 We can use the `oneOf` property to allow a value to match **exactly one** of several schemas.
