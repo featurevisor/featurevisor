@@ -540,4 +540,88 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("accepts object schema with property that references another schema (e.g. productSummary)", () => {
+    const Schema = getSchemaZodSchema(["money", "image"]);
+    const result = Schema.safeParse({
+      type: "object",
+      description: "Product summary",
+      properties: {
+        id: { type: "string" },
+        name: { type: "string" },
+        price: { schema: "money" },
+        image: { schema: "image" },
+      },
+      required: ["id", "name", "price"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  describe("errors surface properly: intentional mistakes produce correct path and message", () => {
+    function expectSchemaErrorSurfaces(
+      schemaKeys: string[],
+      invalidSchema: unknown,
+      opts: { pathContains: string[]; messageContains: string },
+    ): void {
+      const Schema = getSchemaZodSchema(schemaKeys);
+      const result = Schema.safeParse(invalidSchema);
+      expect(result.success).toBe(false);
+      const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+      expect(err).not.toBeNull();
+      const messages = (err?.issues ?? []).map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      expect(messages).toContain(opts.messageContains);
+      const pathStrings = (err?.issues ?? []).map((i) => i.path.join("."));
+      const hasMatchingPath = pathStrings.some((p) => opts.pathContains.every((seg) => p.includes(seg)));
+      expect(hasMatchingPath).toBe(true);
+    }
+
+    it("unknown schema ref: error path includes schema, message says Unknown schema", () => {
+      expectSchemaErrorSurfaces(
+        ["link"],
+        { schema: "nonexistent" },
+        { pathContains: ["schema"], messageContains: "Unknown schema" },
+      );
+    });
+
+    it("array without items: error path points to items, message mentions array and items", () => {
+      expectSchemaErrorSurfaces(
+        [],
+        { type: "array" },
+        { pathContains: ["items"], messageContains: "array" },
+      );
+    });
+
+    it("minimum > maximum: error path points to minimum, message mentions minimum and maximum", () => {
+      expectSchemaErrorSurfaces(
+        [],
+        { type: "integer", minimum: 20, maximum: 10 },
+        { pathContains: ["minimum"], messageContains: "minimum" },
+      );
+    });
+
+    it("invalid pattern: error path points to pattern, message mentions pattern", () => {
+      expectSchemaErrorSurfaces(
+        [],
+        { type: "string", pattern: "[" },
+        { pathContains: ["pattern"], messageContains: "pattern" },
+      );
+    });
+
+    it("enum value does not match type: error path points to enum index, message says match type", () => {
+      expectSchemaErrorSurfaces(
+        [],
+        { type: "string", enum: ["a", 42, "c"] },
+        { pathContains: ["enum"], messageContains: "match type" },
+      );
+    });
+
+    it("extra key: parse fails and message mentions unrecognized key", () => {
+      const Schema = getSchemaZodSchema([]);
+      const result = Schema.safeParse({ type: "string", invalidKey: true });
+      expect(result.success).toBe(false);
+      const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+      const messages = (err?.issues ?? []).map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      expect(messages).toMatch(/unrecognized|invalidKey/i);
+    });
+  });
 });

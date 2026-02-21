@@ -122,6 +122,19 @@ function expectParseFailure(feature: unknown, messageSubstring?: string): z.ZodE
   return err;
 }
 
+/** Assert that an intentional mistake produces an error at the expected path with expected message. */
+function expectErrorSurfaces(
+  feature: unknown,
+  opts: { pathContains: string[]; messageContains: string },
+): void {
+  const err = expectParseFailure(feature, opts.messageContains);
+  const pathStrings = err.issues.map((i) => i.path.join("."));
+  const hasMatchingPath = pathStrings.some((p) =>
+    opts.pathContains.every((seg) => p.includes(seg)),
+  );
+  expect(hasMatchingPath).toBe(true);
+}
+
 describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable values)", () => {
   describe("variablesSchema: schema reference", () => {
     it("accepts variable with schema reference and valid defaultValue", () => {
@@ -762,6 +775,438 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             },
           },
         }),
+      );
+    });
+  });
+
+  describe("complex cases (mirroring example-1 withSchema / withComplexSchema)", () => {
+    it("accepts inline object variable with properties and valid defaultValue (e.g. settings)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            settings: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              defaultValue: { theme: "light", compact: true },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects inline object variable when defaultValue is missing required property", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            settings: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              required: ["theme"],
+              defaultValue: { compact: true },
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts inline array variable with items schema ref (e.g. linkPair)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            linkPair: {
+              type: "array",
+              items: { schema: "link" },
+              defaultValue: [
+                { title: "First", url: "/first" },
+                { title: "Second", url: "/second" },
+              ],
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects inline array with items schema ref when an item does not match schema", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            linkPair: {
+              type: "array",
+              items: { schema: "link" },
+              defaultValue: [{ title: "Only title, missing url" }],
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts oneOf variable when defaultValue matches object branch (e.g. refOrLink as link)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            refOrLink: {
+              oneOf: [{ type: "string" }, { schema: "link" }],
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts object variable with nested const in property (e.g. statusInfo.kind const active)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            statusInfo: {
+              type: "object",
+              properties: {
+                kind: { type: "string", const: "active" },
+                label: { type: "string" },
+              },
+              required: ["kind", "label"],
+              defaultValue: { kind: "active", label: "Default" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects object variable when nested const property has wrong value", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            statusInfo: {
+              type: "object",
+              properties: {
+                kind: { type: "string", const: "active" },
+                label: { type: "string" },
+              },
+              required: ["kind", "label"],
+              defaultValue: { kind: "inactive", label: "Default" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts object variable with nested enum in property (e.g. themeConfig.theme)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            themeConfig: {
+              type: "object",
+              properties: {
+                theme: { type: "string", enum: ["light", "dark", "system"] },
+                label: { type: "string" },
+              },
+              required: ["theme", "label"],
+              defaultValue: { theme: "light", label: "Default" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects object variable when nested enum property has invalid value", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            themeConfig: {
+              type: "object",
+              properties: {
+                theme: { type: "string", enum: ["light", "dark", "system"] },
+                label: { type: "string" },
+              },
+              required: ["theme", "label"],
+              defaultValue: { theme: "invalid", label: "Default" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts rule variables with object value (e.g. singleLink, themeColor in rules)", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            singleLink: {
+              schema: "link",
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: {
+                  singleLink: { title: "DE Link", url: "/de" },
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects rule variable when object value does not match schema", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            singleLink: {
+              schema: "link",
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: {
+                  singleLink: { title: "Missing url" },
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+  });
+
+  describe("errors surface properly: intentional mistakes produce correct path and message", () => {
+    it("unknown schema ref: error path points to variable and message says Unknown schema", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            myLink: {
+              schema: "nonexistent",
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+        }),
+        { pathContains: ["variablesSchema", "myLink", "schema"], messageContains: "Unknown schema" },
+      );
+    });
+
+    it("defaultValue below minimum: error path includes defaultValue, message mentions minimum", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            level: {
+              type: "integer",
+              minimum: 10,
+              maximum: 100,
+              defaultValue: 5,
+            },
+          },
+        }),
+        { pathContains: ["variablesSchema", "level", "defaultValue"], messageContains: "minimum" },
+      );
+    });
+
+    it("defaultValue above maximum: error path includes defaultValue, message mentions maximum", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            level: {
+              type: "integer",
+              minimum: 0,
+              maximum: 10,
+              defaultValue: 99,
+            },
+          },
+        }),
+        { pathContains: ["variablesSchema", "level", "defaultValue"], messageContains: "maximum" },
+      );
+    });
+
+    it("variation uses undeclared variable: error path points to variations.*.variables, message says not defined", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            label: { type: "string", defaultValue: "x" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50, variables: { typoVar: "y" } },
+          ],
+        }),
+        {
+          pathContains: ["variations", "variables", "typoVar"],
+          messageContains: "not defined in",
+        },
+      );
+    });
+
+    it("variableOverrides value violates pattern: error path points to variableOverrides.*.value", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            slug: {
+              type: "string",
+              pattern: "^[a-z-]+$",
+              defaultValue: "home",
+            },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                slug: [{ segments: "*", value: "INVALID-UPPERCASE" }],
+              },
+            },
+          ],
+        }),
+        {
+          pathContains: ["variableOverrides", "slug", "value"],
+          messageContains: "pattern",
+        },
+      );
+    });
+
+    it("rule variable wrong type: error path points to rules.*.variables, message surfaces constraint", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            count: {
+              type: "integer",
+              minimum: 0,
+              maximum: 10,
+              defaultValue: 0,
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { count: 100 },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        {
+          pathContains: ["rules", "variables", "count"],
+          messageContains: "maximum",
+        },
+      );
+    });
+
+    it("disabledValue violates schema: error path includes disabledValue", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            level: {
+              type: "integer",
+              minimum: 1,
+              maximum: 5,
+              defaultValue: 1,
+              disabledValue: 99,
+            },
+          },
+        }),
+        {
+          pathContains: ["variablesSchema", "level", "disabledValue"],
+          messageContains: "maximum",
+        },
+      );
+    });
+
+    it("reserved key variation: error path points to variablesSchema.variation", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            variation: { type: "string", defaultValue: "control" },
+          },
+        }),
+        {
+          pathContains: ["variablesSchema", "variation"],
+          messageContains: "reserved",
+        },
+      );
+    });
+
+    it("object defaultValue missing required property: error path includes defaultValue and key, message says Missing required", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            settings: {
+              type: "object",
+              properties: { theme: { type: "string" }, requiredKey: { type: "string" } },
+              required: ["requiredKey"],
+              defaultValue: { theme: "light" },
+            },
+          },
+        }),
+        {
+          pathContains: ["variablesSchema", "settings", "defaultValue"],
+          messageContains: "Missing required",
+        },
+      );
+    });
+
+    it("nested const property wrong: error path points into object value", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            statusInfo: {
+              type: "object",
+              properties: {
+                kind: { type: "string", const: "active" },
+                label: { type: "string" },
+              },
+              required: ["kind", "label"],
+              defaultValue: { kind: "inactive", label: "x" },
+            },
+          },
+        }),
+        {
+          pathContains: ["variablesSchema", "statusInfo", "defaultValue"],
+          messageContains: "constant",
+        },
+      );
+    });
+
+    it("force variable not in variablesSchema: error path points to force.*.variables", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            title: { type: "string", defaultValue: "Default" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          force: {
+            staging: [
+              {
+                conditions: [{ attribute: "userId", operator: "equals", value: "u1" }],
+                variation: "control",
+                variables: { typoKey: "x" },
+              },
+            ],
+            production: [],
+          },
+        }),
+        {
+          pathContains: ["force", "variables", "typoKey"],
+          messageContains: "not defined in",
+        },
       );
     });
   });

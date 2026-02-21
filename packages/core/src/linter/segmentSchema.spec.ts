@@ -68,6 +68,19 @@ function expectSegmentFailure(input: unknown, messageSubstring?: string): z.ZodE
   return err;
 }
 
+/** Assert that an intentional mistake produces an error at the expected path with expected message. */
+function expectSegmentErrorSurfaces(
+  input: unknown,
+  opts: { pathContains: string[]; messageContains: string },
+): void {
+  const err = expectSegmentFailure(input, opts.messageContains);
+  const pathStrings = err.issues.map((i) => i.path.join("."));
+  const hasMatchingPath = pathStrings.some((p) =>
+    opts.pathContains.every((seg) => p.includes(seg)),
+  );
+  expect(hasMatchingPath).toBe(true);
+}
+
 describe("segmentSchema.ts :: getSegmentZodSchema", () => {
   describe("required fields", () => {
     it("accepts segment with description and conditions (plain condition)", () => {
@@ -215,6 +228,42 @@ describe("segmentSchema.ts :: getSegmentZodSchema", () => {
         conditions: "*",
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe("errors surface properly: intentional mistakes produce correct path and message", () => {
+    it("missing description: error path includes description", () => {
+      expectSegmentErrorSurfaces(
+        { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        { pathContains: ["description"], messageContains: "Required" },
+      );
+    });
+
+    it("conditions with unknown attribute: error path goes into conditions", () => {
+      expectSegmentErrorSurfaces(
+        {
+          description: "Segment",
+          conditions: {
+            and: [
+              { attribute: "country", operator: "equals", value: "de" },
+              { attribute: "typoAttr", operator: "equals", value: "x" },
+            ],
+          },
+        },
+        { pathContains: ["conditions", "attribute"], messageContains: "Unknown attribute" },
+      );
+    });
+
+    it("extra key at root: parse fails and message mentions unrecognized key", () => {
+      const result = parseSegment({
+        description: "Segment",
+        conditions: "*",
+        extraKey: true,
+      });
+      expect(result.success).toBe(false);
+      const err = (result as z.SafeParseError<unknown>).error;
+      const messages = err.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      expect(messages).toMatch(/unrecognized|extraKey/i);
     });
   });
 });

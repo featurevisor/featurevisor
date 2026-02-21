@@ -65,6 +65,19 @@ function expectConditionsFailure(input: unknown, messageSubstring?: string): z.Z
   return err;
 }
 
+/** Assert that an intentional mistake produces an error at the expected path with expected message. */
+function expectConditionErrorSurfaces(
+  input: unknown,
+  opts: { pathContains: string[]; messageContains: string },
+): void {
+  const err = expectConditionsFailure(input, opts.messageContains);
+  const pathStrings = err.issues.map((i) => i.path.join("."));
+  const hasMatchingPath = pathStrings.some((p) =>
+    opts.pathContains.every((seg) => p.includes(seg)),
+  );
+  expect(hasMatchingPath).toBe(true);
+}
+
 describe("conditionSchema.ts :: getConditionsZodSchema", () => {
   describe("attribute", () => {
     it("accepts condition when attribute is in available list", () => {
@@ -374,6 +387,60 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
         operator: "semverEquals",
         value: "1.0.0",
       });
+    });
+  });
+
+  describe("errors surface properly: intentional mistakes produce correct path and message", () => {
+    it("unknown attribute: error path includes attribute, message says Unknown attribute", () => {
+      expectConditionErrorSurfaces(
+        { attribute: "typoAttr", operator: "equals", value: "x" },
+        { pathContains: ["attribute"], messageContains: "Unknown attribute" },
+      );
+    });
+
+    it("numeric operator with string value: error path points to value, message says number", () => {
+      expectConditionErrorSurfaces(
+        { attribute: "userId", operator: "greaterThan", value: "10" },
+        { pathContains: ["value"], messageContains: "number" },
+      );
+    });
+
+    it("date operator with invalid string: error path points to value, message mentions ISO", () => {
+      expectConditionErrorSurfaces(
+        { attribute: "userId", operator: "before", value: "not-a-date" },
+        { pathContains: ["value"], messageContains: "ISO" },
+      );
+    });
+
+    it("exists operator with value set: error path points to value, message says not needed", () => {
+      expectConditionErrorSurfaces(
+        { attribute: "userId", operator: "exists", value: "x" },
+        { pathContains: ["value"], messageContains: "not needed" },
+      );
+    });
+
+    it("regexFlags when operator is not matches: error path points to regexFlags", () => {
+      expectConditionErrorSurfaces(
+        {
+          attribute: "userId",
+          operator: "equals",
+          value: "u1",
+          regexFlags: "i",
+        },
+        { pathContains: ["regexFlags"], messageContains: "not needed" },
+      );
+    });
+
+    it("nested condition with unknown attribute: error path goes into and.*.attribute", () => {
+      expectConditionErrorSurfaces(
+        {
+          and: [
+            { attribute: "userId", operator: "equals", value: "u1" },
+            { attribute: "badAttr", operator: "equals", value: "x" },
+          ],
+        },
+        { pathContains: ["attribute"], messageContains: "Unknown attribute" },
+      );
     });
   });
 });
