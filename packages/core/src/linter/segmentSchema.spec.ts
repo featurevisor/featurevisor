@@ -62,7 +62,9 @@ function expectSegmentFailure(input: unknown, messageSubstring?: string): z.ZodE
   if (result.success) throw new Error("Expected segment to fail");
   const err = (result as z.SafeParseError<unknown>).error;
   if (messageSubstring) {
-    const messages = err.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+    const messages = err.issues
+      .map((i) => (typeof i.message === "string" ? i.message : ""))
+      .join(" ");
     expect(messages).toContain(messageSubstring);
   }
   return err;
@@ -262,7 +264,9 @@ describe("segmentSchema.ts :: getSegmentZodSchema", () => {
       });
       expect(result.success).toBe(false);
       const err = (result as z.SafeParseError<unknown>).error;
-      const messages = err.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      const messages = err.issues
+        .map((i) => (typeof i.message === "string" ? i.message : ""))
+        .join(" ");
       expect(messages).toMatch(/unrecognized|extraKey/i);
     });
   });

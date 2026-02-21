@@ -59,7 +59,9 @@ function expectConditionsFailure(input: unknown, messageSubstring?: string): z.Z
   if (result.success) throw new Error("Expected conditions to fail");
   const err = (result as z.SafeParseError<unknown>).error;
   if (messageSubstring) {
-    const messages = err.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+    const messages = err.issues
+      .map((i) => (typeof i.message === "string" ? i.message : ""))
+      .join(" ");
     expect(messages).toContain(messageSubstring);
   }
   return err;
@@ -321,9 +323,7 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     it("rejects invalid value type inside nested condition", () => {
       expectConditionsFailure(
         {
-          or: [
-            { attribute: "country", operator: "greaterThan", value: "string" },
-          ],
+          or: [{ attribute: "country", operator: "greaterThan", value: "string" }],
         },
         "value must be a number",
       );

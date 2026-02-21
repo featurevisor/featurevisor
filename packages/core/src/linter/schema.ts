@@ -67,7 +67,11 @@ export function refineEnumMatchesType(
   }
   if (schema.properties && typeof schema.properties === "object") {
     for (const k of Object.keys(schema.properties)) {
-      refineEnumMatchesType(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+      refineEnumMatchesType(
+        schema.properties[k] as SchemaLike,
+        [...pathPrefix, "properties", k],
+        ctx,
+      );
     }
   }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
@@ -146,7 +150,11 @@ export function refineMinimumMaximum(
   }
   if (schema.properties && typeof schema.properties === "object") {
     for (const k of Object.keys(schema.properties)) {
-      refineMinimumMaximum(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+      refineMinimumMaximum(
+        schema.properties[k] as SchemaLike,
+        [...pathPrefix, "properties", k],
+        ctx,
+      );
     }
   }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
@@ -262,7 +270,11 @@ export function refineStringLengthPattern(
   }
   if (schema.properties && typeof schema.properties === "object") {
     for (const k of Object.keys(schema.properties)) {
-      refineStringLengthPattern(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+      refineStringLengthPattern(
+        schema.properties[k] as SchemaLike,
+        [...pathPrefix, "properties", k],
+        ctx,
+      );
     }
   }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
@@ -288,7 +300,9 @@ function valueDeepEqualForRefine(a: unknown, b: unknown): boolean {
     const keysA = Object.keys(a as object).sort();
     const keysB = Object.keys(b as object).sort();
     if (keysA.length !== keysB.length || keysA.some((k, i) => k !== keysB[i])) return false;
-    return keysA.every((k) => valueDeepEqualForRefine((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+    return keysA.every((k) =>
+      valueDeepEqualForRefine((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+    );
   }
   return false;
 }

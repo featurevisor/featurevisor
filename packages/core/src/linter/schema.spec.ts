@@ -85,7 +85,7 @@ describe("schema.ts :: refineEnumMatchesType", () => {
     refineEnumMatchesType({ type: "string", enum: ["a", 2, "c"] }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("index 1");
-    expect(issueMessage(issues[0])).toContain("does not match type \"string\"");
+    expect(issueMessage(issues[0])).toContain('does not match type "string"');
     expect(issues[0].path).toEqual(["enum", 1]);
   });
 
@@ -190,11 +190,7 @@ describe("schema.ts :: refineMinimumMaximum", () => {
 
   it("adds issue when an enum value is out of range", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineMinimumMaximum(
-      { type: "integer", minimum: 1, maximum: 5, enum: [1, 3, 10] },
-      [],
-      ctx,
-    );
+    refineMinimumMaximum({ type: "integer", minimum: 1, maximum: 5, enum: [1, 3, 10] }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("index 2");
     expect(issueMessage(issues[0])).toContain("maximum");
@@ -265,22 +261,14 @@ describe("schema.ts :: refineStringLengthPattern", () => {
 
   it("adds issue when const string does not match pattern", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineStringLengthPattern(
-      { type: "string", pattern: "^[0-9]+$", const: "abc" },
-      [],
-      ctx,
-    );
+    refineStringLengthPattern({ type: "string", pattern: "^[0-9]+$", const: "abc" }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("pattern");
   });
 
   it("adds issue when an enum string value violates length or pattern", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineStringLengthPattern(
-      { type: "string", maxLength: 2, enum: ["a", "abc", "b"] },
-      [],
-      ctx,
-    );
+    refineStringLengthPattern({ type: "string", maxLength: 2, enum: ["a", "abc", "b"] }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("index 1");
   });
@@ -319,32 +307,20 @@ describe("schema.ts :: refineArrayItems", () => {
 
   it("adds issue when const array length is less than minItems", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineArrayItems(
-      { type: "array", minItems: 3, const: [1, 2] },
-      [],
-      ctx,
-    );
+    refineArrayItems({ type: "array", minItems: 3, const: [1, 2] }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("minItems");
   });
 
   it("adds issue when const array length is greater than maxItems", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineArrayItems(
-      { type: "array", maxItems: 2, const: [1, 2, 3] },
-      [],
-      ctx,
-    );
+    refineArrayItems({ type: "array", maxItems: 2, const: [1, 2, 3] }, [], ctx);
     expect(issues).toHaveLength(1);
   });
 
   it("adds issue when uniqueItems is true and const array has duplicates", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineArrayItems(
-      { type: "array", uniqueItems: true, const: [1, 2, 1] },
-      [],
-      ctx,
-    );
+    refineArrayItems({ type: "array", uniqueItems: true, const: [1, 2, 1] }, [], ctx);
     expect(issues).toHaveLength(1);
     expect(issueMessage(issues[0])).toContain("duplicate");
   });
@@ -352,7 +328,15 @@ describe("schema.ts :: refineArrayItems", () => {
   it("adds issue when uniqueItems is true and enum array value has duplicates", () => {
     const { issues, ctx } = createRefinementCtx();
     refineArrayItems(
-      { type: "array", uniqueItems: true, enum: [[1, 2], [3, 3], [4, 5]] },
+      {
+        type: "array",
+        uniqueItems: true,
+        enum: [
+          [1, 2],
+          [3, 3],
+          [4, 5],
+        ],
+      },
       [],
       ctx,
     );
@@ -412,7 +396,8 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     });
     expect(result.success).toBe(false);
     const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
-    const msg = err?.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ") ?? "";
+    const msg =
+      err?.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ") ?? "";
     expect(msg).toMatch(/array|length|minimum|oneOf|element/i);
   });
 
@@ -458,8 +443,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
     expect(
       err?.issues.some(
-        (i) =>
-          typeof i.message === "string" && i.message.includes("does not match type"),
+        (i) => typeof i.message === "string" && i.message.includes("does not match type"),
       ),
     ).toBe(true);
   });
@@ -568,10 +552,14 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       expect(result.success).toBe(false);
       const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
       expect(err).not.toBeNull();
-      const messages = (err?.issues ?? []).map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      const messages = (err?.issues ?? [])
+        .map((i) => (typeof i.message === "string" ? i.message : ""))
+        .join(" ");
       expect(messages).toContain(opts.messageContains);
       const pathStrings = (err?.issues ?? []).map((i) => i.path.join("."));
-      const hasMatchingPath = pathStrings.some((p) => opts.pathContains.every((seg) => p.includes(seg)));
+      const hasMatchingPath = pathStrings.some((p) =>
+        opts.pathContains.every((seg) => p.includes(seg)),
+      );
       expect(hasMatchingPath).toBe(true);
     }
 
@@ -620,7 +608,9 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       const result = Schema.safeParse({ type: "string", invalidKey: true });
       expect(result.success).toBe(false);
       const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
-      const messages = (err?.issues ?? []).map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+      const messages = (err?.issues ?? [])
+        .map((i) => (typeof i.message === "string" ? i.message : ""))
+        .join(" ");
       expect(messages).toMatch(/unrecognized|invalidKey/i);
     });
   });

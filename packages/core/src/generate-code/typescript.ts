@@ -1,7 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, Schema, VariableSchema, VariableSchemaWithInline } from "@featurevisor/types";
+import type {
+  Attribute,
+  Schema,
+  VariableSchema,
+  VariableSchemaWithInline,
+} from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): string {
@@ -178,19 +183,13 @@ function generateVariableTypeDeclarations(
       !resolvedSchema.type;
     const isLiteralSchema =
       resolvedSchema.const !== undefined ||
-      (resolvedSchema.enum &&
-        Array.isArray(resolvedSchema.enum) &&
-        resolvedSchema.enum.length > 0);
+      (resolvedSchema.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0);
     addSchemaUsed(schemaTypeName);
     // getVariableArray<T> expects T to be the element type, not the full array type
     let genericArg = schemaTypeName;
     if (resolvedSchema.type === "array" && resolvedSchema.items) {
       const itemsSchema = resolvedSchema.items as Schema;
-      if (
-        "schema" in itemsSchema &&
-        itemsSchema.schema &&
-        schemaTypeNames[itemsSchema.schema]
-      ) {
+      if ("schema" in itemsSchema && itemsSchema.schema && schemaTypeNames[itemsSchema.schema]) {
         genericArg = schemaTypeNames[itemsSchema.schema];
         addSchemaUsed(genericArg);
       } else {
@@ -215,14 +214,13 @@ function generateVariableTypeDeclarations(
     return { declarations: [], returnTypeName: "T", genericArg: "T", schemaTypesUsed };
   }
 
-  const effectiveOneOf = effective && "oneOf" in effective && Array.isArray((effective as Schema).oneOf)
-    ? (effective as Schema).oneOf
-    : undefined;
+  const effectiveOneOf =
+    effective && "oneOf" in effective && Array.isArray((effective as Schema).oneOf)
+      ? (effective as Schema).oneOf
+      : undefined;
   if (effectiveOneOf && effectiveOneOf.length > 0 && !type) {
     const unionType = effectiveOneOf
-      .map((branch) =>
-        schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames),
-      )
+      .map((branch) => schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames))
       .join(" | ");
     if (schemaTypeNames) {
       Object.values(schemaTypeNames).forEach((n) => {
@@ -241,9 +239,10 @@ function generateVariableTypeDeclarations(
   }
 
   if (type === "object") {
-    const resolvedEffective = effective && "properties" in effective
-      ? (resolveSchema(effective as Schema, schemasByKey) as Schema)
-      : undefined;
+    const resolvedEffective =
+      effective && "properties" in effective
+        ? (resolveSchema(effective as Schema, schemasByKey) as Schema)
+        : undefined;
     const props = resolvedEffective?.properties;
     if (props && typeof props === "object" && Object.keys(props).length > 0) {
       const requiredSet = new Set(resolvedEffective?.required || []);
@@ -271,7 +270,10 @@ function generateVariableTypeDeclarations(
     const itemsSchema = effective && "items" in effective ? (effective.items as Schema) : undefined;
     if (itemsSchema) {
       const itemsRef =
-        schemaTypeNames && "schema" in itemsSchema && itemsSchema.schema && schemasByKey[itemsSchema.schema]
+        schemaTypeNames &&
+        "schema" in itemsSchema &&
+        itemsSchema.schema &&
+        schemasByKey[itemsSchema.schema]
           ? schemaTypeNames[itemsSchema.schema]
           : null;
       if (itemsRef) {
@@ -618,8 +620,7 @@ ${INDENT_NS}}${variableMethods}
       ...featureNamespaces.map((featureNamespace) => {
         return `export * from "./${featureNamespace}";`;
       }),
-    ]
-      .join("\n") + "\n";
+    ].join("\n") + "\n";
   const indexFilePath = path.join(outputPath, "index.ts");
   fs.writeFileSync(indexFilePath, indexContent);
   console.log(`Index file written at: ${getRelativePath(rootDirectoryPath, indexFilePath)}`);

@@ -104,7 +104,10 @@ function resolveSchemaRefs(
   schemasByKey?: Record<string, Schema>,
 ): { [k: string]: unknown } {
   if (schema.schema && schemasByKey?.[schema.schema]) {
-    return resolveSchemaRefs(schemasByKey[schema.schema] as { schema?: string; [k: string]: unknown }, schemasByKey);
+    return resolveSchemaRefs(
+      schemasByKey[schema.schema] as { schema?: string; [k: string]: unknown },
+      schemasByKey,
+    );
   }
   return schema;
 }
@@ -191,12 +194,14 @@ function valueMatchesSchema(
     const required = new Set(resolved.required || []);
     for (const key of required) {
       if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
-      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey)) return false;
+      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey))
+        return false;
     }
     for (const key of Object.keys(obj)) {
       const propSchema = props[key];
       if (!propSchema) return false;
-      if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey)) return false;
+      if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
+        return false;
     }
     return true;
   }
@@ -214,8 +219,11 @@ function valueMatchesSchema(
       }
     }
     const itemSchema = resolved.items;
-    if (!itemSchema || typeof itemSchema !== "object") return arr.every((v) => typeof v === "string");
-    return arr.every((item) => valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey));
+    if (!itemSchema || typeof itemSchema !== "object")
+      return arr.every((v) => typeof v === "string");
+    return arr.every((item) =>
+      valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey),
+    );
   }
 
   return false;
@@ -235,7 +243,9 @@ function valueDeepEqual(a: unknown, b: unknown): boolean {
     const keysA = Object.keys(a as object).sort();
     const keysB = Object.keys(b as object).sort();
     if (keysA.length !== keysB.length || keysA.some((k, i) => k !== keysB[i])) return false;
-    return keysA.every((k) => valueDeepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+    return keysA.every((k) =>
+      valueDeepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+    );
   }
   return false;
 }
@@ -306,7 +316,11 @@ function refineRequiredKeysInSchema(
   if (oneOf && Array.isArray(oneOf)) {
     oneOf.forEach((branch, i) => {
       if (branch && typeof branch === "object") {
-        refineRequiredKeysInSchema(branch as Parameters<typeof refineRequiredKeysInSchema>[0], [...pathPrefix, "oneOf", i], ctx);
+        refineRequiredKeysInSchema(
+          branch as Parameters<typeof refineRequiredKeysInSchema>[0],
+          [...pathPrefix, "oneOf", i],
+          ctx,
+        );
       }
     });
   }
@@ -1235,20 +1249,20 @@ export function getFeatureZodSchema(
               }
               if (hasRef) {
                 const hasInlineStructure =
-                  "type" in variableSchema && variableSchema.type != null ||
-                  "properties" in variableSchema && variableSchema.properties != null ||
-                  "required" in variableSchema && variableSchema.required != null ||
-                  "items" in variableSchema && variableSchema.items != null ||
-                  "oneOf" in variableSchema && variableSchema.oneOf != null;
+                  ("type" in variableSchema && variableSchema.type != null) ||
+                  ("properties" in variableSchema && variableSchema.properties != null) ||
+                  ("required" in variableSchema && variableSchema.required != null) ||
+                  ("items" in variableSchema && variableSchema.items != null) ||
+                  ("oneOf" in variableSchema && variableSchema.oneOf != null);
                 const hasInlineValidation =
-                  "minimum" in variableSchema && variableSchema.minimum !== undefined ||
-                  "maximum" in variableSchema && variableSchema.maximum !== undefined ||
-                  "minLength" in variableSchema && variableSchema.minLength !== undefined ||
-                  "maxLength" in variableSchema && variableSchema.maxLength !== undefined ||
-                  "pattern" in variableSchema && variableSchema.pattern !== undefined ||
-                  "minItems" in variableSchema && variableSchema.minItems !== undefined ||
-                  "maxItems" in variableSchema && variableSchema.maxItems !== undefined ||
-                  "uniqueItems" in variableSchema && variableSchema.uniqueItems !== undefined;
+                  ("minimum" in variableSchema && variableSchema.minimum !== undefined) ||
+                  ("maximum" in variableSchema && variableSchema.maximum !== undefined) ||
+                  ("minLength" in variableSchema && variableSchema.minLength !== undefined) ||
+                  ("maxLength" in variableSchema && variableSchema.maxLength !== undefined) ||
+                  ("pattern" in variableSchema && variableSchema.pattern !== undefined) ||
+                  ("minItems" in variableSchema && variableSchema.minItems !== undefined) ||
+                  ("maxItems" in variableSchema && variableSchema.maxItems !== undefined) ||
+                  ("uniqueItems" in variableSchema && variableSchema.uniqueItems !== undefined);
                 if (hasInlineStructure) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
@@ -1401,7 +1415,12 @@ export function getFeatureZodSchema(
 
         // When type and enum are both present, all enum values must match the type
         const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
-        if (effectiveSchema && effectiveSchema.type && Array.isArray(effectiveSchema.enum) && effectiveSchema.enum.length > 0) {
+        if (
+          effectiveSchema &&
+          effectiveSchema.type &&
+          Array.isArray(effectiveSchema.enum) &&
+          effectiveSchema.enum.length > 0
+        ) {
           refineEnumMatchesType(
             effectiveSchema as Parameters<typeof refineEnumMatchesType>[0],
             ["variablesSchema", variableKey],
@@ -1412,9 +1431,21 @@ export function getFeatureZodSchema(
         // Inline variable schemas: validate minimum/maximum, minLength/maxLength/pattern, minItems/maxItems/uniqueItems
         if (!("schema" in variableSchema) || !variableSchema.schema) {
           const pathPrefix = ["variablesSchema", variableKey];
-          refineMinimumMaximum(variableSchema as Parameters<typeof refineMinimumMaximum>[0], pathPrefix, ctx);
-          refineStringLengthPattern(variableSchema as Parameters<typeof refineStringLengthPattern>[0], pathPrefix, ctx);
-          refineArrayItems(variableSchema as Parameters<typeof refineArrayItems>[0], pathPrefix, ctx);
+          refineMinimumMaximum(
+            variableSchema as Parameters<typeof refineMinimumMaximum>[0],
+            pathPrefix,
+            ctx,
+          );
+          refineStringLengthPattern(
+            variableSchema as Parameters<typeof refineStringLengthPattern>[0],
+            pathPrefix,
+            ctx,
+          );
+          refineArrayItems(
+            variableSchema as Parameters<typeof refineArrayItems>[0],
+            pathPrefix,
+            ctx,
+          );
         }
 
         if (variableKey === "variation") {

@@ -116,7 +116,9 @@ function expectParseFailure(feature: unknown, messageSubstring?: string): z.ZodE
   if (result.success) throw new Error("Expected parse failure");
   const err = (result as z.SafeParseError<unknown>).error;
   if (messageSubstring) {
-    const messages = err.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ");
+    const messages = err.issues
+      .map((i) => (typeof i.message === "string" ? i.message : ""))
+      .join(" ");
     expect(messages).toContain(messageSubstring);
   }
   return err;
@@ -995,7 +997,10 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             },
           },
         }),
-        { pathContains: ["variablesSchema", "myLink", "schema"], messageContains: "Unknown schema" },
+        {
+          pathContains: ["variablesSchema", "myLink", "schema"],
+          messageContains: "Unknown schema",
+        },
       );
     });
 
