@@ -865,15 +865,24 @@ function refineForce({
     // force[n].variables[key]
     if (f.variables) {
       Object.keys(f.variables).forEach((variableKey) => {
-        superRefineVariableValue(
-          projectConfig,
-          variableSchemaByKey[variableKey],
-          f.variables[variableKey],
-          pathPrefix.concat([fN, "variables", variableKey]),
-          ctx,
-          variableKey,
-          schemasByKey,
-        );
+        const variableSchema = variableSchemaByKey[variableKey];
+        if (!variableSchema) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+            path: pathPrefix.concat([fN, "variables", variableKey]),
+          });
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema,
+            f.variables[variableKey],
+            pathPrefix.concat([fN, "variables", variableKey]),
+            ctx,
+            variableKey,
+            schemasByKey,
+          );
+        }
       });
     }
   });
@@ -893,15 +902,24 @@ function refineRules({
     // rules[n].variables[key]
     if (rule.variables) {
       Object.keys(rule.variables).forEach((variableKey) => {
-        superRefineVariableValue(
-          projectConfig,
-          variableSchemaByKey[variableKey],
-          rule.variables[variableKey],
-          pathPrefix.concat([ruleN, "variables", variableKey]),
-          ctx,
-          variableKey,
-          schemasByKey,
-        );
+        const variableSchema = variableSchemaByKey[variableKey];
+        if (!variableSchema) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+            path: pathPrefix.concat([ruleN, "variables", variableKey]),
+          });
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema,
+            rule.variables[variableKey],
+            pathPrefix.concat([ruleN, "variables", variableKey]),
+            ctx,
+            variableKey,
+            schemasByKey,
+          );
+        }
       });
     }
 
@@ -1438,27 +1456,41 @@ export function getFeatureZodSchema(
           // variations[n].variables[key]
           for (const variableKey of Object.keys(variation.variables)) {
             const variableValue = variation.variables[variableKey];
-
-            superRefineVariableValue(
-              projectConfig,
-              variableSchemaByKey[variableKey],
-              variableValue,
-              ["variations", variationN, "variables", variableKey],
-              ctx,
-              variableKey,
-              schemasByKey,
-            );
+            const variableSchema = variableSchemaByKey[variableKey];
+            if (!variableSchema) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                path: ["variations", variationN, "variables", variableKey],
+              });
+            } else {
+              superRefineVariableValue(
+                projectConfig,
+                variableSchema,
+                variableValue,
+                ["variations", variationN, "variables", variableKey],
+                ctx,
+                variableKey,
+                schemasByKey,
+              );
+            }
 
             // variations[n].variableOverrides[n].value
             if (variation.variableOverrides) {
               for (const variableKey of Object.keys(variation.variableOverrides)) {
                 const overrides = variation.variableOverrides[variableKey];
-
-                if (Array.isArray(overrides)) {
+                const variableSchema = variableSchemaByKey[variableKey];
+                if (!variableSchema) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                    path: ["variations", variationN, "variableOverrides", variableKey],
+                  });
+                } else if (Array.isArray(overrides)) {
                   overrides.forEach((override, overrideN) => {
                     superRefineVariableValue(
                       projectConfig,
-                      variableSchemaByKey[variableKey],
+                      variableSchema,
                       override.value,
                       [
                         "variations",

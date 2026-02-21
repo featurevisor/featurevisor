@@ -425,9 +425,19 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
             }),
           )
           .optional(),
-        oneOf: z.array(schemaZodSchema).min(1).optional(),
+        oneOf: z.array(schemaZodSchema).min(2).optional(),
       })
       .strict()
+      .superRefine((data, ctx) => {
+        if (data.type === "array" && data.items === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              'When `type` is "array", `items` is required. Define the schema for array elements.',
+            path: ["items"],
+          });
+        }
+      })
       .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx))
       .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx))
       .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))

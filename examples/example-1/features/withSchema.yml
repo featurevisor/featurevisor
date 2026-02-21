@@ -367,6 +367,15 @@ variations:
         - treatment
         - x
         - y
+    variableOverrides:
+      shortLabel:
+        - segments: countries/germany
+          value: "Treat DE"
+        - segments: countries/netherlands
+          value: "Treat NL"
+      inlineSlug:
+        - segments: countries/germany
+          value: "treatment-de"
 
 rules:
   staging:
