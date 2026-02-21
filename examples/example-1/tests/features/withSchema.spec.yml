@@ -69,6 +69,8 @@ assertions:
         - A1
       shortList:
         - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
 
   # --- Staging: bucket at 75 -> treatment variation ---
   - at: 75
@@ -141,6 +143,10 @@ assertions:
       shortList:
         - one
         - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
 
   # --- Production: bucket at 25 -> control variation ---
   - at: 25
@@ -208,6 +214,8 @@ assertions:
         - A1
       shortList:
         - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
 
   # --- Production: bucket at 75 -> treatment variation ---
   - at: 75
@@ -261,6 +269,10 @@ assertions:
       shortList:
         - one
         - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
 
   # --- Partial assertion (variation-based) ---
   - at: 10
@@ -286,6 +298,8 @@ assertions:
         - A1
       shortList:
         - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
 
   # ========== minItems/maxItems/uniqueItems (array) + other schema keywords ==========
   # percentVar: schema percentInteger (0-100), ratingVar: schema ratingDouble (0-5),
@@ -359,6 +373,10 @@ assertions:
         - DE2
       shortList:
         - a
+      inlineSlug: "de-home"
+      inlineUniqueTags:
+        - de
+        - tag
 
   # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
   - at: 50
@@ -411,6 +429,10 @@ assertions:
       shortList:
         - x
         - y
+      inlineSlug: "nl-ch"
+      inlineUniqueTags:
+        - nl
+        - ch
 
   # --- Staging: Switzerland -> same rule "nl_or_ch" ---
   - at: 50
@@ -446,6 +468,10 @@ assertions:
       shortList:
         - x
         - y
+      inlineSlug: "nl-ch"
+      inlineUniqueTags:
+        - nl
+        - ch
 
   # --- Staging: Mobile + EU (and: mobile, eu) -> rule "mobile_eu" ---
   - at: 50
@@ -493,6 +519,9 @@ assertions:
         - mobile
       uniqueCodesVar: []
       shortList: []
+      inlineSlug: "mobile-eu"
+      inlineUniqueTags:
+        - mobile
 
   # --- Staging: Desktop + EU (and: desktop, eu) -> rule "desktop_eu" ---
   - at: 50
@@ -533,6 +562,10 @@ assertions:
         - p
         - q
         - r
+      inlineSlug: "desktop-eu"
+      inlineUniqueTags:
+        - desktop
+        - eu
 
   # --- Staging: US (no specific segment) -> "everyone" rule, variation-based variables ---
   - at: 25
@@ -588,6 +621,9 @@ assertions:
       shortList:
         - a
         - b
+      inlineSlug: "de-prod"
+      inlineUniqueTags:
+        - prod
 
   # --- Production: NL/CH -> rule "nl_or_ch" (prod overrides) ---
   - at: 50
@@ -615,6 +651,10 @@ assertions:
         - N2
       shortList:
         - z
+      inlineSlug: "nl-ch-prod"
+      inlineUniqueTags:
+        - n1
+        - n2
 
   # --- Production: Mobile EU -> rule "mobile_eu" (prod overrides) ---
   - at: 50
@@ -643,3 +683,6 @@ assertions:
       uniqueCodesVar:
         - M1
       shortList: []
+      inlineSlug: "mobile-prod"
+      inlineUniqueTags:
+        - mob

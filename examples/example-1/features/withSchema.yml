@@ -228,6 +228,24 @@ variablesSchema:
       type: string
     defaultValue: []
 
+  # --- Inline string with pattern (minLength, maxLength, pattern) ---
+  inlineSlug:
+    type: string
+    minLength: 1
+    maxLength: 30
+    pattern: "^[a-z0-9-]+$"
+    defaultValue: "home"
+
+  # --- Inline array with uniqueItems ---
+  inlineUniqueTags:
+    type: array
+    minItems: 0
+    maxItems: 5
+    uniqueItems: true
+    items:
+      type: string
+    defaultValue: []
+
 variations:
   - value: control
     weight: 50
@@ -264,6 +282,8 @@ variations:
         - A1
       shortList:
         - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
       singleLink:
         title: Control Link
         url: /control
@@ -324,6 +344,10 @@ variations:
       shortList:
         - one
         - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -409,6 +433,10 @@ rules:
           - DE2
         shortList:
           - a
+        inlineSlug: "de-home"
+        inlineUniqueTags:
+          - de
+          - tag
 
     - key: nl_or_ch
       segments:
@@ -461,6 +489,10 @@ rules:
         shortList:
           - x
           - y
+        inlineSlug: "nl-ch"
+        inlineUniqueTags:
+          - nl
+          - ch
 
     - key: mobile_eu
       segments:
@@ -506,6 +538,9 @@ rules:
           - mobile
         uniqueCodesVar: []
         shortList: []
+        inlineSlug: "mobile-eu"
+        inlineUniqueTags:
+          - mobile
 
     - key: desktop_eu
       segments:
@@ -544,6 +579,10 @@ rules:
           - p
           - q
           - r
+        inlineSlug: "desktop-eu"
+        inlineUniqueTags:
+          - desktop
+          - eu
 
     - key: everyone
       segments: "*"
@@ -577,6 +616,9 @@ rules:
         shortList:
           - a
           - b
+        inlineSlug: "de-prod"
+        inlineUniqueTags:
+          - prod
 
     - key: nl_or_ch
       segments:
@@ -604,6 +646,10 @@ rules:
           - N2
         shortList:
           - z
+        inlineSlug: "nl-ch-prod"
+        inlineUniqueTags:
+          - n1
+          - n2
 
     - key: mobile_eu
       segments:
@@ -630,6 +676,9 @@ rules:
         uniqueCodesVar:
           - M1
         shortList: []
+        inlineSlug: "mobile-prod"
+        inlineUniqueTags:
+          - mob
 
     - key: everyone
       segments: "*"

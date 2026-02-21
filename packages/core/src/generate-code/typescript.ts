@@ -184,15 +184,18 @@ function generateVariableTypeDeclarations(
     addSchemaUsed(schemaTypeName);
     // getVariableArray<T> expects T to be the element type, not the full array type
     let genericArg = schemaTypeName;
-    if (
-      resolvedSchema.type === "array" &&
-      resolvedSchema.items &&
-      "schema" in resolvedSchema.items &&
-      resolvedSchema.items.schema &&
-      schemaTypeNames[resolvedSchema.items.schema]
-    ) {
-      genericArg = schemaTypeNames[resolvedSchema.items.schema];
-      addSchemaUsed(genericArg);
+    if (resolvedSchema.type === "array" && resolvedSchema.items) {
+      const itemsSchema = resolvedSchema.items as Schema;
+      if (
+        "schema" in itemsSchema &&
+        itemsSchema.schema &&
+        schemaTypeNames[itemsSchema.schema]
+      ) {
+        genericArg = schemaTypeNames[itemsSchema.schema];
+        addSchemaUsed(genericArg);
+      } else {
+        genericArg = schemaToTypeScriptType(itemsSchema, schemasByKey, schemaTypeNames);
+      }
     }
     return {
       declarations: [`${INDENT_NS}export type ${typeName} = ${schemaTypeName};`],

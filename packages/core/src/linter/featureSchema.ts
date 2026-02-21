@@ -2,7 +2,15 @@ import type { Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import { valueZodSchema, propertyTypeEnum, getSchemaZodSchema, refineEnumMatchesType } from "./schema";
+import {
+  valueZodSchema,
+  propertyTypeEnum,
+  getSchemaZodSchema,
+  refineEnumMatchesType,
+  refineMinimumMaximum,
+  refineStringLengthPattern,
+  refineArrayItems,
+} from "./schema";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -1208,17 +1216,34 @@ export function getFeatureZodSchema(
                 return;
               }
               if (hasRef) {
-                if (
-                  "type" in variableSchema ||
-                  "properties" in variableSchema ||
-                  "required" in variableSchema ||
-                  "items" in variableSchema ||
-                  "oneOf" in variableSchema
-                ) {
+                const hasInlineStructure =
+                  "type" in variableSchema && variableSchema.type != null ||
+                  "properties" in variableSchema && variableSchema.properties != null ||
+                  "required" in variableSchema && variableSchema.required != null ||
+                  "items" in variableSchema && variableSchema.items != null ||
+                  "oneOf" in variableSchema && variableSchema.oneOf != null;
+                const hasInlineValidation =
+                  "minimum" in variableSchema && variableSchema.minimum !== undefined ||
+                  "maximum" in variableSchema && variableSchema.maximum !== undefined ||
+                  "minLength" in variableSchema && variableSchema.minLength !== undefined ||
+                  "maxLength" in variableSchema && variableSchema.maxLength !== undefined ||
+                  "pattern" in variableSchema && variableSchema.pattern !== undefined ||
+                  "minItems" in variableSchema && variableSchema.minItems !== undefined ||
+                  "maxItems" in variableSchema && variableSchema.maxItems !== undefined ||
+                  "uniqueItems" in variableSchema && variableSchema.uniqueItems !== undefined;
+                if (hasInlineStructure) {
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
                       "When `schema` is set, do not set `type`, `oneOf`, `properties`, `required`, or `items`.",
+                    path: [],
+                  });
+                }
+                if (hasInlineValidation) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "When `schema` is set, do not set `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`, or `uniqueItems`; use the referenced schema to define these.",
                     path: [],
                   });
                 }
@@ -1360,6 +1385,14 @@ export function getFeatureZodSchema(
             ["variablesSchema", variableKey],
             ctx,
           );
+        }
+
+        // Inline variable schemas: validate minimum/maximum, minLength/maxLength/pattern, minItems/maxItems/uniqueItems
+        if (!("schema" in variableSchema) || !variableSchema.schema) {
+          const pathPrefix = ["variablesSchema", variableKey];
+          refineMinimumMaximum(variableSchema as Parameters<typeof refineMinimumMaximum>[0], pathPrefix, ctx);
+          refineStringLengthPattern(variableSchema as Parameters<typeof refineStringLengthPattern>[0], pathPrefix, ctx);
+          refineArrayItems(variableSchema as Parameters<typeof refineArrayItems>[0], pathPrefix, ctx);
         }
 
         if (variableKey === "variation") {

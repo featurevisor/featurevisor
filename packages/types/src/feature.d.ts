@@ -84,6 +84,20 @@ export interface VariableSchemaWithInline {
   enum?: Value[];
   const?: VariableValue;
 
+  // Numeric validation (when type is "integer" or "double")
+  minimum?: number;
+  maximum?: number;
+
+  // String validation (when type is "string")
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+
+  // Array validation (when type is "array")
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+
   defaultValue: VariableValue;
   description?: string; // only available in YAML files
   useDefaultWhenDisabled?: boolean;
