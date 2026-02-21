@@ -322,6 +322,57 @@ maxLength: 20
 pattern: "^[a-zA-Z0-9_]+$"
 ```
 
+### minItems
+
+For type `array`, we can use `minItems` to require a minimum number of elements:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: array
+
+minItems: 1
+items:
+  type: string
+```
+
+### maxItems
+
+For type `array`, we can use `maxItems` to allow a maximum number of elements:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: array
+
+maxItems: 10
+items:
+  type: string
+```
+
+Both `minItems` and `maxItems` can be used together:
+
+```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+description: Schema description...
+type: array
+
+minItems: 1
+maxItems: 10
+items:
+  type: string
+```
+
+### uniqueItems
+
+For type `array`, we can use `uniqueItems` to require that all elements are unique (no duplicates).
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: array
+
+uniqueItems: true
+items:
+  type: string
+```
+
 ### oneOf
 
 We can use the `oneOf` property to allow a value to match **exactly one** of several schemas.

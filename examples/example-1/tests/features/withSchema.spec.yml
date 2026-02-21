@@ -1,5 +1,5 @@
-# Exhaustive test for withSchema feature: schema references (link, color, hero, navLinks),
-# inline variable schemas, minimum/maximum (integer/double), minLength/maxLength/pattern (string), and rule overrides.
+# Exhaustive test for withSchema feature: schema refs, min/max (number), minLength/maxLength/pattern (string),
+# minItems/maxItems/uniqueItems (array), and rule overrides.
 feature: withSchema
 assertions:
   # ========== Variation-based (no context: matches "everyone" rule, no variable overrides) ==========
@@ -61,6 +61,14 @@ assertions:
       slugVar: "control-page"
       promoCodeVar: "CTRL2024"
       shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
 
   # --- Staging: bucket at 75 -> treatment variation ---
   - at: 75
@@ -123,6 +131,16 @@ assertions:
       slugVar: "treatment-page"
       promoCodeVar: "TREAT2024"
       shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
 
   # --- Production: bucket at 25 -> control variation ---
   - at: 25
@@ -182,6 +200,14 @@ assertions:
       slugVar: "control-page"
       promoCodeVar: "CTRL2024"
       shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
 
   # --- Production: bucket at 75 -> treatment variation ---
   - at: 75
@@ -225,6 +251,16 @@ assertions:
       slugVar: "treatment-page"
       promoCodeVar: "TREAT2024"
       shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
 
   # --- Partial assertion (variation-based) ---
   - at: 10
@@ -242,8 +278,16 @@ assertions:
       slugVar: "control-page"
       promoCodeVar: "CTRL2024"
       shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
 
-  # ========== minimum/maximum + minLength/maxLength/pattern variables ==========
+  # ========== minItems/maxItems/uniqueItems (array) + other schema keywords ==========
   # percentVar: schema percentInteger (0-100), ratingVar: schema ratingDouble (0-5),
   # levelInline: inline integer (1-10), discountRateInline: inline double (0-1), fixedLevel: schema boundedConst (const 5 in 0-10).
 
@@ -307,6 +351,14 @@ assertions:
       slugVar: "de-home"
       promoCodeVar: "DE2024"
       shortLabel: "Germany"
+      boundedTagsVar:
+        - de
+        - germany
+      uniqueCodesVar:
+        - DE
+        - DE2
+      shortList:
+        - a
 
   # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
   - at: 50
@@ -350,6 +402,15 @@ assertions:
       slugVar: "nl-ch"
       promoCodeVar: "NLCH24"
       shortLabel: "NL/CH"
+      boundedTagsVar:
+        - nl
+        - ch
+      uniqueCodesVar:
+        - NL
+        - CH
+      shortList:
+        - x
+        - y
 
   # --- Staging: Switzerland -> same rule "nl_or_ch" ---
   - at: 50
@@ -376,6 +437,15 @@ assertions:
       slugVar: "nl-ch"
       promoCodeVar: "NLCH24"
       shortLabel: "NL/CH"
+      boundedTagsVar:
+        - nl
+        - ch
+      uniqueCodesVar:
+        - NL
+        - CH
+      shortList:
+        - x
+        - y
 
   # --- Staging: Mobile + EU (and: mobile, eu) -> rule "mobile_eu" ---
   - at: 50
@@ -419,6 +489,10 @@ assertions:
       slugVar: "mobile-eu"
       promoCodeVar: "MOB-EU"
       shortLabel: "Mobile"
+      boundedTagsVar:
+        - mobile
+      uniqueCodesVar: []
+      shortList: []
 
   # --- Staging: Desktop + EU (and: desktop, eu) -> rule "desktop_eu" ---
   - at: 50
@@ -447,6 +521,18 @@ assertions:
       slugVar: "desktop-eu"
       promoCodeVar: "DESK-EU"
       shortLabel: "Desktop"
+      boundedTagsVar:
+        - desktop
+        - eu
+        - top
+      uniqueCodesVar:
+        - D1
+        - D2
+        - D3
+      shortList:
+        - p
+        - q
+        - r
 
   # --- Staging: US (no specific segment) -> "everyone" rule, variation-based variables ---
   - at: 25
@@ -494,6 +580,14 @@ assertions:
       slugVar: "de-prod"
       promoCodeVar: "DEPROD"
       shortLabel: "DE Prod"
+      boundedTagsVar:
+        - de
+        - prod
+      uniqueCodesVar:
+        - DP
+      shortList:
+        - a
+        - b
 
   # --- Production: NL/CH -> rule "nl_or_ch" (prod overrides) ---
   - at: 50
@@ -513,6 +607,14 @@ assertions:
       slugVar: "nl-ch-prod"
       promoCodeVar: "NLCH42"
       shortLabel: "NL-CH"
+      boundedTagsVar:
+        - nl-ch
+        - prod
+      uniqueCodesVar:
+        - N1
+        - N2
+      shortList:
+        - z
 
   # --- Production: Mobile EU -> rule "mobile_eu" (prod overrides) ---
   - at: 50
@@ -536,3 +638,8 @@ assertions:
       slugVar: "mobile-prod"
       promoCodeVar: "MOB10"
       shortLabel: "Mob"
+      boundedTagsVar:
+        - mob
+      uniqueCodesVar:
+        - M1
+      shortList: []

@@ -209,6 +209,25 @@ variablesSchema:
     maxLength: 10
     defaultValue: "OK"
 
+  # --- minItems/maxItems/uniqueItems: reusable schemas ---
+  boundedTagsVar:
+    schema: tagListBounded
+    defaultValue:
+      - default
+
+  uniqueCodesVar:
+    schema: uniqueCodes
+    defaultValue: []
+
+  # --- minItems/maxItems: inline array (no uniqueItems) ---
+  shortList:
+    type: array
+    minItems: 0
+    maxItems: 3
+    items:
+      type: string
+    defaultValue: []
+
 variations:
   - value: control
     weight: 50
@@ -237,6 +256,14 @@ variations:
       slugVar: "control-page"
       promoCodeVar: "CTRL2024"
       shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
       singleLink:
         title: Control Link
         url: /control
@@ -287,6 +314,16 @@ variations:
       slugVar: "treatment-page"
       promoCodeVar: "TREAT2024"
       shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -364,6 +401,14 @@ rules:
         slugVar: "de-home"
         promoCodeVar: "DE2024"
         shortLabel: "Germany"
+        boundedTagsVar:
+          - de
+          - germany
+        uniqueCodesVar:
+          - DE
+          - DE2
+        shortList:
+          - a
 
     - key: nl_or_ch
       segments:
@@ -407,6 +452,15 @@ rules:
         slugVar: "nl-ch"
         promoCodeVar: "NLCH24"
         shortLabel: "NL/CH"
+        boundedTagsVar:
+          - nl
+          - ch
+        uniqueCodesVar:
+          - NL
+          - CH
+        shortList:
+          - x
+          - y
 
     - key: mobile_eu
       segments:
@@ -448,6 +502,10 @@ rules:
         slugVar: "mobile-eu"
         promoCodeVar: "MOB-EU"
         shortLabel: "Mobile"
+        boundedTagsVar:
+          - mobile
+        uniqueCodesVar: []
+        shortList: []
 
     - key: desktop_eu
       segments:
@@ -474,6 +532,18 @@ rules:
         slugVar: "desktop-eu"
         promoCodeVar: "DESK-EU"
         shortLabel: "Desktop"
+        boundedTagsVar:
+          - desktop
+          - eu
+          - top
+        uniqueCodesVar:
+          - D1
+          - D2
+          - D3
+        shortList:
+          - p
+          - q
+          - r
 
     - key: everyone
       segments: "*"
@@ -499,6 +569,14 @@ rules:
         slugVar: "de-prod"
         promoCodeVar: "DEPROD"
         shortLabel: "DE Prod"
+        boundedTagsVar:
+          - de
+          - prod
+        uniqueCodesVar:
+          - DP
+        shortList:
+          - a
+          - b
 
     - key: nl_or_ch
       segments:
@@ -518,6 +596,14 @@ rules:
         slugVar: "nl-ch-prod"
         promoCodeVar: "NLCH42"
         shortLabel: "NL-CH"
+        boundedTagsVar:
+          - nl-ch
+          - prod
+        uniqueCodesVar:
+          - N1
+          - N2
+        shortList:
+          - z
 
     - key: mobile_eu
       segments:
@@ -539,6 +625,11 @@ rules:
         slugVar: "mobile-prod"
         promoCodeVar: "MOB10"
         shortLabel: "Mob"
+        boundedTagsVar:
+          - mob
+        uniqueCodesVar:
+          - M1
+        shortList: []
 
     - key: everyone
       segments: "*"

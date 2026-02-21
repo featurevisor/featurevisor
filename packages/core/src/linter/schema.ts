@@ -30,6 +30,9 @@ type SchemaLike = {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
   items?: unknown;
   properties?: Record<string, unknown>;
   oneOf?: unknown[];
@@ -271,6 +274,103 @@ export function refineStringLengthPattern(
   }
 }
 
+/** Deep equality for primitive/array/object values (used for uniqueItems check). */
+function valueDeepEqualForRefine(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+  if (typeof a === "object" && typeof b === "object") {
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((v, i) => valueDeepEqualForRefine(v, b[i]));
+    }
+    const keysA = Object.keys(a as object).sort();
+    const keysB = Object.keys(b as object).sort();
+    if (keysA.length !== keysB.length || keysA.some((k, i) => k !== keysB[i])) return false;
+    return keysA.every((k) => valueDeepEqualForRefine((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+  }
+  return false;
+}
+
+/**
+ * Validates that when a schema has type "array", minItems <= maxItems when both set,
+ * and const/enum array values (if present) satisfy length and uniqueItems.
+ */
+export function refineArrayItems(
+  schema: SchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+  const type = schema.type;
+  const minItems = schema.minItems;
+  const maxItems = schema.maxItems;
+  const uniqueItems = schema.uniqueItems;
+  const isArray = type === "array";
+  if (isArray && minItems !== undefined && maxItems !== undefined && minItems > maxItems) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `When \`type\` is "array", \`minItems\` (${minItems}) must be less than or equal to \`maxItems\` (${maxItems}).`,
+      path: [...pathPrefix, "minItems"],
+    });
+  }
+  const checkArray = (arr: unknown[], pathSuffix: (string | number)[]) => {
+    if (minItems !== undefined && arr.length < minItems) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Array length (${arr.length}) is less than \`minItems\` (${minItems}).`,
+        path: pathSuffix,
+      });
+    }
+    if (maxItems !== undefined && arr.length > maxItems) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Array length (${arr.length}) is greater than \`maxItems\` (${maxItems}).`,
+        path: pathSuffix,
+      });
+    }
+    if (uniqueItems) {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          if (valueDeepEqualForRefine(arr[i], arr[j])) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Array has duplicate items at indices ${i} and ${j} but \`uniqueItems\` is true.`,
+              path: pathSuffix,
+            });
+            return;
+          }
+        }
+      }
+    }
+  };
+  if (isArray && Array.isArray(schema.const)) {
+    checkArray(schema.const, [...pathPrefix, "const"]);
+  }
+  if (isArray && Array.isArray(schema.enum) && schema.enum.length > 0) {
+    for (let i = 0; i < schema.enum.length; i++) {
+      const v = schema.enum[i];
+      if (Array.isArray(v)) checkArray(v, [...pathPrefix, "enum", i]);
+    }
+  }
+  if (schema.items && typeof schema.items === "object") {
+    refineArrayItems(schema.items as SchemaLike, [...pathPrefix, "items"], ctx);
+  }
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const k of Object.keys(schema.properties)) {
+      refineArrayItems(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+    }
+  }
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineArrayItems(branch as SchemaLike, [...pathPrefix, "oneOf", i], ctx);
+      }
+    });
+  }
+}
+
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
 export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   z.union([
@@ -309,7 +409,9 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         maxLength: z.number().optional(),
         pattern: z.string().optional(),
         items: schemaZodSchema.optional(),
-        // maxItems?, minItems?, uniqueItems?
+        minItems: z.number().optional(),
+        maxItems: z.number().optional(),
+        uniqueItems: z.boolean().optional(),
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), schemaZodSchema).optional(),
         // Annotations: default?: Value; examples?: Value[];
@@ -328,7 +430,8 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
       .strict()
       .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx))
       .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx))
-      .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx)),
+      .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))
+      .superRefine((data, ctx) => refineArrayItems(data, [], ctx)),
   );
 
   return schemaZodSchema;

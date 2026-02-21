@@ -46,6 +46,9 @@ function resolveVariableSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
   },
   schemasByKey?: Record<string, Schema>,
 ): {
@@ -61,6 +64,9 @@ function resolveVariableSchema(
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
 } | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
@@ -78,6 +84,9 @@ function resolveVariableSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
   };
 }
 
@@ -114,6 +123,9 @@ function valueMatchesSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
   };
 
   if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
@@ -183,9 +195,19 @@ function valueMatchesSchema(
 
   if (type === "array") {
     if (!Array.isArray(value)) return false;
+    const arr = value as unknown[];
+    if (resolved.minItems !== undefined && arr.length < resolved.minItems) return false;
+    if (resolved.maxItems !== undefined && arr.length > resolved.maxItems) return false;
+    if (resolved.uniqueItems) {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          if (valueDeepEqual(arr[i], arr[j])) return false;
+        }
+      }
+    }
     const itemSchema = resolved.items;
-    if (!itemSchema || typeof itemSchema !== "object") return value.every((v) => typeof v === "string");
-    return value.every((item) => valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey));
+    if (!itemSchema || typeof itemSchema !== "object") return arr.every((v) => typeof v === "string");
+    return arr.every((item) => valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey));
   }
 
   return false;
@@ -292,10 +314,17 @@ function typeOfValue(value: unknown): string {
 /**
  * Validates a variable value against an array schema. Recursively validates each item
  * when the schema defines `items` (nested arrays/objects use the same refinement).
+ * Enforces minItems, maxItems, and uniqueItems when set.
  */
 function refineVariableValueArray(
   projectConfig: ProjectConfig,
-  variableSchema: { items?: unknown; type: string },
+  variableSchema: {
+    items?: unknown;
+    type: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+  },
   variableValue: unknown[],
   path: (string | number)[],
   ctx: z.RefinementCtx,
@@ -303,6 +332,37 @@ function refineVariableValueArray(
   schemasByKey?: Record<string, Schema>,
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
+  const minItems = variableSchema.minItems;
+  const maxItems = variableSchema.maxItems;
+  const uniqueItems = variableSchema.uniqueItems;
+  if (minItems !== undefined && variableValue.length < minItems) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${label}" (type array) length (${variableValue.length}) is less than \`minItems\` (${minItems}).`,
+      path,
+    });
+  }
+  if (maxItems !== undefined && variableValue.length > maxItems) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${label}" (type array) length (${variableValue.length}) is greater than \`maxItems\` (${maxItems}).`,
+      path,
+    });
+  }
+  if (uniqueItems) {
+    for (let i = 0; i < variableValue.length; i++) {
+      for (let j = i + 1; j < variableValue.length; j++) {
+        if (valueDeepEqual(variableValue[i], variableValue[j])) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${label}" (type array) has duplicate items at indices ${i} and ${j} but \`uniqueItems\` is true.`,
+            path,
+          });
+          break;
+        }
+      }
+    }
+  }
   const itemSchema = variableSchema.items;
 
   if (itemSchema) {
@@ -684,7 +744,13 @@ function superRefineVariableValue(
     }
     refineVariableValueArray(
       projectConfig,
-      effectiveSchema as { items?: unknown; type: string },
+      effectiveSchema as {
+        items?: unknown;
+        type: string;
+        minItems?: number;
+        maxItems?: number;
+        uniqueItems?: boolean;
+      },
       variableValue,
       path,
       ctx,
@@ -1110,6 +1176,9 @@ export function getFeatureZodSchema(
               minLength: z.number().optional(),
               maxLength: z.number().optional(),
               pattern: z.string().optional(),
+              minItems: z.number().optional(),
+              maxItems: z.number().optional(),
+              uniqueItems: z.boolean().optional(),
 
               description: z.string().optional(),
 

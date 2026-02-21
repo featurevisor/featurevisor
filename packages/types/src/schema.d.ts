@@ -16,8 +16,6 @@ export type SchemaType =
   | "double"
   | "object"
   // | "date" // @TODO: support in future
-  // | "semver" // @TODO: consider in future
-  // | "url" // @TODO: consider in future
   | "array";
 
 // adapted JSON Schema for Featurevisor
@@ -39,11 +37,11 @@ export interface Schema {
   minLength?: number;
   pattern?: string;
 
-  // Array validation keywords
+  // Array validation keywords (when type is "array")
   items?: Schema;
-  // maxItems?: number;
-  // minItems?: number;
-  // uniqueItems?: boolean;
+  maxItems?: number;
+  minItems?: number;
+  uniqueItems?: boolean;
 
   // Object validation keywords
   required?: string[];
