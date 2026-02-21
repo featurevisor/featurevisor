@@ -1,7 +1,16 @@
+import type { Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import { valueZodSchema, propertyTypeEnum, getPropertyZodSchema } from "./propertySchema";
+import {
+  valueZodSchema,
+  propertyTypeEnum,
+  getSchemaZodSchema,
+  refineEnumMatchesType,
+  refineMinimumMaximum,
+  refineStringLengthPattern,
+  refineArrayItems,
+} from "./schema";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -24,6 +33,221 @@ function getVariableLabel(variableSchema, variableKey, path) {
     variableSchema?.key ??
     (path.length > 0 ? String(path[path.length - 1]) : "variable")
   );
+}
+
+/**
+ * Resolve variable schema to the Schema used for value validation.
+ * When variable has `schema` (reference), returns the parsed Schema from schemasByKey; otherwise returns the inline variable schema.
+ */
+function resolveVariableSchema(
+  variableSchema: {
+    schema?: string;
+    type?: string;
+    items?: unknown;
+    properties?: unknown;
+    required?: string[];
+    enum?: unknown[];
+    const?: unknown;
+    oneOf?: unknown[];
+    minimum?: number;
+    maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+  },
+  schemasByKey?: Record<string, Schema>,
+): {
+  type?: string;
+  items?: unknown;
+  properties?: unknown;
+  required?: string[];
+  enum?: unknown[];
+  const?: unknown;
+  oneOf?: unknown[];
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+} | null {
+  if (variableSchema.schema) {
+    return schemasByKey?.[variableSchema.schema] ?? null;
+  }
+  return variableSchema as {
+    type?: string;
+    items?: unknown;
+    properties?: unknown;
+    required?: string[];
+    enum?: unknown[];
+    const?: unknown;
+    oneOf?: unknown[];
+    minimum?: number;
+    maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+  };
+}
+
+/** Resolve a schema by following schema references (schema: key). Used for nested schemas that may have oneOf. */
+function resolveSchemaRefs(
+  schema: { schema?: string; [k: string]: unknown },
+  schemasByKey?: Record<string, Schema>,
+): { [k: string]: unknown } {
+  if (schema.schema && schemasByKey?.[schema.schema]) {
+    return resolveSchemaRefs(
+      schemasByKey[schema.schema] as { schema?: string; [k: string]: unknown },
+      schemasByKey,
+    );
+  }
+  return schema;
+}
+
+/**
+ * Returns true if the value matches the given schema (const, enum, type, object properties, array items, or exactly one of oneOf).
+ * Used for oneOf validation: value must match exactly one branch.
+ */
+function valueMatchesSchema(
+  schema: { [k: string]: unknown },
+  value: unknown,
+  schemasByKey?: Record<string, Schema>,
+): boolean {
+  const resolved = resolveSchemaRefs(schema, schemasByKey) as {
+    type?: string;
+    const?: unknown;
+    enum?: unknown[];
+    oneOf?: unknown[];
+    properties?: Record<string, unknown>;
+    required?: string[];
+    items?: unknown;
+    minimum?: number;
+    maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+  };
+
+  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    const matchCount = resolved.oneOf.filter((branch) =>
+      valueMatchesSchema(branch as { [k: string]: unknown }, value, schemasByKey),
+    ).length;
+    return matchCount === 1;
+  }
+
+  if (resolved.const !== undefined) {
+    return valueDeepEqual(value, resolved.const);
+  }
+
+  if (resolved.enum !== undefined && Array.isArray(resolved.enum)) {
+    return resolved.enum.some((e) => valueDeepEqual(value, e));
+  }
+
+  const type = resolved.type;
+  if (!type) return false;
+
+  if (type === "string") {
+    if (typeof value !== "string") return false;
+    const s = value as string;
+    if (resolved.minLength !== undefined && s.length < resolved.minLength) return false;
+    if (resolved.maxLength !== undefined && s.length > resolved.maxLength) return false;
+    if (resolved.pattern !== undefined) {
+      try {
+        if (!new RegExp(resolved.pattern).test(s)) return false;
+      } catch {
+        return true;
+      }
+    }
+    return true;
+  }
+  if (type === "boolean") return typeof value === "boolean";
+  if (type === "integer") {
+    if (typeof value !== "number" || !Number.isInteger(value)) return false;
+    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
+    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
+    return true;
+  }
+  if (type === "double") {
+    if (typeof value !== "number") return false;
+    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
+    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
+    return true;
+  }
+  if (type === "json") return typeof value === "string";
+
+  if (type === "object") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const props = resolved.properties;
+    if (!props || typeof props !== "object") return true;
+    const obj = value as Record<string, unknown>;
+    const required = new Set(resolved.required || []);
+    for (const key of required) {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
+      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey))
+        return false;
+    }
+    for (const key of Object.keys(obj)) {
+      const propSchema = props[key];
+      if (!propSchema) return false;
+      if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
+        return false;
+    }
+    return true;
+  }
+
+  if (type === "array") {
+    if (!Array.isArray(value)) return false;
+    const arr = value as unknown[];
+    if (resolved.minItems !== undefined && arr.length < resolved.minItems) return false;
+    if (resolved.maxItems !== undefined && arr.length > resolved.maxItems) return false;
+    if (resolved.uniqueItems) {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          if (valueDeepEqual(arr[i], arr[j])) return false;
+        }
+      }
+    }
+    const itemSchema = resolved.items;
+    if (!itemSchema || typeof itemSchema !== "object")
+      return arr.every((v) => typeof v === "string");
+    return arr.every((item) =>
+      valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey),
+    );
+  }
+
+  return false;
+}
+
+/** Deep equality for variable values (primitives, plain objects, arrays). */
+function valueDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+  if (typeof a === "object" && typeof b === "object") {
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((v, i) => valueDeepEqual(v, b[i]));
+    }
+    const keysA = Object.keys(a as object).sort();
+    const keysB = Object.keys(b as object).sort();
+    if (keysA.length !== keysB.length || keysA.some((k, i) => k !== keysB[i])) return false;
+    return keysA.every((k) =>
+      valueDeepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+    );
+  }
+  return false;
 }
 
 /**
@@ -87,6 +311,19 @@ function refineRequiredKeysInSchema(
       ctx,
     );
   }
+
+  const oneOf = (schema as { oneOf?: unknown[] }).oneOf;
+  if (oneOf && Array.isArray(oneOf)) {
+    oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineRequiredKeysInSchema(
+          branch as Parameters<typeof refineRequiredKeysInSchema>[0],
+          [...pathPrefix, "oneOf", i],
+          ctx,
+        );
+      }
+    });
+  }
 }
 
 function typeOfValue(value: unknown): string {
@@ -99,21 +336,68 @@ function typeOfValue(value: unknown): string {
 /**
  * Validates a variable value against an array schema. Recursively validates each item
  * when the schema defines `items` (nested arrays/objects use the same refinement).
+ * Enforces minItems, maxItems, and uniqueItems when set.
  */
 function refineVariableValueArray(
   projectConfig: ProjectConfig,
-  variableSchema: { items?: unknown; type: string },
+  variableSchema: {
+    items?: unknown;
+    type: string;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+  },
   variableValue: unknown[],
   path: (string | number)[],
   ctx: z.RefinementCtx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
+  const minItems = variableSchema.minItems;
+  const maxItems = variableSchema.maxItems;
+  const uniqueItems = variableSchema.uniqueItems;
+  if (minItems !== undefined && variableValue.length < minItems) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${label}" (type array) length (${variableValue.length}) is less than \`minItems\` (${minItems}).`,
+      path,
+    });
+  }
+  if (maxItems !== undefined && variableValue.length > maxItems) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${label}" (type array) length (${variableValue.length}) is greater than \`maxItems\` (${maxItems}).`,
+      path,
+    });
+  }
+  if (uniqueItems) {
+    for (let i = 0; i < variableValue.length; i++) {
+      for (let j = i + 1; j < variableValue.length; j++) {
+        if (valueDeepEqual(variableValue[i], variableValue[j])) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${label}" (type array) has duplicate items at indices ${i} and ${j} but \`uniqueItems\` is true.`,
+            path,
+          });
+          break;
+        }
+      }
+    }
+  }
   const itemSchema = variableSchema.items;
 
   if (itemSchema) {
     variableValue.forEach((item, index) => {
-      superRefineVariableValue(projectConfig, itemSchema, item, [...path, index], ctx, variableKey);
+      superRefineVariableValue(
+        projectConfig,
+        itemSchema,
+        item,
+        [...path, index],
+        ctx,
+        variableKey,
+        schemasByKey,
+      );
     });
   } else {
     if (!isArrayOfStrings(variableValue)) {
@@ -152,6 +436,7 @@ function refineVariableValueObject(
   path: (string | number)[],
   ctx: z.RefinementCtx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
   const schemaProperties = variableSchema.properties;
@@ -190,6 +475,7 @@ function refineVariableValueObject(
           [...path, key],
           ctx,
           key,
+          schemasByKey,
         );
       }
     }
@@ -225,6 +511,7 @@ function superRefineVariableValue(
   path,
   ctx,
   variableKey?: string,
+  schemasByKey?: Record<string, Schema>,
 ) {
   const label = getVariableLabel(variableSchema, variableKey, path);
 
@@ -244,6 +531,66 @@ function superRefineVariableValue(
     return;
   }
 
+  const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
+  if (variableSchema.schema && effectiveSchema === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Schema "${variableSchema.schema}" could not be loaded for value validation.`,
+      path,
+    });
+    return;
+  }
+
+  if (!effectiveSchema) {
+    return;
+  }
+
+  const effectiveOneOf = (effectiveSchema as { oneOf?: unknown[] }).oneOf;
+  if (effectiveOneOf !== undefined && Array.isArray(effectiveOneOf) && effectiveOneOf.length > 0) {
+    const matchCount = effectiveOneOf.filter((branch) =>
+      valueMatchesSchema(branch as { [k: string]: unknown }, variableValue, schemasByKey),
+    ).length;
+    if (matchCount === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (got ${JSON.stringify(variableValue)}; matched none).`,
+        path,
+      });
+    } else if (matchCount > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (matched ${matchCount}).`,
+        path,
+      });
+    }
+    return;
+  }
+
+  const effectiveConst = (effectiveSchema as { const?: unknown }).const;
+  if (effectiveConst !== undefined) {
+    if (!valueDeepEqual(variableValue, effectiveConst)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must equal the constant value defined in schema (got ${JSON.stringify(variableValue)}).`,
+        path,
+      });
+    }
+    return;
+  }
+
+  const effectiveEnum = (effectiveSchema as { enum?: unknown[] }).enum;
+  if (effectiveEnum !== undefined && Array.isArray(effectiveEnum) && effectiveEnum.length > 0) {
+    const allowed = effectiveEnum.some((v) => valueDeepEqual(variableValue, v));
+    if (!allowed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" must be one of the allowed enum values (got ${JSON.stringify(variableValue)}).`,
+        path,
+      });
+    }
+    return;
+  }
+
   // Require a value (no undefined) for every variable usage
   if (variableValue === undefined) {
     ctx.addIssue({
@@ -254,10 +601,10 @@ function superRefineVariableValue(
     return;
   }
 
-  const expectedType = variableSchema.type;
+  const expectedType = effectiveSchema.type;
   const gotType = typeOfValue(variableValue);
 
-  // string — only string allowed
+  // string — only string allowed; schema minLength/maxLength/pattern applied when set
   if (expectedType === "string") {
     if (typeof variableValue !== "string") {
       ctx.addIssue({
@@ -266,6 +613,37 @@ function superRefineVariableValue(
         path,
       });
       return;
+    }
+
+    const strMinLen = (effectiveSchema as { minLength?: number }).minLength;
+    const strMaxLen = (effectiveSchema as { maxLength?: number }).maxLength;
+    const strPattern = (effectiveSchema as { pattern?: string }).pattern;
+    if (strMinLen !== undefined && variableValue.length < strMinLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type string) length (${variableValue.length}) is less than \`minLength\` (${strMinLen}).`,
+        path,
+      });
+    }
+    if (strMaxLen !== undefined && variableValue.length > strMaxLen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type string) length (${variableValue.length}) is greater than \`maxLength\` (${strMaxLen}).`,
+        path,
+      });
+    }
+    if (strPattern !== undefined) {
+      try {
+        if (!new RegExp(strPattern).test(variableValue)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${label}" (type string) does not match \`pattern\`.`,
+            path,
+          });
+        }
+      } catch {
+        // invalid regex already reported at schema parse time
+      }
     }
 
     if (
@@ -306,6 +684,23 @@ function superRefineVariableValue(
         message: `Variable "${label}" (type integer) must be an integer; got ${variableValue}.`,
         path,
       });
+      return;
+    }
+    const intMin = (effectiveSchema as { minimum?: number }).minimum;
+    const intMax = (effectiveSchema as { maximum?: number }).maximum;
+    if (intMin !== undefined && variableValue < intMin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be >= minimum (${intMin}); got ${variableValue}.`,
+        path,
+      });
+    }
+    if (intMax !== undefined && variableValue > intMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be <= maximum (${intMax}); got ${variableValue}.`,
+        path,
+      });
     }
     return;
   }
@@ -324,6 +719,23 @@ function superRefineVariableValue(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Variable "${label}" (type double) must be a finite number; got ${variableValue}.`,
+        path,
+      });
+      return;
+    }
+    const doubleMin = (effectiveSchema as { minimum?: number }).minimum;
+    const doubleMax = (effectiveSchema as { maximum?: number }).maximum;
+    if (doubleMin !== undefined && variableValue < doubleMin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be >= minimum (${doubleMin}); got ${variableValue}.`,
+        path,
+      });
+    }
+    if (doubleMax !== undefined && variableValue > doubleMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be <= maximum (${doubleMax}); got ${variableValue}.`,
         path,
       });
     }
@@ -352,7 +764,21 @@ function superRefineVariableValue(
       });
       return;
     }
-    refineVariableValueArray(projectConfig, variableSchema, variableValue, path, ctx, variableKey);
+    refineVariableValueArray(
+      projectConfig,
+      effectiveSchema as {
+        items?: unknown;
+        type: string;
+        minItems?: number;
+        maxItems?: number;
+        uniqueItems?: boolean;
+      },
+      variableValue,
+      path,
+      ctx,
+      variableKey,
+      schemasByKey,
+    );
     return;
   }
 
@@ -372,11 +798,16 @@ function superRefineVariableValue(
     }
     refineVariableValueObject(
       projectConfig,
-      variableSchema,
+      effectiveSchema as {
+        properties?: Record<string, unknown>;
+        required?: string[];
+        type: string;
+      },
       variableValue as Record<string, unknown>,
       path,
       ctx,
       variableKey,
+      schemasByKey,
     );
     return;
   }
@@ -431,6 +862,7 @@ function refineForce({
   force,
   pathPrefix,
   projectConfig,
+  schemasByKey,
 }) {
   force.forEach((f, fN) => {
     // force[n].variation
@@ -447,14 +879,24 @@ function refineForce({
     // force[n].variables[key]
     if (f.variables) {
       Object.keys(f.variables).forEach((variableKey) => {
-        superRefineVariableValue(
-          projectConfig,
-          variableSchemaByKey[variableKey],
-          f.variables[variableKey],
-          pathPrefix.concat([fN, "variables", variableKey]),
-          ctx,
-          variableKey,
-        );
+        const variableSchema = variableSchemaByKey[variableKey];
+        if (!variableSchema) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+            path: pathPrefix.concat([fN, "variables", variableKey]),
+          });
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema,
+            f.variables[variableKey],
+            pathPrefix.concat([fN, "variables", variableKey]),
+            ctx,
+            variableKey,
+            schemasByKey,
+          );
+        }
       });
     }
   });
@@ -468,19 +910,30 @@ function refineRules({
   rules,
   pathPrefix,
   projectConfig,
+  schemasByKey,
 }) {
   rules.forEach((rule, ruleN) => {
     // rules[n].variables[key]
     if (rule.variables) {
       Object.keys(rule.variables).forEach((variableKey) => {
-        superRefineVariableValue(
-          projectConfig,
-          variableSchemaByKey[variableKey],
-          rule.variables[variableKey],
-          pathPrefix.concat([ruleN, "variables", variableKey]),
-          ctx,
-          variableKey,
-        );
+        const variableSchema = variableSchemaByKey[variableKey];
+        if (!variableSchema) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+            path: pathPrefix.concat([ruleN, "variables", variableKey]),
+          });
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema,
+            rule.variables[variableKey],
+            pathPrefix.concat([ruleN, "variables", variableKey]),
+            ctx,
+            variableKey,
+            schemasByKey,
+          );
+        }
       });
     }
 
@@ -556,8 +1009,10 @@ export function getFeatureZodSchema(
   availableAttributeKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
   availableFeatureKeys: [string, ...string[]],
+  availableSchemaKeys: string[] = [],
+  schemasByKey: Record<string, Schema> = {},
 ) {
-  const propertyZodSchema = getPropertyZodSchema();
+  const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
 
   const variationValueZodSchema = z.string().min(1);
@@ -739,13 +1194,31 @@ export function getFeatureZodSchema(
             .object({
               deprecated: z.boolean().optional(),
 
-              type: z.union([z.literal("json"), propertyTypeEnum]),
-              // array: when omitted, treated as array of strings
-              items: propertyZodSchema.optional(),
-              // object: when omitted, treated as flat object (primitive values only)
-              properties: z.record(propertyZodSchema).optional(),
-              // object: optional list of required property names
+              // Reference to a reusable schema (mutually exclusive with type/properties/required/items)
+              schema: z
+                .string()
+                .refine(
+                  (value) => availableSchemaKeys.includes(value),
+                  (value) => ({ message: `Unknown schema "${value}"` }),
+                )
+                .optional(),
+
+              // Inline schema (mutually exclusive with schema)
+              type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
+              items: schemaZodSchema.optional(),
+              properties: z.record(schemaZodSchema).optional(),
               required: z.array(z.string()).optional(),
+              enum: z.array(variableValueZodSchema).optional(),
+              const: variableValueZodSchema.optional(),
+              oneOf: z.array(schemaZodSchema).min(1).optional(),
+              minimum: z.number().optional(),
+              maximum: z.number().optional(),
+              minLength: z.number().optional(),
+              maxLength: z.number().optional(),
+              pattern: z.string().optional(),
+              minItems: z.number().optional(),
+              maxItems: z.number().optional(),
+              uniqueItems: z.boolean().optional(),
 
               description: z.string().optional(),
 
@@ -756,6 +1229,76 @@ export function getFeatureZodSchema(
             })
             .strict()
             .superRefine((variableSchema, ctx) => {
+              const hasRef = "schema" in variableSchema && variableSchema.schema != null;
+              const hasInline =
+                "type" in variableSchema &&
+                variableSchema.type != null &&
+                variableSchema.type !== undefined;
+              const hasOneOf =
+                "oneOf" in variableSchema &&
+                Array.isArray(variableSchema.oneOf) &&
+                variableSchema.oneOf.length > 0;
+              if (hasRef && (hasInline || hasOneOf)) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `oneOf`, `properties`, `required`, `items`). Use one or the other.",
+                  path: [],
+                });
+                return;
+              }
+              if (hasRef) {
+                const hasInlineStructure =
+                  ("type" in variableSchema && variableSchema.type != null) ||
+                  ("properties" in variableSchema && variableSchema.properties != null) ||
+                  ("required" in variableSchema && variableSchema.required != null) ||
+                  ("items" in variableSchema && variableSchema.items != null) ||
+                  ("oneOf" in variableSchema && variableSchema.oneOf != null);
+                const hasInlineValidation =
+                  ("minimum" in variableSchema && variableSchema.minimum !== undefined) ||
+                  ("maximum" in variableSchema && variableSchema.maximum !== undefined) ||
+                  ("minLength" in variableSchema && variableSchema.minLength !== undefined) ||
+                  ("maxLength" in variableSchema && variableSchema.maxLength !== undefined) ||
+                  ("pattern" in variableSchema && variableSchema.pattern !== undefined) ||
+                  ("minItems" in variableSchema && variableSchema.minItems !== undefined) ||
+                  ("maxItems" in variableSchema && variableSchema.maxItems !== undefined) ||
+                  ("uniqueItems" in variableSchema && variableSchema.uniqueItems !== undefined);
+                if (hasInlineStructure) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "When `schema` is set, do not set `type`, `oneOf`, `properties`, `required`, or `items`.",
+                    path: [],
+                  });
+                }
+                if (hasInlineValidation) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                      "When `schema` is set, do not set `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`, or `uniqueItems`; use the referenced schema to define these.",
+                    path: [],
+                  });
+                }
+                return;
+              }
+              if (!hasInline && !hasOneOf) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema must have either `schema` (reference to a schema key), `type` (inline schema), or `oneOf` (inline oneOf schemas).",
+                  path: [],
+                });
+                return;
+              }
+              if (hasInline && hasOneOf) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message:
+                    "Variable schema cannot have both `type` and `oneOf` at the top level. Use one or the other.",
+                  path: [],
+                });
+                return;
+              }
               // Validate required ⊆ properties at this level and in all nested object schemas
               refineRequiredKeysInSchema(
                 variableSchema as Parameters<typeof refineRequiredKeysInSchema>[0],
@@ -852,6 +1395,10 @@ export function getFeatureZodSchema(
         return;
       }
 
+      // Every variable value is validated against its schema from variablesSchema. Sources covered:
+      // 1. variablesSchema[key].defaultValue  2. variablesSchema[key].disabledValue
+      // 3. variations[n].variables[key]       4. variations[n].variableOverrides[key][].value
+      // 5. rules[env][n].variables[key]       6. force[env][n].variables[key]
       const variableSchemaByKey = value.variablesSchema;
       const variationValues: string[] = [];
 
@@ -865,6 +1412,41 @@ export function getFeatureZodSchema(
       const variableKeys = Object.keys(variableSchemaByKey);
       variableKeys.forEach((variableKey) => {
         const variableSchema = variableSchemaByKey[variableKey];
+
+        // When type and enum are both present, all enum values must match the type
+        const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
+        if (
+          effectiveSchema &&
+          effectiveSchema.type &&
+          Array.isArray(effectiveSchema.enum) &&
+          effectiveSchema.enum.length > 0
+        ) {
+          refineEnumMatchesType(
+            effectiveSchema as Parameters<typeof refineEnumMatchesType>[0],
+            ["variablesSchema", variableKey],
+            ctx,
+          );
+        }
+
+        // Inline variable schemas: validate minimum/maximum, minLength/maxLength/pattern, minItems/maxItems/uniqueItems
+        if (!("schema" in variableSchema) || !variableSchema.schema) {
+          const pathPrefix = ["variablesSchema", variableKey];
+          refineMinimumMaximum(
+            variableSchema as Parameters<typeof refineMinimumMaximum>[0],
+            pathPrefix,
+            ctx,
+          );
+          refineStringLengthPattern(
+            variableSchema as Parameters<typeof refineStringLengthPattern>[0],
+            pathPrefix,
+            ctx,
+          );
+          refineArrayItems(
+            variableSchema as Parameters<typeof refineArrayItems>[0],
+            pathPrefix,
+            ctx,
+          );
+        }
 
         if (variableKey === "variation") {
           ctx.addIssue({
@@ -882,6 +1464,7 @@ export function getFeatureZodSchema(
           ["variablesSchema", variableKey, "defaultValue"],
           ctx,
           variableKey,
+          schemasByKey,
         );
 
         // disabledValue (only when present)
@@ -893,54 +1476,69 @@ export function getFeatureZodSchema(
             ["variablesSchema", variableKey, "disabledValue"],
             ctx,
             variableKey,
+            schemasByKey,
           );
         }
       });
 
-      // variations
+      // variations: validate variation.variables and variation.variableOverrides (each value against its variable schema)
       if (value.variations) {
         value.variations.forEach((variation, variationN) => {
-          if (!variation.variables) {
-            return;
+          // variations[n].variables[key]
+          if (variation.variables) {
+            for (const variableKey of Object.keys(variation.variables)) {
+              const variableValue = variation.variables[variableKey];
+              const variableSchema = variableSchemaByKey[variableKey];
+              if (!variableSchema) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                  path: ["variations", variationN, "variables", variableKey],
+                });
+              } else {
+                superRefineVariableValue(
+                  projectConfig,
+                  variableSchema,
+                  variableValue,
+                  ["variations", variationN, "variables", variableKey],
+                  ctx,
+                  variableKey,
+                  schemasByKey,
+                );
+              }
+            }
           }
 
-          // variations[n].variables[key]
-          for (const variableKey of Object.keys(variation.variables)) {
-            const variableValue = variation.variables[variableKey];
-
-            superRefineVariableValue(
-              projectConfig,
-              variableSchemaByKey[variableKey],
-              variableValue,
-              ["variations", variationN, "variables", variableKey],
-              ctx,
-              variableKey,
-            );
-
-            // variations[n].variableOverrides[n].value
-            if (variation.variableOverrides) {
-              for (const variableKey of Object.keys(variation.variableOverrides)) {
-                const overrides = variation.variableOverrides[variableKey];
-
-                if (Array.isArray(overrides)) {
-                  overrides.forEach((override, overrideN) => {
-                    superRefineVariableValue(
-                      projectConfig,
-                      variableSchemaByKey[variableKey],
-                      override.value,
-                      [
-                        "variations",
-                        variationN,
-                        "variableOverrides",
-                        variableKey,
-                        overrideN,
-                        "value",
-                      ],
-                      ctx,
+          // variations[n].variableOverrides[key][].value (validated even when variation.variables is absent)
+          if (variation.variableOverrides) {
+            for (const variableKey of Object.keys(variation.variableOverrides)) {
+              const overrides = variation.variableOverrides[variableKey];
+              const variableSchema = variableSchemaByKey[variableKey];
+              if (!variableSchema) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                  path: ["variations", variationN, "variableOverrides", variableKey],
+                });
+              } else if (Array.isArray(overrides)) {
+                overrides.forEach((override, overrideN) => {
+                  superRefineVariableValue(
+                    projectConfig,
+                    variableSchema,
+                    override.value,
+                    [
+                      "variations",
+                      variationN,
+                      "variableOverrides",
                       variableKey,
-                    );
-                  });
-                }
+                      overrideN,
+                      "value",
+                    ],
+                    ctx,
+                    variableKey,
+                    schemasByKey,
+                  );
+                });
               }
             }
           }
@@ -960,6 +1558,7 @@ export function getFeatureZodSchema(
               pathPrefix: ["rules", environmentKey],
               ctx,
               projectConfig,
+              schemasByKey,
             });
           }
 
@@ -973,6 +1572,7 @@ export function getFeatureZodSchema(
               pathPrefix: ["force", environmentKey],
               ctx,
               projectConfig,
+              schemasByKey,
             });
           }
         }
@@ -989,6 +1589,7 @@ export function getFeatureZodSchema(
             pathPrefix: ["rules"],
             ctx,
             projectConfig,
+            schemasByKey,
           });
         }
 
@@ -1002,6 +1603,7 @@ export function getFeatureZodSchema(
             pathPrefix: ["force"],
             ctx,
             projectConfig,
+            schemasByKey,
           });
         }
       }

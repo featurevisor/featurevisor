@@ -1,0 +1,12 @@
+description: Money amount with currency (reusable for prices, totals, etc.)
+type: object
+
+properties:
+  amount:
+    type: double
+  currency:
+    type: string
+
+required:
+  - amount
+  - currency

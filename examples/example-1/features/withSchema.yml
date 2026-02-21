@@ -1,0 +1,694 @@
+description: Exhaustive example using reusable schemas (link, color, hero, navLinks) plus inline variable schemas
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  # --- Reusable schema references (from schemas/ directory) ---
+
+  singleLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: /
+
+  themeColor:
+    schema: color
+    defaultValue:
+      hex: "#ffffff"
+      opacity: 100
+
+  heroBlock:
+    schema: hero
+    defaultValue:
+      title: Welcome
+      subtitle: Get started
+
+  navLinks:
+    schema: navLinks
+    defaultValue:
+      - title: Home
+        url: /
+      - title: About
+        url: /about
+      - title: Contact
+        url: /contact
+
+  # --- Inline (manually defined) variable schemas ---
+
+  pageTitle:
+    type: string
+    defaultValue: "Default Title"
+
+  enabled:
+    type: boolean
+    defaultValue: true
+
+  itemCount:
+    type: integer
+    defaultValue: 0
+
+  score:
+    type: double
+    defaultValue: 0.0
+
+  settings:
+    type: object
+    properties:
+      theme:
+        type: string
+      compact:
+        type: boolean
+    defaultValue:
+      theme: light
+      compact: true
+
+  tagList:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - default
+      - schema-demo
+
+  linkPair:
+    type: array
+    items:
+      schema: link
+    defaultValue:
+      - title: First
+        url: /first
+      - title: Second
+        url: /second
+
+  # --- const: inline and reusable schema ---
+  status:
+    type: string
+    const: "active"
+    defaultValue: "active"
+
+  draftStatus:
+    schema: statusConst
+    defaultValue: "draft"
+
+  # --- object with a property using const ---
+  statusInfo:
+    type: object
+    properties:
+      kind:
+        type: string
+        const: "active"
+      label:
+        type: string
+    required:
+      - kind
+      - label
+    defaultValue:
+      kind: "active"
+      label: "Default"
+
+  # --- enum: inline and reusable schema ---
+  theme:
+    type: string
+    enum:
+      - light
+      - dark
+    defaultValue: light
+
+  themeVariant:
+    schema: themeEnum
+    defaultValue: light
+
+  # --- object with a property using enum ---
+  themeConfig:
+    type: object
+    properties:
+      theme:
+        type: string
+        enum:
+          - light
+          - dark
+          - system
+      label:
+        type: string
+    required:
+      - theme
+      - label
+    defaultValue:
+      theme: light
+      label: "Default"
+
+  # --- oneOf: reusable schema only (string | number, or id | link) ---
+  stringOrNumberVar:
+    schema: stringOrNumber
+    defaultValue: "id-1"
+
+  mixedList:
+    type: array
+    items:
+      schema: stringOrNumber
+    defaultValue:
+      - "a"
+      - 1
+      - "b"
+
+  refOrLink:
+    schema: idOrLink
+    defaultValue:
+      title: Home
+      url: /
+
+  # --- oneOf: inline (no schema reference) ---
+  inlineStringOrNumber:
+    oneOf:
+      - type: string
+      - type: integer
+    defaultValue: 100
+
+  # --- minimum/maximum: reusable schemas (integer 0-100, double 0-5) ---
+  percentVar:
+    schema: percentInteger
+    defaultValue: 0
+
+  ratingVar:
+    schema: ratingDouble
+    defaultValue: 0
+
+  # --- minimum/maximum: inline integer (1-10) and double (0-1) ---
+  levelInline:
+    type: integer
+    minimum: 1
+    maximum: 10
+    defaultValue: 1
+
+  discountRateInline:
+    type: double
+    minimum: 0
+    maximum: 1
+    defaultValue: 0
+
+  # --- minimum/maximum: schema with const in range ---
+  fixedLevel:
+    schema: boundedConst
+    defaultValue: 5
+
+  # --- minLength/maxLength/pattern: reusable schemas ---
+  slugVar:
+    schema: slugString
+    defaultValue: "home"
+
+  promoCodeVar:
+    schema: promoCode
+    defaultValue: "WELCOME"
+
+  # --- minLength/maxLength: inline string (no pattern) ---
+  shortLabel:
+    type: string
+    minLength: 1
+    maxLength: 10
+    defaultValue: "OK"
+
+  # --- minItems/maxItems/uniqueItems: reusable schemas ---
+  boundedTagsVar:
+    schema: tagListBounded
+    defaultValue:
+      - default
+
+  uniqueCodesVar:
+    schema: uniqueCodes
+    defaultValue: []
+
+  # --- minItems/maxItems: inline array (no uniqueItems) ---
+  shortList:
+    type: array
+    minItems: 0
+    maxItems: 3
+    items:
+      type: string
+    defaultValue: []
+
+  # --- Inline string with pattern (minLength, maxLength, pattern) ---
+  inlineSlug:
+    type: string
+    minLength: 1
+    maxLength: 30
+    pattern: "^[a-z0-9-]+$"
+    defaultValue: "home"
+
+  # --- Inline array with uniqueItems ---
+  inlineUniqueTags:
+    type: array
+    minItems: 0
+    maxItems: 5
+    uniqueItems: true
+    items:
+      type: string
+    defaultValue: []
+
+variations:
+  - value: control
+    weight: 50
+    variables:
+      pageTitle: "Control Title"
+      enabled: true
+      statusInfo:
+        kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
+        label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+
+  - value: treatment
+    weight: 50
+    variables:
+      pageTitle: "Treatment Title"
+      enabled: true
+      statusInfo:
+        kind: "active"
+        label: "Treatment"
+      theme: dark
+      themeVariant: dark
+      themeConfig:
+        theme: dark
+        label: "Treatment"
+      stringOrNumberVar: 42
+      mixedList:
+        - 1
+        - 2
+        - "three"
+      refOrLink:
+        title: Treatment Link
+        url: /treatment
+      inlineStringOrNumber: 200
+      percentVar: 75
+      ratingVar: 4.0
+      levelInline: 8
+      discountRateInline: 0.9
+      fixedLevel: 5
+      slugVar: "treatment-page"
+      promoCodeVar: "TREAT2024"
+      shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+    variableOverrides:
+      shortLabel:
+        - segments: countries/germany
+          value: "Treat DE"
+        - segments: countries/netherlands
+          value: "Treat NL"
+      inlineSlug:
+        - segments: countries/germany
+          value: "treatment-de"
+
+rules:
+  staging:
+    # Rule order matters: first matching rule wins. More specific segments first, catch-all last.
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        pageTitle: "Germany Title"
+        singleLink:
+          title: "DE Link"
+          url: /de
+        themeColor:
+          hex: "#dd0000"
+          opacity: 100
+        heroBlock:
+          title: "Willkommen"
+          subtitle: "Deutschland"
+        navLinks:
+          - title: Start
+            url: /de
+          - title: Über uns
+            url: /de/about
+        settings:
+          theme: dark
+          compact: true
+        tagList:
+          - de
+          - germany
+        linkPair:
+          - title: Erste
+            url: /de/first
+          - title: Zweite
+            url: /de/second
+        statusInfo:
+          kind: "active"
+          label: "Deutsch"
+        theme: light
+        themeVariant: system
+        themeConfig:
+          theme: light
+          label: "Deutsch"
+        stringOrNumberVar: 99
+        mixedList:
+          - "de"
+          - 1
+        refOrLink:
+          title: Start
+          url: /de
+        inlineStringOrNumber: 50
+        percentVar: 100
+        ratingVar: 5.0
+        levelInline: 10
+        discountRateInline: 1.0
+        fixedLevel: 5
+        slugVar: "de-home"
+        promoCodeVar: "DE2024"
+        shortLabel: "Germany"
+        boundedTagsVar:
+          - de
+          - germany
+        uniqueCodesVar:
+          - DE
+          - DE2
+        shortList:
+          - a
+        inlineSlug: "de-home"
+        inlineUniqueTags:
+          - de
+          - tag
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        pageTitle: "NL/CH Title"
+        singleLink:
+          title: "NL/CH Link"
+          url: /nl-ch
+        themeColor:
+          hex: "#ff8800"
+          opacity: 90
+        heroBlock:
+          title: "NL or CH Hero"
+          subtitle: "Multi-country"
+        navLinks:
+          - title: Home
+            url: /
+          - title: Contact
+            url: /contact
+        enabled: true
+        itemCount: 10
+        settings:
+          theme: light
+          compact: false
+        tagList:
+          - nl-ch
+        linkPair:
+          - title: First
+            url: /first
+          - title: Second
+            url: /second
+        percentVar: 50
+        ratingVar: 3.5
+        levelInline: 5
+        discountRateInline: 0.5
+        fixedLevel: 5
+        slugVar: "nl-ch"
+        promoCodeVar: "NLCH24"
+        shortLabel: "NL/CH"
+        boundedTagsVar:
+          - nl
+          - ch
+        uniqueCodesVar:
+          - NL
+          - CH
+        shortList:
+          - x
+          - y
+        inlineSlug: "nl-ch"
+        inlineUniqueTags:
+          - nl
+          - ch
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Mobile EU"
+        singleLink:
+          title: "Mobile Link"
+          url: /mobile
+        themeColor:
+          hex: "#0000aa"
+          opacity: 80
+        heroBlock:
+          title: "Mobile EU Hero"
+          subtitle: "EU mobile users"
+        navLinks:
+          - title: Mobile Nav
+            url: /m
+        enabled: true
+        itemCount: 1
+        score: 1.0
+        settings:
+          theme: dark
+          compact: true
+        tagList:
+          - mobile
+          - eu
+        linkPair:
+          - title: One
+            url: /one
+        percentVar: 0
+        ratingVar: 0
+        levelInline: 1
+        discountRateInline: 0
+        fixedLevel: 5
+        slugVar: "mobile-eu"
+        promoCodeVar: "MOB-EU"
+        shortLabel: "Mobile"
+        boundedTagsVar:
+          - mobile
+        uniqueCodesVar: []
+        shortList: []
+        inlineSlug: "mobile-eu"
+        inlineUniqueTags:
+          - mobile
+
+    - key: desktop_eu
+      segments:
+        and:
+          - desktop
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Desktop EU"
+        themeColor:
+          hex: "#008800"
+          opacity: 95
+        heroBlock:
+          title: "Desktop EU Hero"
+          subtitle: "EU desktop"
+        enabled: false
+        itemCount: 99
+        score: 99.5
+        percentVar: 99
+        ratingVar: 4.5
+        levelInline: 9
+        discountRateInline: 0.99
+        fixedLevel: 5
+        slugVar: "desktop-eu"
+        promoCodeVar: "DESK-EU"
+        shortLabel: "Desktop"
+        boundedTagsVar:
+          - desktop
+          - eu
+          - top
+        uniqueCodesVar:
+          - D1
+          - D2
+          - D3
+        shortList:
+          - p
+          - q
+          - r
+        inlineSlug: "desktop-eu"
+        inlineUniqueTags:
+          - desktop
+          - eu
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        pageTitle: "Germany (Prod)"
+        singleLink:
+          title: "DE Prod"
+          url: /de/prod
+        themeColor:
+          hex: "#dd0000"
+          opacity: 100
+        percentVar: 100
+        ratingVar: 5.0
+        levelInline: 10
+        discountRateInline: 1.0
+        fixedLevel: 5
+        slugVar: "de-prod"
+        promoCodeVar: "DEPROD"
+        shortLabel: "DE Prod"
+        boundedTagsVar:
+          - de
+          - prod
+        uniqueCodesVar:
+          - DP
+        shortList:
+          - a
+          - b
+        inlineSlug: "de-prod"
+        inlineUniqueTags:
+          - prod
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        pageTitle: "NL/CH (Prod)"
+        itemCount: 42
+        score: 4.2
+        percentVar: 42
+        ratingVar: 4.2
+        levelInline: 4
+        discountRateInline: 0.42
+        fixedLevel: 5
+        slugVar: "nl-ch-prod"
+        promoCodeVar: "NLCH42"
+        shortLabel: "NL-CH"
+        boundedTagsVar:
+          - nl-ch
+          - prod
+        uniqueCodesVar:
+          - N1
+          - N2
+        shortList:
+          - z
+        inlineSlug: "nl-ch-prod"
+        inlineUniqueTags:
+          - n1
+          - n2
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        pageTitle: "Mobile EU (Prod)"
+        enabled: false
+        tagList:
+          - prod
+          - mobile-eu
+        percentVar: 10
+        ratingVar: 1.0
+        levelInline: 2
+        discountRateInline: 0.1
+        fixedLevel: 5
+        slugVar: "mobile-prod"
+        promoCodeVar: "MOB10"
+        shortLabel: "Mob"
+        boundedTagsVar:
+          - mob
+        uniqueCodesVar:
+          - M1
+        shortList: []
+        inlineSlug: "mobile-prod"
+        inlineUniqueTags:
+          - mob
+
+    - key: everyone
+      segments: "*"
+      percentage: 100

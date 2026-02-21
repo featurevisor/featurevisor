@@ -11,6 +11,7 @@ export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const GROUPS_DIRECTORY_NAME = "groups";
+export const SCHEMAS_DIRECTORY_NAME = "schemas";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
 export const DATAFILES_DIRECTORY_NAME = "datafiles";
@@ -44,6 +45,7 @@ export interface ProjectConfig {
   segmentsDirectoryPath: string;
   attributesDirectoryPath: string;
   groupsDirectoryPath: string;
+  schemasDirectoryPath: string;
   testsDirectoryPath: string;
   stateDirectoryPath: string;
   datafilesDirectoryPath: string;
@@ -92,6 +94,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
+    schemasDirectoryPath: path.join(rootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
     datafilesDirectoryPath: path.join(rootDirectoryPath, DATAFILES_DIRECTORY_NAME),

@@ -9,6 +9,7 @@ import type {
   Required,
   VariableKey,
   VariableSchema,
+  ResolvedVariableSchema,
   Variation,
   Force,
   VariationV1,
@@ -46,7 +47,7 @@ export interface Feature {
   hash?: string;
   deprecated?: boolean;
   required?: Required[];
-  variablesSchema?: Record<VariableKey, VariableSchema>;
+  variablesSchema?: Record<VariableKey, ResolvedVariableSchema>;
   disabledVariationValue?: VariationValue;
   variations?: Variation[];
   bucketBy: BucketBy;

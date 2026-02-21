@@ -1,0 +1,3 @@
+description: Single allowed value for draft status
+type: string
+const: "draft"

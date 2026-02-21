@@ -1,12 +1,12 @@
 import type { BucketBy } from "./bucket";
 import type { Condition } from "./condition";
 import type { GroupSegment } from "./segment";
-import type { PropertyType, Value, PropertySchema } from "./property";
+import type { SchemaType, Value, Schema, SchemaKey } from "./schema";
 
 export type VariationValue = string;
 
 export type VariableKey = string;
-export type VariableType = PropertyType | "json";
+export type VariableType = SchemaType | "json";
 export type VariableValue =
   | Value
   // @TODO: consider removing below items
@@ -59,18 +59,65 @@ export interface Variation {
   };
 }
 
-export interface VariableSchema {
+/** Variable schema that references a reusable schema by key. No type/properties/required/items. */
+export interface VariableSchemaWithReference {
   deprecated?: boolean;
   key?: VariableKey; // @NOTE: remove
-  type: VariableType;
-
-  properties?: PropertySchema; // if type is object
-  required?: PropertySchema["required"]; // if type is object
-  items?: PropertySchema["items"]; // if type is array
+  schema: SchemaKey;
 
   defaultValue: VariableValue;
-  // nullable?: boolean; // @TODO: consider in future
   description?: string; // only available in YAML files
+  useDefaultWhenDisabled?: boolean;
+  disabledValue?: VariableValue;
+}
+
+/** Variable schema with inline type and optional structure. */
+export interface VariableSchemaWithInline {
+  deprecated?: boolean;
+  key?: VariableKey; // @NOTE: remove
+  type?: VariableType; // required when not using oneOf
+
+  properties?: Schema; // if type is object
+  required?: Schema["required"]; // if type is object
+  items?: Schema["items"]; // if type is array
+  oneOf?: Schema[]; // value must match exactly one of these (mutually exclusive with type at top level when used)
+  enum?: Value[];
+  const?: VariableValue;
+
+  // Numeric validation (when type is "integer" or "double")
+  minimum?: number;
+  maximum?: number;
+
+  // String validation (when type is "string")
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+
+  // Array validation (when type is "array")
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+
+  defaultValue: VariableValue;
+  description?: string; // only available in YAML files
+  useDefaultWhenDisabled?: boolean;
+  disabledValue?: VariableValue;
+}
+
+/** Either a reference to a reusable schema or an inline variable schema. */
+export type VariableSchema = VariableSchemaWithReference | VariableSchemaWithInline;
+
+/**
+ * Variable schema as emitted in the datafile (schema refs resolved to type only).
+ * Used by SDK and datafile; only `type` is kept from the schema for datafile size.
+ */
+export interface ResolvedVariableSchema {
+  deprecated?: boolean;
+  key?: VariableKey;
+  type: VariableType;
+
+  defaultValue: VariableValue;
+  description?: string;
   useDefaultWhenDisabled?: boolean;
   disabledValue?: VariableValue;
 }

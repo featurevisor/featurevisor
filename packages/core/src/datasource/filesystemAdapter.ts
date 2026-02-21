@@ -73,6 +73,8 @@ export class FilesystemAdapter extends Adapter {
       return this.config.groupsDirectoryPath;
     } else if (entityType === "segment") {
       return this.config.segmentsDirectoryPath;
+    } else if (entityType === "schema") {
+      return this.config.schemasDirectoryPath;
     } else if (entityType === "test") {
       return this.config.testsDirectoryPath;
     }
@@ -313,6 +315,8 @@ export class FilesystemAdapter extends Adapter {
         pathPatterns = [this.config.featuresDirectoryPath];
       } else if (entityType === "group") {
         pathPatterns = [this.config.groupsDirectoryPath];
+      } else if (entityType === "schema") {
+        pathPatterns = [this.config.schemasDirectoryPath];
       } else if (entityType === "test") {
         pathPatterns = [this.config.testsDirectoryPath];
       }
@@ -322,6 +326,7 @@ export class FilesystemAdapter extends Adapter {
         this.config.attributesDirectoryPath,
         this.config.segmentsDirectoryPath,
         this.config.groupsDirectoryPath,
+        this.config.schemasDirectoryPath,
         this.config.testsDirectoryPath,
       ];
     }
@@ -368,6 +373,8 @@ export class FilesystemAdapter extends Adapter {
           type = "feature";
         } else if (relativeDir === this.config.groupsDirectoryPath) {
           type = "group";
+        } else if (relativeDir === this.config.schemasDirectoryPath) {
+          type = "schema";
         } else if (relativeDir === this.config.testsDirectoryPath) {
           type = "test";
         } else {

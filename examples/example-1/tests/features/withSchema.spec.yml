@@ -1,0 +1,688 @@
+# Exhaustive test for withSchema feature: schema refs, min/max (number), minLength/maxLength/pattern (string),
+# minItems/maxItems/uniqueItems (array), and rule overrides.
+feature: withSchema
+assertions:
+  # ========== Variation-based (no context: matches "everyone" rule, no variable overrides) ==========
+  # --- Staging: bucket at 25 -> control variation ---
+  - at: 25
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      pageTitle: "Control Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
+        label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
+
+  # --- Staging: bucket at 75 -> treatment variation ---
+  - at: 75
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      pageTitle: "Treatment Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Treatment"
+      theme: dark
+      themeVariant: dark
+      themeConfig:
+        theme: dark
+        label: "Treatment"
+      stringOrNumberVar: 42
+      mixedList:
+        - 1
+        - 2
+        - "three"
+      refOrLink:
+        title: Treatment Link
+        url: /treatment
+      inlineStringOrNumber: 200
+      percentVar: 75
+      ratingVar: 4.0
+      levelInline: 8
+      discountRateInline: 0.9
+      fixedLevel: 5
+      slugVar: "treatment-page"
+      promoCodeVar: "TREAT2024"
+      shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
+
+  # --- Production: bucket at 25 -> control variation ---
+  - at: 25
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      navLinks:
+        - title: Control Nav
+          url: /control-nav
+      pageTitle: "Control Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: light
+        compact: true
+      tagList:
+        - control
+        - a
+        - b
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Control"
+      theme: light
+      themeVariant: light
+      themeConfig:
+        theme: light
+        label: "Control"
+      stringOrNumberVar: "control-id"
+      mixedList:
+        - "x"
+        - 10
+      refOrLink: "control-ref"
+      inlineStringOrNumber: "control-inline"
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
+
+  # --- Production: bucket at 75 -> treatment variation ---
+  - at: 75
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      singleLink:
+        title: Treatment Link
+        url: /treatment
+      themeColor:
+        hex: "#e0e0e0"
+        opacity: 85
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      navLinks:
+        - title: Treatment Nav
+          url: /treatment-nav
+      pageTitle: "Treatment Title"
+      enabled: true
+      itemCount: 0
+      score: 0.0
+      settings:
+        theme: dark
+        compact: false
+      tagList:
+        - treatment
+        - x
+        - y
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+      percentVar: 75
+      ratingVar: 4.0
+      levelInline: 8
+      discountRateInline: 0.9
+      fixedLevel: 5
+      slugVar: "treatment-page"
+      promoCodeVar: "TREAT2024"
+      shortLabel: "Treatment"
+      boundedTagsVar:
+        - treatment
+        - x
+        - y
+      uniqueCodesVar:
+        - TREAT
+        - B2
+      shortList:
+        - one
+        - two
+      inlineSlug: "treatment-page"
+      inlineUniqueTags:
+        - a
+        - b
+
+  # --- Partial assertion (variation-based) ---
+  - at: 10
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariables:
+      itemCount: 0
+      score: 0.0
+      enabled: true
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
+      boundedTagsVar:
+        - control
+        - a
+      uniqueCodesVar:
+        - CTRL
+        - A1
+      shortList:
+        - one
+      inlineSlug: "control-page"
+      inlineUniqueTags: []
+
+  # ========== minItems/maxItems/uniqueItems (array) + other schema keywords ==========
+  # percentVar: schema percentInteger (0-100), ratingVar: schema ratingDouble (0-5),
+  # levelInline: inline integer (1-10), discountRateInline: inline double (0-1), fixedLevel: schema boundedConst (const 5 in 0-10).
+
+  # ========== Rule variable overrides: complex segments ==========
+  # --- Staging: Germany segment -> rule "germany" overrides (schema + inline vars) ---
+  - at: 50
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Germany Title"
+      singleLink:
+        title: "DE Link"
+        url: /de
+      themeColor:
+        hex: "#dd0000"
+        opacity: 100
+      heroBlock:
+        title: "Willkommen"
+        subtitle: "Deutschland"
+      navLinks:
+        - title: Start
+          url: /de
+        - title: Über uns
+          url: /de/about
+      settings:
+        theme: dark
+        compact: true
+      tagList:
+        - de
+        - germany
+      linkPair:
+        - title: Erste
+          url: /de/first
+        - title: Zweite
+          url: /de/second
+      status: "active"
+      draftStatus: "draft"
+      statusInfo:
+        kind: "active"
+        label: "Deutsch"
+      theme: light
+      themeVariant: system
+      themeConfig:
+        theme: light
+        label: "Deutsch"
+      stringOrNumberVar: 99
+      mixedList:
+        - "de"
+        - 1
+      refOrLink:
+        title: Start
+        url: /de
+      inlineStringOrNumber: 50
+      percentVar: 100
+      ratingVar: 5.0
+      levelInline: 10
+      discountRateInline: 1.0
+      fixedLevel: 5
+      slugVar: "de-home"
+      promoCodeVar: "DE2024"
+      shortLabel: "Germany"
+      boundedTagsVar:
+        - de
+        - germany
+      uniqueCodesVar:
+        - DE
+        - DE2
+      shortList:
+        - a
+      inlineSlug: "de-home"
+      inlineUniqueTags:
+        - de
+        - tag
+
+  # --- Staging: Netherlands -> rule "nl_or_ch" (or: netherlands | switzerland) ---
+  - at: 50
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH Title"
+      singleLink:
+        title: "NL/CH Link"
+        url: /nl-ch
+      themeColor:
+        hex: "#ff8800"
+        opacity: 90
+      heroBlock:
+        title: "NL or CH Hero"
+        subtitle: "Multi-country"
+      navLinks:
+        - title: Home
+          url: /
+        - title: Contact
+          url: /contact
+      enabled: true
+      itemCount: 10
+      settings:
+        theme: light
+        compact: false
+      tagList:
+        - nl-ch
+      linkPair:
+        - title: First
+          url: /first
+        - title: Second
+          url: /second
+      percentVar: 50
+      ratingVar: 3.5
+      levelInline: 5
+      discountRateInline: 0.5
+      fixedLevel: 5
+      slugVar: "nl-ch"
+      promoCodeVar: "NLCH24"
+      shortLabel: "NL/CH"
+      boundedTagsVar:
+        - nl
+        - ch
+      uniqueCodesVar:
+        - NL
+        - CH
+      shortList:
+        - x
+        - y
+      inlineSlug: "nl-ch"
+      inlineUniqueTags:
+        - nl
+        - ch
+
+  # --- Staging: Switzerland -> same rule "nl_or_ch" ---
+  - at: 50
+    environment: staging
+    context:
+      country: ch
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH Title"
+      singleLink:
+        title: "NL/CH Link"
+        url: /nl-ch
+      heroBlock:
+        title: "NL or CH Hero"
+        subtitle: "Multi-country"
+      itemCount: 10
+      tagList:
+        - nl-ch
+      percentVar: 50
+      ratingVar: 3.5
+      levelInline: 5
+      discountRateInline: 0.5
+      fixedLevel: 5
+      slugVar: "nl-ch"
+      promoCodeVar: "NLCH24"
+      shortLabel: "NL/CH"
+      boundedTagsVar:
+        - nl
+        - ch
+      uniqueCodesVar:
+        - NL
+        - CH
+      shortList:
+        - x
+        - y
+      inlineSlug: "nl-ch"
+      inlineUniqueTags:
+        - nl
+        - ch
+
+  # --- Staging: Mobile + EU (and: mobile, eu) -> rule "mobile_eu" ---
+  - at: 50
+    environment: staging
+    context:
+      device: mobile
+      continent: europe
+      country: fr
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Mobile EU"
+      singleLink:
+        title: "Mobile Link"
+        url: /mobile
+      themeColor:
+        hex: "#0000aa"
+        opacity: 80
+      heroBlock:
+        title: "Mobile EU Hero"
+        subtitle: "EU mobile users"
+      navLinks:
+        - title: Mobile Nav
+          url: /m
+      enabled: true
+      itemCount: 1
+      score: 1.0
+      settings:
+        theme: dark
+        compact: true
+      tagList:
+        - mobile
+        - eu
+      linkPair:
+        - title: One
+          url: /one
+      percentVar: 0
+      ratingVar: 0
+      levelInline: 1
+      discountRateInline: 0
+      fixedLevel: 5
+      slugVar: "mobile-eu"
+      promoCodeVar: "MOB-EU"
+      shortLabel: "Mobile"
+      boundedTagsVar:
+        - mobile
+      uniqueCodesVar: []
+      shortList: []
+      inlineSlug: "mobile-eu"
+      inlineUniqueTags:
+        - mobile
+
+  # --- Staging: Desktop + EU (and: desktop, eu) -> rule "desktop_eu" ---
+  - at: 50
+    environment: staging
+    context:
+      device: desktop
+      continent: europe
+      country: fr
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Desktop EU"
+      themeColor:
+        hex: "#008800"
+        opacity: 95
+      heroBlock:
+        title: "Desktop EU Hero"
+        subtitle: "EU desktop"
+      enabled: false
+      itemCount: 99
+      score: 99.5
+      percentVar: 99
+      ratingVar: 4.5
+      levelInline: 9
+      discountRateInline: 0.99
+      fixedLevel: 5
+      slugVar: "desktop-eu"
+      promoCodeVar: "DESK-EU"
+      shortLabel: "Desktop"
+      boundedTagsVar:
+        - desktop
+        - eu
+        - top
+      uniqueCodesVar:
+        - D1
+        - D2
+        - D3
+      shortList:
+        - p
+        - q
+        - r
+      inlineSlug: "desktop-eu"
+      inlineUniqueTags:
+        - desktop
+        - eu
+
+  # --- Staging: US (no specific segment) -> "everyone" rule, variation-based variables ---
+  - at: 25
+    environment: staging
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      pageTitle: "Control Title"
+      singleLink:
+        title: Control Link
+        url: /control
+      themeColor:
+        hex: "#f0f0f0"
+        opacity: 90
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "control-page"
+      promoCodeVar: "CTRL2024"
+      shortLabel: "Control"
+
+  # --- Production: Germany -> rule "germany" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Germany (Prod)"
+      singleLink:
+        title: "DE Prod"
+        url: /de/prod
+      themeColor:
+        hex: "#dd0000"
+        opacity: 100
+      percentVar: 100
+      ratingVar: 5.0
+      levelInline: 10
+      discountRateInline: 1.0
+      fixedLevel: 5
+      slugVar: "de-prod"
+      promoCodeVar: "DEPROD"
+      shortLabel: "DE Prod"
+      boundedTagsVar:
+        - de
+        - prod
+      uniqueCodesVar:
+        - DP
+      shortList:
+        - a
+        - b
+      inlineSlug: "de-prod"
+      inlineUniqueTags:
+        - prod
+
+  # --- Production: NL/CH -> rule "nl_or_ch" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "NL/CH (Prod)"
+      itemCount: 42
+      score: 4.2
+      percentVar: 42
+      ratingVar: 4.2
+      levelInline: 4
+      discountRateInline: 0.42
+      fixedLevel: 5
+      slugVar: "nl-ch-prod"
+      promoCodeVar: "NLCH42"
+      shortLabel: "NL-CH"
+      boundedTagsVar:
+        - nl-ch
+        - prod
+      uniqueCodesVar:
+        - N1
+        - N2
+      shortList:
+        - z
+      inlineSlug: "nl-ch-prod"
+      inlineUniqueTags:
+        - n1
+        - n2
+
+  # --- Production: Mobile EU -> rule "mobile_eu" (prod overrides) ---
+  - at: 50
+    environment: production
+    context:
+      device: mobile
+      continent: europe
+      country: it
+    expectedToBeEnabled: true
+    expectedVariables:
+      pageTitle: "Mobile EU (Prod)"
+      enabled: false
+      tagList:
+        - prod
+        - mobile-eu
+      percentVar: 10
+      ratingVar: 1.0
+      levelInline: 2
+      discountRateInline: 0.1
+      fixedLevel: 5
+      slugVar: "mobile-prod"
+      promoCodeVar: "MOB10"
+      shortLabel: "Mob"
+      boundedTagsVar:
+        - mob
+      uniqueCodesVar:
+        - M1
+      shortList: []
+      inlineSlug: "mobile-prod"
+      inlineUniqueTags:
+        - mob

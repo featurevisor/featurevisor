@@ -1,0 +1,6 @@
+# String with minLength, maxLength, and pattern (slug: lowercase, digits, hyphens)
+description: URL-safe slug (lowercase letters, digits, hyphens only)
+type: string
+minLength: 1
+maxLength: 50
+pattern: "^[a-z0-9-]+$"

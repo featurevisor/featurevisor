@@ -1,5 +1,6 @@
 import * as fs from "fs";
 
+import type { Schema, VariableType } from "@featurevisor/types";
 import {
   Segment,
   Feature,
@@ -101,6 +102,17 @@ export async function buildDatafile(
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
+
+  // Load schemas for resolving variable schema references in features
+  const schemaKeys = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemaKeys) {
+    try {
+      schemasByKey[key] = await datasource.readSchema(key);
+    } catch {
+      // Schema file may be invalid; skip for datafile build
+    }
+  }
 
   // features
   const features: Feature[] = [];
@@ -305,10 +317,14 @@ export async function buildDatafile(
 
         for (const variableKey of variableKeys) {
           const v = parsedFeature.variablesSchema[variableKey];
+          const resolved =
+            "schema" in v && v.schema
+              ? schemasByKey[v.schema]
+              : (v as { type: string; properties?: Schema; required?: string[]; items?: Schema });
 
           feature.variablesSchema[variableKey] = {
             key: variableKey,
-            type: v.type,
+            type: (resolved?.type ?? "string") as VariableType,
             defaultValue: v.defaultValue,
             deprecated: v.deprecated === true ? true : undefined,
             useDefaultWhenDisabled: v.useDefaultWhenDisabled === true ? true : undefined,

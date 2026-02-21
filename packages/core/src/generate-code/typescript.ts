@@ -1,7 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, PropertySchema, VariableSchema } from "@featurevisor/types";
+import type {
+  Attribute,
+  Schema,
+  VariableSchema,
+  VariableSchemaWithInline,
+} from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): string {
@@ -28,34 +33,86 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): stri
 }
 
 /**
- * Converts a PropertySchema (items or properties entry) to a TypeScript type string.
- * Handles nested object/array with structured items and properties.
+ * Resolve a schema to its full definition, following schema references (schema: key).
  */
-function propertySchemaToTypeScriptType(schema: PropertySchema): string {
-  const type = schema.type;
+function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Schema {
+  if (schema.schema && schemasByKey[schema.schema]) {
+    return resolveSchema(schemasByKey[schema.schema], schemasByKey);
+  }
+  return schema;
+}
+
+/** Emit a TypeScript literal type for a primitive const value, or null if not a primitive. */
+function constToLiteralType(constVal: unknown): string | null {
+  if (constVal === null || constVal === undefined) return null;
+  if (typeof constVal === "string") return JSON.stringify(constVal);
+  if (typeof constVal === "number") return String(constVal);
+  if (typeof constVal === "boolean") return constVal ? "true" : "false";
+  return null;
+}
+
+/** Emit a TypeScript union of literal types for an enum array (primitives only), or null. */
+function enumToUnionType(enumArr: unknown[]): string | null {
+  if (enumArr.length === 0) return null;
+  const literals: string[] = [];
+  for (const v of enumArr) {
+    const lit = constToLiteralType(v);
+    if (lit === null) return null;
+    literals.push(lit);
+  }
+  return literals.join(" | ");
+}
+
+/**
+ * Converts a Schema (items or properties entry) to a TypeScript type string.
+ * Handles nested object/array and resolves schema references recursively.
+ * When schema has `oneOf`, emits a union of each branch type. When schema has primitive `const` or `enum`, emits a literal or union type.
+ * When schemaTypeNames is provided and schema is a reference (schema: key), returns that type name instead of inlining.
+ */
+function schemaToTypeScriptType(
+  schema: Schema,
+  schemasByKey: Record<string, Schema>,
+  schemaTypeNames?: Record<string, string>,
+): string {
+  if (schema?.schema && schemaTypeNames?.[schema.schema]) {
+    return schemaTypeNames[schema.schema];
+  }
+  const resolved = resolveSchema(schema, schemasByKey);
+  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    const parts = resolved.oneOf.map((branch) =>
+      schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames),
+    );
+    return parts.join(" | ");
+  }
+  const literalFromConst = resolved.const !== undefined ? constToLiteralType(resolved.const) : null;
+  const unionFromEnum =
+    resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0
+      ? enumToUnionType(resolved.enum)
+      : null;
+  const type = resolved.type;
   if (!type) {
-    return "unknown";
+    return literalFromConst ?? unionFromEnum ?? "unknown";
   }
   switch (type) {
     case "boolean":
-      return "boolean";
+      return literalFromConst ?? unionFromEnum ?? "boolean";
     case "string":
-      return "string";
+      return literalFromConst ?? unionFromEnum ?? "string";
     case "integer":
     case "double":
-      return "number";
+      return literalFromConst ?? unionFromEnum ?? "number";
     case "array":
-      if (schema.items) {
-        return `(${propertySchemaToTypeScriptType(schema.items)})[]`;
+      if (resolved.items) {
+        return `(${schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames)})[]`;
       }
       return "string[]";
     case "object": {
-      const props = schema.properties;
+      const props = resolved.properties;
       if (props && typeof props === "object" && Object.keys(props).length > 0) {
-        const requiredSet = new Set(schema.required || []);
+        const requiredSet = new Set(resolved.required || []);
         const entries = Object.entries(props)
           .map(([k, v]) => {
-            const propType = propertySchemaToTypeScriptType(v);
+            const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
             const optional = !requiredSet.has(k);
             return optional ? `${k}?: ${propType}` : `${k}: ${propType}`;
           })
@@ -70,29 +127,132 @@ function propertySchemaToTypeScriptType(schema: PropertySchema): string {
 }
 
 /**
+ * Resolve variable schema to the schema shape used for code gen (inline or from schema reference).
+ */
+function getEffectiveVariableSchema(
+  variableSchema: VariableSchema,
+  schemasByKey: Record<string, Schema>,
+): VariableSchemaWithInline | Schema | undefined {
+  if ("schema" in variableSchema && variableSchema.schema) {
+    return schemasByKey[variableSchema.schema];
+  }
+  return variableSchema as VariableSchemaWithInline;
+}
+
+/**
  * Generates TypeScript type/interface declarations and metadata for a variable.
  * Returns declarations to emit (interface or type alias) plus the type name and generic to use in the getter.
+ * When isLiteralType is true, the getter return must be asserted so the SDK's primitive return type matches the literal.
+ * When schemaTypeNames is provided, direct schema refs and schema refs in array items use those type names and schemaTypesUsed is populated.
  */
 function generateVariableTypeDeclarations(
   variableKey: string,
   variableSchema: VariableSchema,
-): { declarations: string[]; returnTypeName: string; genericArg: string } {
+  schemasByKey: Record<string, Schema>,
+  schemaTypeNames?: Record<string, string>,
+): {
+  declarations: string[];
+  returnTypeName: string;
+  genericArg: string;
+  isLiteralType?: boolean;
+  useGetVariable?: boolean;
+  schemaTypesUsed: string[];
+} {
   const typeName = getPascalCase(variableKey) + "Variable";
   const itemTypeName = getPascalCase(variableKey) + "VariableItem";
-  const type = variableSchema.type;
+  const schemaTypesUsed: string[] = [];
+
+  const addSchemaUsed = (name: string) => {
+    if (name && !schemaTypesUsed.includes(name)) schemaTypesUsed.push(name);
+  };
+
+  // Direct schema reference: emit type alias to schema type and reuse it
+  if (
+    schemaTypeNames &&
+    "schema" in variableSchema &&
+    variableSchema.schema &&
+    schemasByKey[variableSchema.schema]
+  ) {
+    const schemaKey = variableSchema.schema;
+    const schemaTypeName = schemaTypeNames[schemaKey];
+    const resolvedSchema = resolveSchema(schemasByKey[schemaKey], schemasByKey);
+    const isOneOf =
+      resolvedSchema.oneOf &&
+      Array.isArray(resolvedSchema.oneOf) &&
+      resolvedSchema.oneOf.length > 0 &&
+      !resolvedSchema.type;
+    const isLiteralSchema =
+      resolvedSchema.const !== undefined ||
+      (resolvedSchema.enum && Array.isArray(resolvedSchema.enum) && resolvedSchema.enum.length > 0);
+    addSchemaUsed(schemaTypeName);
+    // getVariableArray<T> expects T to be the element type, not the full array type
+    let genericArg = schemaTypeName;
+    if (resolvedSchema.type === "array" && resolvedSchema.items) {
+      const itemsSchema = resolvedSchema.items as Schema;
+      if ("schema" in itemsSchema && itemsSchema.schema && schemaTypeNames[itemsSchema.schema]) {
+        genericArg = schemaTypeNames[itemsSchema.schema];
+        addSchemaUsed(genericArg);
+      } else {
+        genericArg = schemaToTypeScriptType(itemsSchema, schemasByKey, schemaTypeNames);
+      }
+    }
+    return {
+      declarations: [`${INDENT_NS}export type ${typeName} = ${schemaTypeName};`],
+      returnTypeName: schemaTypeName,
+      genericArg,
+      useGetVariable: isOneOf,
+      isLiteralType: isOneOf || isLiteralSchema,
+      schemaTypesUsed,
+    };
+  }
+
+  const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+  const type = effective?.type;
   const declarations: string[] = [];
 
   if (type === "json") {
-    return { declarations: [], returnTypeName: "T", genericArg: "T" };
+    return { declarations: [], returnTypeName: "T", genericArg: "T", schemaTypesUsed };
+  }
+
+  const effectiveOneOf =
+    effective && "oneOf" in effective && Array.isArray((effective as Schema).oneOf)
+      ? (effective as Schema).oneOf
+      : undefined;
+  if (effectiveOneOf && effectiveOneOf.length > 0 && !type) {
+    const unionType = effectiveOneOf
+      .map((branch) => schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames))
+      .join(" | ");
+    if (schemaTypeNames) {
+      Object.values(schemaTypeNames).forEach((n) => {
+        if (unionType.includes(n)) addSchemaUsed(n);
+      });
+    }
+    declarations.push(`${INDENT_NS}export type ${typeName} = ${unionType};`);
+    return {
+      declarations,
+      returnTypeName: typeName,
+      genericArg: typeName,
+      isLiteralType: true,
+      useGetVariable: true,
+      schemaTypesUsed,
+    };
   }
 
   if (type === "object") {
-    const props = variableSchema.properties;
+    const resolvedEffective =
+      effective && "properties" in effective
+        ? (resolveSchema(effective as Schema, schemasByKey) as Schema)
+        : undefined;
+    const props = resolvedEffective?.properties;
     if (props && typeof props === "object" && Object.keys(props).length > 0) {
-      const requiredSet = new Set((variableSchema.required as string[]) || []);
+      const requiredSet = new Set(resolvedEffective?.required || []);
       const entries = Object.entries(props)
         .map(([k, v]) => {
-          const propType = propertySchemaToTypeScriptType(v as PropertySchema);
+          const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+          if (schemaTypeNames)
+            Object.values(schemaTypeNames).forEach((n) => {
+              if (propType.includes(n)) addSchemaUsed(n);
+            });
           const optional = !requiredSet.has(k);
           return optional
             ? `${INDENT_NS_BODY}${k}?: ${propType};`
@@ -100,20 +260,46 @@ function generateVariableTypeDeclarations(
         })
         .join("\n");
       declarations.push(`${INDENT_NS}export interface ${typeName} {\n${entries}\n${INDENT_NS}}`);
-      return { declarations, returnTypeName: typeName, genericArg: typeName };
+      return { declarations, returnTypeName: typeName, genericArg: typeName, schemaTypesUsed };
     }
     declarations.push(`${INDENT_NS}export type ${typeName} = Record<string, unknown>;`);
-    return { declarations, returnTypeName: typeName, genericArg: typeName };
+    return { declarations, returnTypeName: typeName, genericArg: typeName, schemaTypesUsed };
   }
 
   if (type === "array") {
-    if (variableSchema.items) {
-      const items = variableSchema.items as PropertySchema;
-      if (items.type === "object" && items.properties && Object.keys(items.properties).length > 0) {
-        const requiredSet = new Set(items.required || []);
-        const entries = Object.entries(items.properties)
+    const itemsSchema = effective && "items" in effective ? (effective.items as Schema) : undefined;
+    if (itemsSchema) {
+      const itemsRef =
+        schemaTypeNames &&
+        "schema" in itemsSchema &&
+        itemsSchema.schema &&
+        schemasByKey[itemsSchema.schema]
+          ? schemaTypeNames[itemsSchema.schema]
+          : null;
+      if (itemsRef) {
+        addSchemaUsed(itemsRef);
+        declarations.push(`${INDENT_NS}export type ${itemTypeName} = ${itemsRef};`);
+        return {
+          declarations,
+          returnTypeName: `${itemTypeName}[]`,
+          genericArg: itemTypeName,
+          schemaTypesUsed,
+        };
+      }
+      const resolvedItems = resolveSchema(itemsSchema, schemasByKey);
+      if (
+        resolvedItems.type === "object" &&
+        resolvedItems.properties &&
+        Object.keys(resolvedItems.properties).length > 0
+      ) {
+        const requiredSet = new Set(resolvedItems.required || []);
+        const entries = Object.entries(resolvedItems.properties)
           .map(([k, v]) => {
-            const propType = propertySchemaToTypeScriptType(v);
+            const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+            if (schemaTypeNames)
+              Object.values(schemaTypeNames).forEach((n) => {
+                if (propType.includes(n)) addSchemaUsed(n);
+              });
             const optional = !requiredSet.has(k);
             return optional
               ? `${INDENT_NS_BODY}${k}?: ${propType};`
@@ -123,35 +309,58 @@ function generateVariableTypeDeclarations(
         declarations.push(
           `${INDENT_NS}export interface ${itemTypeName} {\n${entries}\n${INDENT_NS}}`,
         );
-        // getVariableArray<T> returns T[] | null, so generic is item type
         return {
           declarations,
           returnTypeName: `${itemTypeName}[]`,
           genericArg: itemTypeName,
+          schemaTypesUsed,
         };
       }
-      // array of primitive (e.g. string): emit item type only, use item[] in methods
-      const itemType = propertySchemaToTypeScriptType(items);
+      const itemType = schemaToTypeScriptType(resolvedItems, schemasByKey, schemaTypeNames);
+      if (schemaTypeNames)
+        Object.values(schemaTypeNames).forEach((n) => {
+          if (itemType.includes(n)) addSchemaUsed(n);
+        });
       declarations.push(`${INDENT_NS}export type ${itemTypeName} = ${itemType};`);
       return {
         declarations,
         returnTypeName: `${itemTypeName}[]`,
         genericArg: itemTypeName,
+        schemaTypesUsed,
       };
     }
-    // array without items (default string[]): emit item type only
     declarations.push(`${INDENT_NS}export type ${itemTypeName} = string;`);
     return {
       declarations,
       returnTypeName: `${itemTypeName}[]`,
       genericArg: itemTypeName,
+      schemaTypesUsed,
     };
   }
 
-  // primitive: boolean, string, integer, double
-  const primitiveType = convertFeaturevisorTypeToTypeScriptType(type);
+  // primitive: boolean, string, integer, double (or unknown when schema ref unresolved)
+  // When schema has primitive const or enum, emit literal or union type
+  const effectiveConst =
+    effective && "const" in effective && (effective as Schema).const !== undefined
+      ? (effective as Schema).const
+      : undefined;
+  const effectiveEnum =
+    effective && "enum" in effective && Array.isArray((effective as Schema).enum)
+      ? (effective as Schema).enum
+      : undefined;
+  const literalType = effectiveConst !== undefined ? constToLiteralType(effectiveConst) : null;
+  const enumUnion =
+    effectiveEnum && effectiveEnum.length > 0 ? enumToUnionType(effectiveEnum) : null;
+  const primitiveType =
+    literalType ?? enumUnion ?? (type ? convertFeaturevisorTypeToTypeScriptType(type) : "unknown");
   declarations.push(`${INDENT_NS}export type ${typeName} = ${primitiveType};`);
-  return { declarations, returnTypeName: typeName, genericArg: typeName };
+  return {
+    declarations,
+    returnTypeName: typeName,
+    genericArg: typeName,
+    isLiteralType: literalType !== null || enumUnion !== null,
+    schemaTypesUsed,
+  };
 }
 
 function getPascalCase(str) {
@@ -172,6 +381,28 @@ function getRelativePath(from, to) {
   }
 
   return relativePath;
+}
+
+/**
+ * Generates the content of Schemas.ts: one exported type per schema key, using schema refs between schemas.
+ */
+function generateSchemasFileContent(
+  schemaKeys: string[],
+  schemasByKey: Record<string, Schema>,
+): string {
+  const schemaTypeNames: Record<string, string> = {};
+  for (const k of schemaKeys) {
+    schemaTypeNames[k] = getPascalCase(k) + "Schema";
+  }
+  const lines: string[] = [];
+  for (const key of schemaKeys) {
+    const schema = schemasByKey[key];
+    if (!schema) continue;
+    const name = schemaTypeNames[key];
+    const typeStr = schemaToTypeScriptType(schema, schemasByKey, schemaTypeNames);
+    lines.push(`export type ${name} = ${typeStr};`);
+  }
+  return lines.join("\n") + "\n";
 }
 
 // Indentation for generated namespace content (2 spaces per level)
@@ -246,6 +477,32 @@ ${attributeProperties}
   const featureNamespaces: string[] = [];
   const featureFiles = await datasource.listFeatures();
 
+  // Load schemas for resolving variable schema references
+  const schemaListKeys = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemaListKeys) {
+    try {
+      schemasByKey[key] = await datasource.readSchema(key);
+    } catch {
+      // Schema file may be invalid; skip for code gen
+    }
+  }
+  const schemaKeys = Object.keys(schemasByKey);
+  const hasSchemasFile = schemaKeys.length > 0;
+  if (hasSchemasFile) {
+    const schemasContent = generateSchemasFileContent(schemaKeys, schemasByKey);
+    const schemasFilePath = path.join(outputPath, "Schemas.ts");
+    fs.writeFileSync(schemasFilePath, schemasContent);
+    console.log(
+      `Schemas type file written at: ${getRelativePath(rootDirectoryPath, schemasFilePath)}`,
+    );
+  }
+
+  const schemaTypeNames: Record<string, string> = {};
+  for (const k of schemaKeys) {
+    schemaTypeNames[k] = getPascalCase(k) + "Schema";
+  }
+
   for (const featureKey of featureFiles) {
     const parsedFeature = await datasource.readFeature(featureKey);
 
@@ -258,6 +515,7 @@ ${attributeProperties}
 
     let variableTypeDeclarations = "";
     let variableMethods = "";
+    const featureSchemaTypesUsed = new Set<string>();
 
     if (parsedFeature.variablesSchema) {
       const variableKeys = Object.keys(parsedFeature.variablesSchema);
@@ -265,20 +523,38 @@ ${attributeProperties}
 
       for (const variableKey of variableKeys) {
         const variableSchema = parsedFeature.variablesSchema[variableKey];
-        const variableType = variableSchema.type;
-        const { declarations, returnTypeName, genericArg } = generateVariableTypeDeclarations(
+        const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+        const variableType = effective?.type;
+        const {
+          declarations,
+          returnTypeName,
+          genericArg,
+          isLiteralType,
+          useGetVariable,
+          schemaTypesUsed,
+        } = generateVariableTypeDeclarations(
           variableKey,
           variableSchema,
+          schemasByKey,
+          hasSchemasFile ? schemaTypeNames : undefined,
         );
+        schemaTypesUsed.forEach((t) => featureSchemaTypesUsed.add(t));
         allDeclarations.push(...declarations);
 
         const internalMethodName = `getVariable${
-          variableType === "json" ? "JSON" : getPascalCase(variableType)
+          variableType === "json" ? "JSON" : getPascalCase(variableType ?? "string")
         }`;
 
         const hasGeneric =
           variableType === "json" || variableType === "array" || variableType === "object";
-        if (variableType === "json") {
+        const literalAssertion = isLiteralType ? ` as ${returnTypeName} | null` : "";
+        if (useGetVariable) {
+          variableMethods += `
+
+${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
+${INDENT_NS_BODY}return getInstance().getVariable(key, "${variableKey}", context)${literalAssertion};
+${INDENT_NS}}`;
+        } else if (variableType === "json") {
           variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}<T = unknown>(context: Context = {}): T | null {
@@ -294,7 +570,7 @@ ${INDENT_NS}}`;
           variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
-${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context);
+${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context)${literalAssertion};
 ${INDENT_NS}}`;
         }
       }
@@ -304,11 +580,15 @@ ${INDENT_NS}}`;
       }
     }
 
+    const schemasImportLine =
+      featureSchemaTypesUsed.size > 0
+        ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./Schemas";\n\n`
+        : "";
+
     const featureContent = `
 import { Context } from "./Context";
 import { getInstance } from "./instance";
-
-export namespace ${namespaceValue} {
+${schemasImportLine}export namespace ${namespaceValue} {
 ${INDENT_NS}export const key = "${featureKey}";${variableTypeDeclarations}
 
 ${INDENT_NS}export function isEnabled(context: Context = {}) {
@@ -333,13 +613,14 @@ ${INDENT_NS}}${variableMethods}
 
   // index
   const indexContent =
-    [`export * from "./Context";`, `export * from "./instance";`]
-      .concat(
-        featureNamespaces.map((featureNamespace) => {
-          return `export * from "./${featureNamespace}";`;
-        }),
-      )
-      .join("\n") + "\n";
+    [
+      `export * from "./Context";`,
+      `export * from "./instance";`,
+      ...(hasSchemasFile ? [`export * from "./Schemas";`] : []),
+      ...featureNamespaces.map((featureNamespace) => {
+        return `export * from "./${featureNamespace}";`;
+      }),
+    ].join("\n") + "\n";
   const indexFilePath = path.join(outputPath, "index.ts");
   fs.writeFileSync(indexFilePath, indexContent);
   console.log(`Index file written at: ${getRelativePath(rootDirectoryPath, indexFilePath)}`);

@@ -1,0 +1,6 @@
+# String with minLength, maxLength, and pattern (promo code: uppercase alphanumeric)
+description: Promotional code (uppercase letters and digits, 3-20 chars)
+type: string
+minLength: 3
+maxLength: 20
+pattern: "^[A-Z0-9-]+$"
