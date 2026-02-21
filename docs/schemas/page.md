@@ -270,7 +270,7 @@ maximum: 100
 
 ### minLength
 
-For `type: string`, you can use `minLength` to require a minimum character length:
+For type `string`, we can use `minLength` to require a minimum character length:
 
 ```yml {% path="schemas/mySchema.yml" highlight="4" %}
 description: Schema description...
@@ -281,7 +281,7 @@ minLength: 1
 
 ### maxLength
 
-For `type: string`, you can use `maxLength` to allow a maximum character length:
+For type `string`, we can use `maxLength` to allow a maximum character length:
 
 ```yml {% path="schemas/mySchema.yml" highlight="4" %}
 description: Schema description...
@@ -302,7 +302,7 @@ maxLength: 100
 
 ### pattern
 
-For `type: string`, you can use `pattern` to require the value to match an ECMA-262 regular expression:
+For type `string`, we can use `pattern` to require the value to match an ECMA-262 regular expression:
 
 ```yml {% path="schemas/mySchema.yml" highlight="4" %}
 description: Schema description...
@@ -311,7 +311,7 @@ type: string
 pattern: "^[a-z0-9-]+$"
 ```
 
-You can combine `pattern` with `minLength` and `maxLength`:
+We can also combine `pattern` with `minLength` and `maxLength`:
 
 ```yml {% path="schemas/mySchema.yml" highlight="3-5" %}
 description: Schema description...
@@ -344,7 +344,7 @@ oneOf:
   - schema: link # reference another schema by name
 ```
 
-For array items, you can use `items` property to reference the `oneOf` schema:
+For array items, we can use `items` property to reference the `oneOf` schema:
 
 ```yml {% path="schemas/mixedList.yml" %}
 description: Mixed list of strings and integers
