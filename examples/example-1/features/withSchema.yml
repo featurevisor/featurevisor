@@ -166,6 +166,33 @@ variablesSchema:
       - type: integer
     defaultValue: 100
 
+  # --- minimum/maximum: reusable schemas (integer 0-100, double 0-5) ---
+  percentVar:
+    schema: percentInteger
+    defaultValue: 0
+
+  ratingVar:
+    schema: ratingDouble
+    defaultValue: 0
+
+  # --- minimum/maximum: inline integer (1-10) and double (0-1) ---
+  levelInline:
+    type: integer
+    minimum: 1
+    maximum: 10
+    defaultValue: 1
+
+  discountRateInline:
+    type: double
+    minimum: 0
+    maximum: 1
+    defaultValue: 0
+
+  # --- minimum/maximum: schema with const in range ---
+  fixedLevel:
+    schema: boundedConst
+    defaultValue: 5
+
 variations:
   - value: control
     weight: 50
@@ -186,6 +213,11 @@ variations:
         - 10
       refOrLink: "control-ref"
       inlineStringOrNumber: "control-inline"
+      percentVar: 25
+      ratingVar: 2.5
+      levelInline: 3
+      discountRateInline: 0.1
+      fixedLevel: 5
       singleLink:
         title: Control Link
         url: /control
@@ -228,6 +260,11 @@ variations:
         title: Treatment Link
         url: /treatment
       inlineStringOrNumber: 200
+      percentVar: 75
+      ratingVar: 4.0
+      levelInline: 8
+      discountRateInline: 0.9
+      fixedLevel: 5
       singleLink:
         title: Treatment Link
         url: /treatment
@@ -297,6 +334,11 @@ rules:
           title: Start
           url: /de
         inlineStringOrNumber: 50
+        percentVar: 100
+        ratingVar: 5.0
+        levelInline: 10
+        discountRateInline: 1.0
+        fixedLevel: 5
 
     - key: nl_or_ch
       segments:
@@ -332,6 +374,11 @@ rules:
             url: /first
           - title: Second
             url: /second
+        percentVar: 50
+        ratingVar: 3.5
+        levelInline: 5
+        discountRateInline: 0.5
+        fixedLevel: 5
 
     - key: mobile_eu
       segments:
@@ -365,6 +412,11 @@ rules:
         linkPair:
           - title: One
             url: /one
+        percentVar: 0
+        ratingVar: 0
+        levelInline: 1
+        discountRateInline: 0
+        fixedLevel: 5
 
     - key: desktop_eu
       segments:
@@ -383,6 +435,11 @@ rules:
         enabled: false
         itemCount: 99
         score: 99.5
+        percentVar: 99
+        ratingVar: 4.5
+        levelInline: 9
+        discountRateInline: 0.99
+        fixedLevel: 5
 
     - key: everyone
       segments: "*"
@@ -400,6 +457,11 @@ rules:
         themeColor:
           hex: "#dd0000"
           opacity: 100
+        percentVar: 100
+        ratingVar: 5.0
+        levelInline: 10
+        discountRateInline: 1.0
+        fixedLevel: 5
 
     - key: nl_or_ch
       segments:
@@ -411,6 +473,11 @@ rules:
         pageTitle: "NL/CH (Prod)"
         itemCount: 42
         score: 4.2
+        percentVar: 42
+        ratingVar: 4.2
+        levelInline: 4
+        discountRateInline: 0.42
+        fixedLevel: 5
 
     - key: mobile_eu
       segments:
@@ -424,6 +491,11 @@ rules:
         tagList:
           - prod
           - mobile-eu
+        percentVar: 10
+        ratingVar: 1.0
+        levelInline: 2
+        discountRateInline: 0.1
+        fixedLevel: 5
 
     - key: everyone
       segments: "*"

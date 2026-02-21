@@ -30,9 +30,9 @@ export interface Schema {
   enum?: Value[];
   const?: Value;
 
-  // Numeric validation keywords
-  // maximum?: number;
-  // minimum?: number;
+  // Numeric validation keywords (when type is "integer" or "double")
+  maximum?: number;
+  minimum?: number;
 
   // String validation keywords
   // maxLength?: number;

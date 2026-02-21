@@ -236,6 +236,38 @@ enum:
   - value3
 ```
 
+### minimum
+
+For numeric types (`integer` or `double`), we can use the `minimum` property to define the minimum value for the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: integer
+
+minimum: 0
+```
+
+### maximum
+
+For numeric types (`integer` or `double`), we can use the `maximum` property to define the maximum value for the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
+description: Schema description...
+type: integer
+
+maximum: 100
+```
+
+Both `minimum` and `maximum` properties can be used together to define a range of allowed values:
+
+```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+description: Schema description...
+type: integer
+
+minimum: 0
+maximum: 100
+```
+
 ### oneOf
 
 We can use the `oneOf` property to allow a value to match **exactly one** of several schemas.

@@ -41,6 +41,8 @@ function resolveVariableSchema(
     enum?: unknown[];
     const?: unknown;
     oneOf?: unknown[];
+    minimum?: number;
+    maximum?: number;
   },
   schemasByKey?: Record<string, Schema>,
 ): {
@@ -51,6 +53,8 @@ function resolveVariableSchema(
   enum?: unknown[];
   const?: unknown;
   oneOf?: unknown[];
+  minimum?: number;
+  maximum?: number;
 } | null {
   if (variableSchema.schema) {
     return schemasByKey?.[variableSchema.schema] ?? null;
@@ -63,6 +67,8 @@ function resolveVariableSchema(
     enum?: unknown[];
     const?: unknown;
     oneOf?: unknown[];
+    minimum?: number;
+    maximum?: number;
   };
 }
 
@@ -94,6 +100,8 @@ function valueMatchesSchema(
     properties?: Record<string, unknown>;
     required?: string[];
     items?: unknown;
+    minimum?: number;
+    maximum?: number;
   };
 
   if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
@@ -116,8 +124,18 @@ function valueMatchesSchema(
 
   if (type === "string") return typeof value === "string";
   if (type === "boolean") return typeof value === "boolean";
-  if (type === "integer") return typeof value === "number" && Number.isInteger(value);
-  if (type === "double") return typeof value === "number";
+  if (type === "integer") {
+    if (typeof value !== "number" || !Number.isInteger(value)) return false;
+    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
+    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
+    return true;
+  }
+  if (type === "double") {
+    if (typeof value !== "number") return false;
+    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
+    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
+    return true;
+  }
   if (type === "json") return typeof value === "string";
 
   if (type === "object") {
@@ -528,6 +546,23 @@ function superRefineVariableValue(
         message: `Variable "${label}" (type integer) must be an integer; got ${variableValue}.`,
         path,
       });
+      return;
+    }
+    const intMin = (effectiveSchema as { minimum?: number }).minimum;
+    const intMax = (effectiveSchema as { maximum?: number }).maximum;
+    if (intMin !== undefined && variableValue < intMin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be >= minimum (${intMin}); got ${variableValue}.`,
+        path,
+      });
+    }
+    if (intMax !== undefined && variableValue > intMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type integer) must be <= maximum (${intMax}); got ${variableValue}.`,
+        path,
+      });
     }
     return;
   }
@@ -546,6 +581,23 @@ function superRefineVariableValue(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Variable "${label}" (type double) must be a finite number; got ${variableValue}.`,
+        path,
+      });
+      return;
+    }
+    const doubleMin = (effectiveSchema as { minimum?: number }).minimum;
+    const doubleMax = (effectiveSchema as { maximum?: number }).maximum;
+    if (doubleMin !== undefined && variableValue < doubleMin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be >= minimum (${doubleMin}); got ${variableValue}.`,
+        path,
+      });
+    }
+    if (doubleMax !== undefined && variableValue > doubleMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${label}" (type double) must be <= maximum (${doubleMax}); got ${variableValue}.`,
         path,
       });
     }
@@ -997,6 +1049,8 @@ export function getFeatureZodSchema(
               enum: z.array(variableValueZodSchema).optional(),
               const: variableValueZodSchema.optional(),
               oneOf: z.array(schemaZodSchema).min(1).optional(),
+              minimum: z.number().optional(),
+              maximum: z.number().optional(),
 
               description: z.string().optional(),
 

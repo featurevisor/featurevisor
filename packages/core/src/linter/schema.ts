@@ -24,6 +24,9 @@ function valueMatchesType(v: unknown, type: string): boolean {
 type SchemaLike = {
   type?: string;
   enum?: unknown[];
+  const?: unknown;
+  minimum?: number;
+  maximum?: number;
   items?: unknown;
   properties?: Record<string, unknown>;
   oneOf?: unknown[];
@@ -70,6 +73,85 @@ export function refineEnumMatchesType(
   }
 }
 
+/**
+ * Validates that when a schema has type "integer" or "double", minimum <= maximum when both set,
+ * and const/enum values (if present) fall within the range.
+ */
+export function refineMinimumMaximum(
+  schema: SchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+  const type = schema.type;
+  const min = schema.minimum;
+  const max = schema.maximum;
+  const isNumeric = type === "integer" || type === "double";
+  if (isNumeric && min !== undefined && max !== undefined && min > max) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `When \`type\` is "${type}", \`minimum\` (${min}) must be less than or equal to \`maximum\` (${max}).`,
+      path: [...pathPrefix, "minimum"],
+    });
+  }
+  if (isNumeric && min !== undefined && schema.const !== undefined) {
+    const v = schema.const;
+    if (typeof v === "number" && v < min) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`const\` value ${v} is less than \`minimum\` (${min}).`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+  }
+  if (isNumeric && max !== undefined && schema.const !== undefined) {
+    const v = schema.const;
+    if (typeof v === "number" && v > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `\`const\` value ${v} is greater than \`maximum\` (${max}).`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+  }
+  if (isNumeric && Array.isArray(schema.enum) && schema.enum.length > 0) {
+    for (let i = 0; i < schema.enum.length; i++) {
+      const v = schema.enum[i];
+      if (typeof v === "number") {
+        if (min !== undefined && v < min) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Enum value at index ${i} (${v}) is less than \`minimum\` (${min}).`,
+            path: [...pathPrefix, "enum", i],
+          });
+        }
+        if (max !== undefined && v > max) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Enum value at index ${i} (${v}) is greater than \`maximum\` (${max}).`,
+            path: [...pathPrefix, "enum", i],
+          });
+        }
+      }
+    }
+  }
+  if (schema.items && typeof schema.items === "object") {
+    refineMinimumMaximum(schema.items as SchemaLike, [...pathPrefix, "items"], ctx);
+  }
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const k of Object.keys(schema.properties)) {
+      refineMinimumMaximum(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
+    }
+  }
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, i) => {
+      if (branch && typeof branch === "object") {
+        refineMinimumMaximum(branch as SchemaLike, [...pathPrefix, "oneOf", i], ctx);
+      }
+    });
+  }
+}
+
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
 export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   z.union([
@@ -102,7 +184,8 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         type: propertyTypeEnum.optional(),
         enum: z.array(valueZodSchema).optional(),
         const: valueZodSchema.optional(),
-        // Numeric: maximum?, minimum?
+        minimum: z.number().optional(),
+        maximum: z.number().optional(),
         // String: maxLength?, minLength?, pattern?
         items: schemaZodSchema.optional(),
         // maxItems?, minItems?, uniqueItems?
@@ -122,7 +205,8 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         oneOf: z.array(schemaZodSchema).min(1).optional(),
       })
       .strict()
-      .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx)),
+      .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx))
+      .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx)),
   );
 
   return schemaZodSchema;

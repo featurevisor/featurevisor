@@ -1,0 +1,4 @@
+description: Star-style rating from 0 to 5 (inclusive)
+type: double
+minimum: 0
+maximum: 5
