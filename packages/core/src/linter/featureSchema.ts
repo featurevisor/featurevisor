@@ -1381,6 +1381,10 @@ export function getFeatureZodSchema(
         return;
       }
 
+      // Every variable value is validated against its schema from variablesSchema. Sources covered:
+      // 1. variablesSchema[key].defaultValue  2. variablesSchema[key].disabledValue
+      // 3. variations[n].variables[key]       4. variations[n].variableOverrides[key][].value
+      // 5. rules[env][n].variables[key]       6. force[env][n].variables[key]
       const variableSchemaByKey = value.variablesSchema;
       const variationValues: string[] = [];
 
@@ -1446,66 +1450,64 @@ export function getFeatureZodSchema(
         }
       });
 
-      // variations
+      // variations: validate variation.variables and variation.variableOverrides (each value against its variable schema)
       if (value.variations) {
         value.variations.forEach((variation, variationN) => {
-          if (!variation.variables) {
-            return;
+          // variations[n].variables[key]
+          if (variation.variables) {
+            for (const variableKey of Object.keys(variation.variables)) {
+              const variableValue = variation.variables[variableKey];
+              const variableSchema = variableSchemaByKey[variableKey];
+              if (!variableSchema) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                  path: ["variations", variationN, "variables", variableKey],
+                });
+              } else {
+                superRefineVariableValue(
+                  projectConfig,
+                  variableSchema,
+                  variableValue,
+                  ["variations", variationN, "variables", variableKey],
+                  ctx,
+                  variableKey,
+                  schemasByKey,
+                );
+              }
+            }
           }
 
-          // variations[n].variables[key]
-          for (const variableKey of Object.keys(variation.variables)) {
-            const variableValue = variation.variables[variableKey];
-            const variableSchema = variableSchemaByKey[variableKey];
-            if (!variableSchema) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-                path: ["variations", variationN, "variables", variableKey],
-              });
-            } else {
-              superRefineVariableValue(
-                projectConfig,
-                variableSchema,
-                variableValue,
-                ["variations", variationN, "variables", variableKey],
-                ctx,
-                variableKey,
-                schemasByKey,
-              );
-            }
-
-            // variations[n].variableOverrides[n].value
-            if (variation.variableOverrides) {
-              for (const variableKey of Object.keys(variation.variableOverrides)) {
-                const overrides = variation.variableOverrides[variableKey];
-                const variableSchema = variableSchemaByKey[variableKey];
-                if (!variableSchema) {
-                  ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-                    path: ["variations", variationN, "variableOverrides", variableKey],
-                  });
-                } else if (Array.isArray(overrides)) {
-                  overrides.forEach((override, overrideN) => {
-                    superRefineVariableValue(
-                      projectConfig,
-                      variableSchema,
-                      override.value,
-                      [
-                        "variations",
-                        variationN,
-                        "variableOverrides",
-                        variableKey,
-                        overrideN,
-                        "value",
-                      ],
-                      ctx,
+          // variations[n].variableOverrides[key][].value (validated even when variation.variables is absent)
+          if (variation.variableOverrides) {
+            for (const variableKey of Object.keys(variation.variableOverrides)) {
+              const overrides = variation.variableOverrides[variableKey];
+              const variableSchema = variableSchemaByKey[variableKey];
+              if (!variableSchema) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+                  path: ["variations", variationN, "variableOverrides", variableKey],
+                });
+              } else if (Array.isArray(overrides)) {
+                overrides.forEach((override, overrideN) => {
+                  superRefineVariableValue(
+                    projectConfig,
+                    variableSchema,
+                    override.value,
+                    [
+                      "variations",
+                      variationN,
+                      "variableOverrides",
                       variableKey,
-                      schemasByKey,
-                    );
-                  });
-                }
+                      overrideN,
+                      "value",
+                    ],
+                    ctx,
+                    variableKey,
+                    schemasByKey,
+                  );
+                });
               }
             }
           }
