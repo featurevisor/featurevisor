@@ -9,6 +9,7 @@ This is the original monorepo of Featurevisor, which is a Git-based feature mana
 - [Building](#building)
 - [Testing](#testing)
 - [Linting](#linting)
+- [Documentation](#documentation)
 
 ## Links
 
@@ -73,3 +74,9 @@ $ make lint
 ```
 
 Uses both ESLint and Prettier to lint the code everywhere.
+
+## Documentation
+
+Project documentation can be found in the `docs/` directory.
+
+They are written in Markdown, and the files there are consumed by a separate Next.js application that is used to generate the website at: https://featurevisor.com.
