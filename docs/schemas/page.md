@@ -13,6 +13,8 @@ nextjs:
 
 Define schemas once and reuse them when defining multiple [variables](/docs/features/#variables) spanning across multiple [features](/docs/features). {% .lead %}
 
+![Reusable schemas for variables](/img/illustration-schemas.png)
+
 ## Understanding variable schemas
 
 Each feature in Featurevisor can optionally define its variables using the `variablesSchema` property, which is a dictionary of variable names to their individual variable schemas.
