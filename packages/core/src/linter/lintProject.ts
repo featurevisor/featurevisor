@@ -216,7 +216,9 @@ export async function lintProject(
   const attributeZodSchema = getAttributeZodSchema();
 
   if (!options.entityType || options.entityType === "attribute") {
-    const filteredKeys = !keyPattern ? attributes : attributes.filter((key) => keyPattern.test(key));
+    const filteredKeys = !keyPattern
+      ? attributes
+      : attributes.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
       log(`Linting ${filteredKeys.length} attributes...\n`);

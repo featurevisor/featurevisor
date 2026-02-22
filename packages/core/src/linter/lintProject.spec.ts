@@ -89,7 +89,7 @@ describe("core: lintProject", function () {
     expect(consoleLogSpy).toHaveBeenCalledTimes(1);
 
     const output = consoleLogSpy.mock.calls[0][0] as string;
-    expect(output).toContain("\n  \"errors\": []\n");
+    expect(output).toContain('\n  "errors": []\n');
   });
 
   it("does not call process.exit for zod validation errors while linting tests", async () => {
