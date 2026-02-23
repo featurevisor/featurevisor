@@ -287,14 +287,13 @@ variations:
       config:
         - segments: countries/germany
           value:
-            config:
-              theme: dark
-              compact: true
-              width: 1400
+            theme: dark
+            compact: true
+            width: 1400
         - segments: countries/netherlands
           value:
-            "theme": "dark"
-            "width": 1800
+            theme: dark
+            width: 1800
       settings:
         - segments: countries/germany
           value:

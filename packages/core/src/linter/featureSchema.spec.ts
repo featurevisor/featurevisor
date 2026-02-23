@@ -1215,4 +1215,110 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
   });
+
+  describe("mutation notation in variables", () => {
+    it("accepts valid dot-notation mutation keys in rules.variables", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                width: { type: "integer" },
+              },
+              defaultValue: { theme: "light", width: 100 },
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "config.theme": "dark", "config.width": 1200 } },
+            ],
+            production: [
+              { key: "r1", segments: "*", percentage: 100 },
+            ],
+          },
+        }),
+      );
+    });
+
+    it("accepts valid array-index mutation keys in rules.variables", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              defaultValue: ["a", "b"],
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "tags[0]": "first" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects mutation key when root variable is not in variablesSchema", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            title: { type: "string", defaultValue: "Default" },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "unknownVar.foo": "x" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { pathContains: ["rules", "variables", "unknownVar.foo"], messageContains: "not defined in" },
+      );
+    });
+
+    it("rejects invalid path (property not in schema)", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { theme: { type: "string" } },
+              defaultValue: { theme: "light" },
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "config.unknownProp": "x" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { pathContains: ["rules", "variables"], messageContains: "path does not exist" },
+      );
+    });
+
+    it("rejects :append on non-array (object property)", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { theme: { type: "string" } },
+              defaultValue: { theme: "light" },
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "config:append": "x" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { pathContains: ["rules", "variables"], messageContains: "only allowed on array" },
+      );
+    });
+  });
 });

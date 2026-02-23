@@ -1,18 +1,18 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
 
-type PathPart =
+export type PathPart =
   | { key: string }
   | { key: string; index: number }
   | { key: string; selector: { prop: string; value: string } };
 
-type MutationOperation = "set" | "append" | "prepend" | "after" | "before" | "remove";
+export type MutationOperation = "set" | "append" | "prepend" | "after" | "before" | "remove";
 
-interface ParsedNotation {
+export interface ParsedNotation {
   segments: PathPart[];
   operation: MutationOperation;
 }
 
-function parseNotation(notation: string): ParsedNotation {
+export function parseNotation(notation: string): ParsedNotation {
   let rest = notation.trim();
   const operationMatch = rest.match(/:((?:append|prepend|after|before|remove))$/);
   const operation: MutationOperation = operationMatch
