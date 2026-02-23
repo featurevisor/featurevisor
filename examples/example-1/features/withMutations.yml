@@ -1,0 +1,363 @@
+# Exhaustive feature demonstrating mutation syntax: primitives, nested objects,
+# arrays, arrays of objects, dot-notation overrides, array-index overrides,
+# and overrides from variations, variableOverrides (segment/condition), and rules.
+description: Exhaustive mutations demo - all variable types and override syntax
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  # --- Primitives ---
+  title:
+    type: string
+    defaultValue: "Default Title"
+
+  count:
+    type: integer
+    defaultValue: 0
+
+  score:
+    type: double
+    defaultValue: 0.0
+
+  enabled:
+    type: boolean
+    defaultValue: true
+
+  # --- Flat object ---
+  config:
+    type: object
+    defaultValue:
+      theme: light
+      compact: true
+      width: 1200
+
+  # --- Nested object ---
+  settings:
+    type: object
+    defaultValue:
+      display:
+        fontSize: 14
+        theme: light
+      layout:
+        sidebar: true
+        width: 240
+
+  # --- Deep nested (3+ levels) ---
+  deep:
+    type: object
+    defaultValue:
+      level1:
+        level2:
+          level3:
+            value: "deep-default"
+            count: 1
+
+  # --- Array of primitives ---
+  tags:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - default
+      - demo
+
+  # --- Array of objects ---
+  items:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        meta:
+          type: object
+    defaultValue:
+      - id: "1"
+        name: "First"
+        meta: { score: 0.1 }
+      - id: "2"
+        name: "Second"
+        meta: { score: 0.2 }
+      - id: "3"
+        name: "Third"
+        meta: { score: 0.3 }
+
+  # --- Object containing array of objects ---
+  payload:
+    type: object
+    defaultValue:
+      name: "Payload"
+      rows:
+        - id: 1
+          label: "A"
+        - id: 2
+          label: "B"
+
+  # --- Mixed: object with nested object and array ---
+  mixed:
+    type: object
+    defaultValue:
+      name: "mixed"
+      config:
+        enabled: true
+        tags:
+          - x
+          - y
+
+variations:
+  - value: control
+    weight: 50
+    # Full variables + dot-notation mutation keys (merged by resolveMutationsForMultipleVariables)
+    variables:
+      title: "Control Title"
+      count: 10
+      score: 2.5
+      enabled: true
+      config:
+        theme: dark
+        compact: true
+        width: 1200
+      settings:
+        display:
+          fontSize: 16
+          theme: light
+        layout:
+          sidebar: true
+          width: 240
+      deep:
+        level1:
+          level2:
+            level3:
+              value: "control-mutated"
+              count: 1
+      tags:
+        - control
+        - a
+      items:
+        - id: "1"
+          name: "Control First"
+          meta: { score: 0.99 }
+        - id: "2"
+          name: "Second"
+          meta: { score: 0.2 }
+        - id: "3"
+          name: "Third"
+          meta: { score: 0.3 }
+      payload:
+        name: "Control Payload"
+        rows:
+          - id: 1
+            label: "Control A"
+          - id: 2
+            label: "B"
+      mixed:
+        name: "control-mixed"
+        config:
+          enabled: false
+          tags:
+            - x
+            - y
+
+  - value: treatment
+    weight: 50
+    variables:
+      title: "Treatment Title"
+      count: 20
+      score: 4.0
+      enabled: false
+      config:
+        theme: dark
+        compact: false
+        width: 1600
+      settings:
+        display:
+          fontSize: 16
+          theme: dark
+        layout:
+          sidebar: false
+          width: 320
+      deep:
+        level1:
+          level2:
+            level3:
+              value: "treatment-deep"
+              count: 2
+      tags:
+        - treatment
+        - b
+        - c
+      items:
+        - id: "1"
+          name: "Treatment First"
+          meta: { score: 0.5 }
+        - id: "2"
+          name: "Treatment Second"
+          meta: { score: 0.6 }
+        - id: "3"
+          name: "Third"
+          meta: { score: 0.3 }
+      payload:
+        name: "Treatment Payload"
+        rows:
+          - id: 1
+            label: "Treatment A"
+          - id: 2
+            label: "Treatment B"
+      mixed:
+        name: "treatment-mixed"
+        config:
+          enabled: false
+          tags:
+            - t1
+            - t2
+    # Path-map style variableOverrides (resolveMutationsForSingleVariable)
+    variableOverrides:
+      title:
+        - segments: countries/germany
+          value: "Behandlung (DE)"
+        - segments: countries/netherlands
+          value: "Behandeling (NL)"
+      config:
+        - segments: countries/germany
+          value:
+            config:
+              theme: dark
+              compact: true
+              width: 1400
+        - segments: countries/netherlands
+          value:
+            "theme": "dark"
+            "width": 1800
+      settings:
+        - segments: countries/germany
+          value:
+            "display.fontSize": 20
+            "layout.width": 280
+      items:
+        - segments: countries/germany
+          value:
+            "[0].name": "Erste"
+            "[1].meta.score": 1.0
+
+rules:
+  staging:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      # Mix of full keys and dot-notation / array-index mutation keys
+      variables:
+        title: "Germany (Staging)"
+        count: 100
+        score: 5.0
+        enabled: true
+        config:
+          theme: dark
+          compact: true
+          width: 1400
+        settings:
+          display:
+            fontSize: 18
+            theme: dark
+          layout:
+            sidebar: true
+            width: 260
+        deep:
+          level1:
+            level2:
+              level3:
+                value: "germany-deep"
+                count: 10
+        tags:
+          - de
+          - germany
+        items:
+          - id: "1"
+            name: "Erste"
+            meta: { score: 1.0 }
+          - id: "2"
+            name: "Zweite"
+            meta: { score: 1.0 }
+          - id: "3"
+            name: "Dritte"
+            meta: { score: 1.0 }
+        payload:
+          name: "DE Payload"
+          rows:
+            - id: 1
+              label: "DE-A"
+            - id: 2
+              label: "DE-B"
+        mixed:
+          name: "germany-mixed"
+          config:
+            enabled: true
+            tags:
+              - de
+              - tag
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        title: "NL/CH Title"
+        count: 50
+        score: 3.5
+        "config.width": 1500
+        "settings.layout.sidebar": false
+        "tags[0]": "nl-ch"
+        "items[1].name": "NL Second"
+        "payload.name": "NL/CH Payload"
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        title: "Mobile EU"
+        count: 1
+        enabled: false
+        "config.compact": true
+        "settings.display.theme": "dark"
+        "deep.level1.level2.level3.value": "mobile-eu"
+        "items[0].meta.score": 0.9
+        "mixed.name": "mobile-mixed"
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        title: "Germany (Production)"
+        count: 200
+        "config.theme": dark
+        "settings.display.fontSize": 20
+        "items[0].name": "Erste Prod"
+        "payload.rows[0].label": "DE-Prod-A"
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        title: "NL/CH (Production)"
+        "config.width": 2000
+        "tags": ["prod", "nl-ch"]
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
