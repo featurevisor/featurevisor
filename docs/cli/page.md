@@ -50,6 +50,8 @@ Check if the definition files have any syntax or structural errors:
 $ npx featurevisor lint
 ```
 
+Use `--json` for machine-readable output, and `--json --pretty` for prettified JSON output.
+
 Lear more in [Linting](/docs/linting).
 
 ## Building datafiles

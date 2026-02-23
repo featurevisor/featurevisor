@@ -51,6 +51,49 @@ Possible values for `--entityType`:
 - `group`
 - `test`
 
+### `json`
+
+If you want machine-readable lint output, pass `--json`:
+
+```{% title="Command" %}
+$ npx featurevisor lint --json
+```
+
+The output format is always an object with an `errors` array:
+
+```json
+{
+  "errors": [
+    {
+      "filePath": "segments/my-segment.yml",
+      "entityType": "segment",
+      "key": "my-segment",
+      "message": "Required",
+      "path": ["conditions", 0, "attribute"],
+      "code": "invalid_type"
+    }
+  ]
+}
+```
+
+If no lint errors are found, output is:
+
+```json
+{
+  "errors": []
+}
+```
+
+To pretty-print JSON output:
+
+```{% title="Command" %}
+$ npx featurevisor lint --json --pretty
+```
+
+The `--pretty` flag is only applied when `--json` is passed.
+
+In JSON mode, lint still exits with non-zero status when errors are found, and exits with `0` when no errors are found.
+
 ## NPM scripts
 
 If you are using npm scripts for linting your Featurevisor project like this:
