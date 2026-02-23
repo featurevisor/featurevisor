@@ -1,26 +1,28 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
 
-type PathSegment =
+type PathPart =
   | { key: string }
   | { key: string; index: number }
   | { key: string; selector: { prop: string; value: string } };
 
-type Operation = "set" | "append" | "prepend" | "after" | "before" | "remove";
+type MutationOperation = "set" | "append" | "prepend" | "after" | "before" | "remove";
 
 interface ParsedNotation {
-  segments: PathSegment[];
-  operation: Operation;
+  segments: PathPart[];
+  operation: MutationOperation;
 }
 
 function parseNotation(notation: string): ParsedNotation {
   let rest = notation.trim();
   const operationMatch = rest.match(/:((?:append|prepend|after|before|remove))$/);
-  const operation: Operation = operationMatch ? (operationMatch[1] as Operation) : "set";
+  const operation: MutationOperation = operationMatch
+    ? (operationMatch[1] as MutationOperation)
+    : "set";
   if (operationMatch) {
     rest = rest.slice(0, -operationMatch[0].length);
   }
 
-  const segments: PathSegment[] = [];
+  const segments: PathPart[] = [];
   let i = 0;
   while (i < rest.length) {
     let key = "";
@@ -57,7 +59,7 @@ function parseNotation(notation: string): ParsedNotation {
   return { segments, operation };
 }
 
-function getAtSegment(obj: VariableValue, seg: PathSegment): VariableValue {
+function getAtSegment(obj: VariableValue, seg: PathPart): VariableValue {
   if (obj === null || obj === undefined) return undefined;
   const o = obj as Record<string, unknown>;
   if ("index" in seg) {
@@ -81,9 +83,9 @@ function getAtSegment(obj: VariableValue, seg: PathSegment): VariableValue {
 
 function setAtSegment(
   obj: Record<string, unknown> | unknown[],
-  seg: PathSegment,
+  seg: PathPart,
   _value: VariableValue,
-  op: Operation,
+  op: MutationOperation,
   setValue: VariableValue | undefined,
 ): void {
   if ("index" in seg) {
