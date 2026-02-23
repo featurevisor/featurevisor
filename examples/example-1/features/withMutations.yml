@@ -28,6 +28,13 @@ variablesSchema:
   # --- Flat object ---
   config:
     type: object
+    properties:
+      theme:
+        type: string
+      compact:
+        type: boolean
+      width:
+        type: integer
     defaultValue:
       theme: light
       compact: true
@@ -36,6 +43,21 @@ variablesSchema:
   # --- Nested object ---
   settings:
     type: object
+    properties:
+      display:
+        type: object
+        properties:
+          fontSize:
+            type: integer
+          theme:
+            type: string
+      layout:
+        type: object
+        properties:
+          sidebar:
+            type: boolean
+          width:
+            type: integer
     defaultValue:
       display:
         fontSize: 14
@@ -47,6 +69,20 @@ variablesSchema:
   # --- Deep nested (3+ levels) ---
   deep:
     type: object
+    properties:
+      level1:
+        type: object
+        properties:
+          level2:
+            type: object
+            properties:
+              level3:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  count:
+                    type: integer
     defaultValue:
       level1:
         level2:
@@ -75,6 +111,9 @@ variablesSchema:
           type: string
         meta:
           type: object
+          properties:
+            score:
+              type: double
     defaultValue:
       - id: "1"
         name: "First"
@@ -89,6 +128,18 @@ variablesSchema:
   # --- Object containing array of objects ---
   payload:
     type: object
+    properties:
+      name:
+        type: string
+      rows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
     defaultValue:
       name: "Payload"
       rows:
@@ -100,6 +151,18 @@ variablesSchema:
   # --- Mixed: object with nested object and array ---
   mixed:
     type: object
+    properties:
+      name:
+        type: string
+      config:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          tags:
+            type: array
+            items:
+              type: string
     defaultValue:
       name: "mixed"
       config:
