@@ -82,16 +82,24 @@ function getAtSegment(obj: VariableValue, seg: PathPart): VariableValue {
   if ("index" in seg) {
     const arr =
       seg.key === ""
-        ? (Array.isArray(obj) ? obj : undefined)
-        : (Array.isArray(obj) ? obj : (o[seg.key] as unknown[]));
+        ? Array.isArray(obj)
+          ? obj
+          : undefined
+        : Array.isArray(obj)
+          ? obj
+          : (o[seg.key] as unknown[]);
     if (!Array.isArray(arr)) return undefined;
     return arr[seg.index] as VariableValue;
   }
   if ("selector" in seg) {
     const arr =
       seg.key === ""
-        ? (Array.isArray(obj) ? obj : undefined)
-        : (Array.isArray(obj) ? obj : (o[seg.key] as unknown[]));
+        ? Array.isArray(obj)
+          ? obj
+          : undefined
+        : Array.isArray(obj)
+          ? obj
+          : (o[seg.key] as unknown[]);
     if (!Array.isArray(arr)) return undefined;
     const { prop, value } = seg.selector;
     const found = arr.find((item) => {
@@ -115,8 +123,12 @@ function setAtSegment(
     const i = seg.index;
     const arr =
       seg.key === ""
-        ? (Array.isArray(obj) ? obj : undefined)
-        : (Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]));
+        ? Array.isArray(obj)
+          ? obj
+          : undefined
+        : Array.isArray(obj)
+          ? obj
+          : ((obj as Record<string, unknown>)[seg.key] as unknown[]);
     if (!Array.isArray(arr)) return;
     if (op === "remove") {
       arr.splice(i, 1);
@@ -131,8 +143,12 @@ function setAtSegment(
   if ("selector" in seg) {
     const arr =
       seg.key === ""
-        ? (Array.isArray(obj) ? obj : undefined)
-        : (Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]));
+        ? Array.isArray(obj)
+          ? obj
+          : undefined
+        : Array.isArray(obj)
+          ? obj
+          : ((obj as Record<string, unknown>)[seg.key] as unknown[]);
     if (!Array.isArray(arr)) return;
     const { prop, value: selVal } = seg.selector;
     const numVal = /^\d+$/.test(selVal) ? parseInt(selVal, 10) : null;

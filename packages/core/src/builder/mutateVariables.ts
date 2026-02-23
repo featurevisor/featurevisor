@@ -7,7 +7,7 @@ import { mutate } from "./mutator";
  * Uses the mutator so nested paths and mutation notations are supported.
  * Returns only variables that were desired to be overridden (i.e. appear in overrides).
  */
-export function resolveVariablesWithOverrides(
+export function resolveMutationsForMultipleVariables(
   variablesSchema: Record<string, VariableSchema> | undefined,
   overrides: Record<string, VariableValue> | undefined,
 ): Record<string, VariableValue> | undefined {
@@ -69,7 +69,7 @@ export function resolveVariablesWithOverrides(
  * If the value is a plain object with path-like keys, it is merged with the variable's default;
  * otherwise the value is returned as-is (full replacement).
  */
-export function resolveVariableOverrideValue(
+export function resolveMutationsForSingleVariable(
   variablesSchema: Record<string, VariableSchema> | undefined,
   variableKey: string,
   overrideValue: VariableValue,
@@ -84,6 +84,6 @@ export function resolveVariableOverrideValue(
   for (const [k, v] of Object.entries(pathMap)) {
     flat[k === variableKey ? variableKey : variableKey + "." + k] = v;
   }
-  const resolved = resolveVariablesWithOverrides(variablesSchema, flat);
+  const resolved = resolveMutationsForMultipleVariables(variablesSchema, flat);
   return resolved && variableKey in resolved ? resolved[variableKey] : overrideValue;
 }

@@ -1,10 +1,13 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
-import { resolveVariablesWithOverrides, resolveVariableOverrideValue } from "./mutateVariables";
+import {
+  resolveMutationsForMultipleVariables,
+  resolveMutationsForSingleVariable,
+} from "./mutateVariables";
 
 describe("mutateVariables", function () {
-  describe("resolveVariablesWithOverrides", function () {
+  describe("resolveMutationsForMultipleVariables", function () {
     test("is a function", function () {
-      expect(resolveVariablesWithOverrides).toBeInstanceOf(Function);
+      expect(resolveMutationsForMultipleVariables).toBeInstanceOf(Function);
     });
 
     describe("returns undefined when", function () {
@@ -12,7 +15,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "default" },
         };
-        expect(resolveVariablesWithOverrides(schema, undefined)).toBeUndefined();
+        expect(resolveMutationsForMultipleVariables(schema, undefined)).toBeUndefined();
       });
 
       test("overrides is null", function () {
@@ -20,7 +23,10 @@ describe("mutateVariables", function () {
           foo: { type: "string", defaultValue: "default" },
         };
         expect(
-          resolveVariablesWithOverrides(schema, null as unknown as Record<string, VariableValue>),
+          resolveMutationsForMultipleVariables(
+            schema,
+            null as unknown as Record<string, VariableValue>,
+          ),
         ).toBeUndefined();
       });
 
@@ -28,22 +34,24 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "default" },
         };
-        expect(resolveVariablesWithOverrides(schema, {})).toBeUndefined();
+        expect(resolveMutationsForMultipleVariables(schema, {})).toBeUndefined();
       });
 
       test("variablesSchema is undefined", function () {
-        expect(resolveVariablesWithOverrides(undefined, { foo: "bar" })).toBeUndefined();
+        expect(resolveMutationsForMultipleVariables(undefined, { foo: "bar" })).toBeUndefined();
       });
 
       test("variablesSchema is empty object", function () {
-        expect(resolveVariablesWithOverrides({}, { foo: "bar" })).toBeUndefined();
+        expect(resolveMutationsForMultipleVariables({}, { foo: "bar" })).toBeUndefined();
       });
 
       test("every override key refers to a variable not in schema", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "x" },
         };
-        expect(resolveVariablesWithOverrides(schema, { bar: "y", baz: "z" })).toBeUndefined();
+        expect(
+          resolveMutationsForMultipleVariables(schema, { bar: "y", baz: "z" }),
+        ).toBeUndefined();
       });
     });
 
@@ -54,7 +62,9 @@ describe("mutateVariables", function () {
           bar: { type: "string", defaultValue: "defaultBar" },
           baz: { type: "string", defaultValue: "defaultBaz" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { bar: "overriddenBar" });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
+          bar: "overriddenBar",
+        });
         expect(result).toEqual({ bar: "overriddenBar" });
         expect(Object.keys(result!).sort()).toEqual(["bar"]);
       });
@@ -65,7 +75,7 @@ describe("mutateVariables", function () {
           b: { type: "string", defaultValue: "b" },
           c: { type: "string", defaultValue: "c" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           a: "A",
           c: "C",
         });
@@ -79,7 +89,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1, b: 2 } },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           foo: { x: 10, y: 20 },
         });
         expect(result).toEqual({ foo: { x: 10, y: 20 } });
@@ -89,7 +99,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           name: { type: "string", defaultValue: "default" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { name: "custom" });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, { name: "custom" });
         expect(result).toEqual({ name: "custom" });
       });
 
@@ -97,7 +107,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           count: { type: "integer", defaultValue: 0 },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { count: 42 });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, { count: 42 });
         expect(result).toEqual({ count: 42 });
       });
 
@@ -105,7 +115,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           list: { type: "array", defaultValue: [1, 2, 3] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { list: [10, 20] });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, { list: [10, 20] });
         expect(result).toEqual({ list: [10, 20] });
       });
     });
@@ -118,7 +128,7 @@ describe("mutateVariables", function () {
             defaultValue: { a: 1, b: 2, c: 3 },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "config.b": 20,
         });
         expect(result).toEqual({ config: { a: 1, b: 20, c: 3 } });
@@ -131,7 +141,7 @@ describe("mutateVariables", function () {
             defaultValue: { level1: { level2: { value: "old" } } },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "foo.level1.level2.value": "new",
         });
         expect(result).toEqual({
@@ -146,7 +156,7 @@ describe("mutateVariables", function () {
             defaultValue: { a: 1, b: 2, c: 3 },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "obj.a": 10,
           "obj.c": 30,
         });
@@ -159,7 +169,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1, b: 2 } },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           foo: { a: 100, b: 200 },
           "foo.b": 999,
         });
@@ -170,7 +180,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1, b: 2 } },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "foo.a": 10,
           foo: { x: 1 },
         });
@@ -184,7 +194,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue },
         };
-        resolveVariablesWithOverrides(variablesSchema, { "foo.a": 2 });
+        resolveMutationsForMultipleVariables(variablesSchema, { "foo.a": 2 });
         expect(defaultValue).toEqual({ a: 1 });
       });
 
@@ -192,7 +202,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: undefined },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "foo.a": 1,
         });
         expect(result).toEqual({ foo: undefined });
@@ -202,7 +212,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: null },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { foo: "set" });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, { foo: "set" });
         expect(result).toEqual({ foo: "set" });
       });
     });
@@ -212,7 +222,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "x" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           foo: "ok",
           unknownVar: "ignored",
         });
@@ -223,7 +233,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "x" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "other.deep.path": 1,
         });
         expect(result).toBeUndefined();
@@ -236,7 +246,7 @@ describe("mutateVariables", function () {
           foo: { type: "object", defaultValue: {} },
         };
         const overrides = { foo: { key: "value" } };
-        resolveVariablesWithOverrides(variablesSchema, overrides);
+        resolveMutationsForMultipleVariables(variablesSchema, overrides);
         expect(overrides.foo).toEqual({ key: "value" });
       });
 
@@ -245,7 +255,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue },
         };
-        resolveVariablesWithOverrides(variablesSchema, { "foo.nested.x": 2 });
+        resolveMutationsForMultipleVariables(variablesSchema, { "foo.nested.x": 2 });
         expect(defaultValue).toEqual({ nested: { x: 1 } });
       });
     });
@@ -259,7 +269,7 @@ describe("mutateVariables", function () {
           },
           count: { type: "integer", defaultValue: 0 },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "theme.primary": "red",
           count: 5,
         });
@@ -275,7 +285,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           x: { type: "string", defaultValue: "default" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, { x: "y" });
+        const result = resolveMutationsForMultipleVariables(variablesSchema, { x: "y" });
         expect(result).toEqual({ x: "y" });
       });
 
@@ -283,7 +293,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           a: { type: "object", defaultValue: { b: { c: 0 } } },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "a.b.c": 1,
         });
         expect(result).toEqual({ a: { b: { c: 1 } } });
@@ -293,7 +303,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           v: { type: "object", defaultValue: { p: 1, q: 2 } },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "v.p": 10,
           v: { p: 100, q: 200 },
         });
@@ -304,7 +314,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           known: { type: "string", defaultValue: "v" },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           unknown: "x",
           "another.thing": 1,
         });
@@ -324,7 +334,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "root.right.y": 99,
         });
         expect(result).toEqual({
@@ -346,7 +356,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "tree.l.l.v": 10,
           "tree.r.r.v": 40,
         });
@@ -369,7 +379,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "d.l1.l2.l3.l4": "updated",
         });
         expect(result).toEqual({
@@ -391,7 +401,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           cfg: { api: { url: "https://new", timeout: 10 }, ui: { theme: "dark" } },
           "cfg.api.timeout": 30,
         });
@@ -409,7 +419,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           list: { type: "array", defaultValue: [10, 20, 30] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "list[1]": 99,
         });
         expect(result).toEqual({ list: [10, 99, 30] });
@@ -419,7 +429,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           arr: { type: "array", defaultValue: ["a", "b", "c", "d"] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "arr[0]": "A",
           "arr[3]": "D",
         });
@@ -430,7 +440,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           ids: { type: "array", defaultValue: [1, 2, 3] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           ids: [100, 200, 300],
         });
         expect(result).toEqual({ ids: [100, 200, 300] });
@@ -449,7 +459,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "items[0].name": "First",
           "items[2].id": 30,
         });
@@ -472,7 +482,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "users[0].profile.displayName": "Alicia",
           "users[1].profile.role": "editor",
         });
@@ -494,7 +504,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "rows[1].a": 40,
           "rows[1].c": 60,
         });
@@ -513,7 +523,7 @@ describe("mutateVariables", function () {
             defaultValue: [{ id: 1 }, { id: 2 }],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           list: [
             { id: 10, name: "x" },
             { id: 20, name: "y" },
@@ -542,7 +552,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "config.title": "My App",
           "config.sections[0].label": "First",
           "config.sections[0].items[1].name": "B",
@@ -572,7 +582,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "payload.rules[0].config.theme": "blue",
           "payload.rules[1].percentage": 100,
         });
@@ -606,7 +616,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "settings.layout.width": 320,
           "items[1].label": "Two Updated",
         });
@@ -631,7 +641,7 @@ describe("mutateVariables", function () {
           },
           list: { type: "array", defaultValue: [{ x: 1 }, { x: 2 }] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           flat: "V1",
           "nested.a.b": "new",
           "list[0].x": 10,
@@ -649,7 +659,7 @@ describe("mutateVariables", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           arr: { type: "array", defaultValue: [] },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "arr[0]": "first",
         });
         expect(result).toEqual({ arr: ["first"] });
@@ -662,7 +672,7 @@ describe("mutateVariables", function () {
             defaultValue: { tags: [] },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "data.tags[0]": "new-tag",
         });
         expect(result).toEqual({ data: { tags: ["new-tag"] } });
@@ -678,7 +688,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "groups[0].ids[1]": 20,
           "groups[1].name": "Group 2",
         });
@@ -702,7 +712,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "root.items[0].meta.count": 5,
           "root.items[1].meta.label": "B",
         });
@@ -732,7 +742,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "state.a": 10,
           "state.c": 30,
           "state.e": 50,
@@ -749,7 +759,7 @@ describe("mutateVariables", function () {
             defaultValue: { x: 0, y: 0 },
           },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "v.x": 1,
           v: { x: 100, y: 200, z: 300 },
           "v.y": 2,
@@ -777,7 +787,7 @@ describe("mutateVariables", function () {
           },
           f: { type: "integer", defaultValue: 0 },
         };
-        const result = resolveVariablesWithOverrides(variablesSchema, {
+        const result = resolveMutationsForMultipleVariables(variablesSchema, {
           "b.b2": 20,
           "d.nested.value": "D",
           "e[0].name": "E1",
@@ -795,62 +805,64 @@ describe("mutateVariables", function () {
     });
   });
 
-  describe("resolveVariableOverrideValue", function () {
+  describe("resolveMutationsForSingleVariable", function () {
     test("is a function", function () {
-      expect(resolveVariableOverrideValue).toBeInstanceOf(Function);
+      expect(resolveMutationsForSingleVariable).toBeInstanceOf(Function);
     });
 
     describe("returns overrideValue unchanged when", function () {
       test("variablesSchema is undefined", function () {
-        expect(resolveVariableOverrideValue(undefined, "foo", "bar")).toBe("bar");
-        expect(resolveVariableOverrideValue(undefined, "foo", { a: 1 })).toEqual({ a: 1 });
+        expect(resolveMutationsForSingleVariable(undefined, "foo", "bar")).toBe("bar");
+        expect(resolveMutationsForSingleVariable(undefined, "foo", { a: 1 })).toEqual({ a: 1 });
       });
 
       test("variablesSchema is empty (no variableKey)", function () {
-        expect(resolveVariableOverrideValue({}, "foo", "bar")).toBe("bar");
+        expect(resolveMutationsForSingleVariable({}, "foo", "bar")).toBe("bar");
       });
 
       test("variableKey is not in variablesSchema", function () {
         const schema: Record<string, VariableSchema> = {
           bar: { type: "string", defaultValue: "x" },
         };
-        expect(resolveVariableOverrideValue(schema, "foo", "value")).toBe("value");
-        expect(resolveVariableOverrideValue(schema, "foo", { nested: 1 })).toEqual({ nested: 1 });
+        expect(resolveMutationsForSingleVariable(schema, "foo", "value")).toBe("value");
+        expect(resolveMutationsForSingleVariable(schema, "foo", { nested: 1 })).toEqual({
+          nested: 1,
+        });
       });
 
       test("overrideValue is null", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "default" },
         };
-        expect(resolveVariableOverrideValue(schema, "foo", null)).toBeNull();
+        expect(resolveMutationsForSingleVariable(schema, "foo", null)).toBeNull();
       });
 
       test("overrideValue is undefined", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "default" },
         };
-        expect(resolveVariableOverrideValue(schema, "foo", undefined)).toBeUndefined();
+        expect(resolveMutationsForSingleVariable(schema, "foo", undefined)).toBeUndefined();
       });
 
       test("overrideValue is a string (full replacement)", function () {
         const schema: Record<string, VariableSchema> = {
           name: { type: "string", defaultValue: "default" },
         };
-        expect(resolveVariableOverrideValue(schema, "name", "custom")).toBe("custom");
+        expect(resolveMutationsForSingleVariable(schema, "name", "custom")).toBe("custom");
       });
 
       test("overrideValue is a number (full replacement)", function () {
         const schema: Record<string, VariableSchema> = {
           count: { type: "integer", defaultValue: 0 },
         };
-        expect(resolveVariableOverrideValue(schema, "count", 42)).toBe(42);
+        expect(resolveMutationsForSingleVariable(schema, "count", 42)).toBe(42);
       });
 
       test("overrideValue is a boolean (full replacement)", function () {
         const schema: Record<string, VariableSchema> = {
           flag: { type: "boolean", defaultValue: false },
         };
-        expect(resolveVariableOverrideValue(schema, "flag", true)).toBe(true);
+        expect(resolveMutationsForSingleVariable(schema, "flag", true)).toBe(true);
       });
 
       test("overrideValue is an array (full replacement, not path map)", function () {
@@ -858,8 +870,8 @@ describe("mutateVariables", function () {
           list: { type: "array", defaultValue: [1, 2, 3] },
         };
         const arr = [10, 20];
-        expect(resolveVariableOverrideValue(schema, "list", arr)).toEqual([10, 20]);
-        expect(resolveVariableOverrideValue(schema, "list", [])).toEqual([]);
+        expect(resolveMutationsForSingleVariable(schema, "list", arr)).toEqual([10, 20]);
+        expect(resolveMutationsForSingleVariable(schema, "list", [])).toEqual([]);
       });
     });
 
@@ -871,7 +883,7 @@ describe("mutateVariables", function () {
             defaultValue: { primary: "blue", secondary: "gray" },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "theme", {
+        const result = resolveMutationsForSingleVariable(schema, "theme", {
           primary: "red",
         });
         expect(result).toEqual({ primary: "red", secondary: "gray" });
@@ -884,7 +896,7 @@ describe("mutateVariables", function () {
             defaultValue: { a: 1, b: 2, c: 3 },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "config", {
+        const result = resolveMutationsForSingleVariable(schema, "config", {
           a: 10,
           c: 30,
         });
@@ -898,7 +910,7 @@ describe("mutateVariables", function () {
             defaultValue: { level1: { level2: { v: "old" } } },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "obj", {
+        const result = resolveMutationsForSingleVariable(schema, "obj", {
           "level1.level2.v": "new",
         });
         expect(result).toEqual({ level1: { level2: { v: "new" } } });
@@ -911,7 +923,7 @@ describe("mutateVariables", function () {
             defaultValue: { primary: "blue", secondary: "gray" },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "theme", {
+        const result = resolveMutationsForSingleVariable(schema, "theme", {
           theme: { primary: "red", accent: "yellow" },
         });
         expect(result).toEqual({ primary: "red", accent: "yellow" });
@@ -924,7 +936,7 @@ describe("mutateVariables", function () {
             defaultValue: { a: 1, b: 2 },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "v", {
+        const result = resolveMutationsForSingleVariable(schema, "v", {
           v: { a: 100, b: 200 },
           b: 999,
         });
@@ -941,7 +953,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariableOverrideValue(schema, "items", {
+        const result = resolveMutationsForSingleVariable(schema, "items", {
           "[0].name": "A",
           "[1].id": 20,
         });
@@ -960,7 +972,7 @@ describe("mutateVariables", function () {
             },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "data", {
+        const result = resolveMutationsForSingleVariable(schema, "data", {
           "list[0].x": 10,
         });
         expect(result).toEqual({
@@ -972,7 +984,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1 } },
         };
-        const result = resolveVariableOverrideValue(schema, "foo", {});
+        const result = resolveMutationsForSingleVariable(schema, "foo", {});
         expect(result).toEqual({});
       });
     });
@@ -983,7 +995,7 @@ describe("mutateVariables", function () {
           foo: { type: "object", defaultValue: {} },
         };
         const pathMap = { a: 1, b: 2 };
-        resolveVariableOverrideValue(schema, "foo", pathMap);
+        resolveMutationsForSingleVariable(schema, "foo", pathMap);
         expect(pathMap).toEqual({ a: 1, b: 2 });
       });
     });
@@ -996,7 +1008,7 @@ describe("mutateVariables", function () {
             defaultValue: { theme: "light", color: "white" },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "theme", {
+        const result = resolveMutationsForSingleVariable(schema, "theme", {
           color: "black",
         });
         expect(result).toEqual({ theme: "light", color: "black" });
@@ -1007,7 +1019,7 @@ describe("mutateVariables", function () {
           a: { type: "object", defaultValue: { x: 1 } },
           b: { type: "object", defaultValue: { y: 2 } },
         };
-        const result = resolveVariableOverrideValue(schema, "a", {
+        const result = resolveMutationsForSingleVariable(schema, "a", {
           x: 10,
         });
         expect(result).toEqual({ x: 10 });
@@ -1017,7 +1029,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1, b: 2 } },
         };
-        const result = resolveVariableOverrideValue(schema, "foo", {
+        const result = resolveMutationsForSingleVariable(schema, "foo", {
           foo: { x: 1 },
         });
         expect(result).toEqual({ x: 1 });
@@ -1027,7 +1039,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           value: { type: "string", defaultValue: "default" },
         };
-        const result = resolveVariableOverrideValue(schema, "value", {
+        const result = resolveMutationsForSingleVariable(schema, "value", {
           value: "overridden",
         });
         expect(result).toEqual("overridden");
@@ -1042,7 +1054,7 @@ describe("mutateVariables", function () {
             defaultValue: { a: { b: { c: 0 } } },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "cfg", {
+        const result = resolveMutationsForSingleVariable(schema, "cfg", {
           "a.b.c": 1,
         });
         expect(result).toEqual({ a: { b: { c: 1 } } });
@@ -1058,7 +1070,7 @@ describe("mutateVariables", function () {
             ],
           },
         };
-        const result = resolveVariableOverrideValue(schema, "rows", {
+        const result = resolveMutationsForSingleVariable(schema, "rows", {
           "[0].label": "A",
           "[1].id": 20,
         });
@@ -1075,7 +1087,7 @@ describe("mutateVariables", function () {
             defaultValue: { x: 0, y: 0 },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "v", {
+        const result = resolveMutationsForSingleVariable(schema, "v", {
           v: { x: 1, y: 2, z: 3 },
           y: 20,
         });
@@ -1089,7 +1101,7 @@ describe("mutateVariables", function () {
             defaultValue: { count: 0, nested: { value: "old" } },
           },
         };
-        const result = resolveVariableOverrideValue(schema, "data", {
+        const result = resolveMutationsForSingleVariable(schema, "data", {
           count: 5,
           "nested.value": "new",
         });
@@ -1102,7 +1114,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: null },
         };
-        const result = resolveVariableOverrideValue(schema, "foo", {
+        const result = resolveMutationsForSingleVariable(schema, "foo", {
           a: 1,
         });
         expect(result).toBeUndefined();
@@ -1112,7 +1124,7 @@ describe("mutateVariables", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: undefined },
         };
-        const result = resolveVariableOverrideValue(schema, "foo", {
+        const result = resolveMutationsForSingleVariable(schema, "foo", {
           a: 1,
         });
         expect(result).toBeUndefined();
