@@ -1,5 +1,5 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
-import { resolveVariablesWithOverrides } from "./mutateVariables";
+import { resolveVariablesWithOverrides, resolveVariableOverrideValue } from "./mutateVariables";
 
 describe("mutateVariables", function () {
   describe("resolveVariablesWithOverrides", function () {
@@ -32,24 +32,18 @@ describe("mutateVariables", function () {
       });
 
       test("variablesSchema is undefined", function () {
-        expect(
-          resolveVariablesWithOverrides(undefined, { foo: "bar" }),
-        ).toBeUndefined();
+        expect(resolveVariablesWithOverrides(undefined, { foo: "bar" })).toBeUndefined();
       });
 
       test("variablesSchema is empty object", function () {
-        expect(
-          resolveVariablesWithOverrides({}, { foo: "bar" }),
-        ).toBeUndefined();
+        expect(resolveVariablesWithOverrides({}, { foo: "bar" })).toBeUndefined();
       });
 
       test("every override key refers to a variable not in schema", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "string", defaultValue: "x" },
         };
-        expect(
-          resolveVariablesWithOverrides(schema, { bar: "y", baz: "z" }),
-        ).toBeUndefined();
+        expect(resolveVariablesWithOverrides(schema, { bar: "y", baz: "z" })).toBeUndefined();
       });
     });
 
@@ -520,10 +514,16 @@ describe("mutateVariables", function () {
           },
         };
         const result = resolveVariablesWithOverrides(variablesSchema, {
-          list: [{ id: 10, name: "x" }, { id: 20, name: "y" }],
+          list: [
+            { id: 10, name: "x" },
+            { id: 20, name: "y" },
+          ],
         });
         expect(result).toEqual({
-          list: [{ id: 10, name: "x" }, { id: 20, name: "y" }],
+          list: [
+            { id: 10, name: "x" },
+            { id: 20, name: "y" },
+          ],
         });
       });
     });
@@ -770,7 +770,10 @@ describe("mutateVariables", function () {
           },
           e: {
             type: "array",
-            defaultValue: [{ id: 1, name: "e1" }, { id: 2, name: "e2" }],
+            defaultValue: [
+              { id: 1, name: "e1" },
+              { id: 2, name: "e2" },
+            ],
           },
           f: { type: "integer", defaultValue: 0 },
         };
@@ -782,9 +785,337 @@ describe("mutateVariables", function () {
         expect(result).toEqual({
           b: { b1: 1, b2: 20 },
           d: { nested: { value: "D" } },
-          e: [{ id: 1, name: "E1" }, { id: 2, name: "e2" }],
+          e: [
+            { id: 1, name: "E1" },
+            { id: 2, name: "e2" },
+          ],
         });
         expect(Object.keys(result!).sort()).toEqual(["b", "d", "e"]);
+      });
+    });
+  });
+
+  describe("resolveVariableOverrideValue", function () {
+    test("is a function", function () {
+      expect(resolveVariableOverrideValue).toBeInstanceOf(Function);
+    });
+
+    describe("returns overrideValue unchanged when", function () {
+      test("variablesSchema is undefined", function () {
+        expect(resolveVariableOverrideValue(undefined, "foo", "bar")).toBe("bar");
+        expect(resolveVariableOverrideValue(undefined, "foo", { a: 1 })).toEqual({ a: 1 });
+      });
+
+      test("variablesSchema is empty (no variableKey)", function () {
+        expect(resolveVariableOverrideValue({}, "foo", "bar")).toBe("bar");
+      });
+
+      test("variableKey is not in variablesSchema", function () {
+        const schema: Record<string, VariableSchema> = {
+          bar: { type: "string", defaultValue: "x" },
+        };
+        expect(resolveVariableOverrideValue(schema, "foo", "value")).toBe("value");
+        expect(resolveVariableOverrideValue(schema, "foo", { nested: 1 })).toEqual({ nested: 1 });
+      });
+
+      test("overrideValue is null", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "default" },
+        };
+        expect(resolveVariableOverrideValue(schema, "foo", null)).toBeNull();
+      });
+
+      test("overrideValue is undefined", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "default" },
+        };
+        expect(resolveVariableOverrideValue(schema, "foo", undefined)).toBeUndefined();
+      });
+
+      test("overrideValue is a string (full replacement)", function () {
+        const schema: Record<string, VariableSchema> = {
+          name: { type: "string", defaultValue: "default" },
+        };
+        expect(resolveVariableOverrideValue(schema, "name", "custom")).toBe("custom");
+      });
+
+      test("overrideValue is a number (full replacement)", function () {
+        const schema: Record<string, VariableSchema> = {
+          count: { type: "integer", defaultValue: 0 },
+        };
+        expect(resolveVariableOverrideValue(schema, "count", 42)).toBe(42);
+      });
+
+      test("overrideValue is a boolean (full replacement)", function () {
+        const schema: Record<string, VariableSchema> = {
+          flag: { type: "boolean", defaultValue: false },
+        };
+        expect(resolveVariableOverrideValue(schema, "flag", true)).toBe(true);
+      });
+
+      test("overrideValue is an array (full replacement, not path map)", function () {
+        const schema: Record<string, VariableSchema> = {
+          list: { type: "array", defaultValue: [1, 2, 3] },
+        };
+        const arr = [10, 20];
+        expect(resolveVariableOverrideValue(schema, "list", arr)).toEqual([10, 20]);
+        expect(resolveVariableOverrideValue(schema, "list", [])).toEqual([]);
+      });
+    });
+
+    describe("plain object as path map (merge with default)", function () {
+      test("single path key merges with default", function () {
+        const schema: Record<string, VariableSchema> = {
+          theme: {
+            type: "object",
+            defaultValue: { primary: "blue", secondary: "gray" },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "theme", {
+          primary: "red",
+        });
+        expect(result).toEqual({ primary: "red", secondary: "gray" });
+      });
+
+      test("multiple path keys merge with default", function () {
+        const schema: Record<string, VariableSchema> = {
+          config: {
+            type: "object",
+            defaultValue: { a: 1, b: 2, c: 3 },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "config", {
+          a: 10,
+          c: 30,
+        });
+        expect(result).toEqual({ a: 10, b: 2, c: 30 });
+      });
+
+      test("nested path in path map", function () {
+        const schema: Record<string, VariableSchema> = {
+          obj: {
+            type: "object",
+            defaultValue: { level1: { level2: { v: "old" } } },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "obj", {
+          "level1.level2.v": "new",
+        });
+        expect(result).toEqual({ level1: { level2: { v: "new" } } });
+      });
+
+      test("exact variableKey key in path map replaces entire value", function () {
+        const schema: Record<string, VariableSchema> = {
+          theme: {
+            type: "object",
+            defaultValue: { primary: "blue", secondary: "gray" },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "theme", {
+          theme: { primary: "red", accent: "yellow" },
+        });
+        expect(result).toEqual({ primary: "red", accent: "yellow" });
+      });
+
+      test("variableKey key and path keys: full value applied first then paths (order)", function () {
+        const schema: Record<string, VariableSchema> = {
+          v: {
+            type: "object",
+            defaultValue: { a: 1, b: 2 },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "v", {
+          v: { a: 100, b: 200 },
+          b: 999,
+        });
+        expect(result).toEqual({ a: 100, b: 999 });
+      });
+
+      test("array index in path map", function () {
+        const schema: Record<string, VariableSchema> = {
+          items: {
+            type: "array",
+            defaultValue: [
+              { id: 1, name: "a" },
+              { id: 2, name: "b" },
+            ],
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "items", {
+          "[0].name": "A",
+          "[1].id": 20,
+        });
+        expect(result).toEqual([
+          { id: 1, name: "A" },
+          { id: 20, name: "b" },
+        ]);
+      });
+
+      test("deep path and array index", function () {
+        const schema: Record<string, VariableSchema> = {
+          data: {
+            type: "object",
+            defaultValue: {
+              list: [{ x: 1 }, { x: 2 }],
+            },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "data", {
+          "list[0].x": 10,
+        });
+        expect(result).toEqual({
+          list: [{ x: 10 }, { x: 2 }],
+        });
+      });
+
+      test("empty path map returns default merged (no overrides)", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: { a: 1 } },
+        };
+        const result = resolveVariableOverrideValue(schema, "foo", {});
+        expect(result).toEqual({});
+      });
+    });
+
+    describe("does not mutate input", function () {
+      test("overrideValue object is not mutated", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: {} },
+        };
+        const pathMap = { a: 1, b: 2 };
+        resolveVariableOverrideValue(schema, "foo", pathMap);
+        expect(pathMap).toEqual({ a: 1, b: 2 });
+      });
+    });
+
+    describe("edge cases", function () {
+      test("variableKey with same name as path segment", function () {
+        const schema: Record<string, VariableSchema> = {
+          theme: {
+            type: "object",
+            defaultValue: { theme: "light", color: "white" },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "theme", {
+          color: "black",
+        });
+        expect(result).toEqual({ theme: "light", color: "black" });
+      });
+
+      test("multiple variables in schema, only one resolved", function () {
+        const schema: Record<string, VariableSchema> = {
+          a: { type: "object", defaultValue: { x: 1 } },
+          b: { type: "object", defaultValue: { y: 2 } },
+        };
+        const result = resolveVariableOverrideValue(schema, "a", {
+          x: 10,
+        });
+        expect(result).toEqual({ x: 10 });
+      });
+
+      test("path map with only variableKey key (full replacement)", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: { a: 1, b: 2 } },
+        };
+        const result = resolveVariableOverrideValue(schema, "foo", {
+          foo: { x: 1 },
+        });
+        expect(result).toEqual({ x: 1 });
+      });
+
+      test("primitive default with path map (path overwrites)", function () {
+        const schema: Record<string, VariableSchema> = {
+          value: { type: "string", defaultValue: "default" },
+        };
+        const result = resolveVariableOverrideValue(schema, "value", {
+          value: "overridden",
+        });
+        expect(result).toEqual("overridden");
+      });
+    });
+
+    describe("complex: object path maps", function () {
+      test("path map with three-level nested path", function () {
+        const schema: Record<string, VariableSchema> = {
+          cfg: {
+            type: "object",
+            defaultValue: { a: { b: { c: 0 } } },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "cfg", {
+          "a.b.c": 1,
+        });
+        expect(result).toEqual({ a: { b: { c: 1 } } });
+      });
+
+      test("path map with array index then property", function () {
+        const schema: Record<string, VariableSchema> = {
+          rows: {
+            type: "array",
+            defaultValue: [
+              { id: 1, label: "a" },
+              { id: 2, label: "b" },
+            ],
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "rows", {
+          "[0].label": "A",
+          "[1].id": 20,
+        });
+        expect(result).toEqual([
+          { id: 1, label: "A" },
+          { id: 20, label: "b" },
+        ]);
+      });
+
+      test("path map full replacement then path (order: full first)", function () {
+        const schema: Record<string, VariableSchema> = {
+          v: {
+            type: "object",
+            defaultValue: { x: 0, y: 0 },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "v", {
+          v: { x: 1, y: 2, z: 3 },
+          y: 20,
+        });
+        expect(result).toEqual({ x: 1, y: 20, z: 3 });
+      });
+
+      test("path map with mixed path styles", function () {
+        const schema: Record<string, VariableSchema> = {
+          data: {
+            type: "object",
+            defaultValue: { count: 0, nested: { value: "old" } },
+          },
+        };
+        const result = resolveVariableOverrideValue(schema, "data", {
+          count: 5,
+          "nested.value": "new",
+        });
+        expect(result).toEqual({ count: 5, nested: { value: "new" } });
+      });
+    });
+
+    describe("schema default handling", function () {
+      test("defaultValue null with path map leaves value undefined (mutator cannot mutate null)", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: null },
+        };
+        const result = resolveVariableOverrideValue(schema, "foo", {
+          a: 1,
+        });
+        expect(result).toBeUndefined();
+      });
+
+      test("defaultValue undefined with path map leaves value undefined (mutator cannot mutate undefined)", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: undefined },
+        };
+        const result = resolveVariableOverrideValue(schema, "foo", {
+          a: 1,
+        });
+        expect(result).toBeUndefined();
       });
     });
   });

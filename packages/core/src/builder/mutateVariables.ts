@@ -39,9 +39,7 @@ export function resolveVariablesWithOverrides(
     const keysForThisVariable = Object.keys(overrides)
       .filter(
         (k) =>
-          k === variableKey ||
-          k.startsWith(variableKey + ".") ||
-          k.startsWith(variableKey + "["),
+          k === variableKey || k.startsWith(variableKey + ".") || k.startsWith(variableKey + "["),
       )
       .sort((a, b) => a.length - b.length);
 
@@ -53,10 +51,9 @@ export function resolveVariablesWithOverrides(
             ? (JSON.parse(JSON.stringify(overrideValue)) as VariableValue)
             : overrideValue;
       } else {
-        const notation =
-          overrideKey.startsWith(variableKey + "[")
-            ? overrideKey.slice(variableKey.length)
-            : overrideKey.slice(variableKey.length + 1);
+        const notation = overrideKey.startsWith(variableKey + "[")
+          ? overrideKey.slice(variableKey.length)
+          : overrideKey.slice(variableKey.length + 1);
         value = mutate(schema, value, notation, overrideValue);
       }
     }
@@ -65,4 +62,28 @@ export function resolveVariablesWithOverrides(
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Resolve a single variable's override value (e.g. from variableOverrides).
+ * If the value is a plain object with path-like keys, it is merged with the variable's default;
+ * otherwise the value is returned as-is (full replacement).
+ */
+export function resolveVariableOverrideValue(
+  variablesSchema: Record<string, VariableSchema> | undefined,
+  variableKey: string,
+  overrideValue: VariableValue,
+): VariableValue {
+  if (!variablesSchema || !variablesSchema[variableKey]) return overrideValue;
+  if (overrideValue === null || overrideValue === undefined) return overrideValue;
+  if (typeof overrideValue !== "object" || Array.isArray(overrideValue)) {
+    return overrideValue;
+  }
+  const pathMap = overrideValue as Record<string, VariableValue>;
+  const flat: Record<string, VariableValue> = {};
+  for (const [k, v] of Object.entries(pathMap)) {
+    flat[k === variableKey ? variableKey : variableKey + "." + k] = v;
+  }
+  const resolved = resolveVariablesWithOverrides(variablesSchema, flat);
+  return resolved && variableKey in resolved ? resolved[variableKey] : overrideValue;
 }
