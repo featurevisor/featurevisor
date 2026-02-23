@@ -382,7 +382,7 @@ rules:
         "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
         "payload.name": "NL/CH Payload"
         "payload.rows:append": { id: 3, label: "C" }
-        "config.compact:remove": null  # :remove on object property
+        "config.compact:remove": null # :remove on object property
 
     - key: mobile_eu
       segments:
@@ -398,7 +398,7 @@ rules:
         "settings.display.theme": "dark"
         "deep.level1.level2.level3.value": "mobile-eu"
         "items[0].meta.score": 0.9
-        "items[2]:remove": null  # :remove on array index
+        "items[2]:remove": null # :remove on array index
         "mixed.name": "mobile-mixed"
 
     - key: everyone

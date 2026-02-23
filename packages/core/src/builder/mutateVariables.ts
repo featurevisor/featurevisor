@@ -50,7 +50,10 @@ export function resolveMutationsForMultipleVariables(
       .filter(
         (k) =>
           rootVariableFromOverrideKey(k) === variableKey &&
-          (k === variableKey || k.startsWith(variableKey + ".") || k.startsWith(variableKey + "[") || k.startsWith(variableKey + ":")),
+          (k === variableKey ||
+            k.startsWith(variableKey + ".") ||
+            k.startsWith(variableKey + "[") ||
+            k.startsWith(variableKey + ":")),
       )
       .sort((a, b) => a.length - b.length);
 
