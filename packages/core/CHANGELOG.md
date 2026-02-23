@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0](https://github.com/featurevisor/featurevisor/compare/v2.12.0...v2.13.0) (2026-02-23)
+
+
+### Features
+
+* get linting output as JSON from CLI ([#391](https://github.com/featurevisor/featurevisor/issues/391)) ([365dd1d](https://github.com/featurevisor/featurevisor/commit/365dd1d9bfc46dfee6a76804a9803a93beee2609))
+
+
+
+
+
 # [2.12.0](https://github.com/featurevisor/featurevisor/compare/v2.11.0...v2.12.0) (2026-02-21)
 
 
