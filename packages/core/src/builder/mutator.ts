@@ -207,12 +207,13 @@ export function mutate(
   const { segments, operation } = parseNotation(notation);
   if (segments.length === 0) {
     if (Array.isArray(result) && setValue !== undefined) {
+      const arr = result as VariableValue[];
       if (operation === "append") {
-        result.push(setValue);
+        arr.push(setValue);
         return result;
       }
       if (operation === "prepend") {
-        result.unshift(setValue);
+        arr.unshift(setValue);
         return result;
       }
     }
