@@ -52,6 +52,23 @@ function parseNotation(notation: string): ParsedNotation {
       } else {
         segments.push({ key });
       }
+    } else if (rest[i] === "[") {
+      i++;
+      const bracketStart = i;
+      while (i < rest.length && rest[i] !== "]") i++;
+      const bracketContent = rest.slice(bracketStart, i);
+      i++;
+      const eq = bracketContent.indexOf("=");
+      if (eq >= 0) {
+        const prop = bracketContent.slice(0, eq).trim();
+        let val = bracketContent.slice(eq + 1).trim();
+        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+        else if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
+        segments.push({ key: "", selector: { prop, value: val } });
+      } else {
+        const index = parseInt(bracketContent.trim(), 10);
+        segments.push({ key: "", index });
+      }
     }
     if (rest[i] === ".") i++;
   }
@@ -63,12 +80,18 @@ function getAtSegment(obj: VariableValue, seg: PathPart): VariableValue {
   if (obj === null || obj === undefined) return undefined;
   const o = obj as Record<string, unknown>;
   if ("index" in seg) {
-    const arr = Array.isArray(obj) ? obj : (o[seg.key] as unknown[]);
+    const arr =
+      seg.key === ""
+        ? (Array.isArray(obj) ? obj : undefined)
+        : (Array.isArray(obj) ? obj : (o[seg.key] as unknown[]));
     if (!Array.isArray(arr)) return undefined;
     return arr[seg.index] as VariableValue;
   }
   if ("selector" in seg) {
-    const arr = Array.isArray(obj) ? obj : (o[seg.key] as unknown[]);
+    const arr =
+      seg.key === ""
+        ? (Array.isArray(obj) ? obj : undefined)
+        : (Array.isArray(obj) ? obj : (o[seg.key] as unknown[]));
     if (!Array.isArray(arr)) return undefined;
     const { prop, value } = seg.selector;
     const found = arr.find((item) => {
@@ -90,7 +113,10 @@ function setAtSegment(
 ): void {
   if ("index" in seg) {
     const i = seg.index;
-    const arr = Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]);
+    const arr =
+      seg.key === ""
+        ? (Array.isArray(obj) ? obj : undefined)
+        : (Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]));
     if (!Array.isArray(arr)) return;
     if (op === "remove") {
       arr.splice(i, 1);
@@ -103,7 +129,10 @@ function setAtSegment(
     return;
   }
   if ("selector" in seg) {
-    const arr = Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]);
+    const arr =
+      seg.key === ""
+        ? (Array.isArray(obj) ? obj : undefined)
+        : (Array.isArray(obj) ? obj : ((obj as Record<string, unknown>)[seg.key] as unknown[]));
     if (!Array.isArray(arr)) return;
     const { prop, value: selVal } = seg.selector;
     const numVal = /^\d+$/.test(selVal) ? parseInt(selVal, 10) : null;

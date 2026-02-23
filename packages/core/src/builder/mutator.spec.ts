@@ -230,6 +230,14 @@ describe("mutator", function () {
         list: [{ id: 10 }, { id: 2 }],
       });
     });
+
+    test("root-level array: notation [n] sets element at index", function () {
+      const arraySchema: VariableSchema = { type: "array", defaultValue: [] };
+      const value = [10, 20, 30];
+      expect(mutate(arraySchema, value, "[0]", 1)).toEqual([1, 20, 30]);
+      expect(mutate(arraySchema, value, "[1]", 99)).toEqual([10, 99, 30]);
+      expect(mutate(arraySchema, [100], "[0]", 200)).toEqual([200]);
+    });
   });
 
   describe("notation: key[n].key (set property of item at index)", function () {

@@ -1,0 +1,791 @@
+import type { VariableSchema, VariableValue } from "@featurevisor/types";
+import { resolveVariablesWithOverrides } from "./mutateVariables";
+
+describe("mutateVariables", function () {
+  describe("resolveVariablesWithOverrides", function () {
+    test("is a function", function () {
+      expect(resolveVariablesWithOverrides).toBeInstanceOf(Function);
+    });
+
+    describe("returns undefined when", function () {
+      test("overrides is undefined", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "default" },
+        };
+        expect(resolveVariablesWithOverrides(schema, undefined)).toBeUndefined();
+      });
+
+      test("overrides is null", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "default" },
+        };
+        expect(
+          resolveVariablesWithOverrides(schema, null as unknown as Record<string, VariableValue>),
+        ).toBeUndefined();
+      });
+
+      test("overrides is empty object", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "default" },
+        };
+        expect(resolveVariablesWithOverrides(schema, {})).toBeUndefined();
+      });
+
+      test("variablesSchema is undefined", function () {
+        expect(
+          resolveVariablesWithOverrides(undefined, { foo: "bar" }),
+        ).toBeUndefined();
+      });
+
+      test("variablesSchema is empty object", function () {
+        expect(
+          resolveVariablesWithOverrides({}, { foo: "bar" }),
+        ).toBeUndefined();
+      });
+
+      test("every override key refers to a variable not in schema", function () {
+        const schema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "x" },
+        };
+        expect(
+          resolveVariablesWithOverrides(schema, { bar: "y", baz: "z" }),
+        ).toBeUndefined();
+      });
+    });
+
+    describe("returns only overridden variables (not all from schema)", function () {
+      test("single override includes only that variable", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "defaultFoo" },
+          bar: { type: "string", defaultValue: "defaultBar" },
+          baz: { type: "string", defaultValue: "defaultBaz" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { bar: "overriddenBar" });
+        expect(result).toEqual({ bar: "overriddenBar" });
+        expect(Object.keys(result!).sort()).toEqual(["bar"]);
+      });
+
+      test("multiple overrides include only those variables", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          a: { type: "string", defaultValue: "a" },
+          b: { type: "string", defaultValue: "b" },
+          c: { type: "string", defaultValue: "c" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          a: "A",
+          c: "C",
+        });
+        expect(result).toEqual({ a: "A", c: "C" });
+        expect(Object.keys(result!).sort()).toEqual(["a", "c"]);
+      });
+    });
+
+    describe("exact key override (whole variable replacement)", function () {
+      test("replaces entire value with override", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: { a: 1, b: 2 } },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          foo: { x: 10, y: 20 },
+        });
+        expect(result).toEqual({ foo: { x: 10, y: 20 } });
+      });
+
+      test("replaces string default", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          name: { type: "string", defaultValue: "default" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { name: "custom" });
+        expect(result).toEqual({ name: "custom" });
+      });
+
+      test("replaces number default", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          count: { type: "integer", defaultValue: 0 },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { count: 42 });
+        expect(result).toEqual({ count: 42 });
+      });
+
+      test("replaces array default", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          list: { type: "array", defaultValue: [1, 2, 3] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { list: [10, 20] });
+        expect(result).toEqual({ list: [10, 20] });
+      });
+    });
+
+    describe("dot-notation override (mutates default)", function () {
+      test("sets nested path on object default", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          config: {
+            type: "object",
+            defaultValue: { a: 1, b: 2, c: 3 },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "config.b": 20,
+        });
+        expect(result).toEqual({ config: { a: 1, b: 20, c: 3 } });
+      });
+
+      test("sets deep nested path", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: {
+            type: "object",
+            defaultValue: { level1: { level2: { value: "old" } } },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "foo.level1.level2.value": "new",
+        });
+        expect(result).toEqual({
+          foo: { level1: { level2: { value: "new" } } },
+        });
+      });
+
+      test("multiple dot-notation overrides for same variable merge", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          obj: {
+            type: "object",
+            defaultValue: { a: 1, b: 2, c: 3 },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "obj.a": 10,
+          "obj.c": 30,
+        });
+        expect(result).toEqual({ obj: { a: 10, b: 2, c: 30 } });
+      });
+    });
+
+    describe("order of application", function () {
+      test("full key then nested: nested wins on that path", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: { a: 1, b: 2 } },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          foo: { a: 100, b: 200 },
+          "foo.b": 999,
+        });
+        expect(result).toEqual({ foo: { a: 100, b: 999 } });
+      });
+
+      test("nested then full key: full key applied first (shorter), then nested", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: { a: 1, b: 2 } },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "foo.a": 10,
+          foo: { x: 1 },
+        });
+        expect(result).toEqual({ foo: { x: 1, a: 10 } });
+      });
+    });
+
+    describe("defaultValue handling", function () {
+      test("uses clone of defaultValue (does not mutate schema)", function () {
+        const defaultValue = { a: 1 };
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue },
+        };
+        resolveVariablesWithOverrides(variablesSchema, { "foo.a": 2 });
+        expect(defaultValue).toEqual({ a: 1 });
+      });
+
+      test("variable with undefined defaultValue and nested override leaves value undefined", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: undefined },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "foo.a": 1,
+        });
+        expect(result).toEqual({ foo: undefined });
+      });
+
+      test("variable with null defaultValue and exact override", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: null },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { foo: "set" });
+        expect(result).toEqual({ foo: "set" });
+      });
+    });
+
+    describe("override key not in schema", function () {
+      test("ignores unknown variable key (no entry in result)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "x" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          foo: "ok",
+          unknownVar: "ignored",
+        });
+        expect(result).toEqual({ foo: "ok" });
+      });
+
+      test("ignores dotted path whose first segment is not in schema", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "string", defaultValue: "x" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "other.deep.path": 1,
+        });
+        expect(result).toBeUndefined();
+      });
+    });
+
+    describe("does not mutate inputs", function () {
+      test("overrides object is not mutated", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue: {} },
+        };
+        const overrides = { foo: { key: "value" } };
+        resolveVariablesWithOverrides(variablesSchema, overrides);
+        expect(overrides.foo).toEqual({ key: "value" });
+      });
+
+      test("schema defaultValues are not mutated", function () {
+        const defaultValue = { nested: { x: 1 } };
+        const variablesSchema: Record<string, VariableSchema> = {
+          foo: { type: "object", defaultValue },
+        };
+        resolveVariablesWithOverrides(variablesSchema, { "foo.nested.x": 2 });
+        expect(defaultValue).toEqual({ nested: { x: 1 } });
+      });
+    });
+
+    describe("multiple variables with dot notation", function () {
+      test("resolves each overridden variable independently", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          theme: {
+            type: "object",
+            defaultValue: { primary: "blue", secondary: "gray" },
+          },
+          count: { type: "integer", defaultValue: 0 },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "theme.primary": "red",
+          count: 5,
+        });
+        expect(result).toEqual({
+          theme: { primary: "red", secondary: "gray" },
+          count: 5,
+        });
+      });
+    });
+
+    describe("edge cases", function () {
+      test("override key with single segment (no dot)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          x: { type: "string", defaultValue: "default" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, { x: "y" });
+        expect(result).toEqual({ x: "y" });
+      });
+
+      test("override key with multiple dots", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          a: { type: "object", defaultValue: { b: { c: 0 } } },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "a.b.c": 1,
+        });
+        expect(result).toEqual({ a: { b: { c: 1 } } });
+      });
+
+      test("same variable overridden by exact and dotted keys (shorter key applied first)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          v: { type: "object", defaultValue: { p: 1, q: 2 } },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "v.p": 10,
+          v: { p: 100, q: 200 },
+        });
+        expect(result).toEqual({ v: { p: 10, q: 200 } });
+      });
+
+      test("returns undefined when result is empty (all override keys unknown)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          known: { type: "string", defaultValue: "v" },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          unknown: "x",
+          "another.thing": 1,
+        });
+        expect(result).toBeUndefined();
+      });
+    });
+
+    describe("complex: deeply nested objects", function () {
+      test("object with multiple branches, override one leaf", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          root: {
+            type: "object",
+            defaultValue: {
+              left: { a: 1, b: 2 },
+              right: { x: 10, y: 20 },
+              center: { p: 100, q: 200 },
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "root.right.y": 99,
+        });
+        expect(result).toEqual({
+          root: {
+            left: { a: 1, b: 2 },
+            right: { x: 10, y: 99 },
+            center: { p: 100, q: 200 },
+          },
+        });
+      });
+
+      test("override multiple leaves in different branches", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          tree: {
+            type: "object",
+            defaultValue: {
+              l: { l: { v: 1 }, r: { v: 2 } },
+              r: { l: { v: 3 }, r: { v: 4 } },
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "tree.l.l.v": 10,
+          "tree.r.r.v": 40,
+        });
+        expect(result).toEqual({
+          tree: {
+            l: { l: { v: 10 }, r: { v: 2 } },
+            r: { l: { v: 3 }, r: { v: 40 } },
+          },
+        });
+      });
+
+      test("four levels deep with override at each level", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          d: {
+            type: "object",
+            defaultValue: {
+              l1: {
+                l2: { l3: { l4: "deep" } },
+              },
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "d.l1.l2.l3.l4": "updated",
+        });
+        expect(result).toEqual({
+          d: {
+            l1: {
+              l2: { l3: { l4: "updated" } },
+            },
+          },
+        });
+      });
+
+      test("replace whole branch with exact key then override nested under it", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          cfg: {
+            type: "object",
+            defaultValue: {
+              api: { url: "old", timeout: 5 },
+              ui: { theme: "light" },
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          cfg: { api: { url: "https://new", timeout: 10 }, ui: { theme: "dark" } },
+          "cfg.api.timeout": 30,
+        });
+        expect(result).toEqual({
+          cfg: {
+            api: { url: "https://new", timeout: 30 },
+            ui: { theme: "dark" },
+          },
+        });
+      });
+    });
+
+    describe("complex: arrays", function () {
+      test("override element at index", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          list: { type: "array", defaultValue: [10, 20, 30] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "list[1]": 99,
+        });
+        expect(result).toEqual({ list: [10, 99, 30] });
+      });
+
+      test("override first and last index", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          arr: { type: "array", defaultValue: ["a", "b", "c", "d"] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "arr[0]": "A",
+          "arr[3]": "D",
+        });
+        expect(result).toEqual({ arr: ["A", "b", "c", "D"] });
+      });
+
+      test("array of primitives replaced entirely with exact key", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          ids: { type: "array", defaultValue: [1, 2, 3] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          ids: [100, 200, 300],
+        });
+        expect(result).toEqual({ ids: [100, 200, 300] });
+      });
+    });
+
+    describe("complex: arrays of objects", function () {
+      test("override property of object at index", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          items: {
+            type: "array",
+            defaultValue: [
+              { id: 1, name: "first" },
+              { id: 2, name: "second" },
+              { id: 3, name: "third" },
+            ],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "items[0].name": "First",
+          "items[2].id": 30,
+        });
+        expect(result).toEqual({
+          items: [
+            { id: 1, name: "First" },
+            { id: 2, name: "second" },
+            { id: 30, name: "third" },
+          ],
+        });
+      });
+
+      test("override nested property inside object at index", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          users: {
+            type: "array",
+            defaultValue: [
+              { id: 1, profile: { displayName: "Alice", role: "admin" } },
+              { id: 2, profile: { displayName: "Bob", role: "user" } },
+            ],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "users[0].profile.displayName": "Alicia",
+          "users[1].profile.role": "editor",
+        });
+        expect(result).toEqual({
+          users: [
+            { id: 1, profile: { displayName: "Alicia", role: "admin" } },
+            { id: 2, profile: { displayName: "Bob", role: "editor" } },
+          ],
+        });
+      });
+
+      test("override multiple properties of same object at index", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          rows: {
+            type: "array",
+            defaultValue: [
+              { a: 1, b: 2, c: 3 },
+              { a: 4, b: 5, c: 6 },
+            ],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "rows[1].a": 40,
+          "rows[1].c": 60,
+        });
+        expect(result).toEqual({
+          rows: [
+            { a: 1, b: 2, c: 3 },
+            { a: 40, b: 5, c: 60 },
+          ],
+        });
+      });
+
+      test("replace whole array of objects with exact key", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          list: {
+            type: "array",
+            defaultValue: [{ id: 1 }, { id: 2 }],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          list: [{ id: 10, name: "x" }, { id: 20, name: "y" }],
+        });
+        expect(result).toEqual({
+          list: [{ id: 10, name: "x" }, { id: 20, name: "y" }],
+        });
+      });
+    });
+
+    describe("complex: object containing arrays of objects", function () {
+      test("config with sections and items", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          config: {
+            type: "object",
+            defaultValue: {
+              title: "App",
+              sections: [
+                { id: "s1", label: "Section 1", items: [{ name: "a" }, { name: "b" }] },
+                { id: "s2", label: "Section 2", items: [{ name: "c" }] },
+              ],
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "config.title": "My App",
+          "config.sections[0].label": "First",
+          "config.sections[0].items[1].name": "B",
+          "config.sections[1].items[0].name": "C",
+        });
+        expect(result).toEqual({
+          config: {
+            title: "My App",
+            sections: [
+              { id: "s1", label: "First", items: [{ name: "a" }, { name: "B" }] },
+              { id: "s2", label: "Section 2", items: [{ name: "C" }] },
+            ],
+          },
+        });
+      });
+
+      test("feature flags style: rules array with variables", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          payload: {
+            type: "object",
+            defaultValue: {
+              enabled: true,
+              rules: [
+                { id: "r1", percentage: 50, config: { theme: "light", size: "md" } },
+                { id: "r2", percentage: 50, config: { theme: "dark", size: "sm" } },
+              ],
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "payload.rules[0].config.theme": "blue",
+          "payload.rules[1].percentage": 100,
+        });
+        expect(result).toEqual({
+          payload: {
+            enabled: true,
+            rules: [
+              { id: "r1", percentage: 50, config: { theme: "blue", size: "md" } },
+              { id: "r2", percentage: 100, config: { theme: "dark", size: "sm" } },
+            ],
+          },
+        });
+      });
+    });
+
+    describe("complex: multiple variables with mixed structures", function () {
+      test("two variables: one nested object, one array of objects", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          settings: {
+            type: "object",
+            defaultValue: {
+              theme: "light",
+              layout: { sidebar: true, width: 240 },
+            },
+          },
+          items: {
+            type: "array",
+            defaultValue: [
+              { id: 1, label: "One" },
+              { id: 2, label: "Two" },
+            ],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "settings.layout.width": 320,
+          "items[1].label": "Two Updated",
+        });
+        expect(result).toEqual({
+          settings: {
+            theme: "light",
+            layout: { sidebar: true, width: 320 },
+          },
+          items: [
+            { id: 1, label: "One" },
+            { id: 2, label: "Two Updated" },
+          ],
+        });
+      });
+
+      test("three variables overridden with different depth", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          flat: { type: "string", defaultValue: "v1" },
+          nested: {
+            type: "object",
+            defaultValue: { a: { b: "old" } },
+          },
+          list: { type: "array", defaultValue: [{ x: 1 }, { x: 2 }] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          flat: "V1",
+          "nested.a.b": "new",
+          "list[0].x": 10,
+        });
+        expect(result).toEqual({
+          flat: "V1",
+          nested: { a: { b: "new" } },
+          list: [{ x: 10 }, { x: 2 }],
+        });
+      });
+    });
+
+    describe("complex: edge cases for arrays and nesting", function () {
+      test("empty array default, override index (mutator creates/updates)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          arr: { type: "array", defaultValue: [] },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "arr[0]": "first",
+        });
+        expect(result).toEqual({ arr: ["first"] });
+      });
+
+      test("object with empty array property, override inside array", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          data: {
+            type: "object",
+            defaultValue: { tags: [] },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "data.tags[0]": "new-tag",
+        });
+        expect(result).toEqual({ data: { tags: ["new-tag"] } });
+      });
+
+      test("array of objects with nested array", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          groups: {
+            type: "array",
+            defaultValue: [
+              { name: "G1", ids: [1, 2, 3] },
+              { name: "G2", ids: [4, 5] },
+            ],
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "groups[0].ids[1]": 20,
+          "groups[1].name": "Group 2",
+        });
+        expect(result).toEqual({
+          groups: [
+            { name: "G1", ids: [1, 20, 3] },
+            { name: "Group 2", ids: [4, 5] },
+          ],
+        });
+      });
+
+      test("deep chain: object with array of objects with nested object", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          root: {
+            type: "object",
+            defaultValue: {
+              items: [
+                { id: 1, meta: { count: 0, label: "a" } },
+                { id: 2, meta: { count: 0, label: "b" } },
+              ],
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "root.items[0].meta.count": 5,
+          "root.items[1].meta.label": "B",
+        });
+        expect(result).toEqual({
+          root: {
+            items: [
+              { id: 1, meta: { count: 5, label: "a" } },
+              { id: 2, meta: { count: 0, label: "B" } },
+            ],
+          },
+        });
+      });
+    });
+
+    describe("complex: many overrides on single variable", function () {
+      test("single variable with 5+ dotted overrides", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          state: {
+            type: "object",
+            defaultValue: {
+              a: 1,
+              b: 2,
+              c: 3,
+              d: 4,
+              e: 5,
+              f: 6,
+            },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "state.a": 10,
+          "state.c": 30,
+          "state.e": 50,
+        });
+        expect(result).toEqual({
+          state: { a: 10, b: 2, c: 30, d: 4, e: 50, f: 6 },
+        });
+      });
+
+      test("single variable: mix of exact key and dotted overrides (order by length)", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          v: {
+            type: "object",
+            defaultValue: { x: 0, y: 0 },
+          },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "v.x": 1,
+          v: { x: 100, y: 200, z: 300 },
+          "v.y": 2,
+        });
+        expect(result).toEqual({ v: { x: 1, y: 2, z: 300 } });
+      });
+    });
+
+    describe("complex: schema with multiple variables, only some overridden", function () {
+      test("six variables in schema, override two with complex paths", function () {
+        const variablesSchema: Record<string, VariableSchema> = {
+          a: { type: "string", defaultValue: "a" },
+          b: { type: "object", defaultValue: { b1: 1, b2: 2 } },
+          c: { type: "array", defaultValue: [1, 2, 3] },
+          d: {
+            type: "object",
+            defaultValue: { nested: { value: "d" } },
+          },
+          e: {
+            type: "array",
+            defaultValue: [{ id: 1, name: "e1" }, { id: 2, name: "e2" }],
+          },
+          f: { type: "integer", defaultValue: 0 },
+        };
+        const result = resolveVariablesWithOverrides(variablesSchema, {
+          "b.b2": 20,
+          "d.nested.value": "D",
+          "e[0].name": "E1",
+        });
+        expect(result).toEqual({
+          b: { b1: 1, b2: 20 },
+          d: { nested: { value: "D" } },
+          e: [{ id: 1, name: "E1" }, { id: 2, name: "e2" }],
+        });
+        expect(Object.keys(result!).sort()).toEqual(["b", "d", "e"]);
+      });
+    });
+  });
+});

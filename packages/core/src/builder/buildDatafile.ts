@@ -30,6 +30,7 @@ import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } fro
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
 import { convertToV1 } from "./convertToV1";
+import { resolveVariablesWithOverrides } from "./mutateVariables";
 
 export interface CustomDatafileOptions {
   featureKey?: string;
@@ -272,7 +273,7 @@ export async function buildDatafile(
         ).map((t: Traffic) => {
           return {
             ...t,
-            variables: t.variables, // @TODO: handle mutations
+            variables: resolveVariablesWithOverrides(parsedFeature.variablesSchema, t.variables),
             segments:
               typeof t.segments !== "string" && projectConfig.stringify
                 ? JSON.stringify(t.segments)
