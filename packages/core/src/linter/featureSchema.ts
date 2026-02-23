@@ -1,4 +1,4 @@
-import type { Schema } from "@featurevisor/types";
+import type { Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
@@ -510,15 +510,18 @@ function refineVariableValueObject(
   }
 }
 
+/** Schema or variable schema (e.g. type "json", defaultValue); used for value validation. */
+type VariableSchemaLike = (Omit<Schema, "type"> & { type?: SchemaType | "json" }) | null | undefined;
+
 function superRefineVariableValue(
   projectConfig: ProjectConfig,
-  variableSchema,
-  variableValue,
-  path,
-  ctx,
+  variableSchema: VariableSchemaLike,
+  variableValue: unknown,
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
   variableKey?: string,
   schemasByKey?: Record<string, Schema>,
-) {
+): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
 
   if (!variableSchema) {
@@ -876,10 +879,7 @@ function refineVariableEntry(
   if (isMutationKey(variableKey)) {
     const validation = validateMutationKey(
       variableKey,
-      variableSchemaByKey as Record<
-        string,
-        { schema?: string; type?: string; [k: string]: unknown }
-      >,
+      variableSchemaByKey as Record<string, Schema>,
       schemasByKey,
     );
     if (!validation.valid && validation.error) {
@@ -893,7 +893,7 @@ function refineVariableEntry(
     if (validation.valueSchema) {
       superRefineVariableValue(
         projectConfig,
-        validation.valueSchema as Parameters<typeof superRefineVariableValue>[1],
+        validation.valueSchema,
         variableValue,
         path,
         ctx,
@@ -1592,12 +1592,7 @@ export function getFeatureZodSchema(
                       continue;
                     }
                     const atPathSchema = resolveSchemaAtPath(
-                      variableSchema as {
-                        type?: string;
-                        properties?: Record<string, unknown>;
-                        items?: unknown;
-                        schema?: string;
-                      },
+                      variableSchema as Schema,
                       pathSegments,
                       schemasByKey,
                     );
@@ -1622,7 +1617,7 @@ export function getFeatureZodSchema(
                     }
                     superRefineVariableValue(
                       projectConfig,
-                      atPathSchema as Parameters<typeof superRefineVariableValue>[1],
+                      atPathSchema,
                       pathMap[pathKey],
                       [...valuePath, pathKey],
                       ctx,

@@ -1331,5 +1331,38 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
         { pathContains: ["rules", "variables"], messageContains: "only allowed on array" },
       );
     });
+
+    it("rejects :remove on required object property", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              required: ["compact"],
+              defaultValue: { theme: "light", compact: true },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.compact:remove": null },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        {
+          pathContains: ["rules", "variables"],
+          messageContains: "Cannot remove required property",
+        },
+      );
+    });
   });
 });
