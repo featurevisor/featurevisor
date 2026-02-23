@@ -1,9 +1,20 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
 import { mutate } from "./mutator";
 
+const MUTATION_OP_SUFFIX = /:((?:append|prepend|after|before|remove))$/;
+
+/**
+ * Get the root variable name from an override key (e.g. "tags:append" -> "tags", "payload.rows:append" -> "payload").
+ */
+function rootVariableFromOverrideKey(overrideKey: string): string {
+  const withoutSuffix = overrideKey.replace(MUTATION_OP_SUFFIX, "").trim();
+  const firstSegment = withoutSuffix.includes(".") ? withoutSuffix.split(".")[0] : withoutSuffix;
+  return firstSegment.replace(/\s*\[.*\]\s*$/, "").trim();
+}
+
 /**
  * Resolve variable values from schema defaults and overrides.
- * Override keys may be variable keys or dot-notation paths (e.g. "foo", "foo.a.b").
+ * Override keys may be variable keys or dot-notation paths (e.g. "foo", "foo.a.b", "tags:append", "items[id=2]:after").
  * Uses the mutator so nested paths and mutation notations are supported.
  * Returns only variables that were desired to be overridden (i.e. appear in overrides).
  */
@@ -20,8 +31,7 @@ export function resolveMutationsForMultipleVariables(
 
   const variableKeysToOutput = new Set<string>();
   for (const overrideKey of Object.keys(overrides)) {
-    const firstSegment = overrideKey.includes(".") ? overrideKey.split(".")[0] : overrideKey;
-    const variableKey = firstSegment.replace(/\s*\[.*\]\s*$/, "").trim();
+    const variableKey = rootVariableFromOverrideKey(overrideKey);
     if (variableKey && variablesSchema[variableKey]) {
       variableKeysToOutput.add(variableKey);
     }
@@ -39,7 +49,8 @@ export function resolveMutationsForMultipleVariables(
     const keysForThisVariable = Object.keys(overrides)
       .filter(
         (k) =>
-          k === variableKey || k.startsWith(variableKey + ".") || k.startsWith(variableKey + "["),
+          rootVariableFromOverrideKey(k) === variableKey &&
+          (k === variableKey || k.startsWith(variableKey + ".") || k.startsWith(variableKey + "[") || k.startsWith(variableKey + ":")),
       )
       .sort((a, b) => a.length - b.length);
 
@@ -53,7 +64,9 @@ export function resolveMutationsForMultipleVariables(
       } else {
         const notation = overrideKey.startsWith(variableKey + "[")
           ? overrideKey.slice(variableKey.length)
-          : overrideKey.slice(variableKey.length + 1);
+          : overrideKey.startsWith(variableKey + ":")
+            ? overrideKey.slice(variableKey.length)
+            : overrideKey.slice(variableKey.length + 1);
         value = mutate(schema, value, notation, overrideValue);
       }
     }

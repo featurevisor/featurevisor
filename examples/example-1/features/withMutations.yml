@@ -1,6 +1,7 @@
 # Exhaustive feature demonstrating mutation syntax: primitives, nested objects,
-# arrays, arrays of objects, dot-notation overrides, array-index overrides,
-# and overrides from variations, variableOverrides (segment/condition), and rules.
+# arrays, arrays of objects; dot-notation, array-index, and operation suffixes:
+#   :append, :prepend (arrays), :after, :before (array by selector), :remove (property or element).
+# Overrides from variations, variableOverrides (segment/condition), and rules.
 description: Exhaustive mutations demo - all variable types and override syntax
 tags:
   - all
@@ -374,8 +375,14 @@ rules:
         "config.width": 1500
         "settings.layout.sidebar": false
         "tags[0]": "nl-ch"
+        "tags:prepend": "first"
+        "tags:append": "extra"
         "items[1].name": "NL Second"
+        "items[id=2]:before": { id: "2a", name: "Before Second", meta: { score: 0.15 } }
+        "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
         "payload.name": "NL/CH Payload"
+        "payload.rows:append": { id: 3, label: "C" }
+        "config.compact:remove": null  # :remove on object property
 
     - key: mobile_eu
       segments:
@@ -391,6 +398,7 @@ rules:
         "settings.display.theme": "dark"
         "deep.level1.level2.level3.value": "mobile-eu"
         "items[0].meta.score": 0.9
+        "items[2]:remove": null  # :remove on array index
         "mixed.name": "mobile-mixed"
 
     - key: everyone

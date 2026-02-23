@@ -99,6 +99,11 @@ describe("mutator", function () {
       expect(mutate(schema, value, "items:append", 1)).toEqual({ items: [1] });
     });
 
+    test("root-level array: notation :append appends to array value", function () {
+      const arraySchema: VariableSchema = { type: "array", defaultValue: [] };
+      expect(mutate(arraySchema, ["a", "b"], ":append", "c")).toEqual(["a", "b", "c"]);
+    });
+
     test("appends object to array", function () {
       const value = { list: [{ id: 1 }] };
       expect(mutate(schema, value, "list:append", { id: 2, name: "b" })).toEqual({
@@ -125,6 +130,11 @@ describe("mutator", function () {
     test("creates array when key is missing and prepends", function () {
       const value: VariableValue = {};
       expect(mutate(schema, value, "items:prepend", "x")).toEqual({ items: ["x"] });
+    });
+
+    test("root-level array: notation :prepend prepends to array value", function () {
+      const arraySchema: VariableSchema = { type: "array", defaultValue: [] };
+      expect(mutate(arraySchema, ["b", "c"], ":prepend", "a")).toEqual(["a", "b", "c"]);
     });
   });
 

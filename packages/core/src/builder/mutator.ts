@@ -205,7 +205,19 @@ export function mutate(
   const result = JSON.parse(JSON.stringify(value)) as VariableValue;
 
   const { segments, operation } = parseNotation(notation);
-  if (segments.length === 0) return result;
+  if (segments.length === 0) {
+    if (Array.isArray(result) && setValue !== undefined) {
+      if (operation === "append") {
+        result.push(setValue);
+        return result;
+      }
+      if (operation === "prepend") {
+        result.unshift(setValue);
+        return result;
+      }
+    }
+    return result;
+  }
 
   const last = segments[segments.length - 1];
   const parentSegments = segments.slice(0, -1);

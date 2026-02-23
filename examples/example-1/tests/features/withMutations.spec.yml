@@ -168,7 +168,7 @@ assertions:
             - de
             - tag
 
-  # ========== Rule override: NL or CH (staging) - rule variables from default + overrides ==========
+  # ========== Rule override: NL or CH (staging) - rule variables + :prepend/:append/:before/:after/:remove ==========
   - at: 50
     environment: staging
     context:
@@ -180,7 +180,6 @@ assertions:
       score: 3.5
       config:
         theme: light
-        compact: true
         width: 1500
       settings:
         display:
@@ -190,15 +189,23 @@ assertions:
           sidebar: false
           width: 240
       tags:
+        - first
         - nl-ch
         - demo
+        - extra
       items:
         - id: "1"
           name: "First"
           meta: { score: 0.1 }
+        - id: "2a"
+          name: "Before Second"
+          meta: { score: 0.15 }
         - id: "2"
           name: "NL Second"
           meta: { score: 0.2 }
+        - id: "2b"
+          name: "After Second"
+          meta: { score: 0.25 }
         - id: "3"
           name: "Third"
           meta: { score: 0.3 }
@@ -209,6 +216,8 @@ assertions:
             label: "A"
           - id: 2
             label: "B"
+          - id: 3
+            label: "C"
 
   - at: 50
     environment: staging
@@ -221,10 +230,9 @@ assertions:
       score: 3.5
       config:
         theme: light
-        compact: true
         width: 1500
 
-  # ========== Rule override: Mobile EU (staging) - rule variables from default + overrides ==========
+  # ========== Rule override: Mobile EU (staging) - rule variables + items[2]:remove ==========
   - at: 50
     environment: staging
     context:
@@ -260,9 +268,6 @@ assertions:
         - id: "2"
           name: "Second"
           meta: { score: 0.2 }
-        - id: "3"
-          name: "Third"
-          meta: { score: 0.3 }
       mixed:
         name: "mobile-mixed"
         config:
@@ -314,11 +319,12 @@ assertions:
       score: 3.5
       config:
         theme: light
-        compact: true
         width: 1500
       tags:
+        - first
         - nl-ch
         - demo
+        - extra
 
   # ========== Production: Germany rule (subset overrides) ==========
   - at: 50
@@ -484,5 +490,4 @@ assertions:
       score: 3.5
       config:
         theme: light
-        compact: true
         width: 1500

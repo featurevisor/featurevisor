@@ -876,7 +876,10 @@ function refineVariableEntry(
   if (isMutationKey(variableKey)) {
     const validation = validateMutationKey(
       variableKey,
-      variableSchemaByKey as Record<string, { schema?: string; type?: string; [k: string]: unknown }>,
+      variableSchemaByKey as Record<
+        string,
+        { schema?: string; type?: string; [k: string]: unknown }
+      >,
       schemasByKey,
     );
     if (!validation.valid && validation.error) {
@@ -1062,6 +1065,7 @@ export function getFeatureZodSchema(
 ) {
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
+  const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
 
   const variationValueZodSchema = z.string().min(1);
 
@@ -1109,7 +1113,7 @@ export function getFeatureZodSchema(
 
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(),
+          variables: z.record(variableValueOrNullZodSchema).optional(),
           variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -1157,7 +1161,7 @@ export function getFeatureZodSchema(
             segments: groupSegmentsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueOrNullZodSchema).optional(),
           })
           .strict(),
         z
@@ -1165,7 +1169,7 @@ export function getFeatureZodSchema(
             conditions: conditionsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueOrNullZodSchema).optional(),
           })
           .strict(),
       ]),
@@ -1366,7 +1370,7 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               value: variationValueZodSchema,
               weight: z.number().min(0).max(100),
-              variables: z.record(variableValueZodSchema).optional(),
+              variables: z.record(variableValueOrNullZodSchema).optional(),
               variableOverrides: z
                 .record(
                   z.array(
@@ -1588,7 +1592,12 @@ export function getFeatureZodSchema(
                       continue;
                     }
                     const atPathSchema = resolveSchemaAtPath(
-                      variableSchema as { type?: string; properties?: Record<string, unknown>; items?: unknown; schema?: string },
+                      variableSchema as {
+                        type?: string;
+                        properties?: Record<string, unknown>;
+                        items?: unknown;
+                        schema?: string;
+                      },
                       pathSegments,
                       schemasByKey,
                     );
@@ -1599,7 +1608,8 @@ export function getFeatureZodSchema(
                       );
                       const isFlatObject =
                         effectiveSchema?.type === "object" &&
-                        (!effectiveSchema.properties || Object.keys(effectiveSchema.properties).length === 0);
+                        (!effectiveSchema.properties ||
+                          Object.keys(effectiveSchema.properties).length === 0);
                       if (isFlatObject) {
                         continue;
                       }

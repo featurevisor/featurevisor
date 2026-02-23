@@ -1232,11 +1232,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100, variables: { "config.theme": "dark", "config.width": 1200 } },
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.theme": "dark", "config.width": 1200 },
+              },
             ],
-            production: [
-              { key: "r1", segments: "*", percentage: 100 },
-            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
           },
         }),
       );
@@ -1275,7 +1278,10 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             production: [{ key: "r1", segments: "*", percentage: 100 }],
           },
         }),
-        { pathContains: ["rules", "variables", "unknownVar.foo"], messageContains: "not defined in" },
+        {
+          pathContains: ["rules", "variables", "unknownVar.foo"],
+          messageContains: "not defined in",
+        },
       );
     });
 
@@ -1291,7 +1297,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100, variables: { "config.unknownProp": "x" } },
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.unknownProp": "x" },
+              },
             ],
             production: [{ key: "r1", segments: "*", percentage: 100 }],
           },

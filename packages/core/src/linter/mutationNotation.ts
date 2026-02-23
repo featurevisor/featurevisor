@@ -36,7 +36,11 @@ export function parseMutationKey(key: string): ParsedMutationKey | null {
   const first = segments[0];
   const firstPathPart: PathSegment[] =
     first && ("index" in first || "selector" in first)
-      ? ["index" in first ? { key: "", index: first.index } : { key: "", selector: first.selector! }]
+      ? [
+          "index" in first
+            ? { key: "", index: first.index }
+            : { key: "", selector: first.selector! },
+        ]
       : [];
   const pathWithinVariable = firstPathPart.concat(segments.slice(1));
   return { rootKey, pathSegments: pathWithinVariable, allSegments: segments, operation };
@@ -56,10 +60,7 @@ function resolveSchemaRef(
 ): SchemaLike | null {
   if (!schema || typeof schema !== "object") return null;
   if (schema.schema && schemasByKey?.[schema.schema]) {
-    return resolveSchemaRef(
-      schemasByKey[schema.schema] as SchemaLike,
-      schemasByKey,
-    ) as SchemaLike;
+    return resolveSchemaRef(schemasByKey[schema.schema] as SchemaLike, schemasByKey) as SchemaLike;
   }
   return schema;
 }
@@ -110,7 +111,9 @@ function getContainerSchemaAtPath(
 ): { containerSchema: SchemaLike; lastSegment: PathSegment; parentSchema: SchemaLike } | null {
   if (pathSegments.length === 0) {
     const resolved = variableSchema ? resolveSchemaRef(variableSchema, schemasByKey) : null;
-    return resolved ? { containerSchema: resolved, lastSegment: { key: "" }, parentSchema: resolved } : null;
+    return resolved
+      ? { containerSchema: resolved, lastSegment: { key: "" }, parentSchema: resolved }
+      : null;
   }
   let current: SchemaLike | null = resolveSchemaRef(variableSchema, schemasByKey);
   if (!current) return null;
@@ -138,9 +141,10 @@ function getContainerSchemaAtPath(
     return { containerSchema: parentSchema, lastSegment, parentSchema };
   }
   const propSchema = parentSchema.properties?.[lastSegment.key];
-  const resolvedProp = propSchema && typeof propSchema === "object"
-    ? resolveSchemaRef(propSchema as SchemaLike, schemasByKey)
-    : null;
+  const resolvedProp =
+    propSchema && typeof propSchema === "object"
+      ? resolveSchemaRef(propSchema as SchemaLike, schemasByKey)
+      : null;
   return resolvedProp ? { containerSchema: resolvedProp, lastSegment, parentSchema } : null;
 }
 
@@ -195,10 +199,7 @@ export function validateMutationKey(
       error: `Variable "${rootKey}" is not defined in \`variablesSchema\`.`,
     };
   }
-  const resolvedRoot = resolveSchemaRef(
-    variableSchema as SchemaLike,
-    schemasByKey,
-  );
+  const resolvedRoot = resolveSchemaRef(variableSchema as SchemaLike, schemasByKey);
   if (!resolvedRoot) {
     return {
       valid: true,
@@ -245,9 +246,10 @@ export function validateMutationKey(
           error: `Operation ":${operation}" is only allowed on array variables or object properties of type array; path "${key}" does not point to an array.`,
         };
       }
-      const itemSchema = arrResolved.items && typeof arrResolved.items === "object"
-        ? resolveSchemaRef(arrResolved.items as SchemaLike, schemasByKey)
-        : null;
+      const itemSchema =
+        arrResolved.items && typeof arrResolved.items === "object"
+          ? resolveSchemaRef(arrResolved.items as SchemaLike, schemasByKey)
+          : null;
       return {
         valid: true,
         rootKey,
@@ -282,9 +284,10 @@ export function validateMutationKey(
           };
         }
         if (operation === "after" || operation === "before") {
-          const itemSchema = container.parentSchema.items && typeof container.parentSchema.items === "object"
-            ? resolveSchemaRef(container.parentSchema.items as SchemaLike, schemasByKey)
-            : null;
+          const itemSchema =
+            container.parentSchema.items && typeof container.parentSchema.items === "object"
+              ? resolveSchemaRef(container.parentSchema.items as SchemaLike, schemasByKey)
+              : null;
           return { valid: true, rootKey, pathSegments, operation, valueSchema: itemSchema };
         }
         return { valid: true, rootKey, pathSegments, operation, valueSchema: null };
