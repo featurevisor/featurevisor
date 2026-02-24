@@ -47,7 +47,10 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@vue/cli-plugin-unit-jest": "^5.0.8",
-    "@vue/test-utils": "^2.4.0"
+    "@testing-library/jest-dom": "^5.16.5",
+    "@vue/test-utils": "^2.4.0",
+    "jest": "^29.4.2",
+    "jest-environment-jsdom": "^29.5.0",
+    "ts-jest": "^29.0.5"
   }
 }
