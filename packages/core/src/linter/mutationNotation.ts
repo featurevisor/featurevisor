@@ -149,7 +149,9 @@ function getContainerSchemaAtPath(
   }
   const propSchema = parentSchema.properties?.[lastSegment.key];
   const resolvedProp =
-    propSchema && typeof propSchema === "object" ? resolveSchemaRef(propSchema, schemasByKey) : null;
+    propSchema && typeof propSchema === "object"
+      ? resolveSchemaRef(propSchema, schemasByKey)
+      : null;
   return resolvedProp ? { containerSchema: resolvedProp, lastSegment, parentSchema } : null;
 }
 

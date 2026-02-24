@@ -529,7 +529,10 @@ function refineVariableValueObject(
 }
 
 /** Schema or variable schema (e.g. type "json", defaultValue); used for value validation. */
-type VariableSchemaLike = (Omit<Schema, "type"> & { type?: SchemaType | "json" }) | null | undefined;
+type VariableSchemaLike =
+  | (Omit<Schema, "type"> & { type?: SchemaType | "json" })
+  | null
+  | undefined;
 
 function superRefineVariableValue(
   projectConfig: ProjectConfig,
