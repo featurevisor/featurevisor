@@ -30,6 +30,10 @@ import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } fro
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
 import { convertToV1 } from "./convertToV1";
+import {
+  resolveMutationsForMultipleVariables,
+  resolveMutationsForSingleVariable,
+} from "./mutateVariables";
 
 export interface CustomDatafileOptions {
   featureKey?: string;
@@ -210,7 +214,10 @@ export async function buildDatafile(
               const mappedVariation: any = {
                 value: variation.value,
                 weight: variation.weight, // @NOTE: added so state files can maintain weight info, but datafiles don't need this. find a way to remove it from datafiles later
-                variables: variation.variables,
+                variables: resolveMutationsForMultipleVariables(
+                  parsedFeature.variablesSchema,
+                  variation.variables,
+                ),
                 variableOverrides: variation.variableOverrides,
               };
 
@@ -235,7 +242,11 @@ export async function buildDatafile(
                           projectConfig.stringify && typeof override.conditions !== "string"
                             ? JSON.stringify(override.conditions)
                             : override.conditions,
-                        value: override.value,
+                        value: resolveMutationsForSingleVariable(
+                          parsedFeature.variablesSchema,
+                          variableKey,
+                          override.value,
+                        ),
                       };
                     }
 
@@ -252,7 +263,11 @@ export async function buildDatafile(
                           projectConfig.stringify && typeof override.segments !== "string"
                             ? JSON.stringify(override.segments)
                             : override.segments,
-                        value: override.value,
+                        value: resolveMutationsForSingleVariable(
+                          parsedFeature.variablesSchema,
+                          variableKey,
+                          override.value,
+                        ),
                       };
                     }
 
@@ -272,6 +287,10 @@ export async function buildDatafile(
         ).map((t: Traffic) => {
           return {
             ...t,
+            variables: resolveMutationsForMultipleVariables(
+              parsedFeature.variablesSchema,
+              t.variables,
+            ),
             segments:
               typeof t.segments !== "string" && projectConfig.stringify
                 ? JSON.stringify(t.segments)
@@ -350,6 +369,13 @@ export async function buildDatafile(
               typeof f.conditions !== "string" && projectConfig.stringify
                 ? JSON.stringify(f.conditions)
                 : f.conditions;
+          }
+
+          if (f.variables) {
+            f.variables = resolveMutationsForMultipleVariables(
+              parsedFeature.variablesSchema,
+              f.variables,
+            );
           }
 
           return f;

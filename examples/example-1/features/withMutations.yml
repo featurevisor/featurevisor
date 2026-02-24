@@ -1,0 +1,548 @@
+# Exhaustive feature demonstrating mutation syntax: primitives, nested objects,
+# arrays, arrays of objects; dot-notation, array-index, and operation suffixes:
+#   :append, :prepend (arrays), :after, :before (array by selector), :remove (property or element).
+# Overrides from variations, variableOverrides (segment/condition), and rules.
+description: Exhaustive mutations demo - all variable types and override syntax
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  # --- Primitives ---
+  title:
+    type: string
+    defaultValue: "Default Title"
+
+  count:
+    type: integer
+    defaultValue: 0
+
+  score:
+    type: double
+    defaultValue: 0.0
+
+  enabled:
+    type: boolean
+    defaultValue: true
+
+  # --- Flat object ---
+  config:
+    type: object
+    properties:
+      theme:
+        type: string
+      compact:
+        type: boolean
+      width:
+        type: integer
+    defaultValue:
+      theme: light
+      compact: true
+      width: 1200
+
+  # --- Nested object ---
+  settings:
+    type: object
+    properties:
+      display:
+        type: object
+        properties:
+          fontSize:
+            type: integer
+          theme:
+            type: string
+      layout:
+        type: object
+        properties:
+          sidebar:
+            type: boolean
+          width:
+            type: integer
+    defaultValue:
+      display:
+        fontSize: 14
+        theme: light
+      layout:
+        sidebar: true
+        width: 240
+
+  # --- Deep nested (3+ levels) ---
+  deep:
+    type: object
+    properties:
+      level1:
+        type: object
+        properties:
+          level2:
+            type: object
+            properties:
+              level3:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  count:
+                    type: integer
+    defaultValue:
+      level1:
+        level2:
+          level3:
+            value: "deep-default"
+            count: 1
+
+  # --- Array of primitives ---
+  tags:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - default
+      - demo
+
+  # --- Array of objects ---
+  items:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        meta:
+          type: object
+          properties:
+            score:
+              type: double
+    defaultValue:
+      - id: "1"
+        name: "First"
+        meta: { score: 0.1 }
+      - id: "2"
+        name: "Second"
+        meta: { score: 0.2 }
+      - id: "3"
+        name: "Third"
+        meta: { score: 0.3 }
+
+  # --- Object containing array of objects ---
+  payload:
+    type: object
+    properties:
+      name:
+        type: string
+      rows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
+    defaultValue:
+      name: "Payload"
+      rows:
+        - id: 1
+          label: "A"
+        - id: 2
+          label: "B"
+
+  # --- Mixed: object with nested object and array ---
+  mixed:
+    type: object
+    properties:
+      name:
+        type: string
+      config:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          tags:
+            type: array
+            items:
+              type: string
+    defaultValue:
+      name: "mixed"
+      config:
+        enabled: true
+        tags:
+          - x
+          - y
+
+  # --- Root-level schema reference (variable uses schema by name) ---
+  primaryLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: /
+
+  heroBlock:
+    schema: hero
+    defaultValue:
+      title: Welcome
+      subtitle: Get started
+
+  # --- Root-level schema ref whose schema has nested refs (price->money, image->image) ---
+  featuredProduct:
+    schema: productSummary
+    defaultValue:
+      id: "prod-1"
+      name: Featured Item
+      sku: "SKU-001"
+      price:
+        amount: 29.99
+        currency: USD
+      image:
+        url: https://example.com/img.png
+        alt: Featured
+
+  # --- Inline object with deep nested schema reference (property uses schema: link) ---
+  page:
+    type: object
+    properties:
+      mainLink:
+        schema: link
+      label:
+        type: string
+    required:
+      - mainLink
+    defaultValue:
+      mainLink:
+        title: Docs
+        url: /docs
+      label: navigation
+
+variations:
+  - value: control
+    weight: 50
+    # Full variables + dot-notation mutation keys (merged by resolveMutationsForMultipleVariables)
+    variables:
+      title: "Control Title"
+      count: 10
+      score: 2.5
+      enabled: true
+      config:
+        theme: dark
+        compact: true
+        width: 1200
+      settings:
+        display:
+          fontSize: 16
+          theme: light
+        layout:
+          sidebar: true
+          width: 240
+      deep:
+        level1:
+          level2:
+            level3:
+              value: "control-mutated"
+              count: 1
+      tags:
+        - control
+        - a
+      items:
+        - id: "1"
+          name: "Control First"
+          meta: { score: 0.99 }
+        - id: "2"
+          name: "Second"
+          meta: { score: 0.2 }
+        - id: "3"
+          name: "Third"
+          meta: { score: 0.3 }
+      payload:
+        name: "Control Payload"
+        rows:
+          - id: 1
+            label: "Control A"
+          - id: 2
+            label: "B"
+      mixed:
+        name: "control-mixed"
+        config:
+          enabled: false
+          tags:
+            - x
+            - y
+      primaryLink:
+        title: Control Home
+        url: /control
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      featuredProduct:
+        id: "prod-1"
+        name: Control Product
+        sku: "SKU-001"
+        price: { amount: 19.99, currency: USD }
+        image: { url: https://example.com/control.png, alt: Control }
+      page:
+        mainLink: { title: Control Docs, url: /control/docs }
+        label: control-nav
+
+  - value: treatment
+    weight: 50
+    variables:
+      title: "Treatment Title"
+      count: 20
+      score: 4.0
+      enabled: false
+      config:
+        theme: dark
+        compact: false
+        width: 1600
+      settings:
+        display:
+          fontSize: 16
+          theme: dark
+        layout:
+          sidebar: false
+          width: 320
+      deep:
+        level1:
+          level2:
+            level3:
+              value: "treatment-deep"
+              count: 2
+      tags:
+        - treatment
+        - b
+        - c
+      items:
+        - id: "1"
+          name: "Treatment First"
+          meta: { score: 0.5 }
+        - id: "2"
+          name: "Treatment Second"
+          meta: { score: 0.6 }
+        - id: "3"
+          name: "Third"
+          meta: { score: 0.3 }
+      payload:
+        name: "Treatment Payload"
+        rows:
+          - id: 1
+            label: "Treatment A"
+          - id: 2
+            label: "Treatment B"
+      mixed:
+        name: "treatment-mixed"
+        config:
+          enabled: false
+          tags:
+            - t1
+            - t2
+      primaryLink:
+        title: Treatment Home
+        url: /treatment
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      featuredProduct:
+        id: "prod-1"
+        name: Treatment Product
+        sku: "SKU-001"
+        price: { amount: 24.99, currency: EUR }
+        image: { url: https://example.com/treatment.png, alt: Treatment }
+      page:
+        mainLink: { title: Treatment Docs, url: /treatment/docs }
+        label: treatment-nav
+    # Path-map style variableOverrides (resolveMutationsForSingleVariable)
+    variableOverrides:
+      title:
+        - segments: countries/germany
+          value: "Behandlung (DE)"
+        - segments: countries/netherlands
+          value: "Behandeling (NL)"
+      config:
+        - segments: countries/germany
+          value:
+            theme: dark
+            compact: true
+            width: 1400
+        - segments: countries/netherlands
+          value:
+            theme: dark
+            width: 1800
+      settings:
+        - segments: countries/germany
+          value:
+            "display.fontSize": 20
+            "layout.width": 280
+      items:
+        - segments: countries/germany
+          value:
+            "[0].name": "Erste"
+            "[1].meta.score": 1.0
+      # Schema-ref variables: path-map overrides (resolved via referenced schema)
+      primaryLink:
+        - segments: countries/germany
+          value:
+            title: "Startseite (DE)"
+            url: /de
+        - segments: countries/netherlands
+          value:
+            title: "Start (NL)"
+            url: /nl
+      page:
+        - segments: countries/germany
+          value:
+            "mainLink.title": "Dokumentation"
+            "mainLink.url": /de/docs
+
+rules:
+  staging:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      # Mix of full keys and dot-notation / array-index mutation keys
+      variables:
+        title: "Germany (Staging)"
+        count: 100
+        score: 5.0
+        enabled: true
+        config:
+          theme: dark
+          compact: true
+          width: 1400
+        settings:
+          display:
+            fontSize: 18
+            theme: dark
+          layout:
+            sidebar: true
+            width: 260
+        deep:
+          level1:
+            level2:
+              level3:
+                value: "germany-deep"
+                count: 10
+        tags:
+          - de
+          - germany
+        items:
+          - id: "1"
+            name: "Erste"
+            meta: { score: 1.0 }
+          - id: "2"
+            name: "Zweite"
+            meta: { score: 1.0 }
+          - id: "3"
+            name: "Dritte"
+            meta: { score: 1.0 }
+        payload:
+          name: "DE Payload"
+          rows:
+            - id: 1
+              label: "DE-A"
+            - id: 2
+              label: "DE-B"
+        mixed:
+          name: "germany-mixed"
+          config:
+            enabled: true
+            tags:
+              - de
+              - tag
+        primaryLink:
+          title: Deutschland
+          url: /de
+        heroBlock:
+          title: Willkommen
+          subtitle: Los gehts
+        featuredProduct:
+          id: "prod-1"
+          name: Deutschland Produkt
+          sku: "SKU-001"
+          price: { amount: 29.99, currency: EUR }
+          image: { url: https://example.com/de.png, alt: DE }
+        page:
+          mainLink: { title: Dokumentation, url: /de/docs }
+          label: de-nav
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        title: "NL/CH Title"
+        count: 50
+        score: 3.5
+        "config.width": 1500
+        "settings.layout.sidebar": false
+        "tags[0]": "nl-ch"
+        "tags:prepend": "first"
+        "tags:append": "extra"
+        "items[1].name": "NL Second"
+        "items[id=2]:before": { id: "2a", name: "Before Second", meta: { score: 0.15 } }
+        "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
+        "payload.name": "NL/CH Payload"
+        "payload.rows:append": { id: 3, label: "C" }
+        # Schema-ref variables: mutation notation (path resolution uses referenced schema)
+        "primaryLink.title": "NL/CH Home"
+        "primaryLink.url": /nl-ch
+        "heroBlock.subtitle": "NL/CH subtitle"
+        "featuredProduct.name": "NL/CH Featured"
+        "featuredProduct.price.amount": 14.99
+        "page.mainLink.url": /nl-ch/docs
+        "page.label": "nl-ch-nav"
+
+    - key: mobile_eu
+      segments:
+        and:
+          - mobile
+          - eu
+      percentage: 100
+      variables:
+        title: "Mobile EU"
+        count: 1
+        enabled: false
+        "config.compact": true
+        "settings.display.theme": "dark"
+        "deep.level1.level2.level3.value": "mobile-eu"
+        "items[0].meta.score": 0.9
+        "items[2]:remove": null # :remove on array index
+        "mixed.name": "mobile-mixed"
+        # Schema-ref: dot-notation into resolved schema
+        "heroBlock.title": "Mobile EU Hero"
+        "page.mainLink.title": "Mobile Docs"
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: germany
+      segments: countries/germany
+      percentage: 100
+      variables:
+        title: "Germany (Production)"
+        count: 200
+        "config.theme": dark
+        "settings.display.fontSize": 20
+        "items[0].name": "Erste Prod"
+        "payload.rows[0].label": "DE-Prod-A"
+        "primaryLink.url": /de/prod
+        "featuredProduct.price.currency": EUR
+
+    - key: nl_or_ch
+      segments:
+        or:
+          - countries/netherlands
+          - countries/switzerland
+      percentage: 100
+      variables:
+        title: "NL/CH (Production)"
+        "config.width": 2000
+        "tags": ["prod", "nl-ch"]
+
+    - key: everyone
+      segments: "*"
+      percentage: 100

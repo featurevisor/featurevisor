@@ -16,6 +16,9 @@ lint:
 	npx eslint .
 	npx lerna run lint
 
+prettier-write:
+	npx prettier examples/ packages/ docs/ --write
+
 ##
 # Misc.
 #

@@ -166,6 +166,38 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("rejects variable with schema reference when schema could not be loaded (missing from schemasByKey)", () => {
+      const projectConfig = minimalProjectConfig();
+      const conditionsZodSchema = getConditionsZodSchema(projectConfig, TEST_ATTRIBUTES);
+      const schemaWithEmptySchemasByKey = getFeatureZodSchema(
+        projectConfig,
+        conditionsZodSchema,
+        TEST_ATTRIBUTES,
+        TEST_SEGMENTS,
+        TEST_FEATURES,
+        ["link"],
+        {},
+      );
+      const result = schemaWithEmptySchemasByKey.safeParse(
+        baseFeature({
+          variablesSchema: {
+            myLink: {
+              schema: "link",
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      const messages = (result as z.SafeParseError<unknown>).error.issues
+        .map((i) => (typeof i.message === "string" ? i.message : ""))
+        .join(" ");
+      expect(messages).toContain("could not be loaded");
+      expect(messages).toContain("link");
+      expect(messages).toContain("myLink");
+    });
+
     it("rejects variable with schema reference when defaultValue does not match schema", () => {
       expectParseFailure(
         baseFeature({
@@ -1211,6 +1243,156 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
         {
           pathContains: ["force", "variables", "typoKey"],
           messageContains: "not defined in",
+        },
+      );
+    });
+  });
+
+  describe("mutation notation in variables", () => {
+    it("accepts valid dot-notation mutation keys in rules.variables", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                width: { type: "integer" },
+              },
+              defaultValue: { theme: "light", width: 100 },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.theme": "dark", "config.width": 1200 },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("accepts valid array-index mutation keys in rules.variables", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              defaultValue: ["a", "b"],
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "tags[0]": "first" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects mutation key when root variable is not in variablesSchema", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            title: { type: "string", defaultValue: "Default" },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "unknownVar.foo": "x" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        {
+          pathContains: ["rules", "variables", "unknownVar.foo"],
+          messageContains: "not defined in",
+        },
+      );
+    });
+
+    it("rejects invalid path (property not in schema)", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { theme: { type: "string" } },
+              defaultValue: { theme: "light" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.unknownProp": "x" },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { pathContains: ["rules", "variables"], messageContains: "path does not exist" },
+      );
+    });
+
+    it("rejects :append on non-array (object property)", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { theme: { type: "string" } },
+              defaultValue: { theme: "light" },
+            },
+          },
+          rules: {
+            staging: [
+              { key: "r1", segments: "*", percentage: 100, variables: { "config:append": "x" } },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { pathContains: ["rules", "variables"], messageContains: "only allowed on array" },
+      );
+    });
+
+    it("rejects :remove on required object property", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              required: ["compact"],
+              defaultValue: { theme: "light", compact: true },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variables: { "config.compact:remove": null },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        {
+          pathContains: ["rules", "variables"],
+          messageContains: "Cannot remove required property",
         },
       );
     });

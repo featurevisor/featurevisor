@@ -1,7 +1,13 @@
-import type { Schema } from "@featurevisor/types";
+import type { Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
+import {
+  isMutationKey,
+  validateMutationKey,
+  parsePathMapKey,
+  resolveSchemaAtPath,
+} from "./mutationNotation";
 import {
   valueZodSchema,
   propertyTypeEnum,
@@ -250,27 +256,42 @@ function valueDeepEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
+type SchemaLikeForRequired = {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+  items?: unknown;
+  schema?: string;
+  oneOf?: unknown[];
+};
+
 /**
  * Recursively validates that every `required` array (at this level and in nested
  * object/array schemas) only contains keys that exist in the same level's `properties`.
  * Adds Zod issues with the correct path for invalid required field names.
+ * When schemasByKey is provided, resolves schema references (schema: key) so that
+ * referenced and nested schemas are validated too.
  */
 function refineRequiredKeysInSchema(
-  schema: {
-    type?: string;
-    properties?: Record<string, unknown>;
-    required?: string[];
-    items?: unknown;
-  },
+  schema: SchemaLikeForRequired,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   if (!schema || typeof schema !== "object") return;
 
-  const effectiveType = schema.type;
-  const properties = schema.properties;
-  const required = schema.required;
-  const items = schema.items;
+  // Resolve schema reference so we validate the referenced schema (and can recurse into it)
+  let current: SchemaLikeForRequired = schema;
+  if (schema.schema && schemasByKey?.[schema.schema]) {
+    current = schemasByKey[schema.schema] as SchemaLikeForRequired;
+    refineRequiredKeysInSchema(current, pathPrefix, ctx, schemasByKey);
+    return;
+  }
+
+  const effectiveType = current.type;
+  const properties = current.properties;
+  const required = current.required;
+  const items = current.items;
 
   if (
     effectiveType === "object" &&
@@ -296,9 +317,10 @@ function refineRequiredKeysInSchema(
       const nested = properties[key];
       if (nested && typeof nested === "object") {
         refineRequiredKeysInSchema(
-          nested as Parameters<typeof refineRequiredKeysInSchema>[0],
+          nested as SchemaLikeForRequired,
           [...pathPrefix, "properties", key],
           ctx,
+          schemasByKey,
         );
       }
     }
@@ -306,20 +328,22 @@ function refineRequiredKeysInSchema(
 
   if (items && typeof items === "object" && !Array.isArray(items)) {
     refineRequiredKeysInSchema(
-      items as Parameters<typeof refineRequiredKeysInSchema>[0],
+      items as SchemaLikeForRequired,
       [...pathPrefix, "items"],
       ctx,
+      schemasByKey,
     );
   }
 
-  const oneOf = (schema as { oneOf?: unknown[] }).oneOf;
+  const oneOf = (current as { oneOf?: unknown[] }).oneOf;
   if (oneOf && Array.isArray(oneOf)) {
     oneOf.forEach((branch, i) => {
       if (branch && typeof branch === "object") {
         refineRequiredKeysInSchema(
-          branch as Parameters<typeof refineRequiredKeysInSchema>[0],
+          branch as SchemaLikeForRequired,
           [...pathPrefix, "oneOf", i],
           ctx,
+          schemasByKey,
         );
       }
     });
@@ -504,15 +528,21 @@ function refineVariableValueObject(
   }
 }
 
+/** Schema or variable schema (e.g. type "json", defaultValue); used for value validation. */
+type VariableSchemaLike =
+  | (Omit<Schema, "type"> & { type?: SchemaType | "json" })
+  | null
+  | undefined;
+
 function superRefineVariableValue(
   projectConfig: ProjectConfig,
-  variableSchema,
-  variableValue,
-  path,
-  ctx,
+  variableSchema: VariableSchemaLike,
+  variableValue: unknown,
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
   variableKey?: string,
   schemasByKey?: Record<string, Schema>,
-) {
+): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
 
   if (!variableSchema) {
@@ -854,6 +884,66 @@ function superRefineVariableValue(
   });
 }
 
+/**
+ * Validate a single variable entry (key + value) in variables map.
+ * Key may be a root variable name or mutation notation (e.g. "config.width", "items[0].name").
+ */
+function refineVariableEntry(
+  projectConfig: ProjectConfig,
+  variableSchemaByKey: Record<string, unknown>,
+  variableKey: string,
+  variableValue: unknown,
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
+  schemasByKey?: Record<string, Schema>,
+): void {
+  if (isMutationKey(variableKey)) {
+    const validation = validateMutationKey(
+      variableKey,
+      variableSchemaByKey as Record<string, Schema>,
+      schemasByKey,
+    );
+    if (!validation.valid && validation.error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: validation.error,
+        path,
+      });
+      return;
+    }
+    if (validation.valueSchema) {
+      superRefineVariableValue(
+        projectConfig,
+        validation.valueSchema,
+        variableValue,
+        path,
+        ctx,
+        variableKey,
+        schemasByKey,
+      );
+    }
+    return;
+  }
+  const variableSchema = variableSchemaByKey[variableKey];
+  if (!variableSchema) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+      path,
+    });
+    return;
+  }
+  superRefineVariableValue(
+    projectConfig,
+    variableSchema as Parameters<typeof superRefineVariableValue>[1],
+    variableValue,
+    path,
+    ctx,
+    variableKey,
+    schemasByKey,
+  );
+}
+
 function refineForce({
   ctx,
   parsedFeature, // eslint-disable-line
@@ -879,24 +969,15 @@ function refineForce({
     // force[n].variables[key]
     if (f.variables) {
       Object.keys(f.variables).forEach((variableKey) => {
-        const variableSchema = variableSchemaByKey[variableKey];
-        if (!variableSchema) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-            path: pathPrefix.concat([fN, "variables", variableKey]),
-          });
-        } else {
-          superRefineVariableValue(
-            projectConfig,
-            variableSchema,
-            f.variables[variableKey],
-            pathPrefix.concat([fN, "variables", variableKey]),
-            ctx,
-            variableKey,
-            schemasByKey,
-          );
-        }
+        refineVariableEntry(
+          projectConfig,
+          variableSchemaByKey,
+          variableKey,
+          f.variables[variableKey],
+          pathPrefix.concat([fN, "variables", variableKey]),
+          ctx,
+          schemasByKey,
+        );
       });
     }
   });
@@ -916,24 +997,15 @@ function refineRules({
     // rules[n].variables[key]
     if (rule.variables) {
       Object.keys(rule.variables).forEach((variableKey) => {
-        const variableSchema = variableSchemaByKey[variableKey];
-        if (!variableSchema) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-            path: pathPrefix.concat([ruleN, "variables", variableKey]),
-          });
-        } else {
-          superRefineVariableValue(
-            projectConfig,
-            variableSchema,
-            rule.variables[variableKey],
-            pathPrefix.concat([ruleN, "variables", variableKey]),
-            ctx,
-            variableKey,
-            schemasByKey,
-          );
-        }
+        refineVariableEntry(
+          projectConfig,
+          variableSchemaByKey,
+          variableKey,
+          rule.variables[variableKey],
+          pathPrefix.concat([ruleN, "variables", variableKey]),
+          ctx,
+          schemasByKey,
+        );
       });
     }
 
@@ -1014,6 +1086,7 @@ export function getFeatureZodSchema(
 ) {
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
+  const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
 
   const variationValueZodSchema = z.string().min(1);
 
@@ -1061,7 +1134,7 @@ export function getFeatureZodSchema(
 
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueZodSchema).optional(),
+          variables: z.record(variableValueOrNullZodSchema).optional(),
           variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -1109,7 +1182,7 @@ export function getFeatureZodSchema(
             segments: groupSegmentsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueOrNullZodSchema).optional(),
           })
           .strict(),
         z
@@ -1117,7 +1190,7 @@ export function getFeatureZodSchema(
             conditions: conditionsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueZodSchema).optional(),
+            variables: z.record(variableValueOrNullZodSchema).optional(),
           })
           .strict(),
       ]),
@@ -1299,11 +1372,12 @@ export function getFeatureZodSchema(
                 });
                 return;
               }
-              // Validate required ⊆ properties at this level and in all nested object schemas
+              // Validate required ⊆ properties at this level and in all nested object schemas (resolve refs when schemasByKey provided)
               refineRequiredKeysInSchema(
-                variableSchema as Parameters<typeof refineRequiredKeysInSchema>[0],
+                variableSchema as SchemaLikeForRequired,
                 [],
                 ctx,
+                schemasByKey,
               );
             }),
         )
@@ -1318,7 +1392,7 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               value: variationValueZodSchema,
               weight: z.number().min(0).max(100),
-              variables: z.record(variableValueZodSchema).optional(),
+              variables: z.record(variableValueOrNullZodSchema).optional(),
               variableOverrides: z
                 .record(
                   z.array(
@@ -1413,6 +1487,28 @@ export function getFeatureZodSchema(
       variableKeys.forEach((variableKey) => {
         const variableSchema = variableSchemaByKey[variableKey];
 
+        // When variable references a schema by name, ensure it resolves and validate the referenced schema
+        if ("schema" in variableSchema && variableSchema.schema) {
+          const resolvedSchema = resolveVariableSchema(
+            variableSchema as Parameters<typeof resolveVariableSchema>[0],
+            schemasByKey,
+          );
+          if (!resolvedSchema) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Schema "${variableSchema.schema}" could not be loaded for variable "${variableKey}".`,
+              path: ["variablesSchema", variableKey],
+            });
+          } else {
+            refineRequiredKeysInSchema(
+              resolvedSchema as SchemaLikeForRequired,
+              ["variablesSchema", variableKey],
+              ctx,
+              schemasByKey,
+            );
+          }
+        }
+
         // When type and enum are both present, all enum values must match the type
         const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
         if (
@@ -1487,32 +1583,21 @@ export function getFeatureZodSchema(
           // variations[n].variables[key]
           if (variation.variables) {
             for (const variableKey of Object.keys(variation.variables)) {
-              const variableValue = variation.variables[variableKey];
-              const variableSchema = variableSchemaByKey[variableKey];
-              if (!variableSchema) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-                  path: ["variations", variationN, "variables", variableKey],
-                });
-              } else {
-                superRefineVariableValue(
-                  projectConfig,
-                  variableSchema,
-                  variableValue,
-                  ["variations", variationN, "variables", variableKey],
-                  ctx,
-                  variableKey,
-                  schemasByKey,
-                );
-              }
+              refineVariableEntry(
+                projectConfig,
+                variableSchemaByKey,
+                variableKey,
+                variation.variables[variableKey],
+                ["variations", variationN, "variables", variableKey],
+                ctx,
+                schemasByKey,
+              );
             }
           }
 
-          // variations[n].variableOverrides[key][].value (validated even when variation.variables is absent)
+          // variations[n].variableOverrides[key][].value (path-map or full value)
           if (variation.variableOverrides) {
             for (const variableKey of Object.keys(variation.variableOverrides)) {
-              const overrides = variation.variableOverrides[variableKey];
               const variableSchema = variableSchemaByKey[variableKey];
               if (!variableSchema) {
                 ctx.addIssue({
@@ -1520,26 +1605,98 @@ export function getFeatureZodSchema(
                   message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
                   path: ["variations", variationN, "variableOverrides", variableKey],
                 });
-              } else if (Array.isArray(overrides)) {
-                overrides.forEach((override, overrideN) => {
+                continue;
+              }
+              // When variable references a schema by name, ensure it can be resolved
+              const variableSchemaWithRef = variableSchema as { schema?: string };
+              if (variableSchemaWithRef.schema) {
+                const resolvedVarSchema = resolveVariableSchema(
+                  variableSchema as Parameters<typeof resolveVariableSchema>[0],
+                  schemasByKey,
+                );
+                if (!resolvedVarSchema) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Schema "${variableSchemaWithRef.schema}" could not be loaded for variable "${variableKey}".`,
+                    path: ["variations", variationN, "variableOverrides", variableKey],
+                  });
+                  continue;
+                }
+              }
+              const overrides = variation.variableOverrides[variableKey];
+              if (!Array.isArray(overrides)) continue;
+              overrides.forEach((override, overrideN) => {
+                const overrideValue = override.value;
+                const valuePath = [
+                  "variations",
+                  variationN,
+                  "variableOverrides",
+                  variableKey,
+                  overrideN,
+                  "value",
+                ];
+                if (
+                  typeof overrideValue === "object" &&
+                  overrideValue !== null &&
+                  !Array.isArray(overrideValue)
+                ) {
+                  const pathMap = overrideValue as Record<string, unknown>;
+                  for (const pathKey of Object.keys(pathMap)) {
+                    const pathSegments = parsePathMapKey(pathKey);
+                    if (!pathSegments || pathSegments.length === 0) {
+                      ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Invalid mutation path "${pathKey}" in variableOverride for "${variableKey}".`,
+                        path: [...valuePath, pathKey],
+                      });
+                      continue;
+                    }
+                    const atPathSchema = resolveSchemaAtPath(
+                      variableSchema as Schema,
+                      pathSegments,
+                      schemasByKey,
+                    );
+                    if (!atPathSchema) {
+                      const effectiveSchema = resolveVariableSchema(
+                        variableSchema as Parameters<typeof resolveVariableSchema>[0],
+                        schemasByKey,
+                      );
+                      const isFlatObject =
+                        effectiveSchema?.type === "object" &&
+                        (!effectiveSchema.properties ||
+                          Object.keys(effectiveSchema.properties).length === 0);
+                      if (isFlatObject) {
+                        continue;
+                      }
+                      ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Path "${pathKey}" is invalid for variable "${variableKey}" (not in schema).`,
+                        path: [...valuePath, pathKey],
+                      });
+                      continue;
+                    }
+                    superRefineVariableValue(
+                      projectConfig,
+                      atPathSchema,
+                      pathMap[pathKey],
+                      [...valuePath, pathKey],
+                      ctx,
+                      pathKey,
+                      schemasByKey,
+                    );
+                  }
+                } else {
                   superRefineVariableValue(
                     projectConfig,
-                    variableSchema,
-                    override.value,
-                    [
-                      "variations",
-                      variationN,
-                      "variableOverrides",
-                      variableKey,
-                      overrideN,
-                      "value",
-                    ],
+                    variableSchema as Parameters<typeof superRefineVariableValue>[1],
+                    overrideValue,
+                    valuePath,
                     ctx,
                     variableKey,
                     schemasByKey,
                   );
-                });
-              }
+                }
+              });
             }
           }
         });
