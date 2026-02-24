@@ -1,5 +1,5 @@
 {
-  "name": "@featurevisor/example-environments",
+  "name": "@featurevisor/example-split-environments",
   "private": true,
   "version": "2.14.0",
   "description": "Featurevisor project with split environment feature files",
