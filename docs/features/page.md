@@ -775,7 +775,11 @@ variations:
 
 ### Reusable schemas
 
-Learn more in [schemas](/docs/schemas/) page.
+Learn more in [schemas](/docs/schemas/) page how to define variable schemas once and reuse them by referencing them by name from multiple features and variables.
+
+### Mutations
+
+Learn more in [mutations](/docs/mutations/) page how to mutate variable values partially when overriding them from rules or variations.
 
 ## Required
 
