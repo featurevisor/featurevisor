@@ -36,35 +36,19 @@ function createTempSplitProject() {
 
   fs.writeFileSync(
     path.join(tempRoot, "features", "foo.yml"),
-    [
-      "key: foo",
-      "description: Foo",
-      "tags:",
-      "  - all",
-      "bucketBy: userId",
-    ].join("\n"),
+    ["key: foo", "description: Foo", "tags:", "  - all", "bucketBy: userId"].join("\n"),
     "utf8",
   );
 
   fs.writeFileSync(
     path.join(tempRoot, "environments", "staging", "foo.yml"),
-    [
-      "rules:",
-      "  - key: everyone",
-      "    segments: '*'",
-      "    percentage: 100",
-    ].join("\n"),
+    ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
     "utf8",
   );
 
   fs.writeFileSync(
     path.join(tempRoot, "environments", "production", "foo.yml"),
-    [
-      "rules:",
-      "  - key: everyone",
-      "    segments: '*'",
-      "    percentage: 0",
-    ].join("\n"),
+    ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 0"].join("\n"),
     "utf8",
   );
 
@@ -186,12 +170,7 @@ describe("core: lintProject", function () {
     const splitProjectPath = createTempSplitProject();
     fs.writeFileSync(
       path.join(splitProjectPath, "environments", "staging", "foo.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: invalid",
-      ].join("\n"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: invalid"].join("\n"),
       "utf8",
     );
 

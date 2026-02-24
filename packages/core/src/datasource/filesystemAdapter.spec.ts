@@ -36,12 +36,7 @@ describe("core: filesystemAdapter (splitByEnvironment)", () => {
 
     writeFile(
       path.join(root, "environments", "staging", "checkout.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: 100",
-      ].join("\n"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
     );
 
     writeFile(
@@ -73,23 +68,14 @@ describe("core: filesystemAdapter (splitByEnvironment)", () => {
 
     writeFile(
       path.join(root, "features", "myFeature.yml"),
-      [
-        "key: myFeature",
-        "description: My feature",
-        "tags:",
-        "  - all",
-        "bucketBy: userId",
-      ].join("\n"),
+      ["key: myFeature", "description: My feature", "tags:", "  - all", "bucketBy: userId"].join(
+        "\n",
+      ),
     );
 
     writeFile(
       path.join(root, "environments", "staging", "myFeature.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: 100",
-      ].join("\n"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
     );
 
     const config = getProjectConfig(root);
@@ -125,19 +111,14 @@ describe("core: filesystemAdapter (splitByEnvironment)", () => {
 
     writeFile(
       path.join(root, "environments", "staging", "foo.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: 100",
-      ].join("\n"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
     );
 
     const config = getProjectConfig(root);
     const datasource = new Datasource(config, root);
 
     await expect(datasource.readFeature("foo")).rejects.toThrow(
-      'base file must not define rules, force, or expose when splitByEnvironment=true',
+      "base file must not define rules, force, or expose when splitByEnvironment=true",
     );
   });
 
@@ -148,13 +129,7 @@ describe("core: filesystemAdapter (splitByEnvironment)", () => {
 
     writeFile(
       path.join(root, "features", "foo.yml"),
-      [
-        "key: foo",
-        "description: Foo",
-        "tags:",
-        "  - all",
-        "bucketBy: userId",
-      ].join("\n"),
+      ["key: foo", "description: Foo", "tags:", "  - all", "bucketBy: userId"].join("\n"),
     );
 
     writeFile(

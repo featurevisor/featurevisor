@@ -228,9 +228,7 @@ export async function lintProject(
 
     for (const issue of issues) {
       const targetPath =
-        entityType === "feature"
-          ? await getFeaturePathFromIssuePath(key, issue.path)
-          : fullPath;
+        entityType === "feature" ? await getFeaturePathFromIssuePath(key, issue.path) : fullPath;
 
       recordError({
         filePath: path.relative(process.cwd(), targetPath),

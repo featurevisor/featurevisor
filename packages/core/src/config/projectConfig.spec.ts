@@ -16,14 +16,12 @@ describe("core: projectConfig", () => {
     const config = getProjectConfig(root);
 
     expect(config.splitByEnvironment).toBe(false);
-    expect(config.environmentsDirectoryPath).toBe(
-      path.join(root, ENVIRONMENTS_DIRECTORY_NAME),
-    );
+    expect(config.environmentsDirectoryPath).toBe(path.join(root, ENVIRONMENTS_DIRECTORY_NAME));
   });
 
   it("throws when splitByEnvironment=true and environments=false", () => {
     const root = createTempProject(
-      'module.exports = { splitByEnvironment: true, environments: false };',
+      "module.exports = { splitByEnvironment: true, environments: false };",
     );
 
     expect(() => getProjectConfig(root)).toThrow(

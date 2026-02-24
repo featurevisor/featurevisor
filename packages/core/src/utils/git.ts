@@ -135,7 +135,10 @@ export function getCommit(
         .replace(extensionWithDot, "");
 
       key = featureRelativePath.replace(/\\/g, "/");
-    } else if (type === "feature" && absolutePath.startsWith(projectConfig.featuresDirectoryPath + path.sep)) {
+    } else if (
+      type === "feature" &&
+      absolutePath.startsWith(projectConfig.featuresDirectoryPath + path.sep)
+    ) {
       key = absolutePath
         .replace(projectConfig.featuresDirectoryPath + path.sep, "")
         .replace(extensionWithDot, "")

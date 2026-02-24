@@ -123,7 +123,10 @@ export class FilesystemAdapter extends Adapter {
     );
   }
 
-  private assertSplitByEnvironmentIsValidFeatureBase(baseFeature: ParsedFeature, featurePath: string) {
+  private assertSplitByEnvironmentIsValidFeatureBase(
+    baseFeature: ParsedFeature,
+    featurePath: string,
+  ) {
     if (
       typeof baseFeature.rules !== "undefined" ||
       typeof baseFeature.force !== "undefined" ||
@@ -421,7 +424,11 @@ export class FilesystemAdapter extends Adapter {
     if (entityType && entityKey) {
       pathPatterns = [this.getEntityPath(entityType, entityKey)];
 
-      if (entityType === "feature" && this.config.splitByEnvironment && Array.isArray(this.config.environments)) {
+      if (
+        entityType === "feature" &&
+        this.config.splitByEnvironment &&
+        Array.isArray(this.config.environments)
+      ) {
         for (const environment of this.config.environments) {
           pathPatterns.push(this.getFeatureEnvironmentPath(entityKey, environment));
         }
@@ -542,8 +549,10 @@ export class FilesystemAdapter extends Adapter {
           if (
             this.config.splitByEnvironment &&
             relativePath.startsWith(
-              this.config.environmentsDirectoryPath.replace((this.rootDirectoryPath as string) + path.sep, "") +
-                path.sep,
+              this.config.environmentsDirectoryPath.replace(
+                (this.rootDirectoryPath as string) + path.sep,
+                "",
+              ) + path.sep,
             )
           ) {
             const featureRelativePath = relativePath
