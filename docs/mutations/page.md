@@ -11,22 +11,26 @@ nextjs:
         - url: /img/og/docs-mutations.png
 ---
 
-Variable mutations are a way to mutate (change) variable values partially when overriding them to avoid full replacements. {% .lead %}
+Variable mutations are a way to mutate (change) variable values partially when overriding them from feature's [rules](/docs/features/#rules) or [variations](/docs/features/#variations). {% .lead %}
+
+This is useful when we are dealing with complex [variables](/docs/features/#variables), like deep nested objects or arrays of objects.
+
+Without mutations, we would have to define the full value of the variable each time we want to override only a few properties or items, which is cumbersome and error-prone.
 
 ## Defining variables
 
-Before going into the details of variable mutations, it's worth understanding how variables are defined in Featurevisor.
+Before going into the details of variable mutations, it's worth understanding how variables are defined in Featurevisor first.
 
-Their schemas are defined under the `variablesSchema` property, and each variable must at least provide:
+Their schemas are defined under the `variablesSchema` property inside a [feature](/docs/features/#variables), and each variable must at least provide:
 
 - a `type`, and
 - a `defaultValue`
 
 ### Simple variables
 
-Variables are always defined with a default value at individual [feature](/docs/features/#variables) level:
+Variables are always defined with a default value at individual feature level:
 
-```yml {% path="features/myFeature.yml" %}
+```yml {% path="features/myFeature.yml" highlight="4" %}
 # ...
 
 variablesSchema:
@@ -39,7 +43,7 @@ variablesSchema:
 
 Some variables may be more complex with a structure of nested objects or arrays of objects:
 
-```yml {% path="features/myFeature.yml" %}
+```yml {% path="features/myFeature.yml" highlight="4" %}
 # ...
 
 variablesSchema:
@@ -59,7 +63,7 @@ variablesSchema:
 
 Some variables may be arrays of objects:
 
-```yml {% path="features/myFeature.yml" %}
+```yml {% path="features/myFeature.yml" highlight="4" %}
 # ...
 
 variablesSchema:
@@ -105,8 +109,8 @@ rules:
       variables:
         bgColor: orange
         hero:
-          title: "Welcome"
-          subtitle: "Welcome to our website in the Netherlands"
+          title: Welcome
+          subtitle: Welcome to our website in the Netherlands
 
     - key: everyone
       segments: '*'
@@ -133,8 +137,8 @@ variations:
     variables:
       bgColor: blue
       hero:
-        title: "Welcome"
-        subtitle: "Welcome to our website!!!"
+        title: Welcome
+        subtitle: 'Welcome to our website!!!'
 ```
 
 ## Challenges
@@ -148,7 +152,7 @@ This is where variable mutations come in.
 
 ## Mutations
 
-Variable mutations are a way to override only a few properties of items in an object or array.
+Variable mutations are a way to override only a few properties or items in an object or array.
 
 In above examples, we can notice when overriding the `hero` variable that:
 
@@ -176,7 +180,7 @@ The rest of the `hero` object remains the same as its default value.
 
 ## Syntax
 
-Mutations go beyond just setting a single property value:
+Mutations go beyond just setting a single property's value. It also supports:
 
 | Syntax                             | Variable type | Description                                                  |
 | ---------------------------------- | ------------- | ------------------------------------------------------------ |
@@ -193,6 +197,16 @@ Mutations go beyond just setting a single property value:
 | `variableKey[prop=value]:remove`   | array         | Remove the item matching the selector                        |
 | `variableKey:prepend`              | array         | Insert a new item at the beginning of the array              |
 | `variableKey:append`               | array         | Insert a new item at the end of the array                    |
+
+## Linting
+
+Because everything is backed by schemas, we can lint everything to figure out if we tried mutating a variable in a wrong way early:
+
+```{% title="Command" %}
+$ npx featurevisor lint
+```
+
+Learn more in [Linting](/docs/linting) page.
 
 ## Further reading
 
