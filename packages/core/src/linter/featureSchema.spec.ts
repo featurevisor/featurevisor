@@ -680,6 +680,25 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
         "not defined in",
       );
     });
+
+    it("rejects rule variable key when feature has no variablesSchema", () => {
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 80,
+                variables: { blah123: "some value" },
+              },
+            ],
+          },
+        }),
+        "not defined in",
+      );
+    });
   });
 
   describe("force: variables", () => {

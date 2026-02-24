@@ -1465,15 +1465,9 @@ export function getFeatureZodSchema(
         }
       }
 
-      if (!value.variablesSchema) {
-        return;
-      }
-
-      // Every variable value is validated against its schema from variablesSchema. Sources covered:
-      // 1. variablesSchema[key].defaultValue  2. variablesSchema[key].disabledValue
-      // 3. variations[n].variables[key]       4. variations[n].variableOverrides[key][].value
-      // 5. rules[env][n].variables[key]       6. force[env][n].variables[key]
-      const variableSchemaByKey = value.variablesSchema;
+      // When variablesSchema is absent, variableSchemaByKey is {} so any variable key used in
+      // rules/force/variations will be reported as "not defined in variablesSchema".
+      const variableSchemaByKey = value.variablesSchema ?? {};
       const variationValues: string[] = [];
 
       if (value.variations) {
@@ -1482,10 +1476,11 @@ export function getFeatureZodSchema(
         });
       }
 
-      // variablesSchema[key]
-      const variableKeys = Object.keys(variableSchemaByKey);
-      variableKeys.forEach((variableKey) => {
-        const variableSchema = variableSchemaByKey[variableKey];
+      // variablesSchema[key] — only when feature defines variablesSchema
+      if (value.variablesSchema) {
+        const variableKeys = Object.keys(variableSchemaByKey);
+        variableKeys.forEach((variableKey) => {
+          const variableSchema = variableSchemaByKey[variableKey];
 
         // When variable references a schema by name, ensure it resolves and validate the referenced schema
         if ("schema" in variableSchema && variableSchema.schema) {
@@ -1576,6 +1571,7 @@ export function getFeatureZodSchema(
           );
         }
       });
+      }
 
       // variations: validate variation.variables and variation.variableOverrides (each value against its variable schema)
       if (value.variations) {
