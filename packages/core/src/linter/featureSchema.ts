@@ -256,27 +256,42 @@ function valueDeepEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
+type SchemaLikeForRequired = {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+  items?: unknown;
+  schema?: string;
+  oneOf?: unknown[];
+};
+
 /**
  * Recursively validates that every `required` array (at this level and in nested
  * object/array schemas) only contains keys that exist in the same level's `properties`.
  * Adds Zod issues with the correct path for invalid required field names.
+ * When schemasByKey is provided, resolves schema references (schema: key) so that
+ * referenced and nested schemas are validated too.
  */
 function refineRequiredKeysInSchema(
-  schema: {
-    type?: string;
-    properties?: Record<string, unknown>;
-    required?: string[];
-    items?: unknown;
-  },
+  schema: SchemaLikeForRequired,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
+  schemasByKey?: Record<string, Schema>,
 ): void {
   if (!schema || typeof schema !== "object") return;
 
-  const effectiveType = schema.type;
-  const properties = schema.properties;
-  const required = schema.required;
-  const items = schema.items;
+  // Resolve schema reference so we validate the referenced schema (and can recurse into it)
+  let current: SchemaLikeForRequired = schema;
+  if (schema.schema && schemasByKey?.[schema.schema]) {
+    current = schemasByKey[schema.schema] as SchemaLikeForRequired;
+    refineRequiredKeysInSchema(current, pathPrefix, ctx, schemasByKey);
+    return;
+  }
+
+  const effectiveType = current.type;
+  const properties = current.properties;
+  const required = current.required;
+  const items = current.items;
 
   if (
     effectiveType === "object" &&
@@ -302,9 +317,10 @@ function refineRequiredKeysInSchema(
       const nested = properties[key];
       if (nested && typeof nested === "object") {
         refineRequiredKeysInSchema(
-          nested as Parameters<typeof refineRequiredKeysInSchema>[0],
+          nested as SchemaLikeForRequired,
           [...pathPrefix, "properties", key],
           ctx,
+          schemasByKey,
         );
       }
     }
@@ -312,20 +328,22 @@ function refineRequiredKeysInSchema(
 
   if (items && typeof items === "object" && !Array.isArray(items)) {
     refineRequiredKeysInSchema(
-      items as Parameters<typeof refineRequiredKeysInSchema>[0],
+      items as SchemaLikeForRequired,
       [...pathPrefix, "items"],
       ctx,
+      schemasByKey,
     );
   }
 
-  const oneOf = (schema as { oneOf?: unknown[] }).oneOf;
+  const oneOf = (current as { oneOf?: unknown[] }).oneOf;
   if (oneOf && Array.isArray(oneOf)) {
     oneOf.forEach((branch, i) => {
       if (branch && typeof branch === "object") {
         refineRequiredKeysInSchema(
-          branch as Parameters<typeof refineRequiredKeysInSchema>[0],
+          branch as SchemaLikeForRequired,
           [...pathPrefix, "oneOf", i],
           ctx,
+          schemasByKey,
         );
       }
     });
@@ -1351,11 +1369,12 @@ export function getFeatureZodSchema(
                 });
                 return;
               }
-              // Validate required ⊆ properties at this level and in all nested object schemas
+              // Validate required ⊆ properties at this level and in all nested object schemas (resolve refs when schemasByKey provided)
               refineRequiredKeysInSchema(
-                variableSchema as Parameters<typeof refineRequiredKeysInSchema>[0],
+                variableSchema as SchemaLikeForRequired,
                 [],
                 ctx,
+                schemasByKey,
               );
             }),
         )
@@ -1465,6 +1484,28 @@ export function getFeatureZodSchema(
       variableKeys.forEach((variableKey) => {
         const variableSchema = variableSchemaByKey[variableKey];
 
+        // When variable references a schema by name, ensure it resolves and validate the referenced schema
+        if ("schema" in variableSchema && variableSchema.schema) {
+          const resolvedSchema = resolveVariableSchema(
+            variableSchema as Parameters<typeof resolveVariableSchema>[0],
+            schemasByKey,
+          );
+          if (!resolvedSchema) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Schema "${variableSchema.schema}" could not be loaded for variable "${variableKey}".`,
+              path: ["variablesSchema", variableKey],
+            });
+          } else {
+            refineRequiredKeysInSchema(
+              resolvedSchema as SchemaLikeForRequired,
+              ["variablesSchema", variableKey],
+              ctx,
+              schemasByKey,
+            );
+          }
+        }
+
         // When type and enum are both present, all enum values must match the type
         const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
         if (
@@ -1562,6 +1603,22 @@ export function getFeatureZodSchema(
                   path: ["variations", variationN, "variableOverrides", variableKey],
                 });
                 continue;
+              }
+              // When variable references a schema by name, ensure it can be resolved
+              const variableSchemaWithRef = variableSchema as { schema?: string };
+              if (variableSchemaWithRef.schema) {
+                const resolvedVarSchema = resolveVariableSchema(
+                  variableSchema as Parameters<typeof resolveVariableSchema>[0],
+                  schemasByKey,
+                );
+                if (!resolvedVarSchema) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Schema "${variableSchemaWithRef.schema}" could not be loaded for variable "${variableKey}".`,
+                    path: ["variations", variationN, "variableOverrides", variableKey],
+                  });
+                  continue;
+                }
               }
               const overrides = variation.variableOverrides[variableKey];
               if (!Array.isArray(overrides)) continue;

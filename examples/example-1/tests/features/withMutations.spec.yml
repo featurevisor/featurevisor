@@ -56,6 +56,21 @@ assertions:
           tags:
             - x
             - y
+      primaryLink:
+        title: "Control Home"
+        url: /control
+      heroBlock:
+        title: "Control Hero"
+        subtitle: "Control subtitle"
+      featuredProduct:
+        id: "prod-1"
+        name: "Control Product"
+        sku: "SKU-001"
+        price: { amount: 19.99, currency: USD }
+        image: { url: https://example.com/control.png, alt: Control }
+      page:
+        mainLink: { title: "Control Docs", url: /control/docs }
+        label: control-nav
 
   - at: 75
     environment: staging
@@ -111,6 +126,21 @@ assertions:
           tags:
             - t1
             - t2
+      primaryLink:
+        title: "Treatment Home"
+        url: /treatment
+      heroBlock:
+        title: "Treatment Hero"
+        subtitle: "Treatment subtitle"
+      featuredProduct:
+        id: "prod-1"
+        name: "Treatment Product"
+        sku: "SKU-001"
+        price: { amount: 24.99, currency: EUR }
+        image: { url: https://example.com/treatment.png, alt: Treatment }
+      page:
+        mainLink: { title: "Treatment Docs", url: /treatment/docs }
+        label: treatment-nav
 
   # ========== Rule override: Germany (staging) ==========
   - at: 50
@@ -167,8 +197,23 @@ assertions:
           tags:
             - de
             - tag
+      primaryLink:
+        title: Deutschland
+        url: /de
+      heroBlock:
+        title: Willkommen
+        subtitle: Los gehts
+      featuredProduct:
+        id: "prod-1"
+        name: Deutschland Produkt
+        sku: "SKU-001"
+        price: { amount: 29.99, currency: EUR }
+        image: { url: https://example.com/de.png, alt: DE }
+      page:
+        mainLink: { title: Dokumentation, url: /de/docs }
+        label: de-nav
 
-  # ========== Rule override: NL or CH (staging) - rule variables + :prepend/:append/:before/:after/:remove ==========
+  # ========== Rule override: NL or CH (staging) - rule variables + :prepend/:append/:before/:after/:remove + schema-ref mutations ==========
   - at: 50
     environment: staging
     context:
@@ -180,6 +225,7 @@ assertions:
       score: 3.5
       config:
         theme: light
+        compact: true
         width: 1500
       settings:
         display:
@@ -218,6 +264,21 @@ assertions:
             label: "B"
           - id: 3
             label: "C"
+      primaryLink:
+        title: "NL/CH Home"
+        url: "/nl-ch"
+      heroBlock:
+        title: "Welcome"
+        subtitle: "NL/CH subtitle"
+      featuredProduct:
+        id: "prod-1"
+        name: "NL/CH Featured"
+        sku: "SKU-001"
+        price: { amount: 14.99, currency: USD }
+        image: { url: "https://example.com/img.png", alt: "Featured" }
+      page:
+        mainLink: { title: "Docs", url: "/nl-ch/docs" }
+        label: nl-ch-nav
 
   - at: 50
     environment: staging
@@ -230,6 +291,7 @@ assertions:
       score: 3.5
       config:
         theme: light
+        compact: true
         width: 1500
 
   # ========== Rule override: Mobile EU (staging) - rule variables + items[2]:remove ==========
@@ -275,6 +337,12 @@ assertions:
           tags:
             - x
             - y
+      heroBlock:
+        title: "Mobile EU Hero"
+        subtitle: "Get started"
+      page:
+        mainLink: { title: "Mobile Docs", url: "/docs" }
+        label: navigation
 
   # ========== Same Germany rule when bucketed to treatment (at 75) ==========
   - at: 75
@@ -305,6 +373,21 @@ assertions:
         - id: "3"
           name: "Dritte"
           meta: { score: 1.0 }
+      primaryLink:
+        title: Deutschland
+        url: /de
+      heroBlock:
+        title: Willkommen
+        subtitle: Los gehts
+      featuredProduct:
+        id: "prod-1"
+        name: Deutschland Produkt
+        sku: "SKU-001"
+        price: { amount: 29.99, currency: EUR }
+        image: { url: https://example.com/de.png, alt: DE }
+      page:
+        mainLink: { title: Dokumentation, url: /de/docs }
+        label: de-nav
 
   # ========== Same NL/CH rule when bucketed to treatment (at 75) ==========
   - at: 75
@@ -319,12 +402,28 @@ assertions:
       score: 3.5
       config:
         theme: light
+        compact: true
         width: 1500
       tags:
         - first
         - nl-ch
         - demo
         - extra
+      primaryLink:
+        title: "NL/CH Home"
+        url: "/nl-ch"
+      heroBlock:
+        title: "Welcome"
+        subtitle: "NL/CH subtitle"
+      featuredProduct:
+        id: "prod-1"
+        name: "NL/CH Featured"
+        sku: "SKU-001"
+        price: { amount: 14.99, currency: USD }
+        image: { url: "https://example.com/img.png", alt: "Featured" }
+      page:
+        mainLink: { title: "Docs", url: "/nl-ch/docs" }
+        label: nl-ch-nav
 
   # ========== Production: Germany rule (subset overrides) ==========
   - at: 50
@@ -363,6 +462,15 @@ assertions:
             label: "DE-Prod-A"
           - id: 2
             label: "B"
+      primaryLink:
+        title: "Home"
+        url: "/de/prod"
+      featuredProduct:
+        id: "prod-1"
+        name: "Featured Item"
+        sku: "SKU-001"
+        price: { amount: 29.99, currency: "EUR" }
+        image: { url: "https://example.com/img.png", alt: "Featured" }
 
   # ========== Production: NL/CH rule (full replacement for tags) ==========
   - at: 50
@@ -398,6 +506,15 @@ assertions:
             level3:
               value: "control-mutated"
               count: 1
+      primaryLink:
+        title: "Control Home"
+        url: /control
+      heroBlock:
+        title: "Control Hero"
+        subtitle: "Control subtitle"
+      page:
+        mainLink: { title: "Control Docs", url: /control/docs }
+        label: control-nav
 
   # ========== Production: treatment variation (no segment) ==========
   - at: 75
@@ -418,6 +535,15 @@ assertions:
         - id: "3"
           name: "Third"
           meta: { score: 0.3 }
+      primaryLink:
+        title: "Treatment Home"
+        url: /treatment
+      heroBlock:
+        title: "Treatment Hero"
+        subtitle: "Treatment subtitle"
+      page:
+        mainLink: { title: "Treatment Docs", url: /treatment/docs }
+        label: treatment-nav
 
   # ========== Partial assertions (subset of variables) ==========
   - at: 10
@@ -490,4 +616,50 @@ assertions:
       score: 3.5
       config:
         theme: light
+        compact: true
         width: 1500
+      primaryLink:
+        title: "NL/CH Home"
+        url: "/nl-ch"
+      page:
+        mainLink: { title: "Docs", url: "/nl-ch/docs" }
+        label: nl-ch-nav
+
+  # ========== Schema-ref only: variableOverrides (treatment + Germany) ==========
+  - at: 75
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      primaryLink:
+        title: Deutschland
+        url: "/de"
+      heroBlock:
+        title: Willkommen
+        subtitle: Los gehts
+      page:
+        mainLink: { title: Dokumentation, url: "/de/docs" }
+        label: de-nav
+
+  # ========== Schema-ref only: mutation notation (NL/CH rule on control) ==========
+  - at: 25
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      primaryLink:
+        title: "NL/CH Home"
+        url: "/nl-ch"
+      featuredProduct:
+        id: "prod-1"
+        name: "NL/CH Featured"
+        sku: "SKU-001"
+        price: { amount: 14.99, currency: USD }
+        image: { url: "https://example.com/img.png", alt: "Featured" }
+      page:
+        mainLink: { title: "Docs", url: "/nl-ch/docs" }
+        label: nl-ch-nav

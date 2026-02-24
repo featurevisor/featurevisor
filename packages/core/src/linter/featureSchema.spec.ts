@@ -166,6 +166,38 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("rejects variable with schema reference when schema could not be loaded (missing from schemasByKey)", () => {
+      const projectConfig = minimalProjectConfig();
+      const conditionsZodSchema = getConditionsZodSchema(projectConfig, TEST_ATTRIBUTES);
+      const schemaWithEmptySchemasByKey = getFeatureZodSchema(
+        projectConfig,
+        conditionsZodSchema,
+        TEST_ATTRIBUTES,
+        TEST_SEGMENTS,
+        TEST_FEATURES,
+        ["link"],
+        {},
+      );
+      const result = schemaWithEmptySchemasByKey.safeParse(
+        baseFeature({
+          variablesSchema: {
+            myLink: {
+              schema: "link",
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      const messages = (result as z.SafeParseError<unknown>).error.issues
+        .map((i) => (typeof i.message === "string" ? i.message : ""))
+        .join(" ");
+      expect(messages).toContain("could not be loaded");
+      expect(messages).toContain("link");
+      expect(messages).toContain("myLink");
+    });
+
     it("rejects variable with schema reference when defaultValue does not match schema", () => {
       expectParseFailure(
         baseFeature({

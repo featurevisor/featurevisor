@@ -207,13 +207,20 @@ export function validateMutationKey(
   }
   const resolvedRoot = resolveSchemaRef(variableSchema, schemasByKey);
   if (!resolvedRoot) {
+    const refName =
+      variableSchema && typeof variableSchema === "object" && "schema" in variableSchema
+        ? (variableSchema as { schema?: string }).schema
+        : undefined;
     return {
-      valid: true,
+      valid: false,
       rootKey,
       pathSegments,
       operation,
       valueSchema: null,
-      error: `Could not resolve schema for variable "${rootKey}".`,
+      error:
+        refName != null
+          ? `Schema "${refName}" could not be loaded for variable "${rootKey}".`
+          : `Could not resolve schema for variable "${rootKey}".`,
     };
   }
   if (pathSegments.length > 0 && isOneOfSchema(resolvedRoot)) {

@@ -172,6 +172,49 @@ variablesSchema:
           - x
           - y
 
+  # --- Root-level schema reference (variable uses schema by name) ---
+  primaryLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: /
+
+  heroBlock:
+    schema: hero
+    defaultValue:
+      title: Welcome
+      subtitle: Get started
+
+  # --- Root-level schema ref whose schema has nested refs (price->money, image->image) ---
+  featuredProduct:
+    schema: productSummary
+    defaultValue:
+      id: "prod-1"
+      name: Featured Item
+      sku: "SKU-001"
+      price:
+        amount: 29.99
+        currency: USD
+      image:
+        url: https://example.com/img.png
+        alt: Featured
+
+  # --- Inline object with deep nested schema reference (property uses schema: link) ---
+  page:
+    type: object
+    properties:
+      mainLink:
+        schema: link
+      label:
+        type: string
+    required:
+      - mainLink
+    defaultValue:
+      mainLink:
+        title: Docs
+        url: /docs
+      label: navigation
+
 variations:
   - value: control
     weight: 50
@@ -225,6 +268,21 @@ variations:
           tags:
             - x
             - y
+      primaryLink:
+        title: Control Home
+        url: /control
+      heroBlock:
+        title: Control Hero
+        subtitle: Control subtitle
+      featuredProduct:
+        id: "prod-1"
+        name: Control Product
+        sku: "SKU-001"
+        price: { amount: 19.99, currency: USD }
+        image: { url: https://example.com/control.png, alt: Control }
+      page:
+        mainLink: { title: Control Docs, url: /control/docs }
+        label: control-nav
 
   - value: treatment
     weight: 50
@@ -278,6 +336,21 @@ variations:
           tags:
             - t1
             - t2
+      primaryLink:
+        title: Treatment Home
+        url: /treatment
+      heroBlock:
+        title: Treatment Hero
+        subtitle: Treatment subtitle
+      featuredProduct:
+        id: "prod-1"
+        name: Treatment Product
+        sku: "SKU-001"
+        price: { amount: 24.99, currency: EUR }
+        image: { url: https://example.com/treatment.png, alt: Treatment }
+      page:
+        mainLink: { title: Treatment Docs, url: /treatment/docs }
+        label: treatment-nav
     # Path-map style variableOverrides (resolveMutationsForSingleVariable)
     variableOverrides:
       title:
@@ -305,6 +378,21 @@ variations:
           value:
             "[0].name": "Erste"
             "[1].meta.score": 1.0
+      # Schema-ref variables: path-map overrides (resolved via referenced schema)
+      primaryLink:
+        - segments: countries/germany
+          value:
+            title: "Startseite (DE)"
+            url: /de
+        - segments: countries/netherlands
+          value:
+            title: "Start (NL)"
+            url: /nl
+      page:
+        - segments: countries/germany
+          value:
+            "mainLink.title": "Dokumentation"
+            "mainLink.url": /de/docs
 
 rules:
   staging:
@@ -361,6 +449,21 @@ rules:
             tags:
               - de
               - tag
+        primaryLink:
+          title: Deutschland
+          url: /de
+        heroBlock:
+          title: Willkommen
+          subtitle: Los gehts
+        featuredProduct:
+          id: "prod-1"
+          name: Deutschland Produkt
+          sku: "SKU-001"
+          price: { amount: 29.99, currency: EUR }
+          image: { url: https://example.com/de.png, alt: DE }
+        page:
+          mainLink: { title: Dokumentation, url: /de/docs }
+          label: de-nav
 
     - key: nl_or_ch
       segments:
@@ -382,7 +485,14 @@ rules:
         "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
         "payload.name": "NL/CH Payload"
         "payload.rows:append": { id: 3, label: "C" }
-        "config.compact:remove": null # :remove on object property
+        # Schema-ref variables: mutation notation (path resolution uses referenced schema)
+        "primaryLink.title": "NL/CH Home"
+        "primaryLink.url": /nl-ch
+        "heroBlock.subtitle": "NL/CH subtitle"
+        "featuredProduct.name": "NL/CH Featured"
+        "featuredProduct.price.amount": 14.99
+        "page.mainLink.url": /nl-ch/docs
+        "page.label": "nl-ch-nav"
 
     - key: mobile_eu
       segments:
@@ -400,6 +510,9 @@ rules:
         "items[0].meta.score": 0.9
         "items[2]:remove": null # :remove on array index
         "mixed.name": "mobile-mixed"
+        # Schema-ref: dot-notation into resolved schema
+        "heroBlock.title": "Mobile EU Hero"
+        "page.mainLink.title": "Mobile Docs"
 
     - key: everyone
       segments: "*"
@@ -416,6 +529,8 @@ rules:
         "settings.display.fontSize": 20
         "items[0].name": "Erste Prod"
         "payload.rows[0].label": "DE-Prod-A"
+        "primaryLink.url": /de/prod
+        "featuredProduct.price.currency": EUR
 
     - key: nl_or_ch
       segments:
