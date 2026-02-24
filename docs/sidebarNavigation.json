@@ -67,10 +67,11 @@
     "links": [
       { "title": "CLI usage", "href": "/docs/cli/" },
       { "title": "Environments", "href": "/docs/environments/" },
-      { "title": "Tagging features", "href": "/docs/tags/" },
+      { "title": "Tags", "href": "/docs/tags/" },
       { "title": "Scopes", "href": "/docs/scopes/" },
       { "title": "Namespaces", "href": "/docs/namespaces/" },
-      { "title": "Reusable schemas", "href": "/docs/schemas/" },
+      { "title": "Schemas", "href": "/docs/schemas/" },
+      { "title": "Mutations", "href": "/docs/mutations/" },
       { "title": "Custom parsers", "href": "/docs/advanced/custom-parsers/" },
       { "title": "Plugins", "href": "/docs/plugins/" },
       { "title": "Datasource", "href": "/docs/datasource/" },
