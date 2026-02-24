@@ -4,6 +4,7 @@ lib
 coverage
 dist
 out
+specs
 
 .DS_Store
 

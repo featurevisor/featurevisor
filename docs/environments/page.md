@@ -68,6 +68,42 @@ $ tree datafiles
 │   └── featurevisor-tag-mobile.json
 ```
 
+## Splitting feature files by environment
+
+If you prefer to keep environment specific rollout settings in separate files, enable `splitByEnvironment`:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  environments: ['staging', 'production'],
+  splitByEnvironment: true,
+}
+```
+
+Then your base feature keeps shared metadata only:
+
+```yml {% path="features/my_feature.yml" %}
+description: My feature
+tags:
+  - web
+bucketBy: userId
+```
+
+And each environment file defines `rules`, `force`, and/or `expose` directly:
+
+```yml {% path="environments/staging/my_feature.yml" %}
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 100
+```
+
+```yml {% path="environments/production/my_feature.yml" %}
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 0
+```
+
 ## No environments
 
 You can also choose to have no environments at all:

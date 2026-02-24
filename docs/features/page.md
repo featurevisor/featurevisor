@@ -154,6 +154,8 @@ rules:
       percentage: 100
 ```
 
+If your project enables `splitByEnvironment: true`, define shared feature metadata in `features/<feature>.yml` and define environment specific `rules`, `force`, and `expose` in `environments/<environment>/<feature>.yml` files instead.
+
 ### Rule key
 
 Each rule must have a unique `key` value among sibling rules within that environment.

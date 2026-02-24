@@ -5,6 +5,12 @@ import type { Commit, EntityDiff, EntityType } from "@featurevisor/types";
 import { ProjectConfig } from "../config";
 import { CustomParser } from "../parsers";
 
+function isWithinDirectory(directoryPath: string, fileDirectoryPath: string): boolean {
+  return (
+    fileDirectoryPath === directoryPath || fileDirectoryPath.startsWith(directoryPath + path.sep)
+  );
+}
+
 function parseGitCommitShowOutput(gitShowOutput: string) {
   const result = {
     hash: "",
@@ -83,17 +89,22 @@ export function getCommit(
 
     // get entity type
     let type: EntityType = "attribute";
-    if (relativeDir === projectConfig.attributesDirectoryPath) {
+    if (isWithinDirectory(projectConfig.attributesDirectoryPath, relativeDir)) {
       type = "attribute";
-    } else if (relativeDir === projectConfig.segmentsDirectoryPath) {
+    } else if (isWithinDirectory(projectConfig.segmentsDirectoryPath, relativeDir)) {
       type = "segment";
-    } else if (relativeDir === projectConfig.featuresDirectoryPath) {
+    } else if (isWithinDirectory(projectConfig.featuresDirectoryPath, relativeDir)) {
       type = "feature";
-    } else if (relativeDir === projectConfig.groupsDirectoryPath) {
+    } else if (
+      projectConfig.splitByEnvironment &&
+      isWithinDirectory(projectConfig.environmentsDirectoryPath, relativeDir)
+    ) {
+      type = "feature";
+    } else if (isWithinDirectory(projectConfig.groupsDirectoryPath, relativeDir)) {
       type = "group";
-    } else if (relativeDir === projectConfig.schemasDirectoryPath) {
+    } else if (isWithinDirectory(projectConfig.schemasDirectoryPath, relativeDir)) {
       type = "schema";
-    } else if (relativeDir === projectConfig.testsDirectoryPath) {
+    } else if (isWithinDirectory(projectConfig.testsDirectoryPath, relativeDir)) {
       type = "test";
     } else {
       // unknown type
@@ -109,7 +120,27 @@ export function getCommit(
       return;
     }
 
-    const key = fileName.replace(extensionWithDot, "");
+    let key = fileName.replace(extensionWithDot, "");
+
+    if (
+      type === "feature" &&
+      projectConfig.splitByEnvironment &&
+      absolutePath.startsWith(projectConfig.environmentsDirectoryPath + path.sep)
+    ) {
+      const featureRelativePath = absolutePath
+        .replace(projectConfig.environmentsDirectoryPath + path.sep, "")
+        .split(path.sep)
+        .slice(1)
+        .join(path.sep)
+        .replace(extensionWithDot, "");
+
+      key = featureRelativePath.replace(/\\/g, "/");
+    } else if (type === "feature" && absolutePath.startsWith(projectConfig.featuresDirectoryPath + path.sep)) {
+      key = absolutePath
+        .replace(projectConfig.featuresDirectoryPath + path.sep, "")
+        .replace(extensionWithDot, "")
+        .replace(/\\/g, "/");
+    }
 
     const entityDiff: EntityDiff = {
       type,

@@ -46,6 +46,11 @@ await datasource.writeFeature('foo', { ...fooFeature, ...newData })
 await datasource.deleteFeature('foo')
 ```
 
+If `splitByEnvironment` is enabled in project config, `readFeature()` still returns the same merged shape (`rules`, `force`, and `expose` grouped by environment), while data is read from:
+
+- `features/<feature>.yml` for shared properties
+- `environments/<environment>/<feature>.yml` for environment specific properties
+
 ### Segments
 
 See [segments](/docs/segments) for more details.

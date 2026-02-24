@@ -17,6 +17,13 @@ export interface DatafileOptions {
   datafilesDir?: string;
 }
 
+export type FeatureEnvironmentProperty = "rules" | "force" | "expose";
+
+export interface FeatureSourcePaths {
+  baseFilePath: string;
+  environmentFilePaths: Record<string, string>;
+}
+
 export abstract class Adapter {
   // entities
   abstract listEntities(entityType: EntityType): Promise<string[]>;
@@ -47,4 +54,17 @@ export abstract class Adapter {
     entityType?: EntityType,
     entityKey?: string,
   ): Promise<Commit>;
+
+  // feature source helpers (used by lint/history attribution)
+  async getFeatureSourcePaths(_featureKey: string): Promise<FeatureSourcePaths | undefined> {
+    return undefined;
+  }
+
+  async getFeaturePropertySourcePath(
+    _featureKey: string,
+    _property: FeatureEnvironmentProperty,
+    _environment?: string,
+  ): Promise<string | undefined> {
+    return undefined;
+  }
 }

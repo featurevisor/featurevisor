@@ -97,6 +97,39 @@ export async function lintProject(
     return fullPath;
   }
 
+  async function getFeaturePathFromIssuePath(
+    featureKey: string,
+    issuePath: (string | number)[] = [],
+  ): Promise<string> {
+    const defaultPath = getFullPathFromKey("feature", featureKey);
+
+    if (!projectConfig.splitByEnvironment) {
+      return defaultPath;
+    }
+
+    if (!Array.isArray(projectConfig.environments)) {
+      return defaultPath;
+    }
+
+    const [topLevelKey, environment] = issuePath;
+    if (
+      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
+      typeof environment === "string"
+    ) {
+      const sourcePath = await datasource.getFeaturePropertySourcePath(
+        featureKey,
+        topLevelKey,
+        environment,
+      );
+
+      if (sourcePath) {
+        return sourcePath;
+      }
+    }
+
+    return defaultPath;
+  }
+
   async function printEntityHeader(entityType: LintEntityType, key: string, fullPath: string) {
     if (isJsonMode) {
       return;
@@ -159,10 +192,18 @@ export async function lintProject(
     fullPath: string,
     error: unknown,
   ) {
+    const pathFromError =
+      error &&
+      typeof error === "object" &&
+      "featurevisorFilePath" in error &&
+      typeof error.featurevisorFilePath === "string"
+        ? error.featurevisorFilePath
+        : undefined;
+    const targetPath = pathFromError || fullPath;
     const message = error instanceof Error ? error.message : String(error);
 
     recordError({
-      filePath: path.relative(process.cwd(), fullPath),
+      filePath: path.relative(process.cwd(), targetPath),
       entityType,
       key,
       message,
@@ -171,7 +212,7 @@ export async function lintProject(
     });
 
     if (!isJsonMode) {
-      await printEntityHeader(entityType, key, fullPath);
+      await printEntityHeader(entityType, key, targetPath);
       console.log("");
       console.log(error);
     }
@@ -185,9 +226,14 @@ export async function lintProject(
   ) {
     const issues = getLintIssuesFromZodError(error);
 
-    issues.forEach((issue) => {
+    for (const issue of issues) {
+      const targetPath =
+        entityType === "feature"
+          ? await getFeaturePathFromIssuePath(key, issue.path)
+          : fullPath;
+
       recordError({
-        filePath: path.relative(process.cwd(), fullPath),
+        filePath: path.relative(process.cwd(), targetPath),
         entityType,
         key,
         message: issue.message,
@@ -195,7 +241,7 @@ export async function lintProject(
         code: issue.code,
         value: issue.value,
       });
-    });
+    }
 
     if (!isJsonMode) {
       await printEntityHeader(entityType, key, fullPath);

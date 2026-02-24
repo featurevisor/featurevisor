@@ -15,6 +15,62 @@ function createTempProjectFromExample1() {
   return tempRoot;
 }
 
+function createTempSplitProject() {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-lint-split-"));
+
+  fs.writeFileSync(
+    path.join(tempRoot, "featurevisor.config.js"),
+    [
+      "module.exports = {",
+      "  environments: ['staging', 'production'],",
+      "  splitByEnvironment: true,",
+      "  tags: ['all'],",
+      "};",
+    ].join("\n"),
+    "utf8",
+  );
+
+  fs.mkdirSync(path.join(tempRoot, "features"), { recursive: true });
+  fs.mkdirSync(path.join(tempRoot, "environments", "staging"), { recursive: true });
+  fs.mkdirSync(path.join(tempRoot, "environments", "production"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(tempRoot, "features", "foo.yml"),
+    [
+      "key: foo",
+      "description: Foo",
+      "tags:",
+      "  - all",
+      "bucketBy: userId",
+    ].join("\n"),
+    "utf8",
+  );
+
+  fs.writeFileSync(
+    path.join(tempRoot, "environments", "staging", "foo.yml"),
+    [
+      "rules:",
+      "  - key: everyone",
+      "    segments: '*'",
+      "    percentage: 100",
+    ].join("\n"),
+    "utf8",
+  );
+
+  fs.writeFileSync(
+    path.join(tempRoot, "environments", "production", "foo.yml"),
+    [
+      "rules:",
+      "  - key: everyone",
+      "    segments: '*'",
+      "    percentage: 0",
+    ].join("\n"),
+    "utf8",
+  );
+
+  return tempRoot;
+}
+
 function getDeps(rootDirectoryPath: string) {
   const projectConfig = getProjectConfig(rootDirectoryPath);
   const datasource = new Datasource(projectConfig, rootDirectoryPath);
@@ -111,5 +167,44 @@ describe("core: lintProject", function () {
     expect(result.hasError).toBe(true);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(processExitSpy).not.toHaveBeenCalled();
+  });
+
+  it("reports missing split environment file with environment file path", async () => {
+    const splitProjectPath = createTempSplitProject();
+    fs.unlinkSync(path.join(splitProjectPath, "environments", "production", "foo.yml"));
+
+    const result = await lintProject(getDeps(splitProjectPath) as any, {
+      json: true,
+      entityType: "feature",
+    });
+
+    expect(result.hasError).toBe(true);
+    expect(result.errors[0].filePath).toContain(path.join("environments", "production", "foo.yml"));
+  });
+
+  it("reports split environment feature schema errors against environment file path", async () => {
+    const splitProjectPath = createTempSplitProject();
+    fs.writeFileSync(
+      path.join(splitProjectPath, "environments", "staging", "foo.yml"),
+      [
+        "rules:",
+        "  - key: everyone",
+        "    segments: '*'",
+        "    percentage: invalid",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await lintProject(getDeps(splitProjectPath) as any, {
+      json: true,
+      entityType: "feature",
+    });
+
+    expect(result.hasError).toBe(true);
+    expect(
+      result.errors.some((error) =>
+        error.filePath.includes(path.join("environments", "staging", "foo.yml")),
+      ),
+    ).toBe(true);
   });
 });

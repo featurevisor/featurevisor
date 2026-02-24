@@ -18,6 +18,7 @@ export const DATAFILES_DIRECTORY_NAME = "datafiles";
 export const DATAFILE_NAME_PATTERN = "featurevisor-%s.json";
 export const REVISION_FILE_NAME = "REVISION";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
+export const ENVIRONMENTS_DIRECTORY_NAME = "environments";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
 export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
@@ -52,8 +53,10 @@ export interface ProjectConfig {
   datafileNamePattern: string;
   revisionFileName: string;
   siteExportDirectoryPath: string;
+  environmentsDirectoryPath: string;
 
   environments: string[] | false;
+  splitByEnvironment: boolean;
   tags: string[];
   scopes?: Scope[];
 
@@ -91,6 +94,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     adapter: FilesystemAdapter,
 
     featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
+    environmentsDirectoryPath: path.join(rootDirectoryPath, ENVIRONMENTS_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
@@ -104,6 +108,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     enforceCatchAllRule: false,
     plugins: [],
+    splitByEnvironment: false,
 
     maxVariableStringLength: undefined,
     maxVariableArrayStringifiedLength: undefined,
@@ -134,6 +139,12 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     }
 
     finalConfig.parser = parsers[finalConfig.parser];
+  }
+
+  if (finalConfig.splitByEnvironment && finalConfig.environments === false) {
+    throw new Error(
+      "Invalid configuration: splitByEnvironment=true requires environments to be an array",
+    );
   }
 
   return finalConfig as ProjectConfig;

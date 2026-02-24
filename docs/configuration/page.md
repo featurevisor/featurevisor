@@ -74,6 +74,30 @@ module.exports = {
 
 Read more in [Environments](/docs/environments) page.
 
+### `splitByEnvironment`
+
+Set to `true` to move feature `rules`, `force`, and `expose` into environment-specific files:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  environments: ['staging', 'production'],
+  splitByEnvironment: true,
+}
+```
+
+When enabled:
+
+- base feature files under `features/` must not define `rules`, `force`, or `expose`
+- each configured environment must have a file at `environments/<environment>/<feature>.yml`
+
+This option requires `environments` to be an array (cannot be `false`).
+
+### `environmentsDirectoryPath`
+
+Path to the directory containing environment-specific feature files when `splitByEnvironment` is enabled.
+
+Defaults to `<rootDir>/environments`.
+
 ### Scopes
 
 Scopes allow creating smaller and more optimized [datafiles](/docs/building-datafiles).
