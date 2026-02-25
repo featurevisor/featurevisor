@@ -1,0 +1,9 @@
+segment: netherlands
+assertions:
+  - context:
+      country: nl
+    expectedToMatch: true
+
+  - context:
+      country: de
+    expectedToMatch: false

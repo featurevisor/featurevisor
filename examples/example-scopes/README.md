@@ -8,7 +8,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ```
 $ mkdir my-featurevisor-project && cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-yml-scopes
+$ npx @featurevisor/cli init --example example-scopes
 ```
 
 ## Installation

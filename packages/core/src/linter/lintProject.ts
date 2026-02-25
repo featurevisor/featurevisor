@@ -37,6 +37,8 @@ export interface LintErrorItem {
   path: (string | number)[];
   code?: string;
   value?: unknown;
+  /** Present only when splitByEnvironment is true and the error is from an environment-specific file (rules/force/expose). */
+  environment?: string;
 }
 
 export interface LintResult {
@@ -95,6 +97,62 @@ export async function lintProject(
     }
 
     return fullPath;
+  }
+
+  async function getFeaturePathFromIssuePath(
+    featureKey: string,
+    issuePath: (string | number)[] = [],
+  ): Promise<string> {
+    const defaultPath = getFullPathFromKey("feature", featureKey);
+
+    if (!projectConfig.splitByEnvironment) {
+      return defaultPath;
+    }
+
+    if (!Array.isArray(projectConfig.environments)) {
+      return defaultPath;
+    }
+
+    const [topLevelKey, environment] = issuePath;
+    if (
+      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
+      typeof environment === "string"
+    ) {
+      const sourcePath = await datasource.getFeaturePropertySourcePath(
+        featureKey,
+        topLevelKey,
+        environment,
+      );
+
+      if (sourcePath) {
+        return sourcePath;
+      }
+    }
+
+    return defaultPath;
+  }
+
+  /**
+   * When the error is from an environment-specific file (splitByEnvironment), the Zod path
+   * is against the merged feature (e.g. rules.production.1.variables.foo). Return the path
+   * as it appears in that file (e.g. rules.1.variables.foo) by stripping the environment segment.
+   */
+  function getPathRelativeToFeatureFile(
+    issuePath: (string | number)[],
+    targetPath: string,
+    defaultFeaturePath: string,
+  ): (string | number)[] {
+    if (targetPath === defaultFeaturePath || issuePath.length < 2) {
+      return issuePath;
+    }
+    const [topLevelKey, second] = issuePath;
+    if (
+      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
+      typeof second === "string"
+    ) {
+      return [topLevelKey, ...issuePath.slice(2)];
+    }
+    return issuePath;
   }
 
   async function printEntityHeader(entityType: LintEntityType, key: string, fullPath: string) {
@@ -159,10 +217,18 @@ export async function lintProject(
     fullPath: string,
     error: unknown,
   ) {
+    const pathFromError =
+      error &&
+      typeof error === "object" &&
+      "featurevisorFilePath" in error &&
+      typeof error.featurevisorFilePath === "string"
+        ? error.featurevisorFilePath
+        : undefined;
+    const targetPath = pathFromError || fullPath;
     const message = error instanceof Error ? error.message : String(error);
 
     recordError({
-      filePath: path.relative(process.cwd(), fullPath),
+      filePath: path.relative(process.cwd(), targetPath),
       entityType,
       key,
       message,
@@ -171,7 +237,7 @@ export async function lintProject(
     });
 
     if (!isJsonMode) {
-      await printEntityHeader(entityType, key, fullPath);
+      await printEntityHeader(entityType, key, targetPath);
       console.log("");
       console.log(error);
     }
@@ -184,22 +250,71 @@ export async function lintProject(
     error: ZodError,
   ) {
     const issues = getLintIssuesFromZodError(error);
+    const defaultFeaturePath =
+      entityType === "feature" ? getFullPathFromKey("feature", key) : fullPath;
 
-    issues.forEach((issue) => {
+    const issuesWithTargetPath: {
+      issue: (typeof issues)[0];
+      targetPath: string;
+      pathRelativeToFile: (string | number)[];
+    }[] = [];
+    for (const issue of issues) {
+      const targetPath =
+        entityType === "feature" ? await getFeaturePathFromIssuePath(key, issue.path) : fullPath;
+      const pathRelativeToFile =
+        entityType === "feature"
+          ? getPathRelativeToFeatureFile(issue.path, targetPath, defaultFeaturePath)
+          : issue.path;
+      const isFromEnvFile =
+        entityType === "feature" &&
+        targetPath !== defaultFeaturePath &&
+        issue.path.length >= 2 &&
+        (issue.path[0] === "rules" || issue.path[0] === "force" || issue.path[0] === "expose") &&
+        typeof issue.path[1] === "string";
+      const environment = isFromEnvFile ? (issue.path[1] as string) : undefined;
+      issuesWithTargetPath.push({ issue, targetPath, pathRelativeToFile });
+
       recordError({
-        filePath: path.relative(process.cwd(), fullPath),
+        filePath: path.relative(process.cwd(), targetPath),
         entityType,
         key,
         message: issue.message,
-        path: issue.path,
+        path: pathRelativeToFile,
         code: issue.code,
         value: issue.value,
+        ...(environment !== undefined && { environment }),
       });
-    });
+    }
 
     if (!isJsonMode) {
-      await printEntityHeader(entityType, key, fullPath);
-      printZodError(error);
+      if (entityType === "feature" && issuesWithTargetPath.length > 0) {
+        const byPath = new Map<
+          string,
+          {
+            issue: (typeof issuesWithTargetPath)[0]["issue"];
+            pathRelativeToFile: (string | number)[];
+          }[]
+        >();
+        for (const { issue, targetPath, pathRelativeToFile } of issuesWithTargetPath) {
+          const pathKey = targetPath;
+          if (!byPath.has(pathKey)) byPath.set(pathKey, []);
+          byPath.get(pathKey)!.push({ issue, pathRelativeToFile });
+        }
+        for (const [targetPathKey, groupItems] of byPath) {
+          await printEntityHeader(entityType, key, targetPathKey);
+          for (const { issue, pathRelativeToFile } of groupItems) {
+            console.log(CLI_FORMAT_RED, `  => Error: ${issue.message}`);
+            console.log("     Path:", pathRelativeToFile.join("."));
+            if (typeof issue.value !== "undefined" && issue.value !== "undefined") {
+              console.log("     Value:", issue.value);
+            }
+            console.log("");
+          }
+        }
+      } else {
+        await printEntityHeader(entityType, key, fullPath);
+        printZodError(error);
+      }
     }
   }
 

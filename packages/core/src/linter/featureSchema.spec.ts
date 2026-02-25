@@ -25,7 +25,9 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     datafileNamePattern: "",
     revisionFileName: "",
     siteExportDirectoryPath: "",
+    environmentsDirectoryPath: "",
     environments: ["staging", "production"],
+    splitByEnvironment: false,
     tags: ["all"],
     adapter: {},
     plugins: [],
@@ -673,6 +675,25 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               },
             ],
             production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "not defined in",
+      );
+    });
+
+    it("rejects rule variable key when feature has no variablesSchema", () => {
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 80,
+                variables: { blah123: "some value" },
+              },
+            ],
           },
         }),
         "not defined in",

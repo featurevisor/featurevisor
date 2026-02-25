@@ -1465,15 +1465,9 @@ export function getFeatureZodSchema(
         }
       }
 
-      if (!value.variablesSchema) {
-        return;
-      }
-
-      // Every variable value is validated against its schema from variablesSchema. Sources covered:
-      // 1. variablesSchema[key].defaultValue  2. variablesSchema[key].disabledValue
-      // 3. variations[n].variables[key]       4. variations[n].variableOverrides[key][].value
-      // 5. rules[env][n].variables[key]       6. force[env][n].variables[key]
-      const variableSchemaByKey = value.variablesSchema;
+      // When variablesSchema is absent, variableSchemaByKey is {} so any variable key used in
+      // rules/force/variations will be reported as "not defined in variablesSchema".
+      const variableSchemaByKey = value.variablesSchema ?? {};
       const variationValues: string[] = [];
 
       if (value.variations) {
@@ -1482,100 +1476,102 @@ export function getFeatureZodSchema(
         });
       }
 
-      // variablesSchema[key]
-      const variableKeys = Object.keys(variableSchemaByKey);
-      variableKeys.forEach((variableKey) => {
-        const variableSchema = variableSchemaByKey[variableKey];
+      // variablesSchema[key] — only when feature defines variablesSchema
+      if (value.variablesSchema) {
+        const variableKeys = Object.keys(variableSchemaByKey);
+        variableKeys.forEach((variableKey) => {
+          const variableSchema = variableSchemaByKey[variableKey];
 
-        // When variable references a schema by name, ensure it resolves and validate the referenced schema
-        if ("schema" in variableSchema && variableSchema.schema) {
-          const resolvedSchema = resolveVariableSchema(
-            variableSchema as Parameters<typeof resolveVariableSchema>[0],
-            schemasByKey,
-          );
-          if (!resolvedSchema) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Schema "${variableSchema.schema}" could not be loaded for variable "${variableKey}".`,
-              path: ["variablesSchema", variableKey],
-            });
-          } else {
-            refineRequiredKeysInSchema(
-              resolvedSchema as SchemaLikeForRequired,
-              ["variablesSchema", variableKey],
-              ctx,
+          // When variable references a schema by name, ensure it resolves and validate the referenced schema
+          if ("schema" in variableSchema && variableSchema.schema) {
+            const resolvedSchema = resolveVariableSchema(
+              variableSchema as Parameters<typeof resolveVariableSchema>[0],
               schemasByKey,
             );
+            if (!resolvedSchema) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Schema "${variableSchema.schema}" could not be loaded for variable "${variableKey}".`,
+                path: ["variablesSchema", variableKey],
+              });
+            } else {
+              refineRequiredKeysInSchema(
+                resolvedSchema as SchemaLikeForRequired,
+                ["variablesSchema", variableKey],
+                ctx,
+                schemasByKey,
+              );
+            }
           }
-        }
 
-        // When type and enum are both present, all enum values must match the type
-        const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
-        if (
-          effectiveSchema &&
-          effectiveSchema.type &&
-          Array.isArray(effectiveSchema.enum) &&
-          effectiveSchema.enum.length > 0
-        ) {
-          refineEnumMatchesType(
-            effectiveSchema as Parameters<typeof refineEnumMatchesType>[0],
-            ["variablesSchema", variableKey],
-            ctx,
-          );
-        }
+          // When type and enum are both present, all enum values must match the type
+          const effectiveSchema = resolveVariableSchema(variableSchema, schemasByKey);
+          if (
+            effectiveSchema &&
+            effectiveSchema.type &&
+            Array.isArray(effectiveSchema.enum) &&
+            effectiveSchema.enum.length > 0
+          ) {
+            refineEnumMatchesType(
+              effectiveSchema as Parameters<typeof refineEnumMatchesType>[0],
+              ["variablesSchema", variableKey],
+              ctx,
+            );
+          }
 
-        // Inline variable schemas: validate minimum/maximum, minLength/maxLength/pattern, minItems/maxItems/uniqueItems
-        if (!("schema" in variableSchema) || !variableSchema.schema) {
-          const pathPrefix = ["variablesSchema", variableKey];
-          refineMinimumMaximum(
-            variableSchema as Parameters<typeof refineMinimumMaximum>[0],
-            pathPrefix,
-            ctx,
-          );
-          refineStringLengthPattern(
-            variableSchema as Parameters<typeof refineStringLengthPattern>[0],
-            pathPrefix,
-            ctx,
-          );
-          refineArrayItems(
-            variableSchema as Parameters<typeof refineArrayItems>[0],
-            pathPrefix,
-            ctx,
-          );
-        }
+          // Inline variable schemas: validate minimum/maximum, minLength/maxLength/pattern, minItems/maxItems/uniqueItems
+          if (!("schema" in variableSchema) || !variableSchema.schema) {
+            const pathPrefix = ["variablesSchema", variableKey];
+            refineMinimumMaximum(
+              variableSchema as Parameters<typeof refineMinimumMaximum>[0],
+              pathPrefix,
+              ctx,
+            );
+            refineStringLengthPattern(
+              variableSchema as Parameters<typeof refineStringLengthPattern>[0],
+              pathPrefix,
+              ctx,
+            );
+            refineArrayItems(
+              variableSchema as Parameters<typeof refineArrayItems>[0],
+              pathPrefix,
+              ctx,
+            );
+          }
 
-        if (variableKey === "variation") {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Variable key "${variableKey}" is reserved and cannot be used.`,
-            path: ["variablesSchema", variableKey],
-          });
-        }
+          if (variableKey === "variation") {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Variable key "${variableKey}" is reserved and cannot be used.`,
+              path: ["variablesSchema", variableKey],
+            });
+          }
 
-        // defaultValue
-        superRefineVariableValue(
-          projectConfig,
-          variableSchema,
-          variableSchema.defaultValue,
-          ["variablesSchema", variableKey, "defaultValue"],
-          ctx,
-          variableKey,
-          schemasByKey,
-        );
-
-        // disabledValue (only when present)
-        if (variableSchema.disabledValue !== undefined) {
+          // defaultValue
           superRefineVariableValue(
             projectConfig,
             variableSchema,
-            variableSchema.disabledValue,
-            ["variablesSchema", variableKey, "disabledValue"],
+            variableSchema.defaultValue,
+            ["variablesSchema", variableKey, "defaultValue"],
             ctx,
             variableKey,
             schemasByKey,
           );
-        }
-      });
+
+          // disabledValue (only when present)
+          if (variableSchema.disabledValue !== undefined) {
+            superRefineVariableValue(
+              projectConfig,
+              variableSchema,
+              variableSchema.disabledValue,
+              ["variablesSchema", variableKey, "disabledValue"],
+              ctx,
+              variableKey,
+              schemasByKey,
+            );
+          }
+        });
+      }
 
       // variations: validate variation.variables and variation.variableOverrides (each value against its variable schema)
       if (value.variations) {

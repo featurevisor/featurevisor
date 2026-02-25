@@ -154,6 +154,8 @@ rules:
       percentage: 100
 ```
 
+If your project enables `splitByEnvironment: true`, define shared feature metadata in `features/<feature>.yml` and define environment specific `rules`, `force`, and `expose` in `environments/<environment>/<feature>.yml` files instead.
+
 ### Rule key
 
 Each rule must have a unique `key` value among sibling rules within that environment.
@@ -1006,7 +1008,6 @@ These are the sequential steps to evaluate a feature's flag value via its [SDKs]
    1. If [`disabledVariationValue`](#disabled-variation-value) is set, the variation is evaluated as that value
 
 1. If the feature's flag value is `true`:
-
    1. If there are any [forced rules](#force), use the first one that matches the [context](/docs/sdks/javascript/#context), and use its `variation` value
    1. If there are any [rules](#rules) that match against the [context](/docs/sdks/javascript/#context), use the rule's `variation` value, otherwise use [bucketing](/docs/bucketing/) logic to determine the variation value
 

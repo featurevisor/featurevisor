@@ -11,12 +11,28 @@ import type {
   Commit,
   CommitHash,
   HistoryEntity,
+  ParsedFeature,
+  Expose,
+  Force,
+  Rule,
 } from "@featurevisor/types";
 
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig } from "../config";
 import { CustomParser } from "../parsers";
 import { getCommit } from "../utils/git";
+
+const FEATURE_ENVIRONMENT_ALLOWED_KEYS = ["rules", "force", "expose"];
+
+class FeatureSplitConfigError extends Error {
+  featurevisorFilePath: string;
+
+  constructor(filePath: string, message: string) {
+    super(message);
+    this.featurevisorFilePath = filePath;
+    this.name = "FeatureSplitConfigError";
+  }
+}
 
 export function getExistingStateFilePath(
   projectConfig: ProjectConfig,
@@ -52,6 +68,12 @@ export function getAllEntityFilePathsRecursively(directoryPath, extension) {
   }
 
   return entities;
+}
+
+function isWithinDirectory(directoryPath: string, fileDirectoryPath: string): boolean {
+  return (
+    fileDirectoryPath === directoryPath || fileDirectoryPath.startsWith(directoryPath + path.sep)
+  );
 }
 
 export class FilesystemAdapter extends Adapter {
@@ -91,6 +113,57 @@ export class FilesystemAdapter extends Adapter {
     return path.join(basePath, `${relativeEntityPath}.${this.parser.extension}`);
   }
 
+  getFeatureEnvironmentPath(featureKey: string, environment: string): string {
+    const relativeEntityPath = featureKey.replace(/\//g, path.sep);
+
+    return path.join(
+      this.config.environmentsDirectoryPath,
+      environment,
+      `${relativeEntityPath}.${this.parser.extension}`,
+    );
+  }
+
+  private assertSplitByEnvironmentIsValidFeatureBase(
+    baseFeature: ParsedFeature,
+    featurePath: string,
+  ) {
+    if (
+      typeof baseFeature.rules !== "undefined" ||
+      typeof baseFeature.force !== "undefined" ||
+      typeof baseFeature.expose !== "undefined"
+    ) {
+      throw new FeatureSplitConfigError(
+        featurePath,
+        `Feature "${baseFeature.key}" base file must not define rules, force, or expose when splitByEnvironment=true`,
+      );
+    }
+  }
+
+  private readFeatureEnvironmentEntity(featureKey: string, environment: string) {
+    const featureEnvironmentPath = this.getFeatureEnvironmentPath(featureKey, environment);
+
+    if (!fs.existsSync(featureEnvironmentPath)) {
+      throw new FeatureSplitConfigError(
+        featureEnvironmentPath,
+        `Missing environment feature file: environments/${environment}/${featureKey}.${this.parser.extension}`,
+      );
+    }
+
+    const content = fs.readFileSync(featureEnvironmentPath, "utf8");
+    const parsed = this.parser.parse<Record<string, unknown>>(content, featureEnvironmentPath);
+    const keys = Object.keys(parsed);
+    const unknownKeys = keys.filter((key) => FEATURE_ENVIRONMENT_ALLOWED_KEYS.indexOf(key) === -1);
+
+    if (unknownKeys.length > 0) {
+      throw new FeatureSplitConfigError(
+        featureEnvironmentPath,
+        `Unknown key(s) in environment feature file: ${unknownKeys.join(", ")}`,
+      );
+    }
+
+    return parsed;
+  }
+
   async listEntities(entityType: EntityType): Promise<string[]> {
     const directoryPath = this.getEntityDirectoryPath(entityType);
     const filePaths = getAllEntityFilePathsRecursively(directoryPath, this.parser.extension);
@@ -118,6 +191,50 @@ export class FilesystemAdapter extends Adapter {
   }
 
   async readEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
+    if (entityType === "feature" && this.config.splitByEnvironment) {
+      const featurePath = this.getEntityPath(entityType, entityKey);
+      const featureContent = fs.readFileSync(featurePath, "utf8");
+      const baseFeature = this.parser.parse<ParsedFeature>(featureContent, featurePath);
+
+      this.assertSplitByEnvironmentIsValidFeatureBase(baseFeature, featurePath);
+
+      if (!Array.isArray(this.config.environments)) {
+        throw new FeatureSplitConfigError(
+          featurePath,
+          "splitByEnvironment=true requires environments to be configured as an array",
+        );
+      }
+
+      const rulesByEnvironment: Record<string, Rule[]> = {};
+      const forceByEnvironment: Record<string, Force[]> = {};
+      const exposeByEnvironment: Record<string, Expose> = {};
+
+      for (const environment of this.config.environments) {
+        const envFeature = this.readFeatureEnvironmentEntity(entityKey, environment);
+
+        if (typeof envFeature.rules !== "undefined") {
+          rulesByEnvironment[environment] = envFeature.rules as Rule[];
+        }
+
+        if (typeof envFeature.force !== "undefined") {
+          forceByEnvironment[environment] = envFeature.force as Force[];
+        }
+
+        if (typeof envFeature.expose !== "undefined") {
+          exposeByEnvironment[environment] = envFeature.expose as Expose;
+        }
+      }
+
+      const mergedFeature: ParsedFeature = {
+        ...baseFeature,
+        rules: Object.keys(rulesByEnvironment).length > 0 ? rulesByEnvironment : undefined,
+        force: Object.keys(forceByEnvironment).length > 0 ? forceByEnvironment : undefined,
+        expose: Object.keys(exposeByEnvironment).length > 0 ? exposeByEnvironment : undefined,
+      };
+
+      return mergedFeature as T;
+    }
+
     const filePath = this.getEntityPath(entityType, entityKey);
     const entityContent = fs.readFileSync(filePath, "utf8");
 
@@ -306,6 +423,16 @@ export class FilesystemAdapter extends Adapter {
 
     if (entityType && entityKey) {
       pathPatterns = [this.getEntityPath(entityType, entityKey)];
+
+      if (
+        entityType === "feature" &&
+        this.config.splitByEnvironment &&
+        Array.isArray(this.config.environments)
+      ) {
+        for (const environment of this.config.environments) {
+          pathPatterns.push(this.getFeatureEnvironmentPath(entityKey, environment));
+        }
+      }
     } else if (entityType) {
       if (entityType === "attribute") {
         pathPatterns = [this.config.attributesDirectoryPath];
@@ -313,6 +440,9 @@ export class FilesystemAdapter extends Adapter {
         pathPatterns = [this.config.segmentsDirectoryPath];
       } else if (entityType === "feature") {
         pathPatterns = [this.config.featuresDirectoryPath];
+        if (this.config.splitByEnvironment) {
+          pathPatterns.push(this.config.environmentsDirectoryPath);
+        }
       } else if (entityType === "group") {
         pathPatterns = [this.config.groupsDirectoryPath];
       } else if (entityType === "schema") {
@@ -323,6 +453,7 @@ export class FilesystemAdapter extends Adapter {
     } else {
       pathPatterns = [
         this.config.featuresDirectoryPath,
+        ...(this.config.splitByEnvironment ? [this.config.environmentsDirectoryPath] : []),
         this.config.attributesDirectoryPath,
         this.config.segmentsDirectoryPath,
         this.config.groupsDirectoryPath,
@@ -332,6 +463,34 @@ export class FilesystemAdapter extends Adapter {
     }
 
     return pathPatterns.map((p) => p.replace((this.rootDirectoryPath as string) + path.sep, ""));
+  }
+
+  async getFeatureSourcePaths(featureKey: string) {
+    const baseFilePath = this.getEntityPath("feature", featureKey);
+    const environmentFilePaths: Record<string, string> = {};
+
+    if (this.config.splitByEnvironment && Array.isArray(this.config.environments)) {
+      for (const environment of this.config.environments) {
+        environmentFilePaths[environment] = this.getFeatureEnvironmentPath(featureKey, environment);
+      }
+    }
+
+    return {
+      baseFilePath,
+      environmentFilePaths,
+    };
+  }
+
+  async getFeaturePropertySourcePath(
+    featureKey: string,
+    _property: "rules" | "force" | "expose",
+    environment?: string,
+  ) {
+    if (this.config.splitByEnvironment && environment) {
+      return this.getFeatureEnvironmentPath(featureKey, environment);
+    }
+
+    return this.getEntityPath("feature", featureKey);
   }
 
   async listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]> {
@@ -361,23 +520,72 @@ export class FilesystemAdapter extends Adapter {
         const absolutePath = path.join(this.rootDirectoryPath as string, relativePath);
         const fileName = absolutePath.split(path.sep).pop() as string;
         const relativeDir = path.dirname(absolutePath);
-
-        const key = fileName.replace("." + this.parser.extension, "");
+        const extensionWithDot = "." + this.parser.extension;
+        const key = fileName.replace(extensionWithDot, "");
 
         let type: EntityType = "attribute";
-        if (relativeDir === this.config.attributesDirectoryPath) {
+        if (isWithinDirectory(this.config.attributesDirectoryPath, relativeDir)) {
           type = "attribute";
-        } else if (relativeDir === this.config.segmentsDirectoryPath) {
+        } else if (isWithinDirectory(this.config.segmentsDirectoryPath, relativeDir)) {
           type = "segment";
-        } else if (relativeDir === this.config.featuresDirectoryPath) {
+        } else if (isWithinDirectory(this.config.featuresDirectoryPath, relativeDir)) {
           type = "feature";
-        } else if (relativeDir === this.config.groupsDirectoryPath) {
+        } else if (
+          this.config.splitByEnvironment &&
+          isWithinDirectory(this.config.environmentsDirectoryPath, relativeDir)
+        ) {
+          type = "feature";
+        } else if (isWithinDirectory(this.config.groupsDirectoryPath, relativeDir)) {
           type = "group";
-        } else if (relativeDir === this.config.schemasDirectoryPath) {
+        } else if (isWithinDirectory(this.config.schemasDirectoryPath, relativeDir)) {
           type = "schema";
-        } else if (relativeDir === this.config.testsDirectoryPath) {
+        } else if (isWithinDirectory(this.config.testsDirectoryPath, relativeDir)) {
           type = "test";
         } else {
+          continue;
+        }
+
+        if (type === "feature") {
+          if (
+            this.config.splitByEnvironment &&
+            relativePath.startsWith(
+              this.config.environmentsDirectoryPath.replace(
+                (this.rootDirectoryPath as string) + path.sep,
+                "",
+              ) + path.sep,
+            )
+          ) {
+            const featureRelativePath = relativePath
+              .replace(
+                this.config.environmentsDirectoryPath.replace(
+                  (this.rootDirectoryPath as string) + path.sep,
+                  "",
+                ) + path.sep,
+                "",
+              )
+              .split(path.sep)
+              .slice(1)
+              .join(path.sep)
+              .replace(extensionWithDot, "");
+
+            entities.push({
+              type,
+              key: featureRelativePath.replace(/\\/g, "/"),
+            });
+
+            continue;
+          }
+
+          const baseRelativePath = absolutePath
+            .replace(this.config.featuresDirectoryPath + path.sep, "")
+            .replace(extensionWithDot, "")
+            .replace(/\\/g, "/");
+
+          entities.push({
+            type,
+            key: baseRelativePath,
+          });
+
           continue;
         }
 

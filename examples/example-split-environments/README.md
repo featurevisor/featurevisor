@@ -1,6 +1,6 @@
-# example-yml-no-envs
+# example-split-environments
 
-Example project with no environments.
+Example project demonstrating `splitByEnvironment` with environment-specific feature files under `environments/<environment>/`.
 
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
@@ -9,7 +9,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 ```
 $ mkdir my-featurevisor-project
 $ cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-yml-no-envs
+$ npx @featurevisor/cli init --example example-split-environments
 ```
 
 ## Installation
@@ -23,25 +23,17 @@ $ npm install
 ### Lint YAMLs
 
 ```
-$ npm run lint
+$ npx featurevisor lint
 ```
 
 ### Build datafiles
 
 ```
-$ npm run build
+$ npx featurevisor build
 ```
 
 ### Test features
 
 ```
-$ npm test
-```
-
-### Start local server
-
-Generates and serves status site:
-
-```
-$ npm start
+$ npx featurevisor test
 ```

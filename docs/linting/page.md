@@ -94,6 +94,16 @@ The `--pretty` flag is only applied when `--json` is passed.
 
 In JSON mode, lint still exits with non-zero status when errors are found, and exits with `0` when no errors are found.
 
+## Split-by-environment projects
+
+When `splitByEnvironment: true` is enabled in `featurevisor.config.js`, lint also validates:
+
+- base feature files do not define `rules`, `force`, or `expose`
+- all configured environment files exist at `environments/<environment>/<feature>.yml`
+- environment feature files only contain `rules`, `force`, and/or `expose`
+
+Errors are reported against the exact file that caused the issue (base feature file or environment-specific file).
+
 ## NPM scripts
 
 If you are using npm scripts for linting your Featurevisor project like this:

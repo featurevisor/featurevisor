@@ -1,0 +1,4 @@
+rules:
+  - key: everyone
+    segments: "*"
+    percentage: 100

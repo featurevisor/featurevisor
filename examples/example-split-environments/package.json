@@ -1,0 +1,16 @@
+{
+  "name": "@featurevisor/example-split-environments",
+  "private": true,
+  "version": "2.14.0",
+  "description": "Featurevisor project with split environment feature files",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test",
+    "export": "featurevisor site export",
+    "start": "npm run export && featurevisor site serve"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "2.14.0"
+  }
+}
