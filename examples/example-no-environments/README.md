@@ -1,4 +1,4 @@
-# example-yml-no-envs
+# example-no-environments
 
 Example project with no environments.
 
@@ -9,7 +9,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 ```
 $ mkdir my-featurevisor-project
 $ cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-yml-no-envs
+$ npx @featurevisor/cli init --example example-no-environments
 ```
 
 ## Installation
