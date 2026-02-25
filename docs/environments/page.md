@@ -11,11 +11,21 @@ nextjs:
         - url: /img/og/docs-environments.png
 ---
 
-Featurevisor is highly configurable and allows you to have any number of custom environments (like development, staging, and production). You can also choose to have no environments at all. {% .lead %}
+Featurevisor is highly configurable and allows us to have any number of custom environments (like development, staging, and production). We can also choose to have no environments at all. {% .lead %}
+
+There are 3 ways to to configure environments in Featurevisor:
+
+- environment specific data in individual self-contained [feature](/docs/features/) definitions
+- feature definitions + separate environment specific files for [`rules`](/docs/features/#rules), [`force`](/docs/features/#force), and/or [`expose`](/docs/features/#expose)
+- no environments at all
 
 ## Custom environments
 
-It is recommended that you have at least `staging` and `production` environments in your project. You can add more environments as needed:
+It is recommended that we have at least `staging` and `production` environments in our [project](/docs/projects/).
+
+### Adding environments
+
+We can add more environments as needed:
 
 ```js {% path="featurevisor.config.js" highlight="7-12" %}
 module.exports = {
@@ -33,7 +43,9 @@ module.exports = {
 }
 ```
 
-Above configuration will help you define your features against each environment as follows:
+Above configuration will help us define our features and their rules against each environment as follows:
+
+### Environment specific rules
 
 ```yml {% path="features/my_feature.yml" highlight="9,14" %}
 description: My feature
@@ -55,9 +67,13 @@ rules:
       percentage: 0
 ```
 
-And the [datafiles](/docs/building-datafiles) will be built per each environment:
+See also [force](/docs/features/#force) and [expose](/docs/features/#expose) for more information.
 
-```{% highlight="3,6" %}
+### Generated datafiles
+
+And the [datafiles](/docs/building-datafiles) will be built per each environment in `datafiles` directory:
+
+```{% title="Command" highlight="3,6" %}
 $ tree datafiles
 .
 ├── staging/
@@ -68,27 +84,49 @@ $ tree datafiles
 │   └── featurevisor-tag-mobile.json
 ```
 
-## Splitting feature files by environment
+## Split by environment
 
-If you prefer to keep environment specific rollout settings in separate files, enable `splitByEnvironment`:
+If we prefer to keep environment specific rollout settings in separate files, enable `splitByEnvironment` in `featurevisor.config.js`:
 
-```js {% path="featurevisor.config.js" %}
+```js {% path="featurevisor.config.js" highlight="3" %}
 module.exports = {
   environments: ['staging', 'production'],
   splitByEnvironment: true,
 }
 ```
 
-Then your base feature keeps shared metadata only:
+### Directory structure
+
+```{% title="Directory structure" highlight="2,5,7" %}
+features/
+  └── my_feature.yml        # base feature definition
+environments/
+  ├── staging/
+  │   └── my_feature.yml    # environment specific files
+  └── production/
+      └── my_feature.yml
+```
+
+### Base feature definition
+
+Then our base feature keeps common feature-level data only:
 
 ```yml {% path="features/my_feature.yml" %}
 description: My feature
 tags:
   - web
+
 bucketBy: userId
+
+# variablesSchema: ...
+# variations: ...
 ```
 
-And each environment file defines `rules`, `force`, and/or `expose` directly:
+We can also define [variables](/docs/features/#variables) and [variations](/docs/features/#variations) in the base feature definition here.
+
+### Environment specific files
+
+And each environment file defines [`rules`](/docs/features/#rules), [`force`](/docs/features/#force), and/or [`expose`](/docs/features/#expose) data directly:
 
 ```yml {% path="environments/staging/my_feature.yml" %}
 rules:
@@ -104,9 +142,14 @@ rules:
     percentage: 0
 ```
 
+This kind of splitting is useful when we have a lot of environment specific data and we want to:
+
+- keep the base feature definition clean and simple
+- maintain different levels of access control and ownership for different environments (like via `CODEOWNERS` file for example)
+
 ## No environments
 
-You can also choose to have no environments at all:
+We can also choose to have no environments at all:
 
 ```js {% path="featurevisor.config.js" highlight="6" %}
 module.exports = {
@@ -118,7 +161,7 @@ module.exports = {
 }
 ```
 
-This will allow you to define your rollout rules directly:
+This will allow us to define our rollout rules directly without needing any environment specific keys:
 
 ```yml {% path="features/my_feature.yml" %}
 description: My feature
