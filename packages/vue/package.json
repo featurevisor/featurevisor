@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/vue",
-  "version": "2.12.0",
+  "version": "2.15.0",
   "description": "Vue.js package for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",
