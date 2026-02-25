@@ -1,5 +1,5 @@
 {
-  "name": "@featurevisor/example-yml-no-envs",
+  "name": "@featurevisor/example-no-environments",
   "private": true,
   "version": "2.14.0",
   "description": "Featurevisor project with YAML definitions",
