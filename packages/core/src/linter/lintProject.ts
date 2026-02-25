@@ -290,7 +290,10 @@ export async function lintProject(
       if (entityType === "feature" && issuesWithTargetPath.length > 0) {
         const byPath = new Map<
           string,
-          { issue: (typeof issuesWithTargetPath)[0]["issue"]; pathRelativeToFile: (string | number)[] }[]
+          {
+            issue: (typeof issuesWithTargetPath)[0]["issue"];
+            pathRelativeToFile: (string | number)[];
+          }[]
         >();
         for (const { issue, targetPath, pathRelativeToFile } of issuesWithTargetPath) {
           const pathKey = targetPath;
