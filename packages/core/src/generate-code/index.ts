@@ -10,6 +10,9 @@ export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 export interface GenerateCodeCLIOptions {
   language: string;
   outDir: string;
+  tag?: string | string[];
+  react?: boolean;
+  individualFeatures?: boolean;
 }
 
 export async function generateCodeForProject(
@@ -44,7 +47,11 @@ export async function generateCodeForProject(
   }
 
   if (cliOptions.language === "typescript") {
-    return await generateTypeScriptCodeForProject(deps, absolutePath);
+    return await generateTypeScriptCodeForProject(deps, absolutePath, {
+      tag: cliOptions.tag,
+      react: cliOptions.react,
+      individualFeatures: cliOptions.individualFeatures,
+    });
   }
 
   throw new Error(`Language ${cliOptions.language} is not supported`);
@@ -63,6 +70,14 @@ export const generateCodePlugin: Plugin = {
       {
         language: parsed.language,
         outDir: parsed.outDir,
+        tag: parsed.tag,
+        react: parsed.react,
+        individualFeatures:
+          parsed.individualFeatures !== undefined
+            ? Boolean(parsed.individualFeatures)
+            : parsed["individual-features"] !== undefined
+              ? Boolean(parsed["individual-features"])
+              : true,
       },
     );
   },
@@ -70,6 +85,10 @@ export const generateCodePlugin: Plugin = {
     {
       command: "generate-code --language typescript --out-dir src/generated",
       description: "Generate TypeScript code for the project",
+    },
+    {
+      command: "generate-code --language typescript --out-dir src/generated --tag web --react",
+      description: "Generate TypeScript and React helper code for tagged features",
     },
   ],
 };
