@@ -39,6 +39,18 @@ $ npx featurevisor generate-code --language typescript --out-dir ./src
 
 The generated files can be found in `./src` directory.
 
+Optional flags:
+
+- `--tag=<tag>`: generate code only for features with the given tag
+- `--react`: also generate typed React hooks in `React.ts`
+- `--no-individual-features`: skip generating per-feature `*Feature.ts` files
+
+Additional generated files:
+
+- `Features.ts`: map of feature keys to variation and variable types
+- `Functions.ts`: typed wrappers for `isEnabled`, `getVariation` and `getVariable`
+- `React.ts`: typed React hooks (`useFlag`, `useVariation`, `useVariable`) when `--react` is passed
+
 ## Publishing the generated code
 
 You are free to use the generated code in any way you want.

@@ -106,6 +106,14 @@ $ npx featurevisor generate-code --language typescript --out-dir ./src
 
 See output in `./src` directory.
 
+Options:
+
+| Option                       | Description                                          |
+| ---------------------------- | ---------------------------------------------------- |
+| `--tag=<tag>`                | only generate code for features matching this tag    |
+| `--react`                    | also generate typed React hooks in `React.ts`        |
+| `--no-individual-features`   | skip generating per-feature `*Feature.ts` files      |
+
 Learn more in [code generation](/docs/code-generation) page.
 
 ## Find duplicate segments

@@ -3,11 +3,18 @@ import * as path from "path";
 
 import type {
   Attribute,
+  ParsedFeature,
   Schema,
   VariableSchema,
   VariableSchemaWithInline,
 } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
+
+export interface TypeScriptGenerationOptions {
+  tag?: string | string[];
+  react?: boolean;
+  individualFeatures?: boolean;
+}
 
 function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): string {
   switch (featurevisorType) {
@@ -383,6 +390,63 @@ function getRelativePath(from, to) {
   return relativePath;
 }
 
+function getVariationUnionFromFeature(parsedFeature: ParsedFeature): string | null {
+  if (!parsedFeature.variations || parsedFeature.variations.length === 0) {
+    return null;
+  }
+
+  const values = Array.from(
+    new Set(parsedFeature.variations.map((variation) => JSON.stringify(variation.value))),
+  );
+
+  return values.length > 0 ? values.join(" | ") : null;
+}
+
+function getVariableTypeForFeaturesMap(
+  variableSchema: VariableSchema,
+  schemasByKey: Record<string, Schema>,
+  schemaTypeNames?: Record<string, string>,
+): { typeName: string; schemaTypesUsed: string[] } {
+  const schemaTypesUsed: string[] = [];
+  const addSchemaUsed = (name: string) => {
+    if (name && !schemaTypesUsed.includes(name)) {
+      schemaTypesUsed.push(name);
+    }
+  };
+
+  if (
+    schemaTypeNames &&
+    "schema" in variableSchema &&
+    variableSchema.schema &&
+    schemasByKey[variableSchema.schema]
+  ) {
+    const schemaTypeName = schemaTypeNames[variableSchema.schema];
+    addSchemaUsed(schemaTypeName);
+    return { typeName: schemaTypeName, schemaTypesUsed };
+  }
+
+  const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+  if (!effective) {
+    return { typeName: "unknown", schemaTypesUsed };
+  }
+
+  if ("type" in effective && effective.type === "json") {
+    return { typeName: "unknown", schemaTypesUsed };
+  }
+
+  const typeName = schemaToTypeScriptType(effective as Schema, schemasByKey, schemaTypeNames);
+
+  if (schemaTypeNames) {
+    Object.values(schemaTypeNames).forEach((name) => {
+      if (typeName.includes(name)) {
+        addSchemaUsed(name);
+      }
+    });
+  }
+
+  return { typeName, schemaTypesUsed };
+}
+
 /**
  * Generates the content of Schemas.ts: one exported type per schema key, using schema refs between schemas.
  */
@@ -423,8 +487,19 @@ export function getInstance(): FeaturevisorInstance {
 }
 `.trimStart();
 
-export async function generateTypeScriptCodeForProject(deps: Dependencies, outputPath: string) {
+export async function generateTypeScriptCodeForProject(
+  deps: Dependencies,
+  outputPath: string,
+  options: TypeScriptGenerationOptions = {},
+) {
   const { rootDirectoryPath, datasource } = deps;
+  const selectedTags = options.tag
+    ? Array.isArray(options.tag)
+      ? options.tag
+      : [options.tag]
+    : [];
+  const shouldGenerateReact = Boolean(options.react);
+  const shouldGenerateIndividualFeatures = options.individualFeatures !== false;
 
   console.log("\nGenerating TypeScript code...\n");
 
@@ -474,7 +549,6 @@ ${attributeProperties}
   );
 
   // features
-  const featureNamespaces: string[] = [];
   const featureFiles = await datasource.listFeatures();
 
   // Load schemas for resolving variable schema references
@@ -503,89 +577,106 @@ ${attributeProperties}
     schemaTypeNames[k] = getPascalCase(k) + "Schema";
   }
 
+  const parsedFeatures: { featureKey: string; parsedFeature: ParsedFeature; namespaceValue: string }[] =
+    [];
+
   for (const featureKey of featureFiles) {
-    const parsedFeature = await datasource.readFeature(featureKey);
+    const parsedFeature = (await datasource.readFeature(featureKey)) as ParsedFeature;
 
     if (typeof parsedFeature.archived !== "undefined" && parsedFeature.archived) {
       continue;
     }
 
+    if (selectedTags.length > 0) {
+      const featureTags = Array.isArray(parsedFeature.tags) ? parsedFeature.tags : [];
+      const hasTags = selectedTags.every((tag) => featureTags.includes(tag));
+      if (!hasTags) {
+        continue;
+      }
+    }
+
     const namespaceValue = getPascalCase(featureKey) + "Feature";
-    featureNamespaces.push(namespaceValue);
+    parsedFeatures.push({ featureKey, parsedFeature, namespaceValue });
+  }
 
-    let variableTypeDeclarations = "";
-    let variableMethods = "";
-    const featureSchemaTypesUsed = new Set<string>();
+  const featureNamespaces: string[] = [];
+  if (shouldGenerateIndividualFeatures) {
+    for (const { featureKey, parsedFeature, namespaceValue } of parsedFeatures) {
+      featureNamespaces.push(namespaceValue);
 
-    if (parsedFeature.variablesSchema) {
-      const variableKeys = Object.keys(parsedFeature.variablesSchema);
-      const allDeclarations: string[] = [];
+      let variableTypeDeclarations = "";
+      let variableMethods = "";
+      const featureSchemaTypesUsed = new Set<string>();
 
-      for (const variableKey of variableKeys) {
-        const variableSchema = parsedFeature.variablesSchema[variableKey];
-        const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
-        const variableType = effective?.type;
-        const {
-          declarations,
-          returnTypeName,
-          genericArg,
-          isLiteralType,
-          useGetVariable,
-          schemaTypesUsed,
-        } = generateVariableTypeDeclarations(
-          variableKey,
-          variableSchema,
-          schemasByKey,
-          hasSchemasFile ? schemaTypeNames : undefined,
-        );
-        schemaTypesUsed.forEach((t) => featureSchemaTypesUsed.add(t));
-        allDeclarations.push(...declarations);
+      if (parsedFeature.variablesSchema) {
+        const variableKeys = Object.keys(parsedFeature.variablesSchema);
+        const allDeclarations: string[] = [];
 
-        const internalMethodName = `getVariable${
-          variableType === "json" ? "JSON" : getPascalCase(variableType ?? "string")
-        }`;
+        for (const variableKey of variableKeys) {
+          const variableSchema = parsedFeature.variablesSchema[variableKey];
+          const effective = getEffectiveVariableSchema(variableSchema, schemasByKey);
+          const variableType = effective?.type;
+          const {
+            declarations,
+            returnTypeName,
+            genericArg,
+            isLiteralType,
+            useGetVariable,
+            schemaTypesUsed,
+          } = generateVariableTypeDeclarations(
+            variableKey,
+            variableSchema,
+            schemasByKey,
+            hasSchemasFile ? schemaTypeNames : undefined,
+          );
+          schemaTypesUsed.forEach((t) => featureSchemaTypesUsed.add(t));
+          allDeclarations.push(...declarations);
 
-        const hasGeneric =
-          variableType === "json" || variableType === "array" || variableType === "object";
-        const literalAssertion = isLiteralType ? ` as ${returnTypeName} | null` : "";
-        if (useGetVariable) {
-          variableMethods += `
+          const internalMethodName = `getVariable${
+            variableType === "json" ? "JSON" : getPascalCase(variableType ?? "string")
+          }`;
+
+          const hasGeneric =
+            variableType === "json" || variableType === "array" || variableType === "object";
+          const literalAssertion = isLiteralType ? ` as ${returnTypeName} | null` : "";
+          if (useGetVariable) {
+            variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
 ${INDENT_NS_BODY}return getInstance().getVariable(key, "${variableKey}", context)${literalAssertion};
 ${INDENT_NS}}`;
-        } else if (variableType === "json") {
-          variableMethods += `
+          } else if (variableType === "json") {
+            variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}<T = unknown>(context: Context = {}): T | null {
 ${INDENT_NS_BODY}return getInstance().${internalMethodName}<T>(key, "${variableKey}", context);
 ${INDENT_NS}}`;
-        } else if (hasGeneric) {
-          variableMethods += `
+          } else if (hasGeneric) {
+            variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
 ${INDENT_NS_BODY}return getInstance().${internalMethodName}<${genericArg}>(key, "${variableKey}", context);
 ${INDENT_NS}}`;
-        } else {
-          variableMethods += `
+          } else {
+            variableMethods += `
 
 ${INDENT_NS}export function get${getPascalCase(variableKey)}(context: Context = {}): ${returnTypeName} | null {
 ${INDENT_NS_BODY}return getInstance().${internalMethodName}(key, "${variableKey}", context)${literalAssertion};
 ${INDENT_NS}}`;
+          }
+        }
+
+        if (allDeclarations.length > 0) {
+          variableTypeDeclarations = "\n\n" + allDeclarations.join("\n\n");
         }
       }
 
-      if (allDeclarations.length > 0) {
-        variableTypeDeclarations = "\n\n" + allDeclarations.join("\n\n");
-      }
-    }
+      const schemasImportLine =
+        featureSchemaTypesUsed.size > 0
+          ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./Schemas";\n\n`
+          : "";
 
-    const schemasImportLine =
-      featureSchemaTypesUsed.size > 0
-        ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./Schemas";\n\n`
-        : "";
-
-    const featureContent = `
+      const featureContent = `
 import { Context } from "./Context";
 import { getInstance } from "./instance";
 ${schemasImportLine}export namespace ${namespaceValue} {
@@ -601,14 +692,117 @@ ${INDENT_NS}}${variableMethods}
 }
 `.trimStart();
 
-    const featureNamespaceFilePath = path.join(outputPath, `${namespaceValue}.ts`);
-    fs.writeFileSync(featureNamespaceFilePath, featureContent);
-    console.log(
-      `Feature ${featureKey} file written at: ${getRelativePath(
-        rootDirectoryPath,
-        featureNamespaceFilePath,
-      )}`,
-    );
+      const featureNamespaceFilePath = path.join(outputPath, `${namespaceValue}.ts`);
+      fs.writeFileSync(featureNamespaceFilePath, featureContent);
+      console.log(
+        `Feature ${featureKey} file written at: ${getRelativePath(
+          rootDirectoryPath,
+          featureNamespaceFilePath,
+        )}`,
+      );
+    }
+  }
+
+  const featuresTypeSchemasUsed = new Set<string>();
+  const featureTypeEntries = parsedFeatures
+    .map(({ featureKey, parsedFeature }) => {
+      const featureLines: string[] = [];
+      const variationUnion = getVariationUnionFromFeature(parsedFeature);
+
+      if (variationUnion) {
+        featureLines.push(`${INDENT_NS_BODY}variation: ${variationUnion};`);
+      }
+
+      if (parsedFeature.variablesSchema) {
+        for (const [variableKey, variableSchema] of Object.entries(parsedFeature.variablesSchema)) {
+          const { typeName, schemaTypesUsed } = getVariableTypeForFeaturesMap(
+            variableSchema,
+            schemasByKey,
+            hasSchemasFile ? schemaTypeNames : undefined,
+          );
+          schemaTypesUsed.forEach((name) => featuresTypeSchemasUsed.add(name));
+          featureLines.push(`${INDENT_NS_BODY}${JSON.stringify(variableKey)}: ${typeName};`);
+        }
+      }
+
+      return `${INDENT_NS}${JSON.stringify(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
+    })
+    .join("\n");
+
+  const featuresSchemasImportLine =
+    featuresTypeSchemasUsed.size > 0
+      ? `import type { ${[...featuresTypeSchemasUsed].sort().join(", ")} } from "./Schemas";\n\n`
+      : "";
+
+  const featuresFileContent = `
+${featuresSchemasImportLine}export type Features = {
+${featureTypeEntries}
+};
+
+export type FeatureKey = keyof Features;
+export type VariableKey<F extends FeatureKey> = Extract<Exclude<keyof Features[F], "variation">, string>;
+export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F][V];
+export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V } ? V : never;
+`.trimStart();
+  const featuresFilePath = path.join(outputPath, "Features.ts");
+  fs.writeFileSync(featuresFilePath, featuresFileContent);
+  console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
+
+  const functionsFileContent = `
+import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
+import { Context } from "./Context";
+import { getInstance } from "./instance";
+
+export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
+  return getInstance().isEnabled(featureKey, context);
+}
+
+export function getVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+  return getInstance().getVariation(featureKey, context) as Variation<F> | null;
+}
+
+export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
+  featureKey: F,
+  variableKey: V,
+  context: Context = {},
+): VariableType<F, V> | null {
+  return getInstance().getVariable(featureKey, variableKey, context) as VariableType<F, V> | null;
+}
+`.trimStart();
+  const functionsFilePath = path.join(outputPath, "Functions.ts");
+  fs.writeFileSync(functionsFilePath, functionsFileContent);
+  console.log(`Functions file written at: ${getRelativePath(rootDirectoryPath, functionsFilePath)}`);
+
+  if (shouldGenerateReact) {
+    const reactFileContent = `
+import {
+  useFlag as useFlagOriginal,
+  useVariation as useVariationOriginal,
+  useVariable as useVariableOriginal,
+} from "@featurevisor/react";
+
+import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
+import { Context } from "./Context";
+
+export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
+  return useFlagOriginal(featureKey, context);
+}
+
+export function useVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+  return useVariationOriginal(featureKey, context) as Variation<F> | null;
+}
+
+export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
+  featureKey: F,
+  variableKey: V,
+  context: Context = {},
+): VariableType<F, V> | null {
+  return useVariableOriginal(featureKey, variableKey, context) as VariableType<F, V> | null;
+}
+`.trimStart();
+    const reactFilePath = path.join(outputPath, "React.ts");
+    fs.writeFileSync(reactFilePath, reactFileContent);
+    console.log(`React file written at: ${getRelativePath(rootDirectoryPath, reactFilePath)}`);
   }
 
   // index
@@ -617,6 +811,9 @@ ${INDENT_NS}}${variableMethods}
       `export * from "./Context";`,
       `export * from "./instance";`,
       ...(hasSchemasFile ? [`export * from "./Schemas";`] : []),
+      `export * from "./Features";`,
+      `export * from "./Functions";`,
+      ...(shouldGenerateReact ? [`export * from "./React";`] : []),
       ...featureNamespaces.map((featureNamespace) => {
         return `export * from "./${featureNamespace}";`;
       }),
