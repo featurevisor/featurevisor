@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.16.0](https://github.com/featurevisor/featurevisor/compare/v2.15.0...v2.16.0) (2026-02-26)
+
+
+### Features
+
+* code generation with same typed functions ([#394](https://github.com/featurevisor/featurevisor/issues/394)) ([0777d15](https://github.com/featurevisor/featurevisor/commit/0777d150a7ac020f2354ee5b466afdb6e5929807))
+
+
+
+
+
 # [2.15.0](https://github.com/featurevisor/featurevisor/compare/v2.14.0...v2.15.0) (2026-02-25)
 
 
