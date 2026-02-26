@@ -577,8 +577,11 @@ ${attributeProperties}
     schemaTypeNames[k] = getPascalCase(k) + "Schema";
   }
 
-  const parsedFeatures: { featureKey: string; parsedFeature: ParsedFeature; namespaceValue: string }[] =
-    [];
+  const parsedFeatures: {
+    featureKey: string;
+    parsedFeature: ParsedFeature;
+    namespaceValue: string;
+  }[] = [];
 
   for (const featureKey of featureFiles) {
     const parsedFeature = (await datasource.readFeature(featureKey)) as ParsedFeature;
@@ -771,7 +774,9 @@ export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
 `.trimStart();
   const functionsFilePath = path.join(outputPath, "Functions.ts");
   fs.writeFileSync(functionsFilePath, functionsFileContent);
-  console.log(`Functions file written at: ${getRelativePath(rootDirectoryPath, functionsFilePath)}`);
+  console.log(
+    `Functions file written at: ${getRelativePath(rootDirectoryPath, functionsFilePath)}`,
+  );
 
   if (shouldGenerateReact) {
     const reactFileContent = `
