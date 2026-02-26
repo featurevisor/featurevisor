@@ -11,17 +11,17 @@ nextjs:
         - url: /img/og/docs-code-generation.png
 ---
 
-For additional compile-time and runtime safety including autocompletion, you can generate code from your already defined features for improved developer experience. {% .lead %}
+For additional compile-time and runtime safety including autocompletion, we can generate code from our already defined [features](/docs/features) for improved developer experience. {% .lead %}
 
 ## Why generate code?
 
-This is an optional step that you may wish to adopt in your workflow. If you do, it will help you avoid some common mistakes:
+This is an optional step that we may wish to adopt in our workflow. If we do, it will help us avoid some common mistakes:
 
-- any unintentional spelling mistakes in feature and variable keys
-- worrying about the types of your variables
-- worrying about passing attributes in wrong types in context
+- any unintentional spelling mistakes in [feature](/docs/features) and variable keys
+- worrying about the types of our [variables](/docs/features/#variables)
+- worrying about passing attributes in wrong types in [context](/docs/sdks/javascript/#context)
 
-All of it done being code-driven, thus reducing overall cognitive load of your team.
+All of it done being code-driven, thus reducing overall cognitive load of multiple teams.
 
 ## Supported languages
 
@@ -31,10 +31,14 @@ Support for other languages is planned in future, as Featurevisor SDK becomes av
 
 ## Generate code
 
-From the root of your Featurevisor project directory, use the [CLI](/docs/cli) for generating code in a specified directory:
+From the root of our Featurevisor project directory, use the [CLI](/docs/cli) for generating code in a specified directory:
 
 ```{% title="Command" %}
-$ npx featurevisor generate-code --language typescript --out-dir ./src
+$ npx featurevisor generate-code \
+    --language typescript \
+    --out-dir ./src \
+    --react \
+    --no-individual-features
 ```
 
 The generated files can be found in `./src` directory.
@@ -45,28 +49,22 @@ Optional flags:
 - `--react`: also generate typed React hooks in `React.ts`
 - `--no-individual-features`: skip generating per-feature `*Feature.ts` files
 
-Additional generated files:
-
-- `Features.ts`: map of feature keys to variation and variable types
-- `Functions.ts`: typed wrappers for `isEnabled`, `getVariation` and `getVariable`
-- `React.ts`: typed React hooks (`useFlag`, `useVariation`, `useVariable`) when `--react` is passed
-
 ## Publishing the generated code
 
-You are free to use the generated code in any way you want.
+We are free to use the generated code in any way we want.
 
-You can choose to either:
+We can choose to either:
 
-- copy/paste the code in your applications, or
-- publish the generated code as a private npm package and use it in multiple applications
+- copy/paste the code in our applications, or
+- publish the generated code as a private npm package and use it in multiple applications, like as `@yourorg/features` package
 
-This guide assumes we are publishing it as a private npm package named `@yourorg/features`.
-
-The publishing part can be done in the same [deployment](/docs/deployment) process right after deploying your generated [datafiles](/docs/building-datafiles).
+The publishing part can be done in the same [deployment](/docs/deployment) process right after deploying our generated [datafiles](/docs/building-datafiles).
 
 ## Consuming the generated code
 
-Initialize Featurevisor SDK as usual, and make your newly created package aware of the SDK instance:
+Assuming we published the generated code as a private npm package `@yourorg/features`, we can consume it in our applications as follows.
+
+Initialize Featurevisor [SDK](/docs/sdks/javascript) as usual, and make our newly created package aware of the SDK instance:
 
 ```js {% path="your-app/index.js" %}
 import { createInstance } from '@featurevisor/sdk'
@@ -79,9 +77,65 @@ const f = createInstance({
 setInstance(f)
 ```
 
-Afterwards, you can import your features from the generated package and evaluate their variations and variables.
+Afterwards, we can import a common set of functions which are already aware of which feature keys we are allowed to use including their variable keys.
 
-## Importing features
+## Importing functions
+
+Similar to [JavaScript SDK](/docs/sdks/javascript)'s methods `isEnabled`, `getVariation`, and `getVariable`, we can import these functions with the same names:
+
+```js
+import { isEnabled, getVariation, getVariable } from '@yourorg/features'
+
+const featureIsEnabled = isEnabled('featureKey')
+const featureVariation = getVariation('featureKey')
+const featureVariable  = getVariable('featureKey', 'variableKey')
+```
+
+We can optionally pass additional [context](/docs/sdks/javascript/#context) as the last argument:
+
+```js
+const context = {
+  userId: '123',
+}
+
+const featureIsEnabled = isEnabled('featureKey', context)
+const featureVariation = getVariation('featureKey', context)
+const featureVariable  = getVariable('featureKey', 'variableKey', context)
+```
+
+Everything here is typed as per our defined [features](/docs/features).
+
+If we pass a wrong feature key, or a variable key that does not belong to the same feature, we will get a TypeScript error.
+
+## Importing React hooks
+
+If we passed `--react` in CLI, we can import React hooks with the same names as the original package [`@featurevisor/react`](/docs/react):
+
+```js
+import { useFlag, useVariation, useVariable } from '@yourorg/features'
+
+const isEnabled = useFlag('featureKey')
+const variation = useVariation('featureKey')
+const variable  = useVariable('featureKey', 'variableKey')
+```
+
+Passing any wrong feature key or variable key combination will result in a TypeScript error.
+
+We can optionally pass additional [context](/docs/sdks/javascript/#context) as the last argument:
+
+```js
+const context = {
+  userId: '123',
+}
+
+const isEnabled = useFlag('featureKey', context)
+const variation = useVariation('featureKey', context)
+const variable  = useVariable('featureKey', 'variableKey', context)
+```
+
+## Importing features (legacy)
+
+This will only work if we didn't pass `--no-individual-features` in CLI.
 
 Each feature as defined in our Featurevisor project is made available as an individual TypeScript namespace.
 
@@ -93,13 +147,13 @@ import { FooFeature } from '@yourorg/features'
 
 The imported feature will have several methods available depending how it's defined.
 
-Method for checking if the feature is enabled or not is always available:
+The method for checking if the feature is enabled or not is always available:
 
 ```js
 FooFeature.isEnabled((context = {}))
 ```
 
-If your feature has any defined variations, then `getVariation` method would also be available:
+If our feature has any defined variations, then the `getVariation` method would also be available:
 
 ```js
 FooFeature.getVariation((context = {}))
@@ -111,9 +165,9 @@ If variables are also defined in the feature, they would be available as:
 FooFeature.getMyVariableKey((context = {}))
 ```
 
-## Passing context
+### Passing context
 
-You can access the full generated `Context` type as follows:
+We can access the full generated `Context` type as follows:
 
 ```js
 import { Context } from '@yourorg/features'
@@ -125,7 +179,7 @@ The generated code is smart enough to know the types of all your individual attr
 
 Therefore, if you pass an attribute in wrong type for evaluating variation or variables, you will get a TypeScript error.
 
-## Checking if enabled
+### Checking if enabled
 
 Assuming we have a `foo` feature defined already in `features/foo.yml` file:
 
@@ -136,7 +190,7 @@ const context = { userId: 'user-123' }
 const isFooEnabled = FooFeature.isEnabled(context)
 ```
 
-## Getting variation
+### Getting variation
 
 We can use the same imported feature to get its variation:
 
@@ -147,7 +201,7 @@ const context = { userId: 'user-123' }
 const fooVariation = FooFeature.getVariation(context)
 ```
 
-## Evaluating variable
+### Evaluating variable
 
 If our `foo` feature had a `bar` variable defined, we can evaluate it as follows:
 
@@ -170,7 +224,7 @@ interface MyType {
 const barValue = FooFeature.getBar<MyType>(context);
 ```
 
-## Accessing keys
+### Accessing keys
 
 To access the literal feature key, use the `key` property of imported feature:
 
