@@ -728,6 +728,10 @@ ${INDENT_NS}}${variableMethods}
         }
       }
 
+      if (featureLines.length === 0) {
+        return `${INDENT_NS}${JSON.stringify(featureKey)}: null;`;
+      }
+
       return `${INDENT_NS}${JSON.stringify(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
     })
     .join("\n");
@@ -743,8 +747,12 @@ ${featureTypeEntries}
 };
 
 export type FeatureKey = keyof Features;
-export type VariableKey<F extends FeatureKey> = Extract<Exclude<keyof Features[F], "variation">, string>;
-export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F][V];
+export type VariableKey<F extends FeatureKey> = Features[F] extends Record<string, unknown>
+  ? Extract<Exclude<keyof Features[F], "variation">, string>
+  : never;
+export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F] extends Record<string, unknown>
+  ? Features[F][V]
+  : never;
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V } ? V : never;
 `.trimStart();
   const featuresFilePath = path.join(outputPath, "features.ts");
