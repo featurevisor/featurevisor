@@ -201,7 +201,7 @@ variablesSchema:
 
 The `properties` property is used to define the properties that are allowed in the schema:
 
-```yml {% path="schemas/mySchema.yml" highlight="3-5" %}
+```yml {% path="schemas/mySchema.yml" highlight="4-6" %}
 description: Schema description...
 type: object
 
@@ -214,7 +214,7 @@ properties:
 
 For type `object`, we can use `additionalProperties` to allow any string key while enforcing one schema for all dynamic values:
 
-```yml {% path="schemas/labels.yml" %}
+```yml {% path="schemas/labels.yml" highlight="4-5" %}
 description: Dynamic labels
 type: object
 
@@ -224,7 +224,7 @@ additionalProperties:
 
 `additionalProperties` can also reference another reusable schema:
 
-```yml {% path="schemas/linksByLocale.yml" %}
+```yml {% path="schemas/linksByLocale.yml" highlight="5" %}
 description: Links indexed by locale
 type: object
 
@@ -234,7 +234,7 @@ additionalProperties:
 
 It can also be combined with fixed `properties`:
 
-```yml {% path="schemas/hero.yml" %}
+```yml {% path="schemas/hero.yml" highlight="4-9" %}
 description: Hero with flexible metadata
 type: object
 
@@ -269,7 +269,7 @@ required:
 
 We can use the `const` property to define a constant value for a particular property in the schema:
 
-```yml {% path="schemas/mySchema.yml" highlight="3" %}
+```yml {% path="schemas/mySchema.yml" highlight="4" %}
 description: Schema description...
 type: string
 
@@ -314,7 +314,7 @@ maximum: 100
 
 Both `minimum` and `maximum` properties can be used together to define a range of allowed values:
 
-```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+```yml {% path="schemas/mySchema.yml" highlight="4-5" %}
 description: Schema description...
 type: integer
 
@@ -346,7 +346,7 @@ maxLength: 100
 
 Both `minLength` and `maxLength` can be used together:
 
-```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+```yml {% path="schemas/mySchema.yml" highlight="4-5" %}
 description: Schema description...
 type: string
 
@@ -367,7 +367,7 @@ pattern: "^[a-z0-9-]+$"
 
 We can also combine `pattern` with `minLength` and `maxLength`:
 
-```yml {% path="schemas/mySchema.yml" highlight="3-5" %}
+```yml {% path="schemas/mySchema.yml" highlight="4-6" %}
 description: Schema description...
 type: string
 
@@ -404,7 +404,7 @@ items:
 
 Both `minItems` and `maxItems` can be used together:
 
-```yml {% path="schemas/mySchema.yml" highlight="3-4" %}
+```yml {% path="schemas/mySchema.yml" highlight="4-5" %}
 description: Schema description...
 type: array
 
