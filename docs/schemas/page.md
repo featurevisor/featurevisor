@@ -213,6 +213,45 @@ required:
   - name
 ```
 
+### additionalProperties
+
+For type `object`, we can use `additionalProperties` to allow any string key while enforcing one schema for all dynamic values:
+
+```yml {% path="schemas/labels.yml" %}
+description: Dynamic labels
+type: object
+
+additionalProperties:
+  type: string
+```
+
+`additionalProperties` can also reference another reusable schema:
+
+```yml {% path="schemas/linksByLocale.yml" %}
+description: Links indexed by locale
+type: object
+
+additionalProperties:
+  schema: link
+```
+
+It can also be combined with fixed `properties`:
+
+```yml {% path="schemas/hero.yml" %}
+description: Hero with flexible metadata
+type: object
+
+properties:
+  title:
+    type: string
+
+additionalProperties:
+  type: string
+
+required:
+  - title
+```
+
 ### const
 
 We can use the `const` property to define a constant value for a particular property in the schema:

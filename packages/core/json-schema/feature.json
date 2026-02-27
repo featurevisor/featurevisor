@@ -159,7 +159,7 @@
     "segments_not": {
       "type": "object",
       "properties": {
-        "or": {
+        "not": {
           "$ref": "#/$defs/segments_multiple"
         }
       },
@@ -212,6 +212,18 @@
           "defaultValue": {
             "$ref": "#/$defs/variable_value",
             "description": "Default value for this specific variable."
+          },
+          "items": {
+            "type": "object",
+            "description": "Schema for array items."
+          },
+          "properties": {
+            "type": "object",
+            "description": "Schema for explicitly defined object properties."
+          },
+          "additionalProperties": {
+            "type": "object",
+            "description": "Schema for additional dynamic object properties."
           }
         },
         "description": "Schema for the feature's variables.",

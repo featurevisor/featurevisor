@@ -46,6 +46,7 @@ export interface Schema {
   // Object validation keywords
   required?: string[];
   properties?: { [key: string]: Schema };
+  additionalProperties?: Schema;
 
   // Annotations
   // default?: Value;

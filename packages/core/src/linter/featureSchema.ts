@@ -51,6 +51,7 @@ function resolveVariableSchema(
     type?: string;
     items?: unknown;
     properties?: unknown;
+    additionalProperties?: unknown;
     required?: string[];
     enum?: unknown[];
     const?: unknown;
@@ -69,6 +70,7 @@ function resolveVariableSchema(
   type?: string;
   items?: unknown;
   properties?: unknown;
+  additionalProperties?: unknown;
   required?: string[];
   enum?: unknown[];
   const?: unknown;
@@ -89,6 +91,7 @@ function resolveVariableSchema(
     type?: string;
     items?: unknown;
     properties?: unknown;
+    additionalProperties?: unknown;
     required?: string[];
     enum?: unknown[];
     const?: unknown;
@@ -133,6 +136,7 @@ function valueMatchesSchema(
     enum?: unknown[];
     oneOf?: unknown[];
     properties?: Record<string, unknown>;
+    additionalProperties?: unknown;
     required?: string[];
     items?: unknown;
     minimum?: number;
@@ -195,8 +199,16 @@ function valueMatchesSchema(
   if (type === "object") {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
     const props = resolved.properties;
-    if (!props || typeof props !== "object") return true;
+    const additional = resolved.additionalProperties;
     const obj = value as Record<string, unknown>;
+    if ((!props || typeof props !== "object") && (!additional || typeof additional !== "object")) {
+      return true;
+    }
+    if (!props || typeof props !== "object") {
+      return Object.keys(obj).every((key) =>
+        valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey),
+      );
+    }
     const required = new Set(resolved.required || []);
     for (const key of required) {
       if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
@@ -205,9 +217,15 @@ function valueMatchesSchema(
     }
     for (const key of Object.keys(obj)) {
       const propSchema = props[key];
-      if (!propSchema) return false;
-      if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
+      if (propSchema) {
+        if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
+          return false;
+      } else if (additional && typeof additional === "object") {
+        if (!valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey))
+          return false;
+      } else {
         return false;
+      }
     }
     return true;
   }
@@ -259,6 +277,7 @@ function valueDeepEqual(a: unknown, b: unknown): boolean {
 type SchemaLikeForRequired = {
   type?: string;
   properties?: Record<string, unknown>;
+  additionalProperties?: unknown;
   required?: string[];
   items?: unknown;
   schema?: string;
@@ -324,6 +343,19 @@ function refineRequiredKeysInSchema(
         );
       }
     }
+  }
+  const additionalProperties = (current as { additionalProperties?: unknown }).additionalProperties;
+  if (
+    additionalProperties &&
+    typeof additionalProperties === "object" &&
+    !Array.isArray(additionalProperties)
+  ) {
+    refineRequiredKeysInSchema(
+      additionalProperties as SchemaLikeForRequired,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+      schemasByKey,
+    );
   }
 
   if (items && typeof items === "object" && !Array.isArray(items)) {
@@ -453,6 +485,7 @@ function refineVariableValueObject(
   projectConfig: ProjectConfig,
   variableSchema: {
     properties?: Record<string, unknown>;
+    additionalProperties?: unknown;
     required?: string[];
     type: string;
   },
@@ -464,6 +497,7 @@ function refineVariableValueObject(
 ): void {
   const label = getVariableLabel(variableSchema, variableKey, path);
   const schemaProperties = variableSchema.properties;
+  const additionalProperties = variableSchema.additionalProperties;
 
   if (schemaProperties && typeof schemaProperties === "object") {
     const requiredKeys =
@@ -485,7 +519,17 @@ function refineVariableValueObject(
 
     for (const key of Object.keys(variableValue)) {
       const propSchema = schemaProperties[key];
-      if (!propSchema) {
+      if (!propSchema && additionalProperties && typeof additionalProperties === "object") {
+        superRefineVariableValue(
+          projectConfig,
+          additionalProperties as Parameters<typeof superRefineVariableValue>[1],
+          variableValue[key],
+          [...path, key],
+          ctx,
+          key,
+          schemasByKey,
+        );
+      } else if (!propSchema) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Unknown property "${key}" in variable "${label}" (not in schema)`,
@@ -502,6 +546,18 @@ function refineVariableValueObject(
           schemasByKey,
         );
       }
+    }
+  } else if (additionalProperties && typeof additionalProperties === "object") {
+    for (const key of Object.keys(variableValue)) {
+      superRefineVariableValue(
+        projectConfig,
+        additionalProperties as Parameters<typeof superRefineVariableValue>[1],
+        variableValue[key],
+        [...path, key],
+        ctx,
+        key,
+        schemasByKey,
+      );
     }
   } else {
     for (const key of Object.keys(variableValue)) {
@@ -1280,6 +1336,7 @@ export function getFeatureZodSchema(
               type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
               items: schemaZodSchema.optional(),
               properties: z.record(schemaZodSchema).optional(),
+              additionalProperties: schemaZodSchema.optional(),
               required: z.array(z.string()).optional(),
               enum: z.array(variableValueZodSchema).optional(),
               const: variableValueZodSchema.optional(),
@@ -1315,7 +1372,7 @@ export function getFeatureZodSchema(
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message:
-                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `oneOf`, `properties`, `required`, `items`). Use one or the other.",
+                    "Variable schema cannot have both `schema` (reference) and inline properties (`type`, `oneOf`, `properties`, `additionalProperties`, `required`, `items`). Use one or the other.",
                   path: [],
                 });
                 return;
@@ -1324,6 +1381,8 @@ export function getFeatureZodSchema(
                 const hasInlineStructure =
                   ("type" in variableSchema && variableSchema.type != null) ||
                   ("properties" in variableSchema && variableSchema.properties != null) ||
+                  ("additionalProperties" in variableSchema &&
+                    variableSchema.additionalProperties != null) ||
                   ("required" in variableSchema && variableSchema.required != null) ||
                   ("items" in variableSchema && variableSchema.items != null) ||
                   ("oneOf" in variableSchema && variableSchema.oneOf != null);
@@ -1340,7 +1399,7 @@ export function getFeatureZodSchema(
                   ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message:
-                      "When `schema` is set, do not set `type`, `oneOf`, `properties`, `required`, or `items`.",
+                      "When `schema` is set, do not set `type`, `oneOf`, `properties`, `additionalProperties`, `required`, or `items`.",
                     path: [],
                   });
                 }

@@ -68,7 +68,7 @@
     "not_condition": {
       "type": "object",
       "properties": {
-        "or": {
+        "not": {
           "type": "array",
           "items": {
             "anyOf": [
