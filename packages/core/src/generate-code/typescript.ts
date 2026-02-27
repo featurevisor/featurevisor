@@ -534,7 +534,7 @@ export async function generateTypeScriptCodeForProject(
     })
     .join("\n");
   const contextContent = `
-import type { AttributeKey, AttributeValue } from "@featurevisor/types";
+import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";
 
 export interface Context {
 ${attributeProperties}
