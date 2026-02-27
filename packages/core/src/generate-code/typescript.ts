@@ -39,6 +39,23 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): stri
   }
 }
 
+function shouldWrapArrayItemType(typeName: string): boolean {
+  const trimmed = typeName.trim();
+  return trimmed.includes("|") || trimmed.includes("&");
+}
+
+function formatObjectKey(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
+}
+
+function formatTypeImport(typeNames: string[], fromPath: string): string {
+  if (typeNames.length === 0) {
+    return "";
+  }
+
+  return `import type {\n${typeNames.map((name) => `  ${name},`).join("\n")}\n} from "${fromPath}";\n\n`;
+}
+
 /**
  * Resolve a schema to its full definition, following schema references (schema: key).
  */
@@ -110,7 +127,8 @@ function schemaToTypeScriptType(
       return literalFromConst ?? unionFromEnum ?? "number";
     case "array":
       if (resolved.items) {
-        return `(${schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames)})[]`;
+        const itemType = schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames);
+        return shouldWrapArrayItemType(itemType) ? `(${itemType})[]` : `${itemType}[]`;
       }
       return "string[]";
     case "object": {
@@ -534,7 +552,7 @@ export async function generateTypeScriptCodeForProject(
     })
     .join("\n");
   const contextContent = `
-import type { AttributeKey, AttributeValue } from "@featurevisor/types";
+import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";
 
 export interface Context {
 ${attributeProperties}
@@ -542,7 +560,7 @@ ${attributeProperties}
 }
 `.trimStart();
 
-  const contextTypeFilePath = path.join(outputPath, "Context.ts");
+  const contextTypeFilePath = path.join(outputPath, "context.ts");
   fs.writeFileSync(contextTypeFilePath, contextContent);
   console.log(
     `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
@@ -565,7 +583,7 @@ ${attributeProperties}
   const hasSchemasFile = schemaKeys.length > 0;
   if (hasSchemasFile) {
     const schemasContent = generateSchemasFileContent(schemaKeys, schemasByKey);
-    const schemasFilePath = path.join(outputPath, "Schemas.ts");
+    const schemasFilePath = path.join(outputPath, "schemas.ts");
     fs.writeFileSync(schemasFilePath, schemasContent);
     console.log(
       `Schemas type file written at: ${getRelativePath(rootDirectoryPath, schemasFilePath)}`,
@@ -674,13 +692,10 @@ ${INDENT_NS}}`;
         }
       }
 
-      const schemasImportLine =
-        featureSchemaTypesUsed.size > 0
-          ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./Schemas";\n\n`
-          : "";
+      const schemasImportLine = formatTypeImport([...featureSchemaTypesUsed].sort(), "./schemas");
 
       const featureContent = `
-import { Context } from "./Context";
+import { Context } from "./context";
 import { getInstance } from "./instance";
 ${schemasImportLine}export namespace ${namespaceValue} {
 ${INDENT_NS}export const key = "${featureKey}";${variableTypeDeclarations}
@@ -724,18 +739,22 @@ ${INDENT_NS}}${variableMethods}
             hasSchemasFile ? schemaTypeNames : undefined,
           );
           schemaTypesUsed.forEach((name) => featuresTypeSchemasUsed.add(name));
-          featureLines.push(`${INDENT_NS_BODY}${JSON.stringify(variableKey)}: ${typeName};`);
+          featureLines.push(`${INDENT_NS_BODY}${formatObjectKey(variableKey)}: ${typeName};`);
         }
       }
 
-      return `${INDENT_NS}${JSON.stringify(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
+      if (featureLines.length === 0) {
+        return `${INDENT_NS}${formatObjectKey(featureKey)}: null;`;
+      }
+
+      return `${INDENT_NS}${formatObjectKey(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
     })
     .join("\n");
 
-  const featuresSchemasImportLine =
-    featuresTypeSchemasUsed.size > 0
-      ? `import type { ${[...featuresTypeSchemasUsed].sort().join(", ")} } from "./Schemas";\n\n`
-      : "";
+  const featuresSchemasImportLine = formatTypeImport(
+    [...featuresTypeSchemasUsed].sort(),
+    "./schemas",
+  );
 
   const featuresFileContent = `
 ${featuresSchemasImportLine}export type Features = {
@@ -743,24 +762,33 @@ ${featureTypeEntries}
 };
 
 export type FeatureKey = keyof Features;
-export type VariableKey<F extends FeatureKey> = Extract<Exclude<keyof Features[F], "variation">, string>;
-export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F][V];
-export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V } ? V : never;
+export type VariableKey<F extends FeatureKey> = Features[F] extends Record<string, unknown>
+  ? Extract<Exclude<keyof Features[F], "variation">, string>
+  : never;
+export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F] extends Record<string, unknown>
+  ? Features[F][V]
+  : never;
+export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
+  ? V
+  : never;
 `.trimStart();
-  const featuresFilePath = path.join(outputPath, "Features.ts");
+  const featuresFilePath = path.join(outputPath, "features.ts");
   fs.writeFileSync(featuresFilePath, featuresFileContent);
   console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
 
   const functionsFileContent = `
-import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
-import { Context } from "./Context";
+import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import { Context } from "./context";
 import { getInstance } from "./instance";
 
 export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
   return getInstance().isEnabled(featureKey, context);
 }
 
-export function getVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+export function getVariation<F extends FeatureKey>(
+  featureKey: F,
+  context: Context = {},
+): Variation<F> | null {
   return getInstance().getVariation(featureKey, context) as Variation<F> | null;
 }
 
@@ -772,7 +800,7 @@ export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
   return getInstance().getVariable(featureKey, variableKey, context) as VariableType<F, V> | null;
 }
 `.trimStart();
-  const functionsFilePath = path.join(outputPath, "Functions.ts");
+  const functionsFilePath = path.join(outputPath, "functions.ts");
   fs.writeFileSync(functionsFilePath, functionsFileContent);
   console.log(
     `Functions file written at: ${getRelativePath(rootDirectoryPath, functionsFilePath)}`,
@@ -786,14 +814,17 @@ import {
   useVariable as useVariableOriginal,
 } from "@featurevisor/react";
 
-import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
-import { Context } from "./Context";
+import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import { Context } from "./context";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   return useFlagOriginal(featureKey, context);
 }
 
-export function useVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+export function useVariation<F extends FeatureKey>(
+  featureKey: F,
+  context: Context = {},
+): Variation<F> | null {
   return useVariationOriginal(featureKey, context) as Variation<F> | null;
 }
 
@@ -805,7 +836,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   return useVariableOriginal(featureKey, variableKey, context) as VariableType<F, V> | null;
 }
 `.trimStart();
-    const reactFilePath = path.join(outputPath, "React.ts");
+    const reactFilePath = path.join(outputPath, "react.ts");
     fs.writeFileSync(reactFilePath, reactFileContent);
     console.log(`React file written at: ${getRelativePath(rootDirectoryPath, reactFilePath)}`);
   }
@@ -813,12 +844,12 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   // index
   const indexContent =
     [
-      `export * from "./Context";`,
+      `export * from "./context";`,
       `export * from "./instance";`,
-      ...(hasSchemasFile ? [`export * from "./Schemas";`] : []),
-      `export * from "./Features";`,
-      `export * from "./Functions";`,
-      ...(shouldGenerateReact ? [`export * from "./React";`] : []),
+      ...(hasSchemasFile ? [`export * from "./schemas";`] : []),
+      `export * from "./features";`,
+      `export * from "./functions";`,
+      ...(shouldGenerateReact ? [`export * from "./react";`] : []),
       ...featureNamespaces.map((featureNamespace) => {
         return `export * from "./${featureNamespace}";`;
       }),
