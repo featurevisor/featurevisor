@@ -692,10 +692,7 @@ ${INDENT_NS}}`;
         }
       }
 
-      const schemasImportLine = formatTypeImport(
-        [...featureSchemaTypesUsed].sort(),
-        "./schemas",
-      );
+      const schemasImportLine = formatTypeImport([...featureSchemaTypesUsed].sort(), "./schemas");
 
       const featureContent = `
 import { Context } from "./context";
