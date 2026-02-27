@@ -197,20 +197,17 @@ variablesSchema:
 
 ## Advanced usage
 
-### required
+### properties
 
-The `required` property is used to define the properties that are required in the schema:
+The `properties` property is used to define the properties that are allowed in the schema:
 
-```yml {% path="schemas/mySchema.yml" highlight="8-9" %}
+```yml {% path="schemas/mySchema.yml" highlight="3-5" %}
 description: Schema description...
 type: object
 
 properties:
   name:
     type: string
-
-required:
-  - name
 ```
 
 ### additionalProperties
@@ -250,6 +247,22 @@ additionalProperties:
 
 required:
   - title
+```
+
+### required
+
+The `required` property is used to define the properties that are required in the schema:
+
+```yml {% path="schemas/mySchema.yml" highlight="8-9" %}
+description: Schema description...
+type: object
+
+properties:
+  name:
+    type: string
+
+required:
+  - name
 ```
 
 ### const
