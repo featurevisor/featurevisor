@@ -39,6 +39,23 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): stri
   }
 }
 
+function shouldWrapArrayItemType(typeName: string): boolean {
+  const trimmed = typeName.trim();
+  return trimmed.includes("|") || trimmed.includes("&");
+}
+
+function formatObjectKey(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
+}
+
+function formatTypeImport(typeNames: string[], fromPath: string): string {
+  if (typeNames.length === 0) {
+    return "";
+  }
+
+  return `import type {\n${typeNames.map((name) => `  ${name},`).join("\n")}\n} from "${fromPath}";\n\n`;
+}
+
 /**
  * Resolve a schema to its full definition, following schema references (schema: key).
  */
@@ -110,7 +127,8 @@ function schemaToTypeScriptType(
       return literalFromConst ?? unionFromEnum ?? "number";
     case "array":
       if (resolved.items) {
-        return `(${schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames)})[]`;
+        const itemType = schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames);
+        return shouldWrapArrayItemType(itemType) ? `(${itemType})[]` : `${itemType}[]`;
       }
       return "string[]";
     case "object": {
@@ -674,10 +692,10 @@ ${INDENT_NS}}`;
         }
       }
 
-      const schemasImportLine =
-        featureSchemaTypesUsed.size > 0
-          ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./schemas";\n\n`
-          : "";
+      const schemasImportLine = formatTypeImport(
+        [...featureSchemaTypesUsed].sort(),
+        "./schemas",
+      );
 
       const featureContent = `
 import { Context } from "./context";
@@ -724,22 +742,22 @@ ${INDENT_NS}}${variableMethods}
             hasSchemasFile ? schemaTypeNames : undefined,
           );
           schemaTypesUsed.forEach((name) => featuresTypeSchemasUsed.add(name));
-          featureLines.push(`${INDENT_NS_BODY}${JSON.stringify(variableKey)}: ${typeName};`);
+          featureLines.push(`${INDENT_NS_BODY}${formatObjectKey(variableKey)}: ${typeName};`);
         }
       }
 
       if (featureLines.length === 0) {
-        return `${INDENT_NS}${JSON.stringify(featureKey)}: null;`;
+        return `${INDENT_NS}${formatObjectKey(featureKey)}: null;`;
       }
 
-      return `${INDENT_NS}${JSON.stringify(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
+      return `${INDENT_NS}${formatObjectKey(featureKey)}: {\n${featureLines.join("\n")}\n${INDENT_NS}};`;
     })
     .join("\n");
 
-  const featuresSchemasImportLine =
-    featuresTypeSchemasUsed.size > 0
-      ? `import type { ${[...featuresTypeSchemasUsed].sort().join(", ")} } from "./schemas";\n\n`
-      : "";
+  const featuresSchemasImportLine = formatTypeImport(
+    [...featuresTypeSchemasUsed].sort(),
+    "./schemas",
+  );
 
   const featuresFileContent = `
 ${featuresSchemasImportLine}export type Features = {
@@ -753,7 +771,9 @@ export type VariableKey<F extends FeatureKey> = Features[F] extends Record<strin
 export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F] extends Record<string, unknown>
   ? Features[F][V]
   : never;
-export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V } ? V : never;
+export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
+  ? V
+  : never;
 `.trimStart();
   const featuresFilePath = path.join(outputPath, "features.ts");
   fs.writeFileSync(featuresFilePath, featuresFileContent);
@@ -768,7 +788,10 @@ export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolea
   return getInstance().isEnabled(featureKey, context);
 }
 
-export function getVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+export function getVariation<F extends FeatureKey>(
+  featureKey: F,
+  context: Context = {},
+): Variation<F> | null {
   return getInstance().getVariation(featureKey, context) as Variation<F> | null;
 }
 
@@ -801,7 +824,10 @@ export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean 
   return useFlagOriginal(featureKey, context);
 }
 
-export function useVariation<F extends FeatureKey>(featureKey: F, context: Context = {}): Variation<F> | null {
+export function useVariation<F extends FeatureKey>(
+  featureKey: F,
+  context: Context = {},
+): Variation<F> | null {
   return useVariationOriginal(featureKey, context) as Variation<F> | null;
 }
 
