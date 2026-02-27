@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.18.0](https://github.com/featurevisor/featurevisor/compare/v2.17.0...v2.18.0) (2026-02-27)
+
+
+### Features
+
+* additional properties for variables in schema ([#396](https://github.com/featurevisor/featurevisor/issues/396)) ([7616043](https://github.com/featurevisor/featurevisor/commit/7616043b8dc616ae46aa398dabbd11fd4aa7874b))
+
+
+
+
+
 # [2.12.0](https://github.com/featurevisor/featurevisor/compare/v2.11.0...v2.12.0) (2026-02-21)
 
 
