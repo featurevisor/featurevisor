@@ -542,7 +542,7 @@ ${attributeProperties}
 }
 `.trimStart();
 
-  const contextTypeFilePath = path.join(outputPath, "Context.ts");
+  const contextTypeFilePath = path.join(outputPath, "context.ts");
   fs.writeFileSync(contextTypeFilePath, contextContent);
   console.log(
     `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
@@ -565,7 +565,7 @@ ${attributeProperties}
   const hasSchemasFile = schemaKeys.length > 0;
   if (hasSchemasFile) {
     const schemasContent = generateSchemasFileContent(schemaKeys, schemasByKey);
-    const schemasFilePath = path.join(outputPath, "Schemas.ts");
+    const schemasFilePath = path.join(outputPath, "schemas.ts");
     fs.writeFileSync(schemasFilePath, schemasContent);
     console.log(
       `Schemas type file written at: ${getRelativePath(rootDirectoryPath, schemasFilePath)}`,
@@ -676,11 +676,11 @@ ${INDENT_NS}}`;
 
       const schemasImportLine =
         featureSchemaTypesUsed.size > 0
-          ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./Schemas";\n\n`
+          ? `import type { ${[...featureSchemaTypesUsed].sort().join(", ")} } from "./schemas";\n\n`
           : "";
 
       const featureContent = `
-import { Context } from "./Context";
+import { Context } from "./context";
 import { getInstance } from "./instance";
 ${schemasImportLine}export namespace ${namespaceValue} {
 ${INDENT_NS}export const key = "${featureKey}";${variableTypeDeclarations}
@@ -734,7 +734,7 @@ ${INDENT_NS}}${variableMethods}
 
   const featuresSchemasImportLine =
     featuresTypeSchemasUsed.size > 0
-      ? `import type { ${[...featuresTypeSchemasUsed].sort().join(", ")} } from "./Schemas";\n\n`
+      ? `import type { ${[...featuresTypeSchemasUsed].sort().join(", ")} } from "./schemas";\n\n`
       : "";
 
   const featuresFileContent = `
@@ -747,13 +747,13 @@ export type VariableKey<F extends FeatureKey> = Extract<Exclude<keyof Features[F
 export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F][V];
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V } ? V : never;
 `.trimStart();
-  const featuresFilePath = path.join(outputPath, "Features.ts");
+  const featuresFilePath = path.join(outputPath, "features.ts");
   fs.writeFileSync(featuresFilePath, featuresFileContent);
   console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
 
   const functionsFileContent = `
-import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
-import { Context } from "./Context";
+import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import { Context } from "./context";
 import { getInstance } from "./instance";
 
 export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
@@ -772,7 +772,7 @@ export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
   return getInstance().getVariable(featureKey, variableKey, context) as VariableType<F, V> | null;
 }
 `.trimStart();
-  const functionsFilePath = path.join(outputPath, "Functions.ts");
+  const functionsFilePath = path.join(outputPath, "functions.ts");
   fs.writeFileSync(functionsFilePath, functionsFileContent);
   console.log(
     `Functions file written at: ${getRelativePath(rootDirectoryPath, functionsFilePath)}`,
@@ -786,8 +786,8 @@ import {
   useVariable as useVariableOriginal,
 } from "@featurevisor/react";
 
-import { FeatureKey, Variation, VariableKey, VariableType } from "./Features";
-import { Context } from "./Context";
+import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import { Context } from "./context";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   return useFlagOriginal(featureKey, context);
@@ -805,7 +805,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   return useVariableOriginal(featureKey, variableKey, context) as VariableType<F, V> | null;
 }
 `.trimStart();
-    const reactFilePath = path.join(outputPath, "React.ts");
+    const reactFilePath = path.join(outputPath, "react.ts");
     fs.writeFileSync(reactFilePath, reactFileContent);
     console.log(`React file written at: ${getRelativePath(rootDirectoryPath, reactFilePath)}`);
   }
@@ -813,12 +813,12 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   // index
   const indexContent =
     [
-      `export * from "./Context";`,
+      `export * from "./context";`,
       `export * from "./instance";`,
-      ...(hasSchemasFile ? [`export * from "./Schemas";`] : []),
-      `export * from "./Features";`,
-      `export * from "./Functions";`,
-      ...(shouldGenerateReact ? [`export * from "./React";`] : []),
+      ...(hasSchemasFile ? [`export * from "./schemas";`] : []),
+      `export * from "./features";`,
+      `export * from "./functions";`,
+      ...(shouldGenerateReact ? [`export * from "./react";`] : []),
       ...featureNamespaces.map((featureNamespace) => {
         return `export * from "./${featureNamespace}";`;
       }),
