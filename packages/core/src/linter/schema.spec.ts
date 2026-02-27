@@ -142,6 +142,20 @@ describe("schema.ts :: refineEnumMatchesType", () => {
     expect(issues[0].path).toEqual(["oneOf", 1, "enum", 1]);
   });
 
+  it("recurses into additionalProperties", () => {
+    const { issues, ctx } = createRefinementCtx();
+    refineEnumMatchesType(
+      {
+        type: "object",
+        additionalProperties: { type: "string", enum: ["a", 1] },
+      },
+      [],
+      ctx,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].path).toEqual(["additionalProperties", "enum", 1]);
+  });
+
   it("does nothing when schema is null or not an object", () => {
     const { issues: i1, ctx: c1 } = createRefinementCtx();
     refineEnumMatchesType(null as any, [], c1);
@@ -214,6 +228,20 @@ describe("schema.ts :: refineMinimumMaximum", () => {
     );
     expect(issues).toHaveLength(1);
     expect(issues[0].path).toEqual(["items", "minimum"]);
+  });
+
+  it("recurses into additionalProperties", () => {
+    const { issues, ctx } = createRefinementCtx();
+    refineMinimumMaximum(
+      {
+        type: "object",
+        additionalProperties: { type: "integer", minimum: 10, maximum: 5 },
+      },
+      [],
+      ctx,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].path).toEqual(["additionalProperties", "minimum"]);
   });
 });
 
@@ -288,6 +316,20 @@ describe("schema.ts :: refineStringLengthPattern", () => {
     expect(issues).toHaveLength(1);
     expect(issues[0].path).toEqual(["properties", "code", "minLength"]);
   });
+
+  it("recurses into additionalProperties", () => {
+    const { issues, ctx } = createRefinementCtx();
+    refineStringLengthPattern(
+      {
+        type: "object",
+        additionalProperties: { type: "string", minLength: 10, maxLength: 5 },
+      },
+      [],
+      ctx,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].path).toEqual(["additionalProperties", "minLength"]);
+  });
 });
 
 describe("schema.ts :: refineArrayItems", () => {
@@ -356,6 +398,25 @@ describe("schema.ts :: refineArrayItems", () => {
     );
     expect(issues).toHaveLength(1);
     expect(issues[0].path).toEqual(["items", "minItems"]);
+  });
+
+  it("recurses into additionalProperties", () => {
+    const { issues, ctx } = createRefinementCtx();
+    refineArrayItems(
+      {
+        type: "object",
+        additionalProperties: {
+          type: "array",
+          minItems: 5,
+          maxItems: 2,
+          items: { type: "string" },
+        },
+      },
+      [],
+      ctx,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].path).toEqual(["additionalProperties", "minItems"]);
   });
 });
 
@@ -486,6 +547,17 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       properties: {
         id: { type: "string" },
         name: { type: "string" },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts object schema with additionalProperties", () => {
+    const Schema = getSchemaZodSchema([]);
+    const result = Schema.safeParse({
+      type: "object",
+      additionalProperties: {
+        type: "string",
       },
     });
     expect(result.success).toBe(true);

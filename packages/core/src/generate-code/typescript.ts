@@ -48,6 +48,63 @@ function formatObjectKey(key: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 }
 
+function buildObjectTypeFromSchema(
+  schema: Schema,
+  schemasByKey: Record<string, Schema>,
+  schemaTypeNames?: Record<string, string>,
+): string {
+  const props = schema.properties;
+  const additional = schema.additionalProperties;
+  const hasProps = props && typeof props === "object" && Object.keys(props).length > 0;
+  const hasAdditional = additional && typeof additional === "object";
+
+  if (hasProps && hasAdditional) {
+    const requiredSet = new Set(schema.required || []);
+    const propEntries = Object.entries(props as Record<string, Schema>).map(([k, v]) => {
+      const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+      const optional = !requiredSet.has(k);
+      return optional
+        ? `${formatObjectKey(k)}?: ${propType}`
+        : `${formatObjectKey(k)}: ${propType}`;
+    });
+    const propUnion = Object.entries(props as Record<string, Schema>)
+      .map(([, v]) => schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames))
+      .join(" | ");
+    const additionalType = schemaToTypeScriptType(
+      additional as Schema,
+      schemasByKey,
+      schemaTypeNames,
+    );
+    const indexType = [additionalType, propUnion].filter(Boolean).join(" | ");
+    return `{ ${propEntries.join("; ")}; [key: string]: ${indexType} }`;
+  }
+
+  if (hasProps) {
+    const requiredSet = new Set(schema.required || []);
+    const entries = Object.entries(props as Record<string, Schema>)
+      .map(([k, v]) => {
+        const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+        const optional = !requiredSet.has(k);
+        return optional
+          ? `${formatObjectKey(k)}?: ${propType}`
+          : `${formatObjectKey(k)}: ${propType}`;
+      })
+      .join("; ");
+    return `{ ${entries} }`;
+  }
+
+  if (hasAdditional) {
+    const additionalType = schemaToTypeScriptType(
+      additional as Schema,
+      schemasByKey,
+      schemaTypeNames,
+    );
+    return `Record<string, ${additionalType}>`;
+  }
+
+  return "Record<string, unknown>";
+}
+
 function formatTypeImport(typeNames: string[], fromPath: string): string {
   if (typeNames.length === 0) {
     return "";
@@ -132,19 +189,7 @@ function schemaToTypeScriptType(
       }
       return "string[]";
     case "object": {
-      const props = resolved.properties;
-      if (props && typeof props === "object" && Object.keys(props).length > 0) {
-        const requiredSet = new Set(resolved.required || []);
-        const entries = Object.entries(props)
-          .map(([k, v]) => {
-            const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
-            const optional = !requiredSet.has(k);
-            return optional ? `${k}?: ${propType}` : `${k}: ${propType}`;
-          })
-          .join("; ");
-        return `{ ${entries} }`;
-      }
-      return "Record<string, unknown>";
+      return buildObjectTypeFromSchema(resolved, schemasByKey, schemaTypeNames);
     }
     default:
       return "unknown";
@@ -265,13 +310,17 @@ function generateVariableTypeDeclarations(
 
   if (type === "object") {
     const resolvedEffective =
-      effective && "properties" in effective
+      effective && ("properties" in effective || "additionalProperties" in effective)
         ? (resolveSchema(effective as Schema, schemasByKey) as Schema)
         : undefined;
     const props = resolvedEffective?.properties;
-    if (props && typeof props === "object" && Object.keys(props).length > 0) {
+    const additional = resolvedEffective?.additionalProperties;
+    if (
+      (props && typeof props === "object" && Object.keys(props).length > 0) ||
+      (additional && typeof additional === "object")
+    ) {
       const requiredSet = new Set(resolvedEffective?.required || []);
-      const entries = Object.entries(props)
+      const entries = Object.entries(props ?? {})
         .map(([k, v]) => {
           const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
           if (schemaTypeNames)
@@ -280,11 +329,29 @@ function generateVariableTypeDeclarations(
             });
           const optional = !requiredSet.has(k);
           return optional
-            ? `${INDENT_NS_BODY}${k}?: ${propType};`
-            : `${INDENT_NS_BODY}${k}: ${propType};`;
+            ? `${INDENT_NS_BODY}${formatObjectKey(k)}?: ${propType};`
+            : `${INDENT_NS_BODY}${formatObjectKey(k)}: ${propType};`;
         })
-        .join("\n");
-      declarations.push(`${INDENT_NS}export interface ${typeName} {\n${entries}\n${INDENT_NS}}`);
+        .filter(Boolean);
+      if (additional && typeof additional === "object") {
+        const additionalType = schemaToTypeScriptType(
+          additional as Schema,
+          schemasByKey,
+          schemaTypeNames,
+        );
+        if (schemaTypeNames)
+          Object.values(schemaTypeNames).forEach((n) => {
+            if (additionalType.includes(n)) addSchemaUsed(n);
+          });
+        const propUnion = Object.entries(props ?? {})
+          .map(([, v]) => schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames))
+          .join(" | ");
+        const indexType = [additionalType, propUnion].filter(Boolean).join(" | ");
+        entries.push(`${INDENT_NS_BODY}[key: string]: ${indexType};`);
+      }
+      declarations.push(
+        `${INDENT_NS}export interface ${typeName} {\n${entries.join("\n")}\n${INDENT_NS}}`,
+      );
       return { declarations, returnTypeName: typeName, genericArg: typeName, schemaTypesUsed };
     }
     declarations.push(`${INDENT_NS}export type ${typeName} = Record<string, unknown>;`);

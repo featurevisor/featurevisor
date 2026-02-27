@@ -88,9 +88,14 @@ export function resolveSchemaAtPath(
     if (seg.key) {
       if (current.type !== "object") return null;
       const props = current.properties;
-      if (!props || typeof props !== "object") return null;
-      const next = props[seg.key];
-      if (next === undefined) return null;
+      const additional = current.additionalProperties;
+      const next = props && typeof props === "object" ? props[seg.key] : undefined;
+      if (next === undefined) {
+        if (!additional || typeof additional !== "object") return null;
+        current = resolveSchemaRef(additional, schemasByKey);
+        if (!current) return null;
+        continue;
+      }
       current = resolveSchemaRef(next, schemasByKey);
       if (!current) return null;
     }
@@ -135,9 +140,14 @@ function getContainerSchemaAtPath(
     } else {
       if (current.type !== "object") return null;
       const props = current.properties;
-      if (!props || typeof props !== "object") return null;
-      const next = props[seg.key];
-      if (next === undefined) return null;
+      const additional = current.additionalProperties;
+      const next = props && typeof props === "object" ? props[seg.key] : undefined;
+      if (next === undefined) {
+        if (!additional || typeof additional !== "object") return null;
+        current = resolveSchemaRef(additional, schemasByKey);
+        if (!current) return null;
+        continue;
+      }
       current = resolveSchemaRef(next, schemasByKey);
     }
     if (!current) return null;
@@ -147,7 +157,8 @@ function getContainerSchemaAtPath(
   if ("index" in lastSegment || "selector" in lastSegment) {
     return { containerSchema: parentSchema, lastSegment, parentSchema };
   }
-  const propSchema = parentSchema.properties?.[lastSegment.key];
+  const propSchema =
+    parentSchema.properties?.[lastSegment.key] ?? parentSchema.additionalProperties;
   const resolvedProp =
     propSchema && typeof propSchema === "object"
       ? resolveSchemaRef(propSchema, schemasByKey)

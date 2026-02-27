@@ -852,6 +852,89 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("accepts object variable with additionalProperties only and arbitrary keys", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            labels: {
+              type: "object",
+              additionalProperties: { type: "string" },
+              defaultValue: { title: "Welcome", subtitle: "Hello" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("accepts object variable with properties and additionalProperties together", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            metadata: {
+              type: "object",
+              properties: {
+                fixed: { type: "integer" },
+              },
+              additionalProperties: { type: "string" },
+              required: ["fixed"],
+              defaultValue: { fixed: 1, dynamicKey: "value" },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects object variable when unknown key is present and additionalProperties is not defined", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            settings: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+              },
+              defaultValue: { theme: "light", subtitle: "hello" },
+            },
+          },
+        }),
+        "Unknown property",
+      );
+    });
+
+    it("accepts object variable with additionalProperties that references reusable schema", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            linksByLocale: {
+              type: "object",
+              additionalProperties: { schema: "link" },
+              defaultValue: {
+                en: { title: "Home", url: "/" },
+                de: { title: "Start", url: "/de" },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it("rejects object variable when additionalProperties value does not match schema", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            linksByLocale: {
+              type: "object",
+              additionalProperties: { schema: "link" },
+              defaultValue: {
+                en: { title: "Home" },
+              },
+            },
+          },
+        }),
+        "Missing required property",
+      );
+    });
+
     it("rejects inline object variable when defaultValue is missing required property", () => {
       expectParseFailure(
         baseFeature({
@@ -1415,6 +1498,41 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           pathContains: ["rules", "variables"],
           messageContains: "Cannot remove required property",
         },
+      );
+    });
+
+    it("additionalProperties type mismatch: error path includes dynamic object key", () => {
+      expectErrorSurfaces(
+        baseFeature({
+          variablesSchema: {
+            labels: {
+              type: "object",
+              additionalProperties: { type: "string" },
+              defaultValue: {
+                title: 123,
+              },
+            },
+          },
+        }),
+        {
+          pathContains: ["variablesSchema", "labels", "defaultValue", "title"],
+          messageContains: "type string",
+        },
+      );
+    });
+
+    it("rejects variable schema with schema reference mixed with inline additionalProperties", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            myLink: {
+              schema: "link",
+              additionalProperties: { type: "string" },
+              defaultValue: { title: "Home", url: "/" },
+            },
+          },
+        }),
+        "additionalProperties",
       );
     });
   });

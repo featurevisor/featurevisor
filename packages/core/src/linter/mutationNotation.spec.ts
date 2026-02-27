@@ -257,6 +257,17 @@ describe("mutationNotation.ts", () => {
       expect(result).toBeNull();
     });
 
+    it("resolves unknown object key via additionalProperties", () => {
+      const result = resolveSchemaAtPath(
+        {
+          type: "object",
+          additionalProperties: { type: "string" },
+        },
+        [{ key: "dynamicKey" }],
+      );
+      expect(result).toEqual({ type: "string" });
+    });
+
     it("returns null when stepping into non-object", () => {
       const result = resolveSchemaAtPath(objectSchema, [{ key: "width" }, { key: "foo" }]);
       expect(result).toBeNull();
@@ -444,6 +455,18 @@ describe("mutationNotation.ts", () => {
         const r = validateMutationKey("config.nonexistent", variableSchemaByKey);
         expect(r.valid).toBe(false);
         expect(r.error).toContain("path does not exist");
+      });
+
+      it("valid when path uses additionalProperties", () => {
+        const schemas: Record<string, Schema> = {
+          labels: {
+            type: "object",
+            additionalProperties: { type: "string" },
+          },
+        };
+        const r = validateMutationKey("labels.headline", schemas);
+        expect(r.valid).toBe(true);
+        expect(r.valueSchema).toEqual({ type: "string" });
       });
 
       it("invalid when target schema is oneOf", () => {

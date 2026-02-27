@@ -1,177 +1,350 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$defs": {
-    "variation_value": {
-      "anyOf": [
+    "value": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "string" },
+        { "type": "number" },
         {
-          "type": "string"
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
-        }
-      ]
-    },
-    "flat_object": {
-      "type": "object",
-      "additionalProperties": {
-        "oneOf": [{ "type": "string" }, { "type": "boolean" }, { "type": "number" }]
-      }
-    },
-    "variable_value": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/value" }
         },
         {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "$ref": "#/$defs/value" }
+        }
+      ]
+    },
+    "value_or_null": {
+      "oneOf": [{ "$ref": "#/$defs/value" }, { "type": "null" }]
+    },
+    "variation_value": {
+      "type": "string",
+      "minLength": 1
+    },
+    "group_segment": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Segment key or *"
         },
         {
           "type": "object",
           "properties": {
-            "key": {
-              "$ref": "#/$defs/flat_object"
+            "and": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/group_segment" }
             }
-          }
+          },
+          "required": ["and"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/group_segment" }
+            }
+          },
+          "required": ["or"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/group_segment" }
+            }
+          },
+          "required": ["not"],
+          "additionalProperties": false
         }
       ]
+    },
+    "group_segments": {
+      "oneOf": [
+        { "$ref": "#/$defs/group_segment" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/group_segment" }
+        }
+      ]
+    },
+    "bucket_by": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["or"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "required_dependency": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "key": { "type": "string" },
+            "variation": { "type": "string" }
+          },
+          "required": ["key"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "schema_node": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "schema": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "string", "integer", "double", "object", "array"]
+        },
+        "enum": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/value" }
+        },
+        "const": { "$ref": "#/$defs/value" },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "number" },
+        "maxLength": { "type": "number" },
+        "pattern": { "type": "string" },
+        "items": { "$ref": "#/$defs/schema_node" },
+        "minItems": { "type": "number" },
+        "maxItems": { "type": "number" },
+        "uniqueItems": { "type": "boolean" },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/schema_node" }
+        },
+        "additionalProperties": { "$ref": "#/$defs/schema_node" },
+        "oneOf": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/schema_node" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "variable_schema_entry": {
+      "type": "object",
+      "properties": {
+        "deprecated": { "type": "boolean" },
+        "schema": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["json", "boolean", "string", "integer", "double", "object", "array"]
+        },
+        "items": { "$ref": "#/$defs/schema_node" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/schema_node" }
+        },
+        "additionalProperties": { "$ref": "#/$defs/schema_node" },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "enum": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/value" }
+        },
+        "const": { "$ref": "#/$defs/value" },
+        "oneOf": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/schema_node" }
+        },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "number" },
+        "maxLength": { "type": "number" },
+        "pattern": { "type": "string" },
+        "minItems": { "type": "number" },
+        "maxItems": { "type": "number" },
+        "uniqueItems": { "type": "boolean" },
+        "description": { "type": "string" },
+        "defaultValue": { "$ref": "#/$defs/value" },
+        "disabledValue": { "$ref": "#/$defs/value" },
+        "useDefaultWhenDisabled": { "type": "boolean" }
+      },
+      "required": ["defaultValue"],
+      "additionalProperties": false
+    },
+    "variation_override": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "oneOf": [
+            { "$ref": "segment.json#/$defs/multiple_conditions" },
+            { "$ref": "segment.json#/$defs/complex_condition" },
+            { "$ref": "segment.json#/$defs/plain_condition" }
+          ]
+        },
+        "segments": { "$ref": "#/$defs/group_segments" },
+        "value": { "$ref": "#/$defs/value" }
+      },
+      "required": ["value"],
+      "additionalProperties": false
     },
     "variation": {
       "type": "object",
       "properties": {
-        "description": {
-          "type": "string",
-          "description": "Human readable description of the variation for documentation purposes."
-        },
-        "value": {
-          "$ref": "#/$defs/variation_value",
-          "description": "Value of the variation."
-        },
+        "description": { "type": "string" },
+        "value": { "$ref": "#/$defs/variation_value" },
         "weight": {
           "type": "number",
-          "description": "Weight of the variation between 0 and 100 (inclusive).",
           "minimum": 0,
           "maximum": 100
         },
         "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "deprecated": {
-                "type": "boolean",
-                "description": "Indicates whether the variable is deprecated or not."
-              },
-              "key": {
-                "type": "string",
-                "description": "Key of the variable."
-              },
-              "value": {
-                "$ref": "#/$defs/variable_value",
-                "description": "Value of the variable."
-              },
-              "overrides": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "conditions": {
-                      "$ref": "segment.json#/$defs/multiple_conditions",
-                      "description": "Embedded conditions for overriding the variable"
-                    },
-                    "segments": {
-                      "$ref": "#/$defs/segments",
-                      "description": "Embedded conditions for overriding the variable"
-                    },
-                    "value": {
-                      "$ref": "#/$defs/variable_value",
-                      "description": "Value of the override."
-                    }
-                  },
-                  "required": ["value"]
-                }
-              }
-            },
-            "description": "Variables for the variation.",
-            "required": ["key"]
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/value_or_null" }
+        },
+        "variableOverrides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/variation_override" }
           }
         }
       },
-      "description": "Variation for the feature.",
-      "required": ["value"]
+      "required": ["value", "weight"],
+      "additionalProperties": false
     },
-    "segments": {
-      "anyOf": [
-        { "$ref": "#/$defs/segments_everyone" },
-        { "$ref": "#/$defs/segments_multiple" },
-        { "$ref": "#/$defs/segments_complex" },
-        { "$ref": "#/$defs/segments_single" }
-      ],
-      "description": "Array of segment keys"
+    "rule": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "description": { "type": "string" },
+        "segments": { "$ref": "#/$defs/group_segments" },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "enabled": { "type": "boolean" },
+        "variation": { "$ref": "#/$defs/variation_value" },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/value_or_null" }
+        },
+        "variationWeights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "required": ["key", "segments", "percentage"],
+      "additionalProperties": false
     },
-    "segments_everyone": {
-      "type": "string",
-      "description": "Target everyone",
-      "enum": ["*"]
-    },
-    "segments_single": {
-      "type": "string",
-      "description": "Target a specific segment"
-    },
-    "segments_complex": {
+    "force_item": {
       "oneOf": [
-        { "$ref": "#/$defs/segments_and" },
-        { "$ref": "#/$defs/segments_or" },
-        { "$ref": "#/$defs/segments_not" }
+        {
+          "type": "object",
+          "properties": {
+            "segments": { "$ref": "#/$defs/group_segments" },
+            "enabled": { "type": "boolean" },
+            "variation": { "$ref": "#/$defs/variation_value" },
+            "variables": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/value_or_null" }
+            }
+          },
+          "required": ["segments"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conditions": {
+              "oneOf": [
+                { "$ref": "segment.json#/$defs/multiple_conditions" },
+                { "$ref": "segment.json#/$defs/complex_condition" },
+                { "$ref": "segment.json#/$defs/plain_condition" }
+              ]
+            },
+            "enabled": { "type": "boolean" },
+            "variation": { "$ref": "#/$defs/variation_value" },
+            "variables": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/value_or_null" }
+            }
+          },
+          "required": ["conditions"],
+          "additionalProperties": false
+        }
       ]
     },
-    "segments_and": {
-      "type": "object",
-      "properties": {
-        "and": {
-          "$ref": "#/$defs/segments_multiple"
+    "expose_value": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "array",
+          "items": { "type": "string" }
         }
-      },
-      "description": "Target segments with 'and' operator.",
-      "required": ["and"]
+      ]
     },
-    "segments_or": {
-      "type": "object",
-      "properties": {
-        "or": {
-          "$ref": "#/$defs/segments_multiple"
+    "rules_container": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rule" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/rule" }
+          }
         }
-      },
-      "description": "Target segments with 'or' operator.",
-      "required": ["or"]
+      ]
     },
-    "segments_not": {
-      "type": "object",
-      "properties": {
-        "or": {
-          "$ref": "#/$defs/segments_multiple"
+    "force_container": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/force_item" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/force_item" }
+          }
         }
-      },
-      "description": "Target segments with 'not' operator.",
-      "required": ["not"]
+      ]
     },
-    "segments_multiple": {
-      "type": "array",
-      "items": {
-        "oneOf": [{ "$ref": "#/$defs/segments_single" }, { "$ref": "#/$defs/segments_complex" }]
-      },
-      "description": "Target an array of segments"
+    "expose_container": {
+      "oneOf": [
+        { "$ref": "#/$defs/expose_value" },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/expose_value" }
+        }
+      ]
     }
   },
   "type": "object",
@@ -180,134 +353,42 @@
       "type": "boolean",
       "description": "Indicates whether the feature is archived or not."
     },
+    "deprecated": {
+      "type": "boolean",
+      "description": "Indicates whether the feature is deprecated or not."
+    },
     "description": {
       "type": "string",
       "description": "Human readable description of the feature for documentation purposes."
     },
     "tags": {
       "type": "array",
-      "items": {
-        "type": "string"
-      },
+      "items": { "type": "string" },
       "description": "Array of tags"
     },
-    "defaultVariation": {
-      "$ref": "#/$defs/variation_value",
-      "description": "Default variation for the feature."
+    "required": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/required_dependency" }
+    },
+    "bucketBy": {
+      "$ref": "#/$defs/bucket_by"
+    },
+    "disabledVariationValue": {
+      "$ref": "#/$defs/variation_value"
     },
     "variablesSchema": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "description": "Key of the variable."
-          },
-          "type": {
-            "type": "string",
-            "description": "Type of this specific variable.",
-            "enum": ["string", "boolean", "integer", "double", "json", "array", "object"]
-          },
-          "defaultValue": {
-            "$ref": "#/$defs/variable_value",
-            "description": "Default value for this specific variable."
-          }
-        },
-        "description": "Schema for the feature's variables.",
-        "required": ["type"]
-      }
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/variable_schema_entry" }
     },
     "variations": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/variation"
-      },
-      "description": "Array of variations for the feature."
+      "items": { "$ref": "#/$defs/variation" }
     },
-    "environments": {
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "exposed": {
-            "type": "boolean",
-            "description": "Indicates whether the feature is exposed to the environment."
-          },
-          "rules": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": {
-                  "type": "string",
-                  "description": "Unique key of the rule among its siblings."
-                },
-                "segments": {
-                  "$ref": "#/$defs/segments",
-                  "description": "Embedded conditions for the rule"
-                },
-                "percentage": {
-                  "type": "number",
-                  "description": "Percentage of the rule between 0 and 100 (inclusive).",
-                  "minimum": 0,
-                  "maximum": 100
-                },
-                "variation": {
-                  "$ref": "#/$defs/variation_value",
-                  "description": "Overriding variation value for this rule"
-                },
-                "variables": {
-                  "additionalProperties": {
-                    "$ref": "#/$defs/variable_value",
-                    "description": "Overriding variable value for this rule"
-                  }
-                }
-              }
-            },
-            "description": "Array of rules for the feature.",
-            "required": ["key", "percentage", "segments"]
-          },
-          "force": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "segments": {
-                  "$ref": "#/$defs/segments",
-                  "description": "Embedded segments"
-                },
-                "conditions": {
-                  "oneOf": [
-                    {
-                      "$ref": "segment.json#/$defs/multiple_conditions"
-                    },
-                    {
-                      "$ref": "segment.json#/$defs/complex_condition"
-                    },
-                    {
-                      "$ref": "segment.json#/$defs/plain_condition"
-                    }
-                  ]
-                },
-                "variation": {
-                  "$ref": "#/$defs/variation_value",
-                  "description": "Overriding variation value"
-                },
-                "variables": {
-                  "additionalProperties": {
-                    "$ref": "#/$defs/variable_value",
-                    "description": "Overriding variable value"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "description": "Environment specific configuration for the feature.",
-        "required": ["rules"]
-      }
-    }
+    "expose": { "$ref": "#/$defs/expose_container" },
+    "force": { "$ref": "#/$defs/force_container" },
+    "rules": { "$ref": "#/$defs/rules_container" }
   },
-  "description": "JSON Schema for creating Featurevisor feature, expressed in YAML",
-  "required": ["description", "tags"]
+  "required": ["description", "tags", "bucketBy", "rules"],
+  "additionalProperties": false,
+  "description": "JSON Schema for creating Featurevisor feature, expressed in YAML"
 }

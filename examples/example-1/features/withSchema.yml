@@ -64,6 +64,26 @@ variablesSchema:
       theme: light
       compact: true
 
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our website
+
+  linksByLocale:
+    type: object
+    additionalProperties:
+      schema: link
+    defaultValue:
+      en:
+        title: Home
+        url: /
+      de:
+        title: Start
+        url: /de
+
   tagList:
     type: array
     items:
@@ -299,6 +319,16 @@ variations:
       settings:
         theme: light
         compact: true
+      labels:
+        title: "Control title"
+        subtitle: "Control subtitle"
+      linksByLocale:
+        en:
+          title: "Control Home"
+          url: /control
+        de:
+          title: "Kontrolle"
+          url: /de/control
       tagList:
         - control
         - a
@@ -363,6 +393,16 @@ variations:
       settings:
         theme: dark
         compact: false
+      labels:
+        title: "Treatment title"
+        subtitle: "Treatment subtitle"
+      linksByLocale:
+        en:
+          title: "Treatment Home"
+          url: /treatment
+        de:
+          title: "Behandlung"
+          url: /de/treatment
       tagList:
         - treatment
         - x
@@ -402,6 +442,16 @@ rules:
         settings:
           theme: dark
           compact: true
+        labels:
+          title: "DE title"
+          subtitle: "DE subtitle"
+        linksByLocale:
+          en:
+            title: "Germany Home"
+            url: /de
+          de:
+            title: "Deutschland"
+            url: /de/start
         tagList:
           - de
           - germany

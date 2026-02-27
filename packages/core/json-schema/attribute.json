@@ -6,19 +6,35 @@
       "type": "boolean",
       "description": "Indicates whether the attribute is archived or not."
     },
+    "type": {
+      "type": "string",
+      "description": "Type of attribute.",
+      "enum": ["boolean", "string", "integer", "double", "date", "semver", "object", "array"]
+    },
     "description": {
       "type": "string",
       "description": "Human readable description of the attribute for documentation purposes."
     },
-    "type": {
-      "type": "string",
-      "description": "Type of attribute. Allows values are: string, boolean, integer, and double."
-    },
-    "capture": {
-      "type": "boolean",
-      "description": "Mark this attribute as one for capturing during feature activation."
+    "properties": {
+      "type": "object",
+      "description": "Optional property definitions for object attributes.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["boolean", "string", "integer", "double", "date", "semver", "array"]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "additionalProperties": false
+      }
     }
   },
-  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML",
-  "required": ["description", "type"]
+  "required": ["description", "type"],
+  "additionalProperties": false,
+  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML"
 }

@@ -35,6 +35,7 @@ type SchemaLike = {
   uniqueItems?: boolean;
   items?: unknown;
   properties?: Record<string, unknown>;
+  additionalProperties?: unknown;
   oneOf?: unknown[];
 };
 
@@ -73,6 +74,13 @@ export function refineEnumMatchesType(
         ctx,
       );
     }
+  }
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineEnumMatchesType(
+      schema.additionalProperties as SchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
   }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
     schema.oneOf.forEach((branch, i) => {
@@ -156,6 +164,13 @@ export function refineMinimumMaximum(
         ctx,
       );
     }
+  }
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineMinimumMaximum(
+      schema.additionalProperties as SchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
   }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
     schema.oneOf.forEach((branch, i) => {
@@ -277,6 +292,13 @@ export function refineStringLengthPattern(
       );
     }
   }
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineStringLengthPattern(
+      schema.additionalProperties as SchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
+  }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
     schema.oneOf.forEach((branch, i) => {
       if (branch && typeof branch === "object") {
@@ -376,6 +398,13 @@ export function refineArrayItems(
       refineArrayItems(schema.properties[k] as SchemaLike, [...pathPrefix, "properties", k], ctx);
     }
   }
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineArrayItems(
+      schema.additionalProperties as SchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
+  }
   if (schema.oneOf && Array.isArray(schema.oneOf)) {
     schema.oneOf.forEach((branch, i) => {
       if (branch && typeof branch === "object") {
@@ -428,6 +457,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         uniqueItems: z.boolean().optional(),
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), schemaZodSchema).optional(),
+        additionalProperties: schemaZodSchema.optional(),
         // Annotations: default?: Value; examples?: Value[];
 
         schema: z
