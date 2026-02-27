@@ -1,12 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$defs": {
-    "multiple_conditions": {
-      "type": "array",
-      "items": {
-        "anyOf": [{ "$ref": "#/$defs/plain_condition" }, { "$ref": "#/$defs/complex_condition" }]
-      }
-    },
     "plain_condition": {
       "type": "object",
       "properties": {
@@ -16,70 +10,106 @@
         },
         "operator": {
           "type": "string",
-          "description": "Operator to be used in the condition. Allowed values are: equals, notEquals, greaterThan, greaterThanOrEquals, lessThan, lessThanOrEquals, contains, notContains, startsWith, endsWith, semverEquals, semverNotEquals, semverGreaterThan, semverGreaterThanOrEquals, semverLessThan, semverLessThanOrEquals, in, notIn."
+          "description": "Operator to be used in the condition.",
+          "enum": [
+            "equals",
+            "notEquals",
+            "greaterThan",
+            "greaterThanOrEquals",
+            "lessThan",
+            "lessThanOrEquals",
+            "contains",
+            "notContains",
+            "startsWith",
+            "endsWith",
+            "includes",
+            "notIncludes",
+            "semverEquals",
+            "semverNotEquals",
+            "semverGreaterThan",
+            "semverGreaterThanOrEquals",
+            "semverLessThan",
+            "semverLessThanOrEquals",
+            "before",
+            "after",
+            "in",
+            "notIn",
+            "matches",
+            "notMatches",
+            "exists",
+            "notExists"
+          ]
         },
         "value": {
-          "type": ["string", "number", "boolean", "array", "null"],
-          "description": "Value to be used in the condition. Can be a string, number, boolean, or array of strings."
+          "anyOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" },
+            {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            { "type": "null" }
+          ],
+          "description": "Value for the condition."
+        },
+        "regexFlags": {
+          "type": "string",
+          "description": "Regex flags for matches/notMatches operators."
         }
       },
-      "required": ["attribute", "operator", "value"]
-    },
-    "complex_condition": {
-      "type": "object",
-      "oneOf": [
-        { "$ref": "#/$defs/and_condition" },
-        { "$ref": "#/$defs/or_condition" },
-        { "$ref": "#/$defs/not_condition" }
-      ]
+      "required": ["attribute", "operator"],
+      "additionalProperties": false
     },
     "and_condition": {
       "type": "object",
       "properties": {
         "and": {
           "type": "array",
-          "items": {
-            "anyOf": [
-              { "$ref": "#/$defs/plain_condition" },
-              { "$ref": "#/$defs/complex_condition" }
-            ]
-          },
+          "items": { "$ref": "#/$defs/condition" },
           "description": "The list of conditions to be combined with the 'and' operator."
         }
       },
-      "required": ["and"]
+      "required": ["and"],
+      "additionalProperties": false
     },
     "or_condition": {
       "type": "object",
       "properties": {
         "or": {
           "type": "array",
-          "items": {
-            "anyOf": [
-              { "$ref": "#/$defs/plain_condition" },
-              { "$ref": "#/$defs/complex_condition" }
-            ]
-          },
+          "items": { "$ref": "#/$defs/condition" },
           "description": "The list of conditions to be combined with the 'or' operator."
         }
       },
-      "required": ["or"]
+      "required": ["or"],
+      "additionalProperties": false
     },
     "not_condition": {
       "type": "object",
       "properties": {
         "not": {
           "type": "array",
-          "items": {
-            "anyOf": [
-              { "$ref": "#/$defs/plain_condition" },
-              { "$ref": "#/$defs/complex_condition" }
-            ]
-          },
+          "items": { "$ref": "#/$defs/condition" },
           "description": "The list of conditions to be combined with the 'not' operator."
         }
       },
-      "required": ["not"]
+      "required": ["not"],
+      "additionalProperties": false
+    },
+    "complex_condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/and_condition" },
+        { "$ref": "#/$defs/or_condition" },
+        { "$ref": "#/$defs/not_condition" }
+      ]
+    },
+    "condition": {
+      "oneOf": [{ "$ref": "#/$defs/plain_condition" }, { "$ref": "#/$defs/complex_condition" }]
+    },
+    "multiple_conditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/condition" }
     }
   },
   "type": "object",
@@ -94,13 +124,14 @@
     },
     "conditions": {
       "oneOf": [
-        { "$ref": "#/$defs/multiple_conditions" },
-        { "$ref": "#/$defs/complex_condition" },
-        { "$ref": "#/$defs/plain_condition" }
+        { "const": "*" },
+        { "$ref": "#/$defs/condition" },
+        { "$ref": "#/$defs/multiple_conditions" }
       ],
       "description": "The set of conditions to be evaluated for the segment."
     }
   },
-  "description": "JSON Schema for creating Featurevisor segment, expressed in YAML",
-  "required": ["description", "conditions"]
+  "required": ["description", "conditions"],
+  "additionalProperties": false,
+  "description": "JSON Schema for creating Featurevisor segment, expressed in YAML"
 }
