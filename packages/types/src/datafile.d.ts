@@ -13,6 +13,7 @@ import type {
   Variation,
   Force,
   VariationV1,
+  VariableOverride,
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
 
@@ -37,6 +38,9 @@ export interface Traffic {
   };
   variationWeights?: {
     [key: string]: Weight;
+  };
+  variableOverrides?: {
+    [key: VariableKey]: VariableOverride[];
   };
 
   allocation?: Allocation[];

@@ -154,6 +154,9 @@ export interface Rule {
   variationWeights?: {
     [key: string]: Weight;
   };
+  variableOverrides?: {
+    [key: VariableKey]: VariableOverride[];
+  };
 }
 
 export interface RulesByEnvironment {
