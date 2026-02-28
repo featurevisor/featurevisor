@@ -691,7 +691,52 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     if (type === "variable" && variableKey) {
       // override from rule
       if (matchedTraffic) {
-        // @TODO: from "variableOverrides"
+        // "variableOverrides"
+        if (matchedTraffic.variableOverrides && matchedTraffic.variableOverrides[variableKey]) {
+          const overrides = matchedTraffic.variableOverrides[variableKey];
+
+          const overrideIndex = overrides.findIndex((o) => {
+            if (o.conditions) {
+              return datafileReader.allConditionsAreMatched(
+                typeof o.conditions === "string" && o.conditions !== "*"
+                  ? JSON.parse(o.conditions)
+                  : o.conditions,
+                context,
+              );
+            }
+
+            if (o.segments) {
+              return datafileReader.allSegmentsAreMatched(
+                datafileReader.parseSegmentsIfStringified(o.segments),
+                context,
+              );
+            }
+
+            return false;
+          });
+
+          if (overrideIndex !== -1) {
+            const override = overrides[overrideIndex];
+
+            evaluation = {
+              type,
+              featureKey,
+              reason: EvaluationReason.VARIABLE_OVERRIDE_RULE,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic?.key,
+              traffic: matchedTraffic,
+              variableKey,
+              variableSchema,
+              variableValue: override.value,
+              variableOverrideIndex: overrideIndex,
+            };
+
+            logger.debug("variable override from rule", evaluation);
+
+            return evaluation;
+          }
+        }
 
         // from "variables"
         if (
@@ -771,7 +816,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variableOverrideIndex: overrideIndex,
             };
 
-            logger.debug("variable override", evaluation);
+            logger.debug("variable override from variation", evaluation);
 
             return evaluation;
           }
