@@ -600,7 +600,7 @@ export async function generateTypeScriptCodeForProject(
   for (const attributeKey of attributeFiles) {
     const parsedAttribute = await datasource.readAttribute(attributeKey);
 
-    if (typeof parsedAttribute.archived === "undefined") {
+    if (parsedAttribute.archived) {
       continue;
     }
 
