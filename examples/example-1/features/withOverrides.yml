@@ -17,6 +17,18 @@ variablesSchema:
 
   variationOverrideOnly:
     type: object
+    properties:
+      base:
+        type: string
+      deep:
+        type: object
+        properties:
+          count:
+            type: integer
+          tags:
+            type: array
+            items:
+              type: string
     defaultValue:
       base: default
       deep:
@@ -39,6 +51,25 @@ variablesSchema:
 
   ruleOverrideOnly:
     type: object
+    properties:
+      style:
+        type: string
+      options:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          threshold:
+            type: integer
+      entries:
+        type: array
+        items:
+          type: object
+          properties:
+            code:
+              type: string
+            score:
+              type: integer
     defaultValue:
       style: default
       options:
@@ -50,6 +81,28 @@ variablesSchema:
 
   bothLayered:
     type: object
+    properties:
+      source:
+        type: string
+      nested:
+        type: object
+        properties:
+          value:
+            type: integer
+          meta:
+            type: object
+            properties:
+              from:
+                type: string
+      list:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
     defaultValue:
       source: default
       nested:
@@ -82,6 +135,32 @@ variablesSchema:
 
   partialMutationShowcase:
     type: object
+    properties:
+      text:
+        type: string
+      nested:
+        type: object
+        properties:
+          count:
+            type: integer
+          meta:
+            type: object
+            properties:
+              region:
+                type: string
+      list:
+        type: array
+        items:
+          type: string
+      rows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
     defaultValue:
       text: base
       nested:

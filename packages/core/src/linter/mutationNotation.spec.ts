@@ -395,6 +395,21 @@ describe("mutationNotation.ts", () => {
       tags: arraySchema,
       items: arrayOfObjectsSchema,
       settings: nestedObjectSchema,
+      partialMutationShowcase: {
+        type: "object",
+        properties: {
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                label: { type: "string" },
+              },
+            },
+          },
+        },
+      },
     };
 
     it("returns invalid when key is empty (parseMutationKey null)", () => {
@@ -558,6 +573,22 @@ describe("mutationNotation.ts", () => {
         expect(r.operation).toBe("before");
       });
 
+      it("valid on nested array selector segment in object variable", () => {
+        const r = validateMutationKey(
+          "partialMutationShowcase.rows[id=1]:after",
+          variableSchemaByKey,
+        );
+        expect(r.valid).toBe(true);
+        expect(r.operation).toBe("after");
+        expect(r.valueSchema).toEqual({
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            label: { type: "string" },
+          },
+        });
+      });
+
       it("invalid when path does not exist or does not point to array element", () => {
         const r = validateMutationKey("config.fake[0]:after", variableSchemaByKey);
         expect(r.valid).toBe(false);
@@ -609,6 +640,14 @@ describe("mutationNotation.ts", () => {
 
       it("valid when removing array element by selector", () => {
         const r = validateMutationKey("items[id=1]:remove", variableSchemaByKey);
+        expect(r.valid).toBe(true);
+      });
+
+      it("valid when removing nested array element by selector", () => {
+        const r = validateMutationKey(
+          "partialMutationShowcase.rows[id=2]:remove",
+          variableSchemaByKey,
+        );
         expect(r.valid).toBe(true);
       });
 

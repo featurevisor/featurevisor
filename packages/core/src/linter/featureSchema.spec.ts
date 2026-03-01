@@ -610,6 +610,34 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
         "maxLength",
       );
     });
+
+    it("accepts plain-key partial object overrides for structured object schemas", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              required: ["theme", "compact"],
+              defaultValue: { theme: "light", compact: true },
+            },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                config: [{ segments: "*", value: { theme: "dark" } }],
+              },
+            },
+          ],
+        }),
+      );
+    });
   });
 
   describe("rules: variables", () => {
@@ -697,6 +725,177 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
         }),
         "not defined in",
+      );
+    });
+  });
+
+  describe("rules: variableOverrides", () => {
+    it("accepts rule variableOverrides with values matching variablesSchema", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                nested: {
+                  type: "object",
+                  properties: {
+                    count: { type: "integer" },
+                  },
+                },
+              },
+              defaultValue: {
+                title: "default",
+                nested: { count: 0 },
+              },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [
+                    {
+                      segments: "countries/germany",
+                      value: {
+                        "nested.count": 5,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects rule variableOverrides for unknown variable key", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            config: { type: "string", defaultValue: "x" },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  unknown: [{ segments: "*", value: "x" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "not defined in",
+      );
+    });
+
+    it("rejects mutation notation in rule variableOverrides key", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" } },
+              defaultValue: { title: "x" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  "config.title": [{ segments: "*", value: "y" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "must be a declared variable key",
+      );
+    });
+
+    it("rejects rule variableOverride path not present in schema", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" } },
+              defaultValue: { title: "x" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [
+                    {
+                      segments: "*",
+                      value: {
+                        "nested.missing": "x",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "invalid for variable",
+      );
+    });
+
+    it("rejects non-null payload for :remove in rule variableOverrides", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" }, optional: { type: "string" } },
+              defaultValue: { title: "x", optional: "y" },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [
+                    {
+                      conditions: [
+                        { attribute: "country", operator: "equals", value: "de" },
+                      ],
+                      value: {
+                        "optional:remove": "not-null",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "must use `null` as value",
       );
     });
   });
