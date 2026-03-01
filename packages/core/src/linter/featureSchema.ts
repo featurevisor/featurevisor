@@ -2,10 +2,7 @@ import type { Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import {
-  isMutationKey,
-  validateMutationKey,
-} from "./mutationNotation";
+import { isMutationKey, validateMutationKey } from "./mutationNotation";
 import {
   valueZodSchema,
   propertyTypeEnum,
@@ -1310,7 +1307,10 @@ export function getFeatureZodSchema(
   const variableValueZodSchema = valueZodSchema;
   const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
   const overridePathMapValueZodSchema = z.record(variableValueOrNullZodSchema);
-  const overrideValueZodSchema = z.union([variableValueOrNullZodSchema, overridePathMapValueZodSchema]);
+  const overrideValueZodSchema = z.union([
+    variableValueOrNullZodSchema,
+    overridePathMapValueZodSchema,
+  ]);
 
   const variationValueZodSchema = z.string().min(1);
 

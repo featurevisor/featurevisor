@@ -174,7 +174,11 @@ function getContainerSchemaAtPath(
       "index" in lastSegment
         ? ({ key: "", index: lastSegment.index } as PathSegment)
         : ({ key: "", selector: lastSegment.selector } as PathSegment);
-    return { containerSchema: arraySchema, lastSegment: normalizedLastSegment, parentSchema: arraySchema };
+    return {
+      containerSchema: arraySchema,
+      lastSegment: normalizedLastSegment,
+      parentSchema: arraySchema,
+    };
   }
   const propSchema =
     parentSchema.properties?.[lastSegment.key] ?? parentSchema.additionalProperties;

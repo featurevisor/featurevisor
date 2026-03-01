@@ -881,9 +881,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 variableOverrides: {
                   config: [
                     {
-                      conditions: [
-                        { attribute: "country", operator: "equals", value: "de" },
-                      ],
+                      conditions: [{ attribute: "country", operator: "equals", value: "de" }],
                       value: {
                         "optional:remove": "not-null",
                       },
