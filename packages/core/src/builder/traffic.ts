@@ -91,6 +91,7 @@ export function getTraffic(
       percentage: rulePercentage * (MAX_BUCKETED_NUMBER / 100),
       allocation: [],
       variationWeights: parsedRule.variationWeights,
+      variableOverrides: parsedRule.variableOverrides,
     };
 
     // overrides

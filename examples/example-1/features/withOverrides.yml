@@ -1,0 +1,215 @@
+description: Variable overrides from variations and rules (including layered rule overrides)
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  plainDefault:
+    type: string
+    defaultValue: default-string
+
+  variationOnly:
+    type: object
+    defaultValue:
+      mode: default
+      level: 0
+
+  variationOverrideOnly:
+    type: object
+    defaultValue:
+      base: default
+      deep:
+        count: 0
+        tags:
+          - d
+
+  ruleVariablesOnly:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        active:
+          type: boolean
+    defaultValue:
+      - id: default-1
+        active: false
+
+  ruleOverrideOnly:
+    type: object
+    defaultValue:
+      style: default
+      options:
+        enabled: false
+        threshold: 10
+      entries:
+        - code: default
+          score: 0
+
+  bothLayered:
+    type: object
+    defaultValue:
+      source: default
+      nested:
+        value: 0
+        meta:
+          from: default
+      list:
+        - id: 1
+          label: default
+
+  untouchedComplex:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        info:
+          type: object
+          properties:
+            priority:
+              type: integer
+    defaultValue:
+      - name: static-a
+        info:
+          priority: 1
+      - name: static-b
+        info:
+          priority: 2
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+    variables:
+      variationOnly:
+        mode: treatment
+        level: 2
+      bothLayered:
+        source: variation
+        nested:
+          value: 5
+          meta:
+            from: variation
+        list:
+          - id: 1
+            label: variation-base
+    variableOverrides:
+      variationOverrideOnly:
+        - segments: countries/netherlands
+          value:
+            "deep.count": 10
+            "deep.tags:append": nl
+        - conditions:
+            - attribute: country
+              operator: equals
+              value: de
+          value:
+            base: variation-de
+            "deep.count": 20
+      bothLayered:
+        - segments: mobile
+          value:
+            "nested.value": 6
+
+rules:
+  staging:
+    - key: germany_both
+      segments: countries/germany
+      percentage: 100
+      variables:
+        ruleVariablesOnly:
+          - id: r1
+            active: true
+          - id: r2
+            active: false
+        bothLayered:
+          source: rule
+          nested:
+            value: 100
+            meta:
+              from: rule
+          list:
+            - id: 1
+              label: rule-base
+        ruleOverrideOnly:
+          style: desktop
+          options:
+            enabled: false
+            threshold: 50
+          entries:
+            - code: base
+              score: 1
+      variableOverrides:
+        ruleOverrideOnly:
+          - segments: mobile
+            value:
+              "options.threshold": 75
+              "entries:append":
+                code: mobile
+                score: 2
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              style: de
+              "options.enabled": true
+        bothLayered:
+          - segments: mobile
+            value:
+              "nested.value": 200
+              "list[0].label": rule-mobile
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              "nested.meta.from": rule-override
+
+    - key: netherlands_variables_only
+      segments: countries/netherlands
+      percentage: 100
+      variables:
+        ruleVariablesOnly:
+          - id: nl1
+            active: true
+        bothLayered:
+          source: nl-rule
+          nested:
+            value: 300
+            meta:
+              from: nl-rule
+          list:
+            - id: 1
+              label: nl-rule
+
+    - key: eu_overrides_only
+      segments: eu
+      percentage: 100
+      variableOverrides:
+        ruleOverrideOnly:
+          - conditions:
+              - attribute: device
+                operator: equals
+                value: desktop
+            value:
+              style: eu-desktop
+        bothLayered:
+          - segments: mobile
+            value:
+              "nested.value": 400
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 100

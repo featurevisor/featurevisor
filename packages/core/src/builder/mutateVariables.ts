@@ -89,14 +89,21 @@ export function resolveMutationsForSingleVariable(
   variablesSchema: Record<string, VariableSchema> | undefined,
   variableKey: string,
   overrideValue: VariableValue,
+  baseValue?: VariableValue,
 ): VariableValue {
   if (!variablesSchema || !variablesSchema[variableKey]) return overrideValue;
   if (overrideValue === null || overrideValue === undefined) return overrideValue;
   if (typeof overrideValue !== "object" || Array.isArray(overrideValue)) {
     return overrideValue;
   }
+
   const pathMap = overrideValue as Record<string, VariableValue>;
   const flat: Record<string, VariableValue> = {};
+
+  if (typeof baseValue !== "undefined") {
+    flat[variableKey] = JSON.parse(JSON.stringify(baseValue)) as VariableValue;
+  }
+
   for (const [k, v] of Object.entries(pathMap)) {
     flat[k === variableKey ? variableKey : variableKey + "." + k] = v;
   }
