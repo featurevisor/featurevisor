@@ -43,6 +43,20 @@ assertions:
         - name: static-b
           info:
             priority: 2
+      partialMutationShowcase:
+        text: base
+        nested:
+          count: 0
+          meta:
+            region: global
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two
 
   # Variation variables only.
   - at: 75
@@ -68,6 +82,21 @@ assertions:
           count: 0
           tags:
             - d
+      partialMutationShowcase:
+        text: variation
+        nested:
+          count: 5
+          meta:
+            region: global
+        list:
+          - a
+          - b
+          - v
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-v
 
   # Rule variables only + variation variableOverrides on a different variable.
   - at: 75
@@ -96,6 +125,22 @@ assertions:
           tags:
             - d
             - nl
+      partialMutationShowcase:
+        text: variation
+        nested:
+          count: 5
+          meta:
+            region: nl-variation-override
+        list:
+          - nl
+          - a
+          - b
+          - v
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-v
 
   # Rule variables + rule variableOverrides (conditions branch), control variation.
   - at: 25
@@ -127,6 +172,19 @@ assertions:
         list:
           - id: 1
             label: rule-base
+      partialMutationShowcase:
+        text: rule-de
+        nested:
+          count: 0
+          meta:
+            region: de-rule-override
+        list:
+          - a
+          - b
+          - de
+        rows:
+          - id: 1
+            label: one-rule
 
   # Rule variables + rule variableOverrides (segments branch) + variation variableOverrides.
   - at: 75
@@ -162,6 +220,22 @@ assertions:
           count: 20
           tags:
             - d
+      partialMutationShowcase:
+        text: rule-de
+        nested:
+          count: 200
+          meta:
+            region: de-rule
+        list:
+          - mobile
+          - a
+          - b
+          - de
+        rows:
+          - id: 1
+            label: one-rule
+          - id: 2
+            label: two
 
   # Rule variableOverrides only.
   - at: 75
@@ -190,6 +264,20 @@ assertions:
         list:
           - id: 1
             label: variation-base
+      partialMutationShowcase:
+        text: eu-desktop
+        nested:
+          count: 0
+          meta:
+            region: global
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two
 
   # Rule variableOverrides only (mobile branch, no rule variables present).
   - at: 75
@@ -218,3 +306,17 @@ assertions:
         entries:
           - code: default
             score: 0
+      partialMutationShowcase:
+        text: base
+        nested:
+          count: 0
+          meta:
+            region: eu-mobile
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-eu

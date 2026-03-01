@@ -80,6 +80,23 @@ variablesSchema:
         info:
           priority: 2
 
+  partialMutationShowcase:
+    type: object
+    defaultValue:
+      text: base
+      nested:
+        count: 0
+        meta:
+          region: global
+      list:
+        - a
+        - b
+      rows:
+        - id: 1
+          label: one
+        - id: 2
+          label: two
+
 variations:
   - value: control
     weight: 50
@@ -90,6 +107,10 @@ variations:
       variationOnly:
         mode: treatment
         level: 2
+      "partialMutationShowcase.text": variation
+      "partialMutationShowcase.nested.count": 5
+      "partialMutationShowcase.list:append": v
+      "partialMutationShowcase.rows[id=2].label": two-v
       bothLayered:
         source: variation
         nested:
@@ -112,6 +133,20 @@ variations:
           value:
             base: variation-de
             "deep.count": 20
+      partialMutationShowcase:
+        - segments: countries/netherlands
+          value:
+            "nested.meta.region": nl-variation-override
+            "list:prepend": nl
+        - conditions:
+            - attribute: country
+              operator: equals
+              value: de
+          value:
+            "nested.count": 8
+            "rows[id=1]:after":
+              id: 15
+              label: one-half
       bothLayered:
         - segments: mobile
           value:
@@ -123,6 +158,10 @@ rules:
       segments: countries/germany
       percentage: 100
       variables:
+        "partialMutationShowcase.text": rule-de
+        "partialMutationShowcase.nested.meta.region": de-rule
+        "partialMutationShowcase.rows[0].label": one-rule
+        "partialMutationShowcase.list:append": de
         ruleVariablesOnly:
           - id: r1
             active: true
@@ -171,6 +210,18 @@ rules:
                 value: de
             value:
               "nested.meta.from": rule-override
+        partialMutationShowcase:
+          - segments: mobile
+            value:
+              "list:prepend": mobile
+              "nested.count": 200
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              "nested.meta.region": de-rule-override
+              "rows[id=2]:remove": null
 
     - key: netherlands_variables_only
       segments: countries/netherlands
@@ -193,6 +244,17 @@ rules:
       segments: eu
       percentage: 100
       variableOverrides:
+        partialMutationShowcase:
+          - conditions:
+              - attribute: device
+                operator: equals
+                value: desktop
+            value:
+              text: eu-desktop
+          - segments: mobile
+            value:
+              "nested.meta.region": eu-mobile
+              "rows[1].label": two-eu
         ruleOverrideOnly:
           - conditions:
               - attribute: device

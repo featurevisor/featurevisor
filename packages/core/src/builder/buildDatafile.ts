@@ -250,6 +250,10 @@ export async function buildDatafile(
                 const variableKeys = Object.keys(variableOverrides);
 
                 for (const variableKey of variableKeys) {
+                  const baseValue = mappedVariation.variables
+                    ? mappedVariation.variables[variableKey]
+                    : undefined;
+
                   mappedVariation.variableOverrides[variableKey] = variableOverrides[
                     variableKey
                   ].map((override: VariableOverride) => {
@@ -270,6 +274,7 @@ export async function buildDatafile(
                           parsedFeature.variablesSchema,
                           variableKey,
                           override.value,
+                          baseValue,
                         ),
                       };
                     }
@@ -291,6 +296,7 @@ export async function buildDatafile(
                           parsedFeature.variablesSchema,
                           variableKey,
                           override.value,
+                          baseValue,
                         ),
                       };
                     }
