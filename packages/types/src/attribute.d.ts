@@ -12,7 +12,8 @@ export type AttributeValue =
   | null
   | undefined
   | string[]
-  | AttributeObjectValue;
+  | AttributeObjectValue
+  | Record<string, unknown>;
 
 export type AttributeType =
   | "boolean"
