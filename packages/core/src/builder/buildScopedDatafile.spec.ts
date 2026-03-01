@@ -1086,9 +1086,9 @@ describe("core: buildScopedDatafile", function () {
 
       const result = buildScopedDatafile(datafile, { country: "de" });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
-        [{ attribute: "country", operator: "equals", value: "nl" }],
-      );
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual([
+        { attribute: "country", operator: "equals", value: "nl" },
+      ]);
     });
 
     test("traffic variableOverride supports array/group segments and conditions", function () {
@@ -1141,7 +1141,9 @@ describe("core: buildScopedDatafile", function () {
         tier: "premium",
       });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+        "*",
+      );
       expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
         "*",
       );
@@ -1193,7 +1195,9 @@ describe("core: buildScopedDatafile", function () {
         country: "nl",
       });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+        "*",
+      );
       expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
         "*",
       );
@@ -1243,7 +1247,9 @@ describe("core: buildScopedDatafile", function () {
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+        "*",
+      );
     });
 
     test("does not mutate original datafile traffic variableOverrides", function () {
