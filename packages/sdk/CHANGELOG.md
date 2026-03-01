@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.19.0](https://github.com/featurevisor/featurevisor/compare/v2.18.0...v2.19.0) (2026-03-01)
+
+
+### Features
+
+* variable override from rules ([#397](https://github.com/featurevisor/featurevisor/issues/397)) ([e91b673](https://github.com/featurevisor/featurevisor/commit/e91b67313f84196e6d795ee2700ccab1b1b4eae1))
+
+
+
+
+
 # [2.18.0](https://github.com/featurevisor/featurevisor/compare/v2.17.0...v2.18.0) (2026-02-27)
 
 **Note:** Version bump only for package @featurevisor/sdk
