@@ -956,6 +956,330 @@ describe("core: buildScopedDatafile", function () {
     });
   });
 
+  describe("features with traffic and variableOverrides", function () {
+    test("traffic variableOverride with matching segments becomes *", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, { device: "mobile" });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+        "*",
+      );
+    });
+
+    test("traffic variableOverride with non-matching segments remains", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, { device: "desktop" });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+        "mobile",
+      );
+    });
+
+    test("traffic variableOverride with matching conditions becomes *", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {},
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [
+                    {
+                      conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                      value: { source: "nl" },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, { country: "nl" });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
+        "*",
+      );
+    });
+
+    test("traffic variableOverride with non-matching conditions remains", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {},
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [
+                    {
+                      conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                      value: { source: "nl" },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, { country: "de" });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
+        [{ attribute: "country", operator: "equals", value: "nl" }],
+      );
+    });
+
+    test("traffic variableOverride supports array/group segments and conditions", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+          touch: {
+            conditions: [{ attribute: "touch", operator: "equals", value: true }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [
+                    {
+                      segments: { and: ["mobile", "touch"] },
+                      value: { source: "group-segments" },
+                    },
+                    {
+                      conditions: {
+                        and: [
+                          { attribute: "country", operator: "equals", value: "nl" },
+                          { attribute: "tier", operator: "equals", value: "premium" },
+                        ],
+                      },
+                      value: { source: "group-conditions" },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, {
+        device: "mobile",
+        touch: true,
+        country: "nl",
+        tier: "premium",
+      });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
+        "*",
+      );
+    });
+
+    test("traffic variableOverride supports stringified segments and conditions", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+          touch: {
+            conditions: [{ attribute: "touch", operator: "equals", value: true }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [
+                    {
+                      segments: JSON.stringify({ and: ["mobile", "touch"] }),
+                      value: { source: "stringified-segments" },
+                    },
+                    {
+                      conditions: JSON.stringify([
+                        { attribute: "country", operator: "equals", value: "nl" },
+                      ]),
+                      value: { source: "stringified-conditions" },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, {
+        device: "mobile",
+        touch: true,
+        country: "nl",
+      });
+
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
+        "*",
+      );
+    });
+
+    test("multiple traffic entries still apply consecutive * dedupe", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          web: {
+            conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+          },
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "web",
+                percentage: 50000,
+                variableOverrides: {
+                  config: [{ segments: "mobile", value: { source: "rule1" } }],
+                },
+              },
+              {
+                key: "rule2",
+                segments: "web",
+                percentage: 50000,
+                variableOverrides: {
+                  config: [{ segments: "mobile", value: { source: "rule2" } }],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const result = buildScopedDatafile(datafile, {
+        platform: "web",
+        device: "mobile",
+      });
+
+      expect(result.features.feature1.traffic).toHaveLength(1);
+      expect(result.features.feature1.traffic[0].key).toEqual("rule1");
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual("*");
+    });
+
+    test("does not mutate original datafile traffic variableOverrides", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "rule1",
+                segments: "*",
+                percentage: 100000,
+                variableOverrides: {
+                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const original = JSON.stringify(datafile);
+
+      buildScopedDatafile(datafile, { device: "mobile" });
+
+      expect(JSON.stringify(datafile)).toEqual(original);
+    });
+  });
+
   describe("features with variations and variableOverrides", function () {
     test("variableOverride with matching segments becomes *", function () {
       const datafile: DatafileContent = {

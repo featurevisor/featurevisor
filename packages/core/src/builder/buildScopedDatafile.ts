@@ -4,6 +4,23 @@ import { DatafileReader, createLogger } from "@featurevisor/sdk";
 import { buildScopedConditions } from "./buildScopedConditions";
 import { buildScopedSegments } from "./buildScopedSegments";
 
+function parseIfStringified<T>(value: T): T {
+  if (typeof value !== "string" || value === "*") {
+    return value;
+  }
+
+  const firstChar = value[0];
+  if (firstChar !== "{" && firstChar !== "[") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return value;
+  }
+}
+
 export function buildScopedDatafile(
   originalDatafileContent: DatafileContent,
   context: Context,
@@ -76,12 +93,51 @@ export function buildScopedDatafile(
 
         // segments
         if (traffic.segments) {
+          const segments = parseIfStringified(traffic.segments);
           feature.traffic[trafficI].segments = buildScopedSegments(
             originalDatafileReader,
-            traffic.segments,
+            segments,
             context,
             removeSegments,
           );
+        }
+
+        // variable overrides
+        if (traffic.variableOverrides) {
+          for (const variableKey in traffic.variableOverrides) {
+            const variableOverrides = traffic.variableOverrides[variableKey];
+
+            for (
+              let variableOverrideI = 0;
+              variableOverrideI < variableOverrides.length;
+              variableOverrideI++
+            ) {
+              const variableOverride = variableOverrides[variableOverrideI];
+
+              // segments
+              if (variableOverride.segments) {
+                const segments = parseIfStringified(variableOverride.segments);
+                variableOverride.segments = buildScopedSegments(
+                  originalDatafileReader,
+                  segments,
+                  context,
+                  removeSegments,
+                );
+              }
+
+              // conditions
+              if (variableOverride.conditions) {
+                const conditions = parseIfStringified(variableOverride.conditions);
+                variableOverride.conditions = buildScopedConditions(
+                  originalDatafileReader,
+                  conditions,
+                  context,
+                );
+              }
+
+              variableOverrides[variableOverrideI] = variableOverride;
+            }
+          }
         }
       }
     }
