@@ -1,0 +1,356 @@
+description: Variable overrides from variations and rules (including layered rule overrides)
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  plainDefault:
+    type: string
+    defaultValue: default-string
+
+  variationOnly:
+    type: object
+    defaultValue:
+      mode: default
+      level: 0
+
+  variationOverrideOnly:
+    type: object
+    properties:
+      base:
+        type: string
+      deep:
+        type: object
+        properties:
+          count:
+            type: integer
+          tags:
+            type: array
+            items:
+              type: string
+    defaultValue:
+      base: default
+      deep:
+        count: 0
+        tags:
+          - d
+
+  ruleVariablesOnly:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        active:
+          type: boolean
+    defaultValue:
+      - id: default-1
+        active: false
+
+  ruleOverrideOnly:
+    type: object
+    properties:
+      style:
+        type: string
+      options:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          threshold:
+            type: integer
+      entries:
+        type: array
+        items:
+          type: object
+          properties:
+            code:
+              type: string
+            score:
+              type: integer
+    defaultValue:
+      style: default
+      options:
+        enabled: false
+        threshold: 10
+      entries:
+        - code: default
+          score: 0
+
+  bothLayered:
+    type: object
+    properties:
+      source:
+        type: string
+      nested:
+        type: object
+        properties:
+          value:
+            type: integer
+          meta:
+            type: object
+            properties:
+              from:
+                type: string
+      list:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
+    defaultValue:
+      source: default
+      nested:
+        value: 0
+        meta:
+          from: default
+      list:
+        - id: 1
+          label: default
+
+  untouchedComplex:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        info:
+          type: object
+          properties:
+            priority:
+              type: integer
+    defaultValue:
+      - name: static-a
+        info:
+          priority: 1
+      - name: static-b
+        info:
+          priority: 2
+
+  partialMutationShowcase:
+    type: object
+    properties:
+      text:
+        type: string
+      nested:
+        type: object
+        properties:
+          count:
+            type: integer
+          meta:
+            type: object
+            properties:
+              region:
+                type: string
+      list:
+        type: array
+        items:
+          type: string
+      rows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            label:
+              type: string
+    defaultValue:
+      text: base
+      nested:
+        count: 0
+        meta:
+          region: global
+      list:
+        - a
+        - b
+      rows:
+        - id: 1
+          label: one
+        - id: 2
+          label: two
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+    variables:
+      variationOnly:
+        mode: treatment
+        level: 2
+      "partialMutationShowcase.text": variation
+      "partialMutationShowcase.nested.count": 5
+      "partialMutationShowcase.list:append": v
+      "partialMutationShowcase.rows[id=2].label": two-v
+      bothLayered:
+        source: variation
+        nested:
+          value: 5
+          meta:
+            from: variation
+        list:
+          - id: 1
+            label: variation-base
+    variableOverrides:
+      variationOverrideOnly:
+        - segments: countries/netherlands
+          value:
+            "deep.count": 10
+            "deep.tags:append": nl
+        - conditions:
+            - attribute: country
+              operator: equals
+              value: de
+          value:
+            base: variation-de
+            "deep.count": 20
+      partialMutationShowcase:
+        - segments: countries/netherlands
+          value:
+            "nested.meta.region": nl-variation-override
+            "list:prepend": nl
+        - conditions:
+            - attribute: country
+              operator: equals
+              value: de
+          value:
+            "nested.count": 8
+            "rows[id=1]:after":
+              id: 15
+              label: one-half
+      bothLayered:
+        - segments: mobile
+          value:
+            "nested.value": 6
+
+rules:
+  staging:
+    - key: germany_both
+      segments: countries/germany
+      percentage: 100
+      variables:
+        "partialMutationShowcase.text": rule-de
+        "partialMutationShowcase.nested.meta.region": de-rule
+        "partialMutationShowcase.rows[0].label": one-rule
+        "partialMutationShowcase.list:append": de
+        ruleVariablesOnly:
+          - id: r1
+            active: true
+          - id: r2
+            active: false
+        bothLayered:
+          source: rule
+          nested:
+            value: 100
+            meta:
+              from: rule
+          list:
+            - id: 1
+              label: rule-base
+        ruleOverrideOnly:
+          style: desktop
+          options:
+            enabled: false
+            threshold: 50
+          entries:
+            - code: base
+              score: 1
+      variableOverrides:
+        ruleOverrideOnly:
+          - segments: mobile
+            value:
+              "options.threshold": 75
+              "entries:append":
+                code: mobile
+                score: 2
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              style: de
+              "options.enabled": true
+        bothLayered:
+          - segments: mobile
+            value:
+              "nested.value": 200
+              "list[0].label": rule-mobile
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              "nested.meta.from": rule-override
+        partialMutationShowcase:
+          - segments: mobile
+            value:
+              "list:prepend": mobile
+              "nested.count": 200
+          - conditions:
+              - attribute: country
+                operator: equals
+                value: de
+            value:
+              "nested.meta.region": de-rule-override
+              "rows[id=2]:remove": null
+
+    - key: netherlands_variables_only
+      segments: countries/netherlands
+      percentage: 100
+      variables:
+        ruleVariablesOnly:
+          - id: nl1
+            active: true
+        bothLayered:
+          source: nl-rule
+          nested:
+            value: 300
+            meta:
+              from: nl-rule
+          list:
+            - id: 1
+              label: nl-rule
+
+    - key: eu_overrides_only
+      segments: eu
+      percentage: 100
+      variableOverrides:
+        partialMutationShowcase:
+          - conditions:
+              - attribute: device
+                operator: equals
+                value: desktop
+            value:
+              text: eu-desktop
+          - segments: mobile
+            value:
+              "nested.meta.region": eu-mobile
+              "rows[1].label": two-eu
+        ruleOverrideOnly:
+          - conditions:
+              - attribute: device
+                operator: equals
+                value: desktop
+            value:
+              style: eu-desktop
+        bothLayered:
+          - segments: mobile
+            value:
+              "nested.value": 400
+
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      segments: "*"
+      percentage: 100

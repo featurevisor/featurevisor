@@ -35,7 +35,8 @@ export enum EvaluationReason {
   VARIABLE_NOT_FOUND = "variable_not_found", // variable's schema is not defined in the feature
   VARIABLE_DEFAULT = "variable_default", // default variable value used
   VARIABLE_DISABLED = "variable_disabled", // feature is disabled, and variable's disabledValue is used
-  VARIABLE_OVERRIDE = "variable_override", // variable overridden from inside a variation
+  VARIABLE_OVERRIDE_VARIATION = "variable_override_variation", // variable overridden from inside a variation
+  VARIABLE_OVERRIDE_RULE = "variable_override_rule", // variable overridden from inside a rule
 
   // common
   NO_MATCH = "no_match", // no rules matched
@@ -75,6 +76,7 @@ export interface Evaluation {
   variableKey?: VariableKey;
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
+  variableOverrideIndex?: number;
 }
 
 export interface EvaluateDependencies {
@@ -688,47 +690,12 @@ export function evaluate(options: EvaluateOptions): Evaluation {
     // variable
     if (type === "variable" && variableKey) {
       // override from rule
-      if (
-        matchedTraffic &&
-        matchedTraffic.variables &&
-        typeof matchedTraffic.variables[variableKey] !== "undefined"
-      ) {
-        evaluation = {
-          type,
-          featureKey,
-          reason: EvaluationReason.RULE,
-          bucketKey,
-          bucketValue,
-          ruleKey: matchedTraffic.key,
-          traffic: matchedTraffic,
-          variableKey,
-          variableSchema,
-          variableValue: matchedTraffic.variables[variableKey],
-        };
+      if (matchedTraffic) {
+        // "variableOverrides"
+        if (matchedTraffic.variableOverrides && matchedTraffic.variableOverrides[variableKey]) {
+          const overrides = matchedTraffic.variableOverrides[variableKey];
 
-        logger.debug("override from rule", evaluation);
-
-        return evaluation;
-      }
-
-      // check variations
-      let variationValue;
-
-      if (force && force.variation) {
-        variationValue = force.variation;
-      } else if (matchedTraffic && matchedTraffic.variation) {
-        variationValue = matchedTraffic.variation;
-      } else if (matchedAllocation && matchedAllocation.variation) {
-        variationValue = matchedAllocation.variation;
-      }
-
-      if (variationValue && Array.isArray(feature.variations)) {
-        const variation = feature.variations.find((v) => v.value === variationValue);
-
-        if (variation && variation.variableOverrides && variation.variableOverrides[variableKey]) {
-          const overrides = variation.variableOverrides[variableKey];
-
-          const override = overrides.find((o) => {
+          const overrideIndex = overrides.findIndex((o) => {
             if (o.conditions) {
               return datafileReader.allConditionsAreMatched(
                 typeof o.conditions === "string" && o.conditions !== "*"
@@ -748,11 +715,13 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             return false;
           });
 
-          if (override) {
+          if (overrideIndex !== -1) {
+            const override = overrides[overrideIndex];
+
             evaluation = {
               type,
               featureKey,
-              reason: EvaluationReason.VARIABLE_OVERRIDE,
+              reason: EvaluationReason.VARIABLE_OVERRIDE_RULE,
               bucketKey,
               bucketValue,
               ruleKey: matchedTraffic?.key,
@@ -760,9 +729,94 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variableKey,
               variableSchema,
               variableValue: override.value,
+              variableOverrideIndex: overrideIndex,
             };
 
-            logger.debug("variable override", evaluation);
+            logger.debug("variable override from rule", evaluation);
+
+            return evaluation;
+          }
+        }
+
+        // from "variables"
+        if (
+          matchedTraffic.variables &&
+          typeof matchedTraffic.variables[variableKey] !== "undefined"
+        ) {
+          evaluation = {
+            type,
+            featureKey,
+            reason: EvaluationReason.RULE,
+            bucketKey,
+            bucketValue,
+            ruleKey: matchedTraffic.key,
+            traffic: matchedTraffic,
+            variableKey,
+            variableSchema,
+            variableValue: matchedTraffic.variables[variableKey],
+          };
+
+          logger.debug("override from rule", evaluation);
+
+          return evaluation;
+        }
+      }
+
+      // check variations
+      let variationValue;
+
+      if (force && force.variation) {
+        variationValue = force.variation;
+      } else if (matchedTraffic && matchedTraffic.variation) {
+        variationValue = matchedTraffic.variation;
+      } else if (matchedAllocation && matchedAllocation.variation) {
+        variationValue = matchedAllocation.variation;
+      }
+
+      if (variationValue && Array.isArray(feature.variations)) {
+        const variation = feature.variations.find((v) => v.value === variationValue);
+
+        if (variation && variation.variableOverrides && variation.variableOverrides[variableKey]) {
+          const overrides = variation.variableOverrides[variableKey];
+
+          const overrideIndex = overrides.findIndex((o) => {
+            if (o.conditions) {
+              return datafileReader.allConditionsAreMatched(
+                typeof o.conditions === "string" && o.conditions !== "*"
+                  ? JSON.parse(o.conditions)
+                  : o.conditions,
+                context,
+              );
+            }
+
+            if (o.segments) {
+              return datafileReader.allSegmentsAreMatched(
+                datafileReader.parseSegmentsIfStringified(o.segments),
+                context,
+              );
+            }
+
+            return false;
+          });
+
+          if (overrideIndex !== -1) {
+            const override = overrides[overrideIndex];
+
+            evaluation = {
+              type,
+              featureKey,
+              reason: EvaluationReason.VARIABLE_OVERRIDE_VARIATION,
+              bucketKey,
+              bucketValue,
+              ruleKey: matchedTraffic?.key,
+              traffic: matchedTraffic,
+              variableKey,
+              variableSchema,
+              variableValue: override.value,
+              variableOverrideIndex: overrideIndex,
+            };
+
+            logger.debug("variable override from variation", evaluation);
 
             return evaluation;
           }

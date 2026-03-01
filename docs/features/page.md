@@ -698,7 +698,7 @@ variablesSchema:
 
 #### From rules
 
-You can override variable values for specific rules:
+We can override variable values for specific rules:
 
 ```yml {% path="features/sidebar.yml" highlight="8-9" %}
 # ...
@@ -710,6 +710,47 @@ rules:
       percentage: 100
       variables:
         bgColor: orange
+```
+
+#### Further overriding from rules
+
+It is possible to override variables from a rule further with more granular conditions:
+
+```yml {% path="features/sidebar.yml" highlight="10-13" %}
+# ...
+
+rules:
+  production:
+    - key: nl
+      segments: netherlands
+      percentage: 100
+      variables:
+        bgColor: orange
+      variableOverrides:
+        bgColor:
+          - segments: amsterdam
+            value: red
+```
+
+We could have also embedded the `conditions` directly instead:
+
+```yml {% path="features/sidebar.yml" highlight="10-16" %}
+# ...
+
+rules:
+  production:
+    - key: nl
+      segments: netherlands
+      percentage: 100
+      variables:
+        bgColor: orange
+      variableOverrides:
+        bgColor:
+          - conditions:
+              - attribute: city
+                operator: equals
+                value: amsterdam
+            value: red
 ```
 
 #### From variations
@@ -781,7 +822,7 @@ Learn more in [schemas](/docs/schemas/) page how to define variable schemas once
 
 ### Mutations
 
-Learn more in [mutations](/docs/mutations/) page how to mutate variable values partially when overriding them from rules or variations.
+Learn more in [mutations](/docs/mutations/) page how to mutate variable values partially (especially when `array` or `object` types are involved) when overriding them from rules or variations.
 
 ## Required
 

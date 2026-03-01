@@ -201,6 +201,30 @@ export async function buildDatafile(
       for (const parsedRule of rules) {
         const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
         extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
+
+        if (parsedRule.variableOverrides) {
+          for (const variableOverrides of Object.values(parsedRule.variableOverrides)) {
+            for (const override of variableOverrides) {
+              if (typeof override.conditions !== "undefined") {
+                const extractedAttributeKeys = extractAttributeKeysFromConditions(
+                  override.conditions,
+                );
+                extractedAttributeKeys.forEach((attributeKey) =>
+                  attributeKeysUsedByTag.add(attributeKey),
+                );
+              }
+
+              if (typeof override.segments !== "undefined") {
+                const extractedOverrideSegmentKeys = extractSegmentKeysFromGroupSegments(
+                  override.segments as GroupSegment | GroupSegment[],
+                );
+                extractedOverrideSegmentKeys.forEach((segmentKey) =>
+                  segmentKeysUsedByTag.add(segmentKey),
+                );
+              }
+            }
+          }
+        }
       }
 
       const feature: Feature = {
@@ -226,6 +250,10 @@ export async function buildDatafile(
                 const variableKeys = Object.keys(variableOverrides);
 
                 for (const variableKey of variableKeys) {
+                  const baseValue = mappedVariation.variables
+                    ? mappedVariation.variables[variableKey]
+                    : undefined;
+
                   mappedVariation.variableOverrides[variableKey] = variableOverrides[
                     variableKey
                   ].map((override: VariableOverride) => {
@@ -246,6 +274,7 @@ export async function buildDatafile(
                           parsedFeature.variablesSchema,
                           variableKey,
                           override.value,
+                          baseValue,
                         ),
                       };
                     }
@@ -267,6 +296,7 @@ export async function buildDatafile(
                           parsedFeature.variablesSchema,
                           variableKey,
                           override.value,
+                          baseValue,
                         ),
                       };
                     }
@@ -285,12 +315,63 @@ export async function buildDatafile(
           existingState.features[featureKey],
           featureRanges.get(featureKey) || [],
         ).map((t: Traffic) => {
+          const resolvedVariables = resolveMutationsForMultipleVariables(
+            parsedFeature.variablesSchema,
+            t.variables,
+          );
+
+          let resolvedVariableOverrides = t.variableOverrides;
+
+          if (t.variableOverrides) {
+            resolvedVariableOverrides = {};
+            const variableKeys = Object.keys(t.variableOverrides);
+
+            for (const variableKey of variableKeys) {
+              const overrides = t.variableOverrides[variableKey];
+              const baseValue = resolvedVariables ? resolvedVariables[variableKey] : undefined;
+
+              resolvedVariableOverrides[variableKey] = overrides.map(
+                (override: VariableOverride) => {
+                  if (typeof override.conditions !== "undefined") {
+                    return {
+                      conditions:
+                        projectConfig.stringify && typeof override.conditions !== "string"
+                          ? JSON.stringify(override.conditions)
+                          : override.conditions,
+                      value: resolveMutationsForSingleVariable(
+                        parsedFeature.variablesSchema,
+                        variableKey,
+                        override.value,
+                        baseValue,
+                      ),
+                    };
+                  }
+
+                  if (typeof override.segments !== "undefined") {
+                    return {
+                      segments:
+                        projectConfig.stringify && typeof override.segments !== "string"
+                          ? JSON.stringify(override.segments)
+                          : override.segments,
+                      value: resolveMutationsForSingleVariable(
+                        parsedFeature.variablesSchema,
+                        variableKey,
+                        override.value,
+                        baseValue,
+                      ),
+                    };
+                  }
+
+                  return override;
+                },
+              );
+            }
+          }
+
           return {
             ...t,
-            variables: resolveMutationsForMultipleVariables(
-              parsedFeature.variablesSchema,
-              t.variables,
-            ),
+            variables: resolvedVariables,
+            variableOverrides: resolvedVariableOverrides,
             segments:
               typeof t.segments !== "string" && projectConfig.stringify
                 ? JSON.stringify(t.segments)

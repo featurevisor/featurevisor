@@ -987,6 +987,51 @@ describe("mutateVariables", function () {
         const result = resolveMutationsForSingleVariable(schema, "foo", {});
         expect(result).toEqual({});
       });
+
+      test("uses provided baseValue instead of defaultValue for path mutations", function () {
+        const schema: Record<string, VariableSchema> = {
+          cfg: {
+            type: "object",
+            defaultValue: { source: "default", nested: { value: 1 } },
+          },
+        };
+
+        const result = resolveMutationsForSingleVariable(
+          schema,
+          "cfg",
+          {
+            "nested.value": 2,
+          },
+          { source: "rule", nested: { value: 10 }, extra: true },
+        );
+
+        expect(result).toEqual({
+          source: "rule",
+          nested: { value: 2 },
+          extra: true,
+        });
+      });
+
+      test("baseValue with full replacement key still applies replacement first", function () {
+        const schema: Record<string, VariableSchema> = {
+          cfg: {
+            type: "object",
+            defaultValue: { a: 1, b: 2 },
+          },
+        };
+
+        const result = resolveMutationsForSingleVariable(
+          schema,
+          "cfg",
+          {
+            cfg: { a: 100, c: 300 },
+            c: 999,
+          },
+          { a: 10, b: 20 },
+        );
+
+        expect(result).toEqual({ a: 100, c: 999 });
+      });
     });
 
     describe("does not mutate input", function () {

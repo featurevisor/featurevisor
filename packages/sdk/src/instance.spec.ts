@@ -1147,6 +1147,137 @@ describe("sdk: instance", function () {
     ).toEqual("orange");
   });
 
+  it("should apply rule variableOverrides on top of rule variables", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "2",
+        revision: "1.0",
+        segments: {
+          germany: {
+            key: "germany",
+            conditions: JSON.stringify([
+              {
+                attribute: "country",
+                operator: "equals",
+                value: "de",
+              },
+            ]),
+          },
+          mobile: {
+            key: "mobile",
+            conditions: JSON.stringify([
+              {
+                attribute: "device",
+                operator: "equals",
+                value: "mobile",
+              },
+            ]),
+          },
+        },
+        features: {
+          test: {
+            key: "test",
+            bucketBy: "userId",
+            variablesSchema: {
+              config: {
+                key: "config",
+                type: "object",
+                defaultValue: {
+                  source: "default",
+                  nested: { value: 0 },
+                },
+              },
+            },
+            traffic: [
+              {
+                key: "germany",
+                segments: "germany",
+                percentage: 100000,
+                variables: {
+                  config: {
+                    source: "rule",
+                    nested: { value: 10 },
+                    flag: true,
+                  },
+                },
+                variableOverrides: {
+                  config: [
+                    {
+                      segments: "mobile",
+                      value: {
+                        source: "rule",
+                        nested: { value: 20 },
+                        flag: true,
+                      },
+                    },
+                    {
+                      conditions: [
+                        {
+                          attribute: "country",
+                          operator: "equals",
+                          value: "de",
+                        },
+                      ],
+                      value: {
+                        source: "rule",
+                        nested: { value: 30 },
+                        flag: true,
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                key: "everyone",
+                segments: "*",
+                percentage: 100000,
+                variables: {
+                  config: {
+                    source: "everyone",
+                    nested: { value: 1 },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(
+      sdk.getVariableObject("test", "config", {
+        userId: "user-1",
+        country: "de",
+      }),
+    ).toEqual({
+      source: "rule",
+      nested: { value: 30 },
+      flag: true,
+    });
+
+    expect(
+      sdk.getVariableObject("test", "config", {
+        userId: "user-1",
+        country: "de",
+        device: "mobile",
+      }),
+    ).toEqual({
+      source: "rule",
+      nested: { value: 20 },
+      flag: true,
+    });
+
+    expect(
+      sdk.getVariableObject("test", "config", {
+        userId: "user-1",
+        country: "nl",
+      }),
+    ).toEqual({
+      source: "everyone",
+      nested: { value: 1 },
+    });
+  });
+
   describe("array and object variables", function () {
     const arrayAndObjectDatafile: DatafileContent = {
       schemaVersion: "2",

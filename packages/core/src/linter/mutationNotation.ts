@@ -132,12 +132,7 @@ function getContainerSchemaAtPath(
   const lastSegment = pathSegments[pathSegments.length - 1];
   for (const seg of pathWithoutLast) {
     if (isOneOfSchema(current)) return null;
-    if ("index" in seg || "selector" in seg) {
-      if (current.type !== "array") return null;
-      const itemSchema = current.items;
-      if (!itemSchema || typeof itemSchema !== "object") return null;
-      current = resolveSchemaRef(itemSchema, schemasByKey);
-    } else {
+    if (seg.key) {
       if (current.type !== "object") return null;
       const props = current.properties;
       const additional = current.additionalProperties;
@@ -150,12 +145,40 @@ function getContainerSchemaAtPath(
       }
       current = resolveSchemaRef(next, schemasByKey);
     }
+    if ("index" in seg || "selector" in seg) {
+      if (current?.type !== "array") return null;
+      const itemSchema = current.items;
+      if (!itemSchema || typeof itemSchema !== "object") return null;
+      current = resolveSchemaRef(itemSchema, schemasByKey);
+    }
     if (!current) return null;
   }
   if (!current) return null;
   const parentSchema = current;
   if ("index" in lastSegment || "selector" in lastSegment) {
-    return { containerSchema: parentSchema, lastSegment, parentSchema };
+    let arraySchema: Schema | null = parentSchema;
+    if (lastSegment.key) {
+      if (arraySchema.type !== "object") return null;
+      const props = arraySchema.properties;
+      const additional = arraySchema.additionalProperties;
+      const next = props && typeof props === "object" ? props[lastSegment.key] : undefined;
+      if (next === undefined) {
+        if (!additional || typeof additional !== "object") return null;
+        arraySchema = resolveSchemaRef(additional, schemasByKey);
+      } else {
+        arraySchema = resolveSchemaRef(next, schemasByKey);
+      }
+      if (!arraySchema) return null;
+    }
+    const normalizedLastSegment =
+      "index" in lastSegment
+        ? ({ key: "", index: lastSegment.index } as PathSegment)
+        : ({ key: "", selector: lastSegment.selector } as PathSegment);
+    return {
+      containerSchema: arraySchema,
+      lastSegment: normalizedLastSegment,
+      parentSchema: arraySchema,
+    };
   }
   const propSchema =
     parentSchema.properties?.[lastSegment.key] ?? parentSchema.additionalProperties;

@@ -1,0 +1,322 @@
+feature: withOverrides
+assertions:
+  # No rule overrides, control variation.
+  - at: 25
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      plainDefault: default-string
+      variationOnly:
+        mode: default
+        level: 0
+      variationOverrideOnly:
+        base: default
+        deep:
+          count: 0
+          tags:
+            - d
+      ruleVariablesOnly:
+        - id: default-1
+          active: false
+      ruleOverrideOnly:
+        style: default
+        options:
+          enabled: false
+          threshold: 10
+        entries:
+          - code: default
+            score: 0
+      bothLayered:
+        source: default
+        nested:
+          value: 0
+          meta:
+            from: default
+        list:
+          - id: 1
+            label: default
+      untouchedComplex:
+        - name: static-a
+          info:
+            priority: 1
+        - name: static-b
+          info:
+            priority: 2
+      partialMutationShowcase:
+        text: base
+        nested:
+          count: 0
+          meta:
+            region: global
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two
+
+  # Variation variables only.
+  - at: 75
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      variationOnly:
+        mode: treatment
+        level: 2
+      bothLayered:
+        source: variation
+        nested:
+          value: 5
+          meta:
+            from: variation
+        list:
+          - id: 1
+            label: variation-base
+      variationOverrideOnly:
+        base: default
+        deep:
+          count: 0
+          tags:
+            - d
+      partialMutationShowcase:
+        text: variation
+        nested:
+          count: 5
+          meta:
+            region: global
+        list:
+          - a
+          - b
+          - v
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-v
+
+  # Rule variables only + variation variableOverrides on a different variable.
+  - at: 75
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      ruleVariablesOnly:
+        - id: nl1
+          active: true
+      bothLayered:
+        source: nl-rule
+        nested:
+          value: 300
+          meta:
+            from: nl-rule
+        list:
+          - id: 1
+            label: nl-rule
+      variationOverrideOnly:
+        base: default
+        deep:
+          count: 10
+          tags:
+            - d
+            - nl
+      partialMutationShowcase:
+        text: variation
+        nested:
+          count: 5
+          meta:
+            region: nl-variation-override
+        list:
+          - nl
+          - a
+          - b
+          - v
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-v
+
+  # Rule variables + rule variableOverrides (conditions branch), control variation.
+  - at: 25
+    environment: staging
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      ruleVariablesOnly:
+        - id: r1
+          active: true
+        - id: r2
+          active: false
+      ruleOverrideOnly:
+        style: de
+        options:
+          enabled: true
+          threshold: 50
+        entries:
+          - code: base
+            score: 1
+      bothLayered:
+        source: rule
+        nested:
+          value: 100
+          meta:
+            from: rule-override
+        list:
+          - id: 1
+            label: rule-base
+      partialMutationShowcase:
+        text: rule-de
+        nested:
+          count: 0
+          meta:
+            region: de-rule-override
+        list:
+          - a
+          - b
+          - de
+        rows:
+          - id: 1
+            label: one-rule
+
+  # Rule variables + rule variableOverrides (segments branch) + variation variableOverrides.
+  - at: 75
+    environment: staging
+    context:
+      country: de
+      device: mobile
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      ruleOverrideOnly:
+        style: desktop
+        options:
+          enabled: false
+          threshold: 75
+        entries:
+          - code: base
+            score: 1
+          - code: mobile
+            score: 2
+      bothLayered:
+        source: rule
+        nested:
+          value: 200
+          meta:
+            from: rule
+        list:
+          - id: 1
+            label: rule-mobile
+      variationOverrideOnly:
+        base: variation-de
+        deep:
+          count: 20
+          tags:
+            - d
+      partialMutationShowcase:
+        text: rule-de
+        nested:
+          count: 200
+          meta:
+            region: de-rule
+        list:
+          - mobile
+          - a
+          - b
+          - de
+        rows:
+          - id: 1
+            label: one-rule
+          - id: 2
+            label: two
+
+  # Rule variableOverrides only.
+  - at: 75
+    environment: staging
+    context:
+      country: fr
+      continent: europe
+      device: desktop
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      ruleOverrideOnly:
+        style: eu-desktop
+        options:
+          enabled: false
+          threshold: 10
+        entries:
+          - code: default
+            score: 0
+      bothLayered:
+        source: variation
+        nested:
+          value: 5
+          meta:
+            from: variation
+        list:
+          - id: 1
+            label: variation-base
+      partialMutationShowcase:
+        text: eu-desktop
+        nested:
+          count: 0
+          meta:
+            region: global
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two
+
+  # Rule variableOverrides only (mobile branch, no rule variables present).
+  - at: 75
+    environment: staging
+    context:
+      country: fr
+      continent: europe
+      device: mobile
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bothLayered:
+        source: default
+        nested:
+          value: 400
+          meta:
+            from: default
+        list:
+          - id: 1
+            label: default
+      ruleOverrideOnly:
+        style: default
+        options:
+          enabled: false
+          threshold: 10
+        entries:
+          - code: default
+            score: 0
+      partialMutationShowcase:
+        text: base
+        nested:
+          count: 0
+          meta:
+            region: eu-mobile
+        list:
+          - a
+          - b
+        rows:
+          - id: 1
+            label: one
+          - id: 2
+            label: two-eu

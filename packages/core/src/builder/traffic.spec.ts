@@ -910,4 +910,37 @@ describe("core: Traffic", function () {
       },
     ]);
   });
+
+  it("should include variableOverrides from parsed rule in traffic", function () {
+    const variableOverrides = {
+      config: [
+        {
+          segments: "mobile",
+          value: {
+            "layout.width": 900,
+          },
+        },
+      ],
+    };
+
+    const result = getTraffic(
+      [
+        {
+          value: "control",
+          weight: 100,
+        },
+      ],
+      [
+        {
+          key: "1",
+          segments: "*",
+          percentage: 100,
+          variableOverrides,
+        },
+      ],
+      undefined,
+    );
+
+    expect(result[0].variableOverrides).toEqual(variableOverrides);
+  });
 });

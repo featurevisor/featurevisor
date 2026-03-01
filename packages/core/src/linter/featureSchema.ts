@@ -2,12 +2,7 @@ import type { Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
-import {
-  isMutationKey,
-  validateMutationKey,
-  parsePathMapKey,
-  resolveSchemaAtPath,
-} from "./mutationNotation";
+import { isMutationKey, validateMutationKey } from "./mutationNotation";
 import {
   valueZodSchema,
   propertyTypeEnum,
@@ -1000,6 +995,162 @@ function refineVariableEntry(
   );
 }
 
+function refineVariableOverrides({
+  ctx,
+  variableSchemaByKey,
+  variableOverrides,
+  pathPrefix,
+  projectConfig,
+  schemasByKey,
+}: {
+  ctx: z.RefinementCtx;
+  variableSchemaByKey: Record<string, unknown>;
+  variableOverrides: Record<string, Array<{ value?: unknown }>>;
+  pathPrefix: (string | number)[];
+  projectConfig: ProjectConfig;
+  schemasByKey?: Record<string, Schema>;
+}) {
+  for (const variableKey of Object.keys(variableOverrides)) {
+    if (isMutationKey(variableKey)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          `Variable override key "${variableKey}" must be a declared variable key, not mutation notation. ` +
+          "Use mutation notation inside each override's `value` object.",
+        path: [...pathPrefix, variableKey],
+      });
+      continue;
+    }
+
+    const variableSchema = variableSchemaByKey[variableKey];
+    if (!variableSchema) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
+        path: [...pathPrefix, variableKey],
+      });
+      continue;
+    }
+
+    const variableSchemaWithRef = variableSchema as { schema?: string };
+    const resolvedVariableSchema = resolveVariableSchema(
+      variableSchema as Parameters<typeof resolveVariableSchema>[0],
+      schemasByKey,
+    );
+    if (variableSchemaWithRef.schema) {
+      if (!resolvedVariableSchema) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Schema "${variableSchemaWithRef.schema}" could not be loaded for variable "${variableKey}".`,
+          path: [...pathPrefix, variableKey],
+        });
+        continue;
+      }
+    }
+
+    const overrides = variableOverrides[variableKey];
+    if (!Array.isArray(overrides)) {
+      continue;
+    }
+
+    overrides.forEach((override, overrideN) => {
+      const overrideValue = override.value;
+      const valuePath = [...pathPrefix, variableKey, overrideN, "value"];
+
+      if (
+        typeof overrideValue === "object" &&
+        overrideValue !== null &&
+        !Array.isArray(overrideValue)
+      ) {
+        const pathMap = overrideValue as Record<string, unknown>;
+        const pathKeys = Object.keys(pathMap);
+        const hasStructuredObjectSchema =
+          resolvedVariableSchema?.type === "object" &&
+          (Boolean(resolvedVariableSchema.properties) ||
+            Boolean(resolvedVariableSchema.additionalProperties));
+        const treatAsPathMap =
+          pathKeys.some((pathKey) => isMutationKey(pathKey)) ||
+          (hasStructuredObjectSchema && pathKeys.length > 0);
+
+        if (treatAsPathMap) {
+          for (const pathKey of pathKeys) {
+            const composedMutationKey = `${variableKey}.${pathKey}`;
+            const validation = validateMutationKey(
+              composedMutationKey,
+              variableSchemaByKey as Record<string, Schema>,
+              schemasByKey,
+            );
+
+            if (!validation.valid) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                  validation.error ??
+                  `Invalid mutation path "${pathKey}" in variableOverride for "${variableKey}".`,
+                path: [...valuePath, pathKey],
+              });
+              continue;
+            }
+
+            if (validation.operation === "remove") {
+              if (pathMap[pathKey] !== null) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Mutation "${pathKey}:remove" must use \`null\` as value.`,
+                  path: [...valuePath, pathKey],
+                });
+              }
+              continue;
+            }
+
+            const fallbackValueSchema =
+              validation.operation === "append" ||
+              validation.operation === "prepend" ||
+              validation.operation === "before" ||
+              validation.operation === "after"
+                ? ({ type: "string" } as Schema)
+                : null;
+            const valueSchema = validation.valueSchema ?? fallbackValueSchema;
+            if (!valueSchema) {
+              continue;
+            }
+
+            superRefineVariableValue(
+              projectConfig,
+              valueSchema,
+              pathMap[pathKey],
+              [...valuePath, pathKey],
+              ctx,
+              pathKey,
+              schemasByKey,
+            );
+          }
+        } else {
+          superRefineVariableValue(
+            projectConfig,
+            variableSchema as Parameters<typeof superRefineVariableValue>[1],
+            overrideValue,
+            valuePath,
+            ctx,
+            variableKey,
+            schemasByKey,
+          );
+        }
+      } else {
+        superRefineVariableValue(
+          projectConfig,
+          variableSchema as Parameters<typeof superRefineVariableValue>[1],
+          overrideValue,
+          valuePath,
+          ctx,
+          variableKey,
+          schemasByKey,
+        );
+      }
+    });
+  }
+}
+
 function refineForce({
   ctx,
   parsedFeature, // eslint-disable-line
@@ -1062,6 +1213,18 @@ function refineRules({
           ctx,
           schemasByKey,
         );
+      });
+    }
+
+    // rules[n].variableOverrides[key][].value (path-map or full value)
+    if (rule.variableOverrides) {
+      refineVariableOverrides({
+        ctx,
+        variableSchemaByKey,
+        variableOverrides: rule.variableOverrides,
+        pathPrefix: [...pathPrefix, ruleN, "variableOverrides"],
+        projectConfig,
+        schemasByKey,
       });
     }
 
@@ -1143,6 +1306,11 @@ export function getFeatureZodSchema(
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
   const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
+  const overridePathMapValueZodSchema = z.record(variableValueOrNullZodSchema);
+  const overrideValueZodSchema = z.union([
+    variableValueOrNullZodSchema,
+    overridePathMapValueZodSchema,
+  ]);
 
   const variationValueZodSchema = z.string().min(1);
 
@@ -1191,6 +1359,26 @@ export function getFeatureZodSchema(
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
           variables: z.record(variableValueOrNullZodSchema).optional(),
+          variableOverrides: z
+            .record(
+              z.array(
+                z.union([
+                  z
+                    .object({
+                      conditions: conditionsZodSchema,
+                      value: overrideValueZodSchema,
+                    })
+                    .strict(),
+                  z
+                    .object({
+                      segments: groupSegmentsZodSchema,
+                      value: overrideValueZodSchema,
+                    })
+                    .strict(),
+                ]),
+              ),
+            )
+            .optional(),
           variationWeights: z.record(z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -1459,13 +1647,13 @@ export function getFeatureZodSchema(
                       z
                         .object({
                           conditions: conditionsZodSchema,
-                          value: variableValueZodSchema,
+                          value: overrideValueZodSchema,
                         })
                         .strict(),
                       z
                         .object({
                           segments: groupSegmentsZodSchema,
-                          value: variableValueZodSchema,
+                          value: overrideValueZodSchema,
                         })
                         .strict(),
                     ]),
@@ -1652,107 +1840,14 @@ export function getFeatureZodSchema(
 
           // variations[n].variableOverrides[key][].value (path-map or full value)
           if (variation.variableOverrides) {
-            for (const variableKey of Object.keys(variation.variableOverrides)) {
-              const variableSchema = variableSchemaByKey[variableKey];
-              if (!variableSchema) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: `Variable "${variableKey}" is not defined in \`variablesSchema\`.`,
-                  path: ["variations", variationN, "variableOverrides", variableKey],
-                });
-                continue;
-              }
-              // When variable references a schema by name, ensure it can be resolved
-              const variableSchemaWithRef = variableSchema as { schema?: string };
-              if (variableSchemaWithRef.schema) {
-                const resolvedVarSchema = resolveVariableSchema(
-                  variableSchema as Parameters<typeof resolveVariableSchema>[0],
-                  schemasByKey,
-                );
-                if (!resolvedVarSchema) {
-                  ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: `Schema "${variableSchemaWithRef.schema}" could not be loaded for variable "${variableKey}".`,
-                    path: ["variations", variationN, "variableOverrides", variableKey],
-                  });
-                  continue;
-                }
-              }
-              const overrides = variation.variableOverrides[variableKey];
-              if (!Array.isArray(overrides)) continue;
-              overrides.forEach((override, overrideN) => {
-                const overrideValue = override.value;
-                const valuePath = [
-                  "variations",
-                  variationN,
-                  "variableOverrides",
-                  variableKey,
-                  overrideN,
-                  "value",
-                ];
-                if (
-                  typeof overrideValue === "object" &&
-                  overrideValue !== null &&
-                  !Array.isArray(overrideValue)
-                ) {
-                  const pathMap = overrideValue as Record<string, unknown>;
-                  for (const pathKey of Object.keys(pathMap)) {
-                    const pathSegments = parsePathMapKey(pathKey);
-                    if (!pathSegments || pathSegments.length === 0) {
-                      ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Invalid mutation path "${pathKey}" in variableOverride for "${variableKey}".`,
-                        path: [...valuePath, pathKey],
-                      });
-                      continue;
-                    }
-                    const atPathSchema = resolveSchemaAtPath(
-                      variableSchema as Schema,
-                      pathSegments,
-                      schemasByKey,
-                    );
-                    if (!atPathSchema) {
-                      const effectiveSchema = resolveVariableSchema(
-                        variableSchema as Parameters<typeof resolveVariableSchema>[0],
-                        schemasByKey,
-                      );
-                      const isFlatObject =
-                        effectiveSchema?.type === "object" &&
-                        (!effectiveSchema.properties ||
-                          Object.keys(effectiveSchema.properties).length === 0);
-                      if (isFlatObject) {
-                        continue;
-                      }
-                      ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: `Path "${pathKey}" is invalid for variable "${variableKey}" (not in schema).`,
-                        path: [...valuePath, pathKey],
-                      });
-                      continue;
-                    }
-                    superRefineVariableValue(
-                      projectConfig,
-                      atPathSchema,
-                      pathMap[pathKey],
-                      [...valuePath, pathKey],
-                      ctx,
-                      pathKey,
-                      schemasByKey,
-                    );
-                  }
-                } else {
-                  superRefineVariableValue(
-                    projectConfig,
-                    variableSchema as Parameters<typeof superRefineVariableValue>[1],
-                    overrideValue,
-                    valuePath,
-                    ctx,
-                    variableKey,
-                    schemasByKey,
-                  );
-                }
-              });
-            }
+            refineVariableOverrides({
+              ctx,
+              variableSchemaByKey,
+              variableOverrides: variation.variableOverrides,
+              pathPrefix: ["variations", variationN, "variableOverrides"],
+              projectConfig,
+              schemasByKey,
+            });
           }
         });
       }
