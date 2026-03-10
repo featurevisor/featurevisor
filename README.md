@@ -90,6 +90,7 @@ SDK support:
 
 - [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
 - [Go](https://featurevisor.com/docs/sdks/go/)
+- [Python](https://featurevisor.com/docs/sdks/python/)
 - [PHP](https://featurevisor.com/docs/sdks/php/)
 - [Ruby](https://featurevisor.com/docs/sdks/ruby/)
 - [Java](https://featurevisor.com/docs/sdks/java/)
