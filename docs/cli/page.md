@@ -395,3 +395,110 @@ Or do:
 ```
 $ npx featurevisor -v
 ```
+
+## Exists
+
+@TODO
+
+Check if an entity exists.
+
+### Attribute exists
+
+```
+$ npx featurevisor exists --attribute=my_attribute
+```
+
+### Segment exists
+
+```
+$ npx featurevisor exists --segment=my_segment
+```
+
+### Feature exists
+
+```
+$ npx featurevisor exists --feature=my_feature
+```
+
+### Variation exists
+
+```
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --variation=my_variation
+```
+
+### Variable exists
+
+```
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --variable=my_variable
+```
+
+### Rule exists
+
+```
+$ npx featurevisor exists \
+    --feature=my_feature \
+    --environment=production \
+    --rule=my_rule_key
+```
+
+## Create
+
+@TODO
+
+### Create attribute
+
+```
+$ npx featurevisor create \
+    --attribute=my_attribute \
+    --description="My attribute description" \
+    --type=string
+```
+
+### Create segment
+
+```
+$ npx featurevisor create \
+    --segment=my_segment \
+    --description="My segment description" \
+    --conditions='[{"attribute": "country", "operator": "equals", "value": "nl"}]'
+```
+
+### Create feature
+
+```
+$ npx featurevisor create \
+    --feature=my_feature \
+    --description="My feature description" \
+    --tags=web,mobile \
+    --bucketBy=userId \
+    --variations='[{"value": "control", "weight": 50}, {"value": "treatment", "weight": 50}]' \
+    --variablesSchema='{ "myVariable": { "type": "string", "defaultValue": "default value" } }'
+```
+
+## Update
+
+@TODO
+
+## Archive
+
+@TODO
+
+## Unarchive
+
+@TODO
+
+## Deprecate
+
+@TODO
+
+## Undeprecate
+
+@TODO
+
+## Delete
+
+@TODO
