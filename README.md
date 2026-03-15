@@ -62,17 +62,11 @@ Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take car
 
 ## Understanding the building blocks
 
-### Definition types
-
-Three core building blocks of Featurevisor are:
+Three core building blocks of a Featurevisor [project](https://featurevisor.com/docs/project) are:
 
 - [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
 - [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
-
-They are defined in your [project](https://featurevisor.com/docs/project) in your Git repository.
-
-### Evaluation types
 
 [SDKs](https://featurevisor.com/docs/sdks/) are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context):
 
