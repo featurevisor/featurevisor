@@ -55,12 +55,20 @@ Three simple steps to visualize it:
 ## What do I need to use Featurevisor?
 
 - A Git repository for managing your [project](https://featurevisor.com/docs/project) declaratively
-- A CI/CD pipeline (like [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/)) for building and uploading the [datafiles](https://featurevisor.com/docs/building-datafiles)
+- A CI/CD pipeline (like [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/)) for building and uploading [datafiles](https://featurevisor.com/docs/building-datafiles)
 - A CDN or custom server for serving the generated [datafiles](https://featurevisor.com/docs/building-datafiles)
 
 Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take care of the rest for you.
 
-## Supported SDKs
+## SDKs
+
+SDKs are used in your application(s) to evaluate three different types of values:
+
+- [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
+- [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
+- [Variables](https://featurevisor.com/docs/variables/): key/value pairs for remote configuration
+
+Supported SDKs include:
 
 - [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
 - [Go](https://featurevisor.com/docs/sdks/go/)
