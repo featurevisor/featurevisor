@@ -74,7 +74,7 @@ SDKs are used in your application(s) to evaluate three different types of values
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
 - [Variables](https://featurevisor.com/docs/variables/): key/value pairs for remote configuration
 
-## FeaturevisorSDKs
+## Where can I use Featurevisor?
 
 [![SDKs](./assets/sdks.png)](https://featurevisor.com/docs/sdks/)
 
