@@ -48,13 +48,13 @@ Three simple steps to visualize it:
 
 [![Featurevisor](./assets/flow.png)](https://featurevisor.com)
 
-1. Manage your Featurevisor [project](https://featurevisor.com/docs/project) in a Git repository
+1. Manage your Featurevisor [project](https://featurevisor.com/docs/projects) in a Git repository
 1. Build and upload [datafiles](https://featurevisor.com/docs/building-datafiles) (static JSON files) to your CDN or custom server
 1. Fetch the datafile in your application, and evaluate features using [SDKs](https://featurevisor.com/docs/sdks)
 
 ## What do I need to bring to use Featurevisor?
 
-- A Git repository for managing your [project](https://featurevisor.com/docs/project) declaratively
+- A Git repository for managing your [project](https://featurevisor.com/docs/projects) declaratively
 - A CI/CD pipeline (like [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/)) for building and uploading [datafiles](https://featurevisor.com/docs/building-datafiles)
 - A CDN or custom server for serving the generated [datafiles](https://featurevisor.com/docs/building-datafiles)
 
@@ -62,7 +62,7 @@ Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take car
 
 ## Understanding the building blocks
 
-Three core building blocks of a Featurevisor [project](https://featurevisor.com/docs/project) are:
+Three core building blocks of a Featurevisor [project](https://featurevisor.com/docs/projects) are:
 
 - [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
 - [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
