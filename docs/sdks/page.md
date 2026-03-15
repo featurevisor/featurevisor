@@ -18,11 +18,12 @@ Supported languages and runtimes:
 - [JavaScript](/docs/sdks/javascript)
 - [Node.js](/docs/sdks/nodejs)
 - [Browser](/docs/sdks/browser)
+- [React](/docs/sdks/react)
+- [React Native](/docs/sdks/react-native)
+- [Go](/docs/sdks/go)
+- [Python](/docs/sdks/python)
 - [PHP](/docs/sdks/php)
+- [Ruby](/docs/sdks/ruby)
 - [Java](/docs/sdks/java)
-- [Roku](/docs/sdks/roku)
 - [Swift](/docs/sdks/swift)
-
-With other languages to follow very soon:
-
-- Kotlin
+- [Next.js](/docs/sdks/nextjs)
