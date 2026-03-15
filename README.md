@@ -68,13 +68,13 @@ Three core building blocks of a Featurevisor [project](https://featurevisor.com/
 - [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
 
-[SDKs](https://featurevisor.com/docs/sdks/) are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context):
+SDKs are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context) in the runtime:
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
 - [Variables](https://featurevisor.com/docs/variables/): key/value pairs for remote configuration
 
-## SDKs
+## FeaturevisorSDKs
 
 [![SDKs](./assets/sdks.png)](https://featurevisor.com/docs/sdks/)
 
