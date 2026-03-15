@@ -62,6 +62,8 @@ Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take car
 
 ## Understanding the building blocks
 
+### Definition types
+
 Three core building blocks of Featurevisor are:
 
 - [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
@@ -70,7 +72,7 @@ Three core building blocks of Featurevisor are:
 
 They are defined in your [project](https://featurevisor.com/docs/project) in your Git repository.
 
-## How to evaluate values?
+### Evaluation types
 
 [SDKs](https://featurevisor.com/docs/sdks/) are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context):
 
