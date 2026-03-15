@@ -80,6 +80,8 @@ They are defined in your [project](https://featurevisor.com/docs/project) in you
 
 ## SDKs
 
+[![SDKs](./assets/sdks.png)](https://featurevisor.com/docs/sdks/)
+
 Supported SDKs include:
 
 - [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
