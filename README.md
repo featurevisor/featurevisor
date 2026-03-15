@@ -52,7 +52,7 @@ Three simple steps to visualize it:
 1. Build and upload [datafiles](https://featurevisor.com/docs/building-datafiles) (static JSON files) to your CDN or custom server
 1. Fetch the datafile in your application, and evaluate features using [SDKs](https://featurevisor.com/docs/sdks)
 
-## What do I need to use Featurevisor?
+## What do I need to bring to use Featurevisor?
 
 - A Git repository for managing your [project](https://featurevisor.com/docs/project) declaratively
 - A CI/CD pipeline (like [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/)) for building and uploading [datafiles](https://featurevisor.com/docs/building-datafiles)
