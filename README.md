@@ -60,25 +60,37 @@ Three simple steps to visualize it:
 
 Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take care of the rest for you.
 
-## SDKs
+## Understanding the building blocks
 
-SDKs are used in your application(s) to evaluate three different types of values:
+Three core building blocks of Featurevisor are:
+
+- [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
+- [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
+- [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
+
+They are defined in your [project](https://featurevisor.com/docs/project) in your Git repository.
+
+## How to evaluate values?
+
+[SDKs](https://featurevisor.com/docs/sdks/) are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context):
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
 - [Variables](https://featurevisor.com/docs/variables/): key/value pairs for remote configuration
 
+## SDKs
+
 Supported SDKs include:
 
 - [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
+- [React](https://featurevisor.com/docs/react/)
+- [React Native](https://featurevisor.com/docs/react-native/)
 - [Go](https://featurevisor.com/docs/sdks/go/)
 - [Python](https://featurevisor.com/docs/sdks/python/)
 - [PHP](https://featurevisor.com/docs/sdks/php/)
 - [Ruby](https://featurevisor.com/docs/sdks/ruby/)
 - [Java](https://featurevisor.com/docs/sdks/java/)
 - [Swift](https://featurevisor.com/docs/sdks/swift/)
-- [React](https://featurevisor.com/docs/react/)
-- [React Native](https://featurevisor.com/docs/react-native/)
 - [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
