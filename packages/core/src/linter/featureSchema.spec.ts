@@ -4,7 +4,7 @@
  * rules, force). Ensures every place a variable value can be set is validated against
  * the variable's schema.
  */
-import type { Schema } from "@featurevisor/types";
+import type { Attribute, Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
@@ -42,7 +42,21 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
 }
 
 /** Attributes and segments that appear in conditions; keep small for tests. */
-const TEST_ATTRIBUTES: [string, ...string[]] = ["userId", "country", "device"];
+const TEST_ATTRIBUTES: Record<string, Attribute> = {
+  userId: {
+    description: "User ID",
+    type: "string",
+  },
+  country: {
+    description: "Country",
+    type: "string",
+  },
+  device: {
+    description: "Device",
+    type: "string",
+  },
+};
+const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = ["userId", "country", "device"];
 const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries/germany", "countries/france"];
 const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
@@ -76,7 +90,7 @@ function getFeatureSchema() {
   return getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
-    TEST_ATTRIBUTES,
+    TEST_ATTRIBUTE_KEYS,
     TEST_SEGMENTS,
     TEST_FEATURES,
     TEST_SCHEMA_KEYS,
@@ -174,7 +188,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       const schemaWithEmptySchemasByKey = getFeatureZodSchema(
         projectConfig,
         conditionsZodSchema,
-        TEST_ATTRIBUTES,
+        TEST_ATTRIBUTE_KEYS,
         TEST_SEGMENTS,
         TEST_FEATURES,
         ["link"],

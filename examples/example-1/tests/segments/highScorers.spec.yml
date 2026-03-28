@@ -1,0 +1,13 @@
+segment: highScorers
+assertions:
+  - context:
+      scores:
+        - 10
+        - 42
+    expectedToMatch: true
+
+  - context:
+      scores:
+        - 1
+        - 2
+    expectedToMatch: false

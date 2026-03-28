@@ -1,0 +1,5 @@
+description: Users with admin permission
+conditions:
+  - attribute: permissions
+    operator: includes
+    value: admin

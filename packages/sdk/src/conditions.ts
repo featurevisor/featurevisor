@@ -95,14 +95,21 @@ export function conditionIsMatched(
     return typeof contextValueFromPath !== "undefined";
   } else if (operator === "notExists") {
     return typeof contextValueFromPath === "undefined";
-  } else if (Array.isArray(contextValueFromPath) && typeof value === "string") {
-    // includes / notIncludes (where context value is an array)
-    const valueInContext = contextValueFromPath as string[];
+  } else if (
+    Array.isArray(contextValueFromPath) &&
+    (typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      value === null)
+  ) {
+    // includes / notIncludes (where context value is an array of primitive values)
+    const valueInContext = contextValueFromPath as Array<string | number | boolean | null>;
+    const primitiveValue = value as string | number | boolean | null;
 
     if (operator === "includes") {
-      return valueInContext.indexOf(value) > -1;
+      return valueInContext.indexOf(primitiveValue) > -1;
     } else if (operator === "notIncludes") {
-      return valueInContext.indexOf(value) === -1;
+      return valueInContext.indexOf(primitiveValue) === -1;
     }
   }
 

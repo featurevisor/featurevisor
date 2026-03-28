@@ -1,0 +1,16 @@
+description: Account details
+type: object
+
+required:
+  - plan
+
+properties:
+  plan:
+    type: string
+    enum:
+      - free
+      - pro
+  metadata:
+    type: object
+    additionalProperties:
+      type: string

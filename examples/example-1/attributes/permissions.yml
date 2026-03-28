@@ -1,0 +1,9 @@
+description: User permissions
+type: array
+
+items:
+  type: string
+  enum:
+    - read
+    - write
+    - admin

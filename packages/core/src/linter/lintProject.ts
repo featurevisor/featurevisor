@@ -1,7 +1,7 @@
 // for use in node only
 import * as path from "path";
 
-import type { Schema } from "@featurevisor/types";
+import type { Attribute, Schema } from "@featurevisor/types";
 import type { ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
@@ -57,6 +57,28 @@ async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<st
   const authors: string[] = Array.from(new Set(entries.map((entry) => entry.author)));
 
   return authors;
+}
+
+function collectExplicitAttributePaths(
+  attributeKey: string,
+  attribute: Attribute,
+  result: Set<string>,
+): void {
+  result.add(attributeKey);
+
+  function visit(prefix: string, schema: Attribute | Attribute["properties"][string]) {
+    if (!schema || schema.type !== "object" || !schema.properties) {
+      return;
+    }
+
+    for (const propertyKey of Object.keys(schema.properties)) {
+      const propertyPath = `${prefix}.${propertyKey}`;
+      result.add(propertyPath);
+      visit(propertyPath, schema.properties[propertyKey]);
+    }
+  }
+
+  visit(attributeKey, attribute);
 }
 
 export async function lintProject(
@@ -326,9 +348,29 @@ export async function lintProject(
     log("");
   }
 
+  // List schemas and load parsed schemas for attribute and feature validation.
+  const schemas = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemas) {
+    try {
+      schemasByKey[key] = await datasource.readSchema(key);
+    } catch {
+      // Schema file may be invalid; skip for cross-entity resolution and let schema linting report it.
+    }
+  }
+
   // lint attributes
   const attributes = await datasource.listAttributes();
   const attributeZodSchema = getAttributeZodSchema();
+  const attributesByKey: Record<string, Attribute> = {};
+
+  for (const key of attributes) {
+    try {
+      attributesByKey[key] = await datasource.readAttribute(key);
+    } catch {
+      // Attribute read failures are reported during attribute linting below.
+    }
+  }
 
   if (!options.entityType || options.entityType === "attribute") {
     const filteredKeys = !keyPattern
@@ -354,7 +396,7 @@ export async function lintProject(
       }
 
       try {
-        const parsed = await datasource.readAttribute(key);
+        const parsed = attributesByKey[key] ?? (await datasource.readAttribute(key));
         const result = attributeZodSchema.safeParse(parsed);
 
         if (!result.success && "error" in result) {
@@ -366,13 +408,23 @@ export async function lintProject(
     }
   }
 
-  const flattenedAttributes = await datasource.listFlattenedAttributes();
+  const explicitAttributePaths = new Set<string>();
+  for (const key of attributes) {
+    const parsed = attributesByKey[key];
+    if (!parsed) {
+      continue;
+    }
+
+    collectExplicitAttributePaths(key, parsed, explicitAttributePaths);
+  }
+  const flattenedAttributes = Array.from(explicitAttributePaths);
 
   // lint segments
   const segments = await datasource.listSegments();
   const conditionsZodSchema = getConditionsZodSchema(
     projectConfig,
-    flattenedAttributes as [string, ...string[]],
+    attributesByKey,
+    schemasByKey,
   );
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
@@ -407,17 +459,6 @@ export async function lintProject(
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       }
-    }
-  }
-
-  // List schemas and load parsed schemas for feature variable validation (schema references)
-  const schemas = await datasource.listSchemas();
-  const schemasByKey: Record<string, Schema> = {};
-  for (const key of schemas) {
-    try {
-      schemasByKey[key] = await datasource.readSchema(key);
-    } catch {
-      // Schema file may be invalid; skip for feature variable resolution
     }
   }
 

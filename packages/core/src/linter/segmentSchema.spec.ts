@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 
+import type { Attribute } from "@featurevisor/types";
 import type { ProjectConfig } from "../config";
 import { getConditionsZodSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
@@ -36,7 +37,20 @@ function minimalProjectConfig(): ProjectConfig {
   };
 }
 
-const TEST_ATTRIBUTES: [string, ...string[]] = ["userId", "country", "device"];
+const TEST_ATTRIBUTES: Record<string, Attribute> = {
+  userId: {
+    description: "User ID",
+    type: "string",
+  },
+  country: {
+    description: "Country",
+    type: "string",
+  },
+  device: {
+    description: "Device",
+    type: "string",
+  },
+};
 
 function getSegmentSchema() {
   const projectConfig = minimalProjectConfig();
