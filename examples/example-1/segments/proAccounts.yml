@@ -4,6 +4,6 @@ conditions:
     - attribute: account.plan
       operator: equals
       value: pro
-    - attribute: account.metadata.locale
+    - attribute: account.locale
       operator: equals
       value: nl-NL

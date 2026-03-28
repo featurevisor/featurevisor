@@ -1,5 +1,5 @@
-description: Users who have score 42
+description: Users with advanced score label
 conditions:
   - attribute: scores
     operator: includes
-    value: 42
+    value: advanced

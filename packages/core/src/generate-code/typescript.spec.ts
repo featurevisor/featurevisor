@@ -37,10 +37,8 @@ describe("generate-code/typescript", () => {
         "    enum:",
         "      - free",
         "      - pro",
-        "  metadata:",
-        "    type: object",
-        "    additionalProperties:",
-        "      type: string",
+        "  locale:",
+        "    type: string",
       ].join("\n"),
       "utf8",
     );
@@ -80,10 +78,28 @@ describe("generate-code/typescript", () => {
       {},
     );
 
+    const attributesContent = fs.readFileSync(path.join(outputPath, "attributes.ts"), "utf8");
     const contextContent = fs.readFileSync(path.join(outputPath, "context.ts"), "utf8");
+    const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
 
-    expect(contextContent).toContain('account?: { plan: "free" | "pro"; metadata?: Record<string, string> };');
-    expect(contextContent).toContain('permissions?: ("read" | "write" | "admin")[];');
-    expect(contextContent).toContain("browser?: { name?: string; version?: string };");
+    expect(attributesContent).toContain(
+      'export type AccountAttribute = { plan: "free" | "pro"; locale?: string };',
+    );
+    expect(attributesContent).toContain(
+      'export type PermissionsAttribute = ("read" | "write" | "admin")[];',
+    );
+    expect(attributesContent).toContain(
+      "export type BrowserAttribute = { name?: string; version?: string };",
+    );
+
+    expect(contextContent).toContain("import type {");
+    expect(contextContent).toContain("AccountAttribute,");
+    expect(contextContent).toContain("PermissionsAttribute,");
+    expect(contextContent).toContain('} from "./attributes";');
+    expect(contextContent).toContain("account?: AccountAttribute;");
+    expect(contextContent).toContain("permissions?: PermissionsAttribute;");
+    expect(contextContent).toContain("browser?: BrowserAttribute;");
+
+    expect(indexContent).toContain('export * from "./attributes";');
   });
 });

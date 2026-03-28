@@ -10,7 +10,5 @@ properties:
     enum:
       - free
       - pro
-  metadata:
-    type: object
-    additionalProperties:
-      type: string
+  locale:
+    type: string

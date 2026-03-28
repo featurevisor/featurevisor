@@ -47,6 +47,10 @@ function isPrimitiveAttributeValue(value: unknown): boolean {
   );
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
 function valueDeepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
@@ -73,10 +77,7 @@ function valueDeepEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
-function resolveSchemaRefs(
-  schema: SchemaNode,
-  schemasByKey: Record<string, Schema>,
-): SchemaNode {
+function resolveSchemaRefs(schema: SchemaNode, schemasByKey: Record<string, Schema>): SchemaNode {
   if ("schema" in schema && schema.schema && schemasByKey[schema.schema]) {
     return resolveSchemaRefs(schemasByKey[schema.schema], schemasByKey);
   }
@@ -262,7 +263,9 @@ function matchesSchemaValue(
         }
 
         if (additionalProperties && typeof additionalProperties === "object") {
-          if (!matchesSchemaValue(additionalProperties as SchemaNode, objectValue[key], schemasByKey)) {
+          if (
+            !matchesSchemaValue(additionalProperties as SchemaNode, objectValue[key], schemasByKey)
+          ) {
             return false;
           }
           continue;
@@ -300,7 +303,7 @@ function matchesSchemaValue(
     }
 
     if (!resolved.items || typeof resolved.items !== "object") {
-      return value.every((entry) => isPrimitiveAttributeValue(entry));
+      return value.every((entry) => typeof entry === "string");
     }
 
     return value.every((entry) =>
@@ -317,7 +320,9 @@ function matchesLeafValue(
   schemasByKey: Record<string, Schema>,
 ): boolean {
   if (leaf.kind === "flat-object-property" || leaf.kind === "flat-array-item") {
-    return isPrimitiveAttributeValue(value);
+    return leaf.kind === "flat-array-item"
+      ? typeof value === "string"
+      : isPrimitiveAttributeValue(value);
   }
 
   return matchesSchemaValue(leaf.schema, value, schemasByKey);
@@ -337,7 +342,10 @@ function getArrayItemLeaf(
   }
 
   if ("items" in resolved && resolved.items && typeof resolved.items === "object") {
-    return { kind: "schema", schema: resolveSchemaRefs(resolved.items as SchemaNode, schemasByKey) };
+    return {
+      kind: "schema",
+      schema: resolveSchemaRefs(resolved.items as SchemaNode, schemasByKey),
+    };
   }
 
   return { kind: "flat-array-item" };
@@ -393,11 +401,11 @@ function validateAttributeAwareCondition(
     return;
   }
 
-  if (stringOperators.includes(data.operator) && !["string", "semver", "date"].includes(leafType || "")) {
-    addIssue(
-      context,
-      `Operator "${data.operator}" can only be used with string-like attributes.`,
-    );
+  if (
+    stringOperators.includes(data.operator) &&
+    !["string", "semver", "date"].includes(leafType || "")
+  ) {
+    addIssue(context, `Operator "${data.operator}" can only be used with string-like attributes.`);
     return;
   }
 
@@ -418,8 +426,15 @@ function validateAttributeAwareCondition(
   }
 
   if (arrayMembershipOperators.includes(data.operator)) {
-    if (!["primitive", "string", "semver", "date", "integer", "double", "boolean"].includes(leafType || "")) {
-      addIssue(context, `Operator "${data.operator}" can only be used with primitive attribute values.`);
+    if (
+      !["primitive", "string", "semver", "date", "integer", "double", "boolean"].includes(
+        leafType || "",
+      )
+    ) {
+      addIssue(
+        context,
+        `Operator "${data.operator}" can only be used with primitive attribute values.`,
+      );
       return;
     }
 
@@ -449,18 +464,12 @@ function validateAttributeAwareCondition(
 
     const itemType = getLeafType(itemLeaf);
     if (itemType === "object" || itemType === "array") {
-      addIssue(
-        context,
-        `Operator "${data.operator}" only supports arrays of primitive values.`,
-      );
+      addIssue(context, `Operator "${data.operator}" only supports arrays of primitive values.`);
       return;
     }
 
     if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
-      addIssue(
-        context,
-        `Value does not match the item schema of attribute "${data.attribute}".`,
-      );
+      addIssue(context, `Value does not match the item schema of attribute "${data.attribute}".`);
     }
 
     return;
@@ -472,10 +481,7 @@ function validateAttributeAwareCondition(
     }
 
     if (!matchesLeafValue(resolvedLeaf, data.value, schemasByKey)) {
-      addIssue(
-        context,
-        `Value does not match the schema of attribute "${data.attribute}".`,
-      );
+      addIssue(context, `Value does not match the schema of attribute "${data.attribute}".`);
     }
   }
 }
@@ -504,14 +510,7 @@ export function getConditionsZodSchema(
         ...operatorsWithoutValue,
       ]),
       value: z
-        .union([
-          z.string(),
-          z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])),
-          z.number(),
-          z.boolean(),
-          z.date(),
-          z.null(),
-        ])
+        .union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()])
         .optional(),
       regexFlags: z
         .string()
@@ -581,10 +580,15 @@ export function getConditionsZodSchema(
       }
 
       if (arrayMembershipOperators.includes(data.operator) && !Array.isArray(data.value)) {
-        addIssue(
-          context,
-          `when operator is "${data.operator}", value must be an array of primitive values`,
-        );
+        addIssue(context, `when operator is "${data.operator}", value must be an array of strings`);
+      }
+
+      if (
+        arrayMembershipOperators.includes(data.operator) &&
+        Array.isArray(data.value) &&
+        !isStringArray(data.value)
+      ) {
+        addIssue(context, `when operator is "${data.operator}", value must be an array of strings`);
       }
 
       if (!arrayMembershipOperators.includes(data.operator) && Array.isArray(data.value)) {

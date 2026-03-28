@@ -1,4 +1,4 @@
-description: Feature exercising schema-aware attribute conditions
+description: Feature exercising default flat object and array attribute behavior
 tags:
   - all
 
@@ -11,11 +11,11 @@ rules:
       percentage: 100
 
   production:
-    - key: pro-accounts
+    - key: dark-mode-sports
       segments:
         and:
-          - proAccounts
-          - admins
+          - prefersDarkMode
+          - interestedInSports
       percentage: 100
 
     - key: everyone

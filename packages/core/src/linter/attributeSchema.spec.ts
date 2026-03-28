@@ -41,7 +41,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     });
   });
 
-  it("accepts typed object and array schemas with nested properties", () => {
+  it("accepts flat object properties and typed arrays", () => {
     expectAttributeSuccess({
       description: "Account",
       type: "object",
@@ -51,11 +51,8 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
           type: "string",
           enum: ["free", "pro"],
         },
-        metadata: {
-          type: "object",
-          additionalProperties: {
-            type: "string",
-          },
+        locale: {
+          type: "string",
         },
         permissions: {
           type: "array",
@@ -75,6 +72,17 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     });
   });
 
+  it("accepts string-array enums on array attributes", () => {
+    expectAttributeSuccess({
+      description: "Permissions",
+      type: "array",
+      items: {
+        type: "string",
+      },
+      enum: [["read"], ["write", "admin"]],
+    });
+  });
+
   it("requires items when array schema adds extra constraints", () => {
     expectAttributeFailure(
       {
@@ -83,6 +91,50 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
         enum: [["read"], ["write"]],
       },
       "`items` is required",
+    );
+  });
+
+  it("rejects nested object properties inside object attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Account",
+        type: "object",
+        properties: {
+          metadata: {
+            type: "object",
+            properties: {
+              locale: {
+                type: "string",
+              },
+            },
+          },
+        },
+      },
+      "must stay flat",
+    );
+  });
+
+  it("rejects non-string item types for array attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Scores",
+        type: "array",
+        items: {
+          type: "integer",
+        },
+      },
+      "items.type",
+    );
+  });
+
+  it("rejects non-string enum values for array attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Scores",
+        type: "array",
+        enum: [[1, 2]],
+      },
+      "array of strings",
     );
   });
 

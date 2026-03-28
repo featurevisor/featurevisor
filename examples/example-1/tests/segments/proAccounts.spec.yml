@@ -3,13 +3,11 @@ assertions:
   - context:
       account:
         plan: pro
-        metadata:
-          locale: nl-NL
+        locale: nl-NL
     expectedToMatch: true
 
   - context:
       account:
         plan: free
-        metadata:
-          locale: nl-NL
+        locale: nl-NL
     expectedToMatch: false

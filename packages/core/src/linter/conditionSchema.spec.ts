@@ -81,12 +81,16 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
         type: "string",
         enum: ["free", "pro"],
       },
-      metadata: {
-        type: "object",
-        additionalProperties: {
-          type: "string",
-        },
+      locale: {
+        type: "string",
       },
+    },
+  },
+  labels: {
+    description: "Labels",
+    type: "object",
+    additionalProperties: {
+      type: "string",
     },
   },
   permissions: {
@@ -95,13 +99,6 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
     items: {
       type: "string",
       enum: ["read", "write", "admin"],
-    },
-  },
-  scores: {
-    description: "Scores",
-    type: "array",
-    items: {
-      type: "integer",
     },
   },
   traits: {
@@ -170,7 +167,7 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
 
     it("accepts dynamic nested attributes via additionalProperties", () => {
       expectConditionsSuccess({
-        attribute: "account.metadata.locale",
+        attribute: "labels.locale",
         operator: "equals",
         value: "nl-NL",
       });
@@ -338,12 +335,15 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       );
     });
 
-    it("accepts includes for arrays of numbers", () => {
-      expectConditionsSuccess({
-        attribute: "scores",
-        operator: "includes",
-        value: 42,
-      });
+    it("rejects non-string includes values for string arrays", () => {
+      expectConditionsFailure(
+        {
+          attribute: "permissions",
+          operator: "includes",
+          value: 42,
+        },
+        'Value does not match the item schema of attribute "permissions"',
+      );
     });
   });
 

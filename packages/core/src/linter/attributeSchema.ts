@@ -1,13 +1,7 @@
 import type { Attribute, AttributeProperty } from "@featurevisor/types";
 import { z } from "zod";
 
-import {
-  valueZodSchema,
-  refineArrayItems,
-  refineEnumMatchesType,
-  refineMinimumMaximum,
-  refineStringLengthPattern,
-} from "./schema";
+import { valueZodSchema, refineArrayItems, refineMinimumMaximum } from "./schema";
 
 const attributeTypeEnum = z.enum([
   "boolean",
@@ -36,6 +30,10 @@ type AttributeSchemaLike = {
   oneOf?: unknown[];
 };
 
+function isArrayOfStrings(value: unknown): boolean {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
 function isStringLikeAttributeType(type?: Attribute["type"]): boolean {
   return type === "string" || type === "date" || type === "semver";
 }
@@ -57,7 +55,7 @@ function valueMatchesAttributeType(value: unknown, type: Attribute["type"]): boo
     case "object":
       return typeof value === "object" && value !== null && !Array.isArray(value);
     case "array":
-      return Array.isArray(value);
+      return isArrayOfStrings(value);
     default:
       return true;
   }
@@ -84,7 +82,11 @@ function refineAttributeEnumMatchesType(
   }
 
   if (schema.items && typeof schema.items === "object") {
-    refineAttributeEnumMatchesType(schema.items as AttributeSchemaLike, [...pathPrefix, "items"], ctx);
+    refineAttributeEnumMatchesType(
+      schema.items as AttributeSchemaLike,
+      [...pathPrefix, "items"],
+      ctx,
+    );
   }
 
   if (schema.properties && typeof schema.properties === "object") {
@@ -322,6 +324,144 @@ function refineRequiredKeysInAttributeSchema(
   }
 }
 
+function refineNoNestedObjectProperties(
+  schema: AttributeSchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+
+  if (schema.type === "object" && schema.properties && typeof schema.properties === "object") {
+    for (const key of Object.keys(schema.properties)) {
+      const property = schema.properties[key] as AttributeSchemaLike;
+      if (property?.type === "object") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Object attributes must stay flat. Property "${key}" cannot be of type "object".`,
+          path: [...pathPrefix, "properties", key, "type"],
+        });
+      }
+    }
+  }
+
+  if (schema.items && typeof schema.items === "object") {
+    refineNoNestedObjectProperties(
+      schema.items as AttributeSchemaLike,
+      [...pathPrefix, "items"],
+      ctx,
+    );
+  }
+
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const key of Object.keys(schema.properties)) {
+      refineNoNestedObjectProperties(
+        schema.properties[key] as AttributeSchemaLike,
+        [...pathPrefix, "properties", key],
+        ctx,
+      );
+    }
+  }
+
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineNoNestedObjectProperties(
+      schema.additionalProperties as AttributeSchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
+  }
+
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, index) => {
+      if (branch && typeof branch === "object") {
+        refineNoNestedObjectProperties(
+          branch as AttributeSchemaLike,
+          [...pathPrefix, "oneOf", index],
+          ctx,
+        );
+      }
+    });
+  }
+}
+
+function refineArrayAttributesAreStringArrays(
+  schema: AttributeSchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  if (!schema || typeof schema !== "object") return;
+
+  if (schema.type === "array") {
+    if (schema.items && typeof schema.items === "object") {
+      const itemSchema = schema.items as AttributeSchemaLike;
+      if (itemSchema.type !== "string") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Attribute arrays must contain strings only. \`items.type\` must be "string".`,
+          path: [...pathPrefix, "items", "type"],
+        });
+      }
+    }
+
+    if (schema.const !== undefined && !isArrayOfStrings(schema.const)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Attribute arrays must contain strings only. \`const\` must be an array of strings.`,
+        path: [...pathPrefix, "const"],
+      });
+    }
+
+    if (Array.isArray(schema.enum)) {
+      schema.enum.forEach((entry, index) => {
+        if (!isArrayOfStrings(entry)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Attribute arrays must contain strings only. Enum value at index ${index} must be an array of strings.`,
+            path: [...pathPrefix, "enum", index],
+          });
+        }
+      });
+    }
+  }
+
+  if (schema.items && typeof schema.items === "object") {
+    refineArrayAttributesAreStringArrays(
+      schema.items as AttributeSchemaLike,
+      [...pathPrefix, "items"],
+      ctx,
+    );
+  }
+
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const key of Object.keys(schema.properties)) {
+      refineArrayAttributesAreStringArrays(
+        schema.properties[key] as AttributeSchemaLike,
+        [...pathPrefix, "properties", key],
+        ctx,
+      );
+    }
+  }
+
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    refineArrayAttributesAreStringArrays(
+      schema.additionalProperties as AttributeSchemaLike,
+      [...pathPrefix, "additionalProperties"],
+      ctx,
+    );
+  }
+
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    schema.oneOf.forEach((branch, index) => {
+      if (branch && typeof branch === "object") {
+        refineArrayAttributesAreStringArrays(
+          branch as AttributeSchemaLike,
+          [...pathPrefix, "oneOf", index],
+          ctx,
+        );
+      }
+    });
+  }
+}
+
 export function getAttributeZodSchema() {
   const attributePropertySchema: z.ZodType<AttributeProperty> = z.lazy(() =>
     z
@@ -373,7 +513,9 @@ export function getAttributeZodSchema() {
       .superRefine((data, ctx) =>
         refineArrayItems(data as Parameters<typeof refineArrayItems>[0], [], ctx),
       )
-      .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx)),
+      .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx))
+      .superRefine((data, ctx) => refineNoNestedObjectProperties(data, [], ctx))
+      .superRefine((data, ctx) => refineArrayAttributesAreStringArrays(data, [], ctx)),
   );
 
   const attributeZodSchema = z
@@ -425,7 +567,9 @@ export function getAttributeZodSchema() {
     .superRefine((data, ctx) =>
       refineArrayItems(data as Parameters<typeof refineArrayItems>[0], [], ctx),
     )
-    .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx));
+    .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx))
+    .superRefine((data, ctx) => refineNoNestedObjectProperties(data, [], ctx))
+    .superRefine((data, ctx) => refineArrayAttributesAreStringArrays(data, [], ctx));
 
   return attributeZodSchema;
 }

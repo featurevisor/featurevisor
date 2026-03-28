@@ -421,11 +421,7 @@ export async function lintProject(
 
   // lint segments
   const segments = await datasource.listSegments();
-  const conditionsZodSchema = getConditionsZodSchema(
-    projectConfig,
-    attributesByKey,
-    schemasByKey,
-  );
+  const conditionsZodSchema = getConditionsZodSchema(projectConfig, attributesByKey, schemasByKey);
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
   if (!options.entityType || options.entityType === "segment") {

@@ -559,6 +559,29 @@ function generateSchemasFileContent(
   return lines.join("\n") + "\n";
 }
 
+function generateAttributesFileContent(
+  attributes: Array<Attribute & { key: string; typescriptType: string }>,
+  schemaTypeNames: Record<string, string>,
+): string {
+  const schemaTypesUsed = new Set<string>();
+
+  for (const attribute of attributes) {
+    Object.values(schemaTypeNames).forEach((typeName) => {
+      if (attribute.typescriptType.includes(typeName)) {
+        schemaTypesUsed.add(typeName);
+      }
+    });
+  }
+
+  const importLine = formatTypeImport(Array.from(schemaTypesUsed).sort(), "./schemas");
+  const lines = attributes.map((attribute) => {
+    const typeName = `${getPascalCase(attribute.key)}Attribute`;
+    return `export type ${typeName} = ${attribute.typescriptType};`;
+  });
+
+  return `${importLine}${lines.join("\n")}\n`;
+}
+
 // Indentation for generated namespace content (2 spaces per level)
 const INDENT_NS = "  ";
 const INDENT_NS_BODY = "    ";
@@ -627,7 +650,7 @@ export async function generateTypeScriptCodeForProject(
   // attributes
   const attributeFiles = await datasource.listAttributes();
   const attributes: (Attribute & { typescriptType: string })[] = [];
-  const contextSchemaTypesUsed = new Set<string>();
+  const attributeTypeNames: Record<string, string> = {};
 
   for (const attributeKey of attributeFiles) {
     const parsedAttribute = await datasource.readAttribute(attributeKey);
@@ -642,29 +665,29 @@ export async function generateTypeScriptCodeForProject(
       hasSchemasFile ? schemaTypeNames : undefined,
     );
 
-    if (hasSchemasFile) {
-      Object.values(schemaTypeNames).forEach((typeName) => {
-        if (typescriptType.includes(typeName)) {
-          contextSchemaTypesUsed.add(typeName);
-        }
-      });
-    }
-
     attributes.push({
       ...parsedAttribute,
       key: attributeKey,
       typescriptType,
     });
+    attributeTypeNames[attributeKey] = `${getPascalCase(attributeKey)}Attribute`;
   }
 
+  const attributesFileContent = generateAttributesFileContent(
+    attributes as Array<Attribute & { key: string; typescriptType: string }>,
+    hasSchemasFile ? schemaTypeNames : {},
+  );
+  const attributesFilePath = path.join(outputPath, "attributes.ts");
+  fs.writeFileSync(attributesFilePath, attributesFileContent);
+  console.log(
+    `Attributes type file written at: ${getRelativePath(rootDirectoryPath, attributesFilePath)}`,
+  );
+
   // context
-  const contextImport =
-    contextSchemaTypesUsed.size > 0
-      ? formatTypeImport(Array.from(contextSchemaTypesUsed).sort(), "./schemas")
-      : "";
+  const contextImport = formatTypeImport(Object.values(attributeTypeNames).sort(), "./attributes");
   const attributeProperties = attributes
     .map((attribute) => {
-      return `  ${formatObjectKey(attribute.key)}?: ${attribute.typescriptType};`;
+      return `  ${formatObjectKey(attribute.key)}?: ${attributeTypeNames[attribute.key]};`;
     })
     .join("\n");
   const contextContent = `
@@ -933,6 +956,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   // index
   const indexContent =
     [
+      `export * from "./attributes";`,
       `export * from "./context";`,
       `export * from "./instance";`,
       ...(hasSchemasFile ? [`export * from "./schemas";`] : []),

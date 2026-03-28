@@ -2,12 +2,11 @@ segment: highScorers
 assertions:
   - context:
       scores:
-        - 10
-        - 42
+        - beginner
+        - advanced
     expectedToMatch: true
 
   - context:
       scores:
-        - 1
-        - 2
+        - beginner
     expectedToMatch: false
