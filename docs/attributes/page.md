@@ -22,7 +22,14 @@ description: Country
 type: string
 ```
 
-`type` and `description` are the minimum required properties for an attribute.
+`description` is required.
+
+At the top level, an attribute must define either:
+
+- `type`
+- `oneOf`
+
+You cannot use both together at the top level.
 
 ## Types
 
@@ -95,34 +102,102 @@ type: date
 
 When an attribute is of type `array`, it can have an array of string values.
 
-For example, if you want to create an attribute for `permissions`, you can do it like this:
+If you want to keep it simple, you can define it like this:
 
 ```yml {% path="attributes/permissions.yml" %}
 description: Permissions
 type: array
 ```
 
+If you want stricter validation, you can define `items` and other schema properties:
+
+```yml {% path="attributes/permissions.yml" %}
+description: User permissions
+type: array
+
+items:
+  type: string
+  enum:
+    - read
+    - write
+    - admin
+```
+
+Array attributes only support arrays of strings.
+
 ### object
 
-When an attribute is of type `object`, it can have nested properties.
+When an attribute is of type `object`, it is treated as a flat object.
 
-For example, if you want to create an attribute for `user` with some nested properties, you can do it like this:
+If you want to keep it simple, you can define it like this:
 
-```yml {% path="attributes/user.yml" %}
-description: User
+```yml {% path="attributes/preferences.yml" %}
+description: User preferences as a flat object
+type: object
+```
+
+If you want stricter validation, you can define `properties`, `required`, and other schema properties:
+
+```yml {% path="attributes/account.yml" %}
+description: Account details
 
 type: object
 
 properties:
-  id:
+  plan:
     type: string
-    description: User ID
-  country:
+    enum:
+      - free
+      - pro
+  locale:
     type: string
-    description: User country
+
+required:
+  - plan
 ```
 
-When writing conditions for [segments](/docs/segments/), you can use the dot notation to access nested properties. For example, `user.id` or `user.country`.
+Object attributes must stay flat. In other words, if `type: object` is used, none of its properties can be another `object` type.
+
+When writing conditions for [segments](/docs/segments/), you can use dot notation for object properties, such as `account.plan` or `account.locale`.
+
+## oneOf
+
+At the top level, you can use `oneOf` instead of `type` when an attribute can match exactly one of multiple schemas.
+
+For example:
+
+```yml {% path="attributes/version.yml" %}
+description: Version number of the app
+oneOf:
+  - type: string
+  - type: double
+```
+
+## Schema properties
+
+Attributes support schema-style properties for authoring and linting, including:
+
+- `enum`
+- `const`
+- `oneOf`
+- `properties`
+- `required`
+- `additionalProperties`
+- `items`
+- `minimum`
+- `maximum`
+- `minLength`
+- `maxLength`
+- `pattern`
+- `minItems`
+- `maxItems`
+- `uniqueItems`
+
+These schema properties help with linting and code generation.
+
+Attributes are not included in generated [datafiles](/docs/building-datafiles/), so they are here to help improve the authoring workflow without affecting datafile size.
+
+You can learn more in [Schemas](/docs/schemas/#advanced-usage) page.
 
 ## Archiving
 
@@ -156,9 +231,14 @@ If we combine all the above examples, the full context may look like this:
   "rating": 4.5,
   "signupDate": "2025-01-01T00:00:00Z",
   "permissions": ["read", "write"],
-  "user": {
-    "id": "12345",
-    "country": "nl"
-  }
+  "preferences": {
+    "theme": "dark",
+    "language": "nl"
+  },
+  "account": {
+    "plan": "pro",
+    "locale": "nl-NL"
+  },
+  "version": "5.5.0"
 }
 ```
