@@ -1,0 +1,5 @@
+description: appVersion 1.2.3
+conditions:
+  - attribute: appVersion
+    operator: equals
+    value: 1.2.3

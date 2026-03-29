@@ -1,0 +1,5 @@
+description: Users interested in sports via plain string array attribute
+conditions:
+  - attribute: interests
+    operator: includes
+    value: sports

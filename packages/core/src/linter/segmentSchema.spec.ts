@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 
+import type { Attribute } from "@featurevisor/types";
 import type { ProjectConfig } from "../config";
 import { getConditionsZodSchema } from "./conditionSchema";
 import { getSegmentZodSchema } from "./segmentSchema";
@@ -36,7 +37,36 @@ function minimalProjectConfig(): ProjectConfig {
   };
 }
 
-const TEST_ATTRIBUTES: [string, ...string[]] = ["userId", "country", "device"];
+const TEST_ATTRIBUTES: Record<string, Attribute> = {
+  userId: {
+    description: "User ID",
+    type: "string",
+  },
+  country: {
+    description: "Country",
+    type: "string",
+  },
+  device: {
+    description: "Device",
+    type: "string",
+  },
+  permissions: {
+    description: "Permissions",
+    type: "array",
+    items: {
+      type: "string",
+      enum: ["read", "write", "admin"],
+    },
+  },
+  version: {
+    description: "Version",
+    oneOf: [{ type: "string" }, { type: "double" }],
+  },
+  traits: {
+    description: "Traits",
+    type: "object",
+  },
+};
 
 function getSegmentSchema() {
   const projectConfig = minimalProjectConfig();
@@ -185,6 +215,57 @@ describe("segmentSchema.ts :: getSegmentZodSchema", () => {
           },
         },
         "Unknown attribute",
+      );
+    });
+
+    it("accepts segment conditions using semver operators on oneOf attributes", () => {
+      expectSegmentSuccess({
+        description: "Version above v5",
+        conditions: {
+          and: [
+            { attribute: "device", operator: "equals", value: "desktop" },
+            { attribute: "version", operator: "semverGreaterThan", value: "5.0.0" },
+          ],
+        },
+      });
+    });
+
+    it("accepts segment conditions using flat object nested paths", () => {
+      expectSegmentSuccess({
+        description: "Dark mode users",
+        conditions: {
+          attribute: "traits.favoriteTheme",
+          operator: "equals",
+          value: "dark",
+        },
+      });
+    });
+
+    it("rejects segment conditions when oneOf attribute value matches no branch", () => {
+      expectSegmentFailure(
+        {
+          description: "Bad version",
+          conditions: {
+            attribute: "version",
+            operator: "equals",
+            value: true,
+          },
+        },
+        'Value does not match the schema of attribute "version"',
+      );
+    });
+
+    it("rejects segment conditions when array item value violates enum constraints", () => {
+      expectSegmentFailure(
+        {
+          description: "Bad permission",
+          conditions: {
+            attribute: "permissions",
+            operator: "includes",
+            value: "delete",
+          },
+        },
+        'Value does not match the item schema of attribute "permissions"',
       );
     });
   });

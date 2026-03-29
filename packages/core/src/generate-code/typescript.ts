@@ -28,6 +28,8 @@ function convertFeaturevisorTypeToTypeScriptType(featurevisorType: string): stri
       return "number";
     case "date":
       return "Date | string";
+    case "semver":
+      return "string";
     case "array":
       return "string[]";
     case "object":
@@ -170,7 +172,7 @@ function schemaToTypeScriptType(
     resolved.enum && Array.isArray(resolved.enum) && resolved.enum.length > 0
       ? enumToUnionType(resolved.enum)
       : null;
-  const type = resolved.type;
+  const type = resolved.type as string | undefined;
   if (!type) {
     return literalFromConst ?? unionFromEnum ?? "unknown";
   }
@@ -178,7 +180,10 @@ function schemaToTypeScriptType(
     case "boolean":
       return literalFromConst ?? unionFromEnum ?? "boolean";
     case "string":
+    case "semver":
       return literalFromConst ?? unionFromEnum ?? "string";
+    case "date":
+      return literalFromConst ?? unionFromEnum ?? "Date | string";
     case "integer":
     case "double":
       return literalFromConst ?? unionFromEnum ?? "number";
@@ -554,6 +559,29 @@ function generateSchemasFileContent(
   return lines.join("\n") + "\n";
 }
 
+function generateAttributesFileContent(
+  attributes: Array<Attribute & { key: string; typescriptType: string }>,
+  schemaTypeNames: Record<string, string>,
+): string {
+  const schemaTypesUsed = new Set<string>();
+
+  for (const attribute of attributes) {
+    Object.values(schemaTypeNames).forEach((typeName) => {
+      if (attribute.typescriptType.includes(typeName)) {
+        schemaTypesUsed.add(typeName);
+      }
+    });
+  }
+
+  const importLine = formatTypeImport(Array.from(schemaTypesUsed).sort(), "./schemas");
+  const lines = attributes.map((attribute) => {
+    const typeName = `${getPascalCase(attribute.key)}Attribute`;
+    return `export type ${typeName} = ${attribute.typescriptType};`;
+  });
+
+  return `${importLine}${lines.join("\n")}\n`;
+}
+
 // Indentation for generated namespace content (2 spaces per level)
 const INDENT_NS = "  ";
 const INDENT_NS_BODY = "    ";
@@ -588,54 +616,6 @@ export async function generateTypeScriptCodeForProject(
 
   console.log("\nGenerating TypeScript code...\n");
 
-  // instance
-  const instanceFilePath = path.join(outputPath, "instance.ts");
-  fs.writeFileSync(instanceFilePath, instanceSnippet);
-  console.log(`Instance file written at: ${getRelativePath(rootDirectoryPath, instanceFilePath)}`);
-
-  // attributes
-  const attributeFiles = await datasource.listAttributes();
-  const attributes: (Attribute & { typescriptType })[] = [];
-
-  for (const attributeKey of attributeFiles) {
-    const parsedAttribute = await datasource.readAttribute(attributeKey);
-
-    if (parsedAttribute.archived) {
-      continue;
-    }
-
-    attributes.push({
-      archived: parsedAttribute.archived,
-      key: attributeKey,
-      type: parsedAttribute.type,
-      typescriptType: convertFeaturevisorTypeToTypeScriptType(parsedAttribute.type),
-    });
-  }
-
-  // context
-  const attributeProperties = attributes
-    .map((attribute) => {
-      return `  ${attribute.key}?: ${attribute.typescriptType};`;
-    })
-    .join("\n");
-  const contextContent = `
-import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";
-
-export interface Context {
-${attributeProperties}
-  [key: AttributeKey]: AttributeValue;
-}
-`.trimStart();
-
-  const contextTypeFilePath = path.join(outputPath, "context.ts");
-  fs.writeFileSync(contextTypeFilePath, contextContent);
-  console.log(
-    `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
-  );
-
-  // features
-  const featureFiles = await datasource.listFeatures();
-
   // Load schemas for resolving variable schema references
   const schemaListKeys = await datasource.listSchemas();
   const schemasByKey: Record<string, Schema> = {};
@@ -661,6 +641,71 @@ ${attributeProperties}
   for (const k of schemaKeys) {
     schemaTypeNames[k] = getPascalCase(k) + "Schema";
   }
+
+  // instance
+  const instanceFilePath = path.join(outputPath, "instance.ts");
+  fs.writeFileSync(instanceFilePath, instanceSnippet);
+  console.log(`Instance file written at: ${getRelativePath(rootDirectoryPath, instanceFilePath)}`);
+
+  // attributes
+  const attributeFiles = await datasource.listAttributes();
+  const attributes: (Attribute & { typescriptType: string })[] = [];
+  const attributeTypeNames: Record<string, string> = {};
+
+  for (const attributeKey of attributeFiles) {
+    const parsedAttribute = await datasource.readAttribute(attributeKey);
+
+    if (parsedAttribute.archived) {
+      continue;
+    }
+
+    const typescriptType = schemaToTypeScriptType(
+      parsedAttribute as Schema,
+      schemasByKey,
+      hasSchemasFile ? schemaTypeNames : undefined,
+    );
+
+    attributes.push({
+      ...parsedAttribute,
+      key: attributeKey,
+      typescriptType,
+    });
+    attributeTypeNames[attributeKey] = `${getPascalCase(attributeKey)}Attribute`;
+  }
+
+  const attributesFileContent = generateAttributesFileContent(
+    attributes as Array<Attribute & { key: string; typescriptType: string }>,
+    hasSchemasFile ? schemaTypeNames : {},
+  );
+  const attributesFilePath = path.join(outputPath, "attributes.ts");
+  fs.writeFileSync(attributesFilePath, attributesFileContent);
+  console.log(
+    `Attributes type file written at: ${getRelativePath(rootDirectoryPath, attributesFilePath)}`,
+  );
+
+  // context
+  const contextImport = formatTypeImport(Object.values(attributeTypeNames).sort(), "./attributes");
+  const attributeProperties = attributes
+    .map((attribute) => {
+      return `  ${formatObjectKey(attribute.key)}?: ${attributeTypeNames[attribute.key]};`;
+    })
+    .join("\n");
+  const contextContent = `
+import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";
+${contextImport}export interface Context {
+${attributeProperties}
+  [key: AttributeKey]: AttributeValue;
+}
+`.trimStart();
+
+  const contextTypeFilePath = path.join(outputPath, "context.ts");
+  fs.writeFileSync(contextTypeFilePath, contextContent);
+  console.log(
+    `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
+  );
+
+  // features
+  const featureFiles = await datasource.listFeatures();
 
   const parsedFeatures: {
     featureKey: string;
@@ -911,6 +956,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   // index
   const indexContent =
     [
+      `export * from "./attributes";`,
       `export * from "./context";`,
       `export * from "./instance";`,
       ...(hasSchemasFile ? [`export * from "./schemas";`] : []),

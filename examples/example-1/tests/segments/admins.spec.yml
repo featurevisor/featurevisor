@@ -1,0 +1,13 @@
+segment: admins
+assertions:
+  - context:
+      permissions:
+        - read
+        - admin
+    expectedToMatch: true
+
+  - context:
+      permissions:
+        - read
+        - write
+    expectedToMatch: false

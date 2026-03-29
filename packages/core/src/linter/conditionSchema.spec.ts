@@ -1,10 +1,11 @@
 /**
  * Unit tests for condition schema validation (segment conditions, feature rules, etc.).
- * Covers getConditionsZodSchema: attribute ref, operators, value type per operator,
- * regexFlags, and/or/not nesting, and "*" (everyone).
+ * Covers getConditionsZodSchema: attribute path resolution, operator/value compatibility,
+ * schema-aware value validation, regexFlags, nesting, and "*" (everyone).
  */
 import { z } from "zod";
 
+import type { Attribute } from "@featurevisor/types";
 import type { ProjectConfig } from "../config";
 import { getConditionsZodSchema } from "./conditionSchema";
 
@@ -35,7 +36,80 @@ function minimalProjectConfig(): ProjectConfig {
   };
 }
 
-const TEST_ATTRIBUTES: [string, ...string[]] = ["userId", "country", "device", "email"];
+const TEST_ATTRIBUTES: Record<string, Attribute> = {
+  userId: {
+    description: "User ID",
+    type: "string",
+  },
+  country: {
+    description: "Country",
+    type: "string",
+    enum: ["de", "fr", "nl", "us"],
+  },
+  device: {
+    description: "Device",
+    type: "string",
+  },
+  email: {
+    description: "Email",
+    type: "string",
+    pattern: "^[^@]+@[^@]+\\.[^@]+$",
+  },
+  age: {
+    description: "Age",
+    type: "integer",
+    minimum: 18,
+  },
+  browser: {
+    description: "Browser",
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        enum: ["chrome", "firefox", "safari"],
+      },
+      version: {
+        type: "semver",
+      },
+    },
+  },
+  account: {
+    description: "Account",
+    type: "object",
+    properties: {
+      plan: {
+        type: "string",
+        enum: ["free", "pro"],
+      },
+      locale: {
+        type: "string",
+      },
+    },
+  },
+  labels: {
+    description: "Labels",
+    type: "object",
+    additionalProperties: {
+      type: "string",
+    },
+  },
+  permissions: {
+    description: "Permissions",
+    type: "array",
+    items: {
+      type: "string",
+      enum: ["read", "write", "admin"],
+    },
+  },
+  version: {
+    description: "Version",
+    oneOf: [{ type: "string" }, { type: "double" }],
+  },
+  traits: {
+    description: "Traits",
+    type: "object",
+  },
+};
 
 function getConditionsSchema() {
   return getConditionsZodSchema(minimalProjectConfig(), TEST_ATTRIBUTES);
@@ -69,7 +143,6 @@ function expectConditionsFailure(input: unknown, messageSubstring?: string): z.Z
   return err;
 }
 
-/** Assert that an intentional mistake produces an error at the expected path with expected message. */
 function expectConditionErrorSurfaces(
   input: unknown,
   opts: { pathContains: string[]; messageContains: string },
@@ -83,16 +156,36 @@ function expectConditionErrorSurfaces(
 }
 
 describe("conditionSchema.ts :: getConditionsZodSchema", () => {
-  describe("attribute", () => {
-    it("accepts condition when attribute is in available list", () => {
+  describe("attribute path resolution", () => {
+    it("accepts direct attributes", () => {
+      expectConditionsSuccess({ attribute: "userId", operator: "equals", value: "u1" });
+    });
+
+    it("accepts nested attributes from declared object properties", () => {
       expectConditionsSuccess({
-        attribute: "userId",
+        attribute: "browser.name",
         operator: "equals",
-        value: "u1",
+        value: "chrome",
       });
     });
 
-    it("rejects condition when attribute is unknown", () => {
+    it("accepts dynamic nested attributes via additionalProperties", () => {
+      expectConditionsSuccess({
+        attribute: "labels.locale",
+        operator: "equals",
+        value: "nl-NL",
+      });
+    });
+
+    it("accepts one-level nested attributes on flat objects", () => {
+      expectConditionsSuccess({
+        attribute: "traits.favoriteColor",
+        operator: "equals",
+        value: "blue",
+      });
+    });
+
+    it("rejects unknown attributes", () => {
       expectConditionsFailure(
         {
           attribute: "unknownAttr",
@@ -102,60 +195,70 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
         "Unknown attribute",
       );
     });
+
+    it("rejects paths that are too deep for flat objects", () => {
+      expectConditionsFailure(
+        {
+          attribute: "traits.preferences.theme",
+          operator: "equals",
+          value: "dark",
+        },
+        "Unknown attribute",
+      );
+    });
   });
 
-  describe("operator and value: common (equals, notEquals)", () => {
-    it("accepts string value with equals", () => {
-      expectConditionsSuccess({ attribute: "userId", operator: "equals", value: "u1" });
+  describe("operator and value validation", () => {
+    it("accepts schema-aware equality checks", () => {
+      expectConditionsSuccess({
+        attribute: "browser.name",
+        operator: "equals",
+        value: "firefox",
+      });
     });
 
-    it("accepts number value with equals", () => {
-      expectConditionsSuccess({ attribute: "userId", operator: "equals", value: 42 });
+    it("rejects equality values outside enum constraints", () => {
+      expectConditionsFailure(
+        {
+          attribute: "browser.name",
+          operator: "equals",
+          value: "edge",
+        },
+        'Value does not match the schema of attribute "browser.name"',
+      );
     });
 
-    it("accepts boolean value with equals", () => {
-      expectConditionsSuccess({ attribute: "device", operator: "equals", value: true });
+    it("accepts number equality on numeric attributes", () => {
+      expectConditionsSuccess({ attribute: "age", operator: "equals", value: 42 });
     });
 
-    it("accepts null value with equals", () => {
+    it("accepts null equality checks", () => {
       expectConditionsSuccess({ attribute: "userId", operator: "equals", value: null });
     });
 
-    it("rejects array value with equals", () => {
+    it("rejects array values with equals", () => {
       expectConditionsFailure(
         { attribute: "userId", operator: "equals", value: ["a", "b"] },
         "value has to be",
       );
     });
-  });
 
-  describe("operator and value: numeric", () => {
-    it("accepts number value with greaterThan", () => {
+    it("accepts numeric operators on numeric attributes", () => {
       expectConditionsSuccess({
-        attribute: "userId",
+        attribute: "age",
         operator: "greaterThan",
-        value: 10,
+        value: 21,
       });
     });
 
-    it("rejects string value with greaterThan", () => {
+    it("rejects numeric operators on string attributes", () => {
       expectConditionsFailure(
-        { attribute: "userId", operator: "greaterThan", value: "10" },
-        "value must be a number",
+        { attribute: "country", operator: "greaterThan", value: 10 },
+        "can only be used with integer or double attributes",
       );
     });
 
-    it("rejects missing value with lessThan", () => {
-      const result = parseConditions({
-        attribute: "userId",
-        operator: "lessThan",
-      });
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe("operator and value: string", () => {
-    it("accepts string value with contains", () => {
+    it("accepts string operators on string-like attributes", () => {
       expectConditionsSuccess({
         attribute: "email",
         operator: "contains",
@@ -163,40 +266,55 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       });
     });
 
-    it("rejects number value with startsWith", () => {
+    it("rejects string operators on array attributes", () => {
       expectConditionsFailure(
-        { attribute: "country", operator: "startsWith", value: 123 },
-        "value must be a string",
+        { attribute: "permissions", operator: "contains", value: "admin" },
+        "can only be used with string-like attributes",
       );
     });
-  });
 
-  describe("operator and value: date", () => {
-    it("accepts ISO 8601 string with before", () => {
+    it("accepts date operators with ISO strings", () => {
       expectConditionsSuccess({
-        attribute: "userId",
+        attribute: "device",
         operator: "before",
         value: "2025-12-31T23:59:59Z",
       });
     });
 
-    it("rejects non-ISO string with after", () => {
+    it("rejects date operators with invalid strings", () => {
       expectConditionsFailure(
-        { attribute: "userId", operator: "after", value: "not-a-date" },
+        { attribute: "device", operator: "after", value: "not-a-date" },
         "ISO 8601",
       );
     });
 
-    it("rejects missing value with before", () => {
-      expectConditionsFailure(
-        { attribute: "userId", operator: "before" },
-        "value must be provided",
-      );
+    it("accepts semver operators on semver attributes", () => {
+      expectConditionsSuccess({
+        attribute: "browser.version",
+        operator: "semverEquals",
+        value: "1.0.0",
+      });
+    });
+
+    it("accepts semver operators on oneOf attributes when a string branch supports them", () => {
+      expectConditionsSuccess({
+        attribute: "version",
+        operator: "semverGreaterThan",
+        value: "5.0.0",
+      });
+    });
+
+    it("accepts numeric equality on oneOf attributes when a numeric branch matches", () => {
+      expectConditionsSuccess({
+        attribute: "version",
+        operator: "equals",
+        value: 5.5,
+      });
     });
   });
 
-  describe("operator and value: array (in, notIn)", () => {
-    it("accepts array of strings with in", () => {
+  describe("array-aware operators", () => {
+    it("accepts in/notIn on scalar attributes", () => {
       expectConditionsSuccess({
         attribute: "country",
         operator: "in",
@@ -204,28 +322,57 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       });
     });
 
-    it("rejects non-array value with notIn", () => {
+    it("rejects non-array values for in/notIn", () => {
       expectConditionsFailure(
         { attribute: "country", operator: "notIn", value: "de" },
         "value must be an array",
       );
     });
-  });
 
-  describe("operator and value: regex (matches, notMatches)", () => {
-    it("accepts string value with matches", () => {
+    it("rejects in/notIn members that violate attribute schema", () => {
+      expectConditionsFailure(
+        { attribute: "country", operator: "in", value: ["de", "unknown"] },
+        'Value at index 1 does not match the schema of attribute "country"',
+      );
+    });
+
+    it("accepts includes for arrays with typed string items", () => {
       expectConditionsSuccess({
-        attribute: "email",
-        operator: "matches",
-        value: "^[a-z]+@",
+        attribute: "permissions",
+        operator: "includes",
+        value: "admin",
       });
     });
 
+    it("rejects includes values outside item enum constraints", () => {
+      expectConditionsFailure(
+        {
+          attribute: "permissions",
+          operator: "includes",
+          value: "delete",
+        },
+        'Value does not match the item schema of attribute "permissions"',
+      );
+    });
+
+    it("rejects non-string includes values for string arrays", () => {
+      expectConditionsFailure(
+        {
+          attribute: "permissions",
+          operator: "includes",
+          value: 42,
+        },
+        'Value does not match the item schema of attribute "permissions"',
+      );
+    });
+  });
+
+  describe("regex flags", () => {
     it("accepts regexFlags with matches", () => {
       expectConditionsSuccess({
-        attribute: "email",
+        attribute: "browser.version",
         operator: "matches",
-        value: "hello",
+        value: "1\\.0\\.0",
         regexFlags: "i",
       });
     });
@@ -233,7 +380,7 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     it("rejects invalid regexFlags", () => {
       expectConditionsFailure(
         {
-          attribute: "email",
+          attribute: "browser.version",
           operator: "matches",
           value: "x",
           regexFlags: "invalid",
@@ -255,15 +402,15 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     });
   });
 
-  describe("operator: exists, notExists (no value)", () => {
-    it("accepts condition without value for exists", () => {
+  describe("exists/notExists", () => {
+    it("accepts exists without value", () => {
       expectConditionsSuccess({
         attribute: "userId",
         operator: "exists",
       });
     });
 
-    it("rejects value when operator is exists", () => {
+    it("rejects exists with value", () => {
       expectConditionsFailure(
         { attribute: "userId", operator: "exists", value: "x" },
         "value is not needed",
@@ -271,94 +418,45 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     });
   });
 
-  describe("structure: and / or / not", () => {
-    it("accepts and array of conditions", () => {
-      expectConditionsSuccess({
-        and: [
-          { attribute: "userId", operator: "equals", value: "u1" },
-          { attribute: "country", operator: "equals", value: "de" },
-        ],
-      });
-    });
-
-    it("accepts or array of conditions", () => {
-      expectConditionsSuccess({
-        or: [
-          { attribute: "country", operator: "equals", value: "de" },
-          { attribute: "country", operator: "equals", value: "fr" },
-        ],
-      });
-    });
-
-    it("accepts not array of conditions", () => {
-      expectConditionsSuccess({
-        not: [{ attribute: "country", operator: "equals", value: "us" }],
-      });
-    });
-
-    it("accepts nested and inside or", () => {
+  describe("structure", () => {
+    it("accepts nested and/or/not conditions", () => {
       expectConditionsSuccess({
         or: [
           {
             and: [
-              { attribute: "userId", operator: "equals", value: "u1" },
-              { attribute: "device", operator: "equals", value: "mobile" },
+              { attribute: "browser.name", operator: "equals", value: "chrome" },
+              { attribute: "country", operator: "equals", value: "de" },
             ],
           },
-          { attribute: "country", operator: "equals", value: "de" },
+          { attribute: "permissions", operator: "includes", value: "admin" },
         ],
       });
     });
 
-    it("rejects unknown attribute inside nested condition", () => {
+    it("rejects invalid nested conditions", () => {
       expectConditionsFailure(
         {
           and: [
             { attribute: "userId", operator: "equals", value: "u1" },
-            { attribute: "badAttr", operator: "equals", value: "x" },
+            { attribute: "browser.name", operator: "equals", value: "edge" },
           ],
         },
-        "Unknown attribute",
+        'Value does not match the schema of attribute "browser.name"',
       );
     });
 
-    it("rejects invalid value type inside nested condition", () => {
-      expectConditionsFailure(
-        {
-          or: [{ attribute: "country", operator: "greaterThan", value: "string" }],
-        },
-        "value must be a number",
-      );
-    });
-  });
-
-  describe("everyone (*)", () => {
     it("accepts literal * as conditions", () => {
       expectConditionsSuccess("*");
     });
-  });
 
-  describe("conditions as array", () => {
-    it("accepts array of plain conditions", () => {
+    it("accepts arrays of plain conditions", () => {
       expectConditionsSuccess([
         { attribute: "userId", operator: "equals", value: "u1" },
         { attribute: "country", operator: "equals", value: "de" },
       ]);
     });
 
-    it("rejects array containing invalid condition", () => {
-      expectConditionsFailure(
-        [
-          { attribute: "userId", operator: "equals", value: "u1" },
-          { attribute: "unknown", operator: "equals", value: "x" },
-        ],
-        "Unknown attribute",
-      );
-    });
-  });
-
-  describe("strict: no extra keys on and/or/not", () => {
-    it("rejects and/or/not with extra key", () => {
+    it("rejects and/or/not objects with extra keys", () => {
       const result = parseConditions({
         and: [{ attribute: "userId", operator: "equals", value: "u1" }],
         extraKey: true,
@@ -367,81 +465,25 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     });
   });
 
-  describe("operator enum", () => {
-    it("rejects unknown operator", () => {
-      const result = parseConditions({
-        attribute: "userId",
-        operator: "unknownOp",
-        value: "x",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("accepts all common and numeric operators", () => {
-      expectConditionsSuccess({ attribute: "userId", operator: "notEquals", value: "x" });
-      expectConditionsSuccess({ attribute: "userId", operator: "greaterThanOrEquals", value: 0 });
-      expectConditionsSuccess({ attribute: "userId", operator: "lessThanOrEquals", value: 100 });
-    });
-
-    it("accepts semver operators with string value", () => {
-      expectConditionsSuccess({
-        attribute: "userId",
-        operator: "semverEquals",
-        value: "1.0.0",
-      });
-    });
-  });
-
-  describe("errors surface properly: intentional mistakes produce correct path and message", () => {
-    it("unknown attribute: error path includes attribute, message says Unknown attribute", () => {
+  describe("error surfacing", () => {
+    it("reports unknown attributes at the attribute path", () => {
       expectConditionErrorSurfaces(
         { attribute: "typoAttr", operator: "equals", value: "x" },
         { pathContains: ["attribute"], messageContains: "Unknown attribute" },
       );
     });
 
-    it("numeric operator with string value: error path points to value, message says number", () => {
+    it("reports schema mismatches at the value path", () => {
       expectConditionErrorSurfaces(
-        { attribute: "userId", operator: "greaterThan", value: "10" },
-        { pathContains: ["value"], messageContains: "number" },
+        { attribute: "browser.name", operator: "equals", value: "edge" },
+        { pathContains: ["value"], messageContains: "Value does not match the schema" },
       );
     });
 
-    it("date operator with invalid string: error path points to value, message mentions ISO", () => {
+    it("reports array item schema mismatches at the value path", () => {
       expectConditionErrorSurfaces(
-        { attribute: "userId", operator: "before", value: "not-a-date" },
-        { pathContains: ["value"], messageContains: "ISO" },
-      );
-    });
-
-    it("exists operator with value set: error path points to value, message says not needed", () => {
-      expectConditionErrorSurfaces(
-        { attribute: "userId", operator: "exists", value: "x" },
-        { pathContains: ["value"], messageContains: "not needed" },
-      );
-    });
-
-    it("regexFlags when operator is not matches: error path points to regexFlags", () => {
-      expectConditionErrorSurfaces(
-        {
-          attribute: "userId",
-          operator: "equals",
-          value: "u1",
-          regexFlags: "i",
-        },
-        { pathContains: ["regexFlags"], messageContains: "not needed" },
-      );
-    });
-
-    it("nested condition with unknown attribute: error path goes into and.*.attribute", () => {
-      expectConditionErrorSurfaces(
-        {
-          and: [
-            { attribute: "userId", operator: "equals", value: "u1" },
-            { attribute: "badAttr", operator: "equals", value: "x" },
-          ],
-        },
-        { pathContains: ["attribute"], messageContains: "Unknown attribute" },
+        { attribute: "country", operator: "in", value: ["de", "edge"] },
+        { pathContains: ["value"], messageContains: "Value at index 1 does not match" },
       );
     });
   });

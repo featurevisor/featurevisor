@@ -1,0 +1,13 @@
+segment: interestedInSports
+assertions:
+  - context:
+      interests:
+        - music
+        - sports
+    expectedToMatch: true
+
+  - context:
+      interests:
+        - music
+        - travel
+    expectedToMatch: false

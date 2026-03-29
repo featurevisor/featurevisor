@@ -1,0 +1,9 @@
+description: Professional accounts
+conditions:
+  and:
+    - attribute: account.plan
+      operator: equals
+      value: pro
+    - attribute: account.locale
+      operator: equals
+      value: nl-NL
