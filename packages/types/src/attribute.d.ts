@@ -27,10 +27,7 @@ export type AttributeType =
   | "object"
   | "array";
 
-export interface Attribute {
-  archived?: boolean; // only available in YAML files
-  key?: AttributeKey; // needed for supporting v1 datafile generation
-  type: AttributeType;
+export interface AttributeSchema {
   description?: string; // only available in YAML files
   enum?: Value[];
   const?: Value;
@@ -51,25 +48,13 @@ export interface Attribute {
   oneOf?: AttributeProperty[];
 }
 
-export interface AttributeProperty {
-  description?: string;
+export type Attribute = AttributeSchema & {
+  archived?: boolean; // only available in YAML files
+  key?: AttributeKey; // needed for supporting v1 datafile generation
+  type: AttributeType;
+};
+
+export type AttributeProperty = AttributeSchema & {
   type?: AttributeType;
-  enum?: Value[];
-  const?: Value;
-  maximum?: number;
-  minimum?: number;
-  maxLength?: number;
-  minLength?: number;
-  pattern?: string;
-  items?: AttributeProperty;
-  maxItems?: number;
-  minItems?: number;
-  uniqueItems?: boolean;
-  required?: string[];
-  properties?: {
-    [key: AttributeKey]: AttributeProperty;
-  };
-  additionalProperties?: AttributeProperty;
   schema?: SchemaKey;
-  oneOf?: AttributeProperty[];
-}
+};
