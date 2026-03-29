@@ -93,6 +93,29 @@ function getLeafType(resolvedLeaf: ResolvedLeaf): string | undefined {
   return "type" in resolvedLeaf.schema ? resolvedLeaf.schema.type : undefined;
 }
 
+function getLeafTypes(resolvedLeaf: ResolvedLeaf, schemasByKey: Record<string, Schema>): string[] {
+  if (resolvedLeaf.kind === "flat-object-property" || resolvedLeaf.kind === "flat-array-item") {
+    return ["primitive"];
+  }
+
+  const resolved = resolveSchemaRefs(resolvedLeaf.schema, schemasByKey) as SchemaNode & {
+    type?: string;
+    oneOf?: unknown[];
+  };
+
+  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    return Array.from(
+      new Set(
+        resolved.oneOf.flatMap((branch) =>
+          getLeafTypes({ kind: "schema", schema: branch as SchemaNode }, schemasByKey),
+        ),
+      ),
+    );
+  }
+
+  return resolved.type ? [resolved.type] : [];
+}
+
 function resolveAttributePath(
   attributePath: string,
   attributesByKey: Record<string, Attribute>,
@@ -337,6 +360,31 @@ function getArrayItemLeaf(
   }
 
   const resolved = resolveSchemaRefs(leaf.schema, schemasByKey);
+  if ("oneOf" in resolved && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
+    const itemLeaves = resolved.oneOf
+      .map((branch) =>
+        getArrayItemLeaf({ kind: "schema", schema: branch as SchemaNode }, schemasByKey),
+      )
+      .filter((item): item is ResolvedLeaf => item !== null);
+
+    if (itemLeaves.length === 0) {
+      return null;
+    }
+
+    if (itemLeaves.every((item) => item.kind === "flat-array-item")) {
+      return { kind: "flat-array-item" };
+    }
+
+    return {
+      kind: "schema",
+      schema: {
+        oneOf: itemLeaves.map((item) =>
+          item.kind === "schema" ? item.schema : ({ type: "string" } as AttributeProperty),
+        ),
+      } as AttributeProperty,
+    };
+  }
+
   if (!("type" in resolved) || resolved.type !== "array") {
     return null;
   }
@@ -380,6 +428,7 @@ function validateAttributeAwareCondition(
   }
 
   const leafType = getLeafType(resolvedLeaf);
+  const leafTypes = getLeafTypes(resolvedLeaf, schemasByKey);
 
   if (operatorsWithoutValue.includes(data.operator)) {
     return;
@@ -393,7 +442,10 @@ function validateAttributeAwareCondition(
     return;
   }
 
-  if (numericOperators.includes(data.operator) && !["integer", "double"].includes(leafType || "")) {
+  if (
+    numericOperators.includes(data.operator) &&
+    !leafTypes.some((type) => ["integer", "double"].includes(type))
+  ) {
     addIssue(
       context,
       `Operator "${data.operator}" can only be used with integer or double attributes.`,
@@ -403,13 +455,16 @@ function validateAttributeAwareCondition(
 
   if (
     stringOperators.includes(data.operator) &&
-    !["string", "semver", "date"].includes(leafType || "")
+    !leafTypes.some((type) => ["string", "semver", "date"].includes(type))
   ) {
     addIssue(context, `Operator "${data.operator}" can only be used with string-like attributes.`);
     return;
   }
 
-  if (semverOperators.includes(data.operator) && !["string", "semver"].includes(leafType || "")) {
+  if (
+    semverOperators.includes(data.operator) &&
+    !leafTypes.some((type) => ["string", "semver"].includes(type))
+  ) {
     addIssue(
       context,
       `Operator "${data.operator}" can only be used with string or semver attributes.`,
@@ -417,7 +472,10 @@ function validateAttributeAwareCondition(
     return;
   }
 
-  if (dateOperators.includes(data.operator) && !["string", "date"].includes(leafType || "")) {
+  if (
+    dateOperators.includes(data.operator) &&
+    !leafTypes.some((type) => ["string", "date"].includes(type))
+  ) {
     addIssue(
       context,
       `Operator "${data.operator}" can only be used with string or date attributes.`,

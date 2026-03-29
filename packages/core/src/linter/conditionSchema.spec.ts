@@ -101,6 +101,10 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
       enum: ["read", "write", "admin"],
     },
   },
+  version: {
+    description: "Version",
+    oneOf: [{ type: "string" }, { type: "double" }],
+  },
   traits: {
     description: "Traits",
     type: "object",
@@ -289,6 +293,22 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
         attribute: "browser.version",
         operator: "semverEquals",
         value: "1.0.0",
+      });
+    });
+
+    it("accepts semver operators on oneOf attributes when a string branch supports them", () => {
+      expectConditionsSuccess({
+        attribute: "version",
+        operator: "semverGreaterThan",
+        value: "5.0.0",
+      });
+    });
+
+    it("accepts numeric equality on oneOf attributes when a numeric branch matches", () => {
+      expectConditionsSuccess({
+        attribute: "version",
+        operator: "equals",
+        value: 5.5,
       });
     });
   });

@@ -55,8 +55,31 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
     description: "Device",
     type: "string",
   },
+  permissions: {
+    description: "Permissions",
+    type: "array",
+    items: {
+      type: "string",
+      enum: ["read", "write", "admin"],
+    },
+  },
+  version: {
+    description: "Version",
+    oneOf: [{ type: "string" }, { type: "double" }],
+  },
+  traits: {
+    description: "Traits",
+    type: "object",
+  },
 };
-const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = ["userId", "country", "device"];
+const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
+  "userId",
+  "country",
+  "device",
+  "permissions",
+  "version",
+  "traits",
+];
 const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries/germany", "countries/france"];
 const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
@@ -154,6 +177,94 @@ function expectErrorSurfaces(
 }
 
 describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable values)", () => {
+  describe("attribute-aware rule and force conditions", () => {
+    it("accepts force conditions using semver operators on oneOf attributes", () => {
+      expectParseSuccess(
+        baseFeature({
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          force: {
+            staging: [
+              {
+                conditions: [
+                  { attribute: "version", operator: "semverGreaterThan", value: "5.0.0" },
+                ],
+                variation: "treatment",
+              },
+            ],
+            production: [],
+          },
+        }),
+      );
+    });
+
+    it("accepts force conditions using flat object nested paths", () => {
+      expectParseSuccess(
+        baseFeature({
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          force: {
+            staging: [
+              {
+                conditions: [
+                  { attribute: "traits.favoriteTheme", operator: "equals", value: "dark" },
+                ],
+                variation: "treatment",
+              },
+            ],
+            production: [],
+          },
+        }),
+      );
+    });
+
+    it("rejects force conditions when oneOf attribute value matches no branch", () => {
+      expectParseFailure(
+        baseFeature({
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          force: {
+            staging: [
+              {
+                conditions: [{ attribute: "version", operator: "equals", value: true }],
+                variation: "treatment",
+              },
+            ],
+            production: [],
+          },
+        }),
+        'Value does not match the schema of attribute "version"',
+      );
+    });
+
+    it("rejects force conditions when array item value violates enum constraints", () => {
+      expectParseFailure(
+        baseFeature({
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          force: {
+            staging: [
+              {
+                conditions: [{ attribute: "permissions", operator: "includes", value: "delete" }],
+                variation: "treatment",
+              },
+            ],
+            production: [],
+          },
+        }),
+        'Value does not match the item schema of attribute "permissions"',
+      );
+    });
+  });
+
   describe("variablesSchema: schema reference", () => {
     it("accepts variable with schema reference and valid defaultValue", () => {
       expectParseSuccess(

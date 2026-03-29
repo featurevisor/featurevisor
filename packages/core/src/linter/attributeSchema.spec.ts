@@ -83,6 +83,23 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     });
   });
 
+  it("accepts top-level oneOf attributes without type", () => {
+    expectAttributeSuccess({
+      description: "Version number of the app",
+      oneOf: [{ type: "string" }, { type: "double" }],
+    });
+  });
+
+  it("accepts top-level oneOf attributes with branch-specific enums", () => {
+    expectAttributeSuccess({
+      description: "Plan or score",
+      oneOf: [
+        { type: "string", enum: ["free", "pro"] },
+        { type: "double", minimum: 0 },
+      ],
+    });
+  });
+
   it("requires items when array schema adds extra constraints", () => {
     expectAttributeFailure(
       {
@@ -91,6 +108,36 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
         enum: [["read"], ["write"]],
       },
       "`items` is required",
+    );
+  });
+
+  it("rejects attributes without top-level type or oneOf", () => {
+    expectAttributeFailure(
+      {
+        description: "Country",
+      },
+      "either `type` or `oneOf`",
+    );
+  });
+
+  it("rejects attributes with both top-level type and oneOf", () => {
+    expectAttributeFailure(
+      {
+        description: "Version number of the app",
+        type: "string",
+        oneOf: [{ type: "string" }, { type: "double" }],
+      },
+      "cannot have both `type` and `oneOf`",
+    );
+  });
+
+  it("rejects top-level oneOf attributes when a branch enum does not match its type", () => {
+    expectAttributeFailure(
+      {
+        description: "Plan or score",
+        oneOf: [{ type: "string", enum: ["free", 1] }, { type: "double" }],
+      },
+      'does not match type "string"',
     );
   });
 
@@ -112,6 +159,21 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
       },
       "must stay flat",
     );
+  });
+
+  it("accepts object additionalProperties schemas", () => {
+    expectAttributeSuccess({
+      description: "Labels",
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        properties: {
+          locale: {
+            type: "string",
+          },
+        },
+      },
+    });
   });
 
   it("rejects non-string item types for array attributes", () => {
@@ -138,6 +200,20 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     );
   });
 
+  it("rejects non-string const values for array attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Scores",
+        type: "array",
+        items: {
+          type: "string",
+        },
+        const: [1, 2],
+      },
+      "array of strings",
+    );
+  });
+
   it("rejects required keys that are not declared in properties", () => {
     expectAttributeFailure(
       {
@@ -154,6 +230,14 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     );
   });
 
+  it("accepts required keys on flat object attributes without declared properties", () => {
+    expectAttributeSuccess({
+      description: "Traits",
+      type: "object",
+      required: ["plan"],
+    });
+  });
+
   it("rejects enum values that do not match semver/date string-like types", () => {
     expectAttributeFailure(
       {
@@ -162,6 +246,30 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
         enum: ["1.0.0", 2],
       },
       'does not match type "semver"',
+    );
+  });
+
+  it("rejects minimum values greater than maximum for numeric attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Score",
+        type: "double",
+        minimum: 10,
+        maximum: 5,
+      },
+      "minimum",
+    );
+  });
+
+  it("rejects minLength values greater than maxLength for string attributes", () => {
+    expectAttributeFailure(
+      {
+        description: "Country",
+        type: "string",
+        minLength: 5,
+        maxLength: 2,
+      },
+      "minLength",
     );
   });
 

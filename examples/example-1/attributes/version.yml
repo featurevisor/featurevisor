@@ -1,5 +1,4 @@
 description: Version number of the app
-type: string # as semver
 oneOf:
   - type: string
   - type: double

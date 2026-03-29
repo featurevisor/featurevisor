@@ -521,7 +521,7 @@ export function getAttributeZodSchema() {
   const attributeZodSchema = z
     .object({
       archived: z.boolean().optional(),
-      type: attributeTypeEnum,
+      type: attributeTypeEnum.optional(),
       description: z.string(),
       enum: z.array(valueZodSchema).optional(),
       const: valueZodSchema.optional(),
@@ -541,6 +541,25 @@ export function getAttributeZodSchema() {
     })
     .strict()
     .superRefine((data, ctx) => {
+      const hasOneOf = data.oneOf !== undefined && data.oneOf.length > 0;
+
+      if (!data.type && !hasOneOf) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Attribute must have either `type` or `oneOf` at the top level.",
+          path: ["type"],
+        });
+      }
+
+      if (data.type && hasOneOf) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Attribute cannot have both `type` and `oneOf` at the top level. Use one or the other.",
+          path: ["type"],
+        });
+      }
+
       const hasStructuredArrayDetails =
         data.items !== undefined ||
         data.minItems !== undefined ||
