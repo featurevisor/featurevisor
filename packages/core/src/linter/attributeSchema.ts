@@ -331,10 +331,28 @@ function refineNoNestedObjectProperties(
 ): void {
   if (!schema || typeof schema !== "object") return;
 
+  const schemaAllowsObject = (candidate: AttributeSchemaLike | undefined): boolean => {
+    if (!candidate || typeof candidate !== "object") {
+      return false;
+    }
+
+    if (candidate.type === "object") {
+      return true;
+    }
+
+    if (candidate.oneOf && Array.isArray(candidate.oneOf)) {
+      return candidate.oneOf.some((branch) =>
+        schemaAllowsObject(branch as AttributeSchemaLike | undefined),
+      );
+    }
+
+    return false;
+  };
+
   if (schema.type === "object" && schema.properties && typeof schema.properties === "object") {
     for (const key of Object.keys(schema.properties)) {
       const property = schema.properties[key] as AttributeSchemaLike;
-      if (property?.type === "object") {
+      if (schemaAllowsObject(property)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Object attributes must stay flat. Property "${key}" cannot be of type "object".`,
@@ -342,6 +360,19 @@ function refineNoNestedObjectProperties(
         });
       }
     }
+  }
+
+  if (
+    schema.type === "object" &&
+    schema.additionalProperties &&
+    schemaAllowsObject(schema.additionalProperties as AttributeSchemaLike)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Object attributes must stay flat. `additionalProperties` cannot allow values of type "object".',
+      path: [...pathPrefix, "additionalProperties", "type"],
+    });
   }
 
   if (schema.items && typeof schema.items === "object") {

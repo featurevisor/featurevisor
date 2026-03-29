@@ -43,6 +43,13 @@ $ npx featurevisor generate-code \
 
 The generated files can be found in `./src` directory.
 
+Some of the key generated files are:
+
+- `context.ts`: typed `Context` interface for SDK evaluation
+- `attributes.ts`: generated attribute types, such as `CountryAttribute` or `AccountAttribute`
+- `schemas.ts`: generated reusable schema types
+- `index.ts`: exports the generated modules
+
 Optional flags:
 
 - `--tag=<tag>`: generate code only for features with the given tag
@@ -172,6 +179,16 @@ We can access the full generated `Context` type as follows:
 ```js
 import { Context } from '@yourorg/features'
 ```
+
+The generated `Context` type uses the generated attribute types internally.
+
+If you want to import those attribute types directly, you can do so as well:
+
+```js
+import { Context, AccountAttribute, PermissionsAttribute } from '@yourorg/features'
+```
+
+Attribute types are generated in `attributes.ts` using the naming convention `<PascalCasedName>Attribute`.
 
 Passing `context` in all the methods is optional.
 

@@ -88,6 +88,7 @@ describe("generate-code/typescript", () => {
     expect(attributesContent).toContain(
       'export type PermissionsAttribute = ("read" | "write" | "admin")[];',
     );
+    expect(attributesContent).toContain("export type VersionAttribute = string | number;");
     expect(attributesContent).toContain(
       "export type BrowserAttribute = { name?: string; version?: string };",
     );
@@ -95,9 +96,11 @@ describe("generate-code/typescript", () => {
     expect(contextContent).toContain("import type {");
     expect(contextContent).toContain("AccountAttribute,");
     expect(contextContent).toContain("PermissionsAttribute,");
+    expect(contextContent).toContain("VersionAttribute,");
     expect(contextContent).toContain('} from "./attributes";');
     expect(contextContent).toContain("account?: AccountAttribute;");
     expect(contextContent).toContain("permissions?: PermissionsAttribute;");
+    expect(contextContent).toContain("version?: VersionAttribute;");
     expect(contextContent).toContain("browser?: BrowserAttribute;");
 
     expect(indexContent).toContain('export * from "./attributes";');

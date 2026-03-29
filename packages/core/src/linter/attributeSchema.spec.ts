@@ -161,19 +161,70 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     );
   });
 
-  it("accepts object additionalProperties schemas", () => {
-    expectAttributeSuccess({
-      description: "Labels",
-      type: "object",
-      additionalProperties: {
+  it("rejects object additionalProperties that allow nested objects", () => {
+    expectAttributeFailure(
+      {
+        description: "Labels",
         type: "object",
-        properties: {
-          locale: {
-            type: "string",
+        additionalProperties: {
+          type: "object",
+          properties: {
+            locale: {
+              type: "string",
+            },
           },
         },
       },
-    });
+      "must stay flat",
+    );
+  });
+
+  it("rejects object properties whose oneOf allows nested objects", () => {
+    expectAttributeFailure(
+      {
+        description: "Account",
+        type: "object",
+        properties: {
+          metadata: {
+            oneOf: [
+              { type: "string" },
+              {
+                type: "object",
+                properties: {
+                  locale: {
+                    type: "string",
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      "must stay flat",
+    );
+  });
+
+  it("rejects object additionalProperties whose oneOf allows nested objects", () => {
+    expectAttributeFailure(
+      {
+        description: "Labels",
+        type: "object",
+        additionalProperties: {
+          oneOf: [
+            { type: "string" },
+            {
+              type: "object",
+              properties: {
+                locale: {
+                  type: "string",
+                },
+              },
+            },
+          ],
+        },
+      },
+      "must stay flat",
+    );
   });
 
   it("rejects non-string item types for array attributes", () => {
