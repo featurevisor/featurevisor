@@ -155,9 +155,7 @@ describe("react: useVariation", function () {
         segments: {
           vip: {
             key: "vip",
-            conditions: JSON.stringify([
-              { attribute: "tier", operator: "equals", value: "gold" },
-            ]),
+            conditions: JSON.stringify([{ attribute: "tier", operator: "equals", value: "gold" }]),
           },
         },
       },

@@ -152,9 +152,7 @@ describe("react: useFlag", function () {
         segments: {
           netherlands: {
             key: "netherlands",
-            conditions: JSON.stringify([
-              { attribute: "country", operator: "equals", value: "nl" },
-            ]),
+            conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
           },
         },
       },
@@ -215,9 +213,7 @@ describe("react: useFlag", function () {
         segments: {
           netherlands: {
             key: "netherlands",
-            conditions: JSON.stringify([
-              { attribute: "country", operator: "equals", value: "nl" },
-            ]),
+            conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
           },
         },
       },

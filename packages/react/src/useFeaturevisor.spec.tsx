@@ -379,9 +379,7 @@ describe("react: useFeaturevisor", function () {
           flags: {
             key: "flags",
             bucketBy: "userId",
-            traffic: [
-              { key: "1", segments: "*", percentage: 100000, allocation: [] },
-            ],
+            traffic: [{ key: "1", segments: "*", percentage: 100000, allocation: [] }],
             variablesSchema: {
               darkMode: { type: "boolean", defaultValue: true },
               maxItems: { type: "integer", defaultValue: 10 },
