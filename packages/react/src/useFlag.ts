@@ -7,22 +7,18 @@ import { onFeatureChange } from "./onFeatureChange";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   const sdk = useSdk();
-  const initialValue = sdk.isEnabled(featureKey, context);
-  const [isEnabled, setIsEnabled] = useState(initialValue);
+  const [isEnabled, setIsEnabled] = useState(() => sdk.isEnabled(featureKey, context));
 
   useEffect(() => {
+    setIsEnabled(sdk.isEnabled(featureKey, context));
+
     const unsubscribe = onFeatureChange(sdk, featureKey, () => {
       const newValue = sdk.isEnabled(featureKey, context);
-
-      if (newValue !== isEnabled) {
-        setIsEnabled(newValue);
-      }
+      setIsEnabled((prev) => (newValue !== prev ? newValue : prev));
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [featureKey, context]);
+    return unsubscribe;
+  }, [sdk, featureKey, context]);
 
   return isEnabled;
 }

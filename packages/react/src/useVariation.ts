@@ -7,22 +7,20 @@ import { onFeatureChange } from "./onFeatureChange";
 
 export function useVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
   const sdk = useSdk();
-  const initialValue = sdk.getVariation(featureKey, context);
-  const [variationValue, setVariationValue] = useState<VariationValue | null>(initialValue);
+  const [variationValue, setVariationValue] = useState<VariationValue | null>(() =>
+    sdk.getVariation(featureKey, context),
+  );
 
   useEffect(() => {
+    setVariationValue(sdk.getVariation(featureKey, context));
+
     const unsubscribe = onFeatureChange(sdk, featureKey, () => {
       const newValue = sdk.getVariation(featureKey, context);
-
-      if (newValue !== variationValue) {
-        setVariationValue(newValue);
-      }
+      setVariationValue((prev) => (newValue !== prev ? newValue : prev));
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [featureKey, context]);
+    return unsubscribe;
+  }, [sdk, featureKey, context]);
 
   return variationValue;
 }

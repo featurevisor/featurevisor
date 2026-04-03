@@ -312,4 +312,103 @@ describe("react: useFeaturevisor", function () {
       expect(screen.getByTestId("cell-beta-widget_off")).toHaveTextContent("false|—|—");
     });
   });
+
+  test("should reflect a new provider instance after swap", function () {
+    const off = getComplexInstance();
+    const on = createInstance({
+      datafile: {
+        schemaVersion: "2",
+        revision: "swap",
+        segments: {},
+        features: {
+          widget_off: {
+            key: "widget_off",
+            bucketBy: "userId",
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 100000] as [number, number] },
+                  { variation: "treatment", range: [0, 0] as [number, number] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    function Probe() {
+      const { isEnabled, getVariation } = useFeaturevisor();
+      const user = { userId: "swap-user" };
+
+      return (
+        <span data-testid="probe">
+          {isEnabled("widget_off", user) ? (getVariation("widget_off", user) ?? "") : "off"}
+        </span>
+      );
+    }
+
+    const { rerender } = render(
+      <FeaturevisorProvider instance={off}>
+        <Probe />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("probe")).toHaveTextContent("off");
+
+    rerender(
+      <FeaturevisorProvider instance={on}>
+        <Probe />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("probe")).toHaveTextContent("control");
+  });
+
+  test("getVariableBoolean and getVariableInteger should read typed helpers", function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "2",
+        revision: "typed",
+        segments: {},
+        features: {
+          flags: {
+            key: "flags",
+            bucketBy: "userId",
+            traffic: [
+              { key: "1", segments: "*", percentage: 100000, allocation: [] },
+            ],
+            variablesSchema: {
+              darkMode: { type: "boolean", defaultValue: true },
+              maxItems: { type: "integer", defaultValue: 10 },
+            },
+            hash: "typed-1",
+          },
+        },
+      },
+    });
+
+    let dark: boolean | null | undefined;
+    let max: number | null | undefined;
+
+    function Reader() {
+      const { getVariableBoolean, getVariableInteger } = useFeaturevisor();
+      dark = getVariableBoolean("flags", "darkMode", { userId: "1" });
+      max = getVariableInteger("flags", "maxItems", { userId: "1" });
+      return <p>ok</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <Reader />
+      </FeaturevisorProvider>,
+    );
+
+    expect(dark).toBe(true);
+    expect(max).toBe(10);
+  });
 });

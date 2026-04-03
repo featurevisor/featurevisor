@@ -72,7 +72,7 @@ describe("react: useVariation", function () {
     expect(screen.getByText("True")).toBeInTheDocument();
   });
 
-  test("should return the variation reactively", function () {
+  test("should return the variation reactively", async function () {
     function TestComponent() {
       const variation = useVariation("test", { userId: "1" });
 
@@ -89,15 +89,193 @@ describe("react: useVariation", function () {
 
     expect(screen.getByText("True")).toBeInTheDocument();
 
-    // set new datafile
-    act(() => {
-      const newDatafile: DatafileContent = getNewDatafile("treatment"); // control => treatment
+    await act(async () => {
+      const newDatafile: DatafileContent = getNewDatafile("treatment");
       f.setDatafile(newDatafile);
     });
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(screen.getByText("False")).toBeInTheDocument();
       expect(screen.queryByText("True")).not.toBeInTheDocument();
+    });
+  });
+
+  test("should default context to an empty object", function () {
+    function TestComponent() {
+      const variation = useVariation("test");
+
+      return <p data-testid="v">{variation ?? "null"}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={getNewInstance()}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("v")).toHaveTextContent("control");
+  });
+
+  test("should update when hook context changes", async function () {
+    const sdk = createInstance({
+      datafile: {
+        schemaVersion: "2",
+        revision: "1.0",
+        features: {
+          test: {
+            key: "test",
+            bucketBy: "userId",
+            variations: [
+              { value: "control", weight: 50 },
+              { value: "treatment", weight: 50 },
+            ],
+            traffic: [
+              {
+                key: "2",
+                segments: ["vip"],
+                percentage: 100000,
+                allocation: [
+                  { variation: "treatment", range: [0, 100000] as [number, number] },
+                  { variation: "control", range: [0, 0] as [number, number] },
+                ],
+              },
+              {
+                key: "1",
+                segments: "*",
+                percentage: 100000,
+                allocation: [
+                  { variation: "control", range: [0, 100000] as [number, number] },
+                  { variation: "treatment", range: [0, 0] as [number, number] },
+                ],
+              },
+            ],
+            hash: "var-ctx-1",
+          },
+        },
+        segments: {
+          vip: {
+            key: "vip",
+            conditions: JSON.stringify([
+              { attribute: "tier", operator: "equals", value: "gold" },
+            ]),
+          },
+        },
+      },
+    });
+
+    function TestComponent({ tier }: { tier: string }) {
+      const variation = useVariation("test", { userId: "same-bucket", tier });
+
+      return <p data-testid="var">{variation}</p>;
+    }
+
+    const { rerender } = render(
+      <FeaturevisorProvider instance={sdk}>
+        <TestComponent tier="standard" />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("var")).toHaveTextContent("control");
+
+    rerender(
+      <FeaturevisorProvider instance={sdk}>
+        <TestComponent tier="gold" />
+      </FeaturevisorProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("var")).toHaveTextContent("treatment");
+    });
+  });
+
+  test("should update when setSticky pins a variation", async function () {
+    const datafileContent: DatafileContent = {
+      schemaVersion: "2",
+      revision: "1.0",
+      features: {
+        test: {
+          key: "test",
+          bucketBy: "userId",
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+              allocation: [
+                { variation: "control", range: [0, 0] as [number, number] },
+                { variation: "treatment", range: [0, 100000] as [number, number] },
+              ],
+            },
+          ],
+          hash: "var-sticky-1",
+        },
+      },
+      segments: {},
+    };
+
+    const sdk = createInstance({ datafile: datafileContent });
+
+    function TestComponent() {
+      const variation = useVariation("test", { userId: "123" });
+
+      return <p data-testid="sticky-var">{variation}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("sticky-var")).toHaveTextContent("treatment");
+
+    await act(async () => {
+      sdk.setSticky({
+        test: {
+          enabled: true,
+          variation: "control",
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("sticky-var")).toHaveTextContent("control");
+    });
+  });
+
+  test("should round-trip control → treatment → control via datafile", async function () {
+    function TestComponent() {
+      const variation = useVariation("test", { userId: "1" });
+
+      return <p data-testid="rt">{variation}</p>;
+    }
+
+    const f = getNewInstance();
+
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("rt")).toHaveTextContent("control");
+
+    await act(async () => {
+      f.setDatafile(getNewDatafile("treatment"));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("rt")).toHaveTextContent("treatment");
+    });
+
+    await act(async () => {
+      f.setDatafile(getNewDatafile("control"));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("rt")).toHaveTextContent("control");
     });
   });
 });

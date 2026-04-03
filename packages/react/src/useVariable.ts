@@ -11,22 +11,20 @@ export function useVariable(
   context: Context = {},
 ): VariableValue | null {
   const sdk = useSdk();
-  const initialValue = sdk.getVariable(featureKey, variableKey, context);
-  const [variableValue, setVariableValue] = useState<VariableValue | null>(initialValue);
+  const [variableValue, setVariableValue] = useState<VariableValue | null>(() =>
+    sdk.getVariable(featureKey, variableKey, context),
+  );
 
   useEffect(() => {
+    setVariableValue(sdk.getVariable(featureKey, variableKey, context));
+
     const unsubscribe = onFeatureChange(sdk, featureKey, () => {
       const newValue = sdk.getVariable(featureKey, variableKey, context);
-
-      if (newValue !== variableValue) {
-        setVariableValue(newValue);
-      }
+      setVariableValue((prev) => (newValue !== prev ? newValue : prev));
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [featureKey, variableKey, context]);
+    return unsubscribe;
+  }, [sdk, featureKey, variableKey, context]);
 
   return variableValue;
 }

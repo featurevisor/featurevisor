@@ -42,6 +42,7 @@ describe("react: useSdk", function () {
   });
 
   test("should return the sdk", function () {
+    const instance = getNewInstance();
     let sdk;
 
     function TestComponent() {
@@ -51,7 +52,7 @@ describe("react: useSdk", function () {
     }
 
     render(
-      <FeaturevisorProvider instance={getNewInstance()}>
+      <FeaturevisorProvider instance={instance}>
         <TestComponent />
       </FeaturevisorProvider>,
     );
@@ -59,5 +60,44 @@ describe("react: useSdk", function () {
     expect(screen.getByText("Test")).toBeInTheDocument();
 
     expect(sdk).toBeDefined();
+    expect(sdk).toBe(instance);
+  });
+
+  test("should return the same reference as the provider instance on each render", function () {
+    const instance = getNewInstance();
+    const refs: unknown[] = [];
+
+    function TestComponent() {
+      refs.push(useSdk());
+      return <p>ok</p>;
+    }
+
+    const { rerender } = render(
+      <FeaturevisorProvider instance={instance}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    rerender(
+      <FeaturevisorProvider instance={instance}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(refs[0]).toBe(instance);
+    expect(refs[1]).toBe(instance);
+  });
+
+  test("should be undefined when used outside FeaturevisorProvider", function () {
+    let sdk: ReturnType<typeof useSdk> | undefined;
+
+    function Orphan() {
+      sdk = useSdk();
+      return <p>orphan</p>;
+    }
+
+    render(<Orphan />);
+
+    expect(sdk).toBeUndefined();
   });
 });
