@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/react",
-  "version": "2.21.0",
+  "version": "2.22.0",
   "description": "React package for Featurevisor",
   "main": "dist/index.js",
   "module": "lib/index.js",

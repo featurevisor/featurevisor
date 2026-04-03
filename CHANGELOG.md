@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.22.0](https://github.com/featurevisor/featurevisor/compare/v2.21.0...v2.22.0) (2026-04-03)
+
+
+### Features
+
+* React hooks for imperative operations ([#401](https://github.com/featurevisor/featurevisor/issues/401)) ([50d6f29](https://github.com/featurevisor/featurevisor/commit/50d6f29d7a1251bb57fd03a99c3f1f21f278ad74))
+
+
+
+
+
 # [2.21.0](https://github.com/featurevisor/featurevisor/compare/v2.20.0...v2.21.0) (2026-03-29)
 
 
