@@ -8,7 +8,3 @@ export function useSdk(): FeaturevisorInstance {
 
   return sdk as FeaturevisorInstance;
 }
-
-export function useFeaturevisor(): FeaturevisorInstance {
-  return useSdk();
-}

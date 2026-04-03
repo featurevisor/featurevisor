@@ -3,15 +3,15 @@ title: React SDK
 nextjs:
   metadata:
     title: React SDK
-    description: Learn how to use Featurevisor SDK with React for evaluating feature flags
+    description: Learn how to use Featurevisor SDK with React for evaluating feature flags, variations, and variables
     openGraph:
       title: React SDK
-      description: Learn how to use Featurevisor SDK with React for evaluating feature flags
+      description: Learn how to use Featurevisor SDK with React for evaluating feature flags, variations, and variables
       images:
         - url: /img/og/docs-react.png
 ---
 
-Featurevisor comes with an additional package for React.js, for ease of integration in your React.js application for evaluating feature flags. {% .lead %}
+Featurevisor comes with an additional package for React.js, for ease of integration in your React.js application for evaluating [features](/docs/features) (including their [flags](/docs/flags), [variations](/docs/variations) and [variables](/docs/variables)). {% .lead %}
 
 ## Installation
 
@@ -59,16 +59,14 @@ The package comes with several hooks to use in your components:
 
 ### useFlag
 
-Check if a feature is enabled or not:
+Check if a feature is [enabled](/docs/flags) or not:
 
 ```jsx
 import React from 'react'
 import { useFlag } from '@featurevisor/react'
 
 function MyComponent(props) {
-  const featureKey = 'myFeatureKey'
-
-  const isEnabled = useFlag(featureKey)
+  const isEnabled = useFlag('myFeatureKey')
 
   if (isEnabled) {
     return <p>Feature is enabled</p>
@@ -80,16 +78,14 @@ function MyComponent(props) {
 
 ### useVariation
 
-Get a feature's evaluated variation:
+Get a feature's evaluated [variation](/docs/variations):
 
 ```jsx
 import React from 'react':
 import { useVariation } from '@featurevisor/react';
 
 function MyComponent(props) {
-  const featureKey = 'myFeatureKey';
-
-  const variation = useVariation(featureKey);
+  const variation = useVariation('myFeatureKey');
 
   if (variation === 'b') {
     return <p>B variation</p>;
@@ -106,17 +102,14 @@ function MyComponent(props) {
 
 ### useVariable
 
-Get a feature's evaluated variable value:
+Get a feature's evaluated [variable](/docs/variables) value:
 
 ```jsx
 import React from 'react':
 import { useVariable } from '@featurevisor/react';
 
 function MyComponent(props) {
-  const featureKey = 'myFeatureKey';
-  const variableKey = 'color';
-
-  const colorValue = useVariable(featureKey, variableKey);
+  const colorValue = useVariable('myFeatureKey', 'color');
 
   return <p>Color: {colorValue}</p>;
 };
@@ -124,14 +117,31 @@ function MyComponent(props) {
 
 ### useFeaturevisor
 
-In case you need to access the underlying Featurevisor SDK instance directly:
+In case you need to access the bound methods of the underlying [JavaScript SDK](/docs/sdks/javascript) instance directly:
 
 ```jsx
 import React from 'react'
 import { useFeaturevisor } from '@featurevisor/react'
 
 function MyComponent(props) {
-  const f = useFeaturevisor()
+  const {
+    isEnabled,
+    getVariation,
+    getVariable,
+
+    getVariableBoolean,
+    getVariableString,
+    getVariableInteger,
+    getVariableDouble,
+    getVariableArray,
+    getVariableObject,
+    getVariableJSON,
+
+    setContext,
+    getContext,
+
+    setSticky,
+  } = useFeaturevisor()
 
   return <p>...</p>
 }
@@ -139,11 +149,22 @@ function MyComponent(props) {
 
 ### useSdk
 
-Alias of `useFeaturevisor` hook.
+If you want to access the full Featurevisor [SDK](/docs/sdks/javascript) instance:
+
+```jsx
+import React from 'react'
+import { useSdk } from '@featurevisor/react'
+
+function MyComponent(props) {
+  const f = useSdk()
+
+  return <p>...</p>
+}
+```
 
 ## Passing additional context
 
-All the evaluation hooks accept an optional argument for passing additional component-level context:
+All the evaluation hooks accept an optional argument for passing additional component-level [context](/docs/sdks/javascript/#context):
 
 ```js
 const context = {
@@ -165,7 +186,7 @@ All the evaluation hooks are reactive. This means that your components will auto
 
 The re-rendering logic is smart enough to compare previously known value with the new evaluated value, and will only re-render the component if the value has changed.
 
-If you do not want any reactivity, you are better off using the Featurevisor SDK instance directly in your component.
+If you do not want any reactivity, you are better off using the Featurevisor SDK instance directly in your component either via `useSdk` or `useFeaturevisor` hooks.
 
 ## Optimization
 

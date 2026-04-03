@@ -6,6 +6,7 @@ export * from "./FeaturevisorProvider";
 
 // hooks
 export * from "./useSdk";
+export * from "./useFeaturevisor";
 export * from "./useVariable";
 export * from "./useVariation";
 export * from "./useFlag";
