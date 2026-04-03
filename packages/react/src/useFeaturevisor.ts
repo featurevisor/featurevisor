@@ -7,6 +7,7 @@ export const BOUND_METHODS = [
   "isEnabled",
   "getVariation",
   "getVariable",
+
   "getVariableBoolean",
   "getVariableString",
   "getVariableInteger",
@@ -14,7 +15,10 @@ export const BOUND_METHODS = [
   "getVariableArray",
   "getVariableObject",
   "getVariableJSON",
+
   "setContext",
+  "getContext",
+
   "setSticky",
 ] as const satisfies readonly (keyof FeaturevisorInstance)[];
 
