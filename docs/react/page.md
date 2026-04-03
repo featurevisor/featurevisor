@@ -3,15 +3,15 @@ title: React SDK
 nextjs:
   metadata:
     title: React SDK
-    description: Learn how to use Featurevisor SDK with React for evaluating feature flags
+    description: Learn how to use Featurevisor SDK with React for evaluating feature flags, variations, and variables
     openGraph:
       title: React SDK
-      description: Learn how to use Featurevisor SDK with React for evaluating feature flags
+      description: Learn how to use Featurevisor SDK with React for evaluating feature flags, variations, and variables
       images:
         - url: /img/og/docs-react.png
 ---
 
-Featurevisor comes with an additional package for React.js, for ease of integration in your React.js application for evaluating [features](/docs/features) and their [variations](/docs/variations) and [variables](/docs/variables). {% .lead %}
+Featurevisor comes with an additional package for React.js, for ease of integration in your React.js application for evaluating [features](/docs/features) (including their [flags](/docs/flags), [variations](/docs/variations) and [variables](/docs/variables)). {% .lead %}
 
 ## Installation
 
@@ -59,7 +59,7 @@ The package comes with several hooks to use in your components:
 
 ### useFlag
 
-Check if a feature is enabled or not:
+Check if a feature is [enabled](/docs/flags) or not:
 
 ```jsx
 import React from 'react'
@@ -78,7 +78,7 @@ function MyComponent(props) {
 
 ### useVariation
 
-Get a feature's evaluated variation:
+Get a feature's evaluated [variation](/docs/variations):
 
 ```jsx
 import React from 'react':
@@ -102,7 +102,7 @@ function MyComponent(props) {
 
 ### useVariable
 
-Get a feature's evaluated variable value:
+Get a feature's evaluated [variable](/docs/variables) value:
 
 ```jsx
 import React from 'react':
@@ -149,7 +149,7 @@ function MyComponent(props) {
 
 ### useSdk
 
-If you want to access the full Featurevisor SDK instance:
+If you want to access the full Featurevisor [SDK](/docs/sdks/javascript) instance:
 
 ```jsx
 import React from 'react'
@@ -164,7 +164,7 @@ function MyComponent(props) {
 
 ## Passing additional context
 
-All the evaluation hooks accept an optional argument for passing additional component-level context:
+All the evaluation hooks accept an optional argument for passing additional component-level [context](/docs/sdks/javascript/#context):
 
 ```js
 const context = {
@@ -186,7 +186,7 @@ All the evaluation hooks are reactive. This means that your components will auto
 
 The re-rendering logic is smart enough to compare previously known value with the new evaluated value, and will only re-render the component if the value has changed.
 
-If you do not want any reactivity, you are better off using the Featurevisor SDK instance directly in your component either via `useFeaturevisor` or `useSdk` hooks.
+If you do not want any reactivity, you are better off using the Featurevisor SDK instance directly in your component either via `useSdk` or `useFeaturevisor` hooks.
 
 ## Optimization
 
