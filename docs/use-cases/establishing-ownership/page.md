@@ -64,6 +64,24 @@ features/my_feature.yml @my-team @another-team
 Even though the examples above only mention setting up rules for features, you can do the same for [segments](/docs/segments) and [attributes](/docs/attributes) as well since everything is expressed as files in the Git repository.
 {% /callout %}
 
+### Ownership by environment
+
+One of the lesser known functionalities of Featurevisor is [splitting](/docs/environments/#split-by-environment) your feature's rules by environment in separate files.
+
+This becomes useful when you have a different set of owners for each environment. For example, your QA team having final say on when something gets rolled out from staging to production.
+
+In that case, the `CODEOWNERS` file can be defined as follows:
+
+```{% path="./.github/CODEOWNERS" %}
+features/payment_*.yml @payments-team
+environments/staging/payment_*.yml @payments-team
+
+# leave production rules for QA team to handle
+environments/production/payment_*.yml @qa-team
+```
+
+Learn more in [Environments](/docs/environments) page.
+
 ## Note about branch protection
 
 To ensure that the code owner's review is mandatory, you can set up branch protection rules.
