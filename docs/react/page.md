@@ -57,67 +57,9 @@ ReactDOM.render(
 
 The package comes with several hooks to use in your components:
 
-### useFlag
-
-Check if a feature is [enabled](/docs/flags) or not:
-
-```jsx
-import React from 'react'
-import { useFlag } from '@featurevisor/react'
-
-function MyComponent(props) {
-  const isEnabled = useFlag('myFeatureKey')
-
-  if (isEnabled) {
-    return <p>Feature is enabled</p>
-  }
-
-  return <p>Feature is disabled</p>
-}
-```
-
-### useVariation
-
-Get a feature's evaluated [variation](/docs/variations):
-
-```jsx
-import React from 'react':
-import { useVariation } from '@featurevisor/react';
-
-function MyComponent(props) {
-  const variation = useVariation('myFeatureKey');
-
-  if (variation === 'b') {
-    return <p>B variation</p>;
-  }
-
-  if (variation === 'c') {
-    return <p>C variation</p>;
-  }
-
-  // default
-  return <p>Default experience</p>;
-};
-```
-
-### useVariable
-
-Get a feature's evaluated [variable](/docs/variables) value:
-
-```jsx
-import React from 'react':
-import { useVariable } from '@featurevisor/react';
-
-function MyComponent(props) {
-  const colorValue = useVariable('myFeatureKey', 'color');
-
-  return <p>Color: {colorValue}</p>;
-};
-```
-
 ### useFeaturevisor
 
-In case you need to access the bound methods of the underlying [JavaScript SDK](/docs/sdks/javascript) instance directly:
+To access the bound methods coming from the underlying [JavaScript SDK](/docs/sdks/javascript) instance:
 
 ```jsx
 import React from 'react'
@@ -145,6 +87,70 @@ function MyComponent(props) {
 
   return <p>...</p>
 }
+```
+
+Learn more about the API from original [JavaScript SDK](/docs/sdks/javascript) documentation.
+
+The functions returned from the hook will not trigger any re-renders of the component if the [datafile](/docs/sdks/javascript/#setting-datafile) or [context](/docs/sdks/javascript/#context) changes at the instance level.
+
+The ones below are reactive.
+
+### useFlag
+
+Check if a feature is [enabled](/docs/flags) or not:
+
+```jsx
+import React from 'react'
+import { useFlag } from '@featurevisor/react'
+
+function MyComponent(props) {
+  const isEnabled = useFlag('myFeatureKey')
+
+  if (isEnabled) {
+    return <p>Feature is enabled</p>
+  }
+
+  return <p>Feature is disabled</p>
+}
+```
+
+### useVariation
+
+Get a feature's evaluated [variation](/docs/variations):
+
+```jsx
+import React from 'react'
+import { useVariation } from '@featurevisor/react'
+
+function MyComponent(props) {
+  const variation = useVariation('myFeatureKey')
+
+  if (variation === 'b') {
+    return <p>B variation</p>;
+  }
+
+  if (variation === 'c') {
+    return <p>C variation</p>;
+  }
+
+  // default
+  return <p>Default experience</p>;
+};
+```
+
+### useVariable
+
+Get a feature's evaluated [variable](/docs/variables) value:
+
+```jsx
+import React from 'react':
+import { useVariable } from '@featurevisor/react'
+
+function MyComponent(props) {
+  const colorValue = useVariable('myFeatureKey', 'color')
+
+  return <p>Color: {colorValue}</p>;
+};
 ```
 
 ### useSdk
