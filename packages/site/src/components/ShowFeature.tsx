@@ -192,7 +192,7 @@ export function DisplayFeatureForce() {
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
       title: environmentKey,
-      to: `/features/${feature.key}/force/${environmentKey}`,
+      to: `/features/${encodeURIComponent(feature.key)}/force/${environmentKey}`,
     };
   });
 
@@ -315,7 +315,7 @@ export function DisplayFeatureRules() {
   const environmentTabs = environmentKeys.map((environmentKey) => {
     return {
       title: environmentKey,
-      to: `/features/${feature.key}/rules/${environmentKey}`,
+      to: `/features/${encodeURIComponent(feature.key)}/rules/${environmentKey}`,
     };
   });
 
