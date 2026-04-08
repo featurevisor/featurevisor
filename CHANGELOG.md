@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.22.1](https://github.com/featurevisor/featurevisor/compare/v2.22.0...v2.22.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* namespaced feature environment links in status site ([#402](https://github.com/featurevisor/featurevisor/issues/402)) ([6850e92](https://github.com/featurevisor/featurevisor/commit/6850e922759f4130bb833eeefa8434b6f82c53de))
+
+
+
+
+
 # [2.22.0](https://github.com/featurevisor/featurevisor/compare/v2.21.0...v2.22.0) (2026-04-03)
 
 
