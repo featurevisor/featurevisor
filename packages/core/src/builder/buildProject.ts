@@ -28,6 +28,17 @@ export interface BuildCLIOptions {
   scope?: string; // scope name only
 }
 
+function getFeaturevisorVersion(): string {
+  try {
+    const cliPackage = require(require.resolve("@featurevisor/cli/package.json"));
+
+    return cliPackage.version;
+    // eslint-disable-next-line
+  } catch (error) {
+    return "unknown";
+  }
+}
+
 async function buildForEnvironment({
   projectConfig,
   datasource,
@@ -48,6 +59,7 @@ async function buildForEnvironment({
   console.log(`\nBuilding datafiles for environment: ${environment}`);
 
   const existingState = await datasource.readState(environment);
+  const featurevisorVersion = getFeaturevisorVersion();
 
   // by tag
   for (const tag of tags) {
@@ -63,6 +75,7 @@ async function buildForEnvironment({
         environment: environment,
         tag: tag,
         inflate: cliOptions.inflate,
+        featurevisorVersion,
       },
       existingState,
     );
@@ -91,6 +104,7 @@ async function buildForEnvironment({
           tag: scope.tag,
           tags: scope.tags,
           inflate: cliOptions.inflate,
+          featurevisorVersion,
         },
         existingState,
       );
