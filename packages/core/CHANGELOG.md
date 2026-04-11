@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.23.0](https://github.com/featurevisor/featurevisor/compare/v2.22.1...v2.23.0) (2026-04-11)
+
+
+### Features
+
+* version in datafile ([#403](https://github.com/featurevisor/featurevisor/issues/403)) ([63af886](https://github.com/featurevisor/featurevisor/commit/63af886bd19e9ef764e95855c3c1da41fb87a792))
+
+
+
+
+
 ## [2.22.1](https://github.com/featurevisor/featurevisor/compare/v2.22.0...v2.22.1) (2026-04-08)
 
 **Note:** Version bump only for package @featurevisor/core

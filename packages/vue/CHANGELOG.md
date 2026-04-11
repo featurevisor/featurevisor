@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.23.0](https://github.com/featurevisor/featurevisor/compare/v2.22.1...v2.23.0) (2026-04-11)
+
+**Note:** Version bump only for package @featurevisor/vue
+
+
+
+
+
 # [2.21.0](https://github.com/featurevisor/featurevisor/compare/v2.20.0...v2.21.0) (2026-03-29)
 
 **Note:** Version bump only for package @featurevisor/vue
