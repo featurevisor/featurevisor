@@ -89,6 +89,7 @@ export type BuildTags = BuildOrTags | BuildAndTags | string[];
 export interface BuildOptions {
   schemaVersion: string;
   revision: string;
+  featurevisorVersion?: string;
   revisionFromHash?: boolean;
   environment: string | false;
   tag?: string;
@@ -582,6 +583,7 @@ export async function buildDatafile(
   // schema v2
   const datafileContentV2: DatafileContent = {
     schemaVersion: "2",
+    featurevisorVersion: options.featurevisorVersion,
     revision: options.revision,
     segments: {},
     features: {},
