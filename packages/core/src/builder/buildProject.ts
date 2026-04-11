@@ -33,6 +33,7 @@ function getFeaturevisorVersion(): string {
     const cliPackage = require(require.resolve("@featurevisor/cli/package.json"));
 
     return cliPackage.version;
+    // eslint-disable-next-line
   } catch (error) {
     return "unknown";
   }
