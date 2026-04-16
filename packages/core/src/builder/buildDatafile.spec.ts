@@ -3,9 +3,9 @@ import * as os from "os";
 import * as path from "path";
 
 import type { DatafileContent, ExistingState, ParsedFeature } from "@featurevisor/types";
+import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
-import { parsers } from "../parsers";
 import { buildDatafile } from "./buildDatafile";
 
 function createProjectConfig(root: string, stringify = true): ProjectConfig {

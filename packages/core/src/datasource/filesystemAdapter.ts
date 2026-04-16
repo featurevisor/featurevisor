@@ -16,10 +16,10 @@ import type {
   Force,
   Rule,
 } from "@featurevisor/types";
+import type { CustomParser } from "@featurevisor/parsers";
 
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig } from "../config";
-import { CustomParser } from "../parsers";
 import { getCommit } from "../utils/git";
 
 const FEATURE_ENVIRONMENT_ALLOWED_KEYS = ["rules", "force", "expose"];
