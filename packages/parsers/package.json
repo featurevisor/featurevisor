@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/parsers",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "description": "Parsers package of Featurevisor",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
