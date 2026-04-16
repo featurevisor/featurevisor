@@ -1678,12 +1678,16 @@ export function getFeatureZodSchema(
       expose:
         projectConfig.environments === false
           ? exposeSchema.optional()
-          : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema).optional(),
+          : z
+              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
+              .optional(),
 
       force:
         projectConfig.environments === false
           ? forceSchema
-          : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
+          : z
+              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema)
+              .optional(),
 
       rules:
         projectConfig.environments === false
