@@ -74,7 +74,7 @@ function getSegmentSchema() {
   return getSegmentZodSchema(projectConfig, conditionsZodSchema);
 }
 
-function parseSegment(input: unknown): z.SafeParseReturnType<unknown, unknown> {
+function parseSegment(input: unknown): z.ZodSafeParseResult<unknown> {
   return getSegmentSchema().safeParse(input);
 }
 
@@ -82,7 +82,7 @@ function expectSegmentSuccess(input: unknown): void {
   const result = parseSegment(input);
   expect(result.success).toBe(true);
   if (!result.success) {
-    const err = (result as z.SafeParseError<unknown>).error;
+    const err = (result as z.ZodSafeParseError<unknown>).error;
     const msg = err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
     throw new Error(`Expected segment to pass: ${msg}`);
   }
@@ -92,7 +92,7 @@ function expectSegmentFailure(input: unknown, messageSubstring?: string): z.ZodE
   const result = parseSegment(input);
   expect(result.success).toBe(false);
   if (result.success) throw new Error("Expected segment to fail");
-  const err = (result as z.SafeParseError<unknown>).error;
+  const err = (result as z.ZodSafeParseError<unknown>).error;
   if (messageSubstring) {
     const messages = err.issues
       .map((i) => (typeof i.message === "string" ? i.message : ""))
@@ -134,7 +134,7 @@ describe("segmentSchema.ts :: getSegmentZodSchema", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        const err = (result as z.SafeParseError<unknown>).error;
+        const err = (result as z.ZodSafeParseError<unknown>).error;
         const path = err.issues.map((i) => i.path.join(".")).join(" ");
         expect(path).toContain("description");
       }
@@ -346,7 +346,7 @@ describe("segmentSchema.ts :: getSegmentZodSchema", () => {
         extraKey: true,
       });
       expect(result.success).toBe(false);
-      const err = (result as z.SafeParseError<unknown>).error;
+      const err = (result as z.ZodSafeParseError<unknown>).error;
       const messages = err.issues
         .map((i) => (typeof i.message === "string" ? i.message : ""))
         .join(" ");

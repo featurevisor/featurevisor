@@ -5,6 +5,7 @@ coverage
 dist
 out
 specs
+tmp
 
 .DS_Store
 

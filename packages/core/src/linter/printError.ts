@@ -1,4 +1,4 @@
-import { ZodError } from "zod";
+import { ZodError, ZodIssue } from "zod";
 
 import { CLI_FORMAT_RED } from "../tester/cliFormat";
 
@@ -9,20 +9,37 @@ export interface LintIssueFromZod {
   value?: unknown;
 }
 
+function normalizePath(path: PropertyKey[]): (string | number)[] {
+  return path.map((segment) => (typeof segment === "symbol" ? String(segment) : segment));
+}
+
+function getInvalidUnionIssue(issue: ZodIssue): ZodIssue | undefined {
+  if (issue.code !== "invalid_union" || issue.path.length > 0) {
+    return undefined;
+  }
+
+  const unionErrors = (issue as any).unionErrors as ZodError[] | undefined;
+  if (Array.isArray(unionErrors) && unionErrors.length > 0) {
+    return unionErrors[unionErrors.length - 1].issues[0];
+  }
+
+  const errors = (issue as any).errors as ZodIssue[][] | undefined;
+  if (Array.isArray(errors) && errors.length > 0) {
+    return errors[errors.length - 1][0];
+  }
+
+  return undefined;
+}
+
 export function getLintIssuesFromZodError(e: ZodError): LintIssueFromZod[] {
   return e.issues
     .map((issue) => {
-      if (
-        issue.code === "invalid_union" &&
-        issue.path.length === 0 &&
-        issue.unionErrors.length > 0
-      ) {
-        const lastUnionError = issue.unionErrors[issue.unionErrors.length - 1];
-        const nestedIssue = lastUnionError.issues[0];
+      const nestedIssue = getInvalidUnionIssue(issue);
 
+      if (nestedIssue) {
         return {
           message: nestedIssue.message,
-          path: nestedIssue.path,
+          path: normalizePath(nestedIssue.path),
           code: nestedIssue.code,
           value: (nestedIssue as any).received,
         };
@@ -30,7 +47,7 @@ export function getLintIssuesFromZodError(e: ZodError): LintIssueFromZod[] {
 
       return {
         message: issue.message,
-        path: issue.path,
+        path: normalizePath(issue.path),
         code: issue.code,
         value: (issue as any).received,
       };
