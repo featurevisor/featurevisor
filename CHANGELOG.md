@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.25.0](https://github.com/featurevisor/featurevisor/compare/v2.24.0...v2.25.0) (2026-04-16)
+
+
+### Features
+
+* use parsers in core ([#406](https://github.com/featurevisor/featurevisor/issues/406)) ([a245e36](https://github.com/featurevisor/featurevisor/commit/a245e36a229b8f04faa0d01506bc7c8b08b57d2f))
+
+
+
+
+
 # [2.24.0](https://github.com/featurevisor/featurevisor/compare/v2.23.0...v2.24.0) (2026-04-16)
 
 
