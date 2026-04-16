@@ -115,7 +115,7 @@ function getConditionsSchema() {
   return getConditionsZodSchema(minimalProjectConfig(), TEST_ATTRIBUTES);
 }
 
-function parseConditions(input: unknown): z.SafeParseReturnType<unknown, unknown> {
+function parseConditions(input: unknown): z.ZodSafeParseResult<unknown> {
   return getConditionsSchema().safeParse(input);
 }
 
@@ -123,7 +123,7 @@ function expectConditionsSuccess(input: unknown): void {
   const result = parseConditions(input);
   expect(result.success).toBe(true);
   if (!result.success) {
-    const err = (result as z.SafeParseError<unknown>).error;
+    const err = (result as z.ZodSafeParseError<unknown>).error;
     const msg = err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
     throw new Error(`Expected conditions to pass: ${msg}`);
   }
@@ -133,7 +133,7 @@ function expectConditionsFailure(input: unknown, messageSubstring?: string): z.Z
   const result = parseConditions(input);
   expect(result.success).toBe(false);
   if (result.success) throw new Error("Expected conditions to fail");
-  const err = (result as z.SafeParseError<unknown>).error;
+  const err = (result as z.ZodSafeParseError<unknown>).error;
   if (messageSubstring) {
     const messages = err.issues
       .map((i) => (typeof i.message === "string" ? i.message : ""))

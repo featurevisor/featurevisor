@@ -12,6 +12,7 @@ import {
   refineStringLengthPattern,
   refineArrayItems,
 } from "./schema";
+import { refineWithMessage } from "./zodHelpers";
 
 const tagRegex = /^[a-z0-9-]+$/;
 
@@ -1306,7 +1307,7 @@ export function getFeatureZodSchema(
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
   const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
-  const overridePathMapValueZodSchema = z.record(variableValueOrNullZodSchema);
+  const overridePathMapValueZodSchema = z.record(z.string(), variableValueOrNullZodSchema);
   const overrideValueZodSchema = z.union([
     variableValueOrNullZodSchema,
     overridePathMapValueZodSchema,
@@ -1314,11 +1315,10 @@ export function getFeatureZodSchema(
 
   const variationValueZodSchema = z.string().min(1);
 
-  const plainGroupSegment = z.string().refine(
+  const plainGroupSegment = refineWithMessage(
+    z.string(),
     (value) => value === "*" || availableSegmentKeys.includes(value),
-    (value) => ({
-      message: `Unknown segment key "${value}"`,
-    }),
+    (value) => `Unknown segment key "${value}"`,
   );
 
   const andOrNotGroupSegment = z.union([
@@ -1358,9 +1358,10 @@ export function getFeatureZodSchema(
 
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
-          variables: z.record(variableValueOrNullZodSchema).optional(),
+          variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
           variableOverrides: z
             .record(
+              z.string(),
               z.array(
                 z.union([
                   z
@@ -1379,44 +1380,46 @@ export function getFeatureZodSchema(
               ),
             )
             .optional(),
-          variationWeights: z.record(z.number().min(0).max(100)).optional(),
+          variationWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
         })
         .strict(),
     )
 
     // must have at least one rule
-    .refine(
-      (value) => value.length > 0,
-      () => ({
-        message: "Must have at least one rule",
-      }),
-    )
+    .superRefine((value, ctx) => {
+      if (value.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Must have at least one rule",
+        });
+      }
+    })
 
     // duplicate rules
-    .refine(
-      (value) => {
-        const keys = value.map((v) => v.key);
-        return keys.length === new Set(keys).size;
-      },
-      (value) => ({
-        message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
-      }),
-    )
+    .superRefine((value, ctx) => {
+      const keys = value.map((v) => v.key);
+      if (keys.length !== new Set(keys).size) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
+        });
+      }
+    })
 
     // enforce catch-all rule
-    .refine(
-      (value) => {
-        if (!projectConfig.enforceCatchAllRule) {
-          return true;
-        }
+    .superRefine((value, ctx) => {
+      if (!projectConfig.enforceCatchAllRule) {
+        return;
+      }
 
-        const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
-        return hasCatchAllAsLastRule;
-      },
-      () => ({
-        message: `Missing catch-all rule with \`segments: "*"\` at the end`,
-      }),
-    );
+      const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
+      if (!hasCatchAllAsLastRule) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Missing catch-all rule with \`segments: "*"\` at the end`,
+        });
+      }
+    });
 
   const forceSchema = z
     .array(
@@ -1426,7 +1429,7 @@ export function getFeatureZodSchema(
             segments: groupSegmentsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueOrNullZodSchema).optional(),
+            variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
           })
           .strict(),
         z
@@ -1434,25 +1437,23 @@ export function getFeatureZodSchema(
             conditions: conditionsZodSchema,
             enabled: z.boolean().optional(),
             variation: variationValueZodSchema.optional(),
-            variables: z.record(variableValueOrNullZodSchema).optional(),
+            variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
           })
           .strict(),
       ]),
     )
     .optional();
 
-  const attributeKeyZodSchema = z.string().refine(
+  const attributeKeyZodSchema = refineWithMessage(
+    z.string(),
     (value) => value === "*" || availableAttributeKeys.includes(value),
-    (value) => ({
-      message: `Unknown attribute "${value}"`,
-    }),
+    (value) => `Unknown attribute "${value}"`,
   );
 
-  const featureKeyZodSchema = z.string().refine(
+  const featureKeyZodSchema = refineWithMessage(
+    z.string(),
     (value) => availableFeatureKeys.includes(value),
-    (value) => ({
-      message: `Unknown feature "${value}"`,
-    }),
+    (value) => `Unknown feature "${value}"`,
   );
 
   const environmentKeys = projectConfig.environments || [];
@@ -1465,21 +1466,21 @@ export function getFeatureZodSchema(
 
       tags: z
         .array(
-          z.string().refine(
+          refineWithMessage(
+            z.string(),
             (value) => tagRegex.test(value),
-            (value) => ({
-              message: `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
-            }),
+            (value) =>
+              `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
           ),
         )
-        .refine(
-          (value) => {
-            return value.length === new Set(value).size;
-          },
-          (value) => ({
-            message: "Duplicate tags found: " + value.join(", "),
-          }),
-        ),
+        .superRefine((value, ctx) => {
+          if (value.length !== new Set(value).size) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Duplicate tags found: " + value.join(", "),
+            });
+          }
+        }),
 
       required: z
         .array(
@@ -1507,23 +1508,22 @@ export function getFeatureZodSchema(
 
       variablesSchema: z
         .record(
+          z.string(),
           z
             .object({
               deprecated: z.boolean().optional(),
 
               // Reference to a reusable schema (mutually exclusive with type/properties/required/items)
-              schema: z
-                .string()
-                .refine(
-                  (value) => availableSchemaKeys.includes(value),
-                  (value) => ({ message: `Unknown schema "${value}"` }),
-                )
-                .optional(),
+              schema: refineWithMessage(
+                z.string(),
+                (value) => availableSchemaKeys.includes(value),
+                (value) => `Unknown schema "${value}"`,
+              ).optional(),
 
               // Inline schema (mutually exclusive with schema)
               type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
               items: schemaZodSchema.optional(),
-              properties: z.record(schemaZodSchema).optional(),
+              properties: z.record(z.string(), schemaZodSchema).optional(),
               additionalProperties: schemaZodSchema.optional(),
               required: z.array(z.string()).optional(),
               enum: z.array(variableValueZodSchema).optional(),
@@ -1639,9 +1639,10 @@ export function getFeatureZodSchema(
               description: z.string().optional(),
               value: variationValueZodSchema,
               weight: z.number().min(0).max(100),
-              variables: z.record(variableValueOrNullZodSchema).optional(),
+              variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
               variableOverrides: z
                 .record(
+                  z.string(),
                   z.array(
                     z.union([
                       z
@@ -1663,31 +1664,35 @@ export function getFeatureZodSchema(
             })
             .strict(),
         )
-        .refine(
-          (value) => {
-            const variationValues = value.map((v) => v.value);
-            return variationValues.length === new Set(variationValues).size;
-          },
-          (value) => ({
-            message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
-          }),
-        )
+        .superRefine((value, ctx) => {
+          const variationValues = value.map((v) => v.value);
+          if (variationValues.length !== new Set(variationValues).size) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
+            });
+          }
+        })
         .optional(),
 
       expose:
         projectConfig.environments === false
           ? exposeSchema.optional()
-          : z.record(z.enum(environmentKeys as [string, ...string[]]), exposeSchema).optional(),
+          : z
+              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
+              .optional(),
 
       force:
         projectConfig.environments === false
           ? forceSchema
-          : z.record(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
+          : z
+              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema)
+              .optional(),
 
       rules:
         projectConfig.environments === false
           ? rulesSchema
-          : z.record(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
+          : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
     })
     .strict()
     .superRefine((value, ctx) => {

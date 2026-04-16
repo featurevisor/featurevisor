@@ -1,6 +1,8 @@
 import type { Schema, SchemaKey, Value } from "@featurevisor/types";
 import { z } from "zod";
 
+import { refineWithMessage } from "./zodHelpers";
+
 /** Returns true if value matches the schema type. */
 function valueMatchesType(v: unknown, type: string): boolean {
   switch (type) {
@@ -460,15 +462,11 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         additionalProperties: schemaZodSchema.optional(),
         // Annotations: default?: Value; examples?: Value[];
 
-        schema: z
-          .string()
-          .refine(
-            (value) => schemaKeys.includes(value),
-            (value) => ({
-              message: `Unknown schema "${value}"`,
-            }),
-          )
-          .optional(),
+        schema: refineWithMessage(
+          z.string(),
+          (value) => schemaKeys.includes(value),
+          (value) => `Unknown schema "${value}"`,
+        ).optional(),
         oneOf: z.array(schemaZodSchema).min(2).optional(),
       })
       .strict()

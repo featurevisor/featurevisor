@@ -20,13 +20,13 @@ function createTempSplitProject() {
 
   fs.writeFileSync(
     path.join(tempRoot, "featurevisor.config.js"),
-    [
-      "module.exports = {",
-      "  environments: ['staging', 'production'],",
-      "  splitByEnvironment: true,",
-      "  tags: ['all'],",
-      "};",
-    ].join("\n"),
+    `
+module.exports = {
+  environments: ['staging', 'production'],
+  splitByEnvironment: true,
+  tags: ['all'],
+};
+`.trimStart(),
     "utf8",
   );
 
@@ -36,23 +36,44 @@ function createTempSplitProject() {
 
   fs.writeFileSync(
     path.join(tempRoot, "features", "foo.yml"),
-    ["key: foo", "description: Foo", "tags:", "  - all", "bucketBy: userId"].join("\n"),
+    `
+key: foo
+description: Foo
+tags:
+  - all
+bucketBy: userId
+`.trimStart(),
     "utf8",
   );
 
   fs.writeFileSync(
     path.join(tempRoot, "environments", "staging", "foo.yml"),
-    ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
+    `
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 100
+`.trimStart(),
     "utf8",
   );
 
   fs.writeFileSync(
     path.join(tempRoot, "environments", "production", "foo.yml"),
-    ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 0"].join("\n"),
+    `
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 0
+`.trimStart(),
     "utf8",
   );
 
   return tempRoot;
+}
+
+function replaceInFile(filePath: string, search: string, replacement: string) {
+  const contents = fs.readFileSync(filePath, "utf8");
+  fs.writeFileSync(filePath, contents.replace(search, replacement), "utf8");
 }
 
 function getDeps(rootDirectoryPath: string) {
@@ -91,7 +112,10 @@ describe("core: lintProject", function () {
   it("returns structured errors in JSON mode", async () => {
     fs.writeFileSync(
       path.join(tempProjectPath, "attributes", "invalid name.yml"),
-      "description: this has an invalid key name\ntype: string\n",
+      `
+description: this has an invalid key name
+type: string
+`.trimStart(),
       "utf8",
     );
 
@@ -112,6 +136,83 @@ describe("core: lintProject", function () {
     });
 
     expect(result.errors[0].filePath).toContain("attributes");
+  });
+
+  it("reports real example-1 segment, feature, and test schema mistakes with useful paths", async () => {
+    replaceInFile(
+      path.join(tempProjectPath, "segments", "desktop.yml"),
+      `
+conditions:
+  - attribute: device
+    operator: equals
+    value: desktop
+`.trimStart(),
+      `
+conditions:
+  - attribute: device
+    operator: equals
+    value: desktop
+  - attribute: notARealAttribute
+    operator: equals
+    value: nope
+`.trimStart(),
+    );
+
+    replaceInFile(
+      path.join(tempProjectPath, "features", "withSchema.yml"),
+      `
+  singleLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: /
+`.trimStart(),
+      `
+  singleLink:
+    schema: link
+    defaultValue:
+      title: Home
+      url: 123
+`.trimStart(),
+    );
+
+    replaceInFile(
+      path.join(tempProjectPath, "tests", "features", "withSchema.spec.yml"),
+      "    environment: staging",
+      "    environment: qa",
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result.hasError).toBe(true);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: expect.stringContaining(path.join("segments", "desktop.yml")),
+          entityType: "segment",
+          key: "desktop",
+          message: 'Unknown attribute "notARealAttribute"',
+          path: ["conditions", 1, "attribute"],
+          code: "custom",
+        }),
+        expect.objectContaining({
+          filePath: expect.stringContaining(path.join("features", "withSchema.yml")),
+          entityType: "feature",
+          key: "withSchema",
+          message: 'Variable "url" (type string) must be a string; got number.',
+          path: ["variablesSchema", "singleLink", "defaultValue", "url"],
+          code: "custom",
+        }),
+        expect.objectContaining({
+          filePath: expect.stringContaining(path.join("tests", "features", "withSchema.spec.yml")),
+          entityType: "test",
+          key: "features/withSchema.spec",
+          message: 'Unknown environment "qa"',
+          path: ["assertions", 0, "environment"],
+          code: "custom",
+        }),
+      ]),
+    );
   });
 
   it("plugin prints pretty JSON only once in --json --pretty mode", async () => {
@@ -135,7 +236,9 @@ describe("core: lintProject", function () {
   it("does not call process.exit for zod validation errors while linting tests", async () => {
     fs.writeFileSync(
       path.join(tempProjectPath, "tests", "broken.spec.yml"),
-      "feature: foo\n",
+      `
+feature: foo
+`.trimStart(),
       "utf8",
     );
 
@@ -170,7 +273,12 @@ describe("core: lintProject", function () {
     const splitProjectPath = createTempSplitProject();
     fs.writeFileSync(
       path.join(splitProjectPath, "environments", "staging", "foo.yml"),
-      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: invalid"].join("\n"),
+      `
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: invalid
+`.trimStart(),
       "utf8",
     );
 

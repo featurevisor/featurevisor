@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
 
-function parseAttribute(input: unknown): z.SafeParseReturnType<unknown, unknown> {
+function parseAttribute(input: unknown): z.ZodSafeParseResult<unknown> {
   return getAttributeZodSchema().safeParse(input);
 }
 
@@ -10,7 +10,7 @@ function expectAttributeSuccess(input: unknown): void {
   const result = parseAttribute(input);
   expect(result.success).toBe(true);
   if (!result.success) {
-    const error = (result as z.SafeParseError<unknown>).error;
+    const error = (result as z.ZodSafeParseError<unknown>).error;
     const msg = error.issues.map((issue) => issue.message).join("; ");
     throw new Error(`Expected attribute to pass: ${msg}`);
   }
@@ -23,7 +23,7 @@ function expectAttributeFailure(input: unknown, messageSubstring?: string): z.Zo
     throw new Error("Expected attribute to fail");
   }
 
-  const error = (result as z.SafeParseError<unknown>).error;
+  const error = (result as z.ZodSafeParseError<unknown>).error;
 
   if (messageSubstring) {
     const messages = error.issues.map((issue) => issue.message).join(" ");

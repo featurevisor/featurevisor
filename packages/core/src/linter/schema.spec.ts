@@ -18,12 +18,13 @@ import {
 /** Build a refinement context that collects issues for assertion. */
 function createRefinementCtx(): { issues: z.ZodIssue[]; ctx: z.RefinementCtx } {
   const issues: z.ZodIssue[] = [];
-  const ctx: z.RefinementCtx = {
-    path: [],
-    addIssue(issue: z.ZodIssue) {
-      issues.push(issue);
+  const ctx = {
+    addIssue(issue: Parameters<z.RefinementCtx["addIssue"]>[0]) {
+      if (typeof issue !== "string") {
+        issues.push(issue as z.ZodIssue);
+      }
     },
-  };
+  } as z.RefinementCtx;
   return { issues, ctx };
 }
 
@@ -440,7 +441,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     const Schema = getSchemaZodSchema(["link", "color"]);
     const result = Schema.safeParse({ schema: "nonexistent" });
     expect(result.success).toBe(false);
-    const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+    const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
     expect(err?.issues.some((i) => i.message === 'Unknown schema "nonexistent"')).toBe(true);
   });
 
@@ -456,7 +457,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       oneOf: [{ type: "string" }],
     });
     expect(result.success).toBe(false);
-    const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+    const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
     const msg =
       err?.issues.map((i) => (typeof i.message === "string" ? i.message : "")).join(" ") ?? "";
     expect(msg).toMatch(/array|length|minimum|oneOf|element/i);
@@ -474,7 +475,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     const Schema = getSchemaZodSchema([]);
     const result = Schema.safeParse({ type: "array" });
     expect(result.success).toBe(false);
-    const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+    const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
     expect(
       err?.issues.some(
         (i) =>
@@ -501,7 +502,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       enum: ["a", 42, "c"],
     });
     expect(result.success).toBe(false);
-    const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+    const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
     expect(
       err?.issues.some(
         (i) => typeof i.message === "string" && i.message.includes("does not match type"),
@@ -622,7 +623,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       const Schema = getSchemaZodSchema(schemaKeys);
       const result = Schema.safeParse(invalidSchema);
       expect(result.success).toBe(false);
-      const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+      const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
       expect(err).not.toBeNull();
       const messages = (err?.issues ?? [])
         .map((i) => (typeof i.message === "string" ? i.message : ""))
@@ -679,7 +680,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
       const Schema = getSchemaZodSchema([]);
       const result = Schema.safeParse({ type: "string", invalidKey: true });
       expect(result.success).toBe(false);
-      const err = !result.success ? (result as z.SafeParseError<unknown>).error : null;
+      const err = !result.success ? (result as z.ZodSafeParseError<unknown>).error : null;
       const messages = (err?.issues ?? [])
         .map((i) => (typeof i.message === "string" ? i.message : ""))
         .join(" ");

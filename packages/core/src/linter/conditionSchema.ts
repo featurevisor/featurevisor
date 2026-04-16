@@ -2,6 +2,7 @@ import type { Attribute, AttributeProperty, Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
+import { refineWithMessage } from "./zodHelpers";
 
 const commonOperators: [string, ...string[]] = ["equals", "notEquals"];
 const numericOperators = ["greaterThan", "greaterThanOrEquals", "lessThan", "lessThanOrEquals"];
@@ -551,11 +552,10 @@ export function getConditionsZodSchema(
 ) {
   const plainConditionZodSchema = z
     .object({
-      attribute: z.string().refine(
+      attribute: refineWithMessage(
+        z.string(),
         (value) => resolveAttributePath(value, attributesByKey, schemasByKey) !== null,
-        (value) => ({
-          message: `Unknown attribute "${value}"`,
-        }),
+        (value) => `Unknown attribute "${value}"`,
       ),
       operator: z.enum([
         ...commonOperators,

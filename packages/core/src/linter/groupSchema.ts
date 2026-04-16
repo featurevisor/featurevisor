@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { refineWithMessage } from "./zodHelpers";
 
 export function getGroupZodSchema(
   projectConfig: ProjectConfig,
@@ -15,19 +16,17 @@ export function getGroupZodSchema(
         .array(
           z
             .object({
-              feature: z
-                .string()
-                .optional()
-                .refine(
-                  (value) => {
-                    if (value && availableFeatureKeys.indexOf(value) === -1) {
-                      return false;
-                    }
+              feature: refineWithMessage(
+                z.string().optional(),
+                (value) => {
+                  if (value && availableFeatureKeys.indexOf(value) === -1) {
+                    return false;
+                  }
 
-                    return true;
-                  },
-                  (value) => ({ message: `Unknown feature "${value}"` }),
-                ),
+                  return true;
+                },
+                (value) => `Unknown feature "${value}"`,
+              ),
               percentage: z.number().min(0).max(100),
             })
             .strict(),

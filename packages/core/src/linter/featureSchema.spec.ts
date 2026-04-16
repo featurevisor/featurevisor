@@ -135,7 +135,7 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function parseFeature(feature: unknown): z.SafeParseReturnType<unknown, unknown> {
+function parseFeature(feature: unknown): z.ZodSafeParseResult<unknown> {
   return getFeatureSchema().safeParse(feature);
 }
 
@@ -143,7 +143,7 @@ function expectParseSuccess(feature: unknown): void {
   const result = parseFeature(feature);
   expect(result.success).toBe(true);
   if (!result.success) {
-    const err = (result as z.SafeParseError<unknown>).error;
+    const err = (result as z.ZodSafeParseError<unknown>).error;
     const msg = err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
     throw new Error(`Expected success but got: ${msg}`);
   }
@@ -153,7 +153,7 @@ function expectParseFailure(feature: unknown, messageSubstring?: string): z.ZodE
   const result = parseFeature(feature);
   expect(result.success).toBe(false);
   if (result.success) throw new Error("Expected parse failure");
-  const err = (result as z.SafeParseError<unknown>).error;
+  const err = (result as z.ZodSafeParseError<unknown>).error;
   if (messageSubstring) {
     const messages = err.issues
       .map((i) => (typeof i.message === "string" ? i.message : ""))
@@ -317,7 +317,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
       expect(result.success).toBe(false);
       if (result.success) return;
-      const messages = (result as z.SafeParseError<unknown>).error.issues
+      const messages = (result as z.ZodSafeParseError<unknown>).error.issues
         .map((i) => (typeof i.message === "string" ? i.message : ""))
         .join(" ");
       expect(messages).toContain("could not be loaded");
@@ -1096,6 +1096,41 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
         }),
         "not defined in",
       );
+    });
+  });
+
+  describe("environment maps", () => {
+    it("allows a subset of configured environments in rules, force, and expose", () => {
+      expectParseSuccess(
+        baseFeature({
+          expose: {
+            staging: true,
+          },
+          force: {
+            staging: [{ segments: "*", variation: "control" }],
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          rules: {
+            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects unknown environment keys in rules", () => {
+      const err = expectParseFailure(
+        baseFeature({
+          rules: {
+            qa: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expect(err.issues.some((issue) => issue.path.join(".").includes("rules"))).toBe(true);
+      expect(err.issues.some((issue) => issue.code === "invalid_key")).toBe(true);
     });
   });
 

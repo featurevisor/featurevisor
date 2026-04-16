@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
+import { refineWithMessage } from "./zodHelpers";
 
 export function getTestsZodSchema(
   projectConfig: ProjectConfig,
@@ -10,6 +11,7 @@ export function getTestsZodSchema(
   const scopeNames = projectConfig.scopes ? projectConfig.scopes.map((scope) => scope.name) : [];
 
   const matrixZodSchema = z.record(
+    z.string(),
     z.array(
       z.union([
         // allowed values in arrays
@@ -23,18 +25,17 @@ export function getTestsZodSchema(
 
   const segmentTestZodSchema = z
     .object({
-      segment: z.string().refine(
+      segment: refineWithMessage(
+        z.string(),
         (value) => availableSegmentKeys.includes(value),
-        (value) => ({
-          message: `Unknown segment "${value}"`,
-        }),
+        (value) => `Unknown segment "${value}"`,
       ),
       assertions: z.array(
         z
           .object({
             matrix: matrixZodSchema.optional(),
             description: z.string().optional(),
-            context: z.record(z.unknown()),
+            context: z.record(z.string(), z.unknown()),
             expectedToMatch: z.boolean(),
           })
           .strict(),
@@ -44,11 +45,10 @@ export function getTestsZodSchema(
 
   const featureTestZodSchema = z
     .object({
-      feature: z.string().refine(
+      feature: refineWithMessage(
+        z.string(),
         (value) => availableFeatureKeys.includes(value),
-        (value) => ({
-          message: `Unknown feature "${value}"`,
-        }),
+        (value) => `Unknown feature "${value}"`,
       ),
       assertions: z.array(
         z
@@ -62,7 +62,8 @@ export function getTestsZodSchema(
               z.string(),
             ]),
             environment: Array.isArray(projectConfig.environments)
-              ? z.string().refine(
+              ? refineWithMessage(
+                  z.string(),
                   (value) => {
                     if (value.indexOf("${{") === 0) {
                       // allow unknown strings for matrix
@@ -79,45 +80,35 @@ export function getTestsZodSchema(
 
                     return false;
                   },
-                  (value) => ({
-                    message: `Unknown environment "${value}"`,
-                  }),
+                  (value) => `Unknown environment "${value}"`,
                 )
               : z.never().optional(),
-            tag: z
-              .string()
-              .refine(
-                (value) => projectConfig.tags.includes(value),
-                (value) => ({
-                  message: `Unknown tag "${value}"`,
-                }),
-              )
-              .optional(),
-            scope: z
-              .string()
-              .refine(
-                (value) => scopeNames.includes(value),
-                (value) => ({
-                  message: `Unknown scope "${value}"`,
-                }),
-              )
-              .optional(),
+            tag: refineWithMessage(
+              z.string(),
+              (value) => projectConfig.tags.includes(value),
+              (value) => `Unknown tag "${value}"`,
+            ).optional(),
+            scope: refineWithMessage(
+              z.string(),
+              (value) => scopeNames.includes(value),
+              (value) => `Unknown scope "${value}"`,
+            ).optional(),
 
             // parent
-            sticky: z.record(z.record(z.any())).optional(),
-            context: z.record(z.unknown()).optional(),
+            sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+            context: z.record(z.string(), z.unknown()).optional(),
 
             defaultVariationValue: z.string().optional(),
-            defaultVariableValues: z.record(z.unknown()).optional(),
+            defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
 
             expectedToBeEnabled: z.boolean().optional(),
             expectedVariation: z.string().nullable().optional(),
-            expectedVariables: z.record(z.unknown()).optional(),
+            expectedVariables: z.record(z.string(), z.unknown()).optional(),
             expectedEvaluations: z
               .object({
-                flag: z.record(z.any()).optional(),
-                variation: z.record(z.any()).optional(),
-                variables: z.record(z.record(z.any())).optional(),
+                flag: z.record(z.string(), z.any()).optional(),
+                variation: z.record(z.string(), z.any()).optional(),
+                variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
               })
               .optional(),
 
@@ -125,21 +116,21 @@ export function getTestsZodSchema(
               .array(
                 z.object({
                   // copied from parent
-                  sticky: z.record(z.record(z.any())).optional(),
-                  context: z.record(z.unknown()).optional(),
+                  sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+                  context: z.record(z.string(), z.unknown()).optional(),
 
                   defaultVariationValue: z.string().optional(),
-                  defaultVariableValues: z.record(z.unknown()).optional(),
+                  defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
 
                   expectedToBeEnabled: z.boolean().optional(),
                   expectedVariation: z.string().nullable().optional(),
-                  expectedVariables: z.record(z.unknown()).optional(),
+                  expectedVariables: z.record(z.string(), z.unknown()).optional(),
 
                   expectedEvaluations: z
                     .object({
-                      flag: z.record(z.any()).optional(),
-                      variation: z.record(z.any()).optional(),
-                      variables: z.record(z.record(z.any())).optional(),
+                      flag: z.record(z.string(), z.any()).optional(),
+                      variation: z.record(z.string(), z.any()).optional(),
+                      variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
                     })
                     .optional(),
                 }),
