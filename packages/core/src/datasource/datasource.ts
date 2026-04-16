@@ -16,7 +16,7 @@ import type {
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
-import { CustomParser } from "../parsers";
+import type { CustomParser } from "@featurevisor/parsers";
 
 import {
   Adapter,

@@ -1,7 +1,7 @@
 {
-  "name": "@featurevisor/core",
+  "name": "@featurevisor/parsers",
   "version": "2.23.0",
-  "description": "Core package of Featurevisor for Node.js usage",
+  "description": "Parsers package of Featurevisor",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
@@ -40,12 +40,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/sdk": "2.23.0",
-    "@featurevisor/site": "2.23.0",
-    "@featurevisor/types": "2.23.0",
-    "axios": "^1.3.4",
-    "tar": "^7.5.7",
-    "yargs": "^17.7.2",
-    "zod": "^3.22.4"
+    "yaml": "^1.10.2"
   }
 }

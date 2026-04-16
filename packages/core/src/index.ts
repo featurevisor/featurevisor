@@ -1,5 +1,4 @@
 export * from "./config";
-export * from "./parsers";
 export * from "./linter";
 export * from "./builder";
 export * from "./tester";
@@ -16,3 +15,5 @@ export * from "./assess-distribution";
 export * from "./info";
 export * from "./list";
 export * from "./cli";
+
+export * from "@featurevisor/parsers";
