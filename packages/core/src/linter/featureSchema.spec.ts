@@ -1099,6 +1099,41 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
     });
   });
 
+  describe("environment maps", () => {
+    it("allows a subset of configured environments in rules, force, and expose", () => {
+      expectParseSuccess(
+        baseFeature({
+          expose: {
+            staging: true,
+          },
+          force: {
+            staging: [{ segments: "*", variation: "control" }],
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          rules: {
+            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("rejects unknown environment keys in rules", () => {
+      const err = expectParseFailure(
+        baseFeature({
+          rules: {
+            qa: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expect(err.issues.some((issue) => issue.path.join(".").includes("rules"))).toBe(true);
+      expect(err.issues.some((issue) => issue.code === "invalid_key")).toBe(true);
+    });
+  });
+
   describe("oneOf: value must match exactly one branch", () => {
     it("rejects defaultValue that matches no oneOf branch", () => {
       expectParseFailure(
