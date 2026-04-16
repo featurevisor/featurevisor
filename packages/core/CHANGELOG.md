@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.26.0](https://github.com/featurevisor/featurevisor/compare/v2.25.0...v2.26.0) (2026-04-16)
+
+
+### Features
+
+* upgrade to Zod v4 ([#407](https://github.com/featurevisor/featurevisor/issues/407)) ([68828d0](https://github.com/featurevisor/featurevisor/commit/68828d0be343e9543f231d3fe702f9b5edcb79f0))
+
+
+
+
+
 # [2.25.0](https://github.com/featurevisor/featurevisor/compare/v2.24.0...v2.25.0) (2026-04-16)
 
 
