@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.26.1](https://github.com/featurevisor/featurevisor/compare/v2.26.0...v2.26.1) (2026-04-26)
+
+
+### Bug Fixes
+
+* **core:** properly annotate type only imports ([#408](https://github.com/featurevisor/featurevisor/issues/408)) ([66995f8](https://github.com/featurevisor/featurevisor/commit/66995f824bd1730b43256e3c131fc07db2686fd3))
+
+
+
+
+
 # [2.26.0](https://github.com/featurevisor/featurevisor/compare/v2.25.0...v2.26.0) (2026-04-16)
 
 
