@@ -926,8 +926,8 @@ import {
   useVariable as useVariableOriginal,
 } from "@featurevisor/react";
 
-import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
-import { Context } from "./context";
+import type { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import type { Context } from "./context";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   return useFlagOriginal(featureKey, context);
