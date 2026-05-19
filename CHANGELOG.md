@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.27.0](https://github.com/featurevisor/featurevisor/compare/v2.26.1...v2.27.0) (2026-05-19)
+
+
+### Features
+
+* export Context type from SDK ([#410](https://github.com/featurevisor/featurevisor/issues/410)) ([2c24d05](https://github.com/featurevisor/featurevisor/commit/2c24d05bd41b0473605f5fbe0d073213bac76c3a))
+
+
+
+
+
 ## [2.26.1](https://github.com/featurevisor/featurevisor/compare/v2.26.0...v2.26.1) (2026-04-26)
 
 
