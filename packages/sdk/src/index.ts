@@ -7,3 +7,4 @@ export * from "./datafileReader";
 export * from "./child";
 
 export type { AttributeKey, AttributeValue } from "@featurevisor/types";
+export type { Context } from "@featurevisor/types";
