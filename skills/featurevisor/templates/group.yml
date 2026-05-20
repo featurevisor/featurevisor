@@ -1,0 +1,15 @@
+description: <Why these features are mutually exclusive>
+
+# Slot percentages MUST sum to 100.
+# Each feature's rollout `percentage` in its rules cannot exceed its slot's percentage.
+# Plan generously up front — do NOT change slot percentages once users are bucketed.
+slots:
+  - feature: firstFeature                # references features/firstFeature.yml
+    percentage: 50
+
+  - feature: secondFeature               # references features/secondFeature.yml
+    percentage: 50
+
+  # To leave a slot empty (e.g. retiring a feature without resizing the group):
+  # - feature: false
+  #   percentage: 50

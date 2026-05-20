@@ -1,0 +1,30 @@
+description: <Feature with A/B test>
+tags:
+  - all
+
+bucketBy: userId
+
+# Variation weights must sum to 100.
+# "control" / "treatment" are convention; any unique strings work.
+variations:
+  - value: control
+    description: Existing experience
+    weight: 50
+
+  - value: treatment
+    description: New experience under test
+    weight: 50
+
+# Optional: return a specific variation (instead of null) when the flag is off.
+# disabledVariationValue: control
+
+rules:
+  staging:
+    - key: everyone
+      segments: '*'
+      percentage: 100
+
+  production:
+    - key: everyone
+      segments: '*'
+      percentage: 0                       # ramp up; never rename the key

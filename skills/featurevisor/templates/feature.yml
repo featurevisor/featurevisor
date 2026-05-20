@@ -1,0 +1,18 @@
+description: <Short human-readable description>
+tags:
+  - all                                  # must exist in featurevisor.config.js -> tags
+
+# Pick the attribute that uniquely identifies the audience for this feature.
+# Signed-in surface: userId. Anonymous: deviceId. Ask the user if unclear.
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: '*'
+      percentage: 100
+
+  production:
+    - key: everyone
+      segments: '*'
+      percentage: 0                      # ramp this up over time; do NOT rename the key

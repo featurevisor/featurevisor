@@ -1,0 +1,74 @@
+description: <Feature with variables (remote config)>
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  bgColor:
+    type: string
+    description: Sidebar background
+    defaultValue: red
+
+  showSidebar:
+    type: boolean
+    defaultValue: false
+
+  position:
+    type: integer
+    defaultValue: 1
+
+  acceptedCards:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - visa
+      - mastercard
+
+  hero:
+    type: object
+    properties:
+      title: { type: string }
+      subtitle: { type: string }
+    required: [title, subtitle]
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our site
+    # When the feature flag is disabled, choose:
+    # useDefaultWhenDisabled: true        # return defaultValue
+    # disabledValue: { title: '', subtitle: '' }
+
+# Optional: A/B test variations that override variable values
+# variations:
+#   - value: control
+#     weight: 50
+#   - value: treatment
+#     weight: 50
+#     variables:
+#       bgColor: blue
+#       hero.subtitle: Welcome to the new design     # mutation syntax
+
+rules:
+  staging:
+    - key: everyone
+      segments: '*'
+      percentage: 100
+      variables:
+        bgColor: orange
+
+  production:
+    - key: nl
+      segments: netherlands
+      percentage: 100
+      variables:
+        bgColor: orange
+        hero.subtitle: Welkom op onze site           # mutation: only this property
+      variableOverrides:
+        bgColor:
+          - segments: amsterdam
+            value: red
+
+    - key: everyone
+      segments: '*'
+      percentage: 0

@@ -1,0 +1,35 @@
+description: Adult iPhone users in NL or DE, not on the newsletter
+conditions:
+  - and:
+      - attribute: device
+        operator: equals
+        value: iPhone
+      - attribute: age
+        operator: greaterThanOrEquals
+        value: 18
+
+  - or:
+      - attribute: country
+        operator: equals
+        value: nl
+      - attribute: country
+        operator: equals
+        value: de
+
+  - not:
+      - attribute: subscribedToNewsletter
+        operator: equals
+        value: true
+
+  # Nested example: NL users on app >= 5.5, OR DE users on any version
+  # - or:
+  #     - and:
+  #         - attribute: country
+  #           operator: equals
+  #           value: nl
+  #         - attribute: appVersion
+  #           operator: semverGreaterThanOrEquals
+  #           value: 5.5.0
+  #     - attribute: country
+  #       operator: equals
+  #       value: de
