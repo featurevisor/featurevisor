@@ -1,0 +1,21 @@
+segment: <segmentKey>
+assertions:
+  - description: Matches inside the segment
+    context:
+      country: nl
+    expectedToMatch: true
+
+  - description: Does not match outside the segment
+    context:
+      country: de
+    expectedToMatch: false
+
+  # Matrix example:
+  # - matrix:
+  #     country: [nl]
+  #     city: [amsterdam, rotterdam]
+  #   description: ${{ city }}, ${{ country }}
+  #   context:
+  #     country: ${{ country }}
+  #     city: ${{ city }}
+  #   expectedToMatch: true

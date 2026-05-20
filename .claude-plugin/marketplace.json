@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin-marketplace.json",
+  "name": "featurevisor",
+  "description": "Featurevisor skills for authoring and querying Git-based feature flag management projects",
+  "homepage": "https://featurevisor.com",
+  "repository": "https://github.com/featurevisor/featurevisor",
+  "skills": [
+    {
+      "name": "featurevisor",
+      "path": "skills/featurevisor/SKILL.md",
+      "description": "Author and query Featurevisor projects — features, segments, attributes, variables, schemas, groups, tests, and the CLI."
+    }
+  ]
+}

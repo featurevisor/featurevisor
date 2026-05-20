@@ -1,0 +1,5 @@
+description: <Human-readable description of who this segment targets>
+conditions:
+  - attribute: country
+    operator: equals
+    value: nl

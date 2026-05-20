@@ -1,0 +1,6 @@
+description: Account plan tier
+type: string
+enum:
+  - free
+  - pro
+  - enterprise

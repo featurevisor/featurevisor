@@ -1,0 +1,78 @@
+description: New checkout flow — A/B test with remote-configured payment methods
+tags:
+  - all
+  - web
+
+# Authenticated users get consistent bucketing across devices via userId;
+# anonymous traffic falls back to deviceId.
+bucketBy:
+  or:
+    - userId
+    - deviceId
+
+variablesSchema:
+  paymentMethods:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - creditCard
+      - paypal
+      - applePay
+      - googlePay
+
+  allowDiscountCode:
+    type: boolean
+    defaultValue: false
+
+  hero:
+    type: object
+    properties:
+      title: { type: string }
+      subtitle: { type: string }
+    required: [title, subtitle]
+    defaultValue:
+      title: Checkout
+      subtitle: Pay securely
+
+variations:
+  - value: control
+    description: Existing checkout
+    weight: 50
+
+  - value: treatment
+    description: New checkout with redesigned hero
+    weight: 50
+    variables:
+      "hero.subtitle": Faster, simpler checkout       # mutation: replace just subtitle
+
+# QA team always sees the treatment, regardless of rollout percentage.
+force:
+  staging:
+    - segments: qa
+      enabled: true
+      variation: treatment
+  production:
+    - segments: qa
+      enabled: true
+      variation: treatment
+
+rules:
+  staging:
+    - key: everyone
+      segments: '*'
+      percentage: 100
+
+  production:
+    - key: nl
+      description: Netherlands gets local payment methods only
+      segments: countries/netherlands
+      percentage: 100
+      variables:
+        paymentMethods: [paypal, ideal]
+        allowDiscountCode: true
+
+    - key: everyone
+      description: Catch-all rollout — ramp this up over time, never rename the key
+      segments: '*'
+      percentage: 10
