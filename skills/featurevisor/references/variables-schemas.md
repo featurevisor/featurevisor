@@ -267,37 +267,54 @@ With mutations:
 
 ```yaml
 variables:
-  hero.subtitle: Welcome to NL
+  "hero.subtitle": Welcome to NL
 ```
 
-### Mutation syntax
+### YAML quoting (important)
 
-| Syntax                              | Variable type | Effect                                                       |
-| ----------------------------------- | ------------- | ------------------------------------------------------------ |
-| `key.property`                      | object        | Set property (nested ok: `a.b.c`)                            |
-| `key.property:remove`               | object        | Remove property (forbidden if `required`)                    |
-| `key[index]`                        | array         | Replace item at index                                        |
-| `key[index].property`               | array         | Set property of item at index                                |
-| `key[index]:before`                 | array         | Insert before that index                                     |
-| `key[index]:after`                  | array         | Insert after that index                                      |
-| `key[index]:remove`                 | array         | Remove that index                                            |
-| `key[prop=value].property`          | array         | Set property of item matching selector                       |
-| `key[prop=value]:before`            | array         | Insert before matching item                                  |
-| `key[prop=value]:after`             | array         | Insert after matching item                                   |
-| `key[prop=value]:remove`            | array         | Remove matching item                                         |
-| `key:prepend`                       | array         | Prepend a new item                                           |
-| `key:append`                        | array         | Append a new item                                            |
-
-Example combining several mutations on the same rule:
+Mutation keys contain characters (`.`, `[`, `]`, `:`) that YAML interprets specially. **Always quote mutation keys.** Plain-style keys without these characters work unquoted, but quoting unconditionally is the safe default:
 
 ```yaml
 variables:
-  hero.cta.url: /signup-nl
-  navLinks[title=Contact].url: /contact-nl
-  navLinks:append:
-    title: Imprint
-    url: /imprint
-  acceptedCards[id=amex]:remove
+  "hero.subtitle": Welcome to NL          # dot path
+  "items[2]:remove": null                 # index + verb
+  "items[id=2]:before": { id: "2a" }      # selector + verb
+  "tags:append": "first"                  # array verb
+  "list:prepend": "nl"
+```
+
+`null` is a common value for `:remove` since the operation doesn't need data; the key itself encodes the action.
+
+### Mutation syntax
+
+| Syntax                                | Variable type | Effect                                                       |
+| ------------------------------------- | ------------- | ------------------------------------------------------------ |
+| `"key.property"`                      | object        | Set property (nested ok: `"a.b.c"`)                          |
+| `"key.property:remove"`               | object        | Remove property (forbidden if `required`)                    |
+| `"key[index]"`                        | array         | Replace item at index                                        |
+| `"key[index].property"`               | array         | Set property of item at index                                |
+| `"key[index]:before"`                 | array         | Insert before that index                                     |
+| `"key[index]:after"`                  | array         | Insert after that index                                      |
+| `"key[index]:remove"`                 | array         | Remove that index                                            |
+| `"key[prop=value].property"`          | array         | Set property of item matching selector                       |
+| `"key[prop=value]:before"`            | array         | Insert before matching item                                  |
+| `"key[prop=value]:after"`             | array         | Insert after matching item                                   |
+| `"key[prop=value]:remove"`            | array         | Remove matching item                                         |
+| `"key:prepend"`                       | array         | Prepend a new item                                           |
+| `"key:append"`                        | array         | Append a new item                                            |
+
+Example combining several mutations on the same rule (verbatim shape used in the monorepo's `example-1/features/withMutations.yml`):
+
+```yaml
+variables:
+  "tags:prepend": "first"
+  "tags:append": "extra"
+  "items[id=2]:before": { id: "2a", name: "Before Second", meta: { score: 0.15 } }
+  "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
+  "payload.rows:append": { id: 3, label: "C" }
+  "items[2]:remove": null
+  "hero.cta.url": /signup-nl
+  "acceptedCards[id=amex]:remove": null
 ```
 
 Mutations are validated by `npx featurevisor lint` against the variable's schema — wrong paths, invalid types, or removing required properties will fail lint.

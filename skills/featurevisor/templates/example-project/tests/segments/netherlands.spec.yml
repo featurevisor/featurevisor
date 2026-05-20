@@ -1,0 +1,14 @@
+segment: countries/netherlands
+
+assertions:
+  - description: NL matches
+    context:
+      country: nl
+    expectedToMatch: true
+
+  - matrix:
+      country: [us, de, fr, gb]
+    description: ${{ country }} does not match
+    context:
+      country: ${{ country }}
+    expectedToMatch: false

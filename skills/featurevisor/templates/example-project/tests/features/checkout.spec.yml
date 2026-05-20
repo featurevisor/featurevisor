@@ -1,0 +1,57 @@
+feature: checkout
+
+assertions:
+  - description: Staging — everyone is in at 99th percentile
+    environment: staging
+    at: 99
+    context:
+      userId: test-user-1
+      country: us
+    expectedToBeEnabled: true
+
+  - description: Production — NL rule gets local payment methods at any percentile
+    environment: production
+    at: 5
+    context:
+      userId: test-user-nl
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      paymentMethods: [paypal, ideal]
+      allowDiscountCode: true
+
+  - description: Production — outside NL, only the catch-all 10% rule applies
+    environment: production
+    at: 5
+    context:
+      userId: test-user-us
+      country: us
+    expectedToBeEnabled: true            # at: 5 lies inside the 10% rollout
+
+  - description: Production — outside NL, above 10% percentile is gated
+    environment: production
+    at: 50
+    context:
+      userId: test-user-us-2
+      country: us
+    expectedToBeEnabled: false
+
+  - description: QA force always wins, even when rollout is 0% effective
+    environment: production
+    at: 50
+    context:
+      userId: u_qa_1
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - matrix:
+      at: [10, 90]
+      country: [us, de]
+    description: Matrix — at ${{ at }}% percentile in ${{ country }}
+    environment: staging
+    at: ${{ at }}
+    context:
+      userId: matrix-user-${{ at }}-${{ country }}
+      country: ${{ country }}
+    expectedToBeEnabled: true

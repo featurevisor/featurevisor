@@ -47,7 +47,7 @@ variablesSchema:
 #     weight: 50
 #     variables:
 #       bgColor: blue
-#       hero.subtitle: Welcome to the new design     # mutation syntax
+#       "hero.subtitle": Welcome to the new design   # mutation key — must be quoted
 
 rules:
   staging:
@@ -63,7 +63,7 @@ rules:
       percentage: 100
       variables:
         bgColor: orange
-        hero.subtitle: Welkom op onze site           # mutation: only this property
+        "hero.subtitle": Welkom op onze site         # mutation: only this property (quoted key)
       variableOverrides:
         bgColor:
           - segments: amsterdam

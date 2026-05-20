@@ -17,8 +17,30 @@ npm install
 
 ```bash
 npx featurevisor lint
-npx featurevisor lint --json --pretty           # machine-readable
+npx featurevisor lint --json --pretty                       # machine-readable
+npx featurevisor lint --keyPattern="myKey"                  # filter by key
+npx featurevisor lint --entityType=feature                  # feature | segment | attribute | group | test
+npx featurevisor lint --keyPattern="my" --entityType=feature
 ```
+
+The `--json` output has a stable shape:
+
+```json
+{
+  "errors": [
+    {
+      "filePath": "segments/my-segment.yml",
+      "entityType": "segment",
+      "key": "my-segment",
+      "message": "Required",
+      "path": ["conditions", 0, "attribute"],
+      "code": "invalid_type"
+    }
+  ]
+}
+```
+
+When `splitByEnvironment: true`, lint additionally enforces that base feature files contain no `rules`/`force`/`expose` and that every configured environment has a per-feature file under `environments/<env>/`.
 
 Run this after every edit. It catches:
 - Unknown segments/attributes referenced in features

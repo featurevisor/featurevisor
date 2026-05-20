@@ -41,12 +41,24 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | Variables, JSON-Schema-ish types, reusable `schemas/`         | [variables-schemas.md](references/variables-schemas.md) |
 | Variable overrides with deep merge (`mutations`)              | [variables-schemas.md](references/variables-schemas.md#mutations) |
 | Mutually-exclusive experiments via `groups/`                  | [groups.md](references/groups.md)                  |
+| Bucketing, `bucketBy`, state files, sticky                    | [bucketing.md](references/bucketing.md)            |
+| Tags — per-app datafile bundling                              | [tags.md](references/tags.md)                      |
+| Scopes — pre-evaluated, smaller datafiles                     | [scopes.md](references/scopes.md)                  |
+| Namespaces — directory-based feature/segment key prefixes     | [namespaces.md](references/namespaces.md)          |
+| `featurevisor.config.js`, environments, `splitByEnvironment`  | [configuration.md](references/configuration.md)    |
+| JSON / TOML / other format projects                           | [custom-parsers.md](references/custom-parsers.md)  |
+| Build datafiles, deploy to CDN, CI pipeline                   | [building-datafiles.md](references/building-datafiles.md) |
 | Write a `.spec.yml` test, run `featurevisor test`             | [testing.md](references/testing.md)                |
 | Any CLI invocation, flags, `list`/`find-usage`/`evaluate`     | [cli.md](references/cli.md)                        |
 | Answer "what's enabled where / who uses X"                    | [querying.md](references/querying.md)              |
-| `featurevisor.config.js`, environments, tags, scopes          | [configuration.md](references/configuration.md)    |
+| Code generation (typed TS bindings)                           | [code-generation.md](references/code-generation.md) |
+| Analytics activation hooks (GA4 / Segment / etc.)             | [tracking.md](references/tracking.md)              |
+| **Common patterns** — A/B, multivariate, entitlements, dependencies, testing-in-prod, deprecation, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md) |
+| Terminology refresher                                         | [glossary.md](references/glossary.md)              |
 
-Templates that mirror docs examples live in [templates/](templates/) — copy and adapt them rather than writing from memory.
+Per-entity templates live in [templates/](templates/) — copy and adapt rather than writing from memory.
+
+A **complete end-to-end mini project** lives in [templates/example-project/](templates/example-project/). Use it as the source of truth for "show me how a realistic Featurevisor project hangs together" requests.
 
 ## Core authoring rules
 
@@ -159,6 +171,10 @@ Use `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'
 ### Querying ("what's enabled where?", "who uses this segment?")
 
 See [querying.md](references/querying.md). It shows the right `list`/`find-usage`/`evaluate` invocations for the common questions a developer asks about an existing project.
+
+### Recipes for higher-level use cases
+
+When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
 
 ## SDK use cases
 
