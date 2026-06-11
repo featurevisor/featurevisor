@@ -11,11 +11,7 @@ import type {
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
-import {
-  assertProjectSetJsonSelection,
-  getProjectSetExecutions,
-  printSetHeader,
-} from "../sets";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
 async function getEntitiesWithTests(
   deps: Dependencies,

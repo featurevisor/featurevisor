@@ -18,11 +18,7 @@ import { getLintIssuesFromZodError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
 import { Plugin } from "../cli";
-import {
-  assertProjectSetJsonSelection,
-  getProjectSetExecutions,
-  printSetHeader,
-} from "../sets";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
 export type LintEntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
 

@@ -11,11 +11,7 @@ import { Plugin } from "../cli";
 import type { Scope } from "../config";
 
 import type { DatafileContent } from "@featurevisor/types";
-import {
-  assertProjectSetJsonSelection,
-  getProjectSetExecutions,
-  printSetHeader,
-} from "../sets";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
 export interface BuildCLIOptions {
   revision?: string;

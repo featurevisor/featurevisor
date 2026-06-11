@@ -12,11 +12,7 @@ import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 import { Plugin } from "../cli";
-import {
-  assertProjectSetJsonSelection,
-  getProjectSetExecutions,
-  printSetHeader,
-} from "../sets";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
 function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
