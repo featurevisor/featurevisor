@@ -5,7 +5,6 @@ tags:
 bucketBy: userId
 
 rules:
-  web:
-    - key: everyone
-      segments: "*"
-      percentage: 0
+  - key: everyone
+    segments: "*"
+    percentage: 0

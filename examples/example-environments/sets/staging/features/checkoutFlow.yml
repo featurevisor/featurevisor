@@ -5,12 +5,11 @@ tags:
 bucketBy: userId
 
 rules:
-  web:
-    - key: internal
-      segments:
-        - internal
-      percentage: 100
+  - key: internal
+    segments:
+      - internal
+    percentage: 100
 
-    - key: everyone
-      segments: "*"
-      percentage: 0
+  - key: everyone
+    segments: "*"
+    percentage: 0
