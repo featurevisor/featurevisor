@@ -13,6 +13,7 @@ import { buildDatafile, buildScopedDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -319,15 +320,26 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    const hasError = await testProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      parsed as TestProjectOptions,
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+    let hasError = false;
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      const executionHasError = await testProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        parsed as TestProjectOptions,
+      );
+
+      if (executionHasError) {
+        hasError = true;
+      }
+    }
 
     if (hasError) {
       return false;

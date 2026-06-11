@@ -19,6 +19,7 @@ export const DATAFILE_NAME_PATTERN = "featurevisor-%s.json";
 export const REVISION_FILE_NAME = "REVISION";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
 export const ENVIRONMENTS_DIRECTORY_NAME = "environments";
+export const SETS_DIRECTORY_NAME = "sets";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
 export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
@@ -26,6 +27,7 @@ export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
+export const DEFAULT_SETS = false;
 
 export const DEFAULT_PRETTY_STATE = true;
 export const DEFAULT_PRETTY_DATAFILE = false;
@@ -54,9 +56,11 @@ export interface ProjectConfig {
   revisionFileName: string;
   siteExportDirectoryPath: string;
   environmentsDirectoryPath: string;
+  setsDirectoryPath: string;
 
   environments: string[] | false;
   splitByEnvironment: boolean;
+  sets: boolean;
   tags: string[];
   scopes?: Scope[];
 
@@ -81,6 +85,7 @@ export interface ProjectConfig {
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
     environments: DEFAULT_ENVIRONMENTS,
+    sets: DEFAULT_SETS,
     tags: DEFAULT_TAGS,
     scopes: [],
     defaultBucketBy: "userId",
@@ -95,6 +100,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
     environmentsDirectoryPath: path.join(rootDirectoryPath, ENVIRONMENTS_DIRECTORY_NAME),
+    setsDirectoryPath: path.join(rootDirectoryPath, SETS_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
@@ -141,6 +147,10 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     finalConfig.parser = parsers[finalConfig.parser];
   }
 
+  if (typeof finalConfig.sets !== "boolean") {
+    throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
+  }
+
   if (finalConfig.splitByEnvironment && finalConfig.environments === false) {
     throw new Error(
       "Invalid configuration: splitByEnvironment=true requires environments to be an array",
@@ -148,6 +158,23 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   }
 
   return finalConfig as ProjectConfig;
+}
+
+export function getProjectConfigForSet(projectConfig: ProjectConfig, set: string): ProjectConfig {
+  const setRootDirectoryPath = path.join(projectConfig.setsDirectoryPath, set);
+
+  return {
+    ...projectConfig,
+    featuresDirectoryPath: path.join(setRootDirectoryPath, FEATURES_DIRECTORY_NAME),
+    environmentsDirectoryPath: path.join(setRootDirectoryPath, ENVIRONMENTS_DIRECTORY_NAME),
+    segmentsDirectoryPath: path.join(setRootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
+    attributesDirectoryPath: path.join(setRootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
+    groupsDirectoryPath: path.join(setRootDirectoryPath, GROUPS_DIRECTORY_NAME),
+    schemasDirectoryPath: path.join(setRootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
+    testsDirectoryPath: path.join(setRootDirectoryPath, TESTS_DIRECTORY_NAME),
+    stateDirectoryPath: path.join(projectConfig.stateDirectoryPath, SETS_DIRECTORY_NAME, set),
+    datafilesDirectoryPath: path.join(projectConfig.datafilesDirectoryPath, set),
+  };
 }
 
 export interface ShowProjectConfigOptions {

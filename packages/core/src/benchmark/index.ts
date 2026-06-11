@@ -6,6 +6,7 @@ import { buildDatafile } from "../builder";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export interface BenchmarkOutput {
   value: any;
@@ -164,24 +165,30 @@ export async function benchmarkFeature(
 export const benchmarkPlugin: Plugin = {
   command: "benchmark",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await benchmarkFeature(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        environment: parsed.environment,
-        feature: parsed.feature,
-        n: parseInt(parsed.n, 10) || 1,
-        context: parsed.context ? JSON.parse(parsed.context) : {},
-        variation: parsed.variation || undefined,
-        variable: parsed.variable || undefined,
-        schemaVersion: parsed.schemaVersion || undefined,
-        inflate: parseInt(parsed.inflate, 10) || undefined,
-      },
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await benchmarkFeature(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          environment: parsed.environment,
+          feature: parsed.feature,
+          n: parseInt(parsed.n, 10) || 1,
+          context: parsed.context ? JSON.parse(parsed.context) : {},
+          variation: parsed.variation || undefined,
+          variable: parsed.variable || undefined,
+          schemaVersion: parsed.schemaVersion || undefined,
+          inflate: parseInt(parsed.inflate, 10) || undefined,
+        },
+      );
+    }
   },
   examples: [
     {

@@ -1,0 +1,17 @@
+feature: promoBanner
+assertions:
+  - description: Enabled for support users in staging
+    at: 10
+    environment: staging
+    context:
+      role: support
+      userId: "user-1"
+    expectedToBeEnabled: true
+
+  - description: Disabled for support users in production
+    at: 10
+    environment: production
+    context:
+      role: support
+      userId: "user-1"
+    expectedToBeEnabled: false

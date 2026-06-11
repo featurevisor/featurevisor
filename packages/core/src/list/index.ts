@@ -11,6 +11,11 @@ import type {
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
+import {
+  assertProjectSetJsonSelection,
+  getProjectSetExecutions,
+  printSetHeader,
+} from "../sets";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -468,12 +473,20 @@ export async function listProject(deps: Dependencies) {
 export const listPlugin: Plugin = {
   command: "list",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await listProject({
-      rootDirectoryPath,
-      projectConfig,
-      datasource,
-      options: parsed,
-    });
+    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set, parsed.json);
+
+      await listProject({
+        rootDirectoryPath,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+        options: parsed,
+      });
+    }
   },
   examples: [
     {

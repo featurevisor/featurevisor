@@ -12,6 +12,11 @@ import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 import { Plugin } from "../cli";
+import {
+  assertProjectSetJsonSelection,
+  getProjectSetExecutions,
+  printSetHeader,
+} from "../sets";
 
 function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
@@ -203,23 +208,31 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 export const evaluatePlugin: Plugin = {
   command: "evaluate",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await evaluateFeature(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        environment: parsed.environment,
-        feature: parsed.feature,
-        context: parsed.context ? JSON.parse(parsed.context) : {},
-        // @NOTE: introduce optional --at?
-        json: parsed.json,
-        pretty: parsed.pretty,
-        verbose: parsed.verbose,
-      },
-    );
+    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set, parsed.json);
+
+      await evaluateFeature(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          environment: parsed.environment,
+          feature: parsed.feature,
+          context: parsed.context ? JSON.parse(parsed.context) : {},
+          // @NOTE: introduce optional --at?
+          json: parsed.json,
+          pretty: parsed.pretty,
+          verbose: parsed.verbose,
+        },
+      );
+    }
   },
   examples: [
     {

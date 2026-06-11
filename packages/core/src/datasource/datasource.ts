@@ -15,7 +15,7 @@ import type {
   Schema,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
+import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import {
@@ -27,12 +27,32 @@ import {
 
 export class Datasource {
   private adapter: Adapter;
+  private rootConfig: ProjectConfig;
 
   constructor(
     private config: ProjectConfig,
     private rootDirectoryPath?: string,
+    private set?: string,
   ) {
-    this.adapter = new config.adapter(config, rootDirectoryPath);
+    this.rootConfig = config;
+    this.config = set ? getProjectConfigForSet(this.rootConfig, set) : config;
+    this.adapter = new this.config.adapter(this.config, rootDirectoryPath);
+  }
+
+  getConfig() {
+    return this.config;
+  }
+
+  getSet() {
+    return this.set;
+  }
+
+  forSet(set: string) {
+    return new Datasource(this.rootConfig, this.rootDirectoryPath, set);
+  }
+
+  listSets() {
+    return this.adapter.listSets();
   }
 
   // @NOTE: only site generator needs it, find a way to get it out of here later

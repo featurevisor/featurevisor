@@ -1,0 +1,9 @@
+segment: support
+assertions:
+  - context:
+      role: support
+    expectedToMatch: true
+
+  - context:
+      role: viewer
+    expectedToMatch: false

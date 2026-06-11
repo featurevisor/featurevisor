@@ -6,6 +6,7 @@ import {
   extractAttributeKeysFromConditions,
   extractSegmentKeysFromGroupSegments,
 } from "../utils/extractKeys";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export interface UsageInFeatures {
   [featureKey: string]: {
@@ -478,22 +479,28 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 export const findUsagePlugin: Plugin = {
   command: "find-usage",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await findUsageInProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        feature: parsed.feature,
-        segment: parsed.segment,
-        attribute: parsed.attribute,
-        unusedSegments: parsed.unusedSegments,
-        unusedAttributes: parsed.unusedAttributes,
-        authors: parsed.authors,
-      },
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await findUsageInProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          feature: parsed.feature,
+          segment: parsed.segment,
+          attribute: parsed.attribute,
+          unusedSegments: parsed.unusedSegments,
+          unusedAttributes: parsed.unusedAttributes,
+          authors: parsed.authors,
+        },
+      );
+    }
   },
   examples: [
     {

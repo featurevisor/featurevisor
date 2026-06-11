@@ -1,6 +1,7 @@
 import { findDuplicateSegments, DuplicateSegmentsOptions } from "./findDuplicateSegments";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export async function findDuplicateSegmentsInProject(
   deps: Dependencies,
@@ -31,17 +32,23 @@ export async function findDuplicateSegmentsInProject(
 export const findDuplicateSegmentsPlugin: Plugin = {
   command: "find-duplicate-segments",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await findDuplicateSegmentsInProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        authors: parsed.authors,
-      },
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await findDuplicateSegmentsInProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          authors: parsed.authors,
+        },
+      );
+    }
   },
   examples: [
     {

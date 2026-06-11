@@ -8,6 +8,7 @@ import { buildDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { prettyPercentage, prettyNumber } from "../utils";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 const UUID_LENGTHS = [4, 2, 2, 2, 6];
 
@@ -174,24 +175,30 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
 export const assessDistributionPlugin: Plugin = {
   command: "assess-distribution",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await assessDistribution(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        environment: parsed.environment,
-        feature: parsed.feature,
-        n: parseInt(parsed.n, 10) || 1,
-        context: parsed.context ? JSON.parse(parsed.context) : {},
-        populateUuid: Array.isArray(parsed.populateUuid)
-          ? parsed.populateUuid
-          : [parsed.populateUuid as string].filter(Boolean),
-        verbose: parsed.verbose,
-      },
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await assessDistribution(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          environment: parsed.environment,
+          feature: parsed.feature,
+          n: parseInt(parsed.n, 10) || 1,
+          context: parsed.context ? JSON.parse(parsed.context) : {},
+          populateUuid: Array.isArray(parsed.populateUuid)
+            ? parsed.populateUuid
+            : [parsed.populateUuid as string].filter(Boolean),
+          verbose: parsed.verbose,
+        },
+      );
+    }
   },
   examples: [
     {

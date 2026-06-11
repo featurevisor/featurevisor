@@ -4,6 +4,7 @@ import * as path from "path";
 import { generateTypeScriptCodeForProject } from "./typescript";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 
@@ -60,26 +61,36 @@ export async function generateCodeForProject(
 export const generateCodePlugin: Plugin = {
   command: "generate-code",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await generateCodeForProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        language: parsed.language,
-        outDir: parsed.outDir,
-        tag: parsed.tag,
-        react: parsed.react,
-        individualFeatures:
-          parsed.individualFeatures !== undefined
-            ? Boolean(parsed.individualFeatures)
-            : parsed["individual-features"] !== undefined
-              ? Boolean(parsed["individual-features"])
-              : true,
-      },
-    );
+    if (projectConfig.sets && !parsed.set) {
+      throw new Error("Pass --set=<set> when generating code in a project with sets enabled.");
+    }
+
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await generateCodeForProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          language: parsed.language,
+          outDir: parsed.outDir,
+          tag: parsed.tag,
+          react: parsed.react,
+          individualFeatures:
+            parsed.individualFeatures !== undefined
+              ? Boolean(parsed.individualFeatures)
+              : parsed["individual-features"] !== undefined
+                ? Boolean(parsed["individual-features"])
+                : true,
+        },
+      );
+    }
   },
   examples: [
     {

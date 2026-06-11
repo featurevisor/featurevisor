@@ -9,6 +9,11 @@ import { Plugin } from "../cli";
 import type { Scope } from "../config";
 
 import type { DatafileContent } from "@featurevisor/types";
+import {
+  assertProjectSetJsonSelection,
+  getProjectSetExecutions,
+  printSetHeader,
+} from "../sets";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -26,6 +31,7 @@ export interface BuildCLIOptions {
 
   tag?: string;
   scope?: string; // scope name only
+  set?: string;
 }
 
 function getFeaturevisorVersion(): string {
@@ -217,10 +223,53 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   console.log("\nLatest revision:", nextRevision);
 }
 
+export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
+  const { projectConfig, datasource } = deps;
+
+  assertProjectSetJsonSelection(projectConfig, cliOptions.set, cliOptions.json);
+
+  const executions = await getProjectSetExecutions(projectConfig, datasource, cliOptions.set);
+  const currentRevision = await datasource.readRevision();
+  const nextRevision =
+    (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
+
+  if (projectConfig.sets && !cliOptions.json) {
+    console.log("\nBuilding Featurevisor sets");
+    console.log(`  Sets: ${executions.map((execution) => execution.set).join(", ")}`);
+    console.log(`  Current project revision: ${currentRevision}`);
+  }
+
+  for (const execution of executions) {
+    printSetHeader(projectConfig, execution.set, cliOptions.json);
+
+    await buildProject(
+      {
+        ...deps,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+      },
+      {
+        ...cliOptions,
+        revision: projectConfig.sets ? nextRevision : cliOptions.revision,
+      },
+    );
+  }
+
+  if (
+    projectConfig.sets &&
+    !cliOptions.json &&
+    (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) &&
+    !cliOptions.revision
+  ) {
+    await datasource.writeRevision(nextRevision);
+    console.log("\nLatest project revision:", nextRevision);
+  }
+}
+
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await buildProject(
+    await buildProjectSets(
       {
         rootDirectoryPath,
         projectConfig,

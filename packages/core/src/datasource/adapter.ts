@@ -26,6 +26,8 @@ export interface FeatureSourcePaths {
 }
 
 export abstract class Adapter {
+  abstract listSets(): Promise<string[]>;
+
   // entities
   abstract listEntities(entityType: EntityType): Promise<string[]>;
   abstract entityExists(entityType: EntityType, entityKey: string): Promise<boolean>;

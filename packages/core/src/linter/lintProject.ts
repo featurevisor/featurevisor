@@ -18,6 +18,11 @@ import { getLintIssuesFromZodError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
 import { Plugin } from "../cli";
+import {
+  assertProjectSetJsonSelection,
+  getProjectSetExecutions,
+  printSetHeader,
+} from "../sets";
 
 export type LintEntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
 
@@ -671,28 +676,41 @@ export const lintPlugin: Plugin = {
   handler: async function (options) {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
-    const result = await lintProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        keyPattern: parsed.keyPattern,
-        entityType: parsed.entityType,
-        authors: parsed.authors,
-        json: parsed.json,
-        pretty: parsed.pretty,
-      },
-    );
+    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
 
-    if (parsed.json) {
-      const payload = { errors: result.errors };
-      console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+    let hasError = false;
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set, parsed.json);
+
+      const result = await lintProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          keyPattern: parsed.keyPattern,
+          entityType: parsed.entityType,
+          authors: parsed.authors,
+          json: parsed.json,
+          pretty: parsed.pretty,
+        },
+      );
+
+      if (parsed.json) {
+        const payload = { errors: result.errors };
+        console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+      }
+
+      if (result.hasError) {
+        hasError = true;
+      }
     }
 
-    if (result.hasError) {
+    if (hasError) {
       return false;
     }
   },

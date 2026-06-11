@@ -1,6 +1,7 @@
 import { Dependencies } from "../dependencies";
 import { getMatrixCombinations } from "../list/matrix";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
 
 export async function showProjectInfo(deps: Dependencies) {
   const { datasource } = deps;
@@ -57,12 +58,18 @@ export async function showProjectInfo(deps: Dependencies) {
 export const infoPlugin: Plugin = {
   command: "info",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await showProjectInfo({
-      rootDirectoryPath,
-      projectConfig,
-      datasource,
-      options: parsed,
-    });
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await showProjectInfo({
+        rootDirectoryPath,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+        options: parsed,
+      });
+    }
   },
   examples: [
     {

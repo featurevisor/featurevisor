@@ -1,0 +1,21 @@
+description: Storefront promotional banner
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+
+  production:
+    - key: nl
+      segments:
+        - netherlands
+      percentage: 100
+
+    - key: everyone
+      segments: "*"
+      percentage: 0

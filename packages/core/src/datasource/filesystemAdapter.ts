@@ -104,6 +104,21 @@ export class FilesystemAdapter extends Adapter {
     return this.config.attributesDirectoryPath;
   }
 
+  async listSets(): Promise<string[]> {
+    if (!this.config.sets || !fs.existsSync(this.config.setsDirectoryPath)) {
+      return [];
+    }
+
+    const entries = await fs.promises.readdir(this.config.setsDirectoryPath, {
+      withFileTypes: true,
+    });
+
+    return entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+  }
+
   getEntityPath(entityType: EntityType, entityKey: string): string {
     const basePath = this.getEntityDirectoryPath(entityType);
 
