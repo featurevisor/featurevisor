@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import { SCHEMA_VERSION, ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
@@ -242,6 +244,14 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
   for (const execution of executions) {
     printSetHeader(projectConfig, execution.set, cliOptions.json);
 
+    const executionCliOptions =
+      projectConfig.sets && cliOptions.datafilesDir
+        ? {
+            ...cliOptions,
+            datafilesDir: path.join(cliOptions.datafilesDir, execution.set),
+          }
+        : cliOptions;
+
     await buildProject(
       {
         ...deps,
@@ -249,7 +259,7 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
         datasource: execution.datasource,
       },
       {
-        ...cliOptions,
+        ...executionCliOptions,
         revision: projectConfig.sets ? nextRevision : cliOptions.revision,
       },
     );

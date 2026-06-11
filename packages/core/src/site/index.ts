@@ -5,6 +5,10 @@ import { serveSite } from "./serveSite";
 export const sitePlugin: Plugin = {
   command: "site [subcommand]",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    if (projectConfig.sets) {
+      throw new Error("The site command does not support projects with `sets: true` yet.");
+    }
+
     const deps = {
       rootDirectoryPath,
       projectConfig,
