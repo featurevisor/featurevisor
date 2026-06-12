@@ -1,3 +1,5 @@
+.PHONY: install build test lint format check
+
 ##
 # Packages
 #
@@ -18,6 +20,12 @@ lint:
 
 format:
 	npx prettier examples/ packages/ docs/ --write
+
+check:
+	make install
+	make build
+	make test
+	make lint
 
 ##
 # Misc.
