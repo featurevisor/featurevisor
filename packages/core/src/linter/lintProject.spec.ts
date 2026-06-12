@@ -109,6 +109,44 @@ describe("core: lintProject", function () {
     });
   });
 
+  it("accepts promotable flags on top-level authored entities", async () => {
+    const files = [
+      path.join(tempProjectPath, "attributes", "userId.yml"),
+      path.join(tempProjectPath, "segments", "everyone.yml"),
+      path.join(tempProjectPath, "features", "showHeader.yml"),
+      path.join(tempProjectPath, "groups", "myExclusionGroup.yml"),
+      path.join(tempProjectPath, "schemas", "money.yml"),
+      path.join(tempProjectPath, "tests", "features", "showHeader.spec.yml"),
+    ];
+
+    for (const file of files) {
+      fs.appendFileSync(file, "\npromotable: false\n");
+    }
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result).toEqual({
+      hasError: false,
+      errors: [],
+    });
+  });
+
+  it("rejects non-boolean promotable values", async () => {
+    fs.appendFileSync(
+      path.join(tempProjectPath, "attributes", "userId.yml"),
+      "\npromotable: nope\n",
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result.hasError).toEqual(true);
+    expect(
+      result.errors.some(
+        (error) => error.path.join(".") === "promotable" && error.message.includes("boolean"),
+      ),
+    ).toEqual(true);
+  });
+
   it("returns structured errors in JSON mode", async () => {
     fs.writeFileSync(
       path.join(tempProjectPath, "attributes", "invalid name.yml"),

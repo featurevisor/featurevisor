@@ -45,6 +45,10 @@ export interface Scope {
 }
 
 export interface ProjectConfig {
+  promotionFlows?: Array<{
+    from: string;
+    to: string;
+  }>;
   featuresDirectoryPath: string;
   segmentsDirectoryPath: string;
   attributesDirectoryPath: string;
@@ -87,6 +91,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
     environments: DEFAULT_ENVIRONMENTS,
     sets: DEFAULT_SETS,
+    promotionFlows: undefined,
     tags: DEFAULT_TAGS,
     scopes: [],
     defaultBucketBy: "userId",
@@ -150,6 +155,36 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
+  }
+
+  if (typeof finalConfig.promotionFlows !== "undefined") {
+    if (!Array.isArray(finalConfig.promotionFlows)) {
+      throw new Error(
+        `Invalid promotionFlows: ${finalConfig.promotionFlows}. It must be an array.`,
+      );
+    }
+
+    finalConfig.promotionFlows.forEach((entry: any, index: number) => {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        throw new Error(
+          `Invalid promotionFlows[${index}]: ${entry}. Each entry must be an object with exactly "from" and "to" string fields.`,
+        );
+      }
+
+      const keys = Object.keys(entry).sort();
+
+      if (keys.length !== 2 || keys[0] !== "from" || keys[1] !== "to") {
+        throw new Error(
+          `Invalid promotionFlows[${index}]: ${JSON.stringify(entry)}. Each entry must contain exactly "from" and "to".`,
+        );
+      }
+
+      if (typeof entry.from !== "string" || typeof entry.to !== "string") {
+        throw new Error(
+          `Invalid promotionFlows[${index}]: ${JSON.stringify(entry)}. "from" and "to" must be strings.`,
+        );
+      }
+    });
   }
 
   if (finalConfig.splitByEnvironment && finalConfig.environments === false) {

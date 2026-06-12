@@ -1,0 +1,15 @@
+description: New checkout flow in staging
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  - key: internal
+    segments:
+      - internal
+    percentage: 100
+
+  - key: everyone
+    segments: "*"
+    percentage: 0

@@ -15,6 +15,7 @@ export * from "./assess-distribution";
 export * from "./info";
 export * from "./list";
 export * from "./sets";
+export * from "./promoter";
 export * from "./cli";
 
 export * from "@featurevisor/parsers";

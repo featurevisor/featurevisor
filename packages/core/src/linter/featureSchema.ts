@@ -1462,6 +1462,7 @@ export function getFeatureZodSchema(
     .object({
       archived: z.boolean().optional(),
       deprecated: z.boolean().optional(),
+      promotable: z.boolean().optional(),
       description: z.string(),
 
       tags: z

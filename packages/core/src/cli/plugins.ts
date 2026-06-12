@@ -14,6 +14,7 @@ import { assessDistributionPlugin } from "../assess-distribution";
 import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
 import { sitePlugin } from "../site";
+import { promotePlugin } from "../promoter";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -32,6 +33,7 @@ export const projectBasedPlugins: Plugin[] = [
   assessDistributionPlugin,
   infoPlugin,
   listPlugin,
+  promotePlugin,
   sitePlugin,
 ];
 

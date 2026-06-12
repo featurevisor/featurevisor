@@ -8,5 +8,6 @@ export interface Slot {
 export interface Group {
   key: string;
   description: string;
+  promotable?: boolean;
   slots: Slot[];
 }

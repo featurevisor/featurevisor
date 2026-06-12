@@ -6,6 +6,7 @@ export function getSegmentZodSchema(projectConfig: ProjectConfig, conditionsZodS
   const segmentZodSchema = z
     .object({
       archived: z.boolean().optional(),
+      promotable: z.boolean().optional(),
       description: z.string({
         error: (issue) => (issue.input === undefined ? "Required" : undefined),
       }),

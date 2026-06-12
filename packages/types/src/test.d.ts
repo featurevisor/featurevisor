@@ -68,6 +68,7 @@ export interface FeatureAssertion {
 
 export interface TestFeature {
   key?: string; // file path
+  promotable?: boolean;
   feature: FeatureKey;
   assertions: FeatureAssertion[];
 }
@@ -81,6 +82,7 @@ export interface SegmentAssertion {
 
 export interface TestSegment {
   key?: string; // file path
+  promotable?: boolean;
   segment: SegmentKey;
   assertions: SegmentAssertion[];
 }

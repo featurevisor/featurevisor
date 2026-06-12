@@ -25,6 +25,7 @@ export function getTestsZodSchema(
 
   const segmentTestZodSchema = z
     .object({
+      promotable: z.boolean().optional(),
       segment: refineWithMessage(
         z.string(),
         (value) => availableSegmentKeys.includes(value),
@@ -45,6 +46,7 @@ export function getTestsZodSchema(
 
   const featureTestZodSchema = z
     .object({
+      promotable: z.boolean().optional(),
       feature: refineWithMessage(
         z.string(),
         (value) => availableFeatureKeys.includes(value),

@@ -1,0 +1,8 @@
+feature: checkoutFlow
+assertions:
+  - description: Disabled for everyone in production
+    at: 10
+    context:
+      team: engineering
+      userId: "user-1"
+    expectedToBeEnabled: false

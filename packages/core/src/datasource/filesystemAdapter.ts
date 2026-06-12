@@ -260,8 +260,8 @@ export class FilesystemAdapter extends Adapter {
   async writeEntity<T>(entityType: EntityType, entityKey: string, entity: T): Promise<T> {
     const filePath = this.getEntityPath(entityType, entityKey);
 
-    if (!fs.existsSync(this.getEntityDirectoryPath(entityType))) {
-      fs.mkdirSync(this.getEntityDirectoryPath(entityType), { recursive: true });
+    if (!fs.existsSync(path.dirname(filePath))) {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
 
     fs.writeFileSync(filePath, this.parser.stringify(entity, filePath));

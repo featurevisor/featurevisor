@@ -190,6 +190,7 @@ export interface ParsedFeature {
 
   archived?: boolean;
   deprecated?: boolean;
+  promotable?: boolean;
 
   description: string;
   tags: Tag[];

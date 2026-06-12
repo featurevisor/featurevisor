@@ -22,6 +22,7 @@ export type SchemaType =
 export interface Schema {
   // Basic metadata
   description?: string;
+  promotable?: boolean;
 
   // General validation keywords
   type?: SchemaType;
