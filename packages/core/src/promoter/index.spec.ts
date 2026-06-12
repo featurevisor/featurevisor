@@ -257,6 +257,68 @@ describe("promoteProjectSets", function () {
     );
   });
 
+  it("skips source rules and preserves destination rules marked non-promotable", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutFlow.yml",
+      [
+        "description: Checkout flow in dev",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "  - key: dev-only",
+        "    promotable: false",
+        '    segments: "*"',
+        "    percentage: 100",
+        "  - key: protected",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/features/checkoutFlow.yml",
+      [
+        "description: Checkout flow in staging",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 0",
+        "  - key: protected",
+        "    promotable: false",
+        '    segments: "*"',
+        "    percentage: 25",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkout*",
+      apply: true,
+    });
+
+    const feature = await datasource.forSet("staging").readFeature("checkoutFlow");
+    const rules = feature.rules as any[];
+
+    expect(rules.map((rule) => rule.key)).toEqual(["everyone", "protected"]);
+    expect(rules.find((rule) => rule.key === "everyone").percentage).toEqual(100);
+    expect(rules.find((rule) => rule.key === "protected").percentage).toEqual(25);
+    expect(rules.find((rule) => rule.key === "protected").promotable).toEqual(false);
+  });
+
   it("supports conflict policies", async function () {
     const root = await createProject();
     const projectConfig = getProjectConfig(root);

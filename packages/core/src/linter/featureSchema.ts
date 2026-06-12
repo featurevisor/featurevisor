@@ -1353,6 +1353,7 @@ export function getFeatureZodSchema(
         .object({
           key: z.string(),
           description: z.string().optional(),
+          promotable: z.boolean().optional(),
           segments: groupSegmentsZodSchema,
           percentage: z.number().min(0).max(100),
 

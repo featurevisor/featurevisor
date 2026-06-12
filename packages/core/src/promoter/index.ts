@@ -7,6 +7,8 @@ import type {
   EntityType,
   GroupSegment,
   ParsedFeature,
+  Rule,
+  RulesByEnvironment,
   Schema,
   Segment,
   Test,
@@ -320,6 +322,10 @@ function collectFeatureDependencies(
   for (const rules of Object.values((feature.rules || {}) as any)) {
     const ruleEntries = Array.isArray(rules) ? rules : [rules];
     for (const rule of ruleEntries) {
+      if (!isPromotable(rule)) {
+        continue;
+      }
+
       collectGroupSegmentKeys(rule?.segments, segmentKeys);
       Object.values(rule?.variableOverrides || {}).forEach((overrides: any) => {
         (overrides || []).forEach((override: any) => {
@@ -337,6 +343,134 @@ function collectFeatureDependencies(
       collectConditionDependencies(forceEntry?.conditions, segmentKeys, attributeKeys);
     }
   }
+}
+
+function mergeRuleArray(
+  destination: Rule[] | undefined,
+  source: Rule[] | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+  pathSegments: string[],
+) {
+  if (typeof source === "undefined") return destination;
+  if (typeof destination === "undefined") return source.filter((rule) => isPromotable(rule));
+
+  const mergedRuleKeys = new Set<string>();
+  const mergedRules: Rule[] = [];
+
+  for (const sourceRule of source) {
+    if (!isPromotable(sourceRule)) {
+      continue;
+    }
+
+    const destinationRule = destination.find((rule) => rule.key === sourceRule.key);
+    mergedRuleKeys.add(sourceRule.key);
+
+    if (destinationRule && !isPromotable(destinationRule)) {
+      mergedRules.push(destinationRule);
+      continue;
+    }
+
+    mergedRules.push(
+      deepMergeWithPolicy(destinationRule, sourceRule, policy, conflicts, [
+        ...pathSegments,
+        sourceRule.key,
+      ]) as Rule,
+    );
+  }
+
+  for (const destinationRule of destination) {
+    if (!mergedRuleKeys.has(destinationRule.key)) {
+      mergedRules.push(destinationRule);
+    }
+  }
+
+  return mergedRules;
+}
+
+function isRulesByEnvironment(value: ParsedFeature["rules"]): value is RulesByEnvironment {
+  return isPlainObject(value) && !Array.isArray(value);
+}
+
+function mergeRules(
+  destination: ParsedFeature["rules"] | undefined,
+  source: ParsedFeature["rules"] | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+) {
+  if (Array.isArray(source) || Array.isArray(destination)) {
+    return mergeRuleArray(
+      Array.isArray(destination) ? destination : undefined,
+      Array.isArray(source) ? source : undefined,
+      policy,
+      conflicts,
+      ["rules"],
+    );
+  }
+
+  if (isRulesByEnvironment(source) || isRulesByEnvironment(destination)) {
+    const environmentKeys = new Set([
+      ...Object.keys((destination || {}) as RulesByEnvironment),
+      ...Object.keys((source || {}) as RulesByEnvironment),
+    ]);
+    const result: RulesByEnvironment = {};
+
+    for (const environment of Array.from(environmentKeys).sort()) {
+      const merged = mergeRuleArray(
+        (destination as RulesByEnvironment | undefined)?.[environment],
+        (source as RulesByEnvironment | undefined)?.[environment],
+        policy,
+        conflicts,
+        ["rules", environment],
+      );
+
+      if (typeof merged !== "undefined") {
+        result[environment] = merged;
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
+
+  return source;
+}
+
+function mergeFeature(
+  featureKey: string,
+  destination: ParsedFeature | undefined,
+  source: ParsedFeature,
+  policy: ConflictPolicy,
+  conflicts: PromotionConflict[],
+): ParsedFeature {
+  const sourceWithoutRules = { ...source, rules: undefined };
+  const destinationWithoutRules = destination ? { ...destination, rules: undefined } : undefined;
+  const featureConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+  const mergedFeature = deepMergeWithPolicy(
+    destinationWithoutRules,
+    sourceWithoutRules,
+    policy,
+    featureConflicts,
+  ) as ParsedFeature;
+  const ruleConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+  const mergedRules = mergeRules(destination?.rules, source.rules, policy, ruleConflicts);
+
+  conflicts.push(
+    ...featureConflicts.map((conflict) => ({
+      type: "feature" as const,
+      key: featureKey,
+      ...conflict,
+    })),
+    ...ruleConflicts.map((conflict) => ({
+      type: "feature" as const,
+      key: featureKey,
+      ...conflict,
+    })),
+  );
+
+  return {
+    ...mergedFeature,
+    rules: mergedRules,
+  };
 }
 
 async function getPromotionPlan(
@@ -461,6 +595,23 @@ async function getPromotionPlan(
     key: string,
     source: T,
     readDestinationEntity: (key: string) => Promise<T>,
+    merge: (destination: T | undefined, source: T, conflicts: PromotionConflict[]) => T = (
+      destination,
+      sourceValue,
+      conflicts,
+    ) => {
+      const entityConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+      const merged = deepMergeWithPolicy(
+        destination,
+        sourceValue,
+        options.conflicts,
+        entityConflicts,
+      ) as T;
+
+      conflicts.push(...entityConflicts.map((conflict) => ({ type, key, ...conflict })));
+
+      return merged;
+    },
   ) {
     const cleanedSource = withoutKey(source as any) as T;
     const destination = await readDestination<T>(key, readDestinationEntity);
@@ -479,14 +630,8 @@ async function getPromotionPlan(
       return;
     }
 
-    const entityConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
-    const merged = deepMergeWithPolicy(
-      cleanedDestination,
-      cleanedSource,
-      options.conflicts,
-      entityConflicts,
-    ) as T;
-    const conflicts = entityConflicts.map((conflict) => ({ type, key, ...conflict }));
+    const conflicts: PromotionConflict[] = [];
+    const merged = merge(cleanedDestination, cleanedSource, conflicts);
 
     plans.push({
       type,
@@ -531,8 +676,13 @@ async function getPromotionPlan(
 
   for (const key of Array.from(promotedFeatureKeys).sort()) {
     if (features[key])
-      await plan("feature", key, features[key], (entryKey) =>
-        destinationDatasource.readFeature(entryKey),
+      await plan(
+        "feature",
+        key,
+        features[key],
+        (entryKey) => destinationDatasource.readFeature(entryKey),
+        (destination, source, conflicts) =>
+          mergeFeature(key, destination, source, options.conflicts, conflicts),
       );
   }
 

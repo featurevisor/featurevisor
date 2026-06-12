@@ -131,6 +131,21 @@ describe("core: lintProject", function () {
     });
   });
 
+  it("accepts promotable flags on feature rules", async () => {
+    replaceInFile(
+      path.join(tempProjectPath, "features", "showHeader.yml"),
+      '    - key: "1"',
+      '    - key: "1"\n      promotable: false',
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result).toEqual({
+      hasError: false,
+      errors: [],
+    });
+  });
+
   it("rejects non-boolean promotable values", async () => {
     fs.appendFileSync(
       path.join(tempProjectPath, "attributes", "userId.yml"),
@@ -143,6 +158,25 @@ describe("core: lintProject", function () {
     expect(
       result.errors.some(
         (error) => error.path.join(".") === "promotable" && error.message.includes("boolean"),
+      ),
+    ).toEqual(true);
+  });
+
+  it("rejects non-boolean rule promotable values", async () => {
+    replaceInFile(
+      path.join(tempProjectPath, "features", "showHeader.yml"),
+      '    - key: "1"',
+      '    - key: "1"\n      promotable: nope',
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result.hasError).toEqual(true);
+    expect(
+      result.errors.some(
+        (error) =>
+          error.path.join(".") === "rules.staging.0.promotable" &&
+          error.message.includes("boolean"),
       ),
     ).toEqual(true);
   });
