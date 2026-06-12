@@ -7,6 +7,7 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
 export interface BenchmarkOutput {
   value: any;
@@ -95,11 +96,13 @@ export async function benchmarkFeature(
   const { datasource, projectConfig } = deps;
 
   console.log("");
-  console.log(`Running benchmark for feature "${options.feature}"...`);
+  console.log(CLI_FORMAT_BOLD, "Benchmark Featurevisor feature");
+  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${options.n}`);
 
   console.log("");
-
-  console.log(`Building datafile containing all features for "${options.environment}"...`);
+  console.log(`Building datafile containing all features...`);
   const datafileBuildStart = Date.now();
   const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
@@ -114,13 +117,19 @@ export async function benchmarkFeature(
     existingState,
   );
   const datafileBuildDuration = Date.now() - datafileBuildStart;
-  console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
-  console.log(`Datafile size: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`);
+  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
+  console.log(
+    `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`,
+  );
 
   if (options.inflate) {
     console.log("");
-    console.log("Features count:", Object.keys(datafileContent.features).length);
-    console.log("Segments count:", Object.keys(datafileContent.segments).length);
+    console.log(
+      `  ${colorize("Features count", CLI_COLOR_CYAN)}: ${Object.keys(datafileContent.features).length}`,
+    );
+    console.log(
+      `  ${colorize("Segments count", CLI_COLOR_CYAN)}: ${Object.keys(datafileContent.segments).length}`,
+    );
   }
 
   console.log("");
@@ -129,10 +138,10 @@ export async function benchmarkFeature(
     datafile: datafileContent as DatafileContent,
     logLevel: "warn",
   });
-  console.log("...SDK initialized");
+  console.log(CLI_FORMAT_GREEN, "SDK initialized");
 
   console.log("");
-  console.log(`Against context: ${JSON.stringify(options.context)}`);
+  console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
 
   let output: BenchmarkOutput;
   if (options.variable) {
@@ -157,9 +166,13 @@ export async function benchmarkFeature(
 
   console.log("");
 
-  console.log(`Evaluated value : ${JSON.stringify(output.value)}`);
-  console.log(`Total duration  : ${prettyDuration(output.duration)}`);
-  console.log(`Average duration: ${prettyDuration(output.duration / options.n)}`);
+  console.log(`  ${colorize("Evaluated value", CLI_COLOR_CYAN)}: ${JSON.stringify(output.value)}`);
+  console.log(
+    `  ${colorize("Total duration", CLI_COLOR_CYAN)}: ${prettyDuration(output.duration)}`,
+  );
+  console.log(
+    `  ${colorize("Average duration", CLI_COLOR_CYAN)}: ${prettyDuration(output.duration / options.n)}`,
+  );
 }
 
 export const benchmarkPlugin: Plugin = {

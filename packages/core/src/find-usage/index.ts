@@ -7,6 +7,14 @@ import {
   extractSegmentKeysFromGroupSegments,
 } from "../utils/extractKeys";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import {
+  CLI_COLOR_CYAN,
+  CLI_COLOR_DIM,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_YELLOW,
+  colorize,
+} from "../tester/cliFormat";
 
 export interface UsageInFeatures {
   [featureKey: string]: {
@@ -303,6 +311,8 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
   const { datasource } = deps;
 
   console.log("");
+  console.log(CLI_FORMAT_BOLD, "Finding Featurevisor usage");
+  console.log("");
 
   const usageInFeatures = await findAllUsageInFeatures(deps);
   const usageInSegments = await findAllUsageInSegments(deps);
@@ -312,18 +322,21 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     const usedInFeatures = await findFeatureUsage(usageInFeatures, options.feature);
 
     if (usedInFeatures.size === 0) {
-      console.log(`Feature "${options.feature}" is not used in any features.`);
+      console.log(CLI_FORMAT_GREEN, `Feature "${options.feature}" is not used in any features.`);
     } else {
-      console.log(`Feature "${options.feature}" is used in the following features:\n`);
+      console.log(CLI_FORMAT_BOLD, `Feature "${options.feature}" is used in these features`);
+      console.log("");
 
       for (const featureKey of Array.from(usedInFeatures)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("feature", featureKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${featureKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey}`);
         }
       }
     }
@@ -336,18 +349,21 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     const usedInFeatures = await findSegmentUsage(usageInFeatures, options.segment);
 
     if (usedInFeatures.size === 0) {
-      console.log(`Segment "${options.segment}" is not used in any features.`);
+      console.log(CLI_FORMAT_GREEN, `Segment "${options.segment}" is not used in any features.`);
     } else {
-      console.log(`Segment "${options.segment}" is used in the following features:\n`);
+      console.log(CLI_FORMAT_BOLD, `Segment "${options.segment}" is used in these features`);
+      console.log("");
 
       for (const featureKey of Array.from(usedInFeatures)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("feature", featureKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${featureKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey}`);
         }
       }
     }
@@ -360,22 +376,28 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     const usedIn = await findAttributeUsage(usageInFeatures, usageInSegments, options.attribute);
 
     if (usedIn.features.size === 0 && usedIn.segments.size === 0) {
-      console.log(`Attribute "${options.attribute}" is not used in any features or segments.`);
+      console.log(
+        CLI_FORMAT_GREEN,
+        `Attribute "${options.attribute}" is not used in any features or segments.`,
+      );
 
       return;
     }
 
     if (usedIn.segments.size > 0) {
-      console.log(`Attribute "${options.attribute}" is used in the following segments:\n`);
+      console.log(CLI_FORMAT_BOLD, `Attribute "${options.attribute}" is used in these segments`);
+      console.log("");
 
       for (const segmentKey of Array.from(usedIn.segments)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("segment", segmentKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${segmentKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${segmentKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${segmentKey}`);
         }
       }
 
@@ -388,16 +410,20 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       }
 
       if (affectedFeatures.size > 0) {
-        console.log(`\nSegments above are used in the following features:\n`);
+        console.log("");
+        console.log(CLI_FORMAT_BOLD, "Segments above are used in these features");
+        console.log("");
 
         for (const featureKey of Array.from(affectedFeatures)) {
           if (options.authors) {
             const entries = await datasource.listHistoryEntries("feature", featureKey);
             const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-            console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+            console.log(
+              `  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+            );
           } else {
-            console.log(`  - ${featureKey}`);
+            console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey}`);
           }
         }
 
@@ -406,16 +432,22 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     }
 
     if (usedIn.features.size > 0) {
-      console.log(`Attribute "${options.attribute}" is used directly in the following features:\n`);
+      console.log(
+        CLI_FORMAT_BOLD,
+        `Attribute "${options.attribute}" is used directly in these features`,
+      );
+      console.log("");
 
       for (const featureKey of Array.from(usedIn.features)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("feature", featureKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${featureKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${featureKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${featureKey}`);
         }
       }
 
@@ -430,18 +462,21 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     const unusedSegments = await findUnusedSegments(deps, usageInFeatures);
 
     if (unusedSegments.size === 0) {
-      console.log("No unused segments found.");
+      console.log(CLI_FORMAT_GREEN, "No unused segments found.");
     } else {
-      console.log("Unused segments:\n");
+      console.log(CLI_FORMAT_YELLOW, "Unused segments");
+      console.log("");
 
       for (const segmentKey of Array.from(unusedSegments)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("segment", segmentKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${segmentKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${segmentKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${segmentKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${segmentKey}`);
         }
       }
     }
@@ -454,18 +489,21 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     const unusedAttributes = await findUnusedAttributes(deps, usageInFeatures, usageInSegments);
 
     if (unusedAttributes.size === 0) {
-      console.log("No unused attributes found.");
+      console.log(CLI_FORMAT_GREEN, "No unused attributes found.");
     } else {
-      console.log("Unused attributes:\n");
+      console.log(CLI_FORMAT_YELLOW, "Unused attributes");
+      console.log("");
 
       for (const attributeKey of Array.from(unusedAttributes)) {
         if (options.authors) {
           const entries = await datasource.listHistoryEntries("attribute", attributeKey);
           const authors = Array.from(new Set(entries.map((entry) => entry.author)));
 
-          console.log(`  - ${attributeKey} (Authors: ${authors.join(", ")})`);
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${attributeKey} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
         } else {
-          console.log(`  - ${attributeKey}`);
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${attributeKey}`);
         }
       }
     }
@@ -473,7 +511,7 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
     return;
   }
 
-  console.log("Please specify a segment or attribute.");
+  console.log(CLI_FORMAT_YELLOW, "Please specify a feature, segment, attribute, or unused query.");
 }
 
 export const findUsagePlugin: Plugin = {

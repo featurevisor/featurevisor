@@ -21,6 +21,7 @@ import type { CustomParser } from "@featurevisor/parsers";
 import { Adapter, DatafileOptions } from "./adapter";
 import { ProjectConfig } from "../config";
 import { getCommit } from "../utils/git";
+import { CLI_COLOR_CYAN, CLI_COLOR_GREEN, colorize } from "../tester/cliFormat";
 
 const FEATURE_ENVIRONMENT_ALLOWED_KEYS = ["rules", "force", "expose"];
 
@@ -399,7 +400,7 @@ export class FilesystemAdapter extends Adapter {
     const root = path.resolve(dir, "..");
 
     const shortPath = outputFilePath.replace(root + path.sep, "");
-    console.log(`     Datafile generated: ${shortPath}`);
+    console.log(`    ${colorize("✔", CLI_COLOR_GREEN)} ${colorize(shortPath, CLI_COLOR_CYAN)}`);
   }
 
   /**

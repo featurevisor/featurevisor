@@ -2,6 +2,7 @@ import * as path from "path";
 
 import type { ProjectConfig } from "./config";
 import type { Datasource } from "./datasource";
+import { CLI_FORMAT_BOLD } from "./tester/cliFormat";
 
 export interface ProjectSetExecution {
   set: string;
@@ -70,6 +71,6 @@ export function getProjectSetRelativeFilePath(
 export function printSetHeader(projectConfig: ProjectConfig, set: string, silent = false) {
   if (projectConfig.sets && !silent) {
     console.log("");
-    console.log(`Set "${set}"`);
+    console.log(CLI_FORMAT_BOLD, `Set "${set}"`);
   }
 }

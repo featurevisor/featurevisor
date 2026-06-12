@@ -12,6 +12,7 @@ import type { Scope } from "../config";
 
 import type { DatafileContent } from "@featurevisor/types";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -43,6 +44,10 @@ function getFeaturevisorVersion(): string {
   }
 }
 
+function getEnvironmentLabel(environment: string | false) {
+  return environment === false ? "No environment" : `Environment "${environment}"`;
+}
+
 async function buildForEnvironment({
   projectConfig,
   datasource,
@@ -60,14 +65,15 @@ async function buildForEnvironment({
   scopes?: Scope[];
   cliOptions: BuildCLIOptions;
 }) {
-  console.log(`\nBuilding datafiles for environment: ${environment}`);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, getEnvironmentLabel(environment));
 
   const existingState = await datasource.readState(environment);
   const featurevisorVersion = getFeaturevisorVersion();
 
   // by tag
   for (const tag of tags) {
-    console.log(`\n  => Tag: ${tag}`);
+    console.log(`  ${colorize("Tag", CLI_COLOR_CYAN)}: ${tag}`);
 
     const datafileContent = await buildDatafile(
       projectConfig,
@@ -95,7 +101,7 @@ async function buildForEnvironment({
   // by scope
   if (scopes) {
     for (const scope of scopes) {
-      console.log(`\n  => Scope: ${scope.name}`);
+      console.log(`  ${colorize("Scope", CLI_COLOR_CYAN)}: ${scope.name}`);
 
       const datafileContent = await buildDatafile(
         projectConfig,
@@ -185,7 +191,9 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const { tags, environments, scopes } = projectConfig;
 
   const currentRevision = await datasource.readRevision();
-  console.log("\nCurrent revision:", currentRevision);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Building Featurevisor datafiles");
+  console.log(`  Current revision: ${currentRevision}`);
 
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
@@ -218,7 +226,9 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
     });
   }
 
-  console.log("\nLatest revision:", nextRevision);
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, "Datafiles built");
+  console.log(CLI_FORMAT_BOLD, `Latest revision: ${nextRevision}`);
 }
 
 export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -232,7 +242,8 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
   if (projectConfig.sets && !cliOptions.json) {
-    console.log("\nBuilding Featurevisor sets");
+    console.log("");
+    console.log(CLI_FORMAT_BOLD, "Building Featurevisor sets");
     console.log(`  Sets: ${executions.map((execution) => execution.set).join(", ")}`);
     console.log(`  Current project revision: ${currentRevision}`);
   }
@@ -268,7 +279,9 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
     !cliOptions.revision
   ) {
     await datasource.writeRevision(nextRevision);
-    console.log("\nLatest project revision:", nextRevision);
+    console.log("");
+    console.log(CLI_FORMAT_GREEN, "Featurevisor sets built");
+    console.log(CLI_FORMAT_BOLD, `Latest project revision: ${nextRevision}`);
   }
 }
 

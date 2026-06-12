@@ -2,14 +2,17 @@ import { Dependencies } from "../dependencies";
 import { getMatrixCombinations } from "../list/matrix";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 
 export async function showProjectInfo(deps: Dependencies) {
   const { datasource } = deps;
 
-  console.log("\nProject info:\n");
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Project info");
+  console.log("");
 
   const revision = await datasource.readRevision();
-  console.log("  - Revision:         ", revision);
+  console.log(`  ${colorize("Revision", CLI_COLOR_CYAN)}:         ${revision}`);
 
   console.log("");
 
@@ -27,16 +30,16 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log("  - Total attributes: ", attributes.length);
-  console.log("  - Total segments:   ", segments.length);
-  console.log("  - Total features:   ", features.length);
-  console.log("  - Total variables:  ", variablesCount);
-  console.log("  - Total groups:     ", groups.length);
+  console.log(`  ${colorize("Total attributes", CLI_COLOR_CYAN)}: ${attributes.length}`);
+  console.log(`  ${colorize("Total segments", CLI_COLOR_CYAN)}:   ${segments.length}`);
+  console.log(`  ${colorize("Total features", CLI_COLOR_CYAN)}:   ${features.length}`);
+  console.log(`  ${colorize("Total variables", CLI_COLOR_CYAN)}:  ${variablesCount}`);
+  console.log(`  ${colorize("Total groups", CLI_COLOR_CYAN)}:     ${groups.length}`);
 
   console.log("");
 
   const tests = await datasource.listTests();
-  console.log("  - Total test specs: ", tests.length);
+  console.log(`  ${colorize("Total test specs", CLI_COLOR_CYAN)}: ${tests.length}`);
 
   let assertionsCount = 0;
   for (const test of tests) {
@@ -52,7 +55,7 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log("  - Total assertions: ", assertionsCount);
+  console.log(`  ${colorize("Total assertions", CLI_COLOR_CYAN)}: ${assertionsCount}`);
 }
 
 export const infoPlugin: Plugin = {

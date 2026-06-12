@@ -9,6 +9,7 @@ import { SCHEMA_VERSION } from "../config";
 import { prettyPercentage, prettyNumber } from "../utils";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
 const UUID_LENGTHS = [4, 2, 2, 2, 6];
 
@@ -48,7 +49,7 @@ function printCounts(evaluations: EvaluationsCount, n: number, sort = true) {
 
   for (const [value, count] of entries) {
     console.log(
-      `  - ${value}:`.padEnd(longestValueLength + 5, " "),
+      `  ${colorize("•", CLI_COLOR_CYAN)} ${value}:`.padEnd(longestValueLength + 14, " "),
       `\t${prettyNumber(count).padStart(prettyHighestCountLength, " ")}`,
       `\t${prettyPercentage(count, n).padStart(7, " ")}`,
     );
@@ -82,13 +83,18 @@ export interface AssessDistributionOptions {
 export async function assessDistribution(deps: Dependencies, options: AssessDistributionOptions) {
   const { projectConfig, datasource } = deps;
 
-  console.log(`\nAssessing distribution for feature: "${options.feature}"...`);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Assess Featurevisor distribution");
+  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${prettyNumber(options.n)}`);
 
   /**
    * Prepare datafile
    */
   const datafileBuildStart = Date.now();
-  console.log(`\n\nBuilding datafile containing all features for "${options.environment}"...`);
+  console.log("");
+  console.log("Building datafile containing all features...");
   const existingState = await datasource.readState(options.environment || false);
   const datafileContent = await buildDatafile(
     projectConfig,
@@ -102,7 +108,7 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
     existingState,
   );
   const datafileBuildDuration = Date.now() - datafileBuildStart;
-  console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
+  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
 
   /**
    * Initialize SDK
@@ -111,7 +117,8 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
     datafile: datafileContent as DatafileContent,
     logLevel: "warn",
   });
-  console.log("\n\n...SDK initialized\n");
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, "SDK initialized");
 
   /**
    * Evaluations
@@ -130,7 +137,8 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
 
   const variationEvaluations: EvaluationsCount = {};
 
-  console.log(`\nEvaluating ${prettyNumber(options.n)} times...`);
+  console.log("");
+  console.log(`Evaluating ${prettyNumber(options.n)} times...`);
 
   for (let i = 0; i < options.n; i++) {
     const context = createContext(options.context, options.populateUuid);
@@ -163,11 +171,15 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
    * Print results
    */
 
-  console.log("\n\nFlag evaluations:\n");
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Flag evaluations");
+  console.log("");
   printCounts(flagEvaluations, options.n);
 
   if (hasVariations) {
-    console.log("\n\nVariation evaluations:\n");
+    console.log("");
+    console.log(CLI_FORMAT_BOLD, "Variation evaluations");
+    console.log("");
     printCounts(variationEvaluations, options.n);
   }
 }

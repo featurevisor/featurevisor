@@ -12,6 +12,13 @@ import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import {
+  CLI_COLOR_CYAN,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_YELLOW,
+  colorize,
+} from "../tester/cliFormat";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -403,17 +410,20 @@ function printResult({ result, entityType, options }) {
   }
 
   if (result.length === 0) {
-    console.log(`No ${entityType}s found.`);
+    console.log(CLI_FORMAT_YELLOW, `No ${entityType}s found.`);
     return;
   }
 
-  console.log(`\n${ucfirst(entityType)}s:\n`);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, `${ucfirst(entityType)}s`);
+  console.log("");
 
   for (const item of result) {
-    console.log(`- ${item.key}`);
+    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}`);
   }
 
-  console.log(`\n\nFound ${result.length} ${entityType}s.`);
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, `Found ${result.length} ${entityType}s.`);
 }
 
 export async function listProject(deps: Dependencies) {
@@ -463,7 +473,10 @@ export async function listProject(deps: Dependencies) {
     });
   }
 
-  console.log("\nNothing to list. \n\nPlease pass `--features`, `--segments`, or `--attributes`.");
+  console.log("");
+  console.log(CLI_FORMAT_YELLOW, "Nothing to list.");
+  console.log("");
+  console.log("Please pass `--features`, `--segments`, or `--attributes`.");
 }
 
 export const listPlugin: Plugin = {

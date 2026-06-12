@@ -5,6 +5,7 @@ import { generateTypeScriptCodeForProject } from "./typescript";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 
 export const ALLOWED_LANGUAGES_FOR_CODE_GENERATION = ["typescript"];
 
@@ -33,13 +34,14 @@ export async function generateCodeForProject(
   const absolutePath = path.resolve(rootDirectoryPath, cliOptions.outDir);
 
   if (!fs.existsSync(absolutePath)) {
-    console.log(`Creating output directory: ${absolutePath}`);
+    console.log(`Creating output directory: ${colorize(absolutePath, CLI_COLOR_CYAN)}`);
     fs.mkdirSync(absolutePath, { recursive: true });
   } else {
-    console.log(`Output directory already exists at: ${absolutePath}`);
+    console.log(`Output directory already exists at: ${colorize(absolutePath, CLI_COLOR_CYAN)}`);
   }
 
   if (!ALLOWED_LANGUAGES_FOR_CODE_GENERATION.includes(cliOptions.language)) {
+    console.log(CLI_FORMAT_BOLD, "Unsupported language");
     console.log(
       `Only these languages are supported: ${ALLOWED_LANGUAGES_FOR_CODE_GENERATION.join(", ")}`,
     );

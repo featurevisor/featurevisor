@@ -6,6 +6,7 @@ import { Parser, parsers } from "@featurevisor/parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import type { Plugin } from "../cli";
 import type { BuildTags } from "../builder/buildDatafile";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -194,7 +195,9 @@ export function showProjectConfig(
     return;
   }
 
-  console.log("\nProject configuration:\n");
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Project configuration");
+  console.log("");
 
   const keys = Object.keys(projectConfig);
   const longestKeyLength = keys.reduce((acc, key) => (key.length > acc ? key.length : acc), 0);
@@ -205,7 +208,9 @@ export function showProjectConfig(
       continue;
     }
 
-    console.log(`  - ${key.padEnd(longestKeyLength, " ")}: ${projectConfig[key]}`);
+    console.log(
+      `  ${colorize(key.padEnd(longestKeyLength, " "), CLI_COLOR_CYAN)}: ${projectConfig[key]}`,
+    );
   }
 }
 

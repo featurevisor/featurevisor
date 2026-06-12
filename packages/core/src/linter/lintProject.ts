@@ -16,7 +16,7 @@ import { checkForCircularDependencyInRequired } from "./checkCircularDependency"
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
 import { getLintIssuesFromZodError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
-import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
+import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
 import { Plugin } from "../cli";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
@@ -708,6 +708,11 @@ export const lintPlugin: Plugin = {
 
     if (hasError) {
       return false;
+    }
+
+    if (!parsed.json) {
+      console.log("");
+      console.log(CLI_FORMAT_GREEN, "✔ No lint errors found");
     }
   },
   examples: [

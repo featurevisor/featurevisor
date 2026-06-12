@@ -13,6 +13,13 @@ import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 import { Plugin } from "../cli";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import {
+  CLI_COLOR_CYAN,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_YELLOW,
+  colorize,
+} from "../tester/cliFormat";
 
 function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
@@ -23,31 +30,32 @@ function printEvaluationDetails(evaluation: Evaluation) {
     }
 
     if (key === "variation") {
-      console.log(`-`, `${key}:`, value?.value);
+      console.log(`  ${colorize(key, CLI_COLOR_CYAN)}:`, value?.value);
       continue;
     }
 
     if (key === "variableSchema") {
-      console.log(`-`, `variableType:`, value.type);
-      console.log(`-`, `defaultValue:`, value.defaultValue);
+      console.log(`  ${colorize("variableType", CLI_COLOR_CYAN)}:`, value.type);
+      console.log(`  ${colorize("defaultValue", CLI_COLOR_CYAN)}:`, value.defaultValue);
       continue;
     }
 
-    console.log(`-`, `${key}:`, value);
+    console.log(`  ${colorize(key, CLI_COLOR_CYAN)}:`, value);
   }
 }
 
 function printLogs(logs: Log[]) {
   logs.forEach((log) => {
-    console.log(`[${log.level}] ${log.message}`, log.details);
+    const levelColor = log.level === "error" ? 31 : log.level === "warn" ? 33 : 2;
+    console.log(`${colorize(`[${log.level}]`, levelColor)} ${log.message}`, log.details);
     console.log("");
   });
 }
 
 function printHeader(message: string) {
-  console.log("\n\n###############");
-  console.log(`# ${message}`);
-  console.log("###############\n");
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, message);
+  console.log("");
 }
 
 export interface EvaluateOptions {
@@ -144,8 +152,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   }
 
   console.log("");
-  console.log(`Evaluating feature "${options.feature}" in environment "${options.environment}"...`);
-  console.log(`Against context: ${JSON.stringify(options.context)}`);
+  console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor feature");
+  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
 
   // flag
   printHeader("Is enabled?");
@@ -154,7 +164,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     printLogs(flagEvaluationLogs);
   }
 
-  console.log("Value:", flagEvaluation.enabled);
+  console.log(
+    flagEvaluation.enabled ? CLI_FORMAT_GREEN : CLI_FORMAT_YELLOW,
+    `Value: ${flagEvaluation.enabled}`,
+  );
   console.log("\nDetails:\n");
 
   printEvaluationDetails(flagEvaluation);
@@ -167,12 +180,12 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
       printLogs(variationEvaluationLogs);
     }
 
-    console.log("Value:", JSON.stringify(variationEvaluation.variation?.value));
+    console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(variationEvaluation.variation?.value)}`);
     console.log("\nDetails:\n");
 
     printEvaluationDetails(variationEvaluation);
   } else {
-    console.log("No variations defined.");
+    console.log(CLI_FORMAT_YELLOW, "No variations defined.");
   }
 
   // variables
@@ -184,12 +197,11 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
         printLogs(variableEvaluationLogs[key]);
       }
 
-      console.log(
-        "Value:",
+      const variableValue =
         typeof value.variableValue !== "undefined"
           ? JSON.stringify(value.variableValue)
-          : value.variableValue,
-      );
+          : value.variableValue;
+      console.log(CLI_FORMAT_GREEN, `Value: ${variableValue}`);
       console.log("\nDetails:\n");
 
       printEvaluationDetails(value);
@@ -197,7 +209,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   } else {
     printHeader("Variables");
 
-    console.log("No variables defined.");
+    console.log(CLI_FORMAT_YELLOW, "No variables defined.");
   }
 }
 

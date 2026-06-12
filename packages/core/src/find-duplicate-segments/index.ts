@@ -2,6 +2,13 @@ import { findDuplicateSegments, DuplicateSegmentsOptions } from "./findDuplicate
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import {
+  CLI_COLOR_CYAN,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_YELLOW,
+  colorize,
+} from "../tester/cliFormat";
 
 export async function findDuplicateSegmentsInProject(
   deps: Dependencies,
@@ -10,21 +17,25 @@ export async function findDuplicateSegmentsInProject(
   const duplicates = await findDuplicateSegments(deps, options);
 
   console.log("");
+  console.log(CLI_FORMAT_BOLD, "Finding duplicate Featurevisor segments");
 
   if (duplicates.length === 0) {
-    console.log("No duplicate segments found");
+    console.log(CLI_FORMAT_GREEN, "No duplicate segments found");
     return;
   }
 
-  console.log(`Found ${duplicates.length} duplicate(s):\n`);
+  console.log(CLI_FORMAT_YELLOW, `Found ${duplicates.length} duplicate(s):`);
+  console.log("");
 
   duplicates.forEach((entry) => {
     if (options.authors) {
-      console.log(`  - Segments: ${entry.segments.join(", ")}`);
-      console.log(`    Authors:  ${entry.authors && entry.authors.join(", ")}`);
+      console.log(`  ${colorize("•", CLI_COLOR_CYAN)} Segments: ${entry.segments.join(", ")}`);
+      console.log(
+        `    ${colorize("Authors", CLI_COLOR_CYAN)}:  ${entry.authors && entry.authors.join(", ")}`,
+      );
       console.log("");
     } else {
-      console.log(`  - ${entry.segments.join(", ")}`);
+      console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${entry.segments.join(", ")}`);
     }
   });
 }
