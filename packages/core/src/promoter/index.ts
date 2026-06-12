@@ -154,7 +154,7 @@ function matchesPattern(key: string, patterns: string[]) {
 }
 
 function withoutKey<T extends Record<string, unknown>>(entity: T): T {
-  const { key: _key, ...rest } = entity;
+  const { key: _key, ...rest } = entity; // eslint-disable-line @typescript-eslint/no-unused-vars
 
   return rest as T;
 }
