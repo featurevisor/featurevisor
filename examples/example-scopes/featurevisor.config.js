@@ -1,7 +1,7 @@
 /** @type {import('@featurevisor/core').ProjectConfig} */
 module.exports = {
   environments: ["staging", "production"],
-  tags: ["all", "web", "ios", "android"],
+  tags: ["all", "web", "ios", "android", "mobile"],
   scopes: [
     {
       name: "browsers",

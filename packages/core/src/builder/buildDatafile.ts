@@ -142,18 +142,14 @@ export async function buildDatafile(
       if (options.tags) {
         // plain array of tags: treat as OR tags
         if (Array.isArray(options.tags)) {
-          if (
-            options.tags.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
-          ) {
+          if (options.tags.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
             continue;
           }
         } else {
           // OR tags
           const orTags = options.tags as BuildOrTags;
           if (orTags.or) {
-            if (
-              orTags.or.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
-            ) {
+            if (orTags.or.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
               continue;
             }
           }
@@ -161,9 +157,7 @@ export async function buildDatafile(
           // AND tags
           const andTags = options.tags as BuildAndTags;
           if (andTags.and) {
-            if (
-              andTags.and.every((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
-            ) {
+            if (andTags.and.every((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
               continue;
             }
           }
