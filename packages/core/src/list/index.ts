@@ -151,7 +151,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       // --tag=<tag>
       if (options.tag) {
         const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
-        const hasTags = tags.every((tag) => parsedFeature.tags.includes(tag));
+        const featureTags = parsedFeature.tags || [];
+        const hasTags = tags.every((tag) => featureTags.includes(tag));
 
         if (!hasTags) {
           continue;

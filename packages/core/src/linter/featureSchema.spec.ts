@@ -109,8 +109,8 @@ const TEST_SCHEMAS_BY_KEY: Record<string, Schema> = {
   slugSchema: slugSchemaResolved,
 };
 
-function getFeatureSchema() {
-  const projectConfig = minimalProjectConfig();
+function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
+  const projectConfig = minimalProjectConfig(projectConfigOverrides);
   const conditionsZodSchema = getConditionsZodSchema(projectConfig, TEST_ATTRIBUTES);
   return getFeatureZodSchema(
     projectConfig,
@@ -137,12 +137,18 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function parseFeature(feature: unknown): z.ZodSafeParseResult<unknown> {
-  return getFeatureSchema().safeParse(feature);
+function parseFeature(
+  feature: unknown,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): z.ZodSafeParseResult<unknown> {
+  return getFeatureSchema(projectConfigOverrides).safeParse(feature);
 }
 
-function expectParseSuccess(feature: unknown): void {
-  const result = parseFeature(feature);
+function expectParseSuccess(
+  feature: unknown,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): void {
+  const result = parseFeature(feature, projectConfigOverrides);
   expect(result.success).toBe(true);
   if (!result.success) {
     const err = (result as z.ZodSafeParseError<unknown>).error;
@@ -151,8 +157,12 @@ function expectParseSuccess(feature: unknown): void {
   }
 }
 
-function expectParseFailure(feature: unknown, messageSubstring?: string): z.ZodError {
-  const result = parseFeature(feature);
+function expectParseFailure(
+  feature: unknown,
+  messageSubstring?: string,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): z.ZodError {
+  const result = parseFeature(feature, projectConfigOverrides);
   expect(result.success).toBe(false);
   if (result.success) throw new Error("Expected parse failure");
   const err = (result as z.ZodSafeParseError<unknown>).error;
@@ -179,6 +189,27 @@ function expectErrorSurfaces(
 }
 
 describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable values)", () => {
+  describe("tags", () => {
+    it("accepts missing tags", () => {
+      const feature = baseFeature();
+      delete feature.tags;
+
+      expectParseSuccess(feature);
+    });
+
+    it("accepts tags defined in project config", () => {
+      expectParseSuccess(baseFeature({ tags: ["all", "beta"] }), { tags: ["all", "beta"] });
+    });
+
+    it("rejects tags missing from project config", () => {
+      expectParseFailure(baseFeature({ tags: ["unknown"] }), 'Unknown tag "unknown"');
+    });
+
+    it("rejects duplicate tags", () => {
+      expectParseFailure(baseFeature({ tags: ["all", "all"] }), "Duplicate tags found: all, all");
+    });
+  });
+
   describe("attribute-aware rule and force conditions", () => {
     it("accepts force conditions using semver operators on oneOf attributes", () => {
       expectParseSuccess(

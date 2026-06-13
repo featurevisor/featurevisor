@@ -133,7 +133,9 @@ export async function buildDatafile(
         continue;
       }
 
-      if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
+      const featureTags = parsedFeature.tags || [];
+
+      if (options.tag && featureTags.indexOf(options.tag) === -1) {
         continue;
       }
 
@@ -141,7 +143,7 @@ export async function buildDatafile(
         // plain array of tags: treat as OR tags
         if (Array.isArray(options.tags)) {
           if (
-            options.tags.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
+            options.tags.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
           ) {
             continue;
           }
@@ -150,7 +152,7 @@ export async function buildDatafile(
           const orTags = options.tags as BuildOrTags;
           if (orTags.or) {
             if (
-              orTags.or.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
+              orTags.or.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
             ) {
               continue;
             }
@@ -160,8 +162,7 @@ export async function buildDatafile(
           const andTags = options.tags as BuildAndTags;
           if (andTags.and) {
             if (
-              andTags.and.every((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) ===
-              false
+              andTags.and.every((searchTag) => featureTags.indexOf(searchTag) !== -1) === false
             ) {
               continue;
             }

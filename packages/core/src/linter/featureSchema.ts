@@ -14,8 +14,6 @@ import {
 } from "./schema";
 import { refineWithMessage } from "./zodHelpers";
 
-const tagRegex = /^[a-z0-9-]+$/;
-
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
@@ -1470,9 +1468,8 @@ export function getFeatureZodSchema(
         .array(
           refineWithMessage(
             z.string(),
-            (value) => tagRegex.test(value),
-            (value) =>
-              `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+            (value) => projectConfig.tags.includes(value),
+            (value) => `Unknown tag "${value}"`,
           ),
         )
         .superRefine((value, ctx) => {
@@ -1482,7 +1479,8 @@ export function getFeatureZodSchema(
               message: "Duplicate tags found: " + value.join(", "),
             });
           }
-        }),
+        })
+        .optional(),
 
       required: z
         .array(

@@ -266,4 +266,45 @@ describe("core: buildDatafile", function () {
       { attribute: "country", operator: "equals", value: "de" },
     ]);
   });
+
+  test("includes features with missing tags when no tag filter is provided", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    delete feature.tags;
+    const datasource = createMockDatasource(feature);
+
+    const result = (await buildDatafile(
+      config,
+      datasource,
+      {
+        schemaVersion: "2",
+        revision: "1",
+        environment: "staging",
+      },
+      existingState,
+    )) as DatafileContent;
+
+    expect(result.features.withRuleOverrides).toBeDefined();
+  });
+
+  test("excludes features with missing tags when tag filter is provided", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    delete feature.tags;
+    const datasource = createMockDatasource(feature);
+
+    const result = (await buildDatafile(
+      config,
+      datasource,
+      {
+        schemaVersion: "2",
+        revision: "1",
+        environment: "staging",
+        tag: "all",
+      },
+      existingState,
+    )) as DatafileContent;
+
+    expect(result.features.withRuleOverrides).toBeUndefined();
+  });
 });

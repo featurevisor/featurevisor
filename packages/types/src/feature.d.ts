@@ -194,7 +194,7 @@ export interface ParsedFeature {
   promotable?: boolean;
 
   description: string;
-  tags: Tag[];
+  tags?: Tag[];
 
   required?: Required[];
 
