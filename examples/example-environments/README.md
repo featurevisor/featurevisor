@@ -3,7 +3,7 @@
 Example project modeling `dev`, `staging`, and `production` as independent Featurevisor sets.
 
 Each set contains the same `checkoutFlow` feature key, but rollout behavior differs by release lane.
-The project sets `environments: false`, so feature rules live directly under `rules:` without another environment nesting layer.
+The project omits `environments`, so feature rules live directly under `rules:` without another environment nesting layer.
 
 ```sh
 npx featurevisor lint

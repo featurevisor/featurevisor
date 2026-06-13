@@ -16,14 +16,7 @@ async function createProject(options?: { configContent?: string; sets?: string[]
   const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
   const configContent =
     options?.configContent ??
-    [
-      "module.exports = {",
-      "  sets: true,",
-      "  environments: false,",
-      "  tags: ['all'],",
-      "};",
-      "",
-    ].join("\n");
+    ["module.exports = {", "  sets: true,", "  tags: ['all'],", "};", ""].join("\n");
   const sets = options?.sets ?? ["dev", "staging"];
 
   await writeFile(root, "featurevisor.config.js", configContent);
@@ -146,7 +139,6 @@ describe("promoteProjectSets", function () {
       configContent: [
         "module.exports = {",
         "  sets: true,",
-        "  environments: false,",
         "  promotionFlows: [",
         '    { from: "dev", to: "staging" },',
         '    { from: "staging", to: "production" },',
@@ -184,7 +176,6 @@ describe("promoteProjectSets", function () {
       configContent: [
         "module.exports = {",
         "  sets: true,",
-        "  environments: false,",
         "  promotionFlows: [],",
         "};",
         "",

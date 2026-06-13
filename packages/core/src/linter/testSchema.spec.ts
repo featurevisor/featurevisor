@@ -146,6 +146,37 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
     );
   });
 
+  it("rejects environment in assertions when environments are omitted", () => {
+    const schema = getSchema(minimalProjectConfig({ environments: undefined }));
+    const testSpec = {
+      feature: "checkout",
+      assertions: [
+        {
+          at: 1,
+          expectedToBeEnabled: true,
+        },
+      ],
+    };
+
+    expect(schema.safeParse(testSpec).success).toBe(true);
+
+    const result = schema.safeParse({
+      feature: "checkout",
+      assertions: [
+        {
+          at: 1,
+          environment: "staging",
+          expectedToBeEnabled: true,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.length).toBeGreaterThan(0);
+    }
+  });
+
   it("rejects unknown feature and segment keys", () => {
     expectTestFailure(
       {

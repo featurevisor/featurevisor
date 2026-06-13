@@ -23,14 +23,10 @@ module.exports = {
     'web',
     'mobile',
   ],
-  environments: [
-    'staging',
-    'production'
-  ],
 }
 ```
 
-As your [tags](/docs/tags) and [environments](/docs/environments) grow, you can keep adding them to your configuration file.
+As your [tags](/docs/tags) grow, you can keep adding them to your configuration file. If your project needs [environments](/docs/environments), configure them explicitly.
 
 ## Params
 
@@ -51,9 +47,18 @@ module.exports = {
 
 ### `environments`
 
-An array of [environments](/docs/environments) that can be used in your [features](/docs/features/).
+An optional array of [environments](/docs/environments) that can be used in your [features](/docs/features/).
 
-By default, Featurevisor will use `staging` and `production` as environments:
+By default, Featurevisor has no environments. This means feature rules are defined directly:
+
+```yml {% path="features/my_feature.yml" %}
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 100
+```
+
+If your project needs environments, define them as an array of strings:
 
 ```js {% path="featurevisor.config.js" %}
 module.exports = {
@@ -61,14 +66,6 @@ module.exports = {
     'staging',
     'production'
   ],
-}
-```
-
-If your project does not need any environments, you can also disable it:
-
-```js {% path="featurevisor.config.js" %}
-module.exports = {
-  environments: false,
 }
 ```
 

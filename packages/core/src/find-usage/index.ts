@@ -119,7 +119,7 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
     }
 
     // no environments
-    if (projectConfig.environments === false) {
+    if (!Array.isArray(projectConfig.environments)) {
       // force
       if (Array.isArray(feature.force)) {
         feature.force.forEach((force) => {

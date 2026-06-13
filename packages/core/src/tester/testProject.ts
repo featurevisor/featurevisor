@@ -199,7 +199,7 @@ export async function testProject(
   }
 
   // no environments
-  if (projectConfig.environments === false) {
+  if (!Array.isArray(projectConfig.environments)) {
     const existingState = await datasource.readState(false);
     const datafileContent = await buildDatafile(
       projectConfig,

@@ -28,7 +28,7 @@ npx featurevisor config --json --pretty
 
 | Key                                                                                                                                      | Purpose                                                                         |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `environments`                                                                                                                           | Array of env names, or `false` for no envs                                      |
+| `environments`                                                                                                                           | Optional array of env names; omit for no environments                           |
 | `tags`                                                                                                                                   | Array of tag names — features must tag themselves with a subset                 |
 | `sets`                                                                                                                                   | `true` → each `sets/<set>/` directory is an independent project tree            |
 | `promotionFlows`                                                                                                                         | Optional allowed set promotion directions, for example dev → staging            |

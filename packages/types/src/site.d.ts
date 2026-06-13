@@ -33,7 +33,7 @@ export interface SearchIndex {
   };
   projectConfig: {
     tags: Tag[];
-    environments: EnvironmentKey[] | false;
+    environments?: EnvironmentKey[];
   };
   entities: {
     attributes: (Attribute & {

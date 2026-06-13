@@ -214,7 +214,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   }
 
   // no environment
-  if (environments === false) {
+  if (!Array.isArray(environments)) {
     await buildForEnvironment({
       projectConfig,
       datasource,

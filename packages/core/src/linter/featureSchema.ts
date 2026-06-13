@@ -1455,7 +1455,9 @@ export function getFeatureZodSchema(
     (value) => `Unknown feature "${value}"`,
   );
 
-  const environmentKeys = projectConfig.environments || [];
+  const environmentKeys = Array.isArray(projectConfig.environments)
+    ? projectConfig.environments
+    : [];
 
   const featureZodSchema = z
     .object({
@@ -1675,24 +1677,19 @@ export function getFeatureZodSchema(
         })
         .optional(),
 
-      expose:
-        projectConfig.environments === false
-          ? exposeSchema.optional()
-          : z
-              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
-              .optional(),
+      expose: !Array.isArray(projectConfig.environments)
+        ? exposeSchema.optional()
+        : z
+            .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
+            .optional(),
 
-      force:
-        projectConfig.environments === false
-          ? forceSchema
-          : z
-              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema)
-              .optional(),
+      force: !Array.isArray(projectConfig.environments)
+        ? forceSchema
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
 
-      rules:
-        projectConfig.environments === false
-          ? rulesSchema
-          : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
+      rules: !Array.isArray(projectConfig.environments)
+        ? rulesSchema
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
     })
     .strict()
     .superRefine((value, ctx) => {

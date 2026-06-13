@@ -25,7 +25,6 @@ export const CONFIG_MODULE_NAME = "featurevisor.config.js";
 export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 
 export const DEFAULT_NAMESPACE_CHARACTER = ".";
-export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 export const DEFAULT_SETS = false;
@@ -63,7 +62,7 @@ export interface ProjectConfig {
   siteExportDirectoryPath: string;
   setsDirectoryPath: string;
 
-  environments: string[] | false;
+  environments?: string[];
   sets: boolean;
   tags: string[];
   scopes?: Scope[];
@@ -88,7 +87,7 @@ export interface ProjectConfig {
 // rootDirectoryPath: path to the root directory of the project (without ending with a slash)
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
-    environments: DEFAULT_ENVIRONMENTS,
+    environments: undefined,
     sets: DEFAULT_SETS,
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
@@ -153,6 +152,20 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
+  }
+
+  if (typeof finalConfig.environments !== "undefined") {
+    if (!Array.isArray(finalConfig.environments)) {
+      throw new Error(
+        `Invalid environments: ${finalConfig.environments}. It must be an array of strings when defined.`,
+      );
+    }
+
+    finalConfig.environments.forEach((environment: unknown, index: number) => {
+      if (typeof environment !== "string") {
+        throw new Error(`Invalid environments[${index}]: ${environment}. It must be a string.`);
+      }
+    });
   }
 
   if (

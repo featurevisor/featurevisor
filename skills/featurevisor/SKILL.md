@@ -20,7 +20,7 @@ npx featurevisor info
 
 From the config note:
 
-- `environments` — array of env names (or `false` for no envs). Their names drive `rules:`, `force:`, `expose:` keys.
+- `environments` — optional array of env names. If omitted, the project has no environments and `rules`, `force`, and `expose` are direct values.
 - `tags` — must include any tag you put on a feature.
 - `sets` — if `true`, each directory under `sets/<set>/` is an independent project tree.
 - `parser` — if `"json"` author in JSON; otherwise YAML. Inspect a couple of existing files to confirm the on-disk style.

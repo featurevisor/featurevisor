@@ -11,17 +11,16 @@ nextjs:
         - url: /img/og/docs-environments.png
 ---
 
-Featurevisor is highly configurable and allows us to have any number of custom environments (like development, staging, and production). We can also choose to have no environments at all. {% .lead %}
+Featurevisor is highly configurable and allows us to have any number of custom environments (like development, staging, and production). By default, projects have no environments at all. {% .lead %}
 
-There are 3 ways to to configure environments in Featurevisor:
+There are 2 ways to configure environments in Featurevisor:
 
 - environment specific data in individual self-contained [feature](/docs/features/) definitions
-- feature definitions + separate environment specific files for [`rules`](/docs/features/#rules), [`force`](/docs/features/#force), and/or [`expose`](/docs/features/#expose)
 - no environments at all
 
 ## Custom environments
 
-It is recommended that we have at least `staging` and `production` environments in our [project](/docs/projects/).
+If your project needs environments, it is recommended that we have at least `staging` and `production` environments in our [project](/docs/projects/).
 
 ### Adding environments
 
@@ -92,15 +91,14 @@ If you want development, staging, and production to behave like independent rele
 
 ## No environments
 
-We can also choose to have no environments at all:
+Projects have no environments by default. You can omit `environments` from your configuration:
 
-```js {% path="featurevisor.config.js" highlight="6" %}
+```js {% path="featurevisor.config.js" %}
 module.exports = {
   tags: [
     'web',
     'mobile'
   ],
-  environments: false,
 }
 ```
 

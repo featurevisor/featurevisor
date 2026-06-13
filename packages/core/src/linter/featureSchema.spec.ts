@@ -1132,6 +1132,21 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
   });
 
   describe("environment maps", () => {
+    it("allows direct rules, force, and expose when environments are omitted", () => {
+      expectParseSuccess(
+        baseFeature({
+          expose: true,
+          force: [{ segments: "*", variation: "control" }],
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+        }),
+        { environments: undefined },
+      );
+    });
+
     it("allows a subset of configured environments in rules, force, and expose", () => {
       expectParseSuccess(
         baseFeature({
@@ -1150,6 +1165,16 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
         }),
       );
+    });
+
+    it("rejects direct rules when environments are configured", () => {
+      const err = expectParseFailure(
+        baseFeature({
+          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+        }),
+      );
+
+      expect(err.issues.some((issue) => issue.path.join(".").includes("rules"))).toBe(true);
     });
 
     it("rejects unknown environment keys in rules", () => {
