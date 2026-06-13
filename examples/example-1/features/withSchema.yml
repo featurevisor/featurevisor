@@ -409,19 +409,19 @@ variations:
         - y
     variableOverrides:
       shortLabel:
-        - segments: countries/germany
+        - segments: countries.germany
           value: "Treat DE"
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value: "Treat NL"
       inlineSlug:
-        - segments: countries/germany
+        - segments: countries.germany
           value: "treatment-de"
 
 rules:
   staging:
     # Rule order matters: first matching rule wins. More specific segments first, catch-all last.
     - key: germany
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       variables:
         pageTitle: "Germany Title"
@@ -500,8 +500,8 @@ rules:
     - key: nl_or_ch
       segments:
         or:
-          - countries/netherlands
-          - countries/switzerland
+          - countries.netherlands
+          - countries.switzerland
       percentage: 100
       variables:
         pageTitle: "NL/CH Title"
@@ -649,7 +649,7 @@ rules:
 
   production:
     - key: germany
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       variables:
         pageTitle: "Germany (Prod)"
@@ -682,8 +682,8 @@ rules:
     - key: nl_or_ch
       segments:
         or:
-          - countries/netherlands
-          - countries/switzerland
+          - countries.netherlands
+          - countries.switzerland
       percentage: 100
       variables:
         pageTitle: "NL/CH (Prod)"

@@ -32,21 +32,21 @@ features/
 
 ### Evaluating features
 
-When evaluating a feature, you can refer to the feature by its namespace and key in the format `namespace/featureKey`:
+By default, path segments are joined with `.` when deriving feature keys. When evaluating a feature, you can refer to the feature by its namespace and key in the format `namespace.featureKey`:
 
 ```js {% path="your-app/index.js" %}
 const f; // Featurevisor SDK instance
 
-f.isEnabled("checkout/feature1");
+f.isEnabled("checkout.feature1");
 f.isEnabled("globalFeature");
 ```
 
 ### Testing features
 
-When [testing features](/docs/testing/#testing-features), you can refer to the feature by its namespace and key in the format `namespace/featureKey`:
+When [testing features](/docs/testing/#testing-features), you can refer to the feature by its namespace and key in the format `namespace.featureKey`:
 
 ```yml {% path="tests/checkout/feature1.spec.yml" %}
-feature: checkout/feature1
+feature: checkout.feature1
 
 # ...
 ```
@@ -67,7 +67,7 @@ segments/
 
 ### Referencing segments
 
-When defining the [rules inside features](/docs/features/#rules), you can refer to the segment by its namespace and key in the format `namespace/segmentKey`:
+When defining the [rules inside features](/docs/features/#rules), you can refer to the segment by its namespace and key in the format `namespace.segmentKey`:
 
 ```yml {% path="features/myFeature.yml" %}
 # ...
@@ -75,19 +75,41 @@ When defining the [rules inside features](/docs/features/#rules), you can refer 
 rules:
   production:
     - key: '1'
-      segments: 'countries/netherlands'
+      segments: 'countries.netherlands'
       percentage: 100
 ```
 
 ### Testing segments
 
-When [testing segments](/docs/testing/#testing-segments), you can refer to the segment by its namespace and key in the format `namespace/segmentKey`:
+When [testing segments](/docs/testing/#testing-segments), you can refer to the segment by its namespace and key in the format `namespace.segmentKey`:
 
 ```yml {% path="tests/countries/nl.spec.yml" %}
-segment: countries/nl
+segment: countries.nl
 
 # ...
 ```
+
+## Custom namespace character
+
+The namespace separator is controlled by `namespaceCharacter` in your project configuration:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  namespaceCharacter: ".", // default
+};
+```
+
+With the default `"."`, `features/checkout/feature1.yml` becomes `checkout.feature1`.
+
+If you need slash-separated keys for an existing project, configure:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  namespaceCharacter: "/",
+};
+```
+
+Then `features/checkout/feature1.yml` becomes `checkout/feature1`.
 
 ## Comparison
 

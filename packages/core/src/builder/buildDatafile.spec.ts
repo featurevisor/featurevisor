@@ -26,6 +26,7 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
     environments: ["staging", "production"],
     splitByEnvironment: false,
     sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
     scopes: [],
     adapter: {},

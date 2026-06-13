@@ -772,8 +772,18 @@ function getEntityFilePath(projectConfig: ProjectConfig, type: EntityType, key: 
     test: projectConfig.testsDirectoryPath,
   };
   const extension = (projectConfig.parser as any).extension || "yml";
+  const pathSegments = key.split(projectConfig.namespaceCharacter);
 
-  return path.join(directories[type], ...key.split("/")) + `.${extension}`;
+  if (
+    type === "test" &&
+    pathSegments.length > 1 &&
+    pathSegments[pathSegments.length - 1] === "spec"
+  ) {
+    pathSegments[pathSegments.length - 2] = `${pathSegments[pathSegments.length - 2]}.spec`;
+    pathSegments.pop();
+  }
+
+  return path.join(directories[type], ...pathSegments) + `.${extension}`;
 }
 
 function formatProjectPath(projectConfig: ProjectConfig, filePath: string) {

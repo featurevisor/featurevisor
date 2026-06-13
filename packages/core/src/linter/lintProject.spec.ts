@@ -71,6 +71,14 @@ rules:
   return tempRoot;
 }
 
+function createTempProject(configBody = "module.exports = {};") {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-lint-"));
+
+  fs.writeFileSync(path.join(tempRoot, "featurevisor.config.js"), configBody, "utf8");
+
+  return tempRoot;
+}
+
 function replaceInFile(filePath: string, search: string, replacement: string) {
   const contents = fs.readFileSync(filePath, "utf8");
   fs.writeFileSync(filePath, contents.replace(search, replacement), "utf8");
@@ -107,6 +115,85 @@ describe("core: lintProject", function () {
       hasError: false,
       errors: [],
     });
+  });
+
+  it("rejects entity file names containing the namespace character", async () => {
+    const root = createTempProject();
+    tempProjectPath = root;
+
+    fs.mkdirSync(path.join(root, "segments"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "segments", "version_5.5.yml"),
+      [
+        "description: Version 5.5",
+        "conditions:",
+        "  - attribute: version",
+        "    operator: semverEquals",
+        "    value: 5.5.0",
+        "",
+      ].join("\n"),
+    );
+
+    const result = await lintProject(getDeps(root) as any, { json: true });
+
+    expect(result.hasError).toBe(true);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "segment",
+          filePath: expect.stringContaining(path.join("segments", "version_5.5.yml")),
+          message: 'Invalid file or directory name: "version_5.5.yml"',
+          code: "invalid_name",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects split environment feature file names containing the namespace character", async () => {
+    const root = createTempSplitProject();
+    tempProjectPath = root;
+
+    fs.writeFileSync(
+      path.join(root, "environments", "staging", "foo.bar.yml"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
+      "utf8",
+    );
+
+    const result = await lintProject(getDeps(root) as any, { json: true });
+
+    expect(result.hasError).toBe(true);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "feature",
+          filePath: expect.stringContaining(path.join("environments", "staging", "foo.bar.yml")),
+          message: 'Invalid file or directory name: "foo.bar.yml"',
+          code: "invalid_name",
+        }),
+      ]),
+    );
+  });
+
+  it("allows established test file suffixes with the namespace character", async () => {
+    const root = createTempProject();
+    tempProjectPath = root;
+
+    fs.mkdirSync(path.join(root, "tests", "features"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tests", "features", "checkout.spec.yml"),
+      ["feature: checkout", "assertions: []", ""].join("\n"),
+      "utf8",
+    );
+
+    const result = await lintProject(getDeps(root) as any, { json: true, entityType: "test" });
+
+    expect(
+      result.errors.some(
+        (error) =>
+          error.code === "invalid_name" &&
+          error.filePath.includes(path.join("tests", "features", "checkout.spec.yml")),
+      ),
+    ).toBe(false);
   });
 
   it("accepts promotable flags on top-level authored entities", async () => {
@@ -278,7 +365,7 @@ conditions:
         expect.objectContaining({
           filePath: expect.stringContaining(path.join("tests", "features", "withSchema.spec.yml")),
           entityType: "test",
-          key: "features/withSchema.spec",
+          key: "features.withSchema.spec",
           message: 'Unknown environment "qa"',
           path: ["assertions", 0, "environment"],
           code: "custom",

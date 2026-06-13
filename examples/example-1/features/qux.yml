@@ -27,7 +27,7 @@ rules:
   production:
     - key: "1"
       segments:
-        - countries/germany
+        - countries.germany
       percentage: 50
       variation: b
     - key: "2"

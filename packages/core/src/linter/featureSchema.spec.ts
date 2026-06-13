@@ -30,6 +30,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     environments: ["staging", "production"],
     splitByEnvironment: false,
     sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
     adapter: {},
     plugins: [],
@@ -82,7 +83,7 @@ const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
   "version",
   "traits",
 ];
-const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries/germany", "countries/france"];
+const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries.germany", "countries.france"];
 const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
 
@@ -692,8 +693,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               variables: { slug: "treatment" },
               variableOverrides: {
                 slug: [
-                  { segments: "countries/germany", value: "de" },
-                  { segments: "countries/france", value: "fr" },
+                  { segments: "countries.germany", value: "de" },
+                  { segments: "countries.france", value: "fr" },
                 ],
               },
             },
@@ -810,7 +811,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { title: "Germany" },
               },
@@ -832,7 +833,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { count: 100 },
               },
@@ -855,7 +856,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { unknownVar: "x" },
               },
@@ -918,7 +919,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 variableOverrides: {
                   config: [
                     {
-                      segments: "countries/germany",
+                      segments: "countries.germany",
                       value: {
                         "nested.count": 5,
                       },

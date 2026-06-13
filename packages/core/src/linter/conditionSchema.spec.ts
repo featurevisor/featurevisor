@@ -27,6 +27,7 @@ function minimalProjectConfig(): ProjectConfig {
     environments: ["staging", "production"],
     splitByEnvironment: false,
     sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
     adapter: {},
     plugins: [],

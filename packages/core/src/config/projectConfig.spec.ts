@@ -20,6 +20,7 @@ describe("core: projectConfig", () => {
     const root = createTempProject("module.exports = {};");
     const config = getProjectConfig(root);
 
+    expect(config.namespaceCharacter).toBe(".");
     expect(config.splitByEnvironment).toBe(false);
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
@@ -31,6 +32,32 @@ describe("core: projectConfig", () => {
     const root = createTempProject("module.exports = { sets: 'yes' };");
 
     expect(() => getProjectConfig(root)).toThrow("Invalid sets: yes. It must be a boolean.");
+  });
+
+  it("accepts custom namespaceCharacter values including slash", () => {
+    const root = createTempProject('module.exports = { namespaceCharacter: "/" };');
+    const config = getProjectConfig(root);
+
+    expect(config.namespaceCharacter).toBe("/");
+  });
+
+  it("throws when namespaceCharacter is not a non-empty string", () => {
+    const cases = [
+      {
+        config: "module.exports = { namespaceCharacter: '' };",
+        message: "Invalid namespaceCharacter: . It must be a non-empty string.",
+      },
+      {
+        config: "module.exports = { namespaceCharacter: 1 };",
+        message: "Invalid namespaceCharacter: 1. It must be a non-empty string.",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const root = createTempProject(testCase.config);
+
+      expect(() => getProjectConfig(root)).toThrow(testCase.message);
+    }
   });
 
   it("accepts valid promotionFlows object rules", () => {
@@ -97,6 +124,7 @@ describe("core: projectConfig", () => {
     const setRoot = path.join(root, "sets", "staging");
 
     expect(setConfig.featuresDirectoryPath).toBe(path.join(setRoot, "features"));
+    expect(setConfig.namespaceCharacter).toBe(".");
     expect(setConfig.environmentsDirectoryPath).toBe(path.join(setRoot, "environments"));
     expect(setConfig.segmentsDirectoryPath).toBe(path.join(setRoot, "segments"));
     expect(setConfig.attributesDirectoryPath).toBe(path.join(setRoot, "attributes"));

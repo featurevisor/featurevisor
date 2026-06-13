@@ -1,4 +1,4 @@
-feature: checkout/page
+feature: checkout.page
 assertions:
   ##
   # Everyone

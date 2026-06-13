@@ -57,9 +57,9 @@
         },
         "usedInFeatures": [],
         "usedInSegments": [
-          "countries/germany",
-          "countries/netherlands",
-          "countries/switzerland",
+          "countries.germany",
+          "countries.netherlands",
+          "countries.switzerland",
           "eu"
         ]
       },
@@ -149,7 +149,7 @@
           "author": "Fahad Heylaal"
         },
         "usedInFeatures": [],
-        "usedInSegments": ["version_5.5", "version_gt5"]
+        "usedInSegments": ["version_5_5", "version_gt5"]
       }
     ],
     "segments": [
@@ -203,10 +203,10 @@
         "archived": false,
         "description": "users from Germany",
         "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "de" }] },
-        "key": "countries/germany",
+        "key": "countries.germany",
         "usedInFeatures": [
           "bar",
-          "checkout/page",
+          "checkout.page",
           "foo",
           "newRedesign",
           "pricing",
@@ -218,11 +218,11 @@
         "archived": false,
         "description": "The Netherlands",
         "conditions": [{ "attribute": "country", "operator": "equals", "value": "nl" }],
-        "key": "countries/netherlands",
+        "key": "countries.netherlands",
         "usedInFeatures": [
           "allowSignup",
           "cache",
-          "checkout/page",
+          "checkout.page",
           "foo",
           "newRedesign",
           "redesign",
@@ -233,8 +233,8 @@
         "archived": false,
         "description": "users from Switzerland",
         "conditions": { "and": [{ "attribute": "country", "operator": "equals", "value": "ch" }] },
-        "key": "countries/switzerland",
-        "usedInFeatures": ["allowSignup", "bar", "checkout/page", "foo", "newRedesign", "sidebar"]
+        "key": "countries.switzerland",
+        "usedInFeatures": ["allowSignup", "bar", "checkout.page", "foo", "newRedesign", "sidebar"]
       },
       {
         "description": "desktop users",
@@ -333,7 +333,7 @@
             ]
           }
         ],
-        "key": "version_5.5",
+        "key": "version_5_5",
         "lastModified": {
           "commit": "dd7fda3",
           "timestamp": "2023-11-14T17:39:51+01:00",
@@ -378,13 +378,13 @@
           "production": [
             {
               "key": "nl",
-              "segments": ["countries/netherlands"],
+              "segments": ["countries.netherlands"],
               "percentage": 100,
               "variation": "treatment"
             },
             {
               "key": "ch",
-              "segments": ["countries/switzerland"],
+              "segments": ["countries.switzerland"],
               "percentage": 100,
               "variationWeights": { "control": 10, "treatment": 90 }
             },
@@ -428,7 +428,7 @@
             "variableOverrides": {
               "hero": [
                 {
-                  "segments": { "or": ["countries/germany", "countries/switzerland"] },
+                  "segments": { "or": ["countries.germany", "countries.switzerland"] },
                   "value": {
                     "title": "Hero Title for B in DE or CH",
                     "subtitle": "Hero Subtitle for B in DE of CH",
@@ -474,7 +474,7 @@
         "rules": {
           "staging": [{ "key": "everyone", "segments": "*", "percentage": 100 }],
           "production": [
-            { "key": "netherlands", "segments": "countries/netherlands", "percentage": 0 },
+            { "key": "netherlands", "segments": "countries.netherlands", "percentage": 0 },
             { "key": "everyone", "segments": "*", "percentage": 100 }
           ]
         },
@@ -499,17 +499,17 @@
           "production": [
             {
               "key": "1",
-              "segments": "countries/netherlands",
+              "segments": "countries.netherlands",
               "percentage": 100,
               "variables": { "paymentMethods": ["ideal", "paypal"] }
             },
             {
               "key": "2",
-              "segments": "countries/germany",
+              "segments": "countries.germany",
               "percentage": 100,
               "variables": { "paymentMethods": ["sofort", "paypal"] }
             },
-            { "key": "ch", "segments": "countries/switzerland", "percentage": 0 },
+            { "key": "ch", "segments": "countries.switzerland", "percentage": 0 },
             {
               "key": "3",
               "segments": "*",
@@ -522,7 +522,7 @@
             }
           ]
         },
-        "key": "checkout/page"
+        "key": "checkout.page"
       },
       {
         "description": "Enable discount in checkout flow",
@@ -571,11 +571,11 @@
             "variableOverrides": {
               "bar": [
                 {
-                  "segments": { "or": ["countries/germany", "countries/switzerland"] },
+                  "segments": { "or": ["countries.germany", "countries.switzerland"] },
                   "value": "bar for DE or CH"
                 }
               ],
-              "baz": [{ "segments": "countries/netherlands", "value": "baz for NL" }]
+              "baz": [{ "segments": "countries.netherlands", "value": "baz for NL" }]
             }
           }
         ],
@@ -607,7 +607,7 @@
             {
               "key": "1",
               "segments": {
-                "and": ["mobile", { "or": ["countries/germany", "countries/switzerland"] }]
+                "and": ["mobile", { "or": ["countries.germany", "countries.switzerland"] }]
               },
               "percentage": 80,
               "variables": { "qux": true }
@@ -628,7 +628,7 @@
         "bucketBy": "userId",
         "rules": {
           "staging": [
-            { "key": "1", "segments": [{ "not": ["version_5.5"] }], "percentage": 100 },
+            { "key": "1", "segments": [{ "not": ["version_5_5"] }], "percentage": 100 },
             { "key": "2", "segments": "*", "percentage": 0 }
           ],
           "production": [{ "key": "1", "segments": "*", "percentage": 80 }]
@@ -673,11 +673,11 @@
             "variableOverrides": {
               "foo": [
                 {
-                  "segments": { "or": ["countries/germany", "countries/switzerland"] },
+                  "segments": { "or": ["countries.germany", "countries.switzerland"] },
                   "value": "foo for treatment in DE or CH"
                 }
               ],
-              "bar": [{ "segments": "countries/netherlands", "value": "bar for treatment in NL" }]
+              "bar": [{ "segments": "countries.netherlands", "value": "bar for treatment in NL" }]
             }
           }
         ],
@@ -714,7 +714,7 @@
         "rules": {
           "staging": [{ "key": "1", "segments": "*", "percentage": 100 }],
           "production": [
-            { "key": "1", "segments": "countries/germany", "percentage": 100 },
+            { "key": "1", "segments": "countries.germany", "percentage": 100 },
             { "key": "2", "segments": "*", "percentage": 0 }
           ]
         },
@@ -740,7 +740,7 @@
         "rules": {
           "staging": [{ "key": "1", "segments": "*", "percentage": 50 }],
           "production": [
-            { "key": "1", "segments": ["countries/germany"], "percentage": 50, "variation": "b" },
+            { "key": "1", "segments": ["countries.germany"], "percentage": 50, "variation": "b" },
             { "key": "2", "segments": "*", "percentage": 50 }
           ]
         },
@@ -758,7 +758,7 @@
         "rules": {
           "staging": [{ "key": "1", "segments": "*", "percentage": 100 }],
           "production": [
-            { "key": "1", "segments": "countries/netherlands", "percentage": 100 },
+            { "key": "1", "segments": "countries.netherlands", "percentage": 100 },
             { "key": "2", "segments": "*", "percentage": 0 }
           ]
         },
@@ -885,16 +885,16 @@
             },
             "variableOverrides": {
               "color": [
-                { "segments": ["countries/germany"], "value": "yellow" },
-                { "segments": ["countries/switzerland"], "value": "white" }
+                { "segments": ["countries.germany"], "value": "yellow" },
+                { "segments": ["countries.switzerland"], "value": "white" }
               ],
               "sections": [
                 {
-                  "segments": ["countries/germany"],
+                  "segments": ["countries.germany"],
                   "value": ["home", "about", "contact", "imprint"]
                 },
                 {
-                  "segments": ["countries/netherlands"],
+                  "segments": ["countries.netherlands"],
                   "value": ["home", "about", "contact", "bitterballen"]
                 }
               ]

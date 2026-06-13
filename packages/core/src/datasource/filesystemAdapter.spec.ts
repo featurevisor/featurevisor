@@ -18,6 +18,106 @@ function createSplitProject(configBody: string) {
 }
 
 describe("core: filesystemAdapter (splitByEnvironment)", () => {
+  it("lists nested entity paths with dot namespace character by default", async () => {
+    const root = createSplitProject("module.exports = {};");
+
+    writeFile(
+      path.join(root, "features", "checkout", "page.yml"),
+      [
+        "description: Checkout page",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+      ].join("\n"),
+    );
+    writeFile(
+      path.join(root, "segments", "countries", "germany.yml"),
+      [
+        "description: Germany",
+        "conditions:",
+        "  - attribute: country",
+        "    operator: equals",
+        "    value: de",
+      ].join("\n"),
+    );
+
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+
+    await expect(datasource.listFeatures()).resolves.toEqual(["checkout.page"]);
+    await expect(datasource.listSegments()).resolves.toEqual(["countries.germany"]);
+    await expect(datasource.readFeature("checkout.page")).resolves.toMatchObject({
+      description: "Checkout page",
+    });
+  });
+
+  it("keeps slash-separated keys when namespaceCharacter is slash", async () => {
+    const root = createSplitProject('module.exports = { namespaceCharacter: "/" };');
+
+    writeFile(
+      path.join(root, "features", "checkout", "page.yml"),
+      [
+        "description: Checkout page",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+      ].join("\n"),
+    );
+
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+
+    await expect(datasource.listFeatures()).resolves.toEqual(["checkout/page"]);
+    await expect(datasource.readFeature("checkout/page")).resolves.toMatchObject({
+      description: "Checkout page",
+    });
+  });
+
+  it("reads split environment feature files with dot namespace character by default", async () => {
+    const root = createSplitProject(
+      "module.exports = { environments: ['staging', 'production'], splitByEnvironment: true };",
+    );
+
+    writeFile(
+      path.join(root, "features", "checkout", "page.yml"),
+      ["description: Checkout page", "tags:", "  - all", "bucketBy: userId"].join("\n"),
+    );
+    writeFile(
+      path.join(root, "environments", "staging", "checkout", "page.yml"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
+    );
+    writeFile(
+      path.join(root, "environments", "production", "checkout", "page.yml"),
+      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 0"].join("\n"),
+    );
+
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+    const feature = await datasource.readFeature("checkout.page");
+    const rulesByEnvironment = feature.rules as Record<string, any[]>;
+
+    expect(rulesByEnvironment.staging[0].percentage).toBe(100);
+    expect(rulesByEnvironment.production[0].percentage).toBe(0);
+  });
+
   it("lists sets and reads entities from selected set", async () => {
     const root = createSplitProject("module.exports = { sets: true };");
 

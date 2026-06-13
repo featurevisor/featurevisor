@@ -12,7 +12,7 @@ rules:
 
   production:
     - key: "1"
-      segments: countries/netherlands
+      segments: countries.netherlands
       percentage: 100
 
     - key: "2"

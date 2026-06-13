@@ -1,4 +1,5 @@
 // for use in node only
+import * as fs from "fs";
 import * as path from "path";
 
 import type { Attribute, Schema } from "@featurevisor/types";
@@ -48,10 +49,65 @@ export interface LintResult {
 }
 
 const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
-const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
+const ENTITY_NAME_REGEX_ERROR =
+  "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
 
-const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-/]+$/;
-const ATTRIBUTE_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, and -";
+const ATTRIBUTE_NAME_REGEX_ERROR =
+  "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
+  const keyWithoutNamespaceCharacter = key.replace(
+    new RegExp(escapeRegExp(namespaceCharacter), "g"),
+    "",
+  );
+
+  return ENTITY_NAME_REGEX.test(keyWithoutNamespaceCharacter);
+}
+
+function getPathSegmentsFromKey(
+  key: string,
+  namespaceCharacter: string,
+  entityType?: LintEntityType,
+): string[] {
+  const pathSegments = key.split(namespaceCharacter);
+
+  if (
+    entityType === "test" &&
+    pathSegments.length > 1 &&
+    ["spec", "feature", "segment"].includes(pathSegments[pathSegments.length - 1])
+  ) {
+    const suffix = pathSegments[pathSegments.length - 1];
+    pathSegments[pathSegments.length - 2] = `${pathSegments[pathSegments.length - 2]}.${suffix}`;
+    pathSegments.pop();
+  }
+
+  return pathSegments;
+}
+
+function getReservedNameCheckValue(
+  entityType: LintEntityType,
+  name: string,
+  isFile: boolean,
+  extension: string,
+): string {
+  let value =
+    isFile && name.endsWith(`.${extension}`) ? name.slice(0, -extension.length - 1) : name;
+
+  if (entityType === "test" && isFile) {
+    for (const suffix of [".spec", ".feature", ".segment"]) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        break;
+      }
+    }
+  }
+
+  return value;
+}
 
 async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
   const entries = await datasource.listHistoryEntries(entityType, entityKey);
@@ -98,7 +154,9 @@ export async function lintProject(
   }
 
   function getFullPathFromKey(type: LintEntityType, key: string, relative = false) {
-    const fileName = `${key}.${datasource.getExtension()}`;
+    const fileName = `${getPathSegmentsFromKey(key, projectConfig.namespaceCharacter, type).join(
+      path.sep,
+    )}.${datasource.getExtension()}`;
     let fullPath = "";
 
     if (type === "attribute") {
@@ -120,6 +178,89 @@ export async function lintProject(
     }
 
     return fullPath;
+  }
+
+  function getEntityDirectoryPath(type: LintEntityType): string {
+    if (type === "attribute") {
+      return projectConfig.attributesDirectoryPath;
+    }
+    if (type === "segment") {
+      return projectConfig.segmentsDirectoryPath;
+    }
+    if (type === "feature") {
+      return projectConfig.featuresDirectoryPath;
+    }
+    if (type === "group") {
+      return projectConfig.groupsDirectoryPath;
+    }
+    if (type === "schema") {
+      return projectConfig.schemasDirectoryPath;
+    }
+
+    return projectConfig.testsDirectoryPath;
+  }
+
+  async function lintReservedNamespaceCharacterInPathNames(
+    entityType: LintEntityType,
+    directoryPath: string,
+  ) {
+    if (!fs.existsSync(directoryPath)) {
+      return;
+    }
+
+    const extension = datasource.getExtension();
+    const namespaceCharacter = projectConfig.namespaceCharacter;
+    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directoryPath, entry.name);
+      const isFile = entry.isFile();
+      const isDirectory = entry.isDirectory();
+
+      if (!isDirectory && !(isFile && entry.name.endsWith(`.${extension}`))) {
+        continue;
+      }
+
+      const nameToCheck = getReservedNameCheckValue(entityType, entry.name, isFile, extension);
+
+      if (nameToCheck.includes(namespaceCharacter)) {
+        await reportSimpleError({
+          entityType,
+          key: path.relative(getEntityDirectoryPath(entityType), entryPath),
+          fullPath: entryPath,
+          message: `Invalid file or directory name: "${entry.name}"`,
+          detail: `Namespace character "${namespaceCharacter}" is not allowed in entity file or directory names.`,
+          code: "invalid_name",
+        });
+      }
+
+      if (isDirectory) {
+        await lintReservedNamespaceCharacterInPathNames(entityType, entryPath);
+      }
+    }
+  }
+
+  async function lintReservedNamespaceCharacterInEntityPaths(entityType: LintEntityType) {
+    await lintReservedNamespaceCharacterInPathNames(entityType, getEntityDirectoryPath(entityType));
+
+    if (
+      entityType === "feature" &&
+      projectConfig.splitByEnvironment &&
+      fs.existsSync(projectConfig.environmentsDirectoryPath)
+    ) {
+      const environments = fs.readdirSync(projectConfig.environmentsDirectoryPath, {
+        withFileTypes: true,
+      });
+
+      for (const environment of environments) {
+        if (environment.isDirectory()) {
+          await lintReservedNamespaceCharacterInPathNames(
+            entityType,
+            path.join(projectConfig.environmentsDirectoryPath, environment.name),
+          );
+        }
+      }
+    }
   }
 
   async function getFeaturePathFromIssuePath(
@@ -374,6 +515,8 @@ export async function lintProject(
   }
 
   if (!options.entityType || options.entityType === "attribute") {
+    await lintReservedNamespaceCharacterInEntityPaths("attribute");
+
     const filteredKeys = !keyPattern
       ? attributes
       : attributes.filter((key) => keyPattern.test(key));
@@ -385,7 +528,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("attribute", key);
 
-      if (!ATTRIBUTE_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "attribute",
           key,
@@ -426,6 +569,8 @@ export async function lintProject(
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
   if (!options.entityType || options.entityType === "segment") {
+    await lintReservedNamespaceCharacterInEntityPaths("segment");
+
     const filteredKeys = !keyPattern ? segments : segments.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -435,7 +580,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("segment", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "segment",
           key,
@@ -472,6 +617,8 @@ export async function lintProject(
   );
 
   if (!options.entityType || options.entityType === "feature") {
+    await lintReservedNamespaceCharacterInEntityPaths("feature");
+
     const filteredKeys = !keyPattern ? features : features.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -481,7 +628,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "feature",
           key,
@@ -527,6 +674,8 @@ export async function lintProject(
   const groupZodSchema = getGroupZodSchema(projectConfig, datasource, features);
 
   if (!options.entityType || options.entityType === "group") {
+    await lintReservedNamespaceCharacterInEntityPaths("group");
+
     const filteredKeys = !keyPattern ? groups : groups.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -536,7 +685,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("group", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "group",
           key,
@@ -583,6 +732,8 @@ export async function lintProject(
   const schemaZodSchema = getSchemaZodSchema(schemas);
 
   if (!options.entityType || options.entityType === "schema") {
+    await lintReservedNamespaceCharacterInEntityPaths("schema");
+
     const filteredKeys = !keyPattern ? schemas : schemas.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -592,7 +743,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("schema", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "schema",
           key,
@@ -627,6 +778,8 @@ export async function lintProject(
   );
 
   if (!options.entityType || options.entityType === "test") {
+    await lintReservedNamespaceCharacterInEntityPaths("test");
+
     const filteredKeys = !keyPattern ? tests : tests.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -636,7 +789,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("test", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "test",
           key,

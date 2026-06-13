@@ -77,6 +77,26 @@ function isWithinDirectory(directoryPath: string, fileDirectoryPath: string): bo
   );
 }
 
+function getPathSegmentsFromKey(
+  namespaceCharacter: string,
+  key: string,
+  entityType?: EntityType,
+): string[] {
+  const pathSegments = namespaceCharacter ? key.split(namespaceCharacter) : [key];
+
+  if (
+    entityType === "test" &&
+    pathSegments.length > 1 &&
+    ["spec", "feature", "segment"].includes(pathSegments[pathSegments.length - 1])
+  ) {
+    const suffix = pathSegments[pathSegments.length - 1];
+    pathSegments[pathSegments.length - 2] = `${pathSegments[pathSegments.length - 2]}.${suffix}`;
+    pathSegments.pop();
+  }
+
+  return pathSegments;
+}
+
 export class FilesystemAdapter extends Adapter {
   private parser: CustomParser;
 
@@ -122,20 +142,20 @@ export class FilesystemAdapter extends Adapter {
 
   getEntityPath(entityType: EntityType, entityKey: string): string {
     const basePath = this.getEntityDirectoryPath(entityType);
-
-    // taking care of windows paths
-    const relativeEntityPath = entityKey.replace(/\//g, path.sep);
-
-    return path.join(basePath, `${relativeEntityPath}.${this.parser.extension}`);
+    const pathSegments = getPathSegmentsFromKey(
+      this.config.namespaceCharacter,
+      entityKey,
+      entityType,
+    );
+    return path.join(basePath, ...pathSegments) + `.${this.parser.extension}`;
   }
 
   getFeatureEnvironmentPath(featureKey: string, environment: string): string {
-    const relativeEntityPath = featureKey.replace(/\//g, path.sep);
+    const pathSegments = getPathSegmentsFromKey(this.config.namespaceCharacter, featureKey);
 
-    return path.join(
-      this.config.environmentsDirectoryPath,
-      environment,
-      `${relativeEntityPath}.${this.parser.extension}`,
+    return (
+      path.join(this.config.environmentsDirectoryPath, environment, ...pathSegments) +
+      `.${this.parser.extension}`
     );
   }
 
@@ -195,8 +215,8 @@ export class FilesystemAdapter extends Adapter {
         // remove the extension from the end
         .map((filterPath) => filterPath.replace(`.${this.parser.extension}`, ""))
 
-        // take care of windows paths
-        .map((filterPath) => filterPath.replace(/\\/g, "/"))
+        // take care of windows paths and apply namespace character
+        .map((filterPath) => filterPath.split(path.sep).join(this.config.namespaceCharacter))
     );
   }
 
@@ -586,7 +606,7 @@ export class FilesystemAdapter extends Adapter {
 
             entities.push({
               type,
-              key: featureRelativePath.replace(/\\/g, "/"),
+              key: featureRelativePath.split(path.sep).join(this.config.namespaceCharacter),
             });
 
             continue;
@@ -595,7 +615,8 @@ export class FilesystemAdapter extends Adapter {
           const baseRelativePath = absolutePath
             .replace(this.config.featuresDirectoryPath + path.sep, "")
             .replace(extensionWithDot, "")
-            .replace(/\\/g, "/");
+            .split(path.sep)
+            .join(this.config.namespaceCharacter);
 
           entities.push({
             type,

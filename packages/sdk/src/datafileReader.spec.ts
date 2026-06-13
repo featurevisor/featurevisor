@@ -162,7 +162,7 @@ describe("sdk: DatafileReader", function () {
         key: "notVersion5.5",
         segments: [
           {
-            not: ["version_5.5"],
+            not: ["version_5_5"],
           },
         ],
       },
@@ -241,8 +241,8 @@ describe("sdk: DatafileReader", function () {
         },
 
         // version
-        "version_5.5": {
-          key: "version_5.5",
+        version_5_5: {
+          key: "version_5_5",
           conditions: [
             {
               or: [

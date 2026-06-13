@@ -22,6 +22,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     environments: ["staging", "production"],
     splitByEnvironment: false,
     sets: false,
+    namespaceCharacter: ".",
     tags: ["all", "beta"],
     adapter: {},
     plugins: [],

@@ -25,6 +25,7 @@ export const SETS_DIRECTORY_NAME = "sets";
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
 export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 
+export const DEFAULT_NAMESPACE_CHARACTER = ".";
 export const DEFAULT_ENVIRONMENTS = ["staging", "production"];
 export const DEFAULT_TAGS = ["all"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
@@ -49,6 +50,7 @@ export interface ProjectConfig {
     from: string;
     to: string;
   }>;
+  namespaceCharacter: string;
   featuresDirectoryPath: string;
   segmentsDirectoryPath: string;
   attributesDirectoryPath: string;
@@ -92,6 +94,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     environments: DEFAULT_ENVIRONMENTS,
     sets: DEFAULT_SETS,
     promotionFlows: undefined,
+    namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
     tags: DEFAULT_TAGS,
     scopes: [],
     defaultBucketBy: "userId",
@@ -155,6 +158,15 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
+  }
+
+  if (
+    typeof finalConfig.namespaceCharacter !== "string" ||
+    finalConfig.namespaceCharacter.length === 0
+  ) {
+    throw new Error(
+      `Invalid namespaceCharacter: ${finalConfig.namespaceCharacter}. It must be a non-empty string.`,
+    );
   }
 
   if (typeof finalConfig.promotionFlows !== "undefined") {
