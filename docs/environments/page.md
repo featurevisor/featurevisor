@@ -84,68 +84,11 @@ $ tree datafiles
 │   └── featurevisor-tag-mobile.json
 ```
 
-## Split by environment
+## Environment lanes with sets
 
-If we prefer to keep environment specific rollout settings in separate files, enable `splitByEnvironment` in `featurevisor.config.js`:
+Featurevisor no longer supports separate `environments/<environment>/<feature>.yml` files. Keep environment-specific `rules`, `force`, and `expose` maps inside the feature file.
 
-```js {% path="featurevisor.config.js" highlight="3" %}
-module.exports = {
-  environments: ['staging', 'production'],
-  splitByEnvironment: true,
-}
-```
-
-### Directory structure
-
-```{% title="Directory structure" highlight="2,5,7" %}
-features/
-  └── my_feature.yml        # base feature definition
-environments/
-  ├── staging/
-  │   └── my_feature.yml    # environment specific files
-  └── production/
-      └── my_feature.yml
-```
-
-### Base feature definition
-
-Then our base feature keeps common feature-level data only:
-
-```yml {% path="features/my_feature.yml" %}
-description: My feature
-tags:
-  - web
-
-bucketBy: userId
-
-# variablesSchema: ...
-# variations: ...
-```
-
-We can also define [variables](/docs/features/#variables) and [variations](/docs/features/#variations) in the base feature definition here.
-
-### Environment specific files
-
-And each environment file defines [`rules`](/docs/features/#rules), [`force`](/docs/features/#force), and/or [`expose`](/docs/features/#expose) data directly:
-
-```yml {% path="environments/staging/my_feature.yml" %}
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 100
-```
-
-```yml {% path="environments/production/my_feature.yml" %}
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 0
-```
-
-This kind of splitting is useful when we have a lot of environment specific data and we want to:
-
-- keep the base feature definition clean and simple
-- maintain different levels of access control and ownership for different environments (like via `CODEOWNERS` file for example)
+If you want development, staging, and production to behave like independent release lanes with promotion between them, model those lanes as project sets instead. See the environment example projects for that workflow.
 
 ## No environments
 

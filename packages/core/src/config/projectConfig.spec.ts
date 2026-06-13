@@ -2,12 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import {
-  getProjectConfig,
-  getProjectConfigForSet,
-  ENVIRONMENTS_DIRECTORY_NAME,
-  SETS_DIRECTORY_NAME,
-} from "./projectConfig";
+import { getProjectConfig, getProjectConfigForSet, SETS_DIRECTORY_NAME } from "./projectConfig";
 
 function createTempProject(configBody: string) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-project-config-"));
@@ -16,16 +11,14 @@ function createTempProject(configBody: string) {
 }
 
 describe("core: projectConfig", () => {
-  it("sets splitByEnvironment=false and environmentsDirectoryPath by default", () => {
+  it("sets project defaults", () => {
     const root = createTempProject("module.exports = {};");
     const config = getProjectConfig(root);
 
     expect(config.namespaceCharacter).toBe(".");
-    expect(config.splitByEnvironment).toBe(false);
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
-    expect(config.environmentsDirectoryPath).toBe(path.join(root, ENVIRONMENTS_DIRECTORY_NAME));
   });
 
   it("throws when sets is not boolean", () => {
@@ -125,7 +118,6 @@ describe("core: projectConfig", () => {
 
     expect(setConfig.featuresDirectoryPath).toBe(path.join(setRoot, "features"));
     expect(setConfig.namespaceCharacter).toBe(".");
-    expect(setConfig.environmentsDirectoryPath).toBe(path.join(setRoot, "environments"));
     expect(setConfig.segmentsDirectoryPath).toBe(path.join(setRoot, "segments"));
     expect(setConfig.attributesDirectoryPath).toBe(path.join(setRoot, "attributes"));
     expect(setConfig.groupsDirectoryPath).toBe(path.join(setRoot, "groups"));
@@ -133,15 +125,5 @@ describe("core: projectConfig", () => {
     expect(setConfig.testsDirectoryPath).toBe(path.join(setRoot, "tests"));
     expect(setConfig.stateDirectoryPath).toBe(path.join(root, ".featurevisor", "sets", "staging"));
     expect(setConfig.datafilesDirectoryPath).toBe(path.join(root, "datafiles", "staging"));
-  });
-
-  it("throws when splitByEnvironment=true and environments=false", () => {
-    const root = createTempProject(
-      "module.exports = { splitByEnvironment: true, environments: false };",
-    );
-
-    expect(() => getProjectConfig(root)).toThrow(
-      "Invalid configuration: splitByEnvironment=true requires environments to be an array",
-    );
   });
 });

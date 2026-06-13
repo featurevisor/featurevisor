@@ -39,8 +39,6 @@ export interface LintErrorItem {
   path: (string | number)[];
   code?: string;
   value?: unknown;
-  /** Present only when splitByEnvironment is true and the error is from an environment-specific file (rules/force/expose). */
-  environment?: string;
 }
 
 export interface LintResult {
@@ -242,81 +240,6 @@ export async function lintProject(
 
   async function lintReservedNamespaceCharacterInEntityPaths(entityType: LintEntityType) {
     await lintReservedNamespaceCharacterInPathNames(entityType, getEntityDirectoryPath(entityType));
-
-    if (
-      entityType === "feature" &&
-      projectConfig.splitByEnvironment &&
-      fs.existsSync(projectConfig.environmentsDirectoryPath)
-    ) {
-      const environments = fs.readdirSync(projectConfig.environmentsDirectoryPath, {
-        withFileTypes: true,
-      });
-
-      for (const environment of environments) {
-        if (environment.isDirectory()) {
-          await lintReservedNamespaceCharacterInPathNames(
-            entityType,
-            path.join(projectConfig.environmentsDirectoryPath, environment.name),
-          );
-        }
-      }
-    }
-  }
-
-  async function getFeaturePathFromIssuePath(
-    featureKey: string,
-    issuePath: (string | number)[] = [],
-  ): Promise<string> {
-    const defaultPath = getFullPathFromKey("feature", featureKey);
-
-    if (!projectConfig.splitByEnvironment) {
-      return defaultPath;
-    }
-
-    if (!Array.isArray(projectConfig.environments)) {
-      return defaultPath;
-    }
-
-    const [topLevelKey, environment] = issuePath;
-    if (
-      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
-      typeof environment === "string"
-    ) {
-      const sourcePath = await datasource.getFeaturePropertySourcePath(
-        featureKey,
-        topLevelKey,
-        environment,
-      );
-
-      if (sourcePath) {
-        return sourcePath;
-      }
-    }
-
-    return defaultPath;
-  }
-
-  /**
-   * When the error is from an environment-specific file (splitByEnvironment), the Zod path
-   * is against the merged feature (e.g. rules.production.1.variables.foo). Return the path
-   * as it appears in that file (e.g. rules.1.variables.foo) by stripping the environment segment.
-   */
-  function getPathRelativeToFeatureFile(
-    issuePath: (string | number)[],
-    targetPath: string,
-    defaultFeaturePath: string,
-  ): (string | number)[] {
-    if (targetPath === defaultFeaturePath || issuePath.length < 2) {
-      return issuePath;
-    }
-    const [topLevelKey, second] = issuePath;
-    if (
-      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
-      typeof second === "string"
-    ) {
-      return [topLevelKey, ...issuePath.slice(2)];
-    }
-    return issuePath;
   }
 
   async function printEntityHeader(entityType: LintEntityType, key: string, fullPath: string) {
@@ -414,8 +337,6 @@ export async function lintProject(
     error: ZodError,
   ) {
     const issues = getLintIssuesFromZodError(error);
-    const defaultFeaturePath =
-      entityType === "feature" ? getFullPathFromKey("feature", key) : fullPath;
 
     const issuesWithTargetPath: {
       issue: (typeof issues)[0];
@@ -423,19 +344,8 @@ export async function lintProject(
       pathRelativeToFile: (string | number)[];
     }[] = [];
     for (const issue of issues) {
-      const targetPath =
-        entityType === "feature" ? await getFeaturePathFromIssuePath(key, issue.path) : fullPath;
-      const pathRelativeToFile =
-        entityType === "feature"
-          ? getPathRelativeToFeatureFile(issue.path, targetPath, defaultFeaturePath)
-          : issue.path;
-      const isFromEnvFile =
-        entityType === "feature" &&
-        targetPath !== defaultFeaturePath &&
-        issue.path.length >= 2 &&
-        (issue.path[0] === "rules" || issue.path[0] === "force" || issue.path[0] === "expose") &&
-        typeof issue.path[1] === "string";
-      const environment = isFromEnvFile ? (issue.path[1] as string) : undefined;
+      const targetPath = fullPath;
+      const pathRelativeToFile = issue.path;
       issuesWithTargetPath.push({ issue, targetPath, pathRelativeToFile });
 
       recordError({
@@ -446,7 +356,6 @@ export async function lintProject(
         path: pathRelativeToFile,
         code: issue.code,
         value: issue.value,
-        ...(environment !== undefined && { environment }),
       });
     }
 

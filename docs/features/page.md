@@ -154,7 +154,7 @@ rules:
       percentage: 100
 ```
 
-If your project enables `splitByEnvironment: true`, define shared feature metadata in `features/<feature>.yml` and define environment specific `rules`, `force`, and `expose` in `environments/<environment>/<feature>.yml` files instead.
+Environment-specific `rules`, `force`, and `expose` values are authored directly in the feature file. For projects that model release lanes as independent project trees, use sets and promotions as shown in the environment example projects.
 
 ### Rule key
 

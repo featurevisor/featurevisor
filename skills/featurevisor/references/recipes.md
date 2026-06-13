@@ -4,21 +4,21 @@ Patterns for the most common things users build with Featurevisor. Each section 
 
 Source docs (the authoritative versions): <https://featurevisor.com/docs/use-cases/>
 
-| Recipe                                           | When                                                                    |
-| ------------------------------------------------ | ----------------------------------------------------------------------- |
-| [Progressive delivery / gradual rollout](#progressive-delivery--gradual-rollout) | Boolean flag, ramping 1% → 100% over days/weeks       |
-| [A/B test (two variations)](#ab-test-two-variations)         | One control vs one treatment                                |
-| [Multivariate test (3+ variations + variables)](#multivariate-test-with-variables) | Headline + CTA combinations                          |
-| [Mutually exclusive experiments](#mutually-exclusive-experiments)         | Two experiments running simultaneously, no user sees both       |
-| [Feature dependencies](#feature-dependencies)    | Feature B should only evaluate if feature A is enabled                  |
-| [Remote configuration](#remote-configuration)    | Use Featurevisor as a typed config store, no rollout/experiment         |
-| [User entitlements / plans](#user-entitlements--plans)       | Map plans → permissions, with per-user overrides            |
-| [Testing in production / QA force](#testing-in-production--qa-force)   | QA team gets a feature production users don't       |
-| [Deprecating a feature safely](#deprecating-a-feature-safely)         | Wind down a flag without breaking existing consumers        |
-| [Trunk-based development](#trunk-based-development) | Merge incomplete code daily behind 0% flags                          |
-| [Microfrontends](#microfrontends)                | Single Featurevisor project, one datafile per microfrontend             |
-| [Decouple release from deploy](#decouple-release-from-deploy) | Ship code anytime, expose features independently              |
-| [Establishing ownership](#establishing-ownership) | CODEOWNERS for feature/segment files                                   |
+| Recipe                                                                             | When                                                            |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [Progressive delivery / gradual rollout](#progressive-delivery--gradual-rollout)   | Boolean flag, ramping 1% → 100% over days/weeks                 |
+| [A/B test (two variations)](#ab-test-two-variations)                               | One control vs one treatment                                    |
+| [Multivariate test (3+ variations + variables)](#multivariate-test-with-variables) | Headline + CTA combinations                                     |
+| [Mutually exclusive experiments](#mutually-exclusive-experiments)                  | Two experiments running simultaneously, no user sees both       |
+| [Feature dependencies](#feature-dependencies)                                      | Feature B should only evaluate if feature A is enabled          |
+| [Remote configuration](#remote-configuration)                                      | Use Featurevisor as a typed config store, no rollout/experiment |
+| [User entitlements / plans](#user-entitlements--plans)                             | Map plans → permissions, with per-user overrides                |
+| [Testing in production / QA force](#testing-in-production--qa-force)               | QA team gets a feature production users don't                   |
+| [Deprecating a feature safely](#deprecating-a-feature-safely)                      | Wind down a flag without breaking existing consumers            |
+| [Trunk-based development](#trunk-based-development)                                | Merge incomplete code daily behind 0% flags                     |
+| [Microfrontends](#microfrontends)                                                  | Single Featurevisor project, one datafile per microfrontend     |
+| [Decouple release from deploy](#decouple-release-from-deploy)                      | Ship code anytime, expose features independently                |
+| [Establishing ownership](#establishing-ownership)                                  | CODEOWNERS for feature/segment files                            |
 
 ---
 
@@ -439,12 +439,12 @@ segments/qa.yml     @yourorg/qa-team
 attributes/*        @yourorg/platform-team
 ```
 
-Combine with `splitByEnvironment` if QA owns production rollout decisions:
+Use sets if QA owns production rollout decisions:
 
 ```
-features/payment/* @yourorg/payments-team
-environments/staging/payment/*    @yourorg/payments-team
-environments/production/payment/* @yourorg/qa-team
+sets/dev/features/payment/*        @yourorg/payments-team
+sets/staging/features/payment/*    @yourorg/payments-team
+sets/production/features/payment/* @yourorg/qa-team
 ```
 
 Pair with branch protection ("Require review from Code Owners") to enforce.

@@ -1,5 +1,0 @@
-description: Netherlands users
-conditions:
-  - attribute: country
-    operator: equals
-    value: nl

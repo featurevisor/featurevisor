@@ -40,9 +40,8 @@ The `--json` output has a stable shape:
 }
 ```
 
-When `splitByEnvironment: true`, lint additionally enforces that base feature files contain no `rules`/`force`/`expose` and that every configured environment has a per-feature file under `environments/<env>/`.
-
 Run this after every edit. It catches:
+
 - Unknown segments/attributes referenced in features
 - Variation weight sums ≠ 100
 - Group slot percentage sums ≠ 100
@@ -91,19 +90,19 @@ npx featurevisor list --features --json --pretty
 
 Filter flags (combine as needed):
 
-| Flag                            | Effect                                           |
-| ------------------------------- | ------------------------------------------------ |
-| `--archived=true|false`         | by archived status                               |
-| `--description=<pattern>`       | description regex                                |
-| `--disabledIn=<env>`            | feature disabled in env (no rule, or 0%)         |
-| `--enabledIn=<env>`             | feature has any rule >0% in env                  |
-| `--keyPattern=<regex>`          | feature key regex                                |
-| `--tag=<tag>`                   | includes a tag                                   |
-| `--variable=<key>`              | has variable in its schema                       |
-| `--variation=<value>`           | has a variation with given value                 |
-| `--with-tests` / `--without-tests`        | has any `.spec.yml` / has none         |
-| `--with-variables` / `--without-variables` | has / has not                          |
-| `--with-variations` / `--without-variations` | has / has not                        |
+| Flag                                         | Effect                                   |
+| -------------------------------------------- | ---------------------------------------- | ------------------ |
+| `--archived=true                             | false`                                   | by archived status |
+| `--description=<pattern>`                    | description regex                        |
+| `--disabledIn=<env>`                         | feature disabled in env (no rule, or 0%) |
+| `--enabledIn=<env>`                          | feature has any rule >0% in env          |
+| `--keyPattern=<regex>`                       | feature key regex                        |
+| `--tag=<tag>`                                | includes a tag                           |
+| `--variable=<key>`                           | has variable in its schema               |
+| `--variation=<value>`                        | has a variation with given value         |
+| `--with-tests` / `--without-tests`           | has any `.spec.yml` / has none           |
+| `--with-variables` / `--without-variables`   | has / has not                            |
+| `--with-variations` / `--without-variations` | has / has not                            |
 
 ### Segments
 
@@ -223,7 +222,7 @@ npx featurevisor config
 npx featurevisor config --json --pretty
 ```
 
-Always run this once at the start of a session to discover envs, tags, parser, splitByEnvironment, defaultBucketBy, and directory overrides.
+Always run this once at the start of a session to discover envs, tags, parser, sets, defaultBucketBy, and directory overrides.
 
 ## info
 

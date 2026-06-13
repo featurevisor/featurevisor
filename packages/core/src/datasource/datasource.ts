@@ -18,12 +18,7 @@ import type {
 import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
-import {
-  Adapter,
-  DatafileOptions,
-  FeatureEnvironmentProperty,
-  FeatureSourcePaths,
-} from "./adapter";
+import { Adapter, DatafileOptions } from "./adapter";
 
 export class Datasource {
   private adapter: Adapter;
@@ -116,18 +111,6 @@ export class Datasource {
 
   deleteFeature(featureKey: FeatureKey) {
     return this.adapter.deleteEntity("feature", featureKey);
-  }
-
-  getFeatureSourcePaths(featureKey: FeatureKey): Promise<FeatureSourcePaths | undefined> {
-    return this.adapter.getFeatureSourcePaths(featureKey);
-  }
-
-  getFeaturePropertySourcePath(
-    featureKey: FeatureKey,
-    property: FeatureEnvironmentProperty,
-    environment?: string,
-  ): Promise<string | undefined> {
-    return this.adapter.getFeaturePropertySourcePath(featureKey, property, environment);
   }
 
   async getRequiredFeaturesChain(

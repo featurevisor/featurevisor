@@ -19,7 +19,6 @@ export const DATAFILES_DIRECTORY_NAME = "datafiles";
 export const DATAFILE_NAME_PATTERN = "featurevisor-%s.json";
 export const REVISION_FILE_NAME = "REVISION";
 export const SITE_EXPORT_DIRECTORY_NAME = "out";
-export const ENVIRONMENTS_DIRECTORY_NAME = "environments";
 export const SETS_DIRECTORY_NAME = "sets";
 
 export const CONFIG_MODULE_NAME = "featurevisor.config.js";
@@ -62,11 +61,9 @@ export interface ProjectConfig {
   datafileNamePattern: string;
   revisionFileName: string;
   siteExportDirectoryPath: string;
-  environmentsDirectoryPath: string;
   setsDirectoryPath: string;
 
   environments: string[] | false;
-  splitByEnvironment: boolean;
   sets: boolean;
   tags: string[];
   scopes?: Scope[];
@@ -108,7 +105,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     adapter: FilesystemAdapter,
 
     featuresDirectoryPath: path.join(rootDirectoryPath, FEATURES_DIRECTORY_NAME),
-    environmentsDirectoryPath: path.join(rootDirectoryPath, ENVIRONMENTS_DIRECTORY_NAME),
     setsDirectoryPath: path.join(rootDirectoryPath, SETS_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
@@ -123,7 +119,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
     enforceCatchAllRule: false,
     plugins: [],
-    splitByEnvironment: false,
 
     maxVariableStringLength: undefined,
     maxVariableArrayStringifiedLength: undefined,
@@ -199,12 +194,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     });
   }
 
-  if (finalConfig.splitByEnvironment && finalConfig.environments === false) {
-    throw new Error(
-      "Invalid configuration: splitByEnvironment=true requires environments to be an array",
-    );
-  }
-
   return finalConfig as ProjectConfig;
 }
 
@@ -214,7 +203,6 @@ export function getProjectConfigForSet(projectConfig: ProjectConfig, set: string
   return {
     ...projectConfig,
     featuresDirectoryPath: path.join(setRootDirectoryPath, FEATURES_DIRECTORY_NAME),
-    environmentsDirectoryPath: path.join(setRootDirectoryPath, ENVIRONMENTS_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(setRootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(setRootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(setRootDirectoryPath, GROUPS_DIRECTORY_NAME),

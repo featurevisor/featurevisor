@@ -15,62 +15,6 @@ function createTempProjectFromExample1() {
   return tempRoot;
 }
 
-function createTempSplitProject() {
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-lint-split-"));
-
-  fs.writeFileSync(
-    path.join(tempRoot, "featurevisor.config.js"),
-    `
-module.exports = {
-  environments: ['staging', 'production'],
-  splitByEnvironment: true,
-  tags: ['all'],
-};
-`.trimStart(),
-    "utf8",
-  );
-
-  fs.mkdirSync(path.join(tempRoot, "features"), { recursive: true });
-  fs.mkdirSync(path.join(tempRoot, "environments", "staging"), { recursive: true });
-  fs.mkdirSync(path.join(tempRoot, "environments", "production"), { recursive: true });
-
-  fs.writeFileSync(
-    path.join(tempRoot, "features", "foo.yml"),
-    `
-key: foo
-description: Foo
-tags:
-  - all
-bucketBy: userId
-`.trimStart(),
-    "utf8",
-  );
-
-  fs.writeFileSync(
-    path.join(tempRoot, "environments", "staging", "foo.yml"),
-    `
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 100
-`.trimStart(),
-    "utf8",
-  );
-
-  fs.writeFileSync(
-    path.join(tempRoot, "environments", "production", "foo.yml"),
-    `
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 0
-`.trimStart(),
-    "utf8",
-  );
-
-  return tempRoot;
-}
-
 function createTempProject(configBody = "module.exports = {};") {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-lint-"));
 
@@ -143,31 +87,6 @@ describe("core: lintProject", function () {
           entityType: "segment",
           filePath: expect.stringContaining(path.join("segments", "version_5.5.yml")),
           message: 'Invalid file or directory name: "version_5.5.yml"',
-          code: "invalid_name",
-        }),
-      ]),
-    );
-  });
-
-  it("rejects split environment feature file names containing the namespace character", async () => {
-    const root = createTempSplitProject();
-    tempProjectPath = root;
-
-    fs.writeFileSync(
-      path.join(root, "environments", "staging", "foo.bar.yml"),
-      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
-      "utf8",
-    );
-
-    const result = await lintProject(getDeps(root) as any, { json: true });
-
-    expect(result.hasError).toBe(true);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          entityType: "feature",
-          filePath: expect.stringContaining(path.join("environments", "staging", "foo.bar.yml")),
-          message: 'Invalid file or directory name: "foo.bar.yml"',
           code: "invalid_name",
         }),
       ]),
@@ -413,44 +332,5 @@ feature: foo
     expect(result.hasError).toBe(true);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(processExitSpy).not.toHaveBeenCalled();
-  });
-
-  it("reports missing split environment file with environment file path", async () => {
-    const splitProjectPath = createTempSplitProject();
-    fs.unlinkSync(path.join(splitProjectPath, "environments", "production", "foo.yml"));
-
-    const result = await lintProject(getDeps(splitProjectPath) as any, {
-      json: true,
-      entityType: "feature",
-    });
-
-    expect(result.hasError).toBe(true);
-    expect(result.errors[0].filePath).toContain(path.join("environments", "production", "foo.yml"));
-  });
-
-  it("reports split environment feature schema errors against environment file path", async () => {
-    const splitProjectPath = createTempSplitProject();
-    fs.writeFileSync(
-      path.join(splitProjectPath, "environments", "staging", "foo.yml"),
-      `
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: invalid
-`.trimStart(),
-      "utf8",
-    );
-
-    const result = await lintProject(getDeps(splitProjectPath) as any, {
-      json: true,
-      entityType: "feature",
-    });
-
-    expect(result.hasError).toBe(true);
-    expect(
-      result.errors.some((error) =>
-        error.filePath.includes(path.join("environments", "staging", "foo.yml")),
-      ),
-    ).toBe(true);
   });
 });

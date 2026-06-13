@@ -24,7 +24,7 @@ Then in your agent (Claude Code, Cursor, Codex, OpenCode, etc.) ask things like:
 
 A single skill, `featurevisor`, that the agent invokes (e.g. as `/featurevisor` in Claude Code) covering:
 
-- **Authoring** — features (flags, variations, variables, force, required, expose), segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments (both inline and `splitByEnvironment`).
+- **Authoring** — features (flags, variations, variables, force, required, expose), segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
 - **Testing** — declarative `.spec.yml` assertions, matrix expansion, tagged/scoped runs.
 - **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML.
 - **Templates** — copy-and-adapt YAML for every common authoring shape.

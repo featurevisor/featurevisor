@@ -1,6 +1,7 @@
 # Project configuration
 
 Full docs:
+
 - Configuration: <https://featurevisor.com/docs/configuration>
 - Environments: <https://featurevisor.com/docs/environments>
 - Tags: <https://featurevisor.com/docs/tags>
@@ -25,58 +26,29 @@ npx featurevisor config --json --pretty
 
 ## Keys you will encounter
 
-| Key                              | Purpose                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `environments`                   | Array of env names, or `false` for no envs                                             |
-| `tags`                           | Array of tag names — features must tag themselves with a subset                        |
-| `splitByEnvironment`             | `true` → rules/force/expose move to `environments/<env>/<feature>.yml`                 |
-| `environmentsDirectoryPath`      | Override path when `splitByEnvironment: true` (default `environments/`)                |
-| `scopes`                         | Define scopes for additional optimized datafiles                                       |
-| `parser`                         | `"json"`, `"yml"` (default), or custom parser                                          |
-| `defaultBucketBy`                | Default `bucketBy` for features (defaults to `userId`)                                 |
-| `enforceCatchAllRule`            | Lint requires a `segments: '*'` last rule in every feature/env                         |
-| `attributesDirectoryPath`        | default `attributes/`                                                                  |
-| `segmentsDirectoryPath`          | default `segments/`                                                                    |
-| `featuresDirectoryPath`          | default `features/`                                                                    |
-| `groupsDirectoryPath`            | default `groups/`                                                                      |
-| `testsDirectoryPath`             | default `tests/`                                                                       |
-| `datafilesDirectoryPath`         | default `dist/`                                                                        |
-| `datafileNamePattern`            | default `featurevisor-%s.json`                                                         |
-| `revisionFileName`               | default `REVISION`                                                                     |
-| `stateDirectoryPath`             | default `.featurevisor/`                                                               |
-| `prettyState`, `prettyDatafile`  | pretty-printing toggles                                                                |
-| `stringify`                      | stringify conditions in datafiles for lazy client-side parsing (default `true`)        |
-| `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps |
-| `plugins`                        | Featurevisor plugins to hook into build / lint                                         |
-
-## splitByEnvironment
-
-When set:
-
-- Base `features/<key>.yml` holds metadata only — **no `rules`, `force`, or `expose`**.
-- For every configured environment, a sibling file at `environments/<env>/<key>.yml` (or wherever `environmentsDirectoryPath` points) holds that env's `rules`, `force`, `expose`.
-- `environments` must be an array (cannot be `false`).
-
-Authoring shape:
-
-```yaml
-# features/showBanner.yml
-description: Show banner
-tags: [all]
-bucketBy: userId
-variablesSchema:
-  color:
-    type: string
-    defaultValue: red
-```
-
-```yaml
-# environments/production/showBanner.yml
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 100
-```
+| Key                                                                                                                                      | Purpose                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `environments`                                                                                                                           | Array of env names, or `false` for no envs                                      |
+| `tags`                                                                                                                                   | Array of tag names — features must tag themselves with a subset                 |
+| `sets`                                                                                                                                   | `true` → each `sets/<set>/` directory is an independent project tree            |
+| `promotionFlows`                                                                                                                         | Optional allowed set promotion directions, for example dev → staging            |
+| `scopes`                                                                                                                                 | Define scopes for additional optimized datafiles                                |
+| `parser`                                                                                                                                 | `"json"`, `"yml"` (default), or custom parser                                   |
+| `defaultBucketBy`                                                                                                                        | Default `bucketBy` for features (defaults to `userId`)                          |
+| `enforceCatchAllRule`                                                                                                                    | Lint requires a `segments: '*'` last rule in every feature/env                  |
+| `attributesDirectoryPath`                                                                                                                | default `attributes/`                                                           |
+| `segmentsDirectoryPath`                                                                                                                  | default `segments/`                                                             |
+| `featuresDirectoryPath`                                                                                                                  | default `features/`                                                             |
+| `groupsDirectoryPath`                                                                                                                    | default `groups/`                                                               |
+| `testsDirectoryPath`                                                                                                                     | default `tests/`                                                                |
+| `datafilesDirectoryPath`                                                                                                                 | default `dist/`                                                                 |
+| `datafileNamePattern`                                                                                                                    | default `featurevisor-%s.json`                                                  |
+| `revisionFileName`                                                                                                                       | default `REVISION`                                                              |
+| `stateDirectoryPath`                                                                                                                     | default `.featurevisor/`                                                        |
+| `prettyState`, `prettyDatafile`                                                                                                          | pretty-printing toggles                                                         |
+| `stringify`                                                                                                                              | stringify conditions in datafiles for lazy client-side parsing (default `true`) |
+| `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps                                                          |
+| `plugins`                                                                                                                                | Featurevisor plugins to hook into build / lint                                  |
 
 ## Tags
 

@@ -3,6 +3,7 @@
 Full docs: <https://featurevisor.com/docs/features>
 
 A feature in Featurevisor produces three evaluable outputs:
+
 - **flag** — boolean enabled/disabled
 - **variation** — string (for A/B tests)
 - **variables** — typed key/value pairs (for remote config)
@@ -27,20 +28,20 @@ rules:
 
 ## Top-level properties
 
-| Property            | Required | Notes                                                                                  |
-| ------------------- | -------- | -------------------------------------------------------------------------------------- |
-| `description`       | yes      | Human-readable                                                                         |
-| `tags`              | yes      | Must be subset of `tags` in `featurevisor.config.js`                                   |
-| `bucketBy`          | yes (unless `defaultBucketBy` covers it) | string, array, or `{or: [...]}` — see Bucketing                  |
-| `rules`             | yes (unless `splitByEnvironment`) | Map of env → ordered rule list                                        |
-| `variations`        | no       | A/B test variations                                                                    |
-| `variablesSchema`   | no       | Variables this feature exposes (see [variables-schemas.md](variables-schemas.md))      |
-| `required`          | no       | Other features that must be enabled first                                              |
-| `force`             | no       | Per-env force rules (override percentage logic)                                        |
-| `expose`            | no       | Per-env / per-tag inclusion control                                                    |
-| `disabledVariationValue` | no  | Variation value when feature is disabled (defaults to `null`)                          |
-| `deprecated`        | no       | `true` → still evaluable, logs warning                                                 |
-| `archived`          | no       | `true` → excluded from datafiles entirely                                              |
+| Property                 | Required                                 | Notes                                                                             |
+| ------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------- |
+| `description`            | yes                                      | Human-readable                                                                    |
+| `tags`                   | no                                       | When present, must be subset of `tags` in `featurevisor.config.js`                |
+| `bucketBy`               | yes (unless `defaultBucketBy` covers it) | string, array, or `{or: [...]}` — see Bucketing                                   |
+| `rules`                  | yes                                      | Map of env → ordered rule list when environments are enabled                      |
+| `variations`             | no                                       | A/B test variations                                                               |
+| `variablesSchema`        | no                                       | Variables this feature exposes (see [variables-schemas.md](variables-schemas.md)) |
+| `required`               | no                                       | Other features that must be enabled first                                         |
+| `force`                  | no                                       | Per-env force rules (override percentage logic)                                   |
+| `expose`                 | no                                       | Per-env / per-tag inclusion control                                               |
+| `disabledVariationValue` | no                                       | Variation value when feature is disabled (defaults to `null`)                     |
+| `deprecated`             | no                                       | `true` → still evaluable, logs warning                                            |
+| `archived`               | no                                       | `true` → excluded from datafiles entirely                                         |
 
 ## Bucketing (`bucketBy`)
 
@@ -56,6 +57,7 @@ bucketBy:                              # first attribute available in context wi
 ```
 
 Guidance:
+
 - Signed-in user surface → use `userId` (or whatever the project calls it; check `attributes/`).
 - Anonymous surface → use `deviceId` or similar.
 - **Don't change `bucketBy` on an existing feature** — it re-buckets every user.
@@ -242,6 +244,7 @@ archived: true     # excluded from datafiles entirely
 For each evaluation type (flag / variation / variable), the SDK runs through this chain. The same logic powers `npx featurevisor evaluate`.
 
 ### Flag
+
 1. SDK sticky override (if present)
 2. Feature not in datafile → disabled
 3. `required` dependencies fail → disabled
@@ -250,11 +253,13 @@ For each evaluation type (flag / variation / variable), the SDK runs through thi
 6. No match → disabled
 
 ### Variation
+
 1. SDK sticky override
 2. If flag is false → `null` or `disabledVariationValue`
 3. If flag is true → first matching `force` → first matching rule's `variation` → bucketed variation per weights
 
 ### Variable
+
 1. SDK sticky override
 2. If flag is false → `null`, or `defaultValue` if `useDefaultWhenDisabled`, or `disabledValue`
 3. If flag is true → matching `force.variables` → matching rule's `variables` / `variableOverrides` → bucketed variation's `variables`/`variableOverrides` → `defaultValue`
