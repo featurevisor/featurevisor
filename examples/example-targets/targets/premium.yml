@@ -1,5 +1,4 @@
 description: Premium subscription target
-tags:
-  - all
+tag: all
 context:
   subscription: premium

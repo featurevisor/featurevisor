@@ -20,6 +20,7 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
       description: z.string({
         error: (issue) => (issue.input === undefined ? "Required" : undefined),
       }),
+      tag: tagSchema.optional(),
       tags: z
         .union([
           z.array(tagSchema),
@@ -29,5 +30,9 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
         .optional(),
       context: z.record(z.string(), z.unknown()).optional(),
     })
-    .strict();
+    .strict()
+    .refine((target) => !(target.tag && target.tags), {
+      message: 'Only one of "tag" or "tags" can be defined',
+      path: ["tags"],
+    });
 }

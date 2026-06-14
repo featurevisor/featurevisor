@@ -1,5 +1,4 @@
 description: Chrome browser target
-tags:
-  - web
+tag: web
 context:
   browser: chrome

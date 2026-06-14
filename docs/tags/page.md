@@ -53,8 +53,7 @@ Tags do not create datafiles on their own. Define targets that select the tags y
 
 ```yml {% path="targets/web.yml" %}
 description: Web app
-tags:
-  - web
+tag: web
 ```
 
 When [building datafiles](/docs/building-datafiles), Featurevisor creates datafiles for targets.

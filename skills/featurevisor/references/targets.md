@@ -6,13 +6,12 @@ Targets define the datafiles Featurevisor builds. They live under `targets/`.
 
 ```yaml
 description: Web app
-tags:
-  - web
+tag: web
 context:
   platform: web
 ```
 
-Only `description` is required. Omit `tags` to include all non-archived features.
+Only `description` is required. Use `tag` for one tag, or `tags` for multi-tag selectors like `{ or: [...] }` and `{ and: [...] }`. `tag` and `tags` are mutually exclusive. Omit both to include all non-archived features.
 
 Use `target` in feature test assertions:
 

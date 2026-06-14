@@ -130,6 +130,7 @@ export async function buildTargetDatafile({
       revision,
       revisionFromHash,
       environment,
+      tag: target.tag,
       tags: target.tags,
       inflate,
       featurevisorVersion,
@@ -203,6 +204,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       datasource,
       revision: cliOptions.revision,
       schemaVersion: cliOptions.schemaVersion,
+      tag: target?.tag,
       tags: target?.tags,
     });
 

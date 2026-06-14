@@ -17,6 +17,7 @@ export interface Target {
   key?: TargetKey;
   promotable?: boolean;
   description: string;
+  tag?: Tag;
   tags?: TargetTags;
   context?: Context;
 }

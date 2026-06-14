@@ -43,6 +43,7 @@ export interface CustomDatafileOptions {
   revision?: string;
   schemaVersion?: string;
   inflate?: number;
+  tag?: string;
   tags?: BuildTags;
 }
 
@@ -66,6 +67,7 @@ export async function getCustomDatafile(
       environment: options.environment,
       features: featuresToInclude,
       inflate: options.inflate,
+      tag: options.tag,
       tags: options.tags,
     },
     existingState,

@@ -35,7 +35,7 @@ A feature may carry multiple tags. Targets decide which tagged features become p
 npx featurevisor build --no-state-files
 ```
 
-Define `targets/web.yml` with `tags: ["web"]` to produce `datafiles/<environment>/featurevisor-web.json`.
+Define `targets/web.yml` with `tag: web` to produce `datafiles/<environment>/featurevisor-web.json`.
 
 ## Choosing tags
 

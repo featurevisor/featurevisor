@@ -47,6 +47,41 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a single tag", () => {
+    const result = parseTarget({
+      description: "Web target",
+      tag: "web",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects unknown single tag", () => {
+    const result = parseTarget({ description: "Unknown tag", tag: "unknown" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message).join(" ")).toContain(
+        'Unknown tag "unknown"',
+      );
+    }
+  });
+
+  it("rejects tag and tags together", () => {
+    const result = parseTarget({
+      description: "Too many tag selectors",
+      tag: "web",
+      tags: ["mobile"],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message).join(" ")).toContain(
+        'Only one of "tag" or "tags" can be defined',
+      );
+    }
+  });
+
   it("requires description", () => {
     const result = parseTarget({ tags: ["all"] });
 

@@ -19,8 +19,7 @@ Create target files in the `targets` directory:
 
 ```yml {% path="targets/web.yml" %}
 description: Web app datafile
-tags:
-  - web
+tag: web
 context:
   platform: web
 ```
@@ -29,7 +28,14 @@ Only `description` is required.
 
 ## Tags
 
-Target `tags` select which tagged features are included in the datafile.
+Target `tag` selects features matching one tag:
+
+```yml {% path="targets/web.yml" %}
+description: Web app
+tag: web
+```
+
+Use `tags` when a target needs a multi-tag selector:
 
 ```yml {% path="targets/mobile.yml" %}
 description: Mobile apps
@@ -41,11 +47,12 @@ tags:
 
 Supported shapes:
 
+- `tag: "web"`
 - `tags: ["web"]`
 - `tags: { or: ["web", "mobile"] }`
 - `tags: { and: ["web", "checkout"] }`
 
-If `tags` is omitted, the target includes all non-archived features.
+`tag` and `tags` are mutually exclusive. If both are omitted, the target includes all non-archived features.
 
 ## Context
 
@@ -53,8 +60,7 @@ Target `context` represents values known at build time. Featurevisor applies thi
 
 ```yml {% path="targets/chrome.yml" %}
 description: Chrome users
-tags:
-  - web
+tag: web
 context:
   browser: chrome
 ```

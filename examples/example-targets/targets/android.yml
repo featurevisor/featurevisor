@@ -1,5 +1,4 @@
 description: Android target
-tags:
-  - android
+tag: android
 context:
   platform: android
