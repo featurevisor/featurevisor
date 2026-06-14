@@ -178,40 +178,15 @@ This helps us cover more scenarios by having to write less code in our specs.
 
 When running tests, Featurevisor CLI will produce a datafile in memory containing your entire project's features. This is handy to make the tests run quickly by default.
 
-But to gain more confidence like a real end user, we may also want to execute your individual assertions against a tagged or scoped datafiles.
+But to gain more confidence like a real end user, we may also want to execute individual assertions against target datafiles.
 
 Learn more in:
 
-- [Tags](/docs/tags)
-- [Scopes](/docs/scopes)
+- [Targets](/docs/targets)
 
-### Against a tag
+### Against a target
 
-If testing a feature against a particular [tag](/docs/tags), the test spec can be written as follows:
-
-```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
-feature: my_feature
-
-assertions:
-  - environment: production
-    at: 90
-    context:
-      country: nl
-    tag: web
-    expectedToBeEnabled: true
-```
-
-And run:
-
-```{% title="Command" %}
-$ npx featurevisor test --with-tags
-```
-
-This will make sure the assertion is run against the datafile for tag `web` in `production` environment.
-
-### Against a scope
-
-If testing against a particular [scope](/docs/scopes), here's an example of the spec:
+If testing a feature against a particular [target](/docs/targets), the test spec can be written as follows:
 
 ```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
 feature: my_feature
@@ -221,17 +196,17 @@ assertions:
     at: 90
     context:
       country: nl
-    scope: browsers
+    target: web
     expectedToBeEnabled: true
 ```
 
 And run:
 
 ```{% title="Command" %}
-$ npx featurevisor test --with-scopes
+$ npx featurevisor test
 ```
 
-The extra option in CLI will make sure the individual assertion is run against the scoped datafile, just like how your application might consume it.
+This makes sure the assertion is run against the datafile for target `web` in `production` environment.
 
 ## CLI options
 
@@ -298,19 +273,7 @@ $ npx featurevisor test --onlyFailures
 
 ### `withTags`
 
-To run tests against [tags](/docs/tags):
-
-```{% title="Command" %}
-$ npx featurevisor test --withTags
-```
-
-### `withScopes`
-
-To run tests against [scopes](/docs/scopes):
-
-```{% title="Command" %}
-$ npx featurevisor test --withScopes
-```
+Target assertions do not need extra CLI options.
 
 ## NPM scripts
 

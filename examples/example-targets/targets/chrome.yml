@@ -1,0 +1,5 @@
+description: Chrome browser target
+tags:
+  - web
+context:
+  browser: chrome

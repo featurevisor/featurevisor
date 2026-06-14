@@ -11,6 +11,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     attributesDirectoryPath: "",
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
+    targetsDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
@@ -34,7 +35,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
 }
 
 function getSchema(projectConfig = minimalProjectConfig()) {
-  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"]);
+  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"]);
 }
 
 function parseTest(input: unknown): z.ZodSafeParseResult<unknown> {
@@ -78,7 +79,7 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
           description: "feature assertion",
           at: "${{ score }}",
           environment: "staging",
-          tag: "all",
+          target: "web",
           sticky: {
             flag: { checkout: "cached" },
           },
@@ -125,6 +126,38 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         },
       ],
     });
+  });
+
+  it("accepts matrix placeholders for target values", () => {
+    expectTestSuccess({
+      feature: "checkout",
+      assertions: [
+        {
+          matrix: {
+            target: ["web", "mobile"],
+          },
+          at: 1,
+          environment: "staging",
+          target: "${{ target }}",
+        },
+      ],
+    });
+  });
+
+  it("rejects unknown targets", () => {
+    expectTestFailure(
+      {
+        feature: "checkout",
+        assertions: [
+          {
+            at: 1,
+            environment: "staging",
+            target: "mobile",
+          },
+        ],
+      },
+      'Unknown target "mobile"',
+    );
   });
 
   it("rejects unknown environments with a precise path", () => {

@@ -55,9 +55,9 @@ $ tree .
 │   └── userId.yml
 ├── datafiles/ (generated later)
 │   ├── production/
-│   │   └── featurevisor-tag-all.json
+│   │   └── featurevisor-all.json
 │   └── staging/
-│       └── featurevisor-tag-all.json
+│       └── featurevisor-all.json
 ├── features
 │   └── showCookieBanner.yml
 ├── featurevisor.config.js

@@ -13,6 +13,8 @@ import type {
   EntityType,
   SchemaKey,
   Schema,
+  Target,
+  TargetKey,
 } from "@featurevisor/types";
 
 import { getProjectConfigForSet, ProjectConfig } from "../config";
@@ -245,6 +247,27 @@ export class Datasource {
 
   deleteSchema(schemaKey: SchemaKey) {
     return this.adapter.deleteEntity("schema", schemaKey);
+  }
+
+  // targets
+  listTargets() {
+    return this.adapter.listEntities("target");
+  }
+
+  targetExists(targetKey: TargetKey) {
+    return this.adapter.entityExists("target", targetKey);
+  }
+
+  readTarget(targetKey: TargetKey) {
+    return this.adapter.readEntity<Target>("target", targetKey);
+  }
+
+  writeTarget(targetKey: TargetKey, target: Target) {
+    return this.adapter.writeEntity<Target>("target", targetKey, target);
+  }
+
+  deleteTarget(targetKey: TargetKey) {
+    return this.adapter.deleteEntity("target", targetKey);
   }
 
   // tests

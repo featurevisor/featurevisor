@@ -1,6 +1,7 @@
 # Variables and reusable schemas
 
 Full docs:
+
 - Variables: <https://featurevisor.com/docs/features#variables>
 - Reusable schemas: <https://featurevisor.com/docs/schemas>
 - Mutations: <https://featurevisor.com/docs/mutations>
@@ -35,15 +36,15 @@ Without these, a disabled feature returns `null` for variables.
 
 ## Supported types
 
-| Type      | Notes                                            |
-| --------- | ------------------------------------------------ |
-| `string`  |                                                  |
-| `boolean` |                                                  |
-| `integer` |                                                  |
-| `double`  | floating point                                   |
-| `array`   | items typed; default is array-of-strings         |
-| `object`  | flat OR nested with `properties`                 |
-| `json`    | stringified arbitrary JSON                       |
+| Type      | Notes                                    |
+| --------- | ---------------------------------------- |
+| `string`  |                                          |
+| `boolean` |                                          |
+| `integer` |                                          |
+| `double`  | floating point                           |
+| `array`   | items typed; default is array-of-strings |
+| `object`  | flat OR nested with `properties`         |
+| `json`    | stringified arbitrary JSON               |
 
 ### array
 
@@ -287,21 +288,21 @@ variables:
 
 ### Mutation syntax
 
-| Syntax                                | Variable type | Effect                                                       |
-| ------------------------------------- | ------------- | ------------------------------------------------------------ |
-| `"key.property"`                      | object        | Set property (nested ok: `"a.b.c"`)                          |
-| `"key.property:remove"`               | object        | Remove property (forbidden if `required`)                    |
-| `"key[index]"`                        | array         | Replace item at index                                        |
-| `"key[index].property"`               | array         | Set property of item at index                                |
-| `"key[index]:before"`                 | array         | Insert before that index                                     |
-| `"key[index]:after"`                  | array         | Insert after that index                                      |
-| `"key[index]:remove"`                 | array         | Remove that index                                            |
-| `"key[prop=value].property"`          | array         | Set property of item matching selector                       |
-| `"key[prop=value]:before"`            | array         | Insert before matching item                                  |
-| `"key[prop=value]:after"`             | array         | Insert after matching item                                   |
-| `"key[prop=value]:remove"`            | array         | Remove matching item                                         |
-| `"key:prepend"`                       | array         | Prepend a new item                                           |
-| `"key:append"`                        | array         | Append a new item                                            |
+| Syntax                       | Variable type | Effect                                    |
+| ---------------------------- | ------------- | ----------------------------------------- |
+| `"key.property"`             | object        | Set property (nested ok: `"a.b.c"`)       |
+| `"key.property:remove"`      | object        | Remove property (forbidden if `required`) |
+| `"key[index]"`               | array         | Replace item at index                     |
+| `"key[index].property"`      | array         | Set property of item at index             |
+| `"key[index]:before"`        | array         | Insert before that index                  |
+| `"key[index]:after"`         | array         | Insert after that index                   |
+| `"key[index]:remove"`        | array         | Remove that index                         |
+| `"key[prop=value].property"` | array         | Set property of item matching selector    |
+| `"key[prop=value]:before"`   | array         | Insert before matching item               |
+| `"key[prop=value]:after"`    | array         | Insert after matching item                |
+| `"key[prop=value]:remove"`   | array         | Remove matching item                      |
+| `"key:prepend"`              | array         | Prepend a new item                        |
+| `"key:append"`               | array         | Append a new item                         |
 
 Example combining several mutations on the same rule (verbatim shape used in the monorepo's `example-1/features/withMutations.yml`):
 

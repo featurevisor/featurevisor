@@ -20,6 +20,7 @@ export async function showProjectInfo(deps: Dependencies) {
   const segments = await datasource.listSegments();
   const features = await datasource.listFeatures();
   const groups = await datasource.listGroups();
+  const targets = await datasource.listTargets();
 
   let variablesCount = 0;
   for (const featureKey of features) {
@@ -35,6 +36,7 @@ export async function showProjectInfo(deps: Dependencies) {
   console.log(`  ${colorize("Total features", CLI_COLOR_CYAN)}:   ${features.length}`);
   console.log(`  ${colorize("Total variables", CLI_COLOR_CYAN)}:  ${variablesCount}`);
   console.log(`  ${colorize("Total groups", CLI_COLOR_CYAN)}:     ${groups.length}`);
+  console.log(`  ${colorize("Total targets", CLI_COLOR_CYAN)}:    ${targets.length}`);
 
   console.log("");
 

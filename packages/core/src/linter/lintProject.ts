@@ -12,6 +12,7 @@ import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { getSchemaZodSchema } from "./schema";
 import { getTestsZodSchema } from "./testSchema";
+import { getTargetZodSchema } from "./targetSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
@@ -21,7 +22,14 @@ import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../
 import { Plugin } from "../cli";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
-export type LintEntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
+export type LintEntityType =
+  | "attribute"
+  | "segment"
+  | "feature"
+  | "group"
+  | "schema"
+  | "target"
+  | "test";
 
 export interface LintProjectOptions {
   keyPattern?: string;
@@ -167,6 +175,8 @@ export async function lintProject(
       fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
     } else if (type === "schema") {
       fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
+    } else if (type === "target") {
+      fullPath = path.join(projectConfig.targetsDirectoryPath, fileName);
     } else {
       fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
     }
@@ -193,6 +203,9 @@ export async function lintProject(
     }
     if (type === "schema") {
       return projectConfig.schemasDirectoryPath;
+    }
+    if (type === "target") {
+      return projectConfig.targetsDirectoryPath;
     }
 
     return projectConfig.testsDirectoryPath;
@@ -677,6 +690,47 @@ export async function lintProject(
     }
   }
 
+  // lint targets
+  const targets = await datasource.listTargets();
+  const targetZodSchema = getTargetZodSchema(projectConfig);
+
+  if (!options.entityType || options.entityType === "target") {
+    await lintReservedNamespaceCharacterInEntityPaths("target");
+
+    const filteredKeys = !keyPattern ? targets : targets.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      log(`Linting ${filteredKeys.length} targets...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("target", key);
+
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+        await reportSimpleError({
+          entityType: "target",
+          key,
+          fullPath,
+          message: `Invalid name: "${key}"`,
+          detail: ENTITY_NAME_REGEX_ERROR,
+          code: "invalid_name",
+        });
+      }
+
+      try {
+        const parsed = await datasource.readTarget(key);
+
+        const result = targetZodSchema.safeParse(parsed);
+
+        if (!result.success && "error" in result) {
+          await reportZodValidationError("target", key, fullPath, result.error);
+        }
+      } catch (error) {
+        await reportThrownError("target", key, fullPath, error);
+      }
+    }
+  }
+
   // lint tests
   const tests = await datasource.listTests();
 
@@ -684,6 +738,7 @@ export async function lintProject(
     projectConfig,
     features as [string, ...string[]],
     segments as [string, ...string[]],
+    targets as [string, ...string[]],
   );
 
   if (!options.entityType || options.entityType === "test") {

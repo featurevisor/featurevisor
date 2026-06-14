@@ -44,7 +44,7 @@ variations:
     description: New checkout with redesigned hero
     weight: 50
     variables:
-      "hero.subtitle": Faster, simpler checkout       # mutation: replace just subtitle
+      "hero.subtitle": Faster, simpler checkout # mutation: replace just subtitle
 
 # QA team always sees the treatment, regardless of rollout percentage.
 force:
@@ -60,7 +60,7 @@ force:
 rules:
   staging:
     - key: everyone
-      segments: '*'
+      segments: "*"
       percentage: 100
 
   production:
@@ -74,5 +74,5 @@ rules:
 
     - key: everyone
       description: Catch-all rollout — ramp this up over time, never rename the key
-      segments: '*'
+      segments: "*"
       percentage: 10

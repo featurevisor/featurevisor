@@ -102,6 +102,8 @@ export class FilesystemAdapter extends Adapter {
       return this.config.segmentsDirectoryPath;
     } else if (entityType === "schema") {
       return this.config.schemasDirectoryPath;
+    } else if (entityType === "target") {
+      return this.config.targetsDirectoryPath;
     } else if (entityType === "test") {
       return this.config.testsDirectoryPath;
     }
@@ -269,17 +271,22 @@ export class FilesystemAdapter extends Adapter {
   getDatafilePath(options: DatafileOptions): string {
     const pattern = this.config.datafileNamePattern || "featurevisor-%s.json";
 
-    const fileName = options.scope
-      ? pattern.replace("%s", `scope-${options.scope.name}`)
-      : pattern.replace("%s", `tag-${options.tag}`);
+    if (!options.target) {
+      throw new Error("Datafile target is required.");
+    }
+
+    const targetPathSegments = options.target.split(this.config.namespaceCharacter);
+    const targetFileKey = targetPathSegments.pop() || options.target;
+    const fileName = pattern.replace("%s", targetFileKey);
+    const targetDirectory = targetPathSegments.length > 0 ? path.join(...targetPathSegments) : "";
 
     const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
     if (options.environment) {
-      return path.join(dir, options.environment, fileName);
+      return path.join(dir, options.environment, targetDirectory, fileName);
     }
 
-    return path.join(dir, fileName);
+    return path.join(dir, targetDirectory, fileName);
   }
 
   async readDatafile(options: DatafileOptions): Promise<DatafileContent> {
@@ -293,12 +300,8 @@ export class FilesystemAdapter extends Adapter {
   async writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void> {
     const dir = options.datafilesDir || this.config.datafilesDirectoryPath;
 
-    const outputEnvironmentDirPath = options.environment
-      ? path.join(dir, options.environment)
-      : dir;
-    fs.mkdirSync(outputEnvironmentDirPath, { recursive: true });
-
     const outputFilePath = this.getDatafilePath(options);
+    fs.mkdirSync(path.dirname(outputFilePath), { recursive: true });
 
     fs.writeFileSync(
       outputFilePath,
@@ -360,6 +363,8 @@ export class FilesystemAdapter extends Adapter {
         pathPatterns = [this.config.groupsDirectoryPath];
       } else if (entityType === "schema") {
         pathPatterns = [this.config.schemasDirectoryPath];
+      } else if (entityType === "target") {
+        pathPatterns = [this.config.targetsDirectoryPath];
       } else if (entityType === "test") {
         pathPatterns = [this.config.testsDirectoryPath];
       }
@@ -370,6 +375,7 @@ export class FilesystemAdapter extends Adapter {
         this.config.segmentsDirectoryPath,
         this.config.groupsDirectoryPath,
         this.config.schemasDirectoryPath,
+        this.config.targetsDirectoryPath,
         this.config.testsDirectoryPath,
       ];
     }
@@ -418,15 +424,21 @@ export class FilesystemAdapter extends Adapter {
           type = "group";
         } else if (isWithinDirectory(this.config.schemasDirectoryPath, relativeDir)) {
           type = "schema";
+        } else if (isWithinDirectory(this.config.targetsDirectoryPath, relativeDir)) {
+          type = "target";
         } else if (isWithinDirectory(this.config.testsDirectoryPath, relativeDir)) {
           type = "test";
         } else {
           continue;
         }
 
-        if (type === "feature") {
+        if (type === "feature" || type === "target") {
+          const entityDirectoryPath =
+            type === "feature"
+              ? this.config.featuresDirectoryPath
+              : this.config.targetsDirectoryPath;
           const baseRelativePath = absolutePath
-            .replace(this.config.featuresDirectoryPath + path.sep, "")
+            .replace(entityDirectoryPath + path.sep, "")
             .replace(extensionWithDot, "")
             .split(path.sep)
             .join(this.config.namespaceCharacter);

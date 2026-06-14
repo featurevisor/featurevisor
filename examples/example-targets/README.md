@@ -1,6 +1,6 @@
-# example-yml-scopes
+# example-yml-targets
 
-Example project showing how to use `scopes` in Featurevisor.
+Example project showing how to use `targets` in Featurevisor.
 
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
@@ -8,7 +8,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ```
 $ mkdir my-featurevisor-project && cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-scopes
+$ npx @featurevisor/cli init --example example-targets
 ```
 
 ## Installation

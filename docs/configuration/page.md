@@ -32,7 +32,7 @@ As your [tags](/docs/tags) grow, you can keep adding them to your configuration 
 
 ### `tags`
 
-An array of [tags](/docs/tags) that can be used in your [features](/docs/features/). Tags are used for building smaller [datafiles](/docs/building-datafiles) containing only the features that you need for your application(s).
+An array of [tags](/docs/tags) that can be used in your [features](/docs/features/) and [targets](/docs/targets/).
 
 ```js {% path="featurevisor.config.js" %}
 module.exports = {
@@ -71,11 +71,11 @@ module.exports = {
 
 Read more in [Environments](/docs/environments) page.
 
-### `scopes`
+### `targetsDirectoryPath`
 
-Scopes allow creating smaller and more optimized [datafiles](/docs/building-datafiles).
+Path to the directory containing your [targets](/docs/targets/).
 
-Read more in [Scopes](/docs/scopes) page.
+Defaults to `<rootDir>/targets`.
 
 ### `attributesDirectoryPath`
 

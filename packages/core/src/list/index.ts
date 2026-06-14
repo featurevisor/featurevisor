@@ -6,6 +6,7 @@ import type {
   TestSegment,
   FeatureAssertion,
   SegmentAssertion,
+  Target,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
@@ -61,6 +62,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entityKeys = await datasource.listAttributes();
   } else if (entityType === "test") {
     entityKeys = await datasource.listTests();
+  } else if (entityType === "target") {
+    entityKeys = await datasource.listTargets();
   }
 
   if (entityKeys.length === 0) {
@@ -93,6 +96,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       entity = (await datasource.readAttribute(key)) as T;
     } else if (entityType === "test") {
       entity = (await datasource.readTest(key)) as T;
+    } else if (entityType === "target") {
+      entity = (await datasource.readTarget(key)) as T;
     }
 
     // filter
@@ -474,10 +479,21 @@ export async function listProject(deps: Dependencies) {
     });
   }
 
+  // targets
+  if (options.targets) {
+    const result = await listEntities<Target>(deps, "target");
+
+    return printResult({
+      result,
+      entityType: "target",
+      options,
+    });
+  }
+
   console.log("");
   console.log(CLI_FORMAT_YELLOW, "Nothing to list.");
   console.log("");
-  console.log("Please pass `--features`, `--segments`, or `--attributes`.");
+  console.log("Please pass `--features`, `--segments`, `--attributes`, or `--targets`.");
 }
 
 export const listPlugin: Plugin = {

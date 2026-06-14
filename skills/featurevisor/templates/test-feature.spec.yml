@@ -4,14 +4,14 @@ assertions:
     environment: staging
     at: 99
     context:
-      userId: 'test-user-1'
+      userId: "test-user-1"
     expectedToBeEnabled: true
 
   - description: Production is gated for everyone at 0% rollout
     environment: production
     at: 99
     context:
-      userId: 'test-user-1'
+      userId: "test-user-1"
     expectedToBeEnabled: false
 
   # If the feature has variations, assert each by picking `at` in their weight band.

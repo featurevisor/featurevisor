@@ -4,34 +4,34 @@ Full docs: <https://featurevisor.com/docs/segments#operators>
 
 Used in segment `conditions`, feature `force[].conditions`, and `variableOverrides[].conditions`.
 
-| Operator                    | Attribute type    | Description                          |
-| --------------------------- | ----------------- | ------------------------------------ |
-| `exists`                    | any               | attribute is present in context      |
-| `notExists`                 | any               | attribute is absent from context     |
-| `equals`                    | any               | strict equality                      |
-| `notEquals`                 | any               | strict inequality                    |
-| `greaterThan`               | integer, double   | `>`                                  |
-| `greaterThanOrEquals`       | integer, double   | `>=`                                 |
-| `lessThan`                  | integer, double   | `<`                                  |
-| `lessThanOrEquals`          | integer, double   | `<=`                                 |
-| `contains`                  | string            | substring                            |
-| `notContains`               | string            | not substring                        |
-| `startsWith`                | string            | prefix                               |
-| `endsWith`                  | string            | suffix                               |
-| `in`                        | string            | in array of strings                  |
-| `notIn`                     | string            | not in array of strings              |
-| `before`                    | date / ISO string | date before                          |
-| `after`                     | date / ISO string | date after                           |
-| `matches`                   | string            | regex (use `regexFlags` for flags)   |
-| `notMatches`                | string            | regex negated                        |
-| `semverEquals`              | string (semver)   | `=`                                  |
-| `semverNotEquals`           | string (semver)   | `!=`                                 |
-| `semverGreaterThan`         | string (semver)   | `>`                                  |
-| `semverGreaterThanOrEquals` | string (semver)   | `>=`                                 |
-| `semverLessThan`            | string (semver)   | `<`                                  |
-| `semverLessThanOrEquals`    | string (semver)   | `<=`                                 |
-| `includes`                  | array of strings  | array contains the value             |
-| `notIncludes`               | array of strings  | array does not contain the value     |
+| Operator                    | Attribute type    | Description                        |
+| --------------------------- | ----------------- | ---------------------------------- |
+| `exists`                    | any               | attribute is present in context    |
+| `notExists`                 | any               | attribute is absent from context   |
+| `equals`                    | any               | strict equality                    |
+| `notEquals`                 | any               | strict inequality                  |
+| `greaterThan`               | integer, double   | `>`                                |
+| `greaterThanOrEquals`       | integer, double   | `>=`                               |
+| `lessThan`                  | integer, double   | `<`                                |
+| `lessThanOrEquals`          | integer, double   | `<=`                               |
+| `contains`                  | string            | substring                          |
+| `notContains`               | string            | not substring                      |
+| `startsWith`                | string            | prefix                             |
+| `endsWith`                  | string            | suffix                             |
+| `in`                        | string            | in array of strings                |
+| `notIn`                     | string            | not in array of strings            |
+| `before`                    | date / ISO string | date before                        |
+| `after`                     | date / ISO string | date after                         |
+| `matches`                   | string            | regex (use `regexFlags` for flags) |
+| `notMatches`                | string            | regex negated                      |
+| `semverEquals`              | string (semver)   | `=`                                |
+| `semverNotEquals`           | string (semver)   | `!=`                               |
+| `semverGreaterThan`         | string (semver)   | `>`                                |
+| `semverGreaterThanOrEquals` | string (semver)   | `>=`                               |
+| `semverLessThan`            | string (semver)   | `<`                                |
+| `semverLessThanOrEquals`    | string (semver)   | `<=`                               |
+| `includes`                  | array of strings  | array contains the value           |
+| `notIncludes`               | array of strings  | array does not contain the value   |
 
 ## Notes
 

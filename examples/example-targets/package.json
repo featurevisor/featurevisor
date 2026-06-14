@@ -1,15 +1,12 @@
 {
-  "name": "@featurevisor/example-scopes",
+  "name": "@featurevisor/example-targets",
   "private": true,
   "version": "2.27.0",
   "description": "Featurevisor project with YAML definitions",
   "scripts": {
     "lint": "featurevisor lint",
     "build": "featurevisor build",
-    "test:all": "featurevisor test --only-failures",
-    "test:tags": "featurevisor test --only-failures --with-tags",
-    "test:scopes": "featurevisor test --only-failures --with-scopes",
-    "test": "npm run test:all && npm run test:tags && npm run test:scopes",
+    "test": "featurevisor test --only-failures",
     "export": "featurevisor site export",
     "start": "npm run export && featurevisor site serve",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",

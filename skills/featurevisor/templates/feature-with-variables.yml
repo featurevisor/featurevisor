@@ -52,7 +52,7 @@ variablesSchema:
 rules:
   staging:
     - key: everyone
-      segments: '*'
+      segments: "*"
       percentage: 100
       variables:
         bgColor: orange
@@ -63,12 +63,12 @@ rules:
       percentage: 100
       variables:
         bgColor: orange
-        "hero.subtitle": Welkom op onze site         # mutation: only this property (quoted key)
+        "hero.subtitle": Welkom op onze site # mutation: only this property (quoted key)
       variableOverrides:
         bgColor:
           - segments: amsterdam
             value: red
 
     - key: everyone
-      segments: '*'
+      segments: "*"
       percentage: 0

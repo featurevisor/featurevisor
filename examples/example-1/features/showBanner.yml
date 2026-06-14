@@ -30,7 +30,7 @@ rules:
 expose:
   staging:
     # this means, this feature:
-    #   - will exist in datafiles/staging/featurevisor-tag-checkout.json only
-    #   - not exist in datafiles/staging/featurevisor-tag-all.json
+    #   - will exist in datafiles/staging/featurevisor-checkout.json only
+    #   - not exist in datafiles/staging/featurevisor-all.json
     - checkout
 # See README for additional test scripts for verifying the datafile generation

@@ -5,7 +5,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.27.0](https://github.com/featurevisor/featurevisor/compare/v2.26.1...v2.27.0) (2026-05-19)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -13,7 +13,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.26.1](https://github.com/featurevisor/featurevisor/compare/v2.26.0...v2.26.1) (2026-04-26)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -21,7 +21,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.26.0](https://github.com/featurevisor/featurevisor/compare/v2.25.0...v2.26.0) (2026-04-16)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -29,7 +29,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.25.0](https://github.com/featurevisor/featurevisor/compare/v2.24.0...v2.25.0) (2026-04-16)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -37,7 +37,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.24.0](https://github.com/featurevisor/featurevisor/compare/v2.23.0...v2.24.0) (2026-04-16)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -45,7 +45,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.23.0](https://github.com/featurevisor/featurevisor/compare/v2.22.1...v2.23.0) (2026-04-11)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -53,7 +53,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.22.1](https://github.com/featurevisor/featurevisor/compare/v2.22.0...v2.22.1) (2026-04-08)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -61,7 +61,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.21.0](https://github.com/featurevisor/featurevisor/compare/v2.20.0...v2.21.0) (2026-03-29)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -69,7 +69,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.20.0](https://github.com/featurevisor/featurevisor/compare/v2.19.0...v2.20.0) (2026-03-01)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -77,7 +77,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.19.0](https://github.com/featurevisor/featurevisor/compare/v2.18.0...v2.19.0) (2026-03-01)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -85,7 +85,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.18.0](https://github.com/featurevisor/featurevisor/compare/v2.17.0...v2.18.0) (2026-02-27)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -93,7 +93,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.17.0](https://github.com/featurevisor/featurevisor/compare/v2.16.0...v2.17.0) (2026-02-27)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -101,7 +101,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.16.0](https://github.com/featurevisor/featurevisor/compare/v2.15.0...v2.16.0) (2026-02-26)
 
-**Note:** Version bump only for package @featurevisor/example-scopes
+**Note:** Version bump only for package @featurevisor/example-targets
 
 
 
@@ -120,7 +120,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.14.0](https://github.com/featurevisor/featurevisor/compare/v2.13.0...v2.14.0) (2026-02-24)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -128,7 +128,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.13.0](https://github.com/featurevisor/featurevisor/compare/v2.12.0...v2.13.0) (2026-02-23)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -136,7 +136,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.12.0](https://github.com/featurevisor/featurevisor/compare/v2.11.0...v2.12.0) (2026-02-21)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -144,7 +144,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.11.0](https://github.com/featurevisor/featurevisor/compare/v2.10.0...v2.11.0) (2026-02-17)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -152,7 +152,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.10.0](https://github.com/featurevisor/featurevisor/compare/v2.9.0...v2.10.0) (2026-02-15)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -160,7 +160,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.9.0](https://github.com/featurevisor/featurevisor/compare/v2.8.0...v2.9.0) (2026-02-08)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -168,7 +168,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.8.0](https://github.com/featurevisor/featurevisor/compare/v2.7.0...v2.8.0) (2026-02-08)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -187,7 +187,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.7](https://github.com/featurevisor/featurevisor/compare/v2.6.6...v2.6.7) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -195,7 +195,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.6](https://github.com/featurevisor/featurevisor/compare/v2.6.5...v2.6.6) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -203,7 +203,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.5](https://github.com/featurevisor/featurevisor/compare/v2.6.4...v2.6.5) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -211,7 +211,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.4](https://github.com/featurevisor/featurevisor/compare/v2.6.3...v2.6.4) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -219,7 +219,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.3](https://github.com/featurevisor/featurevisor/compare/v2.6.2...v2.6.3) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -227,7 +227,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.2](https://github.com/featurevisor/featurevisor/compare/v2.6.1...v2.6.2) (2026-02-05)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -235,7 +235,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.6.1](https://github.com/featurevisor/featurevisor/compare/v2.6.0...v2.6.1) (2026-02-01)
 
-**Note:** Version bump only for package @featurevisor/example-yml-scopes
+**Note:** Version bump only for package @featurevisor/example-yml-targets
 
 
 
@@ -246,4 +246,4 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-* Scopes ([#379](https://github.com/featurevisor/featurevisor/issues/379)) ([363f0ce](https://github.com/featurevisor/featurevisor/commit/363f0ce77fa5bfaf152c4098135c3d8bdb96af14))
+* Targets ([#379](https://github.com/featurevisor/featurevisor/issues/379)) ([363f0ce](https://github.com/featurevisor/featurevisor/commit/363f0ce77fa5bfaf152c4098135c3d8bdb96af14))

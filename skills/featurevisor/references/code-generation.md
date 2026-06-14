@@ -14,11 +14,11 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 
 Optional flags:
 
-| Flag                            | Effect                                                              |
-| ------------------------------- | ------------------------------------------------------------------- |
-| `--tag=<tag>`                   | Generate for one tag's features only (matches a deployed bundle)    |
-| `--react`                       | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
-| `--no-individual-features`      | Skip per-feature `*Feature.ts` modules; only emit the function-style API |
+| Flag                       | Effect                                                                   |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `--tag=<tag>`              | Generate for one tag's features only (matches a deployed bundle)         |
+| `--react`                  | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`)   |
+| `--no-individual-features` | Skip per-feature `*Feature.ts` modules; only emit the function-style API |
 
 ## Output
 
@@ -68,4 +68,4 @@ The skill does not author the npm package itself — that's project setup work; 
 - The user is rolling out a new attribute and worries about wrong-type context payloads.
 - The user manages many features and reports churn from typo-driven bugs.
 
-For SDK usage in JS/TS *without* code-gen, just point at <https://featurevisor.com/docs/sdks/javascript>.
+For SDK usage in JS/TS _without_ code-gen, just point at <https://featurevisor.com/docs/sdks/javascript>.

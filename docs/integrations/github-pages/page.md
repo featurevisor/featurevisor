@@ -158,7 +158,7 @@ jobs:
 
 After generating new [datafiles](/docs/building-datafiles/) and uploading them, the workflow will also take care of pushing the Featurevisor [state files](/docs/state-files) back to the repository, so that future builds will be built on top of latest state.
 
-Once uploaded, your datafiles will be accessible as: `https://<username>.github.io/<repo>/<environment>/featurevisor-tag-<your-tag>.json`.
+Once uploaded, your datafiles will be accessible as: `https://<username>.github.io/<repo>/<environment>/featurevisor-<your-tag>.json`.
 
 You may want to take it a step further by [setting up custom domains (or subdomains)](https://docs.github.com/articles/using-a-custom-domain-with-github-pages/) for your GitHub Pages project. Otherwise, you are good to go.
 

@@ -11,6 +11,7 @@ import type {
   RulesByEnvironment,
   Schema,
   Segment,
+  Target,
   Test,
 } from "@featurevisor/types";
 
@@ -31,7 +32,14 @@ import type { Plugin } from "../cli";
 
 type ConflictPolicy = "source" | "destination" | "fail";
 type PromotionAuditFormat = "json" | "markdown";
-type EntityValue = Attribute | Segment | ParsedFeature | Record<string, unknown> | Schema | Test;
+type EntityValue =
+  | Attribute
+  | Segment
+  | ParsedFeature
+  | Record<string, unknown>
+  | Schema
+  | Target
+  | Test;
 
 interface PromotionConflict {
   type: EntityType;
@@ -487,22 +495,24 @@ async function getPromotionPlan(
   const excludeFeatures = toArray(options.excludeFeatures);
   const hasNoFilters = includeFeatures.length === 0 && excludeFeatures.length === 0;
 
-  const [featureKeys, segmentKeys, attributeKeys, groupKeys, schemaKeys, testKeys] =
+  const [featureKeys, segmentKeys, attributeKeys, groupKeys, schemaKeys, targetKeys, testKeys] =
     await Promise.all([
       sourceDatasource.listFeatures(),
       sourceDatasource.listSegments(),
       sourceDatasource.listAttributes(),
       sourceDatasource.listGroups(),
       sourceDatasource.listSchemas(),
+      sourceDatasource.listTargets(),
       sourceDatasource.listTests(),
     ]);
 
-  const [features, segments, attributes, groups, schemas, tests] = await Promise.all([
+  const [features, segments, attributes, groups, schemas, targets, tests] = await Promise.all([
     safeRead<ParsedFeature>(featureKeys, (key) => sourceDatasource.readFeature(key)),
     safeRead<Segment>(segmentKeys, (key) => sourceDatasource.readSegment(key)),
     safeRead<Attribute>(attributeKeys, (key) => sourceDatasource.readAttribute(key)),
     safeRead<Record<string, unknown>>(groupKeys, (key) => sourceDatasource.readGroup(key) as any),
     safeRead<Schema>(schemaKeys, (key) => sourceDatasource.readSchema(key)),
+    safeRead<Target>(targetKeys, (key) => sourceDatasource.readTarget(key)),
     safeRead<Test>(testKeys, (key) => sourceDatasource.readTest(key)),
   ]);
 
@@ -511,6 +521,7 @@ async function getPromotionPlan(
   const promotedAttributeKeys = new Set<string>();
   const promotedGroupKeys = new Set<string>();
   const promotedSchemaKeys = new Set<string>();
+  const promotedTargetKeys = new Set<string>();
 
   if (hasNoFilters) {
     featureKeys.forEach((key) => promotedFeatureKeys.add(key));
@@ -518,6 +529,7 @@ async function getPromotionPlan(
     attributeKeys.forEach((key) => promotedAttributeKeys.add(key));
     groupKeys.forEach((key) => promotedGroupKeys.add(key));
     schemaKeys.forEach((key) => promotedSchemaKeys.add(key));
+    targetKeys.forEach((key) => promotedTargetKeys.add(key));
   } else {
     let matchedFeatureCount = 0;
 
@@ -686,6 +698,13 @@ async function getPromotionPlan(
       );
   }
 
+  for (const key of Array.from(promotedTargetKeys).sort()) {
+    if (targets[key])
+      await plan("target", key, targets[key], (entryKey) =>
+        destinationDatasource.readTarget(entryKey),
+      );
+  }
+
   for (const key of promotedTestKeys.sort()) {
     if (tests[key])
       await plan("test", key, tests[key], (entryKey) => destinationDatasource.readTest(entryKey));
@@ -711,6 +730,8 @@ async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[])
       );
     if (plan.type === "schema")
       await destinationDatasource.writeSchema(plan.key, plan.merged as Schema);
+    if (plan.type === "target")
+      await destinationDatasource.writeTarget(plan.key, plan.merged as Target);
     if (plan.type === "feature")
       await destinationDatasource.writeFeature(plan.key, plan.merged as ParsedFeature);
     if (plan.type === "test") await destinationDatasource.writeTest(plan.key, plan.merged as Test);
@@ -769,6 +790,7 @@ function getEntityFilePath(projectConfig: ProjectConfig, type: EntityType, key: 
     feature: projectConfig.featuresDirectoryPath,
     group: projectConfig.groupsDirectoryPath,
     schema: projectConfig.schemasDirectoryPath,
+    target: projectConfig.targetsDirectoryPath,
     test: projectConfig.testsDirectoryPath,
   };
   const extension = (projectConfig.parser as any).extension || "yml";
@@ -851,6 +873,7 @@ function stringifyMarkdownAudit(result: PromoteProjectSetsResult) {
     `- Features: ${result.dependencies.feature}`,
     `- Groups: ${result.dependencies.group}`,
     `- Schemas: ${result.dependencies.schema}`,
+    `- Targets: ${result.dependencies.target}`,
     `- Tests: ${result.dependencies.test}`,
     "",
     "## Files",
@@ -989,6 +1012,7 @@ export async function promoteProjectSets(
     feature: plans.filter((plan) => plan.type === "feature").length,
     group: plans.filter((plan) => plan.type === "group").length,
     schema: plans.filter((plan) => plan.type === "schema").length,
+    target: plans.filter((plan) => plan.type === "target").length,
     test: plans.filter((plan) => plan.type === "test").length,
   };
 
@@ -1064,7 +1088,7 @@ function printPromoteResult(
   console.log(`  Conflict policy: ${result.filters.conflicts}`);
   console.log("");
   console.log(
-    `  Dependencies: ${result.dependencies.attribute} attributes, ${result.dependencies.segment} segments, ${result.dependencies.feature} features, ${result.dependencies.group} groups, ${result.dependencies.schema} schemas, ${result.dependencies.test} tests`,
+    `  Dependencies: ${result.dependencies.attribute} attributes, ${result.dependencies.segment} segments, ${result.dependencies.feature} features, ${result.dependencies.group} groups, ${result.dependencies.schema} schemas, ${result.dependencies.target} targets, ${result.dependencies.test} tests`,
   );
   console.log(`  Created:   ${result.files.created.length}`);
   console.log(`  Updated:   ${result.files.updated.length}`);

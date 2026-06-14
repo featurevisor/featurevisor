@@ -55,6 +55,18 @@ describe("core: filesystemAdapter", () => {
 
     await expect(datasource.listFeatures()).resolves.toEqual(["checkout.page"]);
     await expect(datasource.listSegments()).resolves.toEqual(["countries.germany"]);
+    await datasource.writeTarget("apps.web", {
+      description: "Web app",
+      tags: ["all"],
+      context: { platform: "web" },
+    });
+    await expect(datasource.listTargets()).resolves.toEqual(["apps.web"]);
+    await expect(datasource.readTarget("apps.web")).resolves.toMatchObject({
+      description: "Web app",
+      tags: ["all"],
+    });
+    await datasource.deleteTarget("apps.web");
+    await expect(datasource.listTargets()).resolves.toEqual([]);
     await expect(datasource.readFeature("checkout.page")).resolves.toMatchObject({
       description: "Checkout page",
     });
@@ -147,5 +159,10 @@ describe("core: filesystemAdapter", () => {
     expect(storefrontDatasource.getConfig().featuresDirectoryPath).toBe(
       path.join(root, "sets", "storefront", "features"),
     );
+    expect(storefrontDatasource.getConfig().targetsDirectoryPath).toBe(
+      path.join(root, "sets", "storefront", "targets"),
+    );
+    await storefrontDatasource.writeTarget("web", { description: "Storefront web" });
+    await expect(storefrontDatasource.listTargets()).resolves.toEqual(["web"]);
   });
 });

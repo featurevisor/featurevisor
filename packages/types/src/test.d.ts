@@ -10,6 +10,7 @@ import type {
   Weight,
 } from "./feature";
 import type { SegmentKey } from "./segment";
+import type { TargetKey } from "./target";
 
 export interface AssertionMatrix {
   [key: string]: AttributeValue[];
@@ -44,8 +45,7 @@ export interface FeatureAssertion {
   matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
-  scope?: string;
-  tag?: string;
+  target?: TargetKey;
   at?: Weight; // bucket weight: 0 to 100
 
   sticky?: StickyFeatures;

@@ -1,8 +1,16 @@
 import type { Attribute } from "./attribute";
 import type { Segment, SegmentKey } from "./segment";
 import type { Tag, EnvironmentKey, FeatureKey, ParsedFeature } from "./feature";
+import type { Target } from "./target";
 
-export type EntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
+export type EntityType =
+  | "attribute"
+  | "segment"
+  | "feature"
+  | "group"
+  | "schema"
+  | "target"
+  | "test";
 
 export type CommitHash = string;
 
@@ -46,6 +54,9 @@ export interface SearchIndex {
       usedInFeatures: FeatureKey[];
     })[];
     features: (ParsedFeature & {
+      lastModified?: LastModified;
+    })[];
+    targets?: (Target & {
       lastModified?: LastModified;
     })[];
   };

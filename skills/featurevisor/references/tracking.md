@@ -3,6 +3,7 @@
 Featurevisor itself is not an analytics platform. To measure experiments you wire the SDK's **`hooks` API** to your existing analytics pipeline (GA4 + GTM, Segment, Amplitude, Snowplow, your own warehouse, etc.).
 
 Full docs:
+
 - Hooks API: <https://featurevisor.com/docs/sdks/javascript> (search "hooks")
 - GTM / GA4 recipe: <https://featurevisor.com/docs/tracking/google-analytics>
 
@@ -65,7 +66,7 @@ Convention from the docs: snake_case for GA4 event names, camelCase for the `dat
 
 ## Authoring side
 
-Tracking is application-side. Authoring affects what *can* be tracked:
+Tracking is application-side. Authoring affects what _can_ be tracked:
 
 - Only variation evaluations fire meaningfully for experiments. If the user is running a simple boolean rollout (no `variations:`), there's nothing experiment-shaped to activate — track flag evaluations directly if needed.
 - Variable evaluations don't generally need their own activation events; the variation evaluation already represents the bucketed cohort.

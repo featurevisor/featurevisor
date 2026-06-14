@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/tags>
 
-Tags slice features into per-application bundles. Each app downloads only the datafile(s) for tags relevant to it — smaller payloads, less memory, faster evaluation.
+Tags mark features so targets can build per-application bundles. Each app downloads the target datafile relevant to it — smaller payloads, less memory, faster evaluation.
 
 ## Configure
 
@@ -27,42 +27,30 @@ tags:
 # ...
 ```
 
-A feature may carry multiple tags — it will be included in every matching tag's datafile. A feature with no tags is excluded from all tagged builds (rare; usually a mistake — lint may flag it depending on project config).
+A feature may carry multiple tags. Targets decide which tagged features become part of a datafile.
 
-## Build output
+## Build output with targets
 
 ```bash
 npx featurevisor build --no-state-files
 ```
 
-```
-datafiles/
-├── staging/
-│   ├── featurevisor-tag-web.json
-│   ├── featurevisor-tag-ios.json
-│   ├── featurevisor-tag-android.json
-│   └── featurevisor-tag-internal-tools.json
-└── production/
-    ├── featurevisor-tag-web.json
-    ├── featurevisor-tag-ios.json
-    ├── featurevisor-tag-android.json
-    └── featurevisor-tag-internal-tools.json
-```
+Define `targets/web.yml` with `tags: ["web"]` to produce `datafiles/<environment>/featurevisor-web.json`.
 
 ## Choosing tags
 
-| Strategy                      | Use when                                                  |
-| ----------------------------- | --------------------------------------------------------- |
-| By **surface** (`web`/`ios`)  | One Featurevisor project serves several client platforms  |
-| By **microfrontend**          | Each MF needs its own bundle; tags map to MF names        |
-| By **service**                | Backend services consuming feature flags                  |
-| `all` catch-all               | Cross-cutting features used by every consumer             |
+| Strategy                     | Use when                                                 |
+| ---------------------------- | -------------------------------------------------------- |
+| By **surface** (`web`/`ios`) | One Featurevisor project serves several client platforms |
+| By **microfrontend**         | Each MF needs its own bundle; tags map to MF names       |
+| By **service**               | Backend services consuming feature flags                 |
+| `all` catch-all              | Cross-cutting features used by every consumer            |
 
 Common convention: include an `all` tag in config and tag features that every consumer uses.
 
-## Testing against a tag
+## Testing against a target
 
-Add `tag:` to a feature test assertion to evaluate against the tagged datafile:
+Add `target:` to a feature test assertion to evaluate against the target datafile:
 
 ```yaml
 feature: showBanner
@@ -70,21 +58,21 @@ assertions:
   - environment: production
     at: 90
     context: { country: nl }
-    tag: web
+    target: web
     expectedToBeEnabled: true
 ```
 
 ```bash
-npx featurevisor test --with-tags
+npx featurevisor test
 ```
 
-## Tags vs scopes vs namespaces
+## Tags vs targets vs namespaces
 
-- **Tags**: bundle features into datafiles. Per-consumer payload reduction.
-- **[Scopes](scopes.md)**: pre-evaluate against a known context. Further payload + compute reduction on top of a tag.
+- **Tags**: feature metadata used by targets.
+- **[Targets](targets.md)**: generated datafile definitions with optional tag filters and build-time context.
 - **[Namespaces](namespaces.md)**: organize feature/segment keys via directories. Pure organization, no runtime effect.
 
-You typically tag every feature (required for any reasonable consumer setup), namespace freely (organizational), and add scopes selectively (optimization).
+You typically tag features by consumer surface, namespace freely, and create targets for the actual datafiles consumers load.
 
 ## Adding a new tag
 
@@ -92,10 +80,10 @@ You typically tag every feature (required for any reasonable consumer setup), na
 2. Add it to relevant features' `tags:` lists.
 3. `npx featurevisor lint`.
 4. `npx featurevisor build --no-state-files`.
-5. Deploy the new `featurevisor-tag-<new>.json` file.
+5. Create or update a target that selects the tag.
 6. Point the consumer at the new URL.
 
 ## Renaming or removing a tag
 
-- **Renaming**: change config + every feature's `tags:`. The old `featurevisor-tag-<old>.json` will disappear on the next build; consumers must switch URLs first.
+- **Renaming**: change config + every feature's `tags:` + affected target files.
 - **Removing**: drop the tag from config and from every feature. Don't remove from config alone — lint fails.

@@ -42,26 +42,26 @@ assertions:
     expectedToBeEnabled: false
 
   ##
-  # Testing with premium scope
+  # Testing with premium target
   #
   - matrix:
       at: [10, 50, 90]
     at: ${{ at }}
     environment: production
-    scope: premium
-    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    target: premium
+    description: "At ${{ at }}% in production with premium target, should be enabled"
     context: {}
     expectedToBeEnabled: true
 
   ##
-  # Testing against tag: web
+  # Testing against browsers target
   #
   - matrix:
       at: [10, 50, 90]
     at: ${{ at }}
     environment: production
-    tag: web
-    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    target: browsers
+    description: "At ${{ at }}% in production with browsers target, should be enabled"
     context:
       subscription: premium
     expectedToBeEnabled: true
@@ -70,7 +70,7 @@ assertions:
       at: [10, 50, 90]
     at: ${{ at }}
     environment: production
-    tag: web
+    target: browsers
     description: "At ${{ at }}% in production, should be disabled"
     context: {}
     expectedToBeEnabled: false

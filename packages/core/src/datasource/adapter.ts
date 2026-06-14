@@ -8,12 +8,9 @@ import type {
   EntityType,
 } from "@featurevisor/types";
 
-import type { Scope } from "../config";
-
 export interface DatafileOptions {
   environment: EnvironmentKey | false;
-  tag?: string;
-  scope?: Scope;
+  target?: string;
   datafilesDir?: string;
 }
 

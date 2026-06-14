@@ -1,0 +1,5 @@
+description: Premium subscription target
+tags:
+  - all
+context:
+  subscription: premium

@@ -11,7 +11,7 @@ nextjs:
         - url: /img/og/docs.png
 ---
 
-Datafiles are JSON files that are created against combinations of [tags](/docs/tags/) and [environments](/docs/environments/). They are used to evaluate features in your application via Featurevisor [SDKs](/docs/sdks/). {% .lead %}
+Datafiles are JSON files generated from [targets](/docs/targets/) and optional [environments](/docs/environments/). They are used to evaluate features in your application via Featurevisor [SDKs](/docs/sdks/). {% .lead %}
 
 ## Usage
 
@@ -34,15 +34,21 @@ module.exports = {
 }
 ```
 
+And you have a target:
+
+```yml {% path="targets/all.yml" %}
+description: All features
+```
+
 Then the contents of your `datafiles` directory will look like this:
 
 ```
 $ tree datafiles
 .
 ├── production
-│   └── featurevisor-tag-all.json
+│   └── featurevisor-all.json
 └── staging
-    └── featurevisor-tag-all.json
+    └── featurevisor-all.json
 
 2 directories, 2 files
 ```
@@ -99,6 +105,12 @@ Or if you with to print datafile containing all features for a specific environm
 $ npx featurevisor build --environment=production --json --pretty
 ```
 
+To print a specific target-shaped datafile:
+
+```{% title="Command" %}
+$ npx featurevisor build --environment=production --target=web --json --pretty
+```
+
 This is useful primarily for debugging and testing purposes.
 
 If you are an SDK developer in other languages besides JavaScript, you may want to use this handy command to get the generated datafile content in JSON format that you can use in your own [test runner](/docs/testing).
@@ -113,11 +125,11 @@ You can optionally override it from CLI:
 $ npx featurevisor build --datafiles-dir=./custom-directory
 ```
 
-## Scopes
+## Targets
 
-The same `build` command will also generate scoped datafiles if you have defined them in your [configuration](/docs/configuration/) file.
+The same `build` command generates one datafile for each target defined in `targets/`.
 
-Learn more in [Scopes](/docs/scopes) page.
+Learn more in [Targets](/docs/targets) page.
 
 ## Schema version
 

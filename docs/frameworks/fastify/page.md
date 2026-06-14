@@ -72,7 +72,7 @@ const fastify = require('fastify')({
 // Featurevisor SDK
 const { createInstance } = require('@featurevisor/sdk')
 const DATAFILE_URL =
-  'https://featurevisor-example-cloudflare.pages.dev/production/datafile-tag-all.json' // replace with yoursite cdn
+  'https://featurevisor-example-cloudflare.pages.dev/production/featurevisor-all.json' // replace with yoursite cdn
 const REFRESH_INTERVAL = 60 * 5 // every 5 minutes
 
 const f = createInstance({

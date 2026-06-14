@@ -172,14 +172,14 @@ assertions:
       fontSize: 18
 
   ##
-  # Testing with premium scope
+  # Testing with premium target
   #
   - matrix:
       at: [10, 50, 70]
     at: ${{ at }}
     environment: production
-    scope: premium
-    description: "At ${{ at }}% in production with premium scope, should be enabled"
+    target: premium
+    description: "At ${{ at }}% in production with premium target, should be enabled"
     context: {}
     expectedToBeEnabled: true
 
@@ -187,20 +187,20 @@ assertions:
       at: [81, 90]
     at: ${{ at }}
     environment: production
-    scope: premium
-    description: "At ${{ at }}% in production with premium scope, should be disabled"
+    target: premium
+    description: "At ${{ at }}% in production with premium target, should be disabled"
     context: {}
     expectedToBeEnabled: false
 
   ##
-  # Testing with chrome scope
+  # Testing with chrome target
   #
   - matrix:
       at: [10, 50]
     at: ${{ at }}
     environment: production
-    scope: chrome
-    description: "At ${{ at }}% in production with chrome scope, should be enabled"
+    target: chrome
+    description: "At ${{ at }}% in production with chrome target, should be enabled"
     context: {}
     expectedToBeEnabled: true
 
@@ -208,19 +208,19 @@ assertions:
       at: [61, 90]
     at: ${{ at }}
     environment: production
-    scope: chrome
-    description: "At ${{ at }}% in production with chrome scope, should be disabled"
+    target: chrome
+    description: "At ${{ at }}% in production with chrome target, should be disabled"
     context: {}
     expectedToBeEnabled: false
 
   ##
-  # Testing with premium-chrome scope
+  # Testing with premium-chrome target
   #
   - matrix:
       at: [10, 50, 90]
     at: ${{ at }}
     environment: production
-    scope: premium-chrome
-    description: "At ${{ at }}% in production with premium-chrome scope, should be enabled"
+    target: premium-chrome
+    description: "At ${{ at }}% in production with premium-chrome target, should be enabled"
     context: {}
     expectedToBeEnabled: true

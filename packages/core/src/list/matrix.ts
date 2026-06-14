@@ -96,14 +96,9 @@ export function applyCombinationToFeatureAssertion(
     );
   }
 
-  // scope
-  if (flattenedAssertion.scope) {
-    flattenedAssertion.scope = applyCombinationToValue(flattenedAssertion.scope, combination);
-  }
-
-  // tag
-  if (flattenedAssertion.tag) {
-    flattenedAssertion.tag = applyCombinationToValue(flattenedAssertion.tag, combination);
+  // target
+  if (flattenedAssertion.target) {
+    flattenedAssertion.target = applyCombinationToValue(flattenedAssertion.target, combination);
   }
 
   return flattenedAssertion;

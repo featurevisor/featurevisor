@@ -37,13 +37,12 @@ import {
 
 export interface CustomDatafileOptions {
   featureKey?: string;
-  environment: string;
+  environment: string | false;
   projectConfig: ProjectConfig;
   datasource: Datasource;
   revision?: string;
   schemaVersion?: string;
   inflate?: number;
-  tag?: string;
   tags?: BuildTags;
 }
 
@@ -67,7 +66,6 @@ export async function getCustomDatafile(
       environment: options.environment,
       features: featuresToInclude,
       inflate: options.inflate,
-      tag: options.tag,
       tags: options.tags,
     },
     existingState,
@@ -85,6 +83,26 @@ export interface BuildAndTags {
 }
 
 export type BuildTags = BuildOrTags | BuildAndTags | string[];
+
+function matchesBuildTags(candidateTags: string[], buildTags?: BuildTags): boolean {
+  if (!buildTags) {
+    return true;
+  }
+
+  if (Array.isArray(buildTags)) {
+    return buildTags.some((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  if ("or" in buildTags) {
+    return buildTags.or.some((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  if ("and" in buildTags) {
+    return buildTags.and.every((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  return true;
+}
 
 export interface BuildOptions {
   schemaVersion: string;
@@ -139,29 +157,8 @@ export async function buildDatafile(
         continue;
       }
 
-      if (options.tags) {
-        // plain array of tags: treat as OR tags
-        if (Array.isArray(options.tags)) {
-          if (options.tags.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
-            continue;
-          }
-        } else {
-          // OR tags
-          const orTags = options.tags as BuildOrTags;
-          if (orTags.or) {
-            if (orTags.or.some((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
-              continue;
-            }
-          }
-
-          // AND tags
-          const andTags = options.tags as BuildAndTags;
-          if (andTags.and) {
-            if (andTags.and.every((searchTag) => featureTags.indexOf(searchTag) !== -1) === false) {
-              continue;
-            }
-          }
-        }
+      if (options.tags && matchesBuildTags(featureTags, options.tags) === false) {
+        continue;
       }
 
       if (options.features && options.features.indexOf(featureKey) === -1) {
@@ -190,6 +187,10 @@ export async function buildDatafile(
         const exposeTags = expose;
 
         if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+          continue;
+        }
+
+        if (options.tags && matchesBuildTags(exposeTags, options.tags) === false) {
           continue;
         }
       }

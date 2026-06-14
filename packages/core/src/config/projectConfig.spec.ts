@@ -2,7 +2,12 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import { getProjectConfig, getProjectConfigForSet, SETS_DIRECTORY_NAME } from "./projectConfig";
+import {
+  getProjectConfig,
+  getProjectConfigForSet,
+  SETS_DIRECTORY_NAME,
+  TARGETS_DIRECTORY_NAME,
+} from "./projectConfig";
 
 function createTempProject(configBody: string) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-project-config-"));
@@ -20,6 +25,8 @@ describe("core: projectConfig", () => {
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
+    expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
+    expect("scopes" in config).toBe(false);
   });
 
   it("throws when sets is not boolean", () => {
@@ -159,6 +166,7 @@ describe("core: projectConfig", () => {
     expect(setConfig.attributesDirectoryPath).toBe(path.join(setRoot, "attributes"));
     expect(setConfig.groupsDirectoryPath).toBe(path.join(setRoot, "groups"));
     expect(setConfig.schemasDirectoryPath).toBe(path.join(setRoot, "schemas"));
+    expect(setConfig.targetsDirectoryPath).toBe(path.join(setRoot, "targets"));
     expect(setConfig.testsDirectoryPath).toBe(path.join(setRoot, "tests"));
     expect(setConfig.stateDirectoryPath).toBe(path.join(root, ".featurevisor", "sets", "staging"));
     expect(setConfig.datafilesDirectoryPath).toBe(path.join(root, "datafiles", "staging"));

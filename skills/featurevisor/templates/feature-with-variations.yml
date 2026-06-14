@@ -21,10 +21,10 @@ variations:
 rules:
   staging:
     - key: everyone
-      segments: '*'
+      segments: "*"
       percentage: 100
 
   production:
     - key: everyone
-      segments: '*'
-      percentage: 0                       # ramp up; never rename the key
+      segments: "*"
+      percentage: 0 # ramp up; never rename the key

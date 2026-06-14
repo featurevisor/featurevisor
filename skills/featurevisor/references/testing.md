@@ -79,25 +79,23 @@ assertions:
 
 Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix-driven fields is fine — only interpolate where it changes.
 
-## Testing against tagged or scoped datafiles
+## Testing against target datafiles
 
-By default the runner builds a single in-memory datafile containing everything. To imitate a real consumer that loads a tag-/scope-specific datafile:
+The runner builds target datafiles in memory. To imitate a real consumer that loads a target-specific datafile:
 
 ```yaml
 assertions:
   - environment: production
     at: 90
     context: { country: nl }
-    tag: web                       # or:   scope: browsers
+    target: web
     expectedToBeEnabled: true
 ```
 
 Then run:
 
 ```bash
-npx featurevisor test --withTags
-# or
-npx featurevisor test --withScopes
+npx featurevisor test
 ```
 
 ## When you create a feature or segment

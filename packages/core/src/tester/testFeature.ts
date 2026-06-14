@@ -23,7 +23,6 @@ export interface TestFeatureOptions {
   verbose?: boolean;
   quiet?: boolean;
   showDatafile?: boolean;
-  withScopes?: boolean;
   [key: string]: any;
 }
 
@@ -61,16 +60,10 @@ export async function testFeature(
 
     let datafileContent = datafileContentByKey.get(assertion.environment || false);
 
-    // scope
-    const scopedDatafileKey = `${assertion.environment}-scope-${assertion.scope}`;
-    if (assertion.scope && datafileContentByKey.has(scopedDatafileKey)) {
-      datafileContent = datafileContentByKey.get(scopedDatafileKey);
-    }
-
-    // tag
-    const taggedDatafileKey = `${assertion.environment}-tag-${assertion.tag}`;
-    if (assertion.tag && datafileContentByKey.has(taggedDatafileKey)) {
-      datafileContent = datafileContentByKey.get(taggedDatafileKey);
+    // target
+    const targetDatafileKey = `${assertion.environment || false}-target-${assertion.target}`;
+    if (assertion.target && datafileContentByKey.has(targetDatafileKey)) {
+      datafileContent = datafileContentByKey.get(targetDatafileKey);
     }
 
     if (options.showDatafile) {
@@ -113,21 +106,6 @@ export async function testFeature(
     }
 
     let context = {};
-
-    if (assertion.scope) {
-      if (!options.withScopes) {
-        // if not testing with scoped datafiles,
-        // then we need to add the scope's context to the context
-        const scope = projectConfig.scopes?.find((s) => s.name === assertion.scope);
-
-        if (scope) {
-          context = {
-            ...(scope.context || {}),
-            ...context,
-          };
-        }
-      }
-    }
 
     if (assertion.context) {
       context = {

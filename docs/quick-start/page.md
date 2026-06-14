@@ -152,9 +152,9 @@ With our example, we will have the following datafiles generated:
 ```
 datafiles/
 ├── staging/
-│   └── featurevisor-tag-all.json
+│   └── featurevisor-all.json
 └── production/
-  └── featurevisor-tag-all.json
+  └── featurevisor-all.json
 ```
 
 Learn more in [Building datafiles](/docs/building-datafiles).
@@ -163,7 +163,7 @@ Learn more in [Building datafiles](/docs/building-datafiles).
 
 This is the part where you deploy the datafiles to your CDN or any other static file hosting service.
 
-Once done, the URLs of the datafiles may look like `https://cdn.yoursite.com/production/featurevisor-tag-all.json`.
+Once done, the URLs of the datafiles may look like `https://cdn.yoursite.com/production/featurevisor-all.json`.
 
 Learn more in [Deployment](/docs/deployment).
 
@@ -189,7 +189,7 @@ You can initialize the SDK as follows:
 import { createInstance } from '@featurevisor/sdk'
 
 const datafileUrl =
-  'https://cdn.yoursite.com/production/featurevisor-tag-all.json'
+  'https://cdn.yoursite.com/production/featurevisor-all.json'
 
 const datafileContent = await fetch(datafileUrl)
   .then((res) => res.json())

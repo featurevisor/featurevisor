@@ -8,5 +8,6 @@ export * from "./group";
 export * from "./segment";
 export * from "./site";
 export * from "./state";
+export * from "./target";
 export * from "./test";
 export * from "./schema";

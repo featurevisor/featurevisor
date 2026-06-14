@@ -9,7 +9,7 @@ import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
-import { buildDatafile, buildScopedDatafile } from "../builder";
+import { buildDatafile, buildTargetDatafile } from "../builder";
 import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
@@ -23,8 +23,6 @@ export interface TestProjectOptions {
   onlyFailures?: boolean;
   schemaVersion?: string;
   inflate?: number;
-  withScopes?: boolean;
-  withTags?: boolean;
 }
 
 export interface ExecutionResult {
@@ -35,8 +33,47 @@ export interface ExecutionResult {
   };
 }
 
-// the key can be either "<EnvironmentKey>" or "<EnvironmentKey>scope-<Scope>"
+// the key can be either "<EnvironmentKey>" or "<EnvironmentKey>-target-<Target>"
 export type DatafileContentByKey = Map<string | false, DatafileContent>;
+
+async function buildTestDatafilesForEnvironment(
+  deps: Dependencies,
+  datafileContentByKey: DatafileContentByKey,
+  environment: string | false,
+) {
+  const { projectConfig, datasource, options } = deps;
+  const existingState = await datasource.readState(environment);
+  const datafileContent = await buildDatafile(
+    projectConfig,
+    datasource,
+    {
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+      revision: "include-all-features",
+      environment,
+      inflate: options.inflate,
+    },
+    existingState,
+  );
+
+  datafileContentByKey.set(environment, datafileContent as DatafileContent);
+
+  const targetKeys = await datasource.listTargets();
+  for (const targetKey of targetKeys) {
+    const target = await datasource.readTarget(targetKey);
+    const targetDatafileContent = await buildTargetDatafile({
+      projectConfig,
+      datasource,
+      target,
+      environment,
+      existingState,
+      revision: "include-target-features",
+      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
+      inflate: options.inflate,
+    });
+
+    datafileContentByKey.set(`${environment}-target-${targetKey}`, targetDatafileContent);
+  }
+}
 
 export async function executeTest(
   test: Test,
@@ -133,135 +170,13 @@ export async function testProject(
   // with environments
   if (Array.isArray(projectConfig.environments)) {
     for (const environment of projectConfig.environments) {
-      const existingState = await datasource.readState(environment);
-      const datafileContent = await buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-          revision: "include-all-features",
-          environment: environment,
-          inflate: options.inflate,
-        },
-        existingState,
-      );
-
-      datafileContentByKey.set(environment, datafileContent as DatafileContent);
-
-      // by scope
-      if (projectConfig.scopes && options.withScopes) {
-        for (const scope of projectConfig.scopes) {
-          const existingState = await datasource.readState(environment);
-          const datafileContent = await buildDatafile(
-            projectConfig,
-            datasource,
-            {
-              schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-              revision: "include-scoped-features",
-              environment: environment,
-              inflate: options.inflate,
-              tag: scope.tag,
-              tags: scope.tags,
-            },
-            existingState,
-          );
-
-          const scopedDatafileContent = buildScopedDatafile(
-            datafileContent as DatafileContent,
-            scope.context,
-          );
-
-          datafileContentByKey.set(`${environment}-scope-${scope.name}`, scopedDatafileContent);
-        }
-      }
-
-      // by tag
-      if (projectConfig.tags && options.withTags) {
-        for (const tag of projectConfig.tags) {
-          const existingState = await datasource.readState(environment);
-          const datafileContent = (await buildDatafile(
-            projectConfig,
-            datasource,
-            {
-              schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-              revision: "include-tagged-features",
-              environment: environment,
-              inflate: options.inflate,
-              tag: tag,
-            },
-            existingState,
-          )) as DatafileContent;
-
-          datafileContentByKey.set(`${environment}-tag-${tag}`, datafileContent);
-        }
-      }
+      await buildTestDatafilesForEnvironment(deps, datafileContentByKey, environment);
     }
   }
 
   // no environments
   if (!Array.isArray(projectConfig.environments)) {
-    const existingState = await datasource.readState(false);
-    const datafileContent = await buildDatafile(
-      projectConfig,
-      datasource,
-      {
-        schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-        revision: "include-all-features",
-        environment: false,
-        inflate: options.inflate,
-      },
-      existingState,
-    );
-
-    datafileContentByKey.set(false, datafileContent as DatafileContent);
-
-    // by scope
-    if (projectConfig.scopes && options.withScopes) {
-      for (const scope of projectConfig.scopes) {
-        const existingState = await datasource.readState(false);
-        const datafileContent = await buildDatafile(
-          projectConfig,
-          datasource,
-          {
-            schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-            revision: "include-scoped-features",
-            environment: false,
-            inflate: options.inflate,
-            tag: scope.tag,
-            tags: scope.tags,
-          },
-          existingState,
-        );
-
-        const scopedDatafileContent = buildScopedDatafile(
-          datafileContent as DatafileContent,
-          scope.context,
-        );
-
-        datafileContentByKey.set(`scope-${scope.name}`, scopedDatafileContent);
-      }
-    }
-
-    // by tag
-    if (projectConfig.tags && options.withTags) {
-      for (const tag of projectConfig.tags) {
-        const existingState = await datasource.readState(false);
-        const datafileContent = (await buildDatafile(
-          projectConfig,
-          datasource,
-          {
-            schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-            revision: "include-tagged-features",
-            environment: false,
-            inflate: options.inflate,
-            tag: tag,
-          },
-          existingState,
-        )) as DatafileContent;
-
-        datafileContentByKey.set(`tag-${tag}`, datafileContent);
-      }
-    }
+    await buildTestDatafilesForEnvironment(deps, datafileContentByKey, false);
   }
 
   const tests = await listEntities<Test>(
@@ -320,6 +235,14 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
+    if (parsed.withScopes || parsed["with-scopes"]) {
+      throw new Error("--with-scopes is no longer supported. Use assertion target values instead.");
+    }
+
+    if (parsed.withTags || parsed["with-tags"]) {
+      throw new Error("--with-tags is no longer supported. Use assertion target values instead.");
+    }
+
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
     let hasError = false;
 

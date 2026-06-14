@@ -17,6 +17,7 @@ function minimalProjectConfig(): ProjectConfig {
     attributesDirectoryPath: "",
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
+    targetsDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",

@@ -76,11 +76,11 @@ And the [datafiles](/docs/building-datafiles) will be built per each environment
 $ tree datafiles
 .
 ├── staging/
-│   ├── featurevisor-tag-web.json
-│   └── featurevisor-tag-mobile.json
+│   ├── featurevisor-web.json
+│   └── featurevisor-mobile.json
 ├── production/
-│   ├── featurevisor-tag-web.json
-│   └── featurevisor-tag-mobile.json
+│   ├── featurevisor-web.json
+│   └── featurevisor-mobile.json
 ```
 
 ## Environment lanes with sets
@@ -123,6 +123,6 @@ The [datafiles](/docs/building-datafiles) will be built without any environment:
 ```
 $ tree datafiles
 .
-├── featurevisor-tag-web.json
-├── featurevisor-tag-mobile.json
+├── featurevisor-web.json
+├── featurevisor-mobile.json
 ```

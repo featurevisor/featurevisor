@@ -11,7 +11,7 @@ nextjs:
         - url: /img/og/docs-tags.png
 ---
 
-Tagging your features helps build smaller datafiles, so that your applications get to load only the minimum required features in the runtime. {% .lead %}
+Tagging your features lets [targets](/docs/targets/) select smaller groups of features for generated datafiles. {% .lead %}
 
 ## Configuration
 
@@ -49,18 +49,15 @@ Learn more about [defining features](/docs/features).
 
 ## Building datafiles
 
-When [building datafiles](/docs/building-datafiles), Featurevisor will create separate datafiles for each tag:
+Tags do not create datafiles on their own. Define targets that select the tags you need:
 
+```yml {% path="targets/web.yml" %}
+description: Web app
+tags:
+  - web
 ```
-$ tree datafiles
-.
-├── staging
-│   ├── featurevisor-tag-web.json
-│   └── featurevisor-tag-mobile.json
-└── production
-    ├── featurevisor-tag-web.json
-    └── featurevisor-tag-mobile.json
-```
+
+When [building datafiles](/docs/building-datafiles), Featurevisor creates datafiles for targets.
 
 ## Consuming datafile
 
@@ -69,7 +66,7 @@ Now from your application, you can choose which datafile to load:
 ```js {% path="your-app/index.js" highlight="3" %}
 import { createInstance } from '@featurevisor/sdk'
 
-const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-tag-web.json'
+const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-web.json'
 const datafileContent = await fetch(datafileUrl).then((res) => res.json())
 
 const f = createInstance({
@@ -79,11 +76,9 @@ const f = createInstance({
 
 Learn more about [SDKs](/docs/sdks).
 
-## Testing features against tags
+## Testing features against targets
 
-Similar to [scopes](/docs/scopes), features can also be [tested](/docs/testing) against tags.
-
-When writing a feature's test spec, make use of the `tag` property:
+When writing a feature's test spec, use the `target` property:
 
 ```yml {% path="tests/features/my_feature.spec.yml" highlight="8" %}
 feature: my_feature
@@ -93,12 +88,12 @@ assertions:
     at: 90
     context:
       country: nl
-    tag: web
+    target: web
     expectedToBeEnabled: true
 ```
 
-To run the tests against tagged datafiles for assertions making use of the `tag` property, run:
+The test runner builds target datafiles in memory automatically:
 
 ```
-$ npx featurevisor test --with-tags
+$ npx featurevisor test
 ```

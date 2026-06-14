@@ -562,8 +562,8 @@ assertions:
       animation: none
 
   ##
-  # Testing with premium scope
-  # Note: With premium scope, the scoped datafile should have premiumUsers simplified
+  # Testing with premium target
+  # Note: With premium target, the target datafile should have premiumUsers simplified
   # However, if scoping doesn't work perfectly, we can test with adminUsers to match the "premium-or-admin" rule
   # Or we can test with browser context to match the first rule
   #
@@ -571,8 +571,8 @@ assertions:
       at: [10, 50, 80]
     at: ${{ at }}
     environment: production
-    scope: premium
-    description: "At ${{ at }}% in production with premium scope, should be enabled via premium-or-admin rule"
+    target: premium
+    description: "At ${{ at }}% in production with premium target, should be enabled via premium-or-admin rule"
     # Provide adminUsers context to ensure the "premium-or-admin" rule matches
     context:
       userRole: admin
@@ -582,8 +582,8 @@ assertions:
       at: [91, 95, 100]
     at: ${{ at }}
     environment: production
-    scope: premium
-    description: "At ${{ at }}% in production with premium scope, should be disabled (above 90% threshold)"
+    target: premium
+    description: "At ${{ at }}% in production with premium target, should be disabled (above 90% threshold)"
     # Use a context that doesn't match adminUsers to test the rule threshold
     # The premium-or-admin rule is 90%, so above 90% should be disabled
     context:
@@ -591,18 +591,18 @@ assertions:
     expectedToBeEnabled: false
 
   ##
-  # Testing with chrome scope
-  # Note: With chrome scope, chromeUsers segment should be simplified to "*"
-  # However, if scoping doesn't simplify segments correctly, we need to provide the scope context
+  # Testing with chrome target
+  # Note: With chrome target, chromeUsers segment should be simplified to "*"
+  # However, if target simplification doesn't simplify segments correctly, we need to provide the target context
   # Rules that require chromeUsers should match with browser: chrome context
   #
   - matrix:
       at: [10, 50, 70]
     at: ${{ at }}
     environment: production
-    scope: chrome
-    description: "At ${{ at }}% in production with chrome scope, should be enabled"
-    # Provide scope context since segments might not be simplified in scoped datafile
+    target: chrome
+    description: "At ${{ at }}% in production with chrome target, should be enabled"
+    # Provide target context since segments might not be simplified in target datafile
     context:
       browser: chrome
       subscription: free
@@ -612,26 +612,26 @@ assertions:
       at: [76, 90, 100]
     at: ${{ at }}
     environment: production
-    scope: chrome
-    description: "At ${{ at }}% in production with chrome scope, should be disabled"
+    target: chrome
+    description: "At ${{ at }}% in production with chrome target, should be disabled"
     context:
       browser: chrome
       subscription: free
     expectedToBeEnabled: false
 
   ##
-  # Testing with premium-chrome scope
-  # Note: With premium-chrome scope, both premiumUsers and chromeUsers should be simplified to "*"
-  # However, if scoping doesn't simplify segments correctly, we need to provide the scope context
+  # Testing with premium-chrome target
+  # Note: With premium-chrome target, both premiumUsers and chromeUsers should be simplified to "*"
+  # However, if target simplification doesn't simplify segments correctly, we need to provide the target context
   # The first rule "premium-chrome-complex" should match (100% rule)
   #
   - matrix:
       at: [10, 50, 90, 100]
     at: ${{ at }}
     environment: production
-    scope: premium-chrome
-    description: "At ${{ at }}% in production with premium-chrome scope, should be enabled (premium-chrome-complex rule at 100%)"
-    # Provide scope context since segments might not be simplified in scoped datafile
+    target: premium-chrome
+    description: "At ${{ at }}% in production with premium-chrome target, should be enabled (premium-chrome-complex rule at 100%)"
+    # Provide target context since segments might not be simplified in target datafile
     context:
       subscription: premium
       browser: chrome

@@ -39,13 +39,13 @@ assertions:
     expectedToBeEnabled: false
 
   ##
-  # Testing with chrome scope
+  # Testing with chrome target
   #
   - matrix:
       at: [10, 50, 90]
     at: ${{ at }}
     environment: production
-    scope: chrome
-    description: "At ${{ at }}% in production with chrome scope, should be enabled"
+    target: chrome
+    description: "At ${{ at }}% in production with chrome target, should be enabled"
     context: {}
     expectedToBeEnabled: true

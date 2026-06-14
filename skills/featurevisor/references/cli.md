@@ -59,7 +59,7 @@ npx featurevisor build --no-state-files
 
 **Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
 
-Datafiles end up in `<datafilesDirectoryPath>` (default `dist/`) organized by environment and tag.
+Datafiles end up in `<datafilesDirectoryPath>` organized by environment and target.
 
 ## Test
 
@@ -72,8 +72,6 @@ npx featurevisor test --verbose                   # SDK trace per assertion
 npx featurevisor test --quiet                     # suppress SDK warnings
 npx featurevisor test --onlyFailures
 npx featurevisor test --showDatafile              # combine with --keyPattern
-npx featurevisor test --withTags                  # run each against its tagged datafile
-npx featurevisor test --withScopes                # run each against its scoped datafile
 ```
 
 Non-zero exit on failure.

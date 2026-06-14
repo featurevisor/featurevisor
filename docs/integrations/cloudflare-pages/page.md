@@ -154,7 +154,7 @@ After generating new [datafiles](/docs/building-datafiles/) and uploading them, 
 
 Once uploaded, your datafiles will be accessible as:
 
-`https://<your-project>.pages.dev/<environment>/featurevisor-tag-<your-tag>.json`.
+`https://<your-project>.pages.dev/<environment>/featurevisor-<your-tag>.json`.
 
 You may want to take it a step further by setting up custom domains (or subdomains) for your Cloudflare Pages project. Otherwise, you are good to go.
 

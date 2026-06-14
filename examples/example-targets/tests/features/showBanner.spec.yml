@@ -62,7 +62,7 @@ assertions:
     expectedToBeEnabled: false
 
   ##
-  # Enabled (with scope)
+  # Enabled (with target)
   #
   # No additional context is needed to be passed
   #
@@ -70,7 +70,7 @@ assertions:
   # enabled
   - at: 10
     environment: staging
-    scope: browsers
+    target: browsers
     context: {}
     expectedToBeEnabled: true
 
@@ -78,8 +78,8 @@ assertions:
       at: [10, 20, 30, 40, 80, 100]
     at: ${{ at }}
     environment: production
-    scope: browsers
-    description: "At ${{ at }}% in production, the feature should be enabled for browsers scope"
+    target: browsers
+    description: "At ${{ at }}% in production, the feature should be enabled for browsers target"
     context: {}
     expectedToBeEnabled: true
 
@@ -87,8 +87,8 @@ assertions:
       at: [10, 20, 30, 40]
     at: ${{ at }}
     environment: production
-    scope: ios
-    description: "At ${{ at }}% in production, the feature should be enabled for ios scope"
+    target: ios
+    description: "At ${{ at }}% in production, the feature should be enabled for ios target"
     context: {}
     expectedToBeEnabled: true
 
@@ -96,8 +96,8 @@ assertions:
       at: [10, 20]
     at: ${{ at }}
     environment: production
-    scope: ios
-    description: "At ${{ at }}% in production, the feature should be enabled for android scope"
+    target: ios
+    description: "At ${{ at }}% in production, the feature should be enabled for android target"
     context: {}
     expectedToBeEnabled: true
 
@@ -106,8 +106,8 @@ assertions:
       at: [60, 80]
     at: ${{ at }}
     environment: production
-    scope: ios
-    description: "At ${{ at }}% in production, the feature should be disabled for ios scope"
+    target: ios
+    description: "At ${{ at }}% in production, the feature should be disabled for ios target"
     context: {}
     expectedToBeEnabled: false
 
@@ -115,7 +115,7 @@ assertions:
       at: [40, 80]
     at: ${{ at }}
     environment: production
-    scope: android
-    description: "At ${{ at }}% in production, the feature should be disabled for android scope"
+    target: android
+    description: "At ${{ at }}% in production, the feature should be disabled for android target"
     context: {}
     expectedToBeEnabled: false

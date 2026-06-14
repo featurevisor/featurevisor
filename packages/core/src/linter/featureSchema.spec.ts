@@ -19,6 +19,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     attributesDirectoryPath: "",
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
+    targetsDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",

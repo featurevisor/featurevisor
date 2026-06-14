@@ -117,17 +117,17 @@ And it will output the following datafiles in the `datafiles` directory:
 $ tree datafiles
 datafiles
 ├── production
-│   ├── featurevisor-tag-products.json
-│   ├── featurevisor-tag-signup.json
-│   ├── featurevisor-tag-signin.json
-│   ├── featurevisor-tag-checkout.json
-│   └── featurevisor-tag-account.json
+│   ├── featurevisor-products.json
+│   ├── featurevisor-signup.json
+│   ├── featurevisor-signin.json
+│   ├── featurevisor-checkout.json
+│   └── featurevisor-account.json
 └── staging
-│   ├── featurevisor-tag-products.json
-│   ├── featurevisor-tag-signup.json
-│   ├── featurevisor-tag-signin.json
-│   ├── featurevisor-tag-checkout.json
-│   └── featurevisor-tag-account.json
+│   ├── featurevisor-products.json
+│   ├── featurevisor-signup.json
+│   ├── featurevisor-signin.json
+│   ├── featurevisor-checkout.json
+│   └── featurevisor-account.json
 
 2 directories, 10 files
 ```
@@ -273,7 +273,7 @@ Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment)
 import { createInstance } from '@featurevisor/sdk'
 
 const DATAFILE_URL =
-  'https://cdn.yoursite.com/production/featurevisor-tag-products.json'
+  'https://cdn.yoursite.com/production/featurevisor-products.json'
 
 const datafileContent = await fetch(DATAFILE_URL)
   .then(res => res.json())
