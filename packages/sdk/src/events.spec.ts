@@ -76,6 +76,7 @@ describe("sdk: events", function () {
         previousRevision: "1",
         revisionChanged: true,
         features: ["feature1", "feature2"],
+        replaced: false,
       });
     });
 
@@ -113,6 +114,7 @@ describe("sdk: events", function () {
         previousRevision: "1",
         revisionChanged: true,
         features: ["feature2", "feature3"],
+        replaced: false,
       });
     });
 
@@ -141,13 +143,14 @@ describe("sdk: events", function () {
         logger,
       });
 
-      const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader);
+      const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader, true);
 
       expect(result).toEqual({
         revision: "2",
         previousRevision: "1",
         revisionChanged: true,
         features: ["feature1", "feature2"],
+        replaced: true,
       });
     });
   });

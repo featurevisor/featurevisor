@@ -296,6 +296,14 @@ You may also initialize the SDK without passing `datafile`, and set it later on:
 f.setDatafile(datafileContent)
 ```
 
+By default, `setDatafile` merges the incoming datafile with the SDK instance's existing datafile. Incoming `features` and `segments` override matching keys and keep existing keys that are missing from the incoming datafile.
+
+Pass `true` as the second argument to replace the existing datafile entirely:
+
+```js
+f.setDatafile(datafileContent, true)
+```
+
 ### Updating datafile
 
 You can set the datafile as many times as you want in your application, which will result in emitting a [`datafile_set`](#datafile-set) event that you can listen and react to accordingly.

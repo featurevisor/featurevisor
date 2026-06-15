@@ -3,6 +3,33 @@ import type { DatafileContent } from "@featurevisor/types";
 import { createInstance } from "./instance";
 import { createLogger } from "./logger";
 
+function createTestFeature(hash: string) {
+  return {
+    key: hash,
+    hash,
+    bucketBy: "userId",
+    traffic: [
+      {
+        key: "1",
+        segments: "*",
+        percentage: 100000,
+        allocation: [],
+      },
+    ],
+  };
+}
+
+function createTestDatafile(overrides: Partial<DatafileContent> = {}): DatafileContent {
+  return {
+    schemaVersion: "2",
+    revision: "1",
+    featurevisorVersion: "1.0.0",
+    segments: {},
+    features: {},
+    ...overrides,
+  };
+}
+
 describe("sdk: instance", function () {
   it("should be a function", function () {
     expect(typeof createInstance).toEqual("function");
@@ -19,6 +46,156 @@ describe("sdk: instance", function () {
     });
 
     expect(typeof sdk.getVariation).toEqual("function");
+  });
+
+  it("should merge datafile by default when setting it again", function () {
+    const sdk = createInstance({
+      datafile: createTestDatafile({
+        revision: "1",
+        featurevisorVersion: "1.0.0",
+        segments: {
+          oldSegment: { conditions: "*" },
+          sharedSegment: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+        },
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+          sharedFeature: createTestFeature("old-shared-hash"),
+        },
+      }),
+    });
+
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createTestDatafile({
+        schemaVersion: "3",
+        revision: "2",
+        featurevisorVersion: "2.0.0",
+        segments: {
+          newSegment: { conditions: "*" },
+          sharedSegment: { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        },
+        features: {
+          newFeature: createTestFeature("new-hash"),
+          sharedFeature: createTestFeature("new-shared-hash"),
+        },
+      }),
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(sdk.getFeature("newFeature")?.hash).toEqual("new-hash");
+    expect(sdk.getFeature("sharedFeature")?.hash).toEqual("new-shared-hash");
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        revision: "2",
+        previousRevision: "1",
+        revisionChanged: true,
+        features: ["sharedFeature", "newFeature"],
+        replaced: false,
+      }),
+    ]);
+  });
+
+  it("should merge JSON string datafile input by default", function () {
+    const sdk = createInstance({
+      datafile: createTestDatafile({
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+        },
+      }),
+    });
+
+    sdk.setDatafile(
+      JSON.stringify(
+        createTestDatafile({
+          revision: "2",
+          features: {
+            newFeature: createTestFeature("new-hash"),
+          },
+        }),
+      ),
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(sdk.getFeature("newFeature")?.hash).toEqual("new-hash");
+  });
+
+  it("should replace datafile when setting it with replace enabled", function () {
+    const sdk = createInstance({
+      datafile: createTestDatafile({
+        revision: "1",
+        segments: {
+          oldSegment: { conditions: "*" },
+        },
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+          sharedFeature: createTestFeature("old-shared-hash"),
+        },
+      }),
+    });
+
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createTestDatafile({
+        revision: "2",
+        segments: {
+          newSegment: { conditions: "*" },
+        },
+        features: {
+          sharedFeature: createTestFeature("new-shared-hash"),
+        },
+      }),
+      true,
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")).toBeUndefined();
+    expect(sdk.getFeature("sharedFeature")?.hash).toEqual("new-shared-hash");
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        revision: "2",
+        previousRevision: "1",
+        revisionChanged: true,
+        features: ["oldFeature", "sharedFeature"],
+        replaced: true,
+      }),
+    ]);
+  });
+
+  it("should ignore invalid datafile input without emitting event", function () {
+    const logs: any[] = [];
+    const sdk = createInstance({
+      logger: createLogger({
+        level: "error",
+        handler: (level, message, details) => logs.push({ level, message, details }),
+      }),
+      datafile: createTestDatafile({
+        revision: "1",
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+        },
+      }),
+    });
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile({ schemaVersion: "2" } as any);
+    sdk.setDatafile("{not json");
+
+    expect(sdk.getRevision()).toEqual("1");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(events).toEqual([]);
+    expect(logs).toEqual([
+      expect.objectContaining({ level: "error", message: "could not parse datafile" }),
+      expect.objectContaining({ level: "error", message: "could not parse datafile" }),
+    ]);
   });
 
   it("should configure plain bucketBy", function () {

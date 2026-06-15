@@ -25,6 +25,7 @@ export function getParamsForStickySetEvent(
 export function getParamsForDatafileSetEvent(
   previousDatafileReader: DatafileReader,
   newDatafileReader: DatafileReader,
+  replace = false,
 ): EventDetails {
   const previousRevision = previousDatafileReader.getRevision();
   const previousFeatureKeys = previousDatafileReader.getFeatureKeys();
@@ -77,6 +78,7 @@ export function getParamsForDatafileSetEvent(
     revisionChanged: previousRevision !== newRevision,
 
     features: allAffectedFeatures,
+    replaced: replace,
   };
 
   return details;

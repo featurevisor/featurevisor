@@ -27,6 +27,68 @@ const emptyDatafile: DatafileContent = {
   features: {},
 };
 
+function assertDatafileContent(datafile: unknown): asserts datafile is DatafileContent {
+  if (
+    typeof datafile !== "object" ||
+    datafile === null ||
+    typeof (datafile as DatafileContent).schemaVersion !== "string" ||
+    typeof (datafile as DatafileContent).revision !== "string" ||
+    typeof (datafile as DatafileContent).segments !== "object" ||
+    (datafile as DatafileContent).segments === null ||
+    typeof (datafile as DatafileContent).features !== "object" ||
+    (datafile as DatafileContent).features === null
+  ) {
+    throw new Error("Invalid datafile");
+  }
+}
+
+function getDatafileContentFromReader(datafileReader: DatafileReader): DatafileContent {
+  const segments: DatafileContent["segments"] = {};
+  const features: DatafileContent["features"] = {};
+
+  datafileReader.getSegmentKeys().forEach((segmentKey) => {
+    const segment = datafileReader.getSegment(segmentKey);
+    if (segment) {
+      segments[segmentKey] = segment;
+    }
+  });
+
+  datafileReader.getFeatureKeys().forEach((featureKey) => {
+    const feature = datafileReader.getFeature(featureKey);
+    if (feature) {
+      features[featureKey] = feature;
+    }
+  });
+
+  return {
+    schemaVersion: datafileReader.getSchemaVersion(),
+    revision: datafileReader.getRevision(),
+    segments,
+    features,
+  };
+}
+
+function mergeStoredDatafile(
+  existingDatafileReader: DatafileReader,
+  incoming: DatafileContent,
+): DatafileContent {
+  const existing = getDatafileContentFromReader(existingDatafileReader);
+
+  return {
+    schemaVersion: incoming.schemaVersion,
+    revision: incoming.revision,
+    featurevisorVersion: incoming.featurevisorVersion,
+    segments: {
+      ...(existing.segments || {}),
+      ...(incoming.segments || {}),
+    },
+    features: {
+      ...(existing.features || {}),
+      ...(incoming.features || {}),
+    },
+  };
+}
+
 export interface OverrideOptions {
   sticky?: StickyFeatures;
 
@@ -89,14 +151,20 @@ export class FeaturevisorInstance {
     this.logger.setLevel(level);
   }
 
-  setDatafile(datafile: DatafileContent | string) {
+  setDatafile(datafile: DatafileContent | string, replace = false) {
     try {
+      const resolvedDatafile = typeof datafile === "string" ? JSON.parse(datafile) : datafile;
+      assertDatafileContent(resolvedDatafile);
+
+      const storedDatafile = replace
+        ? resolvedDatafile
+        : mergeStoredDatafile(this.datafileReader, resolvedDatafile);
       const newDatafileReader = new DatafileReader({
-        datafile: typeof datafile === "string" ? JSON.parse(datafile) : datafile,
+        datafile: storedDatafile,
         logger: this.logger,
       });
 
-      const details = getParamsForDatafileSetEvent(this.datafileReader, newDatafileReader);
+      const details = getParamsForDatafileSetEvent(this.datafileReader, newDatafileReader, replace);
 
       this.datafileReader = newDatafileReader;
 
