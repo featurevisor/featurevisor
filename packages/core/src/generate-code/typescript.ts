@@ -587,16 +587,16 @@ const INDENT_NS = "  ";
 const INDENT_NS_BODY = "    ";
 
 const instanceSnippet = `
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
-let _instance: FeaturevisorInstance;
+let _instance: Featurevisor;
 
-export function setInstance(instance: FeaturevisorInstance) {
+export function setInstance(instance: Featurevisor) {
   _instance = instance;
 }
 
-export function getInstance(): FeaturevisorInstance {
-  return _instance as FeaturevisorInstance;
+export function getInstance(): Featurevisor {
+  return _instance as Featurevisor;
 }
 `.trimStart();
 

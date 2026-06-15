@@ -47,18 +47,18 @@ To achieve this, we will create new module `featurevisor.ts` in the root of the 
 
 ```ts
 // ./featurevisor.ts
-import { createInstance, FeaturevisorInstance } from '@featurevisor/sdk'
+import { createFeaturevisor, Featurevisor } from '@featurevisor/sdk'
 
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
-let instance: FeaturevisorInstance
+let instance: Featurevisor
 
 export async function getInstance() {
   if (instance) {
     return instance
   }
 
-  const f = createInstance({
+  const f = createFeaturevisor({
     datafileUrl: DATAFILE_URL,
   })
 

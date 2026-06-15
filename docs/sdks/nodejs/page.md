@@ -32,7 +32,7 @@ Please find the full API docs in [JavaScript SDK](/docs/sdks/javascript) page.
 If you are not dealing with ES Modules in Node.js, you can use `require()` as usual:
 
 ```js
-const { createInstance } = require('@featurevisor/sdk')
+const { createFeaturevisor } = require('@featurevisor/sdk')
 ```
 
 ### Import
@@ -40,7 +40,7 @@ const { createInstance } = require('@featurevisor/sdk')
 If you want to take advantage of ES Modules, you can import the SDK directly:
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 ```
 
 ## Example repository

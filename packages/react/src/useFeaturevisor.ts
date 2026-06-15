@@ -1,5 +1,5 @@
 import * as React from "react";
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
 import { useSdk } from "./useSdk";
 
@@ -20,22 +20,20 @@ export const BOUND_METHODS = [
   "getContext",
 
   "setSticky",
-] as const satisfies readonly (keyof FeaturevisorInstance)[];
+] as const satisfies readonly (keyof Featurevisor)[];
 
-type FeaturevisorHookApi = Pick<FeaturevisorInstance, (typeof BOUND_METHODS)[number]>;
+type FeaturevisorHookApi = Pick<Featurevisor, (typeof BOUND_METHODS)[number]>;
 
-function pickBound<K extends keyof FeaturevisorInstance>(
-  instance: FeaturevisorInstance,
+function pickBound<K extends keyof Featurevisor>(
+  instance: Featurevisor,
   keys: readonly K[],
-): Pick<FeaturevisorInstance, K> {
-  const result = {} as Pick<FeaturevisorInstance, K>;
+): Pick<Featurevisor, K> {
+  const result = {} as Pick<Featurevisor, K>;
 
   for (const key of keys) {
     const method = instance[key];
     if (typeof method === "function") {
-      result[key] = (method as (...args: never[]) => unknown).bind(
-        instance,
-      ) as FeaturevisorInstance[K];
+      result[key] = (method as (...args: never[]) => unknown).bind(instance) as Featurevisor[K];
     }
   }
 

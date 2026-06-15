@@ -8,11 +8,11 @@ import type {
 } from "@featurevisor/types";
 
 import { EventName, EventCallback, Emitter } from "./emitter";
-import type { FeaturevisorInstance, OverrideOptions } from "./instance";
+import type { Featurevisor, OverrideOptions } from "./instance";
 import { getParamsForStickySetEvent } from "./events";
 
 export class FeaturevisorChildInstance {
-  private parent: FeaturevisorInstance;
+  private parent: Featurevisor;
   private context: Context;
   private sticky: StickyFeatures;
   private emitter: Emitter;

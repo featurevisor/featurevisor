@@ -167,14 +167,14 @@ $ npm install --save @featurevisor/sdk
 Then, initialize the SDK in your application:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
 const datafileContent = await fetch(DATAFILE_URL)
   .then((res) => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```
@@ -299,9 +299,9 @@ But we also need to track the performance of our experiments to understand which
 This is where [hooks API](/docs/sdks/javascript/#hooks) come in handy. Featurevisor SDK provides a way to register hooks that can be used to intercept the evaluation process and perform custom actions:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: '...',
 
   hooks: [

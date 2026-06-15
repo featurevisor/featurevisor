@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariation } from "./useVariation";
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
 function getNewDatafile(variationValue = "control") {
@@ -44,7 +44,7 @@ function getNewDatafile(variationValue = "control") {
 }
 
 function getNewInstance() {
-  const sdk = createInstance({
+  const sdk = createFeaturevisor({
     datafile: getNewDatafile(),
   });
 
@@ -117,7 +117,7 @@ describe("react: useVariation", function () {
   });
 
   test("should update when hook context changes", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -215,7 +215,7 @@ describe("react: useVariation", function () {
       segments: {},
     };
 
-    const sdk = createInstance({ datafile: datafileContent });
+    const sdk = createFeaturevisor({ datafile: datafileContent });
 
     function TestComponent() {
       const variation = useVariation("test", { userId: "123" });

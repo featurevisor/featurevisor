@@ -34,10 +34,10 @@ Inside `--out-dir`:
 ## Wiring into an application
 
 ```ts
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 import { setInstance, isEnabled, getVariation, getVariable } from '@yourorg/features'
 
-const f = createInstance({ datafile })
+const f = createFeaturevisor({ datafile })
 setInstance(f)
 
 // from here on, calls are type-checked

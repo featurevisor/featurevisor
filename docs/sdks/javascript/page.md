@@ -26,14 +26,14 @@ $ npm install --save @featurevisor/sdk
 The SDK can be initialized by passing [datafile](/docs/building-datafiles/) content directly:
 
 ```js {% path="your-app/index.js" highlight="1,8-10" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const datafileUrl = 'https://cdn.yoursite.com/datafile.json'
 
 const datafileContent = await fetch(datafileUrl)
   .then((res) => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```
@@ -71,9 +71,9 @@ Context can be passed to SDK instance in various different ways, depending on yo
 You can set context at the time of initialization:
 
 ```js {% path="your-app/index.js" highlight="4-7" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   context: {
     deviceId: '123',
     country: 'nl',
@@ -241,9 +241,9 @@ For the lifecycle of the SDK instance in your application, you can set some feat
 ### Initialize with sticky
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   sticky: {
     myFeatureKey: {
       enabled: true,
@@ -351,9 +351,9 @@ If you choose `debug` level to make the logs more verbose, you can set it at the
 Setting `debug` level will print out all logs, including `info`, `warn`, and `error` levels.
 
 ```js
-import { createInstance, createLogger } from '@featurevisor/sdk'
+import { createFeaturevisor, createLogger } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   logger: createLogger({
     level: 'debug',
   }),
@@ -363,7 +363,7 @@ const f = createInstance({
 Alternatively, you can also set `logLevel` directly:
 
 ```js
-const f = createInstance({
+const f = createFeaturevisor({
   logLevel: 'debug',
 })
 ```
@@ -379,7 +379,7 @@ f.setLogLevel('debug')
 You can also pass your own log handler, if you do not wish to print the logs to the console:
 
 ```js
-const f = createInstance({
+const f = createFeaturevisor({
   logger: createLogger({
     level: 'info',
     handler: function (level, message, details) {
@@ -553,9 +553,9 @@ const myCustomHook: Hook = {
 You can register hooks at the time of SDK initialization:
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   hooks: [
     myCustomHook
   ],

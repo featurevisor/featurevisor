@@ -1,5 +1,5 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
-import { FeaturevisorInstance, createInstance } from "@featurevisor/sdk";
+import { Featurevisor, createFeaturevisor } from "@featurevisor/sdk";
 
 import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
@@ -15,7 +15,7 @@ export interface BenchmarkOutput {
 }
 
 export function benchmarkFeatureFlag(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   context: Record<string, unknown>,
   n: number,
@@ -36,7 +36,7 @@ export function benchmarkFeatureFlag(
 }
 
 export function benchmarkFeatureVariation(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   context: Record<string, unknown>,
   n: number,
@@ -57,7 +57,7 @@ export function benchmarkFeatureVariation(
 }
 
 export function benchmarkFeatureVariable(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   variableKey: string,
   context: Record<string, unknown>,
@@ -134,7 +134,7 @@ export async function benchmarkFeature(
 
   console.log("");
 
-  const f = createInstance({
+  const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
     logLevel: "warn",
   });

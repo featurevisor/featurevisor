@@ -270,7 +270,7 @@ Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment)
 
 ```js {% path="products-microfrontend/index.js" %}
 // in `products` microfrontend
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const DATAFILE_URL =
   'https://cdn.yoursite.com/production/featurevisor-products.json'
@@ -278,7 +278,7 @@ const DATAFILE_URL =
 const datafileContent = await fetch(DATAFILE_URL)
   .then(res => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```

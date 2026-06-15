@@ -88,10 +88,10 @@ When the user asks you to set this up:
 Once hosted (e.g. `https://cdn.example.com/production/featurevisor-web.json`), SDK init looks like:
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const datafile = await fetch(url).then(r => r.json())
-const f = createInstance({ datafile })
+const f = createFeaturevisor({ datafile })
 ```
 
 Full SDK docs (out of scope for this skill, link only): <https://featurevisor.com/docs/sdks/javascript>

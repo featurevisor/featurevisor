@@ -186,7 +186,7 @@ Featurevisor JavaScript SDK is compatible with both Node.js and browser environm
 You can initialize the SDK as follows:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const datafileUrl =
   'https://cdn.yoursite.com/production/featurevisor-all.json'
@@ -194,7 +194,7 @@ const datafileUrl =
 const datafileContent = await fetch(datafileUrl)
   .then((res) => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```

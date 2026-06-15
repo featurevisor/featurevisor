@@ -29,7 +29,7 @@ Use `FeaturevisorProvider` component to set up the SDK instance in your React ap
 import React from 'react'
 import ReactDOM from 'react-dom'
 
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 import { FeaturevisorProvider } from '@featurevisor/react'
 
 const DATAFILE_URL = '...'
@@ -37,7 +37,7 @@ const DATAFILE_URL = '...'
 const datafileContent = await fetch(DATAFILE_URL)
   .then(response => response.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 

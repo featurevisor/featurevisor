@@ -51,7 +51,7 @@ To achieve this, we will create new module:
 
 ```js
 // src/featurevisor.mjs
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
@@ -62,7 +62,7 @@ export async function getInstance() {
     return instance
   }
 
-  const f = createInstance({
+  const f = createFeaturevisor({
     datafileUrl: DATAFILE_URL,
   })
 

@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { BOUND_METHODS, useFeaturevisor } from "./useFeaturevisor";
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 const standardVariations = [{ value: "control" }, { value: "treatment" }];
 
@@ -32,7 +32,7 @@ function variationFeature(key: string) {
 }
 
 function getNewInstance() {
-  const sdk = createInstance({
+  const sdk = createFeaturevisor({
     datafile: {
       schemaVersion: "2",
       revision: "1.0",
@@ -53,7 +53,7 @@ function getNewInstance() {
 
 /** Richer datafile: several flags, one with variables, one forced off via 0% traffic. */
 function getComplexInstance() {
-  return createInstance({
+  return createFeaturevisor({
     datafile: {
       schemaVersion: "2",
       revision: "complex-spec",
@@ -315,7 +315,7 @@ describe("react: useFeaturevisor", function () {
 
   test("should reflect a new provider instance after swap", function () {
     const off = getComplexInstance();
-    const on = createInstance({
+    const on = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "swap",
@@ -370,7 +370,7 @@ describe("react: useFeaturevisor", function () {
   });
 
   test("getVariableBoolean and getVariableInteger should read typed helpers", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "typed",

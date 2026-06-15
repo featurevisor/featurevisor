@@ -14,9 +14,9 @@ When a user is evaluated as bucketed into a variation, that's an **activation**.
 ## Minimal hook (vendor-agnostic)
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile,
 
   hooks: [

@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useFlag } from "./useFlag";
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 function getNewDatafile(enabled = true) {
   return {
@@ -30,7 +30,7 @@ function getNewDatafile(enabled = true) {
 }
 
 function getNewInstance(enabled = true) {
-  const sdk = createInstance({
+  const sdk = createFeaturevisor({
     datafile: getNewDatafile(enabled),
   });
 
@@ -123,7 +123,7 @@ describe("react: useFlag", function () {
   });
 
   test("should update when hook context argument changes between renders", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -184,7 +184,7 @@ describe("react: useFlag", function () {
   });
 
   test("should update when SDK setContext changes merged evaluation", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -243,7 +243,7 @@ describe("react: useFlag", function () {
   });
 
   test("should update when setSticky overrides a disabled feature", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",

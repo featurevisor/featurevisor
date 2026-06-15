@@ -70,12 +70,12 @@ const fastify = require('fastify')({
 })
 
 // Featurevisor SDK
-const { createInstance } = require('@featurevisor/sdk')
+const { createFeaturevisor } = require('@featurevisor/sdk')
 const DATAFILE_URL =
   'https://featurevisor-example-cloudflare.pages.dev/production/featurevisor-all.json' // replace with yoursite cdn
 const REFRESH_INTERVAL = 60 * 5 // every 5 minutes
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafileUrl: DATAFILE_URL,
 
   // optionally refresh the datafile every 5 minutes,
@@ -150,12 +150,12 @@ If you are using TypeScript, you can extend the `Request` interface to add the `
 Create a new `custom.d.ts` file and make sure to add it in `tsconfig.json`'s `files` section:
 
 ```ts
-import { FeaturevisorInstance } from '@featurevisor/sdk'
+import { Featurevisor } from '@featurevisor/sdk'
 import { FastifyInstance } from 'fastify'
 
 declare module 'fastify' {
   interface FastifyInstance {
-    f: FeaturevisorInstance
+    f: Featurevisor
   }
 }
 ```

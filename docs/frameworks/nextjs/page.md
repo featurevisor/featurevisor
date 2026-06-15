@@ -43,12 +43,12 @@ We will start by creating a new Featurevisor adapter using Flags SDK in the `src
 
 ```ts {% path="src/featurevisor.ts" %}
 import type { Adapter } from 'flags'
-import { createInstance, FeaturevisorInstance } from '@featurevisor/sdk'
+import { createFeaturevisor, Featurevisor } from '@featurevisor/sdk'
 
 export interface FeaturevisorAdapterOptions {
   datafileUrl: string
   refreshInterval?: number
-  f?: FeaturevisorInstance
+  f?: Featurevisor
 }
 
 export interface FeaturevisorEntitiesType {
@@ -57,7 +57,7 @@ export interface FeaturevisorEntitiesType {
 }
 
 export function createFeaturevisorAdapter(options: FeaturevisorAdapterOptions) {
-  const f = options.f || createInstance({})
+  const f = options.f || createFeaturevisor({})
   let initialFetchCompleted = false
 
   // datafile fetcher

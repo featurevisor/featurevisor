@@ -74,10 +74,10 @@ Assuming we published the generated code as a private npm package `@yourorg/feat
 Initialize Featurevisor [SDK](/docs/sdks/javascript) as usual, and make our newly created package aware of the SDK instance:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 import { setInstance } from '@yourorg/features'
 
-const f = createInstance({
+const f = createFeaturevisor({
   // ...
 })
 

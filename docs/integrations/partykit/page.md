@@ -139,7 +139,7 @@ The `X-PartyKit-Secret` is there so that our server only accepts messages from o
 Now that we have a PartyKit server that can receive messages from our CI/CD pipeline and also broadcast it to all connected applications, we (as one of those applications) can listen to those messages and trigger a new refresh of our SDK instance:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 const WEBSOCKET_URL =
@@ -152,7 +152,7 @@ function fetchDatafile() {
 
 const initialDatafileContent = await fetchDatafile()
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: initialDatafileContent,
 })
 

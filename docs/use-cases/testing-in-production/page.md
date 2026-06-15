@@ -152,14 +152,14 @@ Now that the QA team members can access the feature, we need to make sure that t
 Initialize the SDK first:
 
 ```js {% path="your-app/index.js" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 CONST DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
 const datafileContent = await fetch(DATAFILE_URL)
   .then((res) => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```

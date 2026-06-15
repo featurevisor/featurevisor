@@ -1,10 +1,10 @@
 import { inject } from "vue";
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
 import { PROVIDER_NAME } from "./setupApp";
 
-export function useSdk(): FeaturevisorInstance {
-  const sdk = inject(PROVIDER_NAME) as FeaturevisorInstance;
+export function useSdk(): Featurevisor {
+  const sdk = inject(PROVIDER_NAME) as Featurevisor;
 
   return sdk;
 }

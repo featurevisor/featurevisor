@@ -6,8 +6,8 @@ import type {
   TestResultAssertionError,
 } from "@featurevisor/types";
 import {
-  createInstance,
-  FeaturevisorInstance,
+  createFeaturevisor,
+  Featurevisor,
   LogLevel,
   MAX_BUCKETED_NUMBER,
   OverrideOptions,
@@ -79,7 +79,7 @@ export async function testFeature(
       logLevel = "fatal";
     }
 
-    const sdk: FeaturevisorInstance = createInstance({
+    const sdk: Featurevisor = createFeaturevisor({
       datafile: datafileContent as DatafileContent,
       sticky: assertion.sticky ? assertion.sticky : {},
       hooks: [

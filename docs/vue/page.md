@@ -35,10 +35,10 @@ Use `setupApp` function to set up the SDK instance in your Vue application:
 
 ```js
 import { createApp } from 'vue'
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 import { setupApp } from '@featurevisor/vue'
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafileUrl: 'https://cdn.yoursite.com/datafile.json',
 })
 

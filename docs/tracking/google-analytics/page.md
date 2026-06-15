@@ -36,9 +36,9 @@ It is considered best practice to set event names in GA4 using the underscored f
 The SDK integration snippet below provides a guide on how to push the `featurevisorActivation` event to the dataLayer created by Google Tag Manager.
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
-const f = createInstance({
+const f = createFeaturevisor({
   hooks: [
     {
       name: 'googleAnalytics',

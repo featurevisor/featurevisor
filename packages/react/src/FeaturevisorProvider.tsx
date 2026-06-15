@@ -1,10 +1,10 @@
 import * as React from "react";
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
 import { FeaturevisorContext } from "./FeaturevisorContext";
 
 export interface FeaturevisorProviderProps {
-  instance: FeaturevisorInstance;
+  instance: Featurevisor;
   children: React.ReactNode;
 }
 

@@ -1,7 +1,7 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
 import {
   Evaluation,
-  createInstance,
+  createFeaturevisor,
   createLogger,
   LogLevel,
   LogMessage,
@@ -92,7 +92,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   );
 
   let logs: Log[] = [];
-  const f = createInstance({
+  const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
     logger: createLogger({
       level: "debug",

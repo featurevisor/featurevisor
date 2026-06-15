@@ -105,7 +105,7 @@ export interface InstanceOptions {
   hooks?: Hook[];
 }
 
-export class FeaturevisorInstance {
+export class Featurevisor {
   // from options
   private context: Context = {};
   private logger: Logger;
@@ -507,6 +507,6 @@ export class FeaturevisorInstance {
   }
 }
 
-export function createInstance(options: InstanceOptions = {}): FeaturevisorInstance {
-  return new FeaturevisorInstance(options);
+export function createFeaturevisor(options: InstanceOptions = {}): Featurevisor {
+  return new Featurevisor(options);
 }

@@ -62,14 +62,14 @@ We can now create an instance of the SDK and use it in our application:
 ```js
 // index.js
 const express = require('express')
-const { createInstance } = require('@featurevisor/sdk')
+const { createFeaturevisor } = require('@featurevisor/sdk')
 
 const PORT = 3000
 const DATAFILE_URL = 'https://cdn.yoursite.com/datafile.json'
 
 const app = express()
 
-const f = createInstance({})
+const f = createFeaturevisor({})
 
 app.get('/', (req, res) => {
   const featureKey = 'myFeature'
@@ -107,7 +107,7 @@ To solve this problem, we can create a custom middleware that will set the Featu
 
 // ...
 
-const f = createInstance({})
+const f = createFeaturevisor({})
 
 app.use((req, res, next) => {
   req.f = f
@@ -144,11 +144,11 @@ If you are using TypeScript, you can extend the `Request` interface to add the `
 Create a new `custom.d.ts` file and make sure to add it in `tsconfig.json`'s `files` section:
 
 ```ts
-import { FeaturevisorInstance } from '@featurevisor/sdk'
+import { Featurevisor } from '@featurevisor/sdk'
 
 declare namespace Express {
   export interface Request {
-    f: FeaturevisorInstance
+    f: Featurevisor
   }
 }
 ```

@@ -63,12 +63,12 @@ When [building datafiles](/docs/building-datafiles), Featurevisor creates datafi
 Now from your application, you can choose which datafile to load:
 
 ```js {% path="your-app/index.js" highlight="3" %}
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-web.json'
 const datafileContent = await fetch(datafileUrl).then((res) => res.json())
 
-const f = createInstance({
+const f = createFeaturevisor({
   datafile: datafileContent,
 })
 ```
