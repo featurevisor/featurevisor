@@ -13,13 +13,13 @@ import type {
 } from "@featurevisor/types";
 
 import { conditionIsMatched } from "./conditions";
-import { Logger } from "./logger";
+import type { FeaturevisorDiagnosticReporter } from "./diagnostics";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
 export interface DatafileReaderOptions {
   datafile: DatafileContent;
-  logger: Logger;
+  reportDiagnostic: FeaturevisorDiagnosticReporter;
 }
 
 export interface ForceResult {
@@ -34,7 +34,7 @@ export class DatafileReader {
   private segments: Record<SegmentKey, Segment>;
   private features: Record<FeatureKey, Feature>;
 
-  private logger: Logger;
+  private reportDiagnostic: FeaturevisorDiagnosticReporter;
 
   // done to avoid creating new RegExp objects for the same regex string and flags.
   // kept here to avoid memory leaks.
@@ -42,9 +42,9 @@ export class DatafileReader {
   private regexCache: Record<string, RegExp>;
 
   constructor(options: DatafileReaderOptions) {
-    const { datafile, logger } = options;
+    const { datafile, reportDiagnostic } = options;
 
-    this.logger = logger;
+    this.reportDiagnostic = reportDiagnostic;
 
     this.schemaVersion = datafile.schemaVersion;
     this.revision = datafile.revision;
@@ -137,12 +137,13 @@ export class DatafileReader {
       try {
         return conditionIsMatched(conditions, context, getRegex);
       } catch (e) {
-        this.logger.warn(e.message, {
-          error: e,
-          details: {
-            condition: conditions,
-            context,
-          },
+        this.reportDiagnostic({
+          level: "warn",
+          code: "condition_match_error",
+          message: e.message,
+          originalError: e,
+          condition: conditions,
+          context,
         });
 
         return false;
@@ -307,11 +308,12 @@ export class DatafileReader {
     try {
       return JSON.parse(conditions);
     } catch (e) {
-      this.logger.error("Error parsing conditions", {
-        error: e,
-        details: {
-          conditions,
-        },
+      this.reportDiagnostic({
+        level: "error",
+        code: "conditions_parse_error",
+        message: "Error parsing conditions",
+        originalError: e,
+        conditions,
       });
 
       return conditions;

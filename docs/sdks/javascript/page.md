@@ -331,14 +331,15 @@ setTimeout(function () {
 }, interval)
 ```
 
-## Logging
+## Diagnostics
 
-By default, Featurevisor SDKs will print out logs to the console for `info` level and above.
+By default, Featurevisor SDKs report diagnostics to the console for `info` level and above with a `[Featurevisor]` prefix.
 
 ### Levels
 
-These are all the available log levels:
+These are all the available diagnostic levels:
 
+- `fatal`
 - `error`
 - `warn`
 - `info`
@@ -346,29 +347,19 @@ These are all the available log levels:
 
 ### Customizing levels
 
-If you choose `debug` level to make the logs more verbose, you can set it at the time of SDK initialization.
+If you choose `debug` level to make diagnostics more verbose, you can set it at the time of SDK initialization.
 
-Setting `debug` level will print out all logs, including `info`, `warn`, and `error` levels.
-
-```js
-import { createFeaturevisor, createLogger } from '@featurevisor/sdk'
-
-const f = createFeaturevisor({
-  logger: createLogger({
-    level: 'debug',
-  }),
-})
-```
-
-Alternatively, you can also set `logLevel` directly:
+Setting `debug` level will report all diagnostics, including `info`, `warn`, and `error` levels.
 
 ```js
+import { createFeaturevisor } from '@featurevisor/sdk'
+
 const f = createFeaturevisor({
   logLevel: 'debug',
 })
 ```
 
-You can also set log level from SDK instance afterwards:
+You can also update the diagnostic level from SDK instance afterwards:
 
 ```js
 f.setLogLevel('debug')
@@ -376,20 +367,27 @@ f.setLogLevel('debug')
 
 ### Handler
 
-You can also pass your own log handler, if you do not wish to print the logs to the console:
+You can pass your own diagnostic handler if you do not wish to print diagnostics to the console:
 
 ```js
 const f = createFeaturevisor({
-  logger: createLogger({
-    level: 'info',
-    handler: function (level, message, details) {
-      // do something with the log
-    },
-  }),
+  logLevel: 'info',
+  onDiagnostic: function (diagnostic) {
+    const {
+      level,
+      code,
+      message,
+      featureKey,
+      variableKey,
+      originalError,
+    } = diagnostic
+
+    // send to your observability system
+  },
 })
 ```
 
-Further log levels like `info` and `debug` will help you understand how the feature variations and variables are evaluated in the runtime against given context.
+Further diagnostic levels like `info` and `debug` will help you understand how feature variations and variables are evaluated in the runtime against a given context.
 
 ## Events
 
@@ -446,9 +444,17 @@ const unsubscribe = f.on("sticky_set", ({
 })
 ```
 
+### `error`
+
+```js
+const unsubscribe = f.on('error', ({ diagnostic }) => {
+  console.error(diagnostic.message, diagnostic)
+})
+```
+
 ## Evaluation details
 
-Besides logging with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given context:
+Besides diagnostics with debug level enabled, you can also get more details about how the feature variations and variables are evaluated in the runtime against given context:
 
 ```js
 // flag
@@ -478,22 +484,38 @@ And optionally these properties depending on whether you are evaluating a featur
 - `variableValue`: the variable value
 - `variableSchema`: the variable schema
 
-## Hooks
+## Modules
 
-Hooks allow you to intercept the evaluation process and customize it further as per your needs.
+Modules allow you to intercept the evaluation process and customize it further as per your needs.
 
-### Defining a hook
+### Defining a module
 
-A hook is a simple object with a unique required `name` and optional functions:
+A module is a simple object with an optional unique `name`, an optional `setup` lifecycle function, and optional evaluation callbacks:
 
 ```ts
-import { Hook } from "@featurevisor/sdk"
+import { FeaturevisorModule } from "@featurevisor/sdk"
 
-const myCustomHook: Hook = {
-  // only required property
-  name: 'my-custom-hook',
+const myCustomModule: FeaturevisorModule = {
+  name: 'my-custom-module',
 
-  // rest of the properties below are all optional per hook
+  setup: function ({ getRevision, onDiagnostic, reportDiagnostic }) {
+    const revision = getRevision()
+
+    onDiagnostic(
+      function (diagnostic) {
+        // modules can subscribe to diagnostics using their own log level
+      },
+      {
+        logLevel: 'warn',
+      },
+    )
+
+    reportDiagnostic({
+      level: 'info',
+      code: 'module_ready',
+      message: `Module ready for revision ${revision}`,
+    })
+  },
 
   // before evaluation
   before: function (options) {
@@ -501,8 +523,8 @@ const myCustomHook: Hook = {
       type, // `feature` | `variation` | `variable`
       featureKey,
       variableKey, // if type is `variable`
-      context
-    } options;
+      context,
+    } = options
     // update context before evaluation
     options.context = {
       ...options.context,
@@ -529,7 +551,7 @@ const myCustomHook: Hook = {
       context,
       bucketBy,
       bucketKey, // default bucket key
-    } = options;
+    } = options
     // return custom bucket key
     return bucketKey
   },
@@ -541,23 +563,27 @@ const myCustomHook: Hook = {
       context,
       bucketKey,
       bucketValue, // default bucket value
-    } = options;
+    } = options
     // return custom bucket value
     return bucketValue
+  },
+
+  close: function () {
+    // clean up resources when f.close() is called
   },
 }
 ```
 
-### Registering hooks
+### Registering modules
 
-You can register hooks at the time of SDK initialization:
+You can register modules at the time of SDK initialization:
 
 ```js
 import { createFeaturevisor } from '@featurevisor/sdk'
 
 const f = createFeaturevisor({
-  hooks: [
-    myCustomHook
+  modules: [
+    myCustomModule
   ],
 })
 ```
@@ -565,9 +591,11 @@ const f = createFeaturevisor({
 Or after initialization:
 
 ```js
-const removeHook = f.addHook(myCustomHook);
+const removeModule = f.addModule(myCustomModule)
 
-// removeHook()
+// removeModule()
+
+f.removeModule('my-custom-module')
 ```
 
 ## Child instance

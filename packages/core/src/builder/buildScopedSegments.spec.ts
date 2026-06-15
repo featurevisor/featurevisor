@@ -5,7 +5,7 @@ import {
   removeRedundantGroupSegments,
   buildScopedGroupSegments,
 } from "./buildScopedSegments";
-import { DatafileReader, createLogger } from "@featurevisor/sdk";
+import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
 describe("core: buildScopedSegments", function () {
   describe("buildScopedSegments", function () {
@@ -47,7 +47,7 @@ describe("core: buildScopedSegments", function () {
 
     const datafileReaderWithSegments = new DatafileReader({
       datafile: datafileWithSegments,
-      logger: createLogger({ level: "fatal" }),
+      reportDiagnostic: noopDiagnosticReporter,
     });
 
     test("buildScopedSegments is a function", function () {
@@ -937,7 +937,7 @@ describe("core: buildScopedSegments", function () {
 
     const datafileReaderWithSegments = new DatafileReader({
       datafile: datafileWithSegments,
-      logger: createLogger({ level: "fatal" }),
+      reportDiagnostic: noopDiagnosticReporter,
     });
 
     test("buildScopedGroupSegments is a function", function () {

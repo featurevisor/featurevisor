@@ -1,5 +1,5 @@
 import { DatafileReader } from "./datafileReader";
-import { createLogger } from "./logger";
+import { noopDiagnosticReporter } from "./diagnostics";
 
 import { getParamsForDatafileSetEvent, getParamsForStickySetEvent } from "./events";
 
@@ -42,9 +42,7 @@ describe("sdk: events", function () {
   });
 
   describe("getParamsForDatafileSetEvent", function () {
-    const logger = createLogger({
-      level: "error",
-    });
+    const reportDiagnostic = noopDiagnosticReporter;
 
     it("should get params for datafile set event: empty to new", function () {
       const previousDatafileReader = new DatafileReader({
@@ -54,7 +52,7 @@ describe("sdk: events", function () {
           features: {},
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
       const newDatafileReader = new DatafileReader({
         datafile: {
@@ -66,7 +64,7 @@ describe("sdk: events", function () {
           },
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
 
       const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader);
@@ -91,7 +89,7 @@ describe("sdk: events", function () {
           },
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
       const newDatafileReader = new DatafileReader({
         datafile: {
@@ -104,7 +102,7 @@ describe("sdk: events", function () {
           },
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
 
       const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader);
@@ -129,7 +127,7 @@ describe("sdk: events", function () {
           },
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
       const newDatafileReader = new DatafileReader({
         datafile: {
@@ -140,7 +138,7 @@ describe("sdk: events", function () {
           },
           segments: {},
         },
-        logger,
+        reportDiagnostic,
       });
 
       const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader, true);

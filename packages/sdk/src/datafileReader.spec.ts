@@ -1,7 +1,7 @@
 import type { DatafileContent, GroupSegment } from "@featurevisor/types";
 
 import { DatafileReader } from "./datafileReader";
-import { createLogger } from "./logger";
+import { noopDiagnosticReporter } from "./diagnostics";
 
 interface Group {
   key: string;
@@ -9,7 +9,7 @@ interface Group {
 }
 
 describe("sdk: DatafileReader", function () {
-  const logger = createLogger();
+  const reportDiagnostic = noopDiagnosticReporter;
 
   it("should be a function", function () {
     expect(typeof DatafileReader).toEqual("function");
@@ -82,7 +82,7 @@ describe("sdk: DatafileReader", function () {
 
     const reader = new DatafileReader({
       datafile: datafileJson,
-      logger,
+      reportDiagnostic,
     });
 
     expect(reader.getRevision()).toEqual("1");
@@ -265,7 +265,7 @@ describe("sdk: DatafileReader", function () {
 
     const datafileReader = new DatafileReader({
       datafile: datafileContent,
-      logger,
+      reportDiagnostic,
     });
 
     it("should match everyone", function () {

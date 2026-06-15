@@ -1,4 +1,4 @@
-export type EventName = "datafile_set" | "context_set" | "sticky_set";
+export type EventName = "datafile_set" | "context_set" | "sticky_set" | "error";
 
 export type EventDetails = Record<string, unknown>;
 

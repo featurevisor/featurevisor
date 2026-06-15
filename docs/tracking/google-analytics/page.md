@@ -39,7 +39,7 @@ The SDK integration snippet below provides a guide on how to push the `featurevi
 import { createFeaturevisor } from '@featurevisor/sdk'
 
 const f = createFeaturevisor({
-  hooks: [
+  modules: [
     {
       name: 'googleAnalytics',
 

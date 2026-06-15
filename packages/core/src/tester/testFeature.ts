@@ -8,7 +8,7 @@ import type {
 import {
   createFeaturevisor,
   Featurevisor,
-  LogLevel,
+  FeaturevisorLogLevel,
   MAX_BUCKETED_NUMBER,
   OverrideOptions,
 } from "@featurevisor/sdk";
@@ -72,7 +72,7 @@ export async function testFeature(
       console.log("");
     }
 
-    let logLevel: LogLevel = "warn";
+    let logLevel: FeaturevisorLogLevel = "warn";
     if (options.verbose) {
       logLevel = "debug";
     } else if (options.quiet) {
@@ -82,7 +82,7 @@ export async function testFeature(
     const sdk: Featurevisor = createFeaturevisor({
       datafile: datafileContent as DatafileContent,
       sticky: assertion.sticky ? assertion.sticky : {},
-      hooks: [
+      modules: [
         {
           name: "tester",
           bucketValue: ({ bucketValue }) => {

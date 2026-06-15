@@ -1,17 +1,17 @@
 # Activation tracking (analytics)
 
-Featurevisor itself is not an analytics platform. To measure experiments you wire the SDK's **`hooks` API** to your existing analytics pipeline (GA4 + GTM, Segment, Amplitude, Snowplow, your own warehouse, etc.).
+Featurevisor itself is not an analytics platform. To measure experiments you wire the SDK's **`modules` API** to your existing analytics pipeline (GA4 + GTM, Segment, Amplitude, Snowplow, your own warehouse, etc.).
 
 Full docs:
 
-- Hooks API: <https://featurevisor.com/docs/sdks/javascript> (search "hooks")
+- Modules API: <https://featurevisor.com/docs/sdks/javascript> (search "modules")
 - GTM / GA4 recipe: <https://featurevisor.com/docs/tracking/google-analytics>
 
 ## What "activation" means
 
-When a user is evaluated as bucketed into a variation, that's an **activation**. The hook fires after each evaluation; you decide what to push downstream.
+When a user is evaluated as bucketed into a variation, that's an **activation**. The module runs after each evaluation; you decide what to push downstream.
 
-## Minimal hook (vendor-agnostic)
+## Minimal module (vendor-agnostic)
 
 ```js
 import { createFeaturevisor } from '@featurevisor/sdk'
@@ -19,7 +19,7 @@ import { createFeaturevisor } from '@featurevisor/sdk'
 const f = createFeaturevisor({
   datafile,
 
-  hooks: [
+  modules: [
     {
       name: 'analyticsActivation',
 
@@ -51,7 +51,7 @@ const f = createFeaturevisor({
 1. In GTM, create a GA4 Event tag with event name `featurevisor_activation`.
 2. Register `featureKey` and `variationValue` as Event Parameters (or User Properties, your call).
 3. Trigger the tag on a Custom Event matching the `dataLayer` event name (`featurevisorActivation`, camelCase).
-4. Use the hook above, swapping `yourAnalytics.track(...)` for:
+4. Use the module above, swapping `yourAnalytics.track(...)` for:
 
 ```js
 window.dataLayer.push({
@@ -75,5 +75,5 @@ Tracking is application-side. Authoring affects what _can_ be tracked:
 ## When the user asks
 
 - "How do I measure my A/B test?" → point at this file + the experiments recipe in [recipes.md](recipes.md).
-- "How do I send to <vendor>?" → vendor-agnostic shape above; the hook fires, you bridge.
+- "How do I send to <vendor>?" → vendor-agnostic shape above; the module runs, you bridge.
 - "Is Featurevisor an analytics tool?" → no, it's a feature-management tool. Activation events flow into whatever you already use.

@@ -1,7 +1,6 @@
 import type { DatafileContent } from "@featurevisor/types";
 
 import { createFeaturevisor } from "./instance";
-import { createLogger } from "./logger";
 
 function createTestFeature(hash: string) {
   return {
@@ -170,12 +169,10 @@ describe("sdk: instance", function () {
   });
 
   it("should ignore invalid datafile input without emitting event", function () {
-    const logs: any[] = [];
+    const diagnostics: any[] = [];
     const sdk = createFeaturevisor({
-      logger: createLogger({
-        level: "error",
-        handler: (level, message, details) => logs.push({ level, message, details }),
-      }),
+      logLevel: "error",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
       datafile: createTestDatafile({
         revision: "1",
         features: {
@@ -192,10 +189,190 @@ describe("sdk: instance", function () {
     expect(sdk.getRevision()).toEqual("1");
     expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
     expect(events).toEqual([]);
-    expect(logs).toEqual([
-      expect.objectContaining({ level: "error", message: "could not parse datafile" }),
-      expect.objectContaining({ level: "error", message: "could not parse datafile" }),
+    expect(diagnostics).toEqual([
+      expect.objectContaining({ level: "error", code: "invalid_datafile" }),
+      expect.objectContaining({ level: "error", code: "invalid_datafile" }),
     ]);
+  });
+
+  it("should filter diagnostics by instance logLevel", function () {
+    const diagnostics: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "warn",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      datafile: createTestDatafile(),
+    });
+
+    sdk.isEnabled("missingFeature");
+
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["feature_not_found"]);
+  });
+
+  it("should log diagnostics to console when no handler is provided", function () {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const sdk = createFeaturevisor({
+      logLevel: "warn",
+      datafile: createTestDatafile(),
+    });
+
+    sdk.isEnabled("missingFeature");
+
+    expect(warn).toHaveBeenCalledWith(
+      "[Featurevisor]",
+      "Feature not found",
+      expect.objectContaining({ code: "feature_not_found" }),
+    );
+
+    warn.mockRestore();
+  });
+
+  it("should emit error events for error-level diagnostics", function () {
+    const errors: any[] = [];
+    const sdk = createFeaturevisor({ logLevel: "fatal" });
+
+    sdk.on("error", (event) => errors.push(event));
+    sdk.setDatafile("{not json");
+
+    expect(errors).toEqual([
+      expect.objectContaining({
+        diagnostic: expect.objectContaining({ code: "invalid_datafile", level: "error" }),
+      }),
+    ]);
+  });
+
+  it("should run modules and allow removing named modules", function () {
+    const calls: string[] = [];
+    const module = {
+      name: "unit-test",
+      setup() {
+        calls.push("setup");
+      },
+      before(options) {
+        calls.push("before");
+        return {
+          ...options,
+          context: {
+            ...options.context,
+            userId: "123",
+          },
+        };
+      },
+      bucketKey({ bucketKey }) {
+        calls.push("bucketKey");
+        return bucketKey;
+      },
+      bucketValue({ bucketValue }) {
+        calls.push("bucketValue");
+        return bucketValue;
+      },
+      after(evaluation) {
+        calls.push("after");
+        return evaluation;
+      },
+    };
+
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createTestDatafile({
+        features: {
+          test: createTestFeature("test"),
+        },
+      }),
+      modules: [module],
+    });
+
+    expect(sdk.isEnabled("test")).toEqual(true);
+    sdk.removeModule("unit-test");
+    expect(sdk.isEnabled("test")).toEqual(true);
+
+    expect(calls).toEqual(["setup", "before", "bucketKey", "bucketValue", "after"]);
+  });
+
+  it("should reject duplicate named modules with a diagnostic", function () {
+    const diagnostics: any[] = [];
+
+    createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      modules: [{ name: "duplicate" }, { name: "duplicate" }],
+    });
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: "duplicate_module",
+        level: "error",
+        moduleName: "duplicate",
+      }),
+    ]);
+  });
+
+  it("should let modules subscribe to and report diagnostics", function () {
+    const instanceDiagnostics: any[] = [];
+    const subscriberDiagnostics: any[] = [];
+    const selfDiagnostics: any[] = [];
+
+    createFeaturevisor({
+      logLevel: "fatal",
+      onDiagnostic: (diagnostic) => instanceDiagnostics.push(diagnostic),
+      modules: [
+        {
+          name: "subscriber",
+          setup({ onDiagnostic }) {
+            onDiagnostic((diagnostic) => subscriberDiagnostics.push(diagnostic), {
+              logLevel: "debug",
+            });
+          },
+        },
+        {
+          name: "self-reporter",
+          setup({ onDiagnostic, reportDiagnostic }) {
+            onDiagnostic((diagnostic) => selfDiagnostics.push(diagnostic), {
+              logLevel: "debug",
+            });
+
+            reportDiagnostic({
+              level: "warn",
+              code: "module_warning",
+              message: "Module warning",
+            });
+          },
+        },
+      ],
+    });
+
+    expect(instanceDiagnostics).toEqual([]);
+    expect(
+      subscriberDiagnostics.filter((diagnostic) => diagnostic.code === "module_warning"),
+    ).toEqual([expect.objectContaining({ code: "module_warning", module: "self-reporter" })]);
+    expect(selfDiagnostics.filter((diagnostic) => diagnostic.code === "module_warning")).toEqual(
+      [],
+    );
+  });
+
+  it("should close modules and ignore later mutations", async function () {
+    const calls: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "closer",
+          close() {
+            calls.push("close");
+          },
+        },
+      ],
+    });
+
+    await sdk.close();
+    sdk.addModule({
+      name: "late",
+      setup() {
+        calls.push("late");
+      },
+    });
+    sdk.setContext({ plan: "pro" });
+
+    expect(calls).toEqual(["close"]);
   });
 
   it("should configure plain bucketBy", function () {
@@ -225,7 +402,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -274,7 +451,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -323,7 +500,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -357,7 +534,7 @@ describe("sdk: instance", function () {
     expect(capturedBucketKey).toEqual("456.test");
   });
 
-  it("should intercept context: before hook", function () {
+  it("should intercept context: before module", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
@@ -386,7 +563,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           before: (options) => {
@@ -412,7 +589,7 @@ describe("sdk: instance", function () {
     expect(interceptedVariableKey).toEqual(undefined);
   });
 
-  it("should intercept value: after hook", function () {
+  it("should intercept value: after module", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
@@ -441,7 +618,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           after: (options) => {
@@ -760,13 +937,12 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      logger: createLogger({
-        handler: function (level, message) {
-          if (level === "warn" && message.indexOf("is deprecated")) {
-            deprecatedCount += 1;
-          }
-        },
-      }),
+      logLevel: "warn",
+      onDiagnostic: function (diagnostic) {
+        if (diagnostic.level === "warn" && diagnostic.code === "deprecated_feature") {
+          deprecatedCount += 1;
+        }
+      },
     });
 
     const testVariation = sdk.getVariation("test", {
@@ -830,7 +1006,7 @@ describe("sdk: instance", function () {
     let bucketValue = 10000;
 
     const sdk = createFeaturevisor({
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketValue: function () {

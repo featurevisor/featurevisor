@@ -5,7 +5,7 @@ import {
   removeRedundantConditions,
   buildScopedConditions,
 } from "./buildScopedConditions";
-import { DatafileReader, createLogger } from "@featurevisor/sdk";
+import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
 describe("core: buildScopedConditions", function () {
   const emptyDatafile: DatafileContent = {
@@ -17,7 +17,7 @@ describe("core: buildScopedConditions", function () {
 
   const datafileReader = new DatafileReader({
     datafile: emptyDatafile,
-    logger: createLogger({ level: "fatal" }),
+    reportDiagnostic: noopDiagnosticReporter,
   });
 
   describe("buildScopedConditions (plural)", function () {

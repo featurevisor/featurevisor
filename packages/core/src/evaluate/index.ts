@@ -1,12 +1,5 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
-import {
-  Evaluation,
-  createFeaturevisor,
-  createLogger,
-  LogLevel,
-  LogMessage,
-  LogDetails,
-} from "@featurevisor/sdk";
+import { Evaluation, createFeaturevisor, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
 import { SCHEMA_VERSION } from "../config";
@@ -44,10 +37,13 @@ function printEvaluationDetails(evaluation: Evaluation) {
   }
 }
 
-function printLogs(logs: Log[]) {
-  logs.forEach((log) => {
-    const levelColor = log.level === "error" ? 31 : log.level === "warn" ? 33 : 2;
-    console.log(`${colorize(`[${log.level}]`, levelColor)} ${log.message}`, log.details);
+function printDiagnostics(diagnostics: FeaturevisorDiagnostic[]) {
+  diagnostics.forEach((diagnostic) => {
+    const levelColor = diagnostic.level === "error" ? 31 : diagnostic.level === "warn" ? 33 : 2;
+    console.log(
+      `${colorize(`[${diagnostic.level}]`, levelColor)} ${diagnostic.message}`,
+      diagnostic,
+    );
     console.log("");
   });
 }
@@ -69,12 +65,6 @@ export interface EvaluateOptions {
   inflate?: number;
 }
 
-export interface Log {
-  level: LogLevel;
-  message: LogMessage;
-  details?: LogDetails;
-}
-
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
   const { datasource, projectConfig } = deps;
 
@@ -91,31 +81,23 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     existingState,
   );
 
-  let logs: Log[] = [];
+  let diagnostics: FeaturevisorDiagnostic[] = [];
   const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
-    logger: createLogger({
-      level: "debug",
-      handler: (level, message, details) => {
-        logs.push({
-          level,
-          message,
-          details,
-        });
-      },
-    }),
+    logLevel: "debug",
+    onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
   });
 
   const flagEvaluation = f.evaluateFlag(options.feature, options.context as Context);
-  const flagEvaluationLogs = [...logs];
-  logs = [];
+  const flagEvaluationDiagnostics = [...diagnostics];
+  diagnostics = [];
 
   const variationEvaluation = f.evaluateVariation(options.feature, options.context as Context);
-  const variationEvaluationLogs = [...logs];
-  logs = [];
+  const variationEvaluationDiagnostics = [...diagnostics];
+  diagnostics = [];
 
   const variableEvaluations: Record<string, Evaluation> = {};
-  const variableEvaluationLogs: Record<string, Log[]> = {};
+  const variableEvaluationDiagnostics: Record<string, FeaturevisorDiagnostic[]> = {};
 
   const feature = f.getFeature(options.feature);
   if (feature?.variablesSchema) {
@@ -130,8 +112,8 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
         options.context as Context,
       );
 
-      variableEvaluationLogs[variableKey] = [...logs];
-      logs = [];
+      variableEvaluationDiagnostics[variableKey] = [...diagnostics];
+      diagnostics = [];
 
       variableEvaluations[variableKey] = variableEvaluation;
     });
@@ -161,7 +143,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   printHeader("Is enabled?");
 
   if (options.verbose) {
-    printLogs(flagEvaluationLogs);
+    printDiagnostics(flagEvaluationDiagnostics);
   }
 
   console.log(
@@ -177,7 +159,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
   if (feature?.variations) {
     if (options.verbose) {
-      printLogs(variationEvaluationLogs);
+      printDiagnostics(variationEvaluationDiagnostics);
     }
 
     console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(variationEvaluation.variation?.value)}`);
@@ -194,7 +176,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
       printHeader(`Variable: ${key}`);
 
       if (options.verbose) {
-        printLogs(variableEvaluationLogs[key]);
+        printDiagnostics(variableEvaluationDiagnostics[key]);
       }
 
       const variableValue =

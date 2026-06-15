@@ -1,10 +1,10 @@
 import type { Condition } from "@featurevisor/types";
 
-import { createLogger } from "./logger";
+import { noopDiagnosticReporter } from "./diagnostics";
 import { DatafileReader } from "./datafileReader";
 
 describe("sdk: Conditions", function () {
-  const logger = createLogger();
+  const reportDiagnostic = noopDiagnosticReporter;
   const datafileReader = new DatafileReader({
     datafile: {
       schemaVersion: "2.0",
@@ -12,7 +12,7 @@ describe("sdk: Conditions", function () {
       segments: {},
       features: {},
     },
-    logger,
+    reportDiagnostic,
   });
 
   it("should be a function", function () {

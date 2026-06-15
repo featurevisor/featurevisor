@@ -296,7 +296,7 @@ We understood how to create features for defining simple A/B tests and also more
 
 But we also need to track the performance of our experiments to understand which variation is doing better than others.
 
-This is where [hooks API](/docs/sdks/javascript/#hooks) come in handy. Featurevisor SDK provides a way to register hooks that can be used to intercept the evaluation process and perform custom actions:
+This is where [modules API](/docs/sdks/javascript/#modules) comes in handy. Featurevisor SDK provides a way to register modules that can intercept the evaluation process and perform custom actions:
 
 ```js {% path="your-app/index.js" %}
 import { createFeaturevisor } from '@featurevisor/sdk'
@@ -304,11 +304,11 @@ import { createFeaturevisor } from '@featurevisor/sdk'
 const f = createFeaturevisor({
   datafile: '...',
 
-  hooks: [
+  modules: [
     {
-      name: 'trackActivationsHook',
+      name: 'trackActivationsModule',
 
-      // this hook will be called after each variation evaluation
+      // this module will be called after each variation evaluation
       after: function (evaluation) {
         const { reason, type, featureKey, variationValue } = evaluation;
 

@@ -1,5 +1,5 @@
 import { DatafileContent, Context, Traffic } from "@featurevisor/types";
-import { DatafileReader, createLogger } from "@featurevisor/sdk";
+import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
 import { buildScopedConditions } from "./buildScopedConditions";
 import { buildScopedSegments } from "./buildScopedSegments";
@@ -27,7 +27,7 @@ export function buildScopedDatafile(
 ): DatafileContent {
   const originalDatafileReader = new DatafileReader({
     datafile: originalDatafileContent,
-    logger: createLogger({ level: "fatal" }),
+    reportDiagnostic: noopDiagnosticReporter,
   });
 
   const scopedDatafileContent: DatafileContent = JSON.parse(
