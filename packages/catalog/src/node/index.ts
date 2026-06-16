@@ -1,3 +1,4 @@
+import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as http from "http";
 import * as path from "path";
@@ -94,10 +95,13 @@ interface CatalogDevSession {
   devEditors: DevEditor[];
   historyIndex: CatalogHistoryIndex;
   links: CatalogManifest["links"];
+  repositoryRootDirectoryPath: string;
+  repositorySourceRootDirectoryPath: string;
 }
 
 interface CatalogBuildContext {
   rootDirectoryPath: string;
+  repositorySourceRootDirectoryPath: string;
   outputDirectoryPath: string;
   dataDirectoryPath: string;
   historyIndex: CatalogHistoryIndex;
@@ -127,11 +131,18 @@ type RelationshipMaps = {
   segmentsUsedInFeatures: Record<string, Set<string>>;
   attributesUsedInFeatures: Record<string, Set<string>>;
   attributesUsedInSegments: Record<string, Set<string>>;
+  segmentTargets: Record<string, Set<string>>;
+  attributeTargets: Record<string, Set<string>>;
   groupsUsedInFeatures: Record<string, Set<string>>;
   schemasUsedInFeatures: Record<string, Set<string>>;
   segmentTests: Record<string, Set<string>>;
   targetFeatures: Record<string, Set<string>>;
 };
+
+interface SourceFileInfo {
+  sourcePath: string;
+  absolutePath: string;
+}
 
 class CatalogJsonWriter {
   async write(filePath: string, value: unknown) {
@@ -232,6 +243,25 @@ class CatalogProgressReporter {
 
 function encodeKey(key: string) {
   return encodeURIComponent(key);
+}
+
+function toPosixPath(value: string) {
+  return value.split(path.sep).join("/");
+}
+
+function getRealPath(value: string) {
+  try {
+    return fs.realpathSync.native(value);
+  } catch {
+    return value;
+  }
+}
+
+function runGit(rootDirectoryPath: string, args: string[]) {
+  return childProcess.execFileSync("git", ["-C", rootDirectoryPath, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
 }
 
 async function readAll<T>(keys: string[], read: (key: string) => Promise<T>) {
@@ -489,7 +519,7 @@ async function writeHistoryPages(
   }
 }
 
-function getEntitySourcePath(
+function getEntityFilePath(
   projectConfig: any,
   datasource: any,
   type: CatalogEntityType,
@@ -509,21 +539,225 @@ function getEntitySourcePath(
   return path.join(directoryByType[type], `${filePath}.${datasource.getExtension()}`);
 }
 
-function createEditLinks(filePath: string, devEditors: DevEditor[]) {
-  const result: EntityDetail["editLinks"] = {};
+function getSourceFileInfo(
+  repositorySourceRootDirectoryPath: string,
+  projectConfig: any,
+  datasource: any,
+  type: CatalogEntityType,
+  key: string,
+  options: { resolveAbsolutePath?: boolean } = {},
+): SourceFileInfo {
+  const filePath = path.resolve(getEntityFilePath(projectConfig, datasource, type, key));
+  const absolutePath = options.resolveAbsolutePath ? getRealPath(filePath) : filePath;
 
-  for (const editor of devEditors) {
-    result[editor.id] = `${editor.id}://file/${filePath}`;
+  return {
+    sourcePath: toPosixPath(path.relative(repositorySourceRootDirectoryPath, filePath)),
+    absolutePath,
+  };
+}
+
+function isExecutableFile(filePath: string) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) {
+      return false;
+    }
+
+    if (process.platform === "win32") {
+      return true;
+    }
+
+    fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasCommandInPath(command: string) {
+  const pathEntries = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  const extensions =
+    process.platform === "win32"
+      ? (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean)
+      : [""];
+
+  return pathEntries.some((entry) =>
+    extensions.some((extension) => isExecutableFile(path.join(entry, `${command}${extension}`))),
+  );
+}
+
+function hasKnownEditorInstall(editor: DevEditor["id"]) {
+  if (hasCommandInPath(editor === "cursor" ? "cursor" : "code")) {
+    return true;
   }
 
-  return result;
+  if (process.platform === "darwin") {
+    const appName = editor === "cursor" ? "Cursor.app" : "Visual Studio Code.app";
+
+    return [
+      path.join("/Applications", appName),
+      path.join(process.env.HOME || "", "Applications", appName),
+    ].some((appPath) => fs.existsSync(appPath));
+  }
+
+  if (process.platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA || "";
+    const programFiles = process.env.ProgramFiles || "";
+    const programFilesX86 = process.env["ProgramFiles(x86)"] || "";
+    const candidates =
+      editor === "cursor"
+        ? [
+            path.join(localAppData, "Programs", "Cursor", "Cursor.exe"),
+            path.join(programFiles, "Cursor", "Cursor.exe"),
+            path.join(programFilesX86, "Cursor", "Cursor.exe"),
+          ]
+        : [
+            path.join(localAppData, "Programs", "Microsoft VS Code", "Code.exe"),
+            path.join(programFiles, "Microsoft VS Code", "Code.exe"),
+            path.join(programFilesX86, "Microsoft VS Code", "Code.exe"),
+          ];
+
+    return candidates.some((candidate) => fs.existsSync(candidate));
+  }
+
+  return false;
 }
 
 function detectDevEditors(): DevEditor[] {
-  return [
-    { id: "vscode", label: "VS Code", icon: "vscode" },
-    { id: "cursor", label: "Cursor", icon: "cursor" },
-  ];
+  const editors: DevEditor[] = [];
+
+  if (hasKnownEditorInstall("cursor")) {
+    editors.push({ id: "cursor", label: "Cursor", icon: "cursor" });
+  }
+
+  if (hasKnownEditorInstall("vscode")) {
+    editors.push({ id: "vscode", label: "VS Code", icon: "vscode" });
+  }
+
+  return editors;
+}
+
+function encodeEditorPath(filePath: string) {
+  return encodeURI(filePath.split(path.sep).join("/")).replace(/#/g, "%23").replace(/\?/g, "%3F");
+}
+
+function getEditorUri(editor: DevEditor["id"], filePath: string) {
+  return `${editor === "cursor" ? "cursor" : "vscode"}://file/${encodeEditorPath(filePath)}`;
+}
+
+function getEditorLinks(editors: DevEditor[], sourceFileInfo: SourceFileInfo) {
+  if (editors.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(
+    editors.map((editor) => [editor.id, getEditorUri(editor.id, sourceFileInfo.absolutePath)]),
+  );
+}
+
+function getCurrentBranch(rootDirectoryPath: string) {
+  try {
+    return runGit(rootDirectoryPath, ["symbolic-ref", "--short", "HEAD"]).trim() || "HEAD";
+  } catch {
+    return "HEAD";
+  }
+}
+
+function getRepositoryRootDirectoryPath(rootDirectoryPath: string) {
+  try {
+    return (
+      getRealPath(runGit(rootDirectoryPath, ["rev-parse", "--show-toplevel"]).trim()) ||
+      getRealPath(rootDirectoryPath)
+    );
+  } catch {
+    return getRealPath(rootDirectoryPath);
+  }
+}
+
+function getRepositorySourceRootDirectoryPath(rootDirectoryPath: string) {
+  try {
+    const gitRootDirectoryPath =
+      runGit(rootDirectoryPath, ["rev-parse", "--show-toplevel"]).trim() || rootDirectoryPath;
+    const realRootDirectoryPath = getRealPath(rootDirectoryPath);
+
+    if (realRootDirectoryPath !== rootDirectoryPath) {
+      return path.resolve(
+        rootDirectoryPath,
+        path.relative(realRootDirectoryPath, gitRootDirectoryPath),
+      );
+    }
+
+    return gitRootDirectoryPath;
+  } catch {
+    return rootDirectoryPath;
+  }
+}
+
+function getOwnerAndRepoFromGitRemote(origin: string, host: string) {
+  const escapedHost = host.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  const match = origin.match(new RegExp(`${escapedHost}[:/]([^/]+)/(.+?)(?:\\.git)?$`));
+
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    owner: match[1],
+    repo: match[2],
+  };
+}
+
+function getRepoLinks(rootDirectoryPath: string): CatalogManifest["links"] {
+  try {
+    const origin = runGit(rootDirectoryPath, ["config", "--get", "remote.origin.url"]).trim();
+    const branch = encodeURI(getCurrentBranch(rootDirectoryPath));
+    const providers: Record<
+      NonNullable<CatalogManifest["links"]>["provider"],
+      {
+        host: string;
+        repository: (owner: string, repo: string) => string;
+        source: (owner: string, repo: string) => string;
+        commit: (owner: string, repo: string) => string;
+      }
+    > = {
+      github: {
+        host: "github.com",
+        repository: (owner, repo) => `https://github.com/${owner}/${repo}`,
+        source: (owner, repo) => `https://github.com/${owner}/${repo}/blob/${branch}/{{path}}`,
+        commit: (owner, repo) => `https://github.com/${owner}/${repo}/commit/{{hash}}`,
+      },
+      gitlab: {
+        host: "gitlab.com",
+        repository: (owner, repo) => `https://gitlab.com/${owner}/${repo}`,
+        source: (owner, repo) => `https://gitlab.com/${owner}/${repo}/-/blob/${branch}/{{path}}`,
+        commit: (owner, repo) => `https://gitlab.com/${owner}/${repo}/-/commit/{{hash}}`,
+      },
+      bitbucket: {
+        host: "bitbucket.org",
+        repository: (owner, repo) => `https://bitbucket.org/${owner}/${repo}`,
+        source: (owner, repo) => `https://bitbucket.org/${owner}/${repo}/src/${branch}/{{path}}`,
+        commit: (owner, repo) => `https://bitbucket.org/${owner}/${repo}/commits/{{hash}}`,
+      },
+    };
+
+    for (const provider of Object.keys(providers) as Array<
+      NonNullable<CatalogManifest["links"]>["provider"]
+    >) {
+      const config = providers[provider];
+      const details = getOwnerAndRepoFromGitRemote(origin, config.host);
+
+      if (details) {
+        return {
+          provider,
+          repository: config.repository(details.owner, details.repo),
+          source: config.source(details.owner, details.repo),
+          commit: config.commit(details.owner, details.repo),
+        };
+      }
+    }
+  } catch {
+    return undefined;
+  }
 }
 
 function buildRelationships(maps: EntityMaps): RelationshipMaps {
@@ -538,6 +772,8 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     segmentsUsedInFeatures: {},
     attributesUsedInFeatures: {},
     attributesUsedInSegments: {},
+    segmentTargets: {},
+    attributeTargets: {},
     groupsUsedInFeatures: {},
     schemasUsedInFeatures: {},
     segmentTests: {},
@@ -557,6 +793,10 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
 
     for (const rule of getFeatureRules(feature)) {
       collectSegmentKeys(rule.segments, segments);
+      collectAttributeKeysFromConditions(
+        (rule as { conditions?: Condition | Condition[] | "*" }).conditions,
+        attributes,
+      );
     }
 
     for (const force of getFeatureForce(feature)) {
@@ -616,6 +856,25 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     }
   }
 
+  for (const [featureKey, targetKeys] of Object.entries(relationships.featureTargets)) {
+    for (const targetKey of targetKeys) {
+      for (const segmentKey of relationships.featureSegments[featureKey] || []) {
+        addToSet(relationships.segmentTargets, segmentKey, targetKey);
+
+        const segmentAttributes = new Set<string>();
+        collectAttributeKeysFromConditions(maps.segment[segmentKey]?.conditions, segmentAttributes);
+
+        for (const attributeKey of segmentAttributes) {
+          addToSet(relationships.attributeTargets, attributeKey, targetKey);
+        }
+      }
+
+      for (const attributeKey of relationships.featureAttributes[featureKey] || []) {
+        addToSet(relationships.attributeTargets, attributeKey, targetKey);
+      }
+    }
+  }
+
   for (const [testKey, test] of Object.entries(maps.test)) {
     if ("feature" in test) {
       addToSet(relationships.featureTests, test.feature, testKey);
@@ -651,6 +910,7 @@ function getEntityRelationships(
       features: sortSet(relationships.segmentsUsedInFeatures[key]),
       tests: sortSet(relationships.segmentTests[key]),
       attributes: sortSet(relationships.attributesUsedInSegments[key]),
+      targets: sortSet(relationships.segmentTargets[key]),
     };
   }
 
@@ -658,6 +918,7 @@ function getEntityRelationships(
     return {
       features: sortSet(relationships.attributesUsedInFeatures[key]),
       segments: sortSet(relationships.attributesUsedInSegments[key]),
+      targets: sortSet(relationships.attributeTargets[key]),
     };
   }
 
@@ -773,15 +1034,22 @@ async function buildSetCatalog(
   for (const plan of entityPlan) {
     for (const key of plan.keys) {
       const entity = plan.entities[key];
-      const sourcePath = getEntitySourcePath(projectConfig, datasource, plan.type, key);
+      const sourceFileInfo = getSourceFileInfo(
+        context.repositorySourceRootDirectoryPath,
+        projectConfig,
+        datasource,
+        plan.type,
+        key,
+        { resolveAbsolutePath: context.devEditors.length > 0 },
+      );
       const lastModified = getLastModified(context.historyIndex, plan.type, key, set);
       const entityRelationships = getEntityRelationships(plan.type, key, relationships);
       const detail: EntityDetail = {
         type: plan.type,
         key,
         entity,
-        sourcePath,
-        editLinks: createEditLinks(sourcePath, context.devEditors),
+        sourcePath: sourceFileInfo.sourcePath,
+        editLinks: getEditorLinks(context.devEditors, sourceFileInfo),
         lastModified,
         relationships: entityRelationships,
         environments: projectConfig.environments,
@@ -812,9 +1080,11 @@ async function buildSetCatalog(
           targets:
             plan.type === "feature"
               ? sortSet(relationships.featureTargets[key])
-              : plan.type === "target"
-                ? sortSet(relationships.targetFeatures[key])
-                : undefined,
+              : plan.type === "segment"
+                ? sortSet(relationships.segmentTargets[key])
+                : plan.type === "attribute"
+                  ? sortSet(relationships.attributeTargets[key])
+                  : undefined,
           environments: projectConfig.environments,
         }),
       );
@@ -880,6 +1150,17 @@ export async function exportCatalog(
   const devEditors = options.dev
     ? options.devSession?.devEditors || options.devEditors || detectDevEditors()
     : [];
+
+  stepStartedAt = progress.step("Resolving repository links");
+  const repositoryRootDirectoryPath =
+    options.devSession?.repositoryRootDirectoryPath ||
+    getRepositoryRootDirectoryPath(rootDirectoryPath);
+  const repositorySourceRootDirectoryPath =
+    options.devSession?.repositorySourceRootDirectoryPath ||
+    getRepositorySourceRootDirectoryPath(rootDirectoryPath);
+  const links = options.devSession?.links || getRepoLinks(repositoryRootDirectoryPath);
+  progress.done(stepStartedAt, links?.repository ? `(${links.repository})` : "(none)");
+
   stepStartedAt = progress.step("Reading Git history");
   const historyIndex =
     options.devSession?.historyIndex || (await getGitHistoryIndex(projectConfig, datasource));
@@ -887,6 +1168,7 @@ export async function exportCatalog(
 
   const context: CatalogBuildContext = {
     rootDirectoryPath,
+    repositorySourceRootDirectoryPath,
     outputDirectoryPath,
     dataDirectoryPath,
     historyIndex,
@@ -936,6 +1218,7 @@ export async function exportCatalog(
       environments: projectConfig.environments,
     },
     dev: options.dev ? { editors: devEditors } : undefined,
+    links,
     paths: {
       projectHistory: "data/project/history/page-1.json",
       root: projectConfig.sets ? undefined : "data/root/index.json",
@@ -1264,12 +1547,16 @@ export async function createCatalogDevSession(
   const outputDirectoryPath = options.outDir
     ? path.resolve(rootDirectoryPath, options.outDir)
     : projectConfig.catalogDirectoryPath;
+  const repositoryRootDirectoryPath = getRepositoryRootDirectoryPath(rootDirectoryPath);
+  const repositorySourceRootDirectoryPath = getRepositorySourceRootDirectoryPath(rootDirectoryPath);
 
   return {
     outputDirectoryPath,
     devEditors: options.devEditors || detectDevEditors(),
     historyIndex: await getGitHistoryIndex(projectConfig, datasource),
-    links: undefined,
+    links: getRepoLinks(repositoryRootDirectoryPath),
+    repositoryRootDirectoryPath,
+    repositorySourceRootDirectoryPath,
   };
 }
 

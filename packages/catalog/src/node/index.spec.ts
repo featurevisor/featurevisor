@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as childProcess from "child_process";
 
 import { exportCatalog, type CatalogRuntime } from ".";
 
@@ -45,7 +46,15 @@ function createDatasource(set = "") {
       tags: ["web", "premium"],
       bucketBy: "userId",
       rules: {
-        staging: [{ key: "rule", segments: segmentKey, percentage: 100, enabled: true }],
+        staging: [
+          {
+            key: "rule",
+            segments: segmentKey,
+            conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+            percentage: 100,
+            enabled: true,
+          },
+        ],
         production: [],
       },
     }),
@@ -55,8 +64,12 @@ function createDatasource(set = "") {
       description: "Premium users",
       conditions: [{ attribute: "plan", operator: "equals", value: "premium" }],
     }),
-    listAttributes: async () => ["plan"],
-    readAttribute: async () => ({ key: "plan", type: "string", description: "Plan" }),
+    listAttributes: async () => ["plan", "country"],
+    readAttribute: async (key: string) => ({
+      key,
+      type: "string",
+      description: key === "plan" ? "Plan" : "Country",
+    }),
     listTargets: async () => ["premiumWeb", "mobile"],
     readTarget: async (key: string) =>
       key === "premiumWeb"
@@ -96,6 +109,13 @@ function createRuntime(): CatalogRuntime {
   };
 }
 
+function git(root: string, args: string[]) {
+  childProcess.execFileSync("git", ["-C", root, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+}
+
 describe("catalog export", () => {
   it("writes manifest, index, and feature detail for a root project", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
@@ -120,8 +140,16 @@ describe("catalog export", () => {
     expect(manifest.sets).toBe(false);
     expect(index.counts.feature).toBe(1);
     expect(index.entities.feature[0].targets).toEqual(["premiumWeb"]);
+    expect(index.entities.segment[0].targets).toEqual(["premiumWeb"]);
+    expect(
+      index.entities.attribute.find((entity: any) => entity.key === "country").targets,
+    ).toEqual(["premiumWeb"]);
+    expect(index.entities.attribute.find((entity: any) => entity.key === "plan").targets).toEqual([
+      "premiumWeb",
+    ]);
     expect(detail.relationships).toMatchObject({
       segments: ["premiumUsers"],
+      attributes: ["country"],
       targets: ["premiumWeb"],
       tests: ["checkout"],
     });
@@ -160,5 +188,39 @@ describe("catalog export", () => {
         ),
       ),
     ).toBe(true);
+  });
+
+  it("exports repository source links and dev editor links", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+
+    git(root, ["init"]);
+    git(root, ["checkout", "-b", "catalog-test"]);
+    git(root, ["remote", "add", "origin", "git@github.com:featurevisor/featurevisor.git"]);
+
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), createDatasource(), {
+      copyAssets: false,
+      dev: true,
+      devEditors: [{ id: "cursor", label: "Cursor", icon: "cursor" }],
+    });
+
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(root, "catalog", "data", "manifest.json"), "utf8"),
+    );
+    const detail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "checkout.json"),
+        "utf8",
+      ),
+    );
+
+    expect(manifest.links).toEqual({
+      provider: "github",
+      repository: "https://github.com/featurevisor/featurevisor",
+      source: "https://github.com/featurevisor/featurevisor/blob/catalog-test/{{path}}",
+      commit: "https://github.com/featurevisor/featurevisor/commit/{{hash}}",
+    });
+    expect(manifest.dev.editors).toEqual([{ id: "cursor", label: "Cursor", icon: "cursor" }]);
+    expect(detail.sourcePath).toBe("features/checkout.yml");
+    expect(detail.editLinks.cursor).toMatch(/^cursor:\/\/file\/.+features\/checkout\.yml$/);
   });
 });

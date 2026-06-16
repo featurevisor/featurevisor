@@ -3,8 +3,8 @@ import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 
 import { fetchIndex } from "../api";
 import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type { CatalogEntityType, CatalogIndex, EntityPath, EntitySummary } from "../types";
-import { Badge, Button, EmptyState, EntityKey, PageHeader, getEntityTone } from "../components/ui";
+import type { CatalogIndex, EntityPath, EntitySummary } from "../types";
+import { Badge, Button, EmptyState, EntityKey, PageHeader } from "../components/ui";
 
 const LIST_INITIAL_LIMIT = 1000;
 
@@ -64,10 +64,9 @@ function matchesQuery(entity: EntitySummary, query: string) {
   return normalizedQuery.split(/\s+/).every((term) => haystack.includes(term));
 }
 
-function getStatusBadges(entity: EntitySummary, type: CatalogEntityType) {
+function getStatusBadges(entity: EntitySummary) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Badge tone={getEntityTone(type)}>{entityLabels[type].singular}</Badge>
       {entity.archived && <Badge tone="danger">archived</Badge>}
       {entity.deprecated && <Badge tone="warning">deprecated</Badge>}
       {entity.promotable === false && <Badge>not promotable</Badge>}
@@ -98,7 +97,7 @@ function LastModified(props: { entity: EntitySummary }) {
 }
 
 function getRelationshipBadges(entity: EntitySummary) {
-  return [...(entity.targets || []), ...(entity.tags || []), ...(entity.environments || [])];
+  return entity.targets || [];
 }
 
 export function ListPage() {
@@ -204,7 +203,7 @@ export function ListPage() {
                       {entity.description || "No description"}
                     </div>
                   </div>
-                  <div className="shrink-0">{getStatusBadges(entity, type)}</div>
+                  <div className="shrink-0">{getStatusBadges(entity)}</div>
                 </div>
                 <div className="mt-2 flex flex-col gap-2 text-xs text-muted md:flex-row md:items-center md:justify-between">
                   <div className="flex flex-wrap gap-2">

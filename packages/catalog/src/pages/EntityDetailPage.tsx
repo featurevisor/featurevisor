@@ -3,7 +3,8 @@ import { Link, Navigate, Outlet, useOutletContext, useParams } from "react-route
 
 import { fetchEntityDetail, fetchHistoryPage } from "../api";
 import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type { EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
+import type { DevEditor, EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
+import { useCatalog } from "../context/CatalogContext";
 import {
   Badge,
   CodeBlock,
@@ -50,6 +51,153 @@ function valueOrNA(value: unknown) {
   }
 
   return String(value);
+}
+
+function CaretIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" className="h-3 w-3">
+      <path
+        d="M3.25 4.5 6 7.25 8.75 4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function EditorIcon(props: { icon: DevEditor["icon"] }) {
+  if (props.icon === "cursor") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+        <path d="M4 3l16 9-7 2-3 7L4 3Z" fill="#111827" />
+        <path d="M8.2 8.6 15 12.6" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M10.2 12.9 12.6 14.3 10.5 18.8Z" fill="#ffffff" opacity=".92" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <path
+        d="M17.2 3.2 9.4 10 5.1 6.7 3 7.8v8.4l2.1 1.1 4.3-3.3 7.8 6.8L21 19V5l-3.8-1.8Z"
+        fill="#007ACC"
+      />
+      <path d="M17.2 8.2v7.6L12.5 12l4.7-3.8Z" fill="#ffffff" opacity=".35" />
+    </svg>
+  );
+}
+
+function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail["editLinks"] }) {
+  const { manifest } = useCatalog();
+  const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const sourceHref =
+    props.sourcePath && manifest.links?.source
+      ? manifest.links.source.replace("{{path}}", props.sourcePath)
+      : undefined;
+  const editors = (manifest.dev?.editors || []).filter((editor) => props.editLinks?.[editor.id]);
+  const hasEditorLinks = editors.length > 0;
+
+  if (!sourceHref && !hasEditorLinks) {
+    return null;
+  }
+
+  const buttonClass =
+    "rounded border border-border bg-elevated px-4 py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
+  const splitButtonClass =
+    "border border-border bg-elevated px-4 py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
+  const menuButtonClass =
+    "border border-border bg-elevated py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
+
+  const dropdown = hasEditorLinks ? (
+    <div
+      role="menu"
+      className="absolute right-0 top-full z-20 mt-px min-w-48 overflow-hidden rounded border border-border bg-surface py-1 shadow-lg"
+    >
+      {editors.map((editor) => (
+        <a
+          key={editor.id}
+          role="menuitem"
+          href={props.editLinks?.[editor.id]}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-muted hover:bg-elevated hover:text-text"
+          onClick={() => setOpen(false)}
+        >
+          <EditorIcon icon={editor.icon} />
+          <span>Open in {editor.label}</span>
+        </a>
+      ))}
+    </div>
+  ) : null;
+
+  if (!hasEditorLinks) {
+    return sourceHref ? (
+      <a href={sourceHref} target="_blank" rel="noreferrer" className={buttonClass}>
+        Edit
+      </a>
+    ) : null;
+  }
+
+  return (
+    <div ref={containerRef} className="relative inline-flex">
+      {sourceHref ? (
+        <a
+          href={sourceHref}
+          target="_blank"
+          rel="noreferrer"
+          className={`${splitButtonClass} rounded-l`}
+        >
+          Edit
+        </a>
+      ) : (
+        <button
+          type="button"
+          className={`${splitButtonClass} rounded-l`}
+          onClick={() => setOpen((current) => !current)}
+        >
+          Edit
+        </button>
+      )}
+      <button
+        type="button"
+        className={`${menuButtonClass} -ml-px rounded-r px-2`}
+        aria-label="Open edit options"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <CaretIcon />
+      </button>
+      {open ? dropdown : null}
+    </div>
+  );
 }
 
 export function EntityDetailPage() {
@@ -103,26 +251,7 @@ export function EntityDetailPage() {
       <PageHeader
         title={detail.key}
         description={entityLabels[type].singular}
-        actions={
-          <div className="flex gap-2">
-            {detail.editLinks?.vscode && (
-              <a
-                className="rounded bg-surface px-3 py-2 text-sm shadow"
-                href={detail.editLinks.vscode}
-              >
-                VS Code
-              </a>
-            )}
-            {detail.editLinks?.cursor && (
-              <a
-                className="rounded bg-surface px-3 py-2 text-sm shadow"
-                href={detail.editLinks.cursor}
-              >
-                Cursor
-              </a>
-            )}
-          </div>
-        }
+        actions={<EditLink sourcePath={detail.sourcePath} editLinks={detail.editLinks} />}
       />
       <Tabs items={tabs} />
       <div className="px-6 py-6">

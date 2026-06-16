@@ -285,6 +285,38 @@ function formatGeneratedAt(value: string) {
   return date.toLocaleString();
 }
 
+function RepositoryIcon(props: { provider?: string }) {
+  if (props.provider === "github") {
+    return (
+      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.69 0 8.24c0 3.64 2.29 6.72 5.47 7.81.4.08.55-.18.55-.4 0-.2-.01-.86-.01-1.56-2.01.38-2.53-.5-2.69-.96-.09-.24-.48-.96-.82-1.15-.28-.16-.68-.55-.01-.56.63-.01 1.08.6 1.23.85.72 1.25 1.87.9 2.33.69.07-.54.28-.9.51-1.11-1.78-.21-3.64-.92-3.64-4.07 0-.9.31-1.64.82-2.22-.08-.21-.36-1.05.08-2.19 0 0 .67-.22 2.2.85A7.43 7.43 0 0 1 8 3.94c.68 0 1.36.09 2 .28 1.52-1.07 2.19-.85 2.19-.85.44 1.14.16 1.98.08 2.19.51.58.82 1.32.82 2.22 0 3.16-1.87 3.86-3.65 4.07.29.26.54.76.54 1.54 0 1.11-.01 2.01-.01 2.28 0 .22.15.48.55.4A8.13 8.13 0 0 0 16 8.24C16 3.69 12.42 0 8 0Z" />
+      </svg>
+    );
+  }
+
+  if (props.provider === "gitlab") {
+    return (
+      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="m22.75 9.77-.03-.08-2.17-6.69a.57.57 0 0 0-.55-.39.58.58 0 0 0-.52.35l-1.47 4.48H5.99L4.52 2.96A.58.58 0 0 0 4 2.61a.57.57 0 0 0-.55.39L1.28 9.69l-.03.08a1.54 1.54 0 0 0 .51 1.73l.01.01 10.22 7.43 10.24-7.44.01-.01a1.54 1.54 0 0 0 .51-1.72Z" />
+      </svg>
+    );
+  }
+
+  if (props.provider === "bitbucket") {
+    return (
+      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2.19 3.25a.77.77 0 0 0-.76.89l2.7 16.42a1.02 1.02 0 0 0 1 .86H18.9a1.02 1.02 0 0 0 1-.82l2.69-16.46a.77.77 0 0 0-.76-.89H2.19Zm13.36 10.71H9.46l-1.1-5.83h8.25l-1.06 5.83Z" />
+      </svg>
+    );
+  }
+
+  return null;
+}
+
+function isKnownRepositoryProvider(provider?: string) {
+  return provider === "github" || provider === "gitlab" || provider === "bitbucket";
+}
+
 export function AppShell(props: { children: React.ReactNode }) {
   const { manifest } = useCatalog();
   const location = useLocation();
@@ -322,7 +354,20 @@ export function AppShell(props: { children: React.ReactNode }) {
             </NavLink>
           </div>
 
-          <SetSwitcher currentSetKey={setKey} />
+          <div className="flex items-center gap-3">
+            <SetSwitcher currentSetKey={setKey} />
+            {manifest.links?.repository && isKnownRepositoryProvider(manifest.links.provider) && (
+              <a
+                href={manifest.links.repository}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg px-3 py-2 text-header-text hover:bg-header-active"
+                aria-label={`Open ${manifest.links.provider || "repository"}`}
+              >
+                <RepositoryIcon provider={manifest.links.provider} />
+              </a>
+            )}
+          </div>
         </nav>
       </header>
 
