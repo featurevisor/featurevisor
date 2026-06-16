@@ -125,7 +125,9 @@ export function EntityDetailPage() {
         }
       />
       <Tabs items={tabs} />
-      <Outlet context={{ detail, setKey }} />
+      <div className="px-6 py-6">
+        <Outlet context={{ detail, setKey }} />
+      </div>
     </div>
   );
 }
@@ -145,7 +147,7 @@ export function OverviewTab() {
             { label: "Source", value: detail.sourcePath || "n/a" },
           ]}
         />
-        <section className="rounded border border-border bg-surface p-4 shadow">
+        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
           <h2 className="mb-3 font-semibold">Conditions</h2>
           <ConditionTree conditions={entity.conditions as any} />
         </section>
@@ -171,13 +173,13 @@ export function OverviewTab() {
         />
         <MarkdownContent value={entity.description as string | undefined} />
         {entity.variations && (
-          <section className="rounded border border-border bg-surface p-4 shadow">
+          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
             <h2 className="mb-3 font-semibold">Variations</h2>
             <CodeBlock value={entity.variations} />
           </section>
         )}
         {entity.variablesSchema && (
-          <section className="rounded border border-border bg-surface p-4 shadow">
+          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
             <h2 className="mb-3 font-semibold">Variables</h2>
             <CodeBlock value={entity.variablesSchema} />
           </section>
@@ -281,7 +283,7 @@ function FeatureRows(props: {
             <Link
               key={environment}
               to={`../${props.base}/${environment}`}
-              className={`rounded px-3 py-2 text-sm ${environment === props.selectedEnvironment ? "bg-primary text-white" : "bg-surface text-muted"}`}
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${environment === props.selectedEnvironment ? "border-primary bg-primary text-header-text" : "border-border bg-surface text-muted hover:text-text"}`}
             >
               {environment}
             </Link>
@@ -297,7 +299,10 @@ function FeatureRows(props: {
 
       {props.rows.length === 0 && <EmptyState title={`No ${props.title.toLowerCase()} found`} />}
       {props.rows.map((row, index) => (
-        <div key={row.key || index} className="rounded border border-border bg-surface p-4 shadow">
+        <div
+          key={row.key || index}
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+        >
           <div className="mb-3 flex items-center gap-2">
             <Badge>{row.key || `#${index + 1}`}</Badge>
             {row.enabled === false && <Badge tone="danger">disabled</Badge>}
@@ -333,7 +338,7 @@ export function TestsTab() {
         <Link
           key={testKey}
           to={getEntityRoute("test", testKey, setKey)}
-          className="block rounded border border-border bg-surface p-3 hover:bg-elevated"
+          className="block rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-primary shadow-sm ring-1 ring-black/5 hover:bg-elevated"
         >
           {testKey}
         </Link>
@@ -351,7 +356,10 @@ export function UsageTab() {
     <div className="space-y-4">
       {entries.length === 0 && <EmptyState title="No usage found" />}
       {entries.map(([label, values]) => (
-        <section key={label} className="rounded border border-border bg-surface p-4 shadow">
+        <section
+          key={label}
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+        >
           <h2 className="mb-3 font-semibold">{label}</h2>
           <div className="flex flex-wrap gap-2">
             {values.map((value) => (
@@ -400,7 +408,10 @@ export function HistoryTab() {
     <div className="space-y-3">
       {page.entries.length === 0 && <EmptyState title="No history found" />}
       {page.entries.map((entry) => (
-        <div key={entry.commit} className="rounded border border-border bg-surface p-4 shadow">
+        <div
+          key={entry.commit}
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+        >
           <div className="font-mono text-sm">{entry.commit.slice(0, 10)}</div>
           <div className="text-sm text-muted">
             {entry.author} · {new Date(entry.timestamp).toLocaleString()}
