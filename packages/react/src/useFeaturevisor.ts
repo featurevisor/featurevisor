@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Featurevisor } from "@featurevisor/sdk";
 
-import { useSdk } from "./useSdk";
+import { useSdk } from "./useSdk.js";
 
 export const BOUND_METHODS = [
   "isEnabled",

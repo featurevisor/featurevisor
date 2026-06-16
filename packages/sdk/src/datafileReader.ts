@@ -12,8 +12,8 @@ import type {
   Force,
 } from "@featurevisor/types";
 
-import { conditionIsMatched } from "./conditions";
-import type { FeaturevisorDiagnosticReporter } from "./diagnostics";
+import { conditionIsMatched } from "./conditions.js";
+import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 

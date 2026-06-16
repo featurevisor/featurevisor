@@ -1,13 +1,13 @@
 import type { BucketBy, Context, FeatureKey } from "@featurevisor/types";
 
-import type { EvaluateOptions, Evaluation } from "./evaluate";
-import type { BucketKey, BucketValue } from "./bucketer";
+import type { EvaluateOptions, Evaluation } from "./evaluate.js";
+import type { BucketKey, BucketValue } from "./bucketer.js";
 import type {
   FeaturevisorDiagnosticHandler,
   FeaturevisorDiagnosticReporter,
   FeaturevisorModuleReportedDiagnostic,
   FeaturevisorModuleDiagnosticOptions,
-} from "./diagnostics";
+} from "./diagnostics.js";
 
 /**
  * bucketKey

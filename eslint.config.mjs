@@ -8,8 +8,11 @@ export default [
   {
     ignores: [
       // directories
+      "**/cjs/",
       "**/dist/",
       "**/datafiles/",
+      "**/esm/",
+      "**/node-esm/",
       "**/lib/",
       "**/coverage/",
       "**/out/",

@@ -1,8 +1,8 @@
 import type { Context, AttributeValue, FeatureKey, BucketBy } from "@featurevisor/types";
 
-import { getValueFromContext } from "./conditions";
-import { MurmurHashV3 } from "./murmurhash";
-import type { FeaturevisorDiagnosticReporter } from "./diagnostics";
+import { getValueFromContext } from "./conditions.js";
+import { MurmurHashV3 } from "./murmurhash.js";
+import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export type BucketKey = string;
 export type BucketValue = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)

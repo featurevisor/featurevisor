@@ -1,7 +1,7 @@
 import type { StickyFeatures, FeatureKey } from "@featurevisor/types";
 
-import type { EventDetails } from "./emitter";
-import type { DatafileReader } from "./datafileReader";
+import type { EventDetails } from "./emitter.js";
+import type { DatafileReader } from "./datafileReader.js";
 
 export function getParamsForStickySetEvent(
   previousStickyFeatures: StickyFeatures = {},

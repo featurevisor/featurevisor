@@ -1,6 +1,6 @@
 import type { Context, FeatureKey } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk";
+import { useSdk } from "./useSdk.js";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   const sdk = useSdk();

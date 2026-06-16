@@ -2,20 +2,20 @@
   "name": "@featurevisor/sdk",
   "version": "2.27.0",
   "description": "Featurevisor SDK for Node.js and the browser",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "cjs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs"
+      "types": "./cjs/index.d.ts",
+      "require": "./cjs/index.js",
+      "import": "./node-esm/index.js"
     },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "transpile": "echo 'Nothing to transpile'",
-    "dist": "webpack --config ./webpack.config.js && tsc --project tsconfig.esm.json --declaration --emitDeclarationOnly --declarationDir dist",
+    "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
+    "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile && npm run dist",
     "test": "jest --config jest.config.js --verbose --coverage"
   },

@@ -11,13 +11,13 @@ import type {
   DatafileContent,
 } from "@featurevisor/types";
 
-import { ModulesManager, FeaturevisorModule, FeaturevisorModuleApi } from "./modules";
-import { Emitter, EventCallback, EventName } from "./emitter";
-import { DatafileReader } from "./datafileReader";
-import { Evaluation, EvaluateDependencies, evaluateWithModules } from "./evaluate";
-import { FeaturevisorChildInstance } from "./child";
-import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events";
-import { getValueByType } from "./helpers";
+import { ModulesManager, FeaturevisorModule, FeaturevisorModuleApi } from "./modules.js";
+import { Emitter, EventCallback, EventName } from "./emitter.js";
+import { DatafileReader } from "./datafileReader.js";
+import { Evaluation, EvaluateDependencies, evaluateWithModules } from "./evaluate.js";
+import { FeaturevisorChildInstance } from "./child.js";
+import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events.js";
+import { getValueByType } from "./helpers.js";
 import {
   FEATUREVISOR_DIAGNOSTIC_PREFIX,
   FeaturevisorDiagnostic,
@@ -27,7 +27,7 @@ import {
   FeaturevisorModuleReportedDiagnostic,
   getConsoleMethodForDiagnostic,
   shouldLog,
-} from "./diagnostics";
+} from "./diagnostics.js";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",

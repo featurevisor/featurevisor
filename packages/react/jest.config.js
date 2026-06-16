@@ -5,4 +5,7 @@ module.exports = {
   // for react testing library
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["@testing-library/jest-dom/extend-expect", "./jest.setup.js"],
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
 };

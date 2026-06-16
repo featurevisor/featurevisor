@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.cjs.json",
   "compilerOptions": {
-    "outDir": "./lib",
+    "outDir": "./cjs",
     "lib": ["DOM"]
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts"],
+  "exclude": ["./src/**/*.spec.ts"]
 }

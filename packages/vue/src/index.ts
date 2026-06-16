@@ -1,6 +1,6 @@
-export * from "./setupApp";
+export * from "./setupApp.js";
 
-export * from "./useSdk";
-export * from "./useVariable";
-export * from "./useVariation";
-export * from "./useFlag";
+export * from "./useSdk.js";
+export * from "./useVariable.js";
+export * from "./useVariation.js";
+export * from "./useFlag.js";

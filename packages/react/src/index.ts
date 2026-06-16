@@ -1,15 +1,15 @@
 // contexts
-export * from "./FeaturevisorContext";
+export * from "./FeaturevisorContext.js";
 
 // components
-export * from "./FeaturevisorProvider";
+export * from "./FeaturevisorProvider.js";
 
 // hooks
-export * from "./useSdk";
-export * from "./useFeaturevisor";
-export * from "./useVariable";
-export * from "./useVariation";
-export * from "./useFlag";
+export * from "./useSdk.js";
+export * from "./useFeaturevisor.js";
+export * from "./useVariable.js";
+export * from "./useVariation.js";
+export * from "./useFlag.js";
 
 // utils
-export * from "./onFeatureChange";
+export * from "./onFeatureChange.js";

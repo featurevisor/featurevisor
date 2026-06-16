@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Featurevisor } from "@featurevisor/sdk";
 
-import { FeaturevisorContext } from "./FeaturevisorContext";
+import { FeaturevisorContext } from "./FeaturevisorContext.js";
 
 export interface FeaturevisorProviderProps {
   instance: Featurevisor;

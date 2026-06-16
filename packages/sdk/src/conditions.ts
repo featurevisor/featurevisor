@@ -1,7 +1,7 @@
 import type { Context, PlainCondition, AttributeValue } from "@featurevisor/types";
 
-import { GetRegex } from "./datafileReader";
-import { compareVersions } from "./compareVersions";
+import { GetRegex } from "./datafileReader.js";
+import { compareVersions } from "./compareVersions.js";
 
 export function getValueFromContext(obj, path): AttributeValue {
   if (path.indexOf(".") === -1) {

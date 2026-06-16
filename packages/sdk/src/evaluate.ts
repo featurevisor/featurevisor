@@ -15,10 +15,10 @@ import type {
   Allocation,
 } from "@featurevisor/types";
 
-import { ModulesManager } from "./modules";
-import { DatafileReader } from "./datafileReader";
-import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer";
-import type { FeaturevisorDiagnosticReporter } from "./diagnostics";
+import { ModulesManager } from "./modules.js";
+import { DatafileReader } from "./datafileReader.js";
+import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer.js";
+import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export enum EvaluationReason {
   // feature specific

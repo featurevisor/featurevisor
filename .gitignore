@@ -1,5 +1,8 @@
 node_modules
+cjs
 lib
+esm
+node-esm
 *.log
 coverage
 dist

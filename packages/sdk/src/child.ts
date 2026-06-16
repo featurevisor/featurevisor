@@ -7,9 +7,9 @@ import type {
   EvaluatedFeatures,
 } from "@featurevisor/types";
 
-import { EventName, EventCallback, Emitter } from "./emitter";
-import type { Featurevisor, OverrideOptions } from "./instance";
-import { getParamsForStickySetEvent } from "./events";
+import { EventName, EventCallback, Emitter } from "./emitter.js";
+import type { Featurevisor, OverrideOptions } from "./instance.js";
+import { getParamsForStickySetEvent } from "./events.js";
 
 export class FeaturevisorChildInstance {
   private parent: Featurevisor;
