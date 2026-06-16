@@ -3,4 +3,6 @@ packages/*/lib
 
 examples/*/src
 
+**/.catalog-dev/**
+
 CHANGELOG.md
