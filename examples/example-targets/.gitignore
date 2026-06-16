@@ -4,5 +4,6 @@ npm-debug.log*
 .DS_Store
 
 datafiles
+catalog
 out
 src

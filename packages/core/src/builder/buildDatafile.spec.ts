@@ -22,6 +22,7 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
     datafileNamePattern: "featurevisor-%s.json",
     revisionFileName: "REVISION",
     siteExportDirectoryPath: path.join(root, "out"),
+    catalogDirectoryPath: path.join(root, "catalog"),
     setsDirectoryPath: path.join(root, "sets"),
     environments: ["staging", "production"],
     sets: false,

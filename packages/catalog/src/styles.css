@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+
+  --mv-color-background: #e5e7eb;
+  --mv-color-surface: #ffffff;
+  --mv-color-elevated: #f8fafc;
+  --mv-color-border: #e5e7eb;
+  --mv-color-text: #374151;
+  --mv-color-muted: #6b7280;
+  --mv-color-primary: #475569;
+  --mv-color-success: #16a34a;
+  --mv-color-warning: #ea580c;
+  --mv-color-danger: #dc2626;
+  --mv-color-header: #1f2937;
+  --mv-color-header-active: #374151;
+  --mv-color-header-text: #f9fafb;
+  --mv-color-pill: #cbd5e1;
+  --mv-color-faint: #9ca3af;
+  --mv-color-success-surface: #bbf7d0;
+  --mv-color-warning-surface: #fed7aa;
+  --mv-color-danger-surface: #fee2e2;
+  --mv-shadow-soft: 0 10px 30px rgb(15 23 42 / 0.08);
+}
+
+body {
+  margin: 0;
+  background: var(--mv-color-background);
+  color: var(--mv-color-text);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+a {
+  color: inherit;
+}
