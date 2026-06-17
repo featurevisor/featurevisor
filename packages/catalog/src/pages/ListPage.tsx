@@ -5,7 +5,14 @@ import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { fetchIndex } from "../api";
 import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
 import type { CatalogIndex, EntityPath, EntitySummary } from "../types";
-import { Badge, Button, EmptyState, EntityKey, LabelValueBadge, PageHeader } from "../components/ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  EntityKey,
+  LabelValueBadge,
+  PageHeader,
+} from "../components/ui";
 
 const LIST_INITIAL_LIMIT = 1000;
 

@@ -80,11 +80,7 @@ function getLeafTypeLabel(schema: SchemaLike) {
   return typeof schema.type === "string" ? schema.type : "unknown";
 }
 
-function flattenSchemaRows(
-  schema: SchemaLike,
-  prefix: string,
-  required = false,
-): FlatSchemaRow[] {
+function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false): FlatSchemaRow[] {
   if (isSchemaRef(schema)) {
     return [
       {
@@ -108,17 +104,11 @@ function flattenSchemaRows(
   const type = typeof schema.type === "string" ? schema.type : undefined;
 
   if (type === "object" && schema.properties && typeof schema.properties === "object") {
-    const requiredKeys = new Set(
-      Array.isArray(schema.required) ? schema.required.map(String) : [],
-    );
+    const requiredKeys = new Set(Array.isArray(schema.required) ? schema.required.map(String) : []);
     const properties = schema.properties as Record<string, SchemaLike>;
 
     return Object.entries(properties).flatMap(([key, propertySchema]) =>
-      flattenSchemaRows(
-        propertySchema,
-        prefix ? `${prefix}.${key}` : key,
-        requiredKeys.has(key),
-      ),
+      flattenSchemaRows(propertySchema, prefix ? `${prefix}.${key}` : key, requiredKeys.has(key)),
     );
   }
 
@@ -139,9 +129,7 @@ function flattenSchemaRows(
     }
 
     if (items.type === "object" && items.properties && typeof items.properties === "object") {
-      const requiredKeys = new Set(
-        Array.isArray(items.required) ? items.required.map(String) : [],
-      );
+      const requiredKeys = new Set(Array.isArray(items.required) ? items.required.map(String) : []);
       const properties = items.properties as Record<string, SchemaLike>;
 
       return Object.entries(properties).flatMap(([key, propertySchema]) =>
@@ -248,7 +236,9 @@ export function VariableValueView(props: { value: unknown; nested?: boolean }) {
 
   if (typeof value === "object") {
     return (
-      <DefaultValueCodeBlock nested={props.nested}>{JSON.stringify(value, null, 2)}</DefaultValueCodeBlock>
+      <DefaultValueCodeBlock nested={props.nested}>
+        {JSON.stringify(value, null, 2)}
+      </DefaultValueCodeBlock>
     );
   }
 
@@ -259,18 +249,16 @@ export function isInlineVariableValue(value: unknown) {
   return typeof value === "number" || typeof value === "boolean";
 }
 
-function VariableDefinition(props: {
-  name: string;
-  schema: SchemaLike;
-  setKey?: string;
-}) {
+function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: string }) {
   const schema = props.schema;
   const variableId = slugifyFragment(props.name);
   const schemaRef = isSchemaRef(schema);
   const type = typeof schema.type === "string" ? schema.type : undefined;
   const hasStructure =
     !schemaRef &&
-    (type === "object" || type === "array" || (Array.isArray(schema.oneOf) && schema.oneOf.length > 0));
+    (type === "object" ||
+      type === "array" ||
+      (Array.isArray(schema.oneOf) && schema.oneOf.length > 0));
   const description = getSchemaDescription(schema);
   const defaultValue = "defaultValue" in schema ? schema.defaultValue : undefined;
   const inlineDefault = isInlineVariableValue(defaultValue);
@@ -312,12 +300,16 @@ function VariableDefinition(props: {
       {"defaultValue" in schema &&
         (inlineDefault ? (
           <p className="mt-3 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Default </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
+              Default{" "}
+            </span>
             <VariableValueView value={defaultValue} />
           </p>
         ) : (
           <div className="mt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Default</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+              Default
+            </h3>
             <VariableValueView value={defaultValue} />
           </div>
         ))}

@@ -138,7 +138,9 @@ export function OverviewSection(props: { title: string; children?: React.ReactNo
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">{props.title}</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+        {props.title}
+      </h2>
       {props.children}
     </section>
   );

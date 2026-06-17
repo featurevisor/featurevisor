@@ -3,7 +3,13 @@ import { Link, Navigate, Outlet, useOutletContext, useParams } from "react-route
 
 import { fetchEntityDetail, fetchHistoryPage } from "../api";
 import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type { CatalogEntityType, DevEditor, EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
+import type {
+  CatalogEntityType,
+  DevEditor,
+  EntityDetail,
+  EntityPath,
+  HistoryPage as HistoryPageData,
+} from "../types";
 import { useCatalog } from "../context/CatalogContext";
 import {
   Badge,

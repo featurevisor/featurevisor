@@ -141,7 +141,9 @@ function useExpandSectionsFromHash(props: {
 
     const next = new Set(expanded);
     next.add(parsed.variationSlug);
-    props.setSearchParams(setSearchParam(props.searchParams, parsed.section, formatListParam(next)));
+    props.setSearchParams(
+      setSearchParam(props.searchParams, parsed.section, formatListParam(next)),
+    );
   }, [location.hash, props.searchParams, props.setSearchParams, props.variations]);
 }
 
@@ -241,10 +243,7 @@ function VariableAssignment(props: { id: string; name: string; value: unknown })
   );
 }
 
-function VariableOverrideEntry(props: {
-  override: VariableOverrideRecord;
-  setKey?: string;
-}) {
+function VariableOverrideEntry(props: { override: VariableOverrideRecord; setKey?: string }) {
   const hasSegments = props.override.segments !== undefined;
   const hasConditions = props.override.conditions !== undefined;
 
@@ -267,7 +266,9 @@ function VariableOverrideEntry(props: {
         </div>
       )}
       <div>
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">Value</div>
+        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
+          Value
+        </div>
         <VariableValueView value={props.override.value} nested />
       </div>
     </div>
@@ -387,10 +388,7 @@ function VariationCard(props: {
   );
 }
 
-export function FeatureVariationsList(props: {
-  variations: VariationRecord[];
-  setKey?: string;
-}) {
+export function FeatureVariationsList(props: { variations: VariationRecord[]; setKey?: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const expandedVariables = React.useMemo(
