@@ -3,7 +3,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 
 import { EntityKey } from "./ui";
 import { ConditionTree, GroupSegmentTree } from "./trees";
-import { isInlineVariableValue, slugifyFragment, VariablePermalink, VariableValueView } from "./variables";
+import { slugifyFragment, VariablePermalink, VariableValueView } from "./variables";
 
 type VariationRecord = Record<string, unknown>;
 type VariableOverrideRecord = {
@@ -175,20 +175,22 @@ function CollapsibleSection(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-4">
+    <div className="mt-4 border-t border-border/70 pt-4">
       <button
         type="button"
-        className="flex w-full items-center gap-2 rounded-md py-1 text-left hover:bg-surface/80"
+        className="flex w-full items-center gap-2 rounded-md py-0.5 text-left hover:text-text"
         onClick={props.onToggle}
         aria-expanded={props.expanded}
       >
         <SectionCaret expanded={props.expanded} />
-        <span className="text-xs font-semibold uppercase tracking-wide text-faint">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted">
           {props.title}
-          <span className="ml-1.5 font-medium text-muted">({props.count})</span>
+          <span className="ml-1.5 font-medium text-faint">({props.count})</span>
         </span>
       </button>
-      {props.expanded ? <div className="mt-2">{props.children}</div> : null}
+      {props.expanded ? (
+        <div className="mt-3 border-l border-border/80 pl-4">{props.children}</div>
+      ) : null}
     </div>
   );
 }
@@ -219,13 +221,8 @@ function VariationValue(props: { value: unknown }) {
 }
 
 function VariableAssignment(props: { id: string; name: string; value: unknown }) {
-  const inlineValue = isInlineVariableValue(props.value);
-
   return (
-    <div
-      id={props.id}
-      className="group scroll-mt-6 rounded-md border border-border/70 bg-surface/80 p-3"
-    >
+    <div id={props.id} className="group scroll-mt-6 py-3 first:pt-0 last:pb-0">
       <div className="flex min-w-0 items-center gap-2">
         <div className="min-w-0 font-mono text-sm font-semibold text-text">
           <a
@@ -237,18 +234,8 @@ function VariableAssignment(props: { id: string; name: string; value: unknown })
         </div>
         <VariablePermalink targetId={props.id} />
       </div>
-      <div className={inlineValue ? "mt-2 text-sm" : "mt-2"}>
-        {inlineValue ? (
-          <p>
-            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Value </span>
-            <VariableValueView value={props.value} />
-          </p>
-        ) : (
-          <>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Value</div>
-            <VariableValueView value={props.value} />
-          </>
-        )}
+      <div className="mt-1.5">
+        <VariableValueView value={props.value} nested />
       </div>
     </div>
   );
@@ -262,10 +249,10 @@ function VariableOverrideEntry(props: {
   const hasConditions = props.override.conditions !== undefined;
 
   return (
-    <div className="rounded-md border border-border/70 bg-surface/80 p-3">
+    <div className="rounded-md bg-elevated/60 px-3 py-3">
       {hasSegments && (
         <div className="mb-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
             Segments
           </div>
           <GroupSegmentTree segments={props.override.segments as any} setKey={props.setKey} />
@@ -273,15 +260,15 @@ function VariableOverrideEntry(props: {
       )}
       {hasConditions && (
         <div className="mb-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
             Conditions
           </div>
           <ConditionTree conditions={props.override.conditions as any} setKey={props.setKey} />
         </div>
       )}
       <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Value</div>
-        <VariableValueView value={props.override.value} />
+        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">Value</div>
+        <VariableValueView value={props.override.value} nested />
       </div>
     </div>
   );
@@ -294,8 +281,8 @@ function VariableOverrideGroup(props: {
   setKey?: string;
 }) {
   return (
-    <div id={props.id} className="group scroll-mt-6 space-y-2">
-      <div className="flex min-w-0 items-center gap-2">
+    <div id={props.id} className="group scroll-mt-6 py-3 first:pt-0 last:pb-0">
+      <div className="mb-2 flex min-w-0 items-center gap-2">
         <div className="min-w-0 font-mono text-sm font-semibold text-text">
           <a
             href={`#${props.id}`}
@@ -343,7 +330,7 @@ function VariationCard(props: {
       : undefined;
 
   return (
-    <section className="rounded-lg border border-border bg-elevated/60 p-4 ring-1 ring-black/5">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-wide text-faint">Value</div>
@@ -363,7 +350,7 @@ function VariationCard(props: {
           expanded={props.variablesExpanded}
           onToggle={props.onToggleVariables}
         >
-          <div className="space-y-2">
+          <div className="divide-y divide-border/50">
             {variables.map(([name, value]) => (
               <VariableAssignment
                 key={name}
@@ -383,7 +370,7 @@ function VariationCard(props: {
           expanded={props.overridesExpanded}
           onToggle={props.onToggleOverrides}
         >
-          <div className="space-y-4">
+          <div className="divide-y divide-border/50">
             {variableOverrides.map(([name, overrides]) => (
               <VariableOverrideGroup
                 key={name}

@@ -220,15 +220,22 @@ function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
   );
 }
 
-function DefaultValueCodeBlock(props: { children: React.ReactNode }) {
+function DefaultValueCodeBlock(props: { children: React.ReactNode; nested?: boolean }) {
   return (
-    <pre className="overflow-x-auto rounded-md border border-border bg-elevated p-3 font-mono text-xs leading-relaxed text-text [overflow-wrap:anywhere] whitespace-pre-wrap">
+    <pre
+      className={[
+        "overflow-x-auto font-mono text-xs leading-relaxed text-text [overflow-wrap:anywhere] whitespace-pre-wrap",
+        props.nested
+          ? "rounded bg-elevated/70 px-2.5 py-2"
+          : "rounded-md border border-border bg-elevated p-3",
+      ].join(" ")}
+    >
       <code>{props.children}</code>
     </pre>
   );
 }
 
-export function VariableValueView(props: { value: unknown }) {
+export function VariableValueView(props: { value: unknown; nested?: boolean }) {
   const value = props.value;
 
   if (value === undefined || value === null) {
@@ -236,11 +243,13 @@ export function VariableValueView(props: { value: unknown }) {
   }
 
   if (typeof value === "string") {
-    return <DefaultValueCodeBlock>{value}</DefaultValueCodeBlock>;
+    return <DefaultValueCodeBlock nested={props.nested}>{value}</DefaultValueCodeBlock>;
   }
 
   if (typeof value === "object") {
-    return <DefaultValueCodeBlock>{JSON.stringify(value, null, 2)}</DefaultValueCodeBlock>;
+    return (
+      <DefaultValueCodeBlock nested={props.nested}>{JSON.stringify(value, null, 2)}</DefaultValueCodeBlock>
+    );
   }
 
   return <span className="font-mono text-sm text-text">{String(value)}</span>;
