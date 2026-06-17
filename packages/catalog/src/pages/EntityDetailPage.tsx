@@ -576,60 +576,59 @@ function FeatureRows(props: {
       )}
 
       {props.rows.length === 0 && <EmptyState title={`No ${props.title.toLowerCase()} found`} />}
-      {props.rows.map((row, index) => {
-        const ruleKey = String(row.key || `#${index + 1}`);
-        const ruleId = slugifyFragment(
-          [props.base, props.selectedEnvironment, ruleKey].filter(Boolean).join("-"),
-        );
+      <div className="space-y-8">
+        {props.rows.map((row, index) => {
+          const ruleKey = String(row.key || `#${index + 1}`);
+          const ruleId = slugifyFragment(
+            [props.base, props.selectedEnvironment, ruleKey].filter(Boolean).join("-"),
+          );
 
-        return (
-          <section key={row.key || index} className="space-y-4">
-            <div className="space-y-3">
-              <div className="group flex flex-wrap items-center gap-2">
-                <h2 id={ruleId} className="font-semibold [overflow-wrap:anywhere]">
-                  <EntityKey value={ruleKey} className="font-semibold" />
-                </h2>
-                <RulePermalink targetId={ruleId} />
-                {typeof row.percentage === "number" && <Badge>{row.percentage}%</Badge>}
-                {row.enabled === false && <Badge tone="danger">disabled</Badge>}
-                {row.promotable === false && <Badge>not promotable</Badge>}
-              </div>
-              {row.summary && <p className="text-sm text-muted">{row.summary}</p>}
-              {row.description && <MarkdownContent value={row.description} />}
-            </div>
-
-            <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
-              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                <h3 className="text-sm font-semibold text-muted">Segments</h3>
-                <GroupSegmentTree segments={row.segments} setKey={props.setKey} />
-              </div>
-              {props.showConditions && (
-                <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                  <h3 className="text-sm font-semibold text-muted">Conditions</h3>
-                  <ConditionTree conditions={row.conditions} setKey={props.setKey} />
+          return (
+            <section key={row.key || index} className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex min-w-0 items-center justify-between gap-4">
+                  <div className="group flex min-w-0 flex-wrap items-center gap-2">
+                    <h2 id={ruleId} className="font-semibold [overflow-wrap:anywhere]">
+                      <EntityKey value={ruleKey} className="font-semibold" />
+                    </h2>
+                    <RulePermalink targetId={ruleId} />
+                    {row.enabled === false && <Badge tone="danger">disabled</Badge>}
+                    {row.promotable === false && <Badge>not promotable</Badge>}
+                  </div>
+                  {typeof row.percentage === "number" && <RuleProgress value={row.percentage} />}
                 </div>
-              )}
-            </div>
+                {row.summary && <p className="text-sm text-muted">{row.summary}</p>}
+                {row.description && <MarkdownContent value={row.description} />}
+              </div>
 
-            {typeof row.percentage === "number" && <RolloutPanel value={row.percentage} />}
-          </section>
-        );
-      })}
+              <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
+                <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                  <h3 className="text-sm font-semibold text-muted">Segments</h3>
+                  <GroupSegmentTree segments={row.segments} setKey={props.setKey} />
+                </div>
+                {props.showConditions && (
+                  <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                    <h3 className="text-sm font-semibold text-muted">Conditions</h3>
+                    <ConditionTree conditions={row.conditions} setKey={props.setKey} />
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function RolloutPanel(props: { value: number }) {
+function RuleProgress(props: { value: number }) {
   const value = Math.max(0, Math.min(100, props.value));
 
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-      <div className="flex items-center justify-between text-sm">
-        <h3 className="font-semibold text-muted">Rollout</h3>
-        <span className="font-semibold text-text">{value}%</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-pill">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
+    <div className="flex w-2/5 min-w-0 max-w-sm shrink-0 items-center gap-2">
+      <span className="w-10 shrink-0 text-right text-xs font-semibold text-muted">{value}%</span>
+      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-full rounded-full bg-green-500" style={{ width: `${value}%` }} />
       </div>
     </div>
   );
