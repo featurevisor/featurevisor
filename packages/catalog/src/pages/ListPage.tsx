@@ -609,32 +609,29 @@ export function ListPage() {
             className="block px-6 py-3 hover:bg-elevated"
           >
             <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+              {type === "feature" && (
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center pt-1.5">
+                  <EnvironmentDot
+                    status={entity.environmentStatus}
+                    environment={entity.environmentStatusEnvironment}
+                  />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-col justify-between gap-2 md:flex-row md:items-start">
                   <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {type === "feature" && (
-                        <EnvironmentDot
-                          status={entity.environmentStatus}
-                          environment={entity.environmentStatusEnvironment}
-                        />
-                      )}
-                      <EntityKey
-                        value={entity.key}
-                        className="text-sm font-semibold text-primary"
-                      />
-                    </div>
-                    <div className="mt-1 truncate text-sm text-muted">
-                      {entity.description || "No description"}
-                    </div>
+                    <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <RowMetadataIcons entity={entity} />
                     {getStatusBadges(entity)}
                   </div>
                 </div>
-                <div className="mt-2 flex justify-end text-[11px] text-faint">
-                  <span className="shrink-0 text-right">
+                <div className="mt-1 flex min-w-0 items-center gap-4">
+                  <span className="min-w-0 flex-1 truncate text-sm text-muted">
+                    {entity.description || "No description"}
+                  </span>
+                  <span className="max-w-[48%] shrink-0 truncate text-right text-[11px] text-faint">
                     <LastModified entity={entity} />
                   </span>
                 </div>
