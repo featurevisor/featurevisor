@@ -35,6 +35,13 @@ describe("sdk: helpers", function () {
     expect(getValueByType("1.1", "double")).toEqual(1.1);
   });
 
+  it("should reject invalid numeric and structural values", function () {
+    expect(getValueByType("1.1", "integer")).toBeNull();
+    expect(getValueByType("not-a-number", "double")).toBeNull();
+    expect(getValueByType("true", "boolean")).toBeNull();
+    expect(getValueByType([], "object")).toBeNull();
+  });
+
   it("should return null if the value is undefined", function () {
     expect(getValueByType(undefined, "string")).toEqual(null);
   });

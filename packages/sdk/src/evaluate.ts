@@ -140,7 +140,8 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
     if (
       typeof options.defaultVariationValue !== "undefined" &&
       evaluation.type === "variation" &&
-      typeof evaluation.variationValue === "undefined"
+      typeof evaluation.variationValue === "undefined" &&
+      typeof evaluation.variation === "undefined"
     ) {
       evaluation.variationValue = options.defaultVariationValue;
     }

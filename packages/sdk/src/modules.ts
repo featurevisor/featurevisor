@@ -104,9 +104,8 @@ export class ModulesManager {
     this.modules.push(module);
 
     return () => {
-      if (module.name) {
-        this.remove(module.name);
-      }
+      this.modules = this.modules.filter((existingModule) => existingModule !== module);
+      this.clearModuleDiagnosticSubscriptions(module);
     };
   }
 
