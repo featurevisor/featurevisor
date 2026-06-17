@@ -79,10 +79,6 @@ export class DatafileReader {
     return Object.keys(this.features);
   }
 
-  getSegmentKeys(): string[] {
-    return Object.keys(this.segments);
-  }
-
   getFeature(featureKey: FeatureKey): Feature | undefined {
     return this.features[featureKey];
   }

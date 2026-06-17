@@ -51,38 +51,10 @@ function assertDatafileContent(datafile: unknown): asserts datafile is DatafileC
   }
 }
 
-function getDatafileContentFromReader(datafileReader: DatafileReader): DatafileContent {
-  const segments: DatafileContent["segments"] = {};
-  const features: DatafileContent["features"] = {};
-
-  datafileReader.getSegmentKeys().forEach((segmentKey) => {
-    const segment = datafileReader.getSegment(segmentKey);
-    if (segment) {
-      segments[segmentKey] = segment;
-    }
-  });
-
-  datafileReader.getFeatureKeys().forEach((featureKey) => {
-    const feature = datafileReader.getFeature(featureKey);
-    if (feature) {
-      features[featureKey] = feature;
-    }
-  });
-
-  return {
-    schemaVersion: datafileReader.getSchemaVersion(),
-    revision: datafileReader.getRevision(),
-    segments,
-    features,
-  };
-}
-
 function mergeStoredDatafile(
-  existingDatafileReader: DatafileReader,
+  existing: DatafileContent,
   incoming: DatafileContent,
 ): DatafileContent {
-  const existing = getDatafileContentFromReader(existingDatafileReader);
-
   return {
     schemaVersion: incoming.schemaVersion,
     revision: incoming.revision,
@@ -115,7 +87,7 @@ export interface InstanceOptions {
 }
 
 interface FeaturevisorModuleDiagnosticSubscription {
-  moduleKey: string;
+  module: FeaturevisorModule;
   handler: FeaturevisorDiagnosticHandler;
   logLevel: FeaturevisorLogLevel;
 }
@@ -128,11 +100,10 @@ export class Featurevisor {
   private sticky?: StickyFeatures;
 
   // internally created
+  private datafile: DatafileContent = emptyDatafile;
   private datafileReader: DatafileReader;
   private modulesManager: ModulesManager;
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
-  private moduleApis: Record<string, FeaturevisorModuleApi> = {};
-  private moduleApiId = 0;
   private emitter: Emitter;
   private closed = false;
 
@@ -183,7 +154,7 @@ export class Featurevisor {
 
       const storedDatafile = replace
         ? resolvedDatafile
-        : mergeStoredDatafile(this.datafileReader, resolvedDatafile);
+        : mergeStoredDatafile(this.datafile, resolvedDatafile);
       const newDatafileReader = new DatafileReader({
         datafile: storedDatafile,
         reportDiagnostic: this.reportDiagnostic,
@@ -191,6 +162,7 @@ export class Featurevisor {
 
       const details = getParamsForDatafileSetEvent(this.datafileReader, newDatafileReader, replace);
 
+      this.datafile = storedDatafile;
       this.datafileReader = newDatafileReader;
 
       this.reportDiagnostic({
@@ -277,16 +249,15 @@ export class Featurevisor {
     this.closed = true;
     await this.modulesManager.closeAll();
     this.moduleDiagnosticSubscriptions = [];
-    this.moduleApis = {};
     this.emitter.clearAll();
   }
 
   private reportDiagnostic = (
     diagnostic: FeaturevisorDiagnostic,
-    sourceModuleKey?: string,
+    sourceModule?: FeaturevisorModule,
   ): void => {
     this.moduleDiagnosticSubscriptions.slice().forEach((subscription) => {
-      if (subscription.moduleKey === sourceModuleKey) {
+      if (subscription.module === sourceModule) {
         return;
       }
 
@@ -311,36 +282,13 @@ export class Featurevisor {
     }
   };
 
-  private getModuleApiKey(module: FeaturevisorModule): string {
-    if (module.name) {
-      return `name:${module.name}`;
-    }
-
-    const moduleWithApiKey = module as FeaturevisorModule & {
-      __featurevisorModuleApiKey?: string;
-    };
-
-    if (!moduleWithApiKey.__featurevisorModuleApiKey) {
-      moduleWithApiKey.__featurevisorModuleApiKey = `anonymous:${++this.moduleApiId}`;
-    }
-
-    return moduleWithApiKey.__featurevisorModuleApiKey;
-  }
-
   private getModuleApi = (module: FeaturevisorModule): FeaturevisorModuleApi => {
-    const moduleKey = this.getModuleApiKey(module);
-    const existingApi = this.moduleApis[moduleKey];
-
-    if (existingApi) {
-      return existingApi;
-    }
-
     const onDiagnostic = (
       handler: FeaturevisorDiagnosticHandler,
       options: FeaturevisorModuleDiagnosticOptions = {},
     ) => {
       const subscription: FeaturevisorModuleDiagnosticSubscription = {
-        moduleKey,
+        module,
         handler,
         logLevel: options.logLevel || "info",
       };
@@ -361,28 +309,20 @@ export class Featurevisor {
         moduleDiagnostic.module = module.name;
       }
 
-      this.reportDiagnostic(moduleDiagnostic, moduleKey);
+      this.reportDiagnostic(moduleDiagnostic, module);
     };
 
-    const api: FeaturevisorModuleApi = {
+    return {
       getRevision: () => this.getRevision(),
       onDiagnostic,
       reportDiagnostic,
     };
-
-    this.moduleApis[moduleKey] = api;
-
-    return api;
   };
 
   private clearModuleDiagnosticSubscriptions = (module: FeaturevisorModule): void => {
-    const moduleKey = this.getModuleApiKey(module);
-
     this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
-      (subscription) => subscription.moduleKey !== moduleKey,
+      (subscription) => subscription.module !== module,
     );
-
-    delete this.moduleApis[moduleKey];
   };
 
   /**

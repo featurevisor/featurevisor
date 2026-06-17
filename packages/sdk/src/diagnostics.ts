@@ -51,7 +51,7 @@ export interface FeaturevisorModuleDiagnosticOptions {
 
 export type FeaturevisorDiagnosticReporter = (
   diagnostic: FeaturevisorDiagnostic,
-  sourceModuleKey?: string,
+  sourceModule?: object,
 ) => void;
 
 export const FEATUREVISOR_DIAGNOSTIC_PREFIX = "[Featurevisor]";

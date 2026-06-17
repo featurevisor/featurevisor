@@ -103,10 +103,10 @@ export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
 
 function reportEvaluationDiagnostic(
   reportDiagnostic: FeaturevisorDiagnosticReporter,
-  level: "debug" | "warn" | "error",
-  code: string,
-  message: string,
   evaluation: Evaluation,
+  message: string,
+  level: "debug" | "warn" | "error" = "debug",
+  code: string = evaluation.reason,
 ) {
   reportDiagnostic({
     level,
@@ -175,10 +175,10 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
 
     reportEvaluationDiagnostic(
       reportDiagnostic,
+      evaluation,
+      "Error during evaluation",
       "error",
       "evaluation_error",
-      "Error during evaluation",
-      evaluation,
     );
 
     return evaluation;
@@ -268,13 +268,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           };
         }
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "feature is disabled",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "feature is disabled");
 
         return evaluation;
       }
@@ -294,13 +288,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           enabled: sticky[featureKey].enabled,
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "using sticky enabled",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky enabled");
 
         return evaluation;
       }
@@ -317,13 +305,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             variationValue,
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "using sticky variation",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky variation");
 
           return evaluation;
         }
@@ -345,13 +327,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variableValue: result,
             };
 
-            reportEvaluationDiagnostic(
-              reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "using sticky variable",
-              evaluation,
-            );
+            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky variable");
 
             return evaluation;
           }
@@ -375,10 +351,10 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       reportEvaluationDiagnostic(
         reportDiagnostic,
+        evaluation,
+        "Feature not found",
         "warn",
         "feature_not_found",
-        "Feature not found",
-        evaluation,
       );
 
       return evaluation;
@@ -413,10 +389,10 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
         reportEvaluationDiagnostic(
           reportDiagnostic,
+          evaluation,
+          "Variable schema not found",
           "warn",
           "variable_not_found",
-          "Variable schema not found",
-          evaluation,
         );
 
         return evaluation;
@@ -443,10 +419,10 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
       reportEvaluationDiagnostic(
         reportDiagnostic,
+        evaluation,
+        "No variations",
         "warn",
         "no_variations",
-        "No variations",
-        evaluation,
       );
 
       return evaluation;
@@ -469,13 +445,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           enabled: force.enabled,
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "forced enabled found",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "forced enabled found");
 
         return evaluation;
       }
@@ -494,13 +464,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             variation,
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "forced variation found",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "forced variation found");
 
           return evaluation;
         }
@@ -519,13 +483,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           variableValue: force.variables[variableKey],
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "forced variable",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "forced variable");
 
         return evaluation;
       }
@@ -587,13 +545,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           enabled: requiredFeaturesAreEnabled,
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "required features not enabled",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "required features not enabled");
 
         return evaluation;
       }
@@ -662,13 +614,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           enabled: false,
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "matched rule with 0 percentage",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "matched rule with 0 percentage");
 
         return evaluation;
       }
@@ -695,13 +641,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
                 typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
             };
 
-            reportEvaluationDiagnostic(
-              reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "matched",
-              evaluation,
-            );
+            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "matched");
 
             return evaluation;
           }
@@ -716,13 +656,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             enabled: false,
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "not matched",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "not matched");
 
           return evaluation;
         }
@@ -740,13 +674,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             enabled: matchedTraffic.enabled,
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "override from rule",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "override from rule");
 
           return evaluation;
         }
@@ -764,13 +692,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             enabled: true,
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "matched traffic",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "matched traffic");
 
           return evaluation;
         }
@@ -794,13 +716,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variation,
             };
 
-            reportEvaluationDiagnostic(
-              reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "override from rule",
-              evaluation,
-            );
+            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "override from rule");
 
             return evaluation;
           }
@@ -822,13 +738,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variation,
             };
 
-            reportEvaluationDiagnostic(
-              reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "allocated variation",
-              evaluation,
-            );
+            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "allocated variation");
 
             return evaluation;
           }
@@ -881,13 +791,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
               variableOverrideIndex: overrideIndex,
             };
 
-            reportEvaluationDiagnostic(
-              reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "variable override from rule",
-              evaluation,
-            );
+            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "variable override from rule");
 
             return evaluation;
           }
@@ -911,13 +815,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             variableValue: matchedTraffic.variables[variableKey],
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "override from rule",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "override from rule");
 
           return evaluation;
         }
@@ -979,10 +877,8 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
             reportEvaluationDiagnostic(
               reportDiagnostic,
-              "debug",
-              evaluation.reason,
-              "variable override from variation",
               evaluation,
+              "variable override from variation",
             );
 
             return evaluation;
@@ -1007,13 +903,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
             variableValue: variation.variables[variableKey],
           };
 
-          reportEvaluationDiagnostic(
-            reportDiagnostic,
-            "debug",
-            evaluation.reason,
-            "allocated variable",
-            evaluation,
-          );
+          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "allocated variable");
 
           return evaluation;
         }
@@ -1032,13 +922,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         bucketValue,
       };
 
-      reportEvaluationDiagnostic(
-        reportDiagnostic,
-        "debug",
-        evaluation.reason,
-        "no matched variation",
-        evaluation,
-      );
+      reportEvaluationDiagnostic(reportDiagnostic, evaluation, "no matched variation");
 
       return evaluation;
     }
@@ -1056,13 +940,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
           variableValue: variableSchema.defaultValue,
         };
 
-        reportEvaluationDiagnostic(
-          reportDiagnostic,
-          "debug",
-          evaluation.reason,
-          "using default value",
-          evaluation,
-        );
+        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using default value");
 
         return evaluation;
       }
@@ -1076,13 +954,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
         bucketValue,
       };
 
-      reportEvaluationDiagnostic(
-        reportDiagnostic,
-        "debug",
-        evaluation.reason,
-        "variable not found",
-        evaluation,
-      );
+      reportEvaluationDiagnostic(reportDiagnostic, evaluation, "variable not found");
 
       return evaluation;
     }
@@ -1096,13 +968,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       enabled: false,
     };
 
-    reportEvaluationDiagnostic(
-      reportDiagnostic,
-      "debug",
-      evaluation.reason,
-      "nothing matched",
-      evaluation,
-    );
+    reportEvaluationDiagnostic(reportDiagnostic, evaluation, "nothing matched");
 
     return evaluation;
   } catch (e) {
@@ -1116,10 +982,10 @@ export function evaluate(options: EvaluateOptions): Evaluation {
 
     reportEvaluationDiagnostic(
       reportDiagnostic,
+      evaluation,
+      "Error during evaluation",
       "error",
       "evaluation_error",
-      "Error during evaluation",
-      evaluation,
     );
 
     return evaluation;

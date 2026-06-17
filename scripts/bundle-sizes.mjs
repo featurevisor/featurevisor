@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 
+import { minify as minifyWithTerser } from "terser";
 import { build } from "vite";
 
 const rootDir = process.cwd();
@@ -73,51 +74,78 @@ async function bundlePackage(packageConfig, minify) {
       },
     });
 
-    const content = await readFile(path.join(outDir, `${packageConfig.fileName}.js`));
-
-    return {
-      bytes: content.byteLength,
-      gzippedBytes: gzipSync(content).byteLength,
-    };
+    return readFile(path.join(outDir, `${packageConfig.fileName}.js`));
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+}
+
+function getSizes(content) {
+  return {
+    bytes: content.byteLength,
+    gzippedBytes: gzipSync(content).byteLength,
+  };
+}
+
+async function minifyPackageWithTerser(content) {
+  const result = await minifyWithTerser(content.toString(), {
+    module: true,
+    compress: {
+      passes: 2,
+    },
+  });
+
+  if (!result.code) {
+    throw new Error("Terser did not produce a bundle");
+  }
+
+  return Buffer.from(result.code);
 }
 
 async function main() {
   const rows = [];
 
   for (const packageConfig of packages) {
-    const original = await bundlePackage(packageConfig, false);
-    const minified = await bundlePackage(packageConfig, "esbuild");
+    const originalContent = await bundlePackage(packageConfig, false);
+    const original = getSizes(originalContent);
+    const esbuild = getSizes(await bundlePackage(packageConfig, "esbuild"));
+    const terser = getSizes(await minifyPackageWithTerser(originalContent));
 
     rows.push({
       packageName: packageConfig.name,
       original: formatBytes(original.bytes),
-      minified: formatBytes(minified.bytes),
-      gzipped: formatBytes(minified.gzippedBytes),
+      esbuild: formatBytes(esbuild.bytes),
+      esbuildGzip: formatBytes(esbuild.gzippedBytes),
+      terser: formatBytes(terser.bytes),
+      terserGzip: formatBytes(terser.gzippedBytes),
     });
   }
 
   const widths = {
     packageName: Math.max("Package".length, ...rows.map((row) => row.packageName.length)),
     original: Math.max("Original".length, ...rows.map((row) => row.original.length)),
-    minified: Math.max("Minified".length, ...rows.map((row) => row.minified.length)),
-    gzipped: Math.max("Minified + gzip".length, ...rows.map((row) => row.gzipped.length)),
+    esbuild: Math.max("esbuild".length, ...rows.map((row) => row.esbuild.length)),
+    esbuildGzip: Math.max("esbuild + gzip".length, ...rows.map((row) => row.esbuildGzip.length)),
+    terser: Math.max("Terser".length, ...rows.map((row) => row.terser.length)),
+    terserGzip: Math.max("Terser + gzip".length, ...rows.map((row) => row.terserGzip.length)),
   };
 
   const header = [
     pad("Package", widths.packageName),
     pad("Original", widths.original),
-    pad("Minified", widths.minified),
-    pad("Minified + gzip", widths.gzipped),
+    pad("esbuild", widths.esbuild),
+    pad("esbuild + gzip", widths.esbuildGzip),
+    pad("Terser", widths.terser),
+    pad("Terser + gzip", widths.terserGzip),
   ].join("  ");
 
   const separator = [
     "-".repeat(widths.packageName),
     "-".repeat(widths.original),
-    "-".repeat(widths.minified),
-    "-".repeat(widths.gzipped),
+    "-".repeat(widths.esbuild),
+    "-".repeat(widths.esbuildGzip),
+    "-".repeat(widths.terser),
+    "-".repeat(widths.terserGzip),
   ].join("  ");
 
   console.log("Featurevisor bundle sizes");
@@ -129,8 +157,10 @@ async function main() {
       [
         pad(row.packageName, widths.packageName),
         pad(row.original, widths.original),
-        pad(row.minified, widths.minified),
-        pad(row.gzipped, widths.gzipped),
+        pad(row.esbuild, widths.esbuild),
+        pad(row.esbuildGzip, widths.esbuildGzip),
+        pad(row.terser, widths.terser),
+        pad(row.terserGzip, widths.terserGzip),
       ].join("  "),
     );
   }
