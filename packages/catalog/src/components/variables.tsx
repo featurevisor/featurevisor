@@ -228,7 +228,7 @@ function DefaultValueCodeBlock(props: { children: React.ReactNode }) {
   );
 }
 
-function DefaultValueView(props: { value: unknown }) {
+export function VariableValueView(props: { value: unknown }) {
   const value = props.value;
 
   if (value === undefined || value === null) {
@@ -246,7 +246,7 @@ function DefaultValueView(props: { value: unknown }) {
   return <span className="font-mono text-sm text-text">{String(value)}</span>;
 }
 
-function isInlineDefault(value: unknown) {
+export function isInlineVariableValue(value: unknown) {
   return typeof value === "number" || typeof value === "boolean";
 }
 
@@ -264,7 +264,7 @@ function VariableDefinition(props: {
     (type === "object" || type === "array" || (Array.isArray(schema.oneOf) && schema.oneOf.length > 0));
   const description = getSchemaDescription(schema);
   const defaultValue = "defaultValue" in schema ? schema.defaultValue : undefined;
-  const inlineDefault = isInlineDefault(defaultValue);
+  const inlineDefault = isInlineVariableValue(defaultValue);
 
   return (
     <section
@@ -304,12 +304,12 @@ function VariableDefinition(props: {
         (inlineDefault ? (
           <p className="mt-3 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-faint">Default </span>
-            <DefaultValueView value={defaultValue} />
+            <VariableValueView value={defaultValue} />
           </p>
         ) : (
           <div className="mt-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Default</h3>
-            <DefaultValueView value={defaultValue} />
+            <VariableValueView value={defaultValue} />
           </div>
         ))}
     </section>
@@ -348,7 +348,9 @@ export function FeatureVariablesList(props: {
   variablesSchema: Record<string, unknown>;
   setKey?: string;
 }) {
-  const entries = Object.entries(props.variablesSchema);
+  const entries = Object.entries(props.variablesSchema).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
 
   useScrollToHash([entries.length]);
 

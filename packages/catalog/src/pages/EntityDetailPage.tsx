@@ -18,6 +18,7 @@ import {
 } from "../components/ui";
 import { ConditionTree, GroupSegmentTree } from "../components/trees";
 import { FeatureVariablesList } from "../components/variables";
+import { FeatureVariationsList } from "../components/variations";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
   return (
@@ -764,24 +765,8 @@ function RuleProgress(props: { value: number }) {
   );
 }
 
-function PercentageBar(props: { value: number }) {
-  const value = Math.max(0, Math.min(100, props.value));
-
-  return (
-    <div className="mt-4">
-      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-muted">
-        <span>Rollout</span>
-        <span>{value}%</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-pill">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export function FeatureVariationsTab() {
-  const { detail } = useEntityDetail();
+  const { detail, setKey } = useEntityDetail();
   const entity = detail.entity as Record<string, any>;
   const variations = entity.variations || [];
 
@@ -791,32 +776,7 @@ export function FeatureVariationsTab() {
     return <EmptyState title="No variations found" />;
   }
 
-  return (
-    <div className="space-y-3">
-      {variations.map((variation: Record<string, unknown>, index: number) => (
-        <section
-          key={String(variation.value ?? index)}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-        >
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem] md:items-start">
-            <div>
-              <h2 className="text-sm font-semibold text-muted">Value</h2>
-              <div className="mt-1 text-lg font-black text-text">
-                <FormattedValue value={variation.value} />
-              </div>
-            </div>
-            {typeof variation.weight === "number" && <PercentageBar value={variation.weight} />}
-          </div>
-          {variation.variableOverrides && (
-            <div className="mt-4">
-              <h3 className="mb-2 text-sm font-semibold">Variable overrides</h3>
-              <FormattedValue value={variation.variableOverrides} />
-            </div>
-          )}
-        </section>
-      ))}
-    </div>
-  );
+  return <FeatureVariationsList variations={variations} setKey={setKey} />;
 }
 
 export function FeatureVariablesTab() {
