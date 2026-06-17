@@ -5,6 +5,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { fetchIndex } from "../api";
 import type { CatalogEntityType, CatalogIndex, EntityPath } from "../types";
 import {
+  decodeRouteSegment,
   encodeRouteSegment,
   entityLabels,
   entityPaths,
@@ -181,7 +182,7 @@ async function getSetSwitchPath(pathname: string, nextSetKey: string) {
 
   if (detailMatch && isEntityPath(detailMatch[1])) {
     const entityPath = detailMatch[1];
-    const entityKey = decodeURIComponent(detailMatch[2]);
+    const entityKey = decodeRouteSegment(detailMatch[2]);
     const suffix = detailMatch[3] || "";
 
     try {
@@ -321,7 +322,7 @@ export function AppShell(props: { children: React.ReactNode }) {
   const { manifest } = useCatalog();
   const location = useLocation();
   const setKeyMatch = location.pathname.match(/^\/sets\/([^/]+)/);
-  const setKey = setKeyMatch ? decodeURIComponent(setKeyMatch[1]) : undefined;
+  const setKey = setKeyMatch ? decodeRouteSegment(setKeyMatch[1]) : undefined;
   const showSidebar = !manifest.sets || Boolean(setKey);
 
   return (

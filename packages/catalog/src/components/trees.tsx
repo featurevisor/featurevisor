@@ -1,6 +1,44 @@
 import type { Condition, GroupSegment } from "@featurevisor/types";
 
-import { CodeBlock, Badge } from "./ui";
+import { Badge } from "./ui";
+
+function InlineValue(props: { value: unknown }) {
+  const value = props.value;
+
+  if (value === undefined || value === null || value === "") {
+    return <span className="text-muted">n/a</span>;
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <span className="inline-flex flex-wrap gap-1">
+        {value.map((item, index) => (
+          <span key={index} className="rounded bg-pill px-1.5 py-0.5">
+            <InlineValue value={item} />
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (typeof value === "object") {
+    return (
+      <span className="inline-grid gap-1 align-top">
+        {Object.entries(value as Record<string, unknown>).map(([key, item]) => (
+          <span key={key} className="rounded bg-pill px-1.5 py-0.5">
+            <span className="font-mono text-muted">{key}</span>: <InlineValue value={item} />
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  if (typeof value === "boolean") {
+    return <>{value ? "true" : "false"}</>;
+  }
+
+  return <>{String(value)}</>;
+}
 
 export function ConditionTree(props: { conditions?: Condition | Condition[] | "*" }) {
   const value = props.conditions;
@@ -30,12 +68,43 @@ export function ConditionTree(props: { conditions?: Condition | Condition[] | "*
       <div className="rounded border border-border bg-elevated p-3 text-sm">
         <span className="font-semibold">{value.attribute}</span>{" "}
         <span className="text-muted">{value.operator}</span>{" "}
-        <code>{JSON.stringify(value.value)}</code>
+        <code>
+          <InlineValue value={value.value} />
+        </code>
       </div>
     );
   }
 
-  return <CodeBlock value={value} />;
+  if ("and" in value) {
+    return (
+      <div className="rounded border border-border bg-elevated p-3">
+        <Badge>and</Badge>
+        <div className="mt-3">
+          <ConditionTree conditions={value.and} />
+        </div>
+      </div>
+    );
+  }
+
+  if ("or" in value) {
+    return (
+      <div className="rounded border border-border bg-elevated p-3">
+        <Badge>or</Badge>
+        <div className="mt-3">
+          <ConditionTree conditions={value.or} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded border border-border bg-elevated p-3">
+      <Badge>not</Badge>
+      <div className="mt-3">
+        <ConditionTree conditions={value.not} />
+      </div>
+    </div>
+  );
 }
 
 export function GroupSegmentTree(props: { segments?: GroupSegment | GroupSegment[] | "*" }) {

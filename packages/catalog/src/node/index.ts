@@ -438,6 +438,139 @@ function getEntitySummary(
   };
 }
 
+function toSearchableScalar(value: unknown): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return undefined;
+}
+
+function getFeatureVariationValues(feature: ParsedFeature) {
+  return (feature.variations || [])
+    .map((variation) => toSearchableScalar(variation.value))
+    .filter((value): value is string => Boolean(value));
+}
+
+function getFeatureVariableKeys(feature: ParsedFeature) {
+  return Object.keys(feature.variablesSchema || {}).sort();
+}
+
+function getFeatureEnvironmentKeys(feature: ParsedFeature, environments?: string[]) {
+  if (!Array.isArray(environments) || environments.length === 0) {
+    return undefined;
+  }
+
+  const found = new Set<string>();
+
+  for (const key of ["rules", "force", "expose"] as const) {
+    const value = feature[key] as Record<string, unknown> | unknown[] | undefined;
+
+    if (value && !Array.isArray(value) && typeof value === "object") {
+      for (const environment of Object.keys(value)) {
+        if (environments.includes(environment)) {
+          found.add(environment);
+        }
+      }
+    }
+  }
+
+  return Array.from(found).sort();
+}
+
+function getFeatureRulesForEnvironment(feature: ParsedFeature, environment: string) {
+  if (Array.isArray(feature.rules)) {
+    return feature.rules;
+  }
+
+  return feature.rules?.[environment] || [];
+}
+
+function isFeatureExposedInEnvironment(feature: ParsedFeature, environment: string) {
+  const featureExpose = feature.expose as Record<string, unknown> | boolean | undefined;
+  const rules = feature.rules as Record<string, any> | any[] | undefined;
+  const environmentRules = !Array.isArray(rules) ? rules?.[environment] : undefined;
+
+  if (environmentRules?.expose === false) {
+    return false;
+  }
+
+  if (featureExpose === false) {
+    return false;
+  }
+
+  if (
+    featureExpose &&
+    typeof featureExpose === "object" &&
+    !Array.isArray(featureExpose) &&
+    featureExpose[environment] === false
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function isFeatureEnabledInEnvironment(feature: ParsedFeature, environment: string) {
+  if (feature.archived === true) {
+    return false;
+  }
+
+  if (!isFeatureExposedInEnvironment(feature, environment)) {
+    return false;
+  }
+
+  return getFeatureRulesForEnvironment(feature, environment).some(
+    (rule: { percentage?: number }) => (rule.percentage || 0) > 0,
+  );
+}
+
+function getFeatureEnvironmentStatus(
+  feature: ParsedFeature,
+): Pick<EntitySummary, "environmentStatus" | "environmentStatusEnvironment"> {
+  if (Array.isArray(feature.rules)) {
+    return {};
+  }
+
+  const environments = Object.keys(feature.rules || {});
+  const productionEnvironment = environments.find((environment) =>
+    environment.toLowerCase().startsWith("prod"),
+  );
+
+  if (!productionEnvironment) {
+    return {};
+  }
+
+  if (isFeatureEnabledInEnvironment(feature, productionEnvironment)) {
+    return {
+      environmentStatus: "production",
+      environmentStatusEnvironment: productionEnvironment,
+    };
+  }
+
+  for (const environment of environments) {
+    if (isFeatureEnabledInEnvironment(feature, environment)) {
+      return {
+        environmentStatus: "other",
+        environmentStatusEnvironment: productionEnvironment,
+      };
+    }
+  }
+
+  return {
+    environmentStatus: "disabled",
+    environmentStatusEnvironment: productionEnvironment,
+  };
+}
+
 function toCatalogHistoryEntry(entry: HistoryEntry, set?: string): CatalogHistoryEntry {
   return {
     commit: entry.commit,
@@ -1034,6 +1167,8 @@ async function buildSetCatalog(
   for (const plan of entityPlan) {
     for (const key of plan.keys) {
       const entity = plan.entities[key];
+      const featureEnvironmentStatus =
+        plan.type === "feature" ? getFeatureEnvironmentStatus(entity) : {};
       const sourceFileInfo = getSourceFileInfo(
         context.repositorySourceRootDirectoryPath,
         projectConfig,
@@ -1085,7 +1220,18 @@ async function buildSetCatalog(
                 : plan.type === "attribute"
                   ? sortSet(relationships.attributeTargets[key])
                   : undefined,
-          environments: projectConfig.environments,
+          environments:
+            plan.type === "feature"
+              ? getFeatureEnvironmentKeys(entity, projectConfig.environments)
+              : projectConfig.environments,
+          variationValues: plan.type === "feature" ? getFeatureVariationValues(entity) : undefined,
+          variableKeys: plan.type === "feature" ? getFeatureVariableKeys(entity) : undefined,
+          hasVariations: plan.type === "feature" ? Boolean(entity.variations?.length) : undefined,
+          hasVariables:
+            plan.type === "feature"
+              ? Object.keys(entity.variablesSchema || {}).length > 0
+              : undefined,
+          ...featureEnvironmentStatus,
         }),
       );
     }

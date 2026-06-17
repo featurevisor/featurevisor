@@ -30,9 +30,15 @@ export interface EntitySummary {
   archived?: boolean;
   deprecated?: boolean;
   promotable?: boolean;
+  environmentStatus?: "production" | "other" | "disabled";
+  environmentStatusEnvironment?: string;
   tags?: string[];
   targets?: string[];
   environments?: string[];
+  variationValues?: string[];
+  variableKeys?: string[];
+  hasVariations?: boolean;
+  hasVariables?: boolean;
   lastModified?: LastModified;
   href: string;
 }

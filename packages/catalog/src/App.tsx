@@ -7,11 +7,12 @@ import { HomePage } from "./pages/HomePage";
 import { ListPage } from "./pages/ListPage";
 import {
   EntityDetailPage,
-  FeatureRulesTab,
   FeatureForceTab,
+  FeatureRulesTab,
+  FeatureVariablesTab,
+  FeatureVariationsTab,
   HistoryTab,
   OverviewTab,
-  RawTab,
   TestsTab,
   UsageTab,
 } from "./pages/EntityDetailPage";
@@ -23,6 +24,8 @@ function EntityRoutes(props: { prefix?: string } = {}) {
   return (
     <Route path={`${prefix}:entityPath/:entityKey`} element={<EntityDetailPage />}>
       <Route index element={<OverviewTab />} />
+      <Route path="variations" element={<FeatureVariationsTab />} />
+      <Route path="variables" element={<FeatureVariablesTab />} />
       <Route path="rules" element={<FeatureRulesTab />} />
       <Route path="rules/:environmentKey" element={<FeatureRulesTab />} />
       <Route path="force" element={<FeatureForceTab />} />
@@ -30,7 +33,6 @@ function EntityRoutes(props: { prefix?: string } = {}) {
       <Route path="tests" element={<TestsTab />} />
       <Route path="usage" element={<UsageTab />} />
       <Route path="history" element={<HistoryTab />} />
-      <Route path="raw" element={<RawTab />} />
       <Route path="*" element={<Navigate to="." replace />} />
     </Route>
   );

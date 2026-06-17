@@ -2,12 +2,11 @@ import * as React from "react";
 import { Link, Navigate, Outlet, useOutletContext, useParams } from "react-router-dom";
 
 import { fetchEntityDetail, fetchHistoryPage } from "../api";
-import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
+import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
 import type { DevEditor, EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
 import { useCatalog } from "../context/CatalogContext";
 import {
   Badge,
-  CodeBlock,
   EmptyState,
   FieldGrid,
   MarkdownContent,
@@ -47,10 +46,72 @@ function valueOrNA(value: unknown) {
   }
 
   if (typeof value === "object") {
-    return <CodeBlock value={value} />;
+    return <FormattedValue value={value} />;
   }
 
   return String(value);
+}
+
+function formatScalar(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return <span className="text-muted">n/a</span>;
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function FormattedValue(props: { value: unknown }) {
+  const value = props.value;
+
+  if (value === undefined || value === null || value === "") {
+    return <span className="text-muted">n/a</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <span className="text-muted">empty</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {value.map((item, index) => (
+          <span key={index} className="rounded border border-border bg-elevated px-2 py-1 text-xs">
+            <FormattedValue value={item} />
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+
+    if (entries.length === 0) {
+      return <span className="text-muted">empty</span>;
+    }
+
+    return (
+      <dl className="space-y-2">
+        {entries.map(([key, item]) => (
+          <div
+            key={key}
+            className="grid gap-1 rounded border border-border bg-elevated p-2 sm:grid-cols-3"
+          >
+            <dt className="font-mono text-xs font-semibold text-muted">{key}</dt>
+            <dd className="min-w-0 sm:col-span-2">
+              <FormattedValue value={item} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return <span>{formatScalar(value)}</span>;
 }
 
 function CaretIcon() {
@@ -202,6 +263,7 @@ function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail["editLi
 
 export function EntityDetailPage() {
   const { entityPath, entityKey, setKey } = useParams();
+  const decodedEntityKey = entityKey ? decodeRouteSegment(entityKey) : undefined;
   const [detail, setDetail] = React.useState<EntityDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -209,16 +271,16 @@ export function EntityDetailPage() {
     setDetail(null);
     setError(null);
 
-    if (!isEntityPath(entityPath) || !entityKey) {
+    if (!isEntityPath(entityPath) || !decodedEntityKey) {
       return;
     }
 
-    fetchEntityDetail(entityPathToType[entityPath], entityKey, setKey)
+    fetchEntityDetail(entityPathToType[entityPath], decodedEntityKey, setKey)
       .then(setDetail)
       .catch((err: Error) => setError(err.message));
-  }, [entityPath, entityKey, setKey]);
+  }, [entityPath, decodedEntityKey, setKey]);
 
-  if (!isEntityPath(entityPath) || !entityKey) {
+  if (!isEntityPath(entityPath) || !decodedEntityKey) {
     return <Navigate to="/features" replace />;
   }
 
@@ -236,6 +298,8 @@ export function EntityDetailPage() {
     { to: ".", label: "Overview" },
     ...(type === "feature"
       ? [
+          { to: "variations", label: "Variations" },
+          { to: "variables", label: "Variables" },
           { to: "rules", label: "Rules" },
           { to: "force", label: "Force" },
           { to: "tests", label: "Tests" },
@@ -243,7 +307,6 @@ export function EntityDetailPage() {
       : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
     { to: "history", label: "History" },
-    { to: "raw", label: "Raw" },
   ];
 
   return (
@@ -301,18 +364,6 @@ export function OverviewTab() {
           ]}
         />
         <MarkdownContent value={entity.description as string | undefined} />
-        {entity.variations && (
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
-            <h2 className="mb-3 font-semibold">Variations</h2>
-            <CodeBlock value={entity.variations} />
-          </section>
-        )}
-        {entity.variablesSchema && (
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
-            <h2 className="mb-3 font-semibold">Variables</h2>
-            <CodeBlock value={entity.variablesSchema} />
-          </section>
-        )}
       </div>
     );
   }
@@ -329,7 +380,6 @@ export function OverviewTab() {
           { label: "Source", value: detail.sourcePath || "n/a" },
         ]}
       />
-      <CodeBlock value={detail.entity} />
     </div>
   );
 }
@@ -364,6 +414,7 @@ export function FeatureRulesTab() {
       selectedEnvironment={selectedEnvironment}
       rows={rules || []}
       expose={expose}
+      showConditions={false}
     />
   );
 }
@@ -385,6 +436,7 @@ export function FeatureForceTab() {
       environments={environments}
       selectedEnvironment={selectedEnvironment}
       rows={rows || []}
+      showConditions
     />
   );
 }
@@ -396,6 +448,7 @@ function FeatureRows(props: {
   selectedEnvironment?: string;
   rows: any[];
   expose?: unknown;
+  showConditions: boolean;
 }) {
   if (props.environments.length > 0 && props.selectedEnvironment) {
     const isKnown = props.environments.includes(props.selectedEnvironment);
@@ -422,7 +475,10 @@ function FeatureRows(props: {
 
       {typeof props.expose !== "undefined" && (
         <div className="rounded border border-border bg-warning-surface p-3 text-sm">
-          Expose: {JSON.stringify(props.expose)}
+          <span className="font-semibold">Expose</span>
+          <div className="mt-2">
+            <FormattedValue value={props.expose} />
+          </div>
         </div>
       )}
 
@@ -437,20 +493,107 @@ function FeatureRows(props: {
             {row.enabled === false && <Badge tone="danger">disabled</Badge>}
             {row.promotable === false && <Badge>not promotable</Badge>}
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
+          <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
+            <div className="rounded border border-border bg-elevated p-3">
               <h3 className="mb-2 text-sm font-semibold">Segments</h3>
               <GroupSegmentTree segments={row.segments} />
             </div>
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Conditions</h3>
-              <ConditionTree conditions={row.conditions} />
-            </div>
+            {props.showConditions && (
+              <div className="rounded border border-border bg-elevated p-3">
+                <h3 className="mb-2 text-sm font-semibold">Conditions</h3>
+                <ConditionTree conditions={row.conditions} />
+              </div>
+            )}
           </div>
-          <div className="mt-4">
-            <CodeBlock value={row} />
-          </div>
+          {typeof row.percentage === "number" && <PercentageBar value={row.percentage} />}
         </div>
+      ))}
+    </div>
+  );
+}
+
+function PercentageBar(props: { value: number }) {
+  const value = Math.max(0, Math.min(100, props.value));
+
+  return (
+    <div className="mt-4">
+      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-muted">
+        <span>Rollout</span>
+        <span>{value}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-pill">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
+
+export function FeatureVariationsTab() {
+  const { detail } = useEntityDetail();
+  const entity = detail.entity as Record<string, any>;
+  const variations = entity.variations || [];
+
+  if (detail.type !== "feature") return <Navigate to=".." replace />;
+
+  if (variations.length === 0) {
+    return <EmptyState title="No variations found" />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {variations.map((variation: Record<string, unknown>, index: number) => (
+        <section
+          key={String(variation.value ?? index)}
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+        >
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem] md:items-start">
+            <div>
+              <h2 className="text-sm font-semibold text-muted">Value</h2>
+              <div className="mt-1 text-lg font-black text-text">
+                <FormattedValue value={variation.value} />
+              </div>
+            </div>
+            {typeof variation.weight === "number" && <PercentageBar value={variation.weight} />}
+          </div>
+          {variation.variableOverrides && (
+            <div className="mt-4">
+              <h3 className="mb-2 text-sm font-semibold">Variable overrides</h3>
+              <FormattedValue value={variation.variableOverrides} />
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+export function FeatureVariablesTab() {
+  const { detail } = useEntityDetail();
+  const entity = detail.entity as Record<string, any>;
+  const variablesSchema = entity.variablesSchema || {};
+  const entries = Object.entries(variablesSchema);
+
+  if (detail.type !== "feature") return <Navigate to=".." replace />;
+
+  if (entries.length === 0) {
+    return <EmptyState title="No variables found" />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.map(([key, schema]) => (
+        <section
+          key={key}
+          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+        >
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Badge>{key}</Badge>
+            {typeof schema === "object" && schema && "type" in schema && (
+              <Badge tone="primary">{String((schema as Record<string, unknown>).type)}</Badge>
+            )}
+          </div>
+          <FormattedValue value={schema} />
+        </section>
       ))}
     </div>
   );
@@ -479,17 +622,26 @@ export function TestsTab() {
 export function UsageTab() {
   const { detail, setKey } = useEntityDetail();
   const relationships = detail.relationships || {};
-  const entries = Object.entries(relationships).filter(([, values]) => values.length > 0);
+  const entries =
+    detail.type === "feature"
+      ? [
+          ["targets", relationships.targets || []],
+          ["features", relationships.requiredBy || []],
+        ]
+      : Object.entries(relationships);
+  const visibleEntries = entries.filter(([, values]) => values.length > 0);
 
   return (
     <div className="space-y-4">
-      {entries.length === 0 && <EmptyState title="No usage found" />}
-      {entries.map(([label, values]) => (
+      {visibleEntries.length === 0 && <EmptyState title="No usage found" />}
+      {visibleEntries.map(([label, values]) => (
         <section
           key={label}
           className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
         >
-          <h2 className="mb-3 font-semibold">{label}</h2>
+          <h2 className="mb-3 font-semibold">
+            {detail.type === "feature" && label === "features" ? "Required by features" : label}
+          </h2>
           <div className="flex flex-wrap gap-2">
             {values.map((value) => (
               <Link
@@ -518,6 +670,7 @@ export function UsageTab() {
 
 export function HistoryTab() {
   const { detail } = useEntityDetail();
+  const { manifest } = useCatalog();
   const [page, setPage] = React.useState<HistoryPageData | null>(null);
 
   React.useEffect(() => {
@@ -536,23 +689,36 @@ export function HistoryTab() {
   return (
     <div className="space-y-3">
       {page.entries.length === 0 && <EmptyState title="No history found" />}
-      {page.entries.map((entry) => (
-        <div
-          key={entry.commit}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-        >
-          <div className="font-mono text-sm">{entry.commit.slice(0, 10)}</div>
-          <div className="text-sm text-muted">
-            {entry.author} · {new Date(entry.timestamp).toLocaleString()}
+      {page.entries.map((entry) => {
+        const commitHref = manifest.links?.commit?.replace("{{hash}}", entry.commit);
+        const content = (
+          <>
+            <div className="font-mono text-sm">{entry.commit.slice(0, 10)}</div>
+            <div className="text-sm text-muted">
+              {entry.author} · {new Date(entry.timestamp).toLocaleString()}
+            </div>
+          </>
+        );
+
+        return commitHref ? (
+          <a
+            key={entry.commit}
+            href={commitHref}
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5 hover:bg-elevated"
+          >
+            {content}
+          </a>
+        ) : (
+          <div
+            key={entry.commit}
+            className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
+          >
+            {content}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
-}
-
-export function RawTab() {
-  const { detail } = useEntityDetail();
-
-  return <CodeBlock value={detail.entity} />;
 }

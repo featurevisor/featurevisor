@@ -5,7 +5,7 @@ import type {
   EntityDetail,
   HistoryPage,
 } from "./types";
-import { encodeRouteSegment, getDataBasePath } from "./entityTypes";
+import { encodeDataSegment, getDataBasePath } from "./entityTypes";
 
 let routerMode: CatalogManifest["router"] = "browser";
 
@@ -41,7 +41,7 @@ export function fetchIndex(setKey?: string) {
 
 export function fetchEntityDetail(type: CatalogEntityType, key: string, setKey?: string) {
   return fetchJson<EntityDetail>(
-    getDataUrl(`${getDataBasePath(setKey)}/entities/${type}/${encodeRouteSegment(key)}.json`),
+    getDataUrl(`${getDataBasePath(setKey)}/entities/${type}/${encodeDataSegment(key)}.json`),
   );
 }
 

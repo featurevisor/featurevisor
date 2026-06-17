@@ -41,6 +41,18 @@ export const entityLabels: Record<CatalogEntityType, { singular: string; plural:
 };
 
 export function encodeRouteSegment(value: string) {
+  return encodeURIComponent(value).replace(/%2F/gi, "%252F");
+}
+
+export function decodeRouteSegment(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export function encodeDataSegment(value: string) {
   return encodeURIComponent(value);
 }
 
@@ -53,5 +65,5 @@ export function getEntityRoute(type: CatalogEntityType, key: string, setKey?: st
 }
 
 export function getDataBasePath(setKey?: string) {
-  return setKey ? `/data/sets/${encodeRouteSegment(setKey)}` : "/data/root";
+  return setKey ? `/data/sets/${encodeDataSegment(setKey)}` : "/data/root";
 }
