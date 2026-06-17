@@ -42,3 +42,15 @@ body {
 a {
   color: inherit;
 }
+
+.variable-schema-col-path {
+  width: 38%;
+}
+
+.variable-schema-col-type {
+  width: 18%;
+}
+
+.variable-schema-col-description {
+  width: 44%;
+}

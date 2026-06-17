@@ -17,6 +17,7 @@ import {
   Tabs,
 } from "../components/ui";
 import { ConditionTree, GroupSegmentTree } from "../components/trees";
+import { FeatureVariablesList } from "../components/variables";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
   return (
@@ -819,35 +820,17 @@ export function FeatureVariationsTab() {
 }
 
 export function FeatureVariablesTab() {
-  const { detail } = useEntityDetail();
+  const { detail, setKey } = useEntityDetail();
   const entity = detail.entity as Record<string, any>;
   const variablesSchema = entity.variablesSchema || {};
-  const entries = Object.entries(variablesSchema);
 
   if (detail.type !== "feature") return <Navigate to=".." replace />;
 
-  if (entries.length === 0) {
+  if (Object.keys(variablesSchema).length === 0) {
     return <EmptyState title="No variables found" />;
   }
 
-  return (
-    <div className="space-y-3">
-      {entries.map(([key, schema]) => (
-        <section
-          key={key}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-        >
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge>{key}</Badge>
-            {typeof schema === "object" && schema && "type" in schema && (
-              <Badge tone="primary">{String((schema as Record<string, unknown>).type)}</Badge>
-            )}
-          </div>
-          <FormattedValue value={schema} />
-        </section>
-      ))}
-    </div>
-  );
+  return <FeatureVariablesList variablesSchema={variablesSchema} setKey={setKey} />;
 }
 
 function getUsageEntityType(label: string): CatalogEntityType {
