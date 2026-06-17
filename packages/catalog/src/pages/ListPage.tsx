@@ -202,10 +202,6 @@ function LastModified(props: { entity: EntitySummary }) {
   );
 }
 
-function getRelationshipBadges(entity: EntitySummary) {
-  return entity.targets || [];
-}
-
 function EnvironmentDot(props: {
   status?: EntitySummary["environmentStatus"];
   environment?: string;
@@ -284,21 +280,112 @@ function EnvironmentDot(props: {
   );
 }
 
-function TargetBadges(props: { targets: string[] }) {
-  if (props.targets.length === 0) {
+function HoverTooltip(props: { label: string; children: React.ReactNode; className?: string }) {
+  const ref = React.useRef<HTMLSpanElement | null>(null);
+  const [tooltipPosition, setTooltipPosition] = React.useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  function showTooltip() {
+    const rect = ref.current?.getBoundingClientRect();
+
+    if (!rect) {
+      return;
+    }
+
+    setTooltipPosition({
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+    });
+  }
+
+  function hideTooltip() {
+    setTooltipPosition(null);
+  }
+
+  return (
+    <span
+      ref={ref}
+      className={`relative inline-flex ${props.className || ""}`}
+      aria-label={props.label}
+      onMouseEnter={showTooltip}
+      onMouseLeave={hideTooltip}
+      onFocus={showTooltip}
+      onBlur={hideTooltip}
+    >
+      {props.children}
+      {tooltipPosition &&
+        createPortal(
+          <span
+            className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-header px-2 py-1 text-xs font-semibold text-header-text shadow-lg"
+            style={{
+              left: tooltipPosition.left,
+              top: tooltipPosition.top - 8,
+            }}
+          >
+            {props.label}
+          </span>,
+          document.body,
+        )}
+    </span>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path
+        fillRule="evenodd"
+        d="M4.25 3A1.25 1.25 0 0 0 3 4.25v4.86c0 .33.13.65.37.88l6.64 6.64a1.25 1.25 0 0 0 1.77 0l4.85-4.85a1.25 1.25 0 0 0 0-1.77L9.99 3.37A1.25 1.25 0 0 0 9.11 3H4.25Zm1.5 4a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path
+        fillRule="evenodd"
+        d="M10 2.75a7.25 7.25 0 1 0 0 14.5 7.25 7.25 0 0 0 0-14.5ZM4.25 10a5.75 5.75 0 1 1 11.5 0 5.75 5.75 0 0 1-11.5 0ZM10 6.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM7.75 10a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function sortValues(values?: string[]) {
+  return Array.from(new Set(values || [])).sort((left, right) => left.localeCompare(right));
+}
+
+function RowMetadataIcons(props: { entity: EntitySummary }) {
+  const tags = sortValues(props.entity.tags);
+  const targets = sortValues(props.entity.targets);
+
+  if (tags.length === 0 && targets.length === 0) {
     return null;
   }
 
   return (
-    <div className="relative min-w-0 max-w-full overflow-hidden">
-      <div className="flex min-w-0 max-w-full gap-2 overflow-hidden whitespace-nowrap pr-10">
-        {props.targets.map((label) => (
-          <span key={label} className="shrink-0">
-            <Badge>{label}</Badge>
-          </span>
-        ))}
-      </div>
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent" />
+    <div className="flex shrink-0 items-center gap-1">
+      {tags.length > 0 && (
+        <HoverTooltip
+          label={`Tags: ${tags.join(", ")}`}
+          className="rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+        >
+          <TagIcon />
+        </HoverTooltip>
+      )}
+      {targets.length > 0 && (
+        <HoverTooltip
+          label={`Targets: ${targets.join(", ")}`}
+          className="rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+        >
+          <TargetIcon />
+        </HoverTooltip>
+      )}
     </div>
   );
 }
@@ -449,11 +536,13 @@ export function ListPage() {
                       {entity.description || "No description"}
                     </div>
                   </div>
-                  <div className="shrink-0">{getStatusBadges(entity)}</div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <RowMetadataIcons entity={entity} />
+                    {getStatusBadges(entity)}
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-col gap-2 text-xs text-muted md:flex-row md:items-center md:justify-between">
-                  <TargetBadges targets={getRelationshipBadges(entity)} />
-                  <span className="shrink-0 md:text-right">
+                <div className="mt-2 flex justify-end text-xs text-muted">
+                  <span className="shrink-0 text-right">
                     <LastModified entity={entity} />
                   </span>
                 </div>
