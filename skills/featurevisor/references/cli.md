@@ -238,11 +238,12 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 
 Generates typed accessors from feature definitions. Other languages: see <https://featurevisor.com/docs/code-generation>.
 
-## site
+## catalog
 
 ```bash
-npx featurevisor site export                      # build static status site into ./out
-npx featurevisor site serve [-p 3000]             # serve a built site
+npx featurevisor catalog                          # export, serve, and watch the catalog
+npx featurevisor catalog export                   # build the static catalog
+npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
 ```
 
 ## version

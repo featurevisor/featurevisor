@@ -17,7 +17,6 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     datafilesDirectoryPath: "",
     datafileNamePattern: "",
     revisionFileName: "",
-    siteExportDirectoryPath: "",
     catalogDirectoryPath: "",
     setsDirectoryPath: "",
     environments: ["staging", "production"],

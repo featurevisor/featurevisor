@@ -27,6 +27,7 @@ describe("core: projectConfig", () => {
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
     expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
     expect("scopes" in config).toBe(false);
+    expect("siteExportDirectoryPath" in config).toBe(false);
   });
 
   it("throws when sets is not boolean", () => {

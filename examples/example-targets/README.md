@@ -39,7 +39,7 @@ $ npm test
 
 ### Start local server
 
-Generates and serves status site:
+Generates and serves the project catalog:
 
 ```
 $ npm start

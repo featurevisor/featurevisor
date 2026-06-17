@@ -18,7 +18,6 @@ export const STATE_DIRECTORY_NAME = ".featurevisor";
 export const DATAFILES_DIRECTORY_NAME = "datafiles";
 export const DATAFILE_NAME_PATTERN = "featurevisor-%s.json";
 export const REVISION_FILE_NAME = "REVISION";
-export const SITE_EXPORT_DIRECTORY_NAME = "out";
 export const CATALOG_DIRECTORY_NAME = "catalog";
 export const SETS_DIRECTORY_NAME = "sets";
 
@@ -54,7 +53,6 @@ export interface ProjectConfig {
   datafilesDirectoryPath: string;
   datafileNamePattern: string;
   revisionFileName: string;
-  siteExportDirectoryPath: string;
   catalogDirectoryPath: string;
   setsDirectoryPath: string;
 
@@ -109,7 +107,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     datafilesDirectoryPath: path.join(rootDirectoryPath, DATAFILES_DIRECTORY_NAME),
     datafileNamePattern: DATAFILE_NAME_PATTERN,
     revisionFileName: REVISION_FILE_NAME,
-    siteExportDirectoryPath: path.join(rootDirectoryPath, SITE_EXPORT_DIRECTORY_NAME),
     catalogDirectoryPath: path.join(rootDirectoryPath, CATALOG_DIRECTORY_NAME),
 
     enforceCatchAllRule: false,

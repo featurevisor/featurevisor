@@ -52,7 +52,6 @@ export class Datasource {
     return this.adapter.listSets();
   }
 
-  // @NOTE: only site generator needs it, find a way to get it out of here later
   getExtension() {
     return (this.config.parser as CustomParser).extension;
   }

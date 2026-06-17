@@ -22,7 +22,6 @@ function minimalProjectConfig(): ProjectConfig {
     datafilesDirectoryPath: "",
     datafileNamePattern: "",
     revisionFileName: "",
-    siteExportDirectoryPath: "",
     catalogDirectoryPath: "",
     setsDirectoryPath: "",
     environments: ["staging", "production"],

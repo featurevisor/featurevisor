@@ -7,8 +7,8 @@
     "lint": "featurevisor lint",
     "build": "featurevisor build",
     "test": "featurevisor test --only-failures",
-    "export": "featurevisor site export",
-    "start": "npm run export && featurevisor site serve",
+    "export": "featurevisor catalog export",
+    "start": "featurevisor catalog",
     "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },

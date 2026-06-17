@@ -14,7 +14,6 @@ import { evaluatePlugin } from "../evaluate";
 import { assessDistributionPlugin } from "../assess-distribution";
 import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
-import { sitePlugin } from "../site";
 import { promotePlugin } from "../promoter";
 import { getProjectSetExecutions } from "../sets";
 
@@ -39,7 +38,6 @@ export const projectBasedPlugins: Plugin[] = [
   createCatalogPlugin({
     getProjectSetExecutions,
   }),
-  sitePlugin,
 ];
 
 export const commonPlugins: Plugin[] = [];
