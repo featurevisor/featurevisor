@@ -1,157 +1,202 @@
+import { Link } from "react-router-dom";
 import type { Condition, GroupSegment } from "@featurevisor/types";
 
-import { Badge } from "./ui";
+import { getEntityRoute } from "../entityTypes";
+import { Badge, EntityKey } from "./ui";
 
-function InlineValue(props: { value: unknown }) {
-  const value = props.value;
+function formatValue(value: unknown): string {
+  if (typeof value === "undefined") return "";
+  if (value === null) return "null";
+  if (Array.isArray(value)) return value.map((item) => formatValue(item)).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
 
-  if (value === undefined || value === null || value === "") {
-    return <span className="text-muted">n/a</span>;
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <span className="inline-flex flex-wrap gap-1">
-        {value.map((item, index) => (
-          <span key={index} className="rounded bg-pill px-1.5 py-0.5">
-            <InlineValue value={item} />
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  if (typeof value === "object") {
-    return (
-      <span className="inline-grid gap-1 align-top">
-        {Object.entries(value as Record<string, unknown>).map(([key, item]) => (
-          <span key={key} className="rounded bg-pill px-1.5 py-0.5">
-            <span className="font-mono text-muted">{key}</span>: <InlineValue value={item} />
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  if (typeof value === "boolean") {
-    return <>{value ? "true" : "false"}</>;
-  }
-
-  return <>{String(value)}</>;
+  return String(value);
 }
 
-export function ConditionTree(props: { conditions?: Condition | Condition[] | "*" }) {
-  const value = props.conditions;
+function getParentAttributeKey(attributePath: string) {
+  return attributePath.split(".")[0];
+}
 
-  if (!value) {
-    return <span className="text-muted">none</span>;
-  }
-
-  if (value === "*") {
-    return <Badge tone="success">everyone</Badge>;
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <ul className="space-y-2">
-        {value.map((item, index) => (
-          <li key={index}>
-            <ConditionTree conditions={item} />
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if ("attribute" in value) {
-    return (
-      <div className="rounded border border-border bg-elevated p-3 text-sm">
-        <span className="font-semibold">{value.attribute}</span>{" "}
-        <span className="text-muted">{value.operator}</span>{" "}
-        <code>
-          <InlineValue value={value.value} />
-        </code>
-      </div>
-    );
-  }
-
-  if ("and" in value) {
-    return (
-      <div className="rounded border border-border bg-elevated p-3">
-        <Badge>and</Badge>
-        <div className="mt-3">
-          <ConditionTree conditions={value.and} />
-        </div>
-      </div>
-    );
-  }
-
-  if ("or" in value) {
-    return (
-      <div className="rounded border border-border bg-elevated p-3">
-        <Badge>or</Badge>
-        <div className="mt-3">
-          <ConditionTree conditions={value.or} />
-        </div>
-      </div>
-    );
-  }
-
+function SegmentLeaf(props: { segmentKey: string; setKey?: string }) {
   return (
-    <div className="rounded border border-border bg-elevated p-3">
-      <Badge>not</Badge>
-      <div className="mt-3">
-        <ConditionTree conditions={value.not} />
+    <div className="rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Badge tone="primary">segment</Badge>
+        <Link
+          to={getEntityRoute("segment", props.segmentKey, props.setKey)}
+          className="font-semibold text-primary hover:underline"
+        >
+          <EntityKey value={props.segmentKey} className="font-semibold" />
+        </Link>
       </div>
     </div>
   );
 }
 
-export function GroupSegmentTree(props: { segments?: GroupSegment | GroupSegment[] | "*" }) {
-  const value = props.segments;
-
-  if (!value) {
-    return <span className="text-muted">none</span>;
+function GroupSegmentNode(props: { segment: GroupSegment; setKey?: string }) {
+  if (typeof props.segment === "string") {
+    return <SegmentLeaf segmentKey={props.segment} setKey={props.setKey} />;
   }
 
-  if (value === "*") {
-    return <Badge tone="success">everyone</Badge>;
-  }
+  const operator = "and" in props.segment ? "and" : "or" in props.segment ? "or" : "not";
+  const rawChildren = props.segment[operator];
+  const children = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
 
-  if (typeof value === "string") {
-    return <Badge>{value}</Badge>;
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <ul className="space-y-2">
-        {value.map((item, index) => (
-          <li key={index}>
-            <GroupSegmentTree segments={item} />
-          </li>
+  return (
+    <div className="rounded-lg border border-border bg-elevated p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Badge tone="neutral">{operator.toUpperCase()}</Badge>
+        <span className="text-sm text-muted">
+          {children.length} branch{children.length === 1 ? "" : "es"}
+        </span>
+      </div>
+      <div className="ml-3 space-y-3 border-l border-border pl-4">
+        {children.map((child, index) => (
+          <GroupSegmentNode key={`${operator}-${index}`} segment={child} setKey={props.setKey} />
         ))}
-      </ul>
+      </div>
+    </div>
+  );
+}
+
+export function GroupSegmentTree(props: {
+  segments?: GroupSegment | GroupSegment[] | "*";
+  setKey?: string;
+}) {
+  if (!props.segments) {
+    return <p className="text-sm text-muted">No segments found.</p>;
+  }
+
+  if (props.segments === "*") {
+    return (
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-sm">
+        Everyone
+      </div>
     );
   }
 
-  if ("and" in value) {
-    return <BooleanGroup label="and" value={value.and} />;
-  }
+  const segments = Array.isArray(props.segments) ? props.segments : [props.segments];
 
-  if ("or" in value) {
-    return <BooleanGroup label="or" value={value.or} />;
-  }
-
-  return <BooleanGroup label="not" value={value.not} />;
+  return (
+    <div className="space-y-3">
+      {segments.map((segment, index) => (
+        <GroupSegmentNode key={index} segment={segment} setKey={props.setKey} />
+      ))}
+    </div>
+  );
 }
 
-function BooleanGroup(props: { label: string; value: GroupSegment[] }) {
-  return (
-    <div className="rounded border border-border bg-elevated p-3">
-      <Badge>{props.label}</Badge>
-      <div className="mt-3">
-        <GroupSegmentTree segments={props.value} />
+function ConditionLeaf(props: { condition: Record<string, any>; setKey?: string }) {
+  if ("attribute" in props.condition) {
+    const attributePath = String(props.condition.attribute);
+
+    return (
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge tone="primary">attribute</Badge>
+          <Link
+            to={getEntityRoute("attribute", getParentAttributeKey(attributePath), props.setKey)}
+            className="font-semibold text-primary hover:underline"
+          >
+            {attributePath}
+          </Link>
+          <span className="font-medium text-text">{props.condition.operator}</span>
+          {"value" in props.condition && (
+            <span className="text-muted">{formatValue(props.condition.value)}</span>
+          )}
+        </div>
       </div>
+    );
+  }
+
+  if ("feature" in props.condition) {
+    const featureKey = String(props.condition.feature);
+
+    return (
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge tone="success">feature</Badge>
+          <Link
+            to={getEntityRoute("feature", featureKey, props.setKey)}
+            className="font-semibold text-primary hover:underline"
+          >
+            <EntityKey value={featureKey} className="font-semibold" />
+          </Link>
+          <span className="font-medium text-text">{props.condition.operator}</span>
+          {"value" in props.condition && (
+            <span className="text-muted">{formatValue(props.condition.value)}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted shadow-sm">
+      Unsupported condition
+    </div>
+  );
+}
+
+function ConditionNode(props: { condition: Condition; setKey?: string }) {
+  const condition = props.condition as any;
+
+  if (typeof condition === "string") {
+    return (
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-sm">
+        {condition === "*" ? "Everyone" : condition}
+      </div>
+    );
+  }
+
+  if ("and" in condition || "or" in condition || "not" in condition) {
+    const operator = "and" in condition ? "and" : "or" in condition ? "or" : "not";
+    const rawChildren = condition[operator];
+    const children = Array.isArray(rawChildren) ? rawChildren : [rawChildren];
+
+    return (
+      <div className="rounded-lg border border-border bg-elevated p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Badge tone="neutral">{operator.toUpperCase()}</Badge>
+          <span className="text-sm text-muted">
+            {children.length} branch{children.length === 1 ? "" : "es"}
+          </span>
+        </div>
+        <div className="ml-3 space-y-3 border-l border-border pl-4">
+          {children.map((child, index) => (
+            <ConditionNode key={`${operator}-${index}`} condition={child} setKey={props.setKey} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return <ConditionLeaf condition={condition} setKey={props.setKey} />;
+}
+
+export function ConditionTree(props: {
+  conditions?: Condition | Condition[] | "*";
+  setKey?: string;
+}) {
+  if (!props.conditions) {
+    return <p className="text-sm text-muted">No conditions found.</p>;
+  }
+
+  if (props.conditions === "*") {
+    return (
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-sm">
+        Everyone
+      </div>
+    );
+  }
+
+  const conditions = Array.isArray(props.conditions) ? props.conditions : [props.conditions];
+
+  return (
+    <div className="space-y-3">
+      {conditions.map((condition, index) => (
+        <ConditionNode key={index} condition={condition} setKey={props.setKey} />
+      ))}
     </div>
   );
 }

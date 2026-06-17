@@ -8,6 +8,7 @@ import { useCatalog } from "../context/CatalogContext";
 import {
   Badge,
   EmptyState,
+  EntityKey,
   FieldGrid,
   MarkdownContent,
   PageHeader,
@@ -25,6 +26,65 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "groups" ||
     value === "schemas"
   );
+}
+
+function slugifyFragment(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function RulePermalink(props: { targetId: string }) {
+  return (
+    <a
+      href={`#${props.targetId}`}
+      aria-label="Link to this rule"
+      className="inline-flex rounded p-1 text-muted opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      >
+        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4" />
+        <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L13 20" />
+      </svg>
+    </a>
+  );
+}
+
+function useScrollToHash(dependencies: React.DependencyList) {
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.location.hash) {
+      return;
+    }
+
+    const targetId = decodeURIComponent(window.location.hash.slice(1));
+
+    if (!targetId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const targetElement = document.getElementById(targetId);
+
+      if (!targetElement) {
+        return;
+      }
+
+      targetElement.scrollIntoView({ block: "start" });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, dependencies);
 }
 
 export function useEntityDetail() {
@@ -390,11 +450,36 @@ function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force") {
     return [];
   }
 
-  return Object.keys(value).sort();
+  return Object.keys(value).sort(sortEnvironmentKeys);
+}
+
+function getEnvironmentSortGroup(value: string) {
+  const normalized = value.toLowerCase();
+
+  if (normalized.startsWith("dev")) {
+    return 0;
+  }
+
+  if (normalized.startsWith("prod")) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function sortEnvironmentKeys(left: string, right: string) {
+  const leftGroup = getEnvironmentSortGroup(left);
+  const rightGroup = getEnvironmentSortGroup(right);
+
+  if (leftGroup !== rightGroup) {
+    return leftGroup - rightGroup;
+  }
+
+  return left.localeCompare(right);
 }
 
 export function FeatureRulesTab() {
-  const { detail } = useEntityDetail();
+  const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const entity = detail.entity as Record<string, any>;
   const environments = getEnvironmentItems(detail, "rules");
@@ -413,12 +498,13 @@ export function FeatureRulesTab() {
       rows={rules || []}
       expose={expose}
       showConditions={false}
+      setKey={setKey}
     />
   );
 }
 
 export function FeatureForceTab() {
-  const { detail } = useEntityDetail();
+  const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const entity = detail.entity as Record<string, any>;
   const environments = getEnvironmentItems(detail, "force");
@@ -435,6 +521,7 @@ export function FeatureForceTab() {
       selectedEnvironment={selectedEnvironment}
       rows={rows || []}
       showConditions
+      setKey={setKey}
     />
   );
 }
@@ -447,7 +534,10 @@ function FeatureRows(props: {
   rows: any[];
   expose?: unknown;
   showConditions: boolean;
+  setKey?: string;
 }) {
+  useScrollToHash([props.base, props.selectedEnvironment, props.rows.length]);
+
   if (props.environments.length > 0 && props.selectedEnvironment) {
     const isKnown = props.environments.includes(props.selectedEnvironment);
     if (!isKnown) {
@@ -463,7 +553,12 @@ function FeatureRows(props: {
             <Link
               key={environment}
               to={`../${props.base}/${environment}`}
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${environment === props.selectedEnvironment ? "border-primary bg-primary text-header-text" : "border-border bg-surface text-muted hover:text-text"}`}
+              className={[
+                "inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                environment === props.selectedEnvironment
+                  ? "border-primary bg-header-active text-header-text"
+                  : "border-pill bg-transparent text-text hover:bg-elevated",
+              ].join(" ")}
             >
               {environment}
             </Link>
@@ -481,31 +576,61 @@ function FeatureRows(props: {
       )}
 
       {props.rows.length === 0 && <EmptyState title={`No ${props.title.toLowerCase()} found`} />}
-      {props.rows.map((row, index) => (
-        <div
-          key={row.key || index}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <Badge>{row.key || `#${index + 1}`}</Badge>
-            {row.enabled === false && <Badge tone="danger">disabled</Badge>}
-            {row.promotable === false && <Badge>not promotable</Badge>}
-          </div>
-          <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
-            <div className="rounded border border-border bg-elevated p-3">
-              <h3 className="mb-2 text-sm font-semibold">Segments</h3>
-              <GroupSegmentTree segments={row.segments} />
-            </div>
-            {props.showConditions && (
-              <div className="rounded border border-border bg-elevated p-3">
-                <h3 className="mb-2 text-sm font-semibold">Conditions</h3>
-                <ConditionTree conditions={row.conditions} />
+      {props.rows.map((row, index) => {
+        const ruleKey = String(row.key || `#${index + 1}`);
+        const ruleId = slugifyFragment(
+          [props.base, props.selectedEnvironment, ruleKey].filter(Boolean).join("-"),
+        );
+
+        return (
+          <section key={row.key || index} className="space-y-4">
+            <div className="space-y-3">
+              <div className="group flex flex-wrap items-center gap-2">
+                <h2 id={ruleId} className="font-semibold [overflow-wrap:anywhere]">
+                  <EntityKey value={ruleKey} className="font-semibold" />
+                </h2>
+                <RulePermalink targetId={ruleId} />
+                {typeof row.percentage === "number" && <Badge>{row.percentage}%</Badge>}
+                {row.enabled === false && <Badge tone="danger">disabled</Badge>}
+                {row.promotable === false && <Badge>not promotable</Badge>}
               </div>
-            )}
-          </div>
-          {typeof row.percentage === "number" && <PercentageBar value={row.percentage} />}
-        </div>
-      ))}
+              {row.summary && <p className="text-sm text-muted">{row.summary}</p>}
+              {row.description && <MarkdownContent value={row.description} />}
+            </div>
+
+            <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
+              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                <h3 className="text-sm font-semibold text-muted">Segments</h3>
+                <GroupSegmentTree segments={row.segments} setKey={props.setKey} />
+              </div>
+              {props.showConditions && (
+                <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                  <h3 className="text-sm font-semibold text-muted">Conditions</h3>
+                  <ConditionTree conditions={row.conditions} setKey={props.setKey} />
+                </div>
+              )}
+            </div>
+
+            {typeof row.percentage === "number" && <RolloutPanel value={row.percentage} />}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function RolloutPanel(props: { value: number }) {
+  const value = Math.max(0, Math.min(100, props.value));
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+      <div className="flex items-center justify-between text-sm">
+        <h3 className="font-semibold text-muted">Rollout</h3>
+        <span className="font-semibold text-text">{value}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-pill">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} />
+      </div>
     </div>
   );
 }
