@@ -196,7 +196,7 @@ function LastModified(props: { entity: EntitySummary }) {
 
   return (
     <span>
-      Last modified by <span className="font-semibold">{props.entity.lastModified.author}</span> on{" "}
+      Last modified by <span className="font-medium">{props.entity.lastModified.author}</span> on{" "}
       {formattedDate}
     </span>
   );
@@ -541,7 +541,7 @@ export function ListPage() {
                     {getStatusBadges(entity)}
                   </div>
                 </div>
-                <div className="mt-2 flex justify-end text-xs text-muted">
+                <div className="mt-2 flex justify-end text-[11px] text-faint">
                   <span className="shrink-0 text-right">
                     <LastModified entity={entity} />
                   </span>
