@@ -21,10 +21,9 @@ function formatTimestamp(value: string) {
 
 function HistoryEntryCard(props: { entry: HistoryEntry; setKey?: string; commitUrl?: string }) {
   const [expanded, setExpanded] = React.useState(false);
-  const hasMore = props.entry.entities.length > HISTORY_VISIBLE_ENTITY_LIMIT;
-  const visibleEntities = expanded
-    ? props.entry.entities
-    : props.entry.entities.slice(0, HISTORY_VISIBLE_ENTITY_LIMIT);
+  const entities = props.entry.entities.filter((entity) => entity.type !== "test");
+  const hasMore = entities.length > HISTORY_VISIBLE_ENTITY_LIMIT;
+  const visibleEntities = expanded ? entities : entities.slice(0, HISTORY_VISIBLE_ENTITY_LIMIT);
 
   return (
     <li className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">

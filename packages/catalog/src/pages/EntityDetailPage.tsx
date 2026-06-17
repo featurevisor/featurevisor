@@ -23,8 +23,7 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "attributes" ||
     value === "targets" ||
     value === "groups" ||
-    value === "schemas" ||
-    value === "tests"
+    value === "schemas"
   );
 }
 
@@ -302,7 +301,6 @@ export function EntityDetailPage() {
           { to: "variables", label: "Variables" },
           { to: "rules", label: "Rules" },
           { to: "force", label: "Force" },
-          { to: "tests", label: "Tests" },
         ]
       : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
@@ -599,26 +597,6 @@ export function FeatureVariablesTab() {
   );
 }
 
-export function TestsTab() {
-  const { detail, setKey } = useEntityDetail();
-  const tests = detail.relationships?.tests || [];
-
-  return (
-    <div className="space-y-2">
-      {tests.length === 0 && <EmptyState title="No tests reference this feature" />}
-      {tests.map((testKey) => (
-        <Link
-          key={testKey}
-          to={getEntityRoute("test", testKey, setKey)}
-          className="block rounded-lg border border-border bg-surface p-3 text-sm font-semibold text-primary shadow-sm ring-1 ring-black/5 hover:bg-elevated"
-        >
-          {testKey}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 export function UsageTab() {
   const { detail, setKey } = useEntityDetail();
   const relationships = detail.relationships || {};
@@ -628,7 +606,7 @@ export function UsageTab() {
           ["targets", relationships.targets || []],
           ["features", relationships.requiredBy || []],
         ]
-      : Object.entries(relationships);
+      : Object.entries(relationships).filter(([label]) => label !== "tests");
   const visibleEntries = entries.filter(([, values]) => values.length > 0);
 
   return (
@@ -651,9 +629,7 @@ export function UsageTab() {
                     ? "segment"
                     : label.includes("target")
                       ? "target"
-                      : label.includes("test")
-                        ? "test"
-                        : "feature",
+                      : "feature",
                   value,
                   setKey,
                 )}

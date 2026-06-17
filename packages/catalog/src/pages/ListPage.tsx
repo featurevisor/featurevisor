@@ -16,8 +16,7 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "attributes" ||
     value === "targets" ||
     value === "groups" ||
-    value === "schemas" ||
-    value === "tests"
+    value === "schemas"
   );
 }
 

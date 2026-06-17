@@ -13,7 +13,6 @@ import {
   FeatureVariationsTab,
   HistoryTab,
   OverviewTab,
-  TestsTab,
   UsageTab,
 } from "./pages/EntityDetailPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -30,7 +29,6 @@ function EntityRoutes(props: { prefix?: string } = {}) {
       <Route path="rules/:environmentKey" element={<FeatureRulesTab />} />
       <Route path="force" element={<FeatureForceTab />} />
       <Route path="force/:environmentKey" element={<FeatureForceTab />} />
-      <Route path="tests" element={<TestsTab />} />
       <Route path="usage" element={<UsageTab />} />
       <Route path="history" element={<HistoryTab />} />
       <Route path="*" element={<Navigate to="." replace />} />

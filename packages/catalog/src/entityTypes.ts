@@ -7,7 +7,6 @@ export const entityPaths: EntityPath[] = [
   "targets",
   "groups",
   "schemas",
-  "tests",
 ];
 
 export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
