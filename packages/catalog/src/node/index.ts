@@ -1220,6 +1220,14 @@ async function buildSetCatalog(
                 : plan.type === "attribute"
                   ? sortSet(relationships.attributeTargets[key])
                   : undefined,
+          usedInFeatureCount:
+            plan.type === "segment"
+              ? sortSet(relationships.segmentsUsedInFeatures[key]).length
+              : undefined,
+          usedInSegmentCount:
+            plan.type === "attribute"
+              ? sortSet(relationships.attributesUsedInSegments[key]).length
+              : undefined,
           environments:
             plan.type === "feature"
               ? getFeatureEnvironmentKeys(entity, projectConfig.environments)

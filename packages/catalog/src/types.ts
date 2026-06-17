@@ -34,6 +34,8 @@ export interface EntitySummary {
   environmentStatusEnvironment?: string;
   tags?: string[];
   targets?: string[];
+  usedInFeatureCount?: number;
+  usedInSegmentCount?: number;
   environments?: string[];
   variationValues?: string[];
   variableKeys?: string[];

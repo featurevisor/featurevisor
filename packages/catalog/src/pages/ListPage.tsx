@@ -5,7 +5,7 @@ import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { fetchIndex } from "../api";
 import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
 import type { CatalogIndex, EntityPath, EntitySummary } from "../types";
-import { Badge, Button, EmptyState, EntityKey, PageHeader } from "../components/ui";
+import { Badge, Button, EmptyState, EntityKey, LabelValueBadge, PageHeader } from "../components/ui";
 
 const LIST_INITIAL_LIMIT = 1000;
 
@@ -605,7 +605,7 @@ export function ListPage() {
           <Link
             key={entity.key}
             to={getEntityRoute(type, entity.key, setKey)}
-            className="block px-6 py-3 hover:bg-elevated"
+            className="group block px-6 py-3 hover:bg-elevated"
           >
             <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
               {type === "feature" && (
@@ -622,6 +622,20 @@ export function ListPage() {
                     <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {type === "segment" && (entity.usedInFeatureCount ?? 0) > 0 && (
+                      <LabelValueBadge
+                        compact
+                        label="Used in"
+                        value={`${entity.usedInFeatureCount} ${entity.usedInFeatureCount === 1 ? "feature" : "features"}`}
+                      />
+                    )}
+                    {type === "attribute" && (entity.usedInSegmentCount ?? 0) > 0 && (
+                      <LabelValueBadge
+                        compact
+                        label="Used in"
+                        value={`${entity.usedInSegmentCount} ${entity.usedInSegmentCount === 1 ? "segment" : "segments"}`}
+                      />
+                    )}
                     <RowMetadataIcons entity={entity} />
                     {getStatusBadges(entity)}
                   </div>

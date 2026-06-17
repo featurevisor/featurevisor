@@ -141,12 +141,16 @@ describe("catalog export", () => {
     expect(index.counts.feature).toBe(1);
     expect(index.entities.feature[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].targets).toEqual(["premiumWeb"]);
+    expect(index.entities.segment[0].usedInFeatureCount).toBe(1);
     expect(
       index.entities.attribute.find((entity: any) => entity.key === "country").targets,
     ).toEqual(["premiumWeb"]);
     expect(index.entities.attribute.find((entity: any) => entity.key === "plan").targets).toEqual([
       "premiumWeb",
     ]);
+    expect(
+      index.entities.attribute.find((entity: any) => entity.key === "plan").usedInSegmentCount,
+    ).toBe(1);
     expect(detail.relationships).toMatchObject({
       segments: ["premiumUsers"],
       attributes: ["country"],

@@ -85,18 +85,32 @@ export function LabelValueBadge(props: {
   label: React.ReactNode;
   value: React.ReactNode;
   to?: string;
+  compact?: boolean;
 }) {
   const valueContent = props.to ? (
     <Link to={props.to} className="font-medium text-primary hover:underline">
       {props.value}
     </Link>
   ) : (
-    <span className="font-medium text-text">{props.value}</span>
+    <span className={props.compact ? undefined : "font-medium text-text"}>{props.value}</span>
   );
 
+  if (props.compact) {
+    return (
+      <span className="inline-flex h-6 shrink-0 overflow-hidden rounded-full border border-border text-[11px] leading-none text-faint transition-colors group-hover:text-muted">
+        <span className="flex items-center bg-slate-100 pl-1.5 pr-1.5 font-medium transition-colors group-hover:bg-slate-200">
+          {props.label}
+        </span>
+        <span className="flex items-center bg-surface pl-1.5 pr-1.5 transition-colors group-hover:bg-slate-100">
+          {valueContent}
+        </span>
+      </span>
+    );
+  }
+
   return (
-    <span className="inline-flex overflow-hidden rounded-md border border-border text-xs shadow-sm">
-      <span className="bg-elevated px-2 py-1 text-muted">{props.label}</span>
+    <span className="inline-flex shrink-0 overflow-hidden rounded-md border border-border text-xs shadow-sm">
+      <span className="bg-primary/10 px-2 py-1 font-medium text-primary">{props.label}</span>
       <span className="bg-surface px-2 py-1">{valueContent}</span>
     </span>
   );
