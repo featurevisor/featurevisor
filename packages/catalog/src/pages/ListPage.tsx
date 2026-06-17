@@ -50,17 +50,6 @@ interface ParsedSearchQuery {
   qualifiers: Array<{ key: string; value: string }>;
 }
 
-const featureSearchHints = [
-  "tag:web",
-  "in:production",
-  "archived:false",
-  "with:variations",
-  "without:variations",
-  "variation:treatment",
-  "with:variables",
-  "variable:country",
-];
-
 function parseSearchQuery(query: string): ParsedSearchQuery {
   const terms: string[] = [];
   const qualifiers: Array<{ key: string; value: string }> = [];
@@ -83,6 +72,30 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
   }
 
   return { terms, qualifiers };
+}
+
+function getFeatureSearchHints(index: CatalogIndex) {
+  const features = index.entities.feature || [];
+  const tags = sortValues(features.flatMap((feature) => feature.tags || []));
+  const environments = sortValues(features.flatMap((feature) => feature.environments || []));
+  const variationValues = sortValues(features.flatMap((feature) => feature.variationValues || []));
+  const variableKeys = sortValues(features.flatMap((feature) => feature.variableKeys || []));
+  const hasVariations = features.some((feature) => feature.hasVariations);
+  const hasNoVariations = features.some((feature) => !feature.hasVariations);
+  const hasVariables = features.some((feature) => feature.hasVariables);
+  const hasNoVariables = features.some((feature) => !feature.hasVariables);
+
+  return [
+    tags[0] ? `tag:${tags[0]}` : undefined,
+    environments[0] ? `in:${environments[0]}` : undefined,
+    "archived:false",
+    hasVariations ? "with:variations" : undefined,
+    hasNoVariations ? "without:variations" : undefined,
+    variationValues[0] ? `variation:${variationValues[0]}` : undefined,
+    hasVariables ? "with:variables" : undefined,
+    hasNoVariables ? "without:variables" : undefined,
+    variableKeys[0] ? `variable:${variableKeys[0]}` : undefined,
+  ].filter((hint): hint is string => Boolean(hint));
 }
 
 function listIncludes(values: string[] | undefined, value: string) {
@@ -390,27 +403,113 @@ function RowMetadataIcons(props: { entity: EntitySummary }) {
   );
 }
 
-function FeatureSearchHints(props: {
+function QueryHints(props: {
   query: string;
+  hints: string[];
+  onHintClick: (hint: string) => void;
+}) {
+  if (props.hints.length === 0) {
+    return null;
+  }
+
+  const tokens = props.query.trim().split(/\s+/);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-2 text-xs text-muted">
+      <span className="shrink-0">Try:</span>
+      {props.hints.map((hint) => {
+        const isActive = tokens.some((token) => token.toLowerCase() === hint.toLowerCase());
+
+        return (
+          <button
+            key={hint}
+            type="button"
+            onClick={() => props.onHintClick(hint)}
+            className={[
+              "cursor-pointer rounded px-1.5 py-0.5 font-mono transition-colors",
+              isActive ? "bg-primary/10 text-primary" : "bg-elevated text-muted hover:text-text",
+            ].join(" ")}
+          >
+            {hint}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SearchControls(props: {
+  query: string;
+  label: string;
+  hints: string[];
   searchParams: URLSearchParams;
   setSearchParams: (params: URLSearchParams) => void;
 }) {
+  const hasHints = props.hints.length > 0;
+  const showHints = hasHints && props.searchParams.get("hints") === "1";
+
+  function setQuery(value?: string) {
+    props.setSearchParams(setSearchParam(props.searchParams, "q", value || undefined));
+  }
+
+  function setShowHints(value: boolean) {
+    props.setSearchParams(setSearchParam(props.searchParams, "hints", value ? "1" : undefined));
+  }
+
+  function handleHintClick(hint: string) {
+    const current = props.query.trim();
+    const tokens = current.split(/\s+/).filter(Boolean);
+    const existingIndex = tokens.findIndex((token) => token.toLowerCase() === hint.toLowerCase());
+    const next =
+      existingIndex >= 0
+        ? tokens.filter((_, index) => index !== existingIndex).join(" ")
+        : current
+          ? `${current} ${hint}`
+          : hint;
+
+    setQuery(next);
+  }
+
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-      <span className="font-semibold uppercase tracking-wide text-muted">Try</span>
-      {featureSearchHints.map((hint) => (
-        <button
-          key={hint}
-          type="button"
-          className="rounded-full border border-border bg-elevated px-2.5 py-1 font-mono text-muted hover:border-primary hover:text-primary"
-          onClick={() => {
-            const nextQuery = props.query.trim() ? `${props.query.trim()} ${hint}` : hint;
-            props.setSearchParams(setSearchParam(props.searchParams, "q", nextQuery));
-          }}
-        >
-          {hint}
-        </button>
-      ))}
+    <div>
+      <div className="relative">
+        <input
+          value={props.query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={`Search ${props.label.toLowerCase()}...`}
+          className={[
+            "w-full rounded-full border border-border bg-surface px-5 py-2 text-xl text-text outline-none placeholder:text-faint focus:border-primary",
+            hasHints ? "pr-10" : "",
+          ].join(" ")}
+        />
+        {hasHints && (
+          <button
+            type="button"
+            onClick={() => setShowHints(!showHints)}
+            aria-label={showHints ? "Hide advanced search hints" : "Show advanced search hints"}
+            aria-pressed={showHints}
+            className={[
+              "absolute right-3 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full border text-[10px] font-black leading-none transition-all",
+              showHints
+                ? "scale-105 border-primary bg-primary text-header-text shadow-sm"
+                : "border-border bg-surface text-faint hover:border-primary hover:bg-primary/10 hover:text-primary",
+            ].join(" ")}
+          >
+            ?
+          </button>
+        )}
+      </div>
+
+      <div
+        className={[
+          "grid transition-all duration-200 ease-in-out",
+          showHints ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        ].join(" ")}
+      >
+        <div className="overflow-hidden pl-5">
+          <QueryHints query={props.query} hints={props.hints} onHintClick={handleHintClick} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -463,6 +562,7 @@ export function ListPage() {
     });
   const visible = showAll ? filtered : filtered.slice(0, LIST_INITIAL_LIMIT);
   const hasHiddenEntities = filtered.length > LIST_INITIAL_LIMIT && !showAll;
+  const searchHints = entityPath === "features" ? getFeatureSearchHints(index) : [];
 
   return (
     <div className="space-y-4">
@@ -470,13 +570,12 @@ export function ListPage() {
 
       <div className="px-6 pt-1">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-          <input
-            value={query}
-            onChange={(event) =>
-              setSearchParams(setSearchParam(searchParams, "q", event.target.value || undefined))
-            }
-            placeholder={`Search ${entityLabels[type].plural.toLowerCase()}...`}
-            className="w-full rounded-full border border-border bg-surface px-5 py-2 text-xl text-text outline-none placeholder:text-faint focus:border-primary"
+          <SearchControls
+            query={query}
+            label={entityLabels[type].plural}
+            hints={searchHints}
+            searchParams={searchParams}
+            setSearchParams={setSearchParams}
           />
 
           <button
@@ -498,13 +597,6 @@ export function ListPage() {
             </span>
           </button>
         </div>
-        {entityPath === "features" && (
-          <FeatureSearchHints
-            query={query}
-            searchParams={searchParams}
-            setSearchParams={setSearchParams}
-          />
-        )}
       </div>
 
       {filtered.length === 0 && <EmptyState title="No results found" />}
