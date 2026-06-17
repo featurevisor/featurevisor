@@ -10,6 +10,7 @@ import {
   EmptyState,
   EntityKey,
   FieldGrid,
+  DescriptionField,
   MarkdownContent,
   PageHeader,
   Tabs,
@@ -401,7 +402,7 @@ export function OverviewTab() {
           <h2 className="mb-3 font-semibold">Conditions</h2>
           <ConditionTree conditions={entity.conditions as any} />
         </section>
-        <MarkdownContent value={entity.description as string | undefined} />
+        <DescriptionField value={entity.description as string | undefined} />
       </div>
     );
   }
@@ -421,7 +422,7 @@ export function OverviewTab() {
             { label: "Targets", value: formatList(detail.relationships?.targets) },
           ]}
         />
-        <MarkdownContent value={entity.description as string | undefined} />
+        <DescriptionField value={entity.description as string | undefined} />
       </div>
     );
   }
@@ -431,13 +432,13 @@ export function OverviewTab() {
       <FieldGrid
         fields={[
           { label: "Key", value: detail.key },
-          { label: "Description", value: valueOrNA(entity.description) },
           { label: "Archived", value: valueOrNA(entity.archived) },
           { label: "Deprecated", value: valueOrNA(entity.deprecated) },
           { label: "Promotable", value: entity.promotable === false ? "No" : "Yes" },
           { label: "Source", value: detail.sourcePath || "n/a" },
         ]}
       />
+      <DescriptionField value={entity.description as string | undefined} />
     </div>
   );
 }

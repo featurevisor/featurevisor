@@ -59,14 +59,25 @@ export function CodeBlock(props: { value: unknown }) {
 }
 
 export function MarkdownContent(props: { value?: string }) {
-  if (!props.value) {
+  if (!props.value?.trim()) {
     return <span className="text-muted">n/a</span>;
   }
 
   return (
-    <ReactMarkdown className="prose prose-slate max-w-none text-sm text-text">
+    <ReactMarkdown className="prose prose-sm prose-slate max-w-none text-text">
       {props.value}
     </ReactMarkdown>
+  );
+}
+
+export function DescriptionField(props: { value?: string }) {
+  return (
+    <div>
+      <div className="text-sm font-medium text-muted">Description</div>
+      <div className="mt-1 min-w-0 text-sm [overflow-wrap:anywhere]">
+        <MarkdownContent value={props.value} />
+      </div>
+    </div>
   );
 }
 
