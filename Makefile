@@ -1,4 +1,4 @@
-.PHONY: install build test lint format check
+.PHONY: install build test bundle-sizes lint format check
 
 ##
 # Packages
@@ -11,6 +11,9 @@ build:
 
 test:
 	npm test
+
+bundle-sizes:
+	npm run bundle-sizes
 
 lint:
 	npx prettier examples/ packages/ docs/ --check
@@ -25,9 +28,3 @@ check:
 	make build
 	make test
 	make lint
-
-##
-# Misc.
-#
-print-bundle-size:
-	@echo 'Bundle size reporting skipped: library packages are TypeScript-only builds now.'
