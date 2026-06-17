@@ -850,6 +850,63 @@ export function FeatureVariablesTab() {
   );
 }
 
+function getUsageEntityType(label: string): CatalogEntityType {
+  if (label.includes("segment")) {
+    return "segment";
+  }
+
+  if (label.includes("target")) {
+    return "target";
+  }
+
+  if (label.includes("attribute")) {
+    return "attribute";
+  }
+
+  if (label.includes("schema")) {
+    return "schema";
+  }
+
+  if (label.includes("group")) {
+    return "group";
+  }
+
+  if (label.includes("test")) {
+    return "test";
+  }
+
+  return "feature";
+}
+
+function getUsageTitle(label: string) {
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function UsageSection(props: {
+  title: string;
+  type: CatalogEntityType;
+  values: string[];
+  setKey?: string;
+}) {
+  return (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-text">{props.title}</h2>
+      <ul className="list-inside list-disc space-y-1 text-sm">
+        {props.values.map((value) => (
+          <li key={value} className="[overflow-wrap:anywhere]">
+            <Link
+              className="text-primary hover:underline"
+              to={getEntityRoute(props.type, value, props.setKey)}
+            >
+              <EntityKey value={value} className="font-medium" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function UsageTab() {
   const { detail, setKey } = useEntityDetail();
   const relationships = detail.relationships || {};
@@ -862,36 +919,20 @@ export function UsageTab() {
       : Object.entries(relationships).filter(([label]) => label !== "tests");
   const visibleEntries = entries.filter(([, values]) => values.length > 0);
 
+  if (visibleEntries.length === 0) {
+    return <EmptyState title="No usage found" />;
+  }
+
   return (
-    <div className="space-y-4">
-      {visibleEntries.length === 0 && <EmptyState title="No usage found" />}
+    <div className="space-y-6">
       {visibleEntries.map(([label, values]) => (
-        <section
+        <UsageSection
           key={label}
-          className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-        >
-          <h2 className="mb-3 font-semibold">
-            {detail.type === "feature" && label === "features" ? "Required by features" : label}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {values.map((value) => (
-              <Link
-                key={value}
-                to={getEntityRoute(
-                  label.includes("segment")
-                    ? "segment"
-                    : label.includes("target")
-                      ? "target"
-                      : "feature",
-                  value,
-                  setKey,
-                )}
-              >
-                <Badge>{value}</Badge>
-              </Link>
-            ))}
-          </div>
-        </section>
+          title={getUsageTitle(label)}
+          type={getUsageEntityType(label)}
+          values={values}
+          setKey={setKey}
+        />
       ))}
     </div>
   );
