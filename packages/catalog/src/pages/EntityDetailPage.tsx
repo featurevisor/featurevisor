@@ -3,18 +3,18 @@ import { Link, Navigate, Outlet, useOutletContext, useParams } from "react-route
 
 import { fetchEntityDetail, fetchHistoryPage } from "../api";
 import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type { DevEditor, EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
+import type { CatalogEntityType, DevEditor, EntityDetail, EntityPath, HistoryPage as HistoryPageData } from "../types";
 import { useCatalog } from "../context/CatalogContext";
 import {
   Badge,
   EmptyState,
   EntityKey,
-  FieldGrid,
   DescriptionField,
+  OverviewLabeledRow,
   MarkdownContent,
+  OverviewSection,
   PageHeader,
   Tabs,
-  formatList,
 } from "../components/ui";
 import { ConditionTree, GroupSegmentTree } from "../components/trees";
 
@@ -90,26 +90,6 @@ function useScrollToHash(dependencies: React.DependencyList) {
 
 export function useEntityDetail() {
   return useOutletContext<{ detail: EntityDetail; setKey?: string }>();
-}
-
-function valueOrNA(value: unknown) {
-  if (value === undefined || value === null || value === "") {
-    return <span className="text-muted">n/a</span>;
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
-  }
-
-  if (Array.isArray(value)) {
-    return formatList(value.map(String));
-  }
-
-  if (typeof value === "object") {
-    return <FormattedValue value={value} />;
-  }
-
-  return String(value);
 }
 
 function formatScalar(value: unknown) {
@@ -384,63 +364,211 @@ export function EntityDetailPage() {
 }
 
 export function OverviewTab() {
-  const { detail } = useEntityDetail();
+  const { detail, setKey } = useEntityDetail();
   const entity = detail.entity as Record<string, unknown>;
 
-  if (detail.type === "segment") {
-    return (
-      <div className="space-y-6">
-        <FieldGrid
-          fields={[
-            { label: "Key", value: detail.key },
-            { label: "Archived", value: valueOrNA(entity.archived) },
-            { label: "Promotable", value: entity.promotable === false ? "No" : "Yes" },
-            { label: "Source", value: detail.sourcePath || "n/a" },
-          ]}
-        />
-        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5">
-          <h2 className="mb-3 font-semibold">Conditions</h2>
+  return (
+    <div className="space-y-5">
+      <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
+
+      {detail.type === "segment" && (
+        <OverviewSection title="Conditions">
           <ConditionTree conditions={entity.conditions as any} />
-        </section>
-        <DescriptionField value={entity.description as string | undefined} />
-      </div>
+        </OverviewSection>
+      )}
+
+      <DescriptionField value={entity.description as string | undefined} />
+    </div>
+  );
+}
+
+function EntityStatusBadges(props: { entity: Record<string, unknown> }) {
+  const hasBadges =
+    props.entity.archived === true ||
+    props.entity.deprecated === true ||
+    props.entity.promotable === false;
+
+  if (!hasBadges) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {props.entity.archived === true && <Badge tone="danger">archived</Badge>}
+      {props.entity.deprecated === true && <Badge tone="warning">deprecated</Badge>}
+      {props.entity.promotable === false && <Badge>not promotable</Badge>}
+    </div>
+  );
+}
+
+function LinkedEntityBadges(props: {
+  type: CatalogEntityType;
+  values?: string[];
+  setKey?: string;
+}) {
+  if (!props.values?.length) {
+    return null;
+  }
+
+  return (
+    <>
+      {props.values.map((value) => (
+        <Link key={value} to={getEntityRoute(props.type, value, props.setKey)}>
+          <Badge>{value}</Badge>
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function hasBucketBy(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  return true;
+}
+
+function BucketByDisplay(props: { value: unknown }) {
+  const value = props.value;
+
+  if (!hasBucketBy(value)) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    return (
+      <Badge>
+        <EntityKey value={value} />
+      </Badge>
     );
   }
 
-  if (detail.type === "feature") {
+  if (Array.isArray(value)) {
     return (
-      <div className="space-y-6">
-        <FieldGrid
-          fields={[
-            { label: "Key", value: detail.key },
-            { label: "Archived", value: valueOrNA(entity.archived) },
-            { label: "Deprecated", value: valueOrNA(entity.deprecated) },
-            { label: "Promotable", value: entity.promotable === false ? "No" : "Yes" },
-            { label: "Tags", value: formatList(entity.tags as string[] | undefined) },
-            { label: "Bucket by", value: valueOrNA(entity.bucketBy) },
-            { label: "Required", value: valueOrNA(entity.required) },
-            { label: "Targets", value: formatList(detail.relationships?.targets) },
-          ]}
-        />
-        <DescriptionField value={entity.description as string | undefined} />
-      </div>
+      <>
+        {value.map((item, index) => (
+          <BucketByDisplay key={index} value={item} />
+        ))}
+      </>
+    );
+  }
+
+  if (typeof value === "object" && value !== null && "or" in value) {
+    const orValue = (value as { or: unknown }).or;
+    const orItems = Array.isArray(orValue) ? orValue : [orValue];
+
+    return (
+      <>
+        {orItems.map((item, index) => (
+          <React.Fragment key={index}>
+            {index > 0 && <Badge tone="warning">or</Badge>}
+            <BucketByDisplay value={item} />
+          </React.Fragment>
+        ))}
+      </>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <FieldGrid
-        fields={[
-          { label: "Key", value: detail.key },
-          { label: "Archived", value: valueOrNA(entity.archived) },
-          { label: "Deprecated", value: valueOrNA(entity.deprecated) },
-          { label: "Promotable", value: entity.promotable === false ? "No" : "Yes" },
-          { label: "Source", value: detail.sourcePath || "n/a" },
-        ]}
-      />
-      <DescriptionField value={entity.description as string | undefined} />
-    </div>
+    <Badge>
+      <FormattedValue value={value} />
+    </Badge>
   );
+}
+
+function asStringArray(value: unknown) {
+  if (!value) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map(String).filter(Boolean);
+    return items.length > 0 ? items : undefined;
+  }
+
+  if (typeof value === "string") {
+    return [value];
+  }
+
+  return undefined;
+}
+
+function EntityOverviewMeta(props: {
+  detail: EntityDetail;
+  entity: Record<string, unknown>;
+  setKey?: string;
+}) {
+  const { detail, entity, setKey } = props;
+  const statusBadges = <EntityStatusBadges entity={entity} />;
+  const tags = asStringArray(entity.tags);
+  const targets = detail.relationships?.targets;
+  const required = asStringArray(entity.required);
+  const hasStatus =
+    entity.archived === true || entity.deprecated === true || entity.promotable === false;
+
+  if (detail.type === "feature") {
+    const showBucketBy = hasBucketBy(entity.bucketBy);
+    const hasFacts = showBucketBy || Boolean(required?.length);
+    const hasRelations = Boolean(tags?.length) || Boolean(targets?.length);
+
+    if (!hasStatus && !hasFacts && !hasRelations) {
+      return null;
+    }
+
+    return (
+      <div className="space-y-3">
+        {hasStatus && statusBadges}
+        {showBucketBy && (
+          <OverviewLabeledRow label="Bucket by">
+            <BucketByDisplay value={entity.bucketBy} />
+          </OverviewLabeledRow>
+        )}
+        {required?.length ? (
+          <OverviewLabeledRow label="Required">
+            {required.map((key) => (
+              <Link key={key} to={getEntityRoute("feature", key, setKey)}>
+                <Badge>{key}</Badge>
+              </Link>
+            ))}
+          </OverviewLabeledRow>
+        ) : null}
+        {tags?.length ? (
+          <OverviewLabeledRow label="Tags">
+            {tags.map((tag) => (
+              <Badge key={tag}>{tag}</Badge>
+            ))}
+          </OverviewLabeledRow>
+        ) : null}
+        {targets?.length ? (
+          <OverviewLabeledRow label="Targets">
+            <LinkedEntityBadges type="target" values={targets} setKey={setKey} />
+          </OverviewLabeledRow>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (detail.type === "attribute" && entity.type) {
+    return (
+      <div className="space-y-3">
+        {hasStatus && statusBadges}
+        <OverviewLabeledRow label="Type">
+          <Badge>{String(entity.type)}</Badge>
+        </OverviewLabeledRow>
+      </div>
+    );
+  }
+
+  if (!hasStatus) {
+    return null;
+  }
+
+  return statusBadges;
 }
 
 function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force") {

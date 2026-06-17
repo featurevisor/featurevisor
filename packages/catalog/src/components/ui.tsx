@@ -1,6 +1,6 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 
 import { fetchIndex } from "../api";
 import type { CatalogEntityType, CatalogIndex, EntityPath } from "../types";
@@ -72,12 +72,61 @@ export function MarkdownContent(props: { value?: string }) {
 
 export function DescriptionField(props: { value?: string }) {
   return (
-    <div>
+    <div className="border-t border-border pt-5 first:border-t-0 first:pt-0">
       <div className="text-sm font-medium text-muted">Description</div>
-      <div className="mt-1 min-w-0 text-sm [overflow-wrap:anywhere]">
+      <div className="mt-1.5 min-w-0 text-sm [overflow-wrap:anywhere]">
         <MarkdownContent value={props.value} />
       </div>
     </div>
+  );
+}
+
+export function LabelValueBadge(props: {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  to?: string;
+}) {
+  const valueContent = props.to ? (
+    <Link to={props.to} className="font-medium text-primary hover:underline">
+      {props.value}
+    </Link>
+  ) : (
+    <span className="font-medium text-text">{props.value}</span>
+  );
+
+  return (
+    <span className="inline-flex overflow-hidden rounded-md border border-border text-xs shadow-sm">
+      <span className="bg-elevated px-2 py-1 text-muted">{props.label}</span>
+      <span className="bg-surface px-2 py-1">{valueContent}</span>
+    </span>
+  );
+}
+
+export function OverviewLabeledRow(props: { label: string; children?: React.ReactNode }) {
+  if (!props.children) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-faint">
+        {props.label}
+      </span>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">{props.children}</div>
+    </div>
+  );
+}
+
+export function OverviewSection(props: { title: string; children?: React.ReactNode }) {
+  if (!props.children) {
+    return null;
+  }
+
+  return (
+    <section>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">{props.title}</h2>
+      {props.children}
+    </section>
   );
 }
 
