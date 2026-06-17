@@ -51,14 +51,13 @@
   "dependencies": {
     "@featurevisor/sdk": "2.27.0",
     "@featurevisor/types": "2.23.0",
-    "vue": "^3.3.4"
+    "vue": "^3.5.38"
   },
   "license": "MIT",
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.16.5",
-    "@vue/test-utils": "^2.4.0",
-    "jest": "^29.4.2",
-    "jest-environment-jsdom": "^29.5.0",
-    "ts-jest": "^29.0.5"
+    "@testing-library/jest-dom": "^6.9.1",
+    "@vue/test-utils": "^2.4.11",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
   }
 }

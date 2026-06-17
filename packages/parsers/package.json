@@ -40,6 +40,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "yaml": "^1.10.2"
+    "yaml": "^2.9.0"
   }
 }

@@ -171,7 +171,7 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
       featureKey,
       variableKey,
       reason: EvaluationReason.ERROR,
-      error: e,
+      error: e instanceof Error ? e : new Error(String(e)),
     };
 
     reportEvaluationDiagnostic(
@@ -978,7 +978,7 @@ export function evaluate(options: EvaluateOptions): Evaluation {
       featureKey,
       variableKey,
       reason: EvaluationReason.ERROR,
-      error: e,
+      error: e instanceof Error ? e : new Error(String(e)),
     };
 
     reportEvaluationDiagnostic(

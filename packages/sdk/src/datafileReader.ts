@@ -136,7 +136,7 @@ export class DatafileReader {
         this.reportDiagnostic({
           level: "warn",
           code: "condition_match_error",
-          message: e.message,
+          message: e instanceof Error ? e.message : String(e),
           originalError: e,
           condition: conditions,
           context,

@@ -11,9 +11,9 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-const createBuffer = (val) => new TextEncoder().encode(val);
+const createBuffer = (val: string) => new TextEncoder().encode(val);
 
-export function MurmurHashV3(key, seed) {
+export function MurmurHashV3(key: string | Uint8Array, seed: number): number {
   if (typeof key === "string") key = createBuffer(key);
 
   let remainder, bytes, h1, h1b, c1, c2, k1, i;

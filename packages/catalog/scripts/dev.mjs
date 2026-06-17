@@ -75,7 +75,7 @@ function watchProjectTree(rootDirectoryPath, onChange) {
       return;
     }
 
-    let entries = [];
+    let entries;
 
     try {
       entries = fs.readdirSync(directoryPath, { withFileTypes: true });

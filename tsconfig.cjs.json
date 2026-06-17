@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
     "outDir": "./lib",
-    "target": "es5",
+    "target": "es2015",
     "lib": ["es2015", "dom"],
-    "module": "commonjs",
+    "module": "Node16",
     "declaration": true,
     "sourceMap": true,
+    "strict": false,
     "jsx": "react",
-    "moduleResolution": "node"
+    "moduleResolution": "Node16"
   },
   "include": ["./packages/**/*.ts"],
   "exclude": []

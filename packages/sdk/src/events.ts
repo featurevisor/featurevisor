@@ -6,7 +6,7 @@ import type { DatafileReader } from "./datafileReader.js";
 export function getParamsForStickySetEvent(
   previousStickyFeatures: StickyFeatures = {},
   newStickyFeatures: StickyFeatures = {},
-  replace,
+  replace: boolean,
 ): EventDetails {
   const keysBefore = Object.keys(previousStickyFeatures);
   const keysAfter = Object.keys(newStickyFeatures);

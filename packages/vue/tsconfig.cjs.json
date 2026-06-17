@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.cjs.json",
   "compilerOptions": {
     "outDir": "./cjs",
+    "rootDir": "./src",
     "jsx": "preserve",
     "types": ["jest"],
     "paths": {

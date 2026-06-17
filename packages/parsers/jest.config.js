@@ -1,11 +1,11 @@
 module.exports = {
-  preset: "ts-jest",
   bail: true,
   transform: {
-    "^.+\\.ts$": [
-      "ts-jest",
+    "^.+\\.[tj]sx?$": [
+      "@swc/jest",
       {
-        tsconfig: "<rootDir>/tsconfig.cjs.json",
+        jsc: { parser: { syntax: "typescript", tsx: true } },
+        module: { type: "commonjs" },
       },
     ],
   },

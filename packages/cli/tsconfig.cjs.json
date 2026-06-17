@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.cjs.json",
   "compilerOptions": {
-    "outDir": "./lib"
+    "target": "es2020",
+    "lib": ["es2020"],
+    "types": ["node"],
+    "outDir": "./lib",
+    "rootDir": "./src"
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts"],
+  "exclude": ["./src/**/*.spec.ts"]
 }

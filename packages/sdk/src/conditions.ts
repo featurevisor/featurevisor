@@ -3,12 +3,17 @@ import type { Context, PlainCondition, AttributeValue } from "@featurevisor/type
 import { GetRegex } from "./datafileReader.js";
 import { compareVersions } from "./compareVersions.js";
 
-export function getValueFromContext(obj, path): AttributeValue {
+export function getValueFromContext(obj: Context, path: string): AttributeValue {
   if (path.indexOf(".") === -1) {
     return obj[path];
   }
 
-  return path.split(".").reduce((o, i) => (o ? o[i] : undefined), obj);
+  return path
+    .split(".")
+    .reduce<unknown>(
+      (o, i) => (o && typeof o === "object" ? (o as Record<string, unknown>)[i] : undefined),
+      obj,
+    ) as AttributeValue;
 }
 
 export function conditionIsMatched(

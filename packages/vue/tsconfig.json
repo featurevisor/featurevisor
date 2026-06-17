@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.esm.json",
   "compilerOptions": {
     "outDir": "./esm",
+    "rootDir": "./src",
     "lib": ["es2015", "dom"],
     "jsx": "preserve",
     "types": ["jest"],

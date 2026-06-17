@@ -17,7 +17,7 @@ export class FeaturevisorChildInstance {
   private sticky: StickyFeatures;
   private emitter: Emitter;
 
-  constructor(options) {
+  constructor(options: { parent: Featurevisor; context: Context; sticky?: StickyFeatures }) {
     this.parent = options.parent;
     this.context = options.context;
     this.sticky = options.sticky || {};

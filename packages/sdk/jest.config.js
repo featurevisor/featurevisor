@@ -1,7 +1,16 @@
 module.exports = {
-  preset: "ts-jest",
   bail: true,
+  transform: {
+    "^.+\\.[tj]sx?$": [
+      "@swc/jest",
+      {
+        jsc: { parser: { syntax: "typescript", tsx: true } },
+        module: { type: "commonjs" },
+      },
+    ],
+  },
   collectCoverageFrom: ["src/**/*.ts"],
+  coverageProvider: "v8",
   coveragePathIgnorePatterns: ["src/index.ts", "src/murmurhash.ts", "src/compareVersions.ts"],
   coverageThreshold: {
     global: {

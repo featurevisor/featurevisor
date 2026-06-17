@@ -1,9 +1,17 @@
 module.exports = {
-  preset: "ts-jest",
   bail: true,
 
   testEnvironment: "jsdom",
-  setupFilesAfterEnv: ["@testing-library/jest-dom/extend-expect", "./jest.setup.js"],
+  setupFilesAfterEnv: ["@testing-library/jest-dom", "./jest.setup.js"],
+  transform: {
+    "^.+\\.[tj]sx?$": [
+      "@swc/jest",
+      {
+        jsc: { parser: { syntax: "typescript", tsx: true } },
+        module: { type: "commonjs" },
+      },
+    ],
+  },
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",

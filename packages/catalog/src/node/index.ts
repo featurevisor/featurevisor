@@ -845,7 +845,7 @@ function getRepoLinks(rootDirectoryPath: string): CatalogManifest["links"] {
     const origin = runGit(rootDirectoryPath, ["config", "--get", "remote.origin.url"]).trim();
     const branch = encodeURI(getCurrentBranch(rootDirectoryPath));
     const providers: Record<
-      NonNullable<CatalogManifest["links"]>["provider"],
+      NonNullable<NonNullable<CatalogManifest["links"]>["provider"]>,
       {
         host: string;
         repository: (owner: string, repo: string) => string;
@@ -874,7 +874,7 @@ function getRepoLinks(rootDirectoryPath: string): CatalogManifest["links"] {
     };
 
     for (const provider of Object.keys(providers) as Array<
-      NonNullable<CatalogManifest["links"]>["provider"]
+      NonNullable<NonNullable<CatalogManifest["links"]>["provider"]>
     >) {
       const config = providers[provider];
       const details = getOwnerAndRepoFromGitRemote(origin, config.host);

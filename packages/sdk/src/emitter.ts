@@ -4,7 +4,7 @@ export type EventDetails = Record<string, unknown>;
 
 export type EventCallback = (details: EventDetails) => void;
 
-export type Listeners = Record<EventName, EventCallback[]> | {}; // eslint-disable-line
+export type Listeners = Partial<Record<EventName, EventCallback[]>>;
 
 export class Emitter {
   listeners: Listeners;
