@@ -14,7 +14,7 @@ type FlatSchemaRow = {
   description?: string;
 };
 
-function slugifyFragment(value: string) {
+export function slugifyFragment(value: string) {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -48,11 +48,11 @@ function SchemaRefLink(props: { name: string; setKey?: string }) {
   );
 }
 
-function VariablePermalink(props: { targetId: string }) {
+export function VariablePermalink(props: { targetId: string; label?: string }) {
   return (
     <a
       href={`#${props.targetId}`}
-      aria-label="Link to this variable"
+      aria-label={props.label || "Link to this variable"}
       className="inline-flex rounded p-1 text-muted opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100"
     >
       <svg
