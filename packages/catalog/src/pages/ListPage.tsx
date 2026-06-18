@@ -199,6 +199,105 @@ function getStatusBadges(entity: EntitySummary) {
   );
 }
 
+function RowTrailingMeta(props: { entity: EntitySummary; type: CatalogEntityType }) {
+  const icons = <RowMetadataIcons entity={props.entity} type={props.type} />;
+  const usedInBadge =
+    props.type === "segment" && (props.entity.usedInFeatureCount ?? 0) > 0 ? (
+      <LabelValueBadge
+        compact
+        label="Used in"
+        value={`${props.entity.usedInFeatureCount} ${props.entity.usedInFeatureCount === 1 ? "feature" : "features"}`}
+      />
+    ) : props.type === "attribute" && (props.entity.usedInSegmentCount ?? 0) > 0 ? (
+      <LabelValueBadge
+        compact
+        label="Used in"
+        value={`${props.entity.usedInSegmentCount} ${props.entity.usedInSegmentCount === 1 ? "segment" : "segments"}`}
+      />
+    ) : null;
+
+  return (
+    <>
+      {getStatusBadges(props.entity)}
+      {usedInBadge ? (
+        <div className="flex items-center gap-1">
+          {usedInBadge}
+          {icons}
+        </div>
+      ) : (
+        icons
+      )}
+    </>
+  );
+}
+
+function ListRow(props: {
+  entity: EntitySummary;
+  type: CatalogEntityType;
+  setKey?: string;
+}) {
+  const { entity, type, setKey } = props;
+  const description = entity.description || "No description";
+  const trailingMeta = <RowTrailingMeta entity={entity} type={type} />;
+  const lastModified = (
+    <span className="text-right text-[11px] text-faint whitespace-nowrap">
+      <LastModified entity={entity} />
+    </span>
+  );
+
+  if (type === "feature") {
+    return (
+      <Link
+        to={getEntityRoute(type, entity.key, setKey)}
+        className="group block px-6 py-3 hover:bg-elevated"
+      >
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-1">
+          <div className="col-start-1 row-start-1 flex h-6 shrink-0 items-center justify-center">
+            <EnvironmentDot
+              status={entity.environmentStatus}
+              environment={entity.environmentStatusEnvironment}
+            />
+          </div>
+          <div className="col-start-2 row-start-1 flex min-h-6 min-w-0 items-center">
+            <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
+          </div>
+          <div className="col-start-3 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
+            {trailingMeta}
+          </div>
+          <span className="col-start-2 row-start-2 flex min-h-5 min-w-0 items-center truncate text-sm text-muted">
+            {description}
+          </span>
+          <div className="col-start-3 row-start-2 flex min-h-5 w-full items-center justify-end">
+            {lastModified}
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      to={getEntityRoute(type, entity.key, setKey)}
+      className="group block px-6 py-3 hover:bg-elevated"
+    >
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-1">
+        <div className="col-start-1 row-start-1 flex min-h-6 min-w-0 items-center">
+          <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
+        </div>
+        <div className="col-start-2 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
+          {trailingMeta}
+        </div>
+        <span className="col-start-1 row-start-2 flex min-h-5 min-w-0 items-center truncate text-sm text-muted">
+          {description}
+        </span>
+        <div className="col-start-2 row-start-2 flex min-h-5 w-full items-center justify-end">
+          {lastModified}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function LastModified(props: { entity: EntitySummary }) {
   if (!props.entity.lastModified) {
     return <span>Last modified n/a</span>;
@@ -610,53 +709,7 @@ export function ListPage() {
 
       <div className="divide-y divide-border bg-surface">
         {visible.map((entity) => (
-          <Link
-            key={entity.key}
-            to={getEntityRoute(type, entity.key, setKey)}
-            className="group block px-6 py-3 hover:bg-elevated"
-          >
-            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-              {type === "feature" && (
-                <div className="flex h-5 w-5 shrink-0 items-center justify-center pt-1.5">
-                  <EnvironmentDot
-                    status={entity.environmentStatus}
-                    environment={entity.environmentStatusEnvironment}
-                  />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1">
-                  <div className="min-w-0">
-                    <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
-                  </div>
-                  <div className="flex shrink-0 items-center justify-end gap-2">
-                    {type === "segment" && (entity.usedInFeatureCount ?? 0) > 0 && (
-                      <LabelValueBadge
-                        compact
-                        label="Used in"
-                        value={`${entity.usedInFeatureCount} ${entity.usedInFeatureCount === 1 ? "feature" : "features"}`}
-                      />
-                    )}
-                    {type === "attribute" && (entity.usedInSegmentCount ?? 0) > 0 && (
-                      <LabelValueBadge
-                        compact
-                        label="Used in"
-                        value={`${entity.usedInSegmentCount} ${entity.usedInSegmentCount === 1 ? "segment" : "segments"}`}
-                      />
-                    )}
-                    <RowMetadataIcons entity={entity} type={type} />
-                    {getStatusBadges(entity)}
-                  </div>
-                  <span className="min-w-0 truncate text-sm text-muted">
-                    {entity.description || "No description"}
-                  </span>
-                  <span className="shrink-0 justify-self-end text-right text-[11px] text-faint whitespace-nowrap">
-                    <LastModified entity={entity} />
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
+          <ListRow key={entity.key} entity={entity} type={type} setKey={setKey} />
         ))}
       </div>
 
