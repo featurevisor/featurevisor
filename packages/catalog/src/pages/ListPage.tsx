@@ -264,9 +264,9 @@ function ListRow(props: {
           <div className="col-start-3 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
             {trailingMeta}
           </div>
-          <span className="col-start-2 row-start-2 flex min-h-5 min-w-0 items-center truncate text-sm text-muted">
-            {description}
-          </span>
+          <div className="col-start-2 row-start-2 flex min-h-5 min-w-0 items-center overflow-hidden">
+            <span className="min-w-0 truncate text-sm text-muted">{description}</span>
+          </div>
           <div className="col-start-3 row-start-2 flex min-h-5 w-full items-center justify-end">
             {lastModified}
           </div>
@@ -287,9 +287,9 @@ function ListRow(props: {
         <div className="col-start-2 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
           {trailingMeta}
         </div>
-        <span className="col-start-1 row-start-2 flex min-h-5 min-w-0 items-center truncate text-sm text-muted">
-          {description}
-        </span>
+        <div className="col-start-1 row-start-2 flex min-h-5 min-w-0 items-center overflow-hidden">
+          <span className="min-w-0 truncate text-sm text-muted">{description}</span>
+        </div>
         <div className="col-start-2 row-start-2 flex min-h-5 w-full items-center justify-end">
           {lastModified}
         </div>
