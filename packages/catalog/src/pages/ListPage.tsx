@@ -4,7 +4,7 @@ import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 
 import { fetchIndex } from "../api";
 import { entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type { CatalogIndex, EntityPath, EntitySummary } from "../types";
+import type { CatalogEntityType, CatalogIndex, EntityPath, EntitySummary } from "../types";
 import {
   Badge,
   Button,
@@ -379,17 +379,18 @@ function sortValues(values?: string[]) {
   return Array.from(new Set(values || [])).sort((left, right) => left.localeCompare(right));
 }
 
-function RowMetadataIcons(props: { entity: EntitySummary }) {
+function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityType }) {
   const tags = sortValues(props.entity.tags);
   const targets = sortValues(props.entity.targets);
+  const showTags = props.type !== "feature" && tags.length > 0;
 
-  if (tags.length === 0 && targets.length === 0) {
+  if (!showTags && targets.length === 0) {
     return null;
   }
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {tags.length > 0 && (
+      {showTags && (
         <HoverTooltip
           label={`Tags: ${tags.join(", ")}`}
           className="rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
@@ -624,11 +625,11 @@ export function ListPage() {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex flex-col justify-between gap-2 md:flex-row md:items-start">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1">
                   <div className="min-w-0">
                     <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center justify-end gap-2">
                     {type === "segment" && (entity.usedInFeatureCount ?? 0) > 0 && (
                       <LabelValueBadge
                         compact
@@ -643,15 +644,13 @@ export function ListPage() {
                         value={`${entity.usedInSegmentCount} ${entity.usedInSegmentCount === 1 ? "segment" : "segments"}`}
                       />
                     )}
-                    <RowMetadataIcons entity={entity} />
+                    <RowMetadataIcons entity={entity} type={type} />
                     {getStatusBadges(entity)}
                   </div>
-                </div>
-                <div className="mt-1 flex min-w-0 items-center gap-4">
-                  <span className="min-w-0 flex-1 truncate text-sm text-muted">
+                  <span className="min-w-0 truncate text-sm text-muted">
                     {entity.description || "No description"}
                   </span>
-                  <span className="max-w-[48%] shrink-0 truncate text-right text-[11px] text-faint">
+                  <span className="shrink-0 justify-self-end text-right text-[11px] text-faint whitespace-nowrap">
                     <LastModified entity={entity} />
                   </span>
                 </div>

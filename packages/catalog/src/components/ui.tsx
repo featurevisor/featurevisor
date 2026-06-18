@@ -58,19 +58,45 @@ export function CodeBlock(props: { value: unknown }) {
   );
 }
 
-export function MarkdownContent(props: { value?: string }) {
-  if (!props.value?.trim()) {
+function toMarkdownString(value: unknown): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const lines = value
+      .map((item) => toMarkdownString(item))
+      .filter((item): item is string => Boolean(item?.trim()));
+
+    return lines.length > 0 ? lines.join("\n") : undefined;
+  }
+
+  return undefined;
+}
+
+export function MarkdownContent(props: { value?: unknown }) {
+  const markdown = toMarkdownString(props.value);
+
+  if (!markdown?.trim()) {
     return <span className="text-muted">n/a</span>;
   }
 
   return (
-    <ReactMarkdown className="prose prose-sm prose-slate max-w-none text-text">
-      {props.value}
-    </ReactMarkdown>
+    <div className="prose prose-sm prose-slate max-w-none text-text">
+      <ReactMarkdown>{markdown}</ReactMarkdown>
+    </div>
   );
 }
 
-export function DescriptionField(props: { value?: string }) {
+export function DescriptionField(props: { value?: unknown }) {
   return (
     <div className="border-t border-border pt-5 first:border-t-0 first:pt-0">
       <div className="text-sm font-medium text-muted">Description</div>
@@ -180,7 +206,9 @@ export function PageHeader(props: {
 function sidebarClass({ isActive }: { isActive: boolean }) {
   return [
     "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold",
-    isActive ? "bg-header-active text-header-text" : "text-muted hover:bg-elevated hover:text-text",
+    isActive
+      ? "bg-header-active !text-header-text"
+      : "text-muted hover:bg-elevated hover:text-text",
   ].join(" ");
 }
 
@@ -219,7 +247,7 @@ function Sidebar(props: { setKey?: string }) {
             [
               "mt-4 block rounded-lg px-3 py-2 text-sm font-bold",
               isActive
-                ? "bg-header-active text-header-text"
+                ? "bg-header-active !text-header-text"
                 : "text-muted hover:bg-elevated hover:text-text",
             ].join(" ")
           }
@@ -362,10 +390,12 @@ function formatGeneratedAt(value: string) {
   return date.toLocaleString();
 }
 
-function RepositoryIcon(props: { provider?: string }) {
+function RepositoryIcon(props: { provider?: string; className?: string }) {
+  const iconClassName = ["h-5 w-5 shrink-0 transition-colors", props.className || "fill-white/80"].join(" ");
+
   if (props.provider === "github") {
     return (
-      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 16 16" fill="currentColor">
+      <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
         <path d="M8 0C3.58 0 0 3.69 0 8.24c0 3.64 2.29 6.72 5.47 7.81.4.08.55-.18.55-.4 0-.2-.01-.86-.01-1.56-2.01.38-2.53-.5-2.69-.96-.09-.24-.48-.96-.82-1.15-.28-.16-.68-.55-.01-.56.63-.01 1.08.6 1.23.85.72 1.25 1.87.9 2.33.69.07-.54.28-.9.51-1.11-1.78-.21-3.64-.92-3.64-4.07 0-.9.31-1.64.82-2.22-.08-.21-.36-1.05.08-2.19 0 0 .67-.22 2.2.85A7.43 7.43 0 0 1 8 3.94c.68 0 1.36.09 2 .28 1.52-1.07 2.19-.85 2.19-.85.44 1.14.16 1.98.08 2.19.51.58.82 1.32.82 2.22 0 3.16-1.87 3.86-3.65 4.07.29.26.54.76.54 1.54 0 1.11-.01 2.01-.01 2.28 0 .22.15.48.55.4A8.13 8.13 0 0 0 16 8.24C16 3.69 12.42 0 8 0Z" />
       </svg>
     );
@@ -373,7 +403,7 @@ function RepositoryIcon(props: { provider?: string }) {
 
   if (props.provider === "gitlab") {
     return (
-      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+      <svg aria-hidden="true" className={iconClassName} viewBox="0 0 24 24">
         <path d="m22.75 9.77-.03-.08-2.17-6.69a.57.57 0 0 0-.55-.39.58.58 0 0 0-.52.35l-1.47 4.48H5.99L4.52 2.96A.58.58 0 0 0 4 2.61a.57.57 0 0 0-.55.39L1.28 9.69l-.03.08a1.54 1.54 0 0 0 .51 1.73l.01.01 10.22 7.43 10.24-7.44.01-.01a1.54 1.54 0 0 0 .51-1.72Z" />
       </svg>
     );
@@ -381,7 +411,7 @@ function RepositoryIcon(props: { provider?: string }) {
 
   if (props.provider === "bitbucket") {
     return (
-      <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+      <svg aria-hidden="true" className={iconClassName} viewBox="0 0 24 24">
         <path d="M2.19 3.25a.77.77 0 0 0-.76.89l2.7 16.42a1.02 1.02 0 0 0 1 .86H18.9a1.02 1.02 0 0 0 1-.82l2.69-16.46a.77.77 0 0 0-.76-.89H2.19Zm13.36 10.71H9.46l-1.1-5.83h8.25l-1.06 5.83Z" />
       </svg>
     );
@@ -438,10 +468,13 @@ export function AppShell(props: { children: React.ReactNode }) {
                 href={manifest.links.repository}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg px-3 py-2 text-header-text hover:bg-header-active"
+                className="group inline-flex shrink-0"
                 aria-label={`Open ${manifest.links.provider || "repository"}`}
               >
-                <RepositoryIcon provider={manifest.links.provider} />
+                <RepositoryIcon
+                  provider={manifest.links.provider}
+                  className="fill-white/80 group-hover:fill-white"
+                />
               </a>
             )}
           </div>

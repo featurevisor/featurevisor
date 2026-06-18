@@ -385,7 +385,7 @@ export function OverviewTab() {
         </OverviewSection>
       )}
 
-      <DescriptionField value={entity.description as string | undefined} />
+      <DescriptionField value={entity.description} />
     </div>
   );
 }
@@ -693,7 +693,7 @@ function FeatureRows(props: {
               className={[
                 "inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
                 environment === props.selectedEnvironment
-                  ? "border-primary bg-header-active text-header-text"
+                  ? "border-primary bg-header-active !text-header-text"
                   : "border-pill bg-transparent text-text hover:bg-elevated",
               ].join(" ")}
             >
