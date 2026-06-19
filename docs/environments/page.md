@@ -85,9 +85,104 @@ $ tree datafiles
 
 ## Environment lanes with sets
 
-Featurevisor no longer supports separate `environments/<environment>/<feature>.yml` files. Keep environment-specific `rules`, `force`, and `expose` maps inside the feature file.
+With the `environments` config above, environment specific `rules`, `force`, and `expose` maps live inside the same feature file.
 
-If you want development, staging, and production to behave like independent release lanes with promotion between them, model those lanes as project sets instead. See the environment example projects for that workflow.
+There is another way to model environments that some teams prefer: treat `dev`, `staging`, and `production` as independent release lanes using [sets](/docs/sets/), and move changes from one lane to the next using [promotions](/docs/promotions/).
+
+This approach is useful when you want each lane to be fully separate, so the same feature can have a very different definition in `dev` than in `production`, and changes flow forward only when you promote them.
+
+You can scaffold a ready-made project for this with:
+
+```{% title="Command" %}
+$ npx featurevisor init --example=environments
+```
+
+### Configuration
+
+With this approach you do **not** define `environments`. You enable [sets](/docs/sets/) instead, and add [`promotionFlows`](/docs/configuration/#promotionflows) to keep promotions moving in one direction:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  sets: true,
+  tags: ['all'],
+
+  // only allow promotions to move forward, one lane at a time
+  promotionFlows: [
+    { from: 'dev', to: 'staging' },
+    { from: 'staging', to: 'production' },
+  ],
+}
+```
+
+### One set per lane
+
+Each lane is a set with its own definitions under `sets/<lane>/`:
+
+```
+sets/
+├── dev/
+│   ├── attributes/
+│   ├── segments/
+│   ├── features/
+│   ├── targets/
+│   └── tests/
+├── staging/
+│   └── ...
+└── production/
+    └── ...
+```
+
+The same feature key can live in every lane with different rules. Because there are no `environments`, rules are authored directly without an environment key:
+
+```yml {% path="sets/dev/features/checkoutFlow.yml" %}
+description: New checkout flow in dev
+tags:
+  - all
+
+bucketBy: userId
+
+# fully rolled out in dev
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 100
+```
+
+```yml {% path="sets/production/features/checkoutFlow.yml" %}
+description: New checkout flow in production
+tags:
+  - all
+
+bucketBy: userId
+
+# still off in production
+rules:
+  - key: everyone
+    segments: '*'
+    percentage: 0
+```
+
+### Building datafiles
+
+[Building](/docs/building-datafiles/) writes datafiles under a directory per lane:
+
+```{% title="Output" %}
+datafiles/dev/featurevisor-all.json
+datafiles/staging/featurevisor-all.json
+datafiles/production/featurevisor-all.json
+```
+
+### Promoting between lanes
+
+When a feature is ready to move to the next lane, [promote](/docs/promotions/) it:
+
+```{% title="Command" %}
+$ npx featurevisor promote --from=dev --to=staging --apply
+```
+
+The `promotionFlows` configuration above makes sure promotions only move forward, so promoting straight from `dev` to `production` is rejected.
+
+Read more in [Sets](/docs/sets/) and [Promotions](/docs/promotions/).
 
 ## No environments
 
