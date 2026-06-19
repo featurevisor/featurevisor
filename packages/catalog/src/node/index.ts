@@ -1624,7 +1624,9 @@ export async function serveCatalog(
     }
 
     const requestedPath = requestedUrl === "/" ? "/index.html" : requestedUrl;
-    const filePath = path.join(outputDirectoryPath, requestedPath);
+    const assetPath =
+      requestedPath === "/favicon.ico" ? "/favicon.png" : requestedPath;
+    const filePath = path.join(outputDirectoryPath, assetPath);
     const safeFilePath = filePath.startsWith(outputDirectoryPath)
       ? filePath
       : path.join(outputDirectoryPath, "index.html");
