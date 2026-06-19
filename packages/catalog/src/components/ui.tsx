@@ -143,6 +143,51 @@ export function LabelValueBadge(props: {
   );
 }
 
+export function OverviewChip(props: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-md bg-surface px-2 py-0.5 text-xs text-text ring-1 ring-border",
+        props.className || "",
+      ].join(" ")}
+    >
+      {props.children}
+    </span>
+  );
+}
+
+export function OverviewChipLink(props: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={props.to}
+      className="inline-flex items-center rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-border transition-colors hover:bg-elevated"
+    >
+      {props.children}
+    </Link>
+  );
+}
+
+export function OverviewMetaPanel(props: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <dl className="divide-y divide-border bg-elevated/30">{props.children}</dl>
+    </div>
+  );
+}
+
+export function OverviewMetaRow(props: { label: string; children?: React.ReactNode }) {
+  if (!props.children) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-1.5 px-4 py-3 sm:grid-cols-[6.75rem_minmax(0,1fr)] sm:items-baseline sm:gap-4">
+      <dt className="text-xs font-medium text-muted">{props.label}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-1.5">{props.children}</dd>
+    </div>
+  );
+}
+
 export function OverviewLabeledRow(props: { label: string; children?: React.ReactNode }) {
   if (!props.children) {
     return null;
