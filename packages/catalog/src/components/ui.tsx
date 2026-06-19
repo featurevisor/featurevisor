@@ -100,7 +100,9 @@ export function MarkdownContent(props: { value?: unknown }) {
 export function DescriptionField(props: { value?: unknown }) {
   return (
     <div className="border-t border-border pt-6 first:border-t-0 first:pt-0">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">Description</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">
+        Description
+      </div>
       <div className="mt-2 min-w-0 text-sm [overflow-wrap:anywhere]">
         <MarkdownContent value={props.value} />
       </div>
@@ -185,7 +187,9 @@ export function OverviewMetaRow(props: { label: string; children?: React.ReactNo
       <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-faint sm:w-[4.75rem]">
         {props.label}
       </dt>
-      <dd className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">{props.children}</dd>
+      <dd className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+        {props.children}
+      </dd>
     </div>
   );
 }
@@ -225,7 +229,9 @@ export function EmptyState(props: { title: string; description?: string }) {
     <div className="rounded-lg border border-border bg-elevated px-6 py-10 text-center">
       <p className="text-sm text-muted">{props.title}</p>
       {props.description && (
-        <p className="mt-2 max-w-md text-sm text-faint [overflow-wrap:anywhere]">{props.description}</p>
+        <p className="mt-2 max-w-md text-sm text-faint [overflow-wrap:anywhere]">
+          {props.description}
+        </p>
       )}
     </div>
   );
@@ -432,7 +438,10 @@ function formatGeneratedAt(value: string) {
 }
 
 function RepositoryIcon(props: { provider?: string; className?: string }) {
-  const iconClassName = ["h-5 w-5 shrink-0 transition-colors", props.className || "fill-white/80"].join(" ");
+  const iconClassName = [
+    "h-5 w-5 shrink-0 transition-colors",
+    props.className || "fill-white/80",
+  ].join(" ");
 
   if (props.provider === "github") {
     return (

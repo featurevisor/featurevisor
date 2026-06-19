@@ -423,11 +423,7 @@ function EntityStatusBadges(props: { entity: Record<string, unknown> }) {
   );
 }
 
-function LinkedEntityChips(props: {
-  type: CatalogEntityType;
-  values?: string[];
-  setKey?: string;
-}) {
+function LinkedEntityChips(props: { type: CatalogEntityType; values?: string[]; setKey?: string }) {
   if (!props.values?.length) {
     return null;
   }
@@ -753,9 +749,7 @@ function FeatureRows(props: {
       )}
 
       {props.rows.length === 0 && (
-        <EmptyState
-          title={props.emptyTitle || `No ${props.title.toLowerCase()} found`}
-        />
+        <EmptyState title={props.emptyTitle || `No ${props.title.toLowerCase()} found`} />
       )}
       <div className="space-y-8">
         {props.rows.map((row, index) => {

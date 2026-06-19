@@ -1367,9 +1367,7 @@ export async function exportCatalog(
     generatedAt: new Date().toISOString(),
     router: options.browserRouter === false ? "hash" : "browser",
     sets: projectConfig.sets,
-    setKeys: projectConfig.sets
-      ? sortSetKeys(executions.map((execution) => execution.set))
-      : [],
+    setKeys: projectConfig.sets ? sortSetKeys(executions.map((execution) => execution.set)) : [],
     projectConfig: {
       tags: projectConfig.tags,
       environments: projectConfig.environments,
@@ -1624,8 +1622,7 @@ export async function serveCatalog(
     }
 
     const requestedPath = requestedUrl === "/" ? "/index.html" : requestedUrl;
-    const assetPath =
-      requestedPath === "/favicon.ico" ? "/favicon.png" : requestedPath;
+    const assetPath = requestedPath === "/favicon.ico" ? "/favicon.png" : requestedPath;
     const filePath = path.join(outputDirectoryPath, assetPath);
     const safeFilePath = filePath.startsWith(outputDirectoryPath)
       ? filePath

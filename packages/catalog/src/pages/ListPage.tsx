@@ -231,11 +231,7 @@ function RowTrailingMeta(props: { entity: EntitySummary; type: CatalogEntityType
   );
 }
 
-function ListRow(props: {
-  entity: EntitySummary;
-  type: CatalogEntityType;
-  setKey?: string;
-}) {
+function ListRow(props: { entity: EntitySummary; type: CatalogEntityType; setKey?: string }) {
   const { entity, type, setKey } = props;
   const description = entity.description || "No description";
   const trailingMeta = <RowTrailingMeta entity={entity} type={type} />;
@@ -514,10 +510,7 @@ function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityTyp
         </HoverTooltip>
       )}
       {targets.length > 0 && (
-        <HoverTooltip
-          label={`Targets: ${targets.join(", ")}`}
-          className={rowMetadataIconClassName}
-        >
+        <HoverTooltip label={`Targets: ${targets.join(", ")}`} className={rowMetadataIconClassName}>
           <TargetIcon />
         </HoverTooltip>
       )}
