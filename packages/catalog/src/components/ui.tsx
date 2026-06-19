@@ -11,6 +11,7 @@ import {
   entityPaths,
   entityPathToType,
   getBasePath,
+  sortSetKeys,
 } from "../entityTypes";
 import { useCatalog } from "../context/CatalogContext";
 
@@ -311,7 +312,8 @@ function SetSwitcher(props: { currentSetKey?: string }) {
   const navigate = useNavigate();
   const setSelectId = React.useId();
   const setSelectRef = React.useRef<HTMLSelectElement | null>(null);
-  const selectedSetKey = props.currentSetKey || manifest.setKeys[0] || "";
+  const setKeys = sortSetKeys(manifest.setKeys);
+  const selectedSetKey = props.currentSetKey || setKeys[0] || "";
 
   if (!manifest.sets || manifest.setKeys.length === 0) {
     return null;
@@ -356,7 +358,7 @@ function SetSwitcher(props: { currentSetKey?: string }) {
         className="max-w-44 appearance-none bg-transparent pr-7 font-black text-header-text outline-none"
         aria-label="Switch catalog set"
       >
-        {manifest.setKeys.map((setKey) => (
+        {setKeys.map((setKey) => (
           <option key={setKey} value={setKey}>
             {setKey}
           </option>

@@ -25,6 +25,7 @@ import type {
   HistoryEntry as CatalogHistoryEntry,
   LastModified,
 } from "../types";
+import { sortSetKeys } from "../entityTypes";
 
 const CATALOG_SCHEMA_VERSION = "1";
 const CATALOG_HISTORY_PAGE_SIZE = 50;
@@ -1366,7 +1367,9 @@ export async function exportCatalog(
     generatedAt: new Date().toISOString(),
     router: options.browserRouter === false ? "hash" : "browser",
     sets: projectConfig.sets,
-    setKeys: projectConfig.sets ? executions.map((execution) => execution.set) : [],
+    setKeys: projectConfig.sets
+      ? sortSetKeys(executions.map((execution) => execution.set))
+      : [],
     projectConfig: {
       tags: projectConfig.tags,
       environments: projectConfig.environments,

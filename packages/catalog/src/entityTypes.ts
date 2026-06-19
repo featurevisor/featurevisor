@@ -66,3 +66,30 @@ export function getEntityRoute(type: CatalogEntityType, key: string, setKey?: st
 export function getDataBasePath(setKey?: string) {
   return setKey ? `/data/sets/${encodeDataSegment(setKey)}` : "/data/root";
 }
+
+function getSetSortGroup(value: string) {
+  const normalized = value.toLowerCase();
+
+  if (normalized.startsWith("dev")) {
+    return 0;
+  }
+
+  if (normalized.startsWith("prod")) {
+    return 2;
+  }
+
+  return 1;
+}
+
+export function sortSetKeys(setKeys: string[]) {
+  return setKeys.slice().sort((left, right) => {
+    const leftGroup = getSetSortGroup(left);
+    const rightGroup = getSetSortGroup(right);
+
+    if (leftGroup !== rightGroup) {
+      return leftGroup - rightGroup;
+    }
+
+    return left.localeCompare(right);
+  });
+}
