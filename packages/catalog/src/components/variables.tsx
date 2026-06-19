@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { getEntityRoute } from "../entityTypes";
 import { Badge, EntityKey } from "./ui";
 
-type SchemaLike = Record<string, unknown>;
+export type SchemaLike = Record<string, unknown>;
 
 type FlatSchemaRow = {
   path: string;
@@ -23,6 +23,22 @@ export function slugifyFragment(value: string) {
 
 function isSchemaRef(schema: SchemaLike) {
   return typeof schema.schema === "string";
+}
+
+export function hasSchemaStructure(schema: SchemaLike) {
+  const schemaRef = isSchemaRef(schema);
+  const type = typeof schema.type === "string" ? schema.type : undefined;
+
+  return (
+    !schemaRef &&
+    (type === "object" ||
+      type === "array" ||
+      (Array.isArray(schema.oneOf) && schema.oneOf.length > 0))
+  );
+}
+
+export function hasSchemaTableRows(schema: SchemaLike) {
+  return flattenSchemaRows(schema, "").length > 0;
 }
 
 function getSchemaDescription(schema: SchemaLike) {
@@ -157,7 +173,7 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
   return [];
 }
 
-function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
+export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
   const rows = flattenSchemaRows(props.schema, "");
 
   if (rows.length === 0) {
@@ -254,11 +270,7 @@ function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: 
   const variableId = slugifyFragment(props.name);
   const schemaRef = isSchemaRef(schema);
   const type = typeof schema.type === "string" ? schema.type : undefined;
-  const hasStructure =
-    !schemaRef &&
-    (type === "object" ||
-      type === "array" ||
-      (Array.isArray(schema.oneOf) && schema.oneOf.length > 0));
+  const showStructure = hasSchemaTableRows(schema);
   const description = getSchemaDescription(schema);
   const defaultValue = "defaultValue" in schema ? schema.defaultValue : undefined;
   const inlineDefault = isInlineVariableValue(defaultValue);
@@ -288,7 +300,7 @@ function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: 
 
       {description && <p className="mt-1.5 text-sm text-muted">{description}</p>}
 
-      {hasStructure && (
+      {showStructure && (
         <div className="mt-4">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
             Structure

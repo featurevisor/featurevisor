@@ -26,7 +26,12 @@ import {
   Tabs,
 } from "../components/ui";
 import { ConditionTree, GroupSegmentTree } from "../components/trees";
-import { FeatureVariablesList } from "../components/variables";
+import {
+  FeatureVariablesList,
+  SchemaTable,
+  hasSchemaTableRows,
+  type SchemaLike,
+} from "../components/variables";
 import { FeatureVariationsList } from "../components/variations";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
@@ -388,6 +393,12 @@ export function OverviewTab() {
         </OverviewSection>
       )}
 
+      {detail.type === "attribute" && hasSchemaTableRows(entity as SchemaLike) && (
+        <OverviewSection title="Structure">
+          <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+        </OverviewSection>
+      )}
+
       <DescriptionField value={entity.description} />
     </div>
   );
@@ -469,7 +480,10 @@ function BucketByDisplay(props: { value: unknown; setKey?: string }) {
     return (
       <>
         {value.map((item, index) => (
-          <BucketByDisplay key={index} setKey={props.setKey} value={item} />
+          <React.Fragment key={index}>
+            {index > 0 && <span className="text-xs text-faint">and</span>}
+            <BucketByDisplay setKey={props.setKey} value={item} />
+          </React.Fragment>
         ))}
       </>
     );

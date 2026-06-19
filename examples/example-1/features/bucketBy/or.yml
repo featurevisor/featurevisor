@@ -1,0 +1,18 @@
+description: Buckets users by the first available attribute, preferring userId over deviceId
+tags:
+  - all
+
+bucketBy:
+  or:
+    - userId
+    - deviceId
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      segments: "*"
+      percentage: 50
