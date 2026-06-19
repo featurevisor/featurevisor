@@ -86,7 +86,7 @@ Your entire application can contain several feature flags. But given it is a mic
 
 Instead of creating multiple Featurevisor projects for each of your microfrontends, we can having a **single project** that contains all the features and their configurations, and then build **separate datafiles** for each microfrontend.
 
-To achieve that, we need to let our Featurevisor [configuration](/docs/configuration) know which tags we want to build our datafiles for:
+To achieve that, we start by letting our Featurevisor [configuration](/docs/configuration) know about the [tags](/docs/tags/) we will use to group features per microfrontend:
 
 ```js {% path="./featurevisor.config.js" %}
 module.exports = {
@@ -105,7 +105,23 @@ module.exports = {
 }
 ```
 
-Once this configuration is in place, we can [build](/docs/building-datafiles) our datafiles:
+## Defining targets
+
+Tags group features, but the datafiles themselves are built from [targets](/docs/targets/). We define one target per microfrontend, each selecting the matching tag:
+
+```yml {% path="targets/products.yml" %}
+description: Products microfrontend
+tag: products
+```
+
+```yml {% path="targets/checkout.yml" %}
+description: Checkout microfrontend
+tag: checkout
+```
+
+Repeat for `signup`, `signin`, and `account`. Each target produces its own datafile, so every microfrontend gets a smaller datafile containing only the features it needs.
+
+Once tags and targets are in place, we can [build](/docs/building-datafiles) our datafiles:
 
 ```{% title="Command" %}
 $ npx featurevisor build
@@ -266,7 +282,13 @@ In our case, it is a single Git repository that contains all the features and th
 
 ## Consuming datafiles in your microfrontend
 
-Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment) your datafiles, you can consume them using Featurevisor SDKs in your microfrontends:
+Once you have [built](/docs/building-datafiles) and [deployed](/docs/deployment) your datafiles, you can consume them using Featurevisor SDKs in your microfrontends.
+
+There are two common ways to do this.
+
+### One instance per microfrontend
+
+Each microfrontend creates its own SDK instance with its own datafile:
 
 ```js {% path="products-microfrontend/index.js" %}
 // in `products` microfrontend
@@ -303,9 +325,57 @@ if (showMarketingBanner) {
 
 While the snippets above suggest the usage of Featurevisor SDK in a single `products` microfrontend, it does not differ in any way if you were to use it in a monolithic application.
 
+This approach keeps each microfrontend fully isolated, which suits setups where microfrontends are developed and deployed as separate applications that do not share runtime state.
+
+### One shared instance, loaded on demand
+
+If your microfrontends run together inside the same host application and can share state, you can instead create a **single** SDK instance and load each microfrontend's datafile only when the user reaches it.
+
+This works because [setDatafile](/docs/sdks/javascript/#setting-datafile) merges by default: loading a new microfrontend's datafile adds its features to the instance without removing the ones already loaded.
+
+```js {% path="host-app/featurevisor.js" %}
+import { createFeaturevisor } from '@featurevisor/sdk'
+
+// one shared instance for the whole host application
+export const f = createFeaturevisor({})
+
+const loadedMicrofrontends = new Set()
+
+export async function loadMicrofrontend(name) {
+  if (loadedMicrofrontends.has(name)) {
+    return
+  }
+
+  const url = `https://cdn.yoursite.com/production/featurevisor-${name}.json`
+  const datafile = await fetch(url).then((res) => res.json())
+
+  f.setDatafile(datafile) // merges into whatever was loaded before
+  loadedMicrofrontends.add(name)
+}
+```
+
+As the user navigates, load the datafile for the microfrontend they are entering:
+
+```js {% path="host-app/router.js" %}
+import { f, loadMicrofrontend } from './featurevisor'
+
+// when the user opens the products page
+await loadMicrofrontend('products')
+
+// later, when they move to checkout, its features are
+// added without losing the products features
+await loadMicrofrontend('checkout')
+```
+
+This way the user only downloads the features for the parts of the application they actually visit, instead of everything on the first page load.
+
+Learn more in [Loading datafiles on demand](/docs/use-cases/on-demand-datafiles/).
+
 ## Conclusion
 
 We have seen how we can use Featurevisor to manage all our feature configurations in a microfrontends architecture in a single place declaratively, even if those features overlap and are used in multiple microfrontends together.
+
+We have also seen how [targets](/docs/targets/) let each microfrontend build a smaller datafile, and how the merge behavior of [setDatafile](/docs/sdks/javascript/#setting-datafile) lets a host application load those datafiles on demand as the user navigates, instead of downloading every feature upfront.
 
 We have also seen how to handle tricky situations like anonymous vs authenticated users, and how to make sure logged in users are bucketed in a way so they see the same variation across all devices and sessions consistently maintaining a solid user experience.
 

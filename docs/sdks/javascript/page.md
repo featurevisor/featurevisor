@@ -296,13 +296,55 @@ You may also initialize the SDK without passing `datafile`, and set it later on:
 f.setDatafile(datafileContent)
 ```
 
-By default, `setDatafile` merges the incoming datafile with the SDK instance's existing datafile. Incoming `features` and `segments` override matching keys and keep existing keys that are missing from the incoming datafile.
+### Merging by default
 
-Pass `true` as the second argument to replace the existing datafile entirely:
+By default, `setDatafile` merges the incoming datafile with the SDK instance's existing datafile:
+
+- incoming `features` and `segments` override matching keys
+- existing `features` and `segments` that are missing from the incoming datafile are kept
+- `revision` and `schemaVersion` are taken from the incoming datafile
+
+This means you can call `setDatafile` more than once with different datafiles, and the SDK instance accumulates their features and segments together. This is what makes [loading datafiles on demand](#loading-datafiles-on-demand) possible.
+
+### Replacing
+
+Pass `true` as the second argument to replace the existing datafile entirely, discarding anything loaded before:
 
 ```js
 f.setDatafile(datafileContent, true)
 ```
+
+### Loading datafiles on demand
+
+Because merging is the default, a single SDK instance can start with a small datafile and load more datafiles later as your application needs them, instead of downloading every feature upfront.
+
+This pairs well with [targets](/docs/targets/), where each target produces a smaller datafile for a specific part of your application. You can load the datafile for the current part, and load others only when the user reaches them:
+
+```js {% path="your-app/index.js" %}
+import { createFeaturevisor } from '@featurevisor/sdk'
+
+// one shared instance for the whole application
+const f = createFeaturevisor({})
+
+async function loadDatafile(target) {
+  const url = `https://cdn.yoursite.com/production/featurevisor-${target}.json`
+  const datafile = await fetch(url).then((res) => res.json())
+
+  // merges into whatever was loaded before
+  f.setDatafile(datafile)
+}
+
+// load the first part now
+await loadDatafile('products')
+
+// later, when the user navigates to checkout,
+// load its datafile without losing the products features
+await loadDatafile('checkout')
+```
+
+Each `setDatafile` call emits a [`datafile_set`](#datafile-set) event with the list of affected features, so you can re-evaluate and re-render the relevant parts of your UI.
+
+Learn more in [Loading datafiles on demand](/docs/use-cases/on-demand-datafiles/).
 
 ### Updating datafile
 
