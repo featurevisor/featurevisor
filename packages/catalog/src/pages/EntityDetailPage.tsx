@@ -653,6 +653,7 @@ export function FeatureForceTab() {
   return (
     <FeatureRows
       title="Force"
+      emptyTitle="No forced rules found"
       base="force"
       environments={environments}
       selectedEnvironment={selectedEnvironment}
@@ -665,6 +666,7 @@ export function FeatureForceTab() {
 
 function FeatureRows(props: {
   title: string;
+  emptyTitle?: string;
   base: string;
   environments: string[];
   selectedEnvironment?: string;
@@ -712,7 +714,11 @@ function FeatureRows(props: {
         </div>
       )}
 
-      {props.rows.length === 0 && <EmptyState title={`No ${props.title.toLowerCase()} found`} />}
+      {props.rows.length === 0 && (
+        <EmptyState
+          title={props.emptyTitle || `No ${props.title.toLowerCase()} found`}
+        />
+      )}
       <div className="space-y-8">
         {props.rows.map((row, index) => {
           const ruleKey = String(row.key || `#${index + 1}`);
