@@ -337,10 +337,10 @@ function EnvironmentDot(props: {
 
   const tooltip =
     props.status === "production"
-      ? `enabled in ${props.environment || "production"}`
+      ? `Enabled in ${props.environment || "production"}`
       : props.status === "other"
-        ? "enabled in non-production environments"
-        : "disabled everywhere";
+        ? "Enabled in non-production environments"
+        : "Disabled everywhere";
   const dotClass =
     props.status === "production"
       ? "bg-green-500"
@@ -450,15 +450,25 @@ function HoverTooltip(props: { label: string; children: React.ReactNode; classNa
   );
 }
 
-function TagIcon() {
+function VariationsIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-      <path
-        fillRule="evenodd"
-        d="M4.25 3A1.25 1.25 0 0 0 3 4.25v4.86c0 .33.13.65.37.88l6.64 6.64a1.25 1.25 0 0 0 1.77 0l4.85-4.85a1.25 1.25 0 0 0 0-1.77L9.99 3.37A1.25 1.25 0 0 0 9.11 3H4.25Zm1.5 4a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z"
-        clipRule="evenodd"
-      />
-    </svg>
+    <span
+      aria-hidden="true"
+      className="inline-flex h-4 min-w-4 items-center justify-center font-mono text-[9px] font-bold leading-none tracking-tight"
+    >
+      a/b
+    </span>
+  );
+}
+
+function VariablesIcon() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-4 min-w-4 items-center justify-center font-mono text-[9px] font-bold leading-none"
+    >
+      {"{ }"}
+    </span>
   );
 }
 
@@ -478,29 +488,35 @@ function sortValues(values?: string[]) {
   return Array.from(new Set(values || [])).sort((left, right) => left.localeCompare(right));
 }
 
-function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityType }) {
-  const tags = sortValues(props.entity.tags);
-  const targets = sortValues(props.entity.targets);
-  const showTags = props.type !== "feature" && tags.length > 0;
+const rowMetadataIconClassName =
+  "rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600";
 
-  if (!showTags && targets.length === 0) {
+function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityType }) {
+  const targets = sortValues(props.entity.targets);
+  const isFeature = props.type === "feature";
+  const showVariations = isFeature && Boolean(props.entity.hasVariations);
+  const showVariables = isFeature && Boolean(props.entity.hasVariables);
+
+  if (targets.length === 0 && !showVariations && !showVariables) {
     return null;
   }
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {showTags && (
-        <HoverTooltip
-          label={`Tags: ${tags.join(", ")}`}
-          className="rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-        >
-          <TagIcon />
+      {showVariations && (
+        <HoverTooltip label="Has variations" className={rowMetadataIconClassName}>
+          <VariationsIcon />
+        </HoverTooltip>
+      )}
+      {showVariables && (
+        <HoverTooltip label="Has variables" className={rowMetadataIconClassName}>
+          <VariablesIcon />
         </HoverTooltip>
       )}
       {targets.length > 0 && (
         <HoverTooltip
           label={`Targets: ${targets.join(", ")}`}
-          className="rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+          className={rowMetadataIconClassName}
         >
           <TargetIcon />
         </HoverTooltip>
