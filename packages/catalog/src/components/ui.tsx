@@ -99,9 +99,9 @@ export function MarkdownContent(props: { value?: unknown }) {
 
 export function DescriptionField(props: { value?: unknown }) {
   return (
-    <div className="border-t border-border pt-5 first:border-t-0 first:pt-0">
-      <div className="text-sm font-medium text-muted">Description</div>
-      <div className="mt-1.5 min-w-0 text-sm [overflow-wrap:anywhere]">
+    <div className="border-t border-border pt-6 first:border-t-0 first:pt-0">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">Description</div>
+      <div className="mt-2 min-w-0 text-sm [overflow-wrap:anywhere]">
         <MarkdownContent value={props.value} />
       </div>
     </div>
@@ -147,7 +147,7 @@ export function OverviewChip(props: { children: React.ReactNode; className?: str
   return (
     <span
       className={[
-        "inline-flex items-center rounded-md bg-surface px-2 py-0.5 text-xs text-text ring-1 ring-border",
+        "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-text",
         props.className || "",
       ].join(" ")}
     >
@@ -160,7 +160,7 @@ export function OverviewChipLink(props: { to: string; children: React.ReactNode 
   return (
     <Link
       to={props.to}
-      className="inline-flex items-center rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-border transition-colors hover:bg-elevated"
+      className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-slate-200"
     >
       {props.children}
     </Link>
@@ -169,8 +169,8 @@ export function OverviewChipLink(props: { to: string; children: React.ReactNode 
 
 export function OverviewMetaPanel(props: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <dl className="divide-y divide-border bg-elevated/30">{props.children}</dl>
+    <div className="rounded-xl bg-elevated px-5 py-4">
+      <dl className="space-y-3.5">{props.children}</dl>
     </div>
   );
 }
@@ -181,9 +181,11 @@ export function OverviewMetaRow(props: { label: string; children?: React.ReactNo
   }
 
   return (
-    <div className="grid grid-cols-1 gap-1.5 px-4 py-3 sm:grid-cols-[6.75rem_minmax(0,1fr)] sm:items-baseline sm:gap-4">
-      <dt className="text-xs font-medium text-muted">{props.label}</dt>
-      <dd className="flex min-w-0 flex-wrap items-center gap-1.5">{props.children}</dd>
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-5">
+      <dt className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-faint sm:w-[4.75rem]">
+        {props.label}
+      </dt>
+      <dd className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">{props.children}</dd>
     </div>
   );
 }

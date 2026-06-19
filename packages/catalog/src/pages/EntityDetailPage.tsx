@@ -379,7 +379,7 @@ export function OverviewTab() {
   const entity = detail.entity as Record<string, unknown>;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
 
       {detail.type === "segment" && (
@@ -444,7 +444,11 @@ function hasBucketBy(value: unknown) {
   return true;
 }
 
-function BucketByDisplay(props: { value: unknown }) {
+function getAttributeEntityKey(attributePath: string) {
+  return attributePath.split(".")[0];
+}
+
+function BucketByDisplay(props: { value: unknown; setKey?: string }) {
   const value = props.value;
 
   if (!hasBucketBy(value)) {
@@ -453,9 +457,11 @@ function BucketByDisplay(props: { value: unknown }) {
 
   if (typeof value === "string") {
     return (
-      <OverviewChip>
-        <EntityKey value={value} className="font-mono text-xs" />
-      </OverviewChip>
+      <OverviewChipLink
+        to={getEntityRoute("attribute", getAttributeEntityKey(value), props.setKey)}
+      >
+        <EntityKey value={value} className="font-mono" />
+      </OverviewChipLink>
     );
   }
 
@@ -463,7 +469,7 @@ function BucketByDisplay(props: { value: unknown }) {
     return (
       <>
         {value.map((item, index) => (
-          <BucketByDisplay key={index} value={item} />
+          <BucketByDisplay key={index} setKey={props.setKey} value={item} />
         ))}
       </>
     );
@@ -478,7 +484,7 @@ function BucketByDisplay(props: { value: unknown }) {
         {orItems.map((item, index) => (
           <React.Fragment key={index}>
             {index > 0 && <span className="text-xs text-faint">or</span>}
-            <BucketByDisplay value={item} />
+            <BucketByDisplay setKey={props.setKey} value={item} />
           </React.Fragment>
         ))}
       </>
@@ -487,7 +493,9 @@ function BucketByDisplay(props: { value: unknown }) {
 
   return (
     <OverviewChip>
-      <FormattedValue value={value} />
+      <span className="font-mono text-xs">
+        <FormattedValue value={value} />
+      </span>
     </OverviewChip>
   );
 }
@@ -515,7 +523,6 @@ function EntityOverviewMeta(props: {
   setKey?: string;
 }) {
   const { detail, entity, setKey } = props;
-  const statusBadges = <EntityStatusBadges entity={entity} />;
   const tags = asStringArray(entity.tags);
   const targets = detail.relationships?.targets;
   const required = asStringArray(entity.required);
@@ -532,52 +539,54 @@ function EntityOverviewMeta(props: {
     }
 
     return (
-      <div className="space-y-3">
-        {hasStatus && statusBadges}
-        {(hasFacts || hasRelations) && (
-          <OverviewMetaPanel>
-            {showBucketBy && (
-              <OverviewMetaRow label="Bucket by">
-                <BucketByDisplay value={entity.bucketBy} />
-              </OverviewMetaRow>
-            )}
-            {required?.length ? (
-              <OverviewMetaRow label="Required">
-                {required.map((key) => (
-                  <OverviewChipLink key={key} to={getEntityRoute("feature", key, setKey)}>
-                    {key}
-                  </OverviewChipLink>
-                ))}
-              </OverviewMetaRow>
-            ) : null}
-            {tags?.length ? (
-              <OverviewMetaRow label="Tags">
-                {tags.map((tag) => (
-                  <OverviewChip key={tag}>{tag}</OverviewChip>
-                ))}
-              </OverviewMetaRow>
-            ) : null}
-            {targets?.length ? (
-              <OverviewMetaRow label="Targets">
-                <LinkedEntityChips type="target" values={targets} setKey={setKey} />
-              </OverviewMetaRow>
-            ) : null}
-          </OverviewMetaPanel>
+      <OverviewMetaPanel>
+        {hasStatus && (
+          <OverviewMetaRow label="Status">
+            <EntityStatusBadges entity={entity} />
+          </OverviewMetaRow>
         )}
-      </div>
+        {showBucketBy && (
+          <OverviewMetaRow label="Bucket by">
+            <BucketByDisplay value={entity.bucketBy} setKey={setKey} />
+          </OverviewMetaRow>
+        )}
+        {required?.length ? (
+          <OverviewMetaRow label="Required">
+            {required.map((key) => (
+              <OverviewChipLink key={key} to={getEntityRoute("feature", key, setKey)}>
+                {key}
+              </OverviewChipLink>
+            ))}
+          </OverviewMetaRow>
+        ) : null}
+        {tags?.length ? (
+          <OverviewMetaRow label="Tags">
+            {tags.map((tag) => (
+              <OverviewChip key={tag}>{tag}</OverviewChip>
+            ))}
+          </OverviewMetaRow>
+        ) : null}
+        {targets?.length ? (
+          <OverviewMetaRow label="Targets">
+            <LinkedEntityChips type="target" values={targets} setKey={setKey} />
+          </OverviewMetaRow>
+        ) : null}
+      </OverviewMetaPanel>
     );
   }
 
   if (detail.type === "attribute" && entity.type) {
     return (
-      <div className="space-y-3">
-        {hasStatus && statusBadges}
-        <OverviewMetaPanel>
-          <OverviewMetaRow label="Type">
-            <OverviewChip>{String(entity.type)}</OverviewChip>
+      <OverviewMetaPanel>
+        {hasStatus && (
+          <OverviewMetaRow label="Status">
+            <EntityStatusBadges entity={entity} />
           </OverviewMetaRow>
-        </OverviewMetaPanel>
-      </div>
+        )}
+        <OverviewMetaRow label="Type">
+          <OverviewChip>{String(entity.type)}</OverviewChip>
+        </OverviewMetaRow>
+      </OverviewMetaPanel>
     );
   }
 
@@ -585,7 +594,13 @@ function EntityOverviewMeta(props: {
     return null;
   }
 
-  return statusBadges;
+  return (
+    <OverviewMetaPanel>
+      <OverviewMetaRow label="Status">
+        <EntityStatusBadges entity={entity} />
+      </OverviewMetaRow>
+    </OverviewMetaPanel>
+  );
 }
 
 function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force") {
