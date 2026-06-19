@@ -175,9 +175,11 @@ export function OverviewSection(props: { title: string; children?: React.ReactNo
 
 export function EmptyState(props: { title: string; description?: string }) {
   return (
-    <div className="mx-6 rounded border-2 border-orange-300 bg-warning-surface p-4 text-center text-text">
-      <p className="font-medium">{props.title}</p>
-      {props.description && <p className="mt-1 text-sm text-muted">{props.description}</p>}
+    <div className="rounded-lg border border-border bg-elevated px-6 py-10 text-center">
+      <p className="text-sm text-muted">{props.title}</p>
+      {props.description && (
+        <p className="mt-2 max-w-md text-sm text-faint [overflow-wrap:anywhere]">{props.description}</p>
+      )}
     </div>
   );
 }
