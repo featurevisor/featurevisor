@@ -16,6 +16,23 @@ Detailed guide for migrating existing Featurevisor projects (using Featurevisor 
 
 ---
 
+## Migrate in two steps
+
+You do not have to migrate everything at once. The recommended path is linear, with the project first and the applications after:
+
+1. **Upgrade your Featurevisor project**: update the CLI, adjust your configuration and definitions, [build](/docs/building-datafiles/) the datafiles, and [deploy](/docs/deployment/) them.
+2. **Upgrade your applications**: once the new datafiles are published, update each application's SDK at your own pace.
+
+### The datafile shape has not changed
+
+The generated datafile keeps the same schema version (`2`) as v2, so its shape is unchanged.
+
+This means you can finish step 1 and publish v3 datafiles, and any application still running an older v2 SDK will keep working without any changes. There is no need to coordinate a single big release across your project and all of your applications.
+
+Once the datafiles are out, you can come back and upgrade the SDK in each application one at a time.
+
+---
+
 ## Project configuration
 
 ### Environments are off by default {% label="Breaking" labelType="error" %}
