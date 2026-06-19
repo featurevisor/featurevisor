@@ -17,4 +17,5 @@ Guides for migrating to the latest version of Featurevisor.
 
 ## Guides
 
+- [From v2 to v3](/docs/migrations/v3)
 - [From v1 to v2](/docs/migrations/v2)
