@@ -62,11 +62,11 @@ export async function getInstance() {
     return instance
   }
 
-  const f = createFeaturevisor({
-    datafileUrl: DATAFILE_URL,
-  })
+  const datafile = await fetch(DATAFILE_URL).then((res) => res.json())
 
-  instance = await f.onReady()
+  instance = createFeaturevisor({
+    datafile,
+  })
 
   return instance
 }

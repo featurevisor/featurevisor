@@ -35,7 +35,7 @@ The payload for tracking that activation event usually includes:
 
 This then helps measure the performance of the experiment itself later against your [conversion goals](#conversion-goal).
 
-See how SDKs help with tracking activations [here](/docs/sdks/javascript/#activation).
+You can track activations by using a [module](/docs/sdks/javascript/#modules) that reacts to evaluations in its `after` callback. See the [Google Analytics tracking](/docs/tracking/google-analytics/) guide for an example.
 
 ## Application
 
@@ -271,10 +271,8 @@ Featurevisor [SDKs](#sdk) emit several different kinds of events for [applicatio
 
 Learn more here:
 
-- [Readiness](/docs/sdks/javascript/#asynchronous)
-- [Activation](/docs/sdks/javascript/#activation)
 - [Events](/docs/sdks/javascript/#events)
-- [Logging](/docs/sdks/javascript/#logging)
+- [Diagnostics](/docs/sdks/javascript/#diagnostics)
 
 ## Experiment
 
@@ -428,9 +426,9 @@ Learn more about linting [here](/docs/linting).
 
 ## Logging
 
-Featurevisor [SDKs](#sdk) allow logging various different levels of messages which can be used for tracking, analyzing performance, troubleshooting, understanding how [evaluations](#evaluation) are done and more.
+Featurevisor [SDKs](#sdk) report diagnostics at various levels, which can be used for tracking, analyzing performance, troubleshooting, understanding how [evaluations](#evaluation) are done and more.
 
-Learn more about logging [here](/docs/sdks/javascript/#logging).
+Learn more about diagnostics [here](/docs/sdks/javascript/#diagnostics).
 
 ## Merge
 
@@ -540,6 +538,12 @@ Your Featurevisor project, which is usually a single independent Git [repository
 
 See quick start guide on how to create a new project [here](/docs/quick-start).
 
+## Promotion
+
+Promotion is the process of copying definitions from one [set](#set) to another, for example moving a feature along release lanes from `dev` to `staging` to `production`.
+
+Learn more in [Promotions](/docs/promotions/) page.
+
 ## Pull Request
 
 A pull request is a feature in version control systems like [Git](#git), and platforms like [GitHub](#github), that allows developers to propose changes to a codebase.
@@ -558,21 +562,15 @@ Many organizations have Quality Assurance (QA) teams, making sure everything is 
 
 ## Ready
 
-When Featurevisor SDKs are used [asynchronously](/docs/sdks/javascript/#initialization), we are delegating the responsibility of [fetching](#fetch) the [datafile](#datafile) to the SDK itself.
+Featurevisor SDKs are ready to evaluate features as soon as a [datafile](#datafile) is set on the instance.
 
-The fetching of datafile is an asynchronous task over the network. To know when Featurevisor SDK has successfully fetched the datafile, we rely on its readiness events.
-
-Learn more about their usage here:
-
-- [onReady option](/docs/sdks/javascript/#asynchronous)
-- [isReady method](/docs/sdks/javascript/#listening-to-events)
-- [onReady method](/docs/sdks/javascript/#listening-to-events)
+You are responsible for [fetching](#fetch) the datafile and passing it to the SDK, either at [initialization](/docs/sdks/javascript/#initialization) or later via [setDatafile](/docs/sdks/javascript/#setting-datafile). There is no separate readiness step to wait for.
 
 ## Refresh
 
-Featurevisor SDKs allow refreshing [datafile](#datafile) content without having to restart or reload your whole [application](#application).
+Featurevisor SDKs allow updating [datafile](#datafile) content without having to restart or reload your whole [application](#application).
 
-Learn more about refreshing [here](/docs/sdks/javascript/#refreshing).
+Learn more about updating the datafile [here](/docs/sdks/javascript/#updating-datafile).
 
 ## Repository
 
@@ -639,11 +637,19 @@ Learn more about segments:
 - [Defining segments](/docs/segments)
 - [Using segments in feature rules](/docs/features/#segments)
 
+## Set
+
+A set is an independent tree inside a Featurevisor [project](#project), with its own attributes, segments, features, [targets](#target), and tests.
+
+Sets are useful for modeling release lanes like `dev`, `staging`, and `production`, or for managing distinct surfaces from one repository. Definitions can be copied between sets using [promotions](#promotion).
+
+Learn more in [Sets](/docs/sets/) page.
+
 ## Site
 
-Featurevisor is also capable of generating a static read-only website based on all [entity](#entity) definitions as found in your project [repository](#repository).
+Featurevisor is also capable of generating a static read-only catalog website based on all [entity](#entity) definitions as found in your project [repository](#repository).
 
-This generated site, once hosted, serves as a dashboard for your team and organization for understanding what's the latest state of configuration everywhere.
+This generated catalog, once hosted, serves as a dashboard for your team and organization for understanding what's the latest state of configuration everywhere.
 
 Learn more about it [here](/docs/site).
 
@@ -699,6 +705,14 @@ Learn more about it here:
 - [Building datafiles](/docs/building-datafiles)
 - [Tags in features](/docs/features/#tags)
 
+## Target
+
+A target defines a [datafile](#datafile) that Featurevisor builds. It can select features by [tag](#tag), and optionally apply a partially known [context](#context) at build time to produce smaller and more optimized datafiles.
+
+Targets live in the `targets` directory, and the build process generates one datafile per target.
+
+Learn more in [Targets](/docs/targets/) page.
+
 ## Terminal
 
 A Terminal, also known as a command line or console, is a text-based interface used to interact with an operating system. Users can input commands to perform operations, navigate the file system, and run scripts or applications.
@@ -721,11 +735,11 @@ Learn more about it [here](/docs/testing).
 
 Experiments are of no use if we are not tracking anything.
 
-Featurevisor SDKs emit [activation](#activation) events, which can be handled and then tracked accordingly using your favourite analytics service.
+Featurevisor SDKs let you react to evaluations via [modules](/docs/sdks/javascript/#modules), which can be handled and then tracked accordingly using your favourite analytics service.
 
-Here are some guides regarding tracking activation events:
+Here are some guides regarding tracking [activation](#activation) events:
 
-- [Activating features](/docs/sdks/javascript/#activation)
+- [Modules](/docs/sdks/javascript/#modules)
 - [Tracking with Google Analytics / Tag Manager](/docs/tracking/google-analytics)
 
 ## Usage

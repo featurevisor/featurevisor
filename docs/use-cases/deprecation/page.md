@@ -71,7 +71,7 @@ When a feature is marked as deprecated, Featurevisor [SDKs](/docs/sdks/) will au
 
 This lets developers know immediately that the feature is deprecated and should be removed from the codebase.
 
-Optionally, we can take over the warning messages via the [logger API](/docs/sdks/javascript/#logging) of SDKs if we wish to customize the warning messages further or track them via our preferred logging and monitoring system.
+Optionally, we can take over the warning messages via the [diagnostics](/docs/sdks/javascript/#diagnostics) of SDKs if we wish to customize the warning messages further or track them via our preferred logging and monitoring system.
 
 ## Deleting deprecated features
 

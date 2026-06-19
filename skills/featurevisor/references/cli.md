@@ -55,11 +55,12 @@ If `enforceCatchAllRule: true` is set in config, lint also requires every featur
 
 ```bash
 npx featurevisor build --no-state-files
+npx featurevisor build --no-state-files --set=storefront   # one set only (sets projects)
 ```
 
 **Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
 
-Datafiles end up in `<datafilesDirectoryPath>` organized by environment and target.
+Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
 
 ## Test
 
@@ -72,6 +73,7 @@ npx featurevisor test --verbose                   # SDK trace per assertion
 npx featurevisor test --quiet                     # suppress SDK warnings
 npx featurevisor test --onlyFailures
 npx featurevisor test --showDatafile              # combine with --keyPattern
+npx featurevisor test --set=storefront            # one set only (sets projects)
 ```
 
 Non-zero exit on failure.
@@ -237,6 +239,18 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 ```
 
 Generates typed accessors from feature definitions. Other languages: see <https://featurevisor.com/docs/code-generation>.
+
+## promote (sets projects only)
+
+```bash
+npx featurevisor promote --from=dev --to=staging                       # preview
+npx featurevisor promote --from=dev --to=staging --apply               # write destination files
+npx featurevisor promote --from=dev --to=staging --includeFeatures="checkout*"
+npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source | destination | fail (default source)
+npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
+```
+
+Copies definitions (and their dependencies) between [sets](https://featurevisor.com/docs/sets). Allowed directions can be constrained by `promotionFlows` in the config, and a definition with `promotable: false` is never promoted. See <https://featurevisor.com/docs/promotions>.
 
 ## catalog
 

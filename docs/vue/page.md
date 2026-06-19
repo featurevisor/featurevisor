@@ -11,14 +11,6 @@ nextjs:
         - url: /img/og/docs-vue.png
 ---
 
-{% callout type="warning" title="Featurevisor v1" %}
-
-This guide is written keeping Featurevisor v1 in mind.
-
-It will be updated to be v2-compatible soon.
-
-{% /callout %}
-
 Featurevisor comes with an additional package for Vue.js, for ease of integration in your Vue.js application for evaluating feature flags. {% .lead %}
 
 ## Installation
@@ -38,8 +30,11 @@ import { createApp } from 'vue'
 import { createFeaturevisor } from '@featurevisor/sdk'
 import { setupApp } from '@featurevisor/vue'
 
+const datafileUrl = 'https://cdn.yoursite.com/datafile.json'
+const datafile = await fetch(datafileUrl).then((res) => res.json())
+
 const f = createFeaturevisor({
-  datafileUrl: 'https://cdn.yoursite.com/datafile.json',
+  datafile,
 })
 
 const app = createApp({
@@ -54,23 +49,6 @@ This will set up the SDK instance in your Vue application, and make it available
 ## Functions
 
 The package comes with several functions to use in your components:
-
-### useStatus
-
-Know if the SDK is ready to be used:
-
-```html
-<script setup>
-  import { useStatus } from '@featurevisor/vue'
-
-  const status = useStatus()
-</script>
-
-<template>
-  <div v-if="status.isReady">SDK is ready</div>
-  <div v-else>Loading...</div>
-</template>
-```
 
 ### useFlag
 
@@ -133,12 +111,6 @@ Get a feature's evaluated variable value:
 </template>
 ```
 
-### activateFeature
-
-Same as `useVariation`, but it will also bubble an activation event up to the SDK for tracking purposes.
-
-This should ideally be only called once per feature, and only when we know the feature has been exposed to the user.
-
 ### useSdk
 
 Get the SDK instance:
@@ -154,6 +126,10 @@ Get the SDK instance:
   <div>...</div>
 </template>
 ```
+
+## Tracking
+
+To track when a feature is exposed to a user, register a [module](/docs/sdks/javascript/#modules) on the SDK instance and react to evaluations in its `after` callback. See the [Google Analytics tracking](/docs/tracking/google-analytics/) guide for an example.
 
 ## Optimization
 

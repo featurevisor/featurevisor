@@ -1,23 +1,23 @@
 ---
-title: Status site generator
+title: Catalog
 nextjs:
   metadata:
-    title: Status site generator
-    description: Learn how to generate status website using Featurevisor
+    title: Catalog
+    description: Learn how to generate a static catalog site using Featurevisor
     openGraph:
-      title: Status site generator
-      description: Learn how to generate status website using Featurevisor
+      title: Catalog
+      description: Learn how to generate a static catalog site using Featurevisor
       images:
         - url: /img/og/docs.png
 ---
 
-To get a quick overview of all the feature flags, segments, and attributes (and their history of changes) in your Featurevisor project, you can generate a static website for your team or organization. {% .lead %}
+To get a quick overview of all the feature flags, segments, and attributes (and their history of changes) in your Featurevisor project, you can generate a static catalog website for your team or organization. {% .lead %}
 
-## Why generate a site?
+## Why generate a catalog?
 
 As your project grows, it becomes harder to keep track of all the feature flags, segments, and attributes especially if you want to know the current status in any specific environment quickly.
 
-The status site generator helps you to keep track of all the changes in your project via a nice and usable static website, that you can generate every time there's a change in your project repository.
+The catalog generator helps you to keep track of all the changes in your project via a nice and usable static website, that you can generate every time there's a change in your project repository.
 
 This also helps communicate the current state of things to your wider organization, especially to those who aren't developers.
 
@@ -27,22 +27,28 @@ It is expected that you already have a Featurevisor project with some feature fl
 
 The git repo also needs to have an `origin` remote set up, in order for the edit links to work in the generated website.
 
-## Generate a status site
+## Generate a catalog
 
 Use Featurevisor CLI:
 
 ```{% title="Command" %}
-$ npx featurevisor site export
+$ npx featurevisor catalog export
 ```
 
-The generated static site will be available in the `out` directory.
+The generated static site will be available in the `catalog` directory.
 
-## Serve the site locally
+## Serve the catalog locally
 
-Run:
+Run the following, which generates the catalog and serves it (defaults to port 3000):
 
 ```{% title="Command" %}
-$ npx featurevisor site serve
+$ npx featurevisor catalog serve
+```
+
+To serve it on a specific port:
+
+```{% title="Command" %}
+$ npx featurevisor catalog serve -p 3000
 ```
 
 ## Screenshots

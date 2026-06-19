@@ -73,15 +73,8 @@ const fastify = require('fastify')({
 const { createFeaturevisor } = require('@featurevisor/sdk')
 const DATAFILE_URL =
   'https://featurevisor-example-cloudflare.pages.dev/production/featurevisor-all.json' // replace with yoursite cdn
-const REFRESH_INTERVAL = 60 * 5 // every 5 minutes
 
-const f = createFeaturevisor({
-  datafileUrl: DATAFILE_URL,
-
-  // optionally refresh the datafile every 5 minutes,
-  // without having to restart the server
-  refreshInterval: REFRESH_INTERVAL,
-})
+const f = createFeaturevisor({})
 
 // Declare a route
 fastify.get('/', async (request, reply) => {
@@ -99,6 +92,10 @@ fastify.get('/', async (request, reply) => {
 
 // Run the server!
 const start = async () => {
+  const datafile = await fetch(DATAFILE_URL).then((res) => res.json())
+  f.setDatafile(datafile)
+
+  // we start the server only after the datafile is loaded
   fastify.listen({ port: 3000 }, function (err, address) {
     if (err) {
       fastify.log.error(err)
@@ -109,6 +106,8 @@ const start = async () => {
 }
 start()
 ```
+
+To keep the datafile fresh without restarting the server, fetch it again on an interval and call `f.setDatafile(datafile)`. See more in the [JavaScript SDK page](/docs/sdks/javascript/#interval-based-update).
 
 ## Decorator
 

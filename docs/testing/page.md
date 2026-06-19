@@ -271,9 +271,15 @@ If you are interested to see only the test specs that fail:
 $ npx featurevisor test --onlyFailures
 ```
 
-### `withTags`
+### `set`
 
-Target assertions do not need extra CLI options.
+In a project with [sets](/docs/sets/), you can run tests for a single set:
+
+```{% title="Command" %}
+$ npx featurevisor test --set=storefront
+```
+
+Target assertions do not need extra CLI options. The test runner builds target datafiles in memory automatically.
 
 ## NPM scripts
 

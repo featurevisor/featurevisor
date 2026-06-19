@@ -76,6 +76,10 @@ tags:
   - ios
 ```
 
+Only tags listed in your [configuration](/docs/configuration/) can be used here.
+
+The `tags` property is optional. A feature without tags is still included in [targets](/docs/targets/) that do not narrow down by tag.
+
 Read more about how tags are relevant in [building datafiles](/docs/building-datafiles) per [tag](/docs/tags/).
 
 ## Bucketing
@@ -969,6 +973,20 @@ archived: true
 ```
 
 Doing so will exclude the feature from generated datafiles and SDKs will not be able to evaluate the feature.
+
+## Promotable
+
+In a project that uses [sets](/docs/sets/), you can keep a feature from being copied to another set during [promotions](/docs/promotions/) by setting `promotable: false`:
+
+```yml {% path="features/sidebar.yml" %}
+promotable: false
+
+# ...
+```
+
+Individual [rules](#rules) can also be marked with `promotable: false` so a feature is promoted while a specific rule stays behind in the source set.
+
+By default, every feature and rule is promotable. Read more in [Promotions](/docs/promotions/).
 
 ## Expose
 

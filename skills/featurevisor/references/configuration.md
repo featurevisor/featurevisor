@@ -32,6 +32,7 @@ npx featurevisor config --json --pretty
 | `tags`                                                                                                                                   | Array of tag names — features must tag themselves with a subset                 |
 | `sets`                                                                                                                                   | `true` → each `sets/<set>/` directory is an independent project tree            |
 | `promotionFlows`                                                                                                                         | Optional allowed set promotion directions, for example dev → staging            |
+| `namespaceCharacter`                                                                                                                     | Separator for namespaced keys (default `.`)                                     |
 | `targetsDirectoryPath`                                                                                                                   | Directory containing target definitions (default `targets/`)                    |
 | `parser`                                                                                                                                 | `"json"`, `"yml"` (default), or custom parser                                   |
 | `defaultBucketBy`                                                                                                                        | Default `bucketBy` for features (defaults to `userId`)                          |
@@ -40,8 +41,11 @@ npx featurevisor config --json --pretty
 | `segmentsDirectoryPath`                                                                                                                  | default `segments/`                                                             |
 | `featuresDirectoryPath`                                                                                                                  | default `features/`                                                             |
 | `groupsDirectoryPath`                                                                                                                    | default `groups/`                                                               |
+| `schemasDirectoryPath`                                                                                                                   | default `schemas/`                                                             |
+| `setsDirectoryPath`                                                                                                                      | default `sets/`                                                                 |
 | `testsDirectoryPath`                                                                                                                     | default `tests/`                                                                |
-| `datafilesDirectoryPath`                                                                                                                 | default `dist/`                                                                 |
+| `datafilesDirectoryPath`                                                                                                                 | default `datafiles/`                                                            |
+| `catalogDirectoryPath`                                                                                                                   | default `catalog/`                                                             |
 | `datafileNamePattern`                                                                                                                    | default `featurevisor-%s.json`                                                  |
 | `revisionFileName`                                                                                                                       | default `REVISION`                                                              |
 | `stateDirectoryPath`                                                                                                                     | default `.featurevisor/`                                                        |
@@ -59,3 +63,20 @@ Tag a feature with `all` (or your project's chosen catch-all) only if every cons
 ## Targets
 
 Targets define generated datafiles under `targets/`. They can include optional tag filters and build-time context. See <https://featurevisor.com/docs/targets>.
+
+## Sets
+
+When `sets: true`, the project is split into independent trees under `sets/<set>/`. Each set has its own `attributes/`, `segments/`, `features/`, `targets/`, and `tests/`, and needs at least one target of its own.
+
+Datafiles build under `datafiles/<set>/[<environment>/]featurevisor-<target>.json`, and state lives under `.featurevisor/sets/<set>/`. Scope any command to one set with `--set=<set>`.
+
+Sets are commonly used to model release lanes (`dev`, `staging`, `production`) or distinct surfaces (`storefront`, `admin`). See <https://featurevisor.com/docs/sets>.
+
+## Promotions
+
+In a project with sets, `npx featurevisor promote --from=<set> --to=<set>` copies definitions (and their dependencies) from one set to another. It previews by default; pass `--apply` to write files.
+
+- `promotionFlows` in the config restricts which `from` → `to` promotions are allowed. When omitted, any flow is allowed.
+- Set `promotable: false` on a definition (feature, rule, segment, attribute, group, schema, target, or test) to keep it from being promoted.
+
+See <https://featurevisor.com/docs/promotions>.

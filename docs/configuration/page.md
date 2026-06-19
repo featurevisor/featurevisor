@@ -71,11 +71,62 @@ module.exports = {
 
 Read more in [Environments](/docs/environments) page.
 
+### `sets`
+
+Whether the project is split into independent [sets](/docs/sets/).
+
+Defaults to `false`. When set to `true`, Featurevisor expects each set to live under its own subdirectory inside the `sets` directory:
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  sets: true,
+  tags: ['all'],
+}
+```
+
+Read more in [Sets](/docs/sets) page.
+
+### `promotionFlows`
+
+An optional array that restricts which [promotions](/docs/promotions/) are allowed between [sets](/docs/sets/).
+
+Each entry must contain exactly a `from` and a `to` set name. When omitted, any set can be promoted to any other set.
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  sets: true,
+  promotionFlows: [
+    { from: 'dev', to: 'staging' },
+    { from: 'staging', to: 'production' },
+  ],
+}
+```
+
+Read more in [Promotions](/docs/promotions) page.
+
+### `namespaceCharacter`
+
+The separator used when deriving feature and segment keys from their [namespace](/docs/namespaces/) directories.
+
+Defaults to `.`. With the default, `features/checkout/feature1.yml` becomes `checkout.feature1`.
+
+```js {% path="featurevisor.config.js" %}
+module.exports = {
+  namespaceCharacter: '.',
+}
+```
+
 ### `targetsDirectoryPath`
 
 Path to the directory containing your [targets](/docs/targets/).
 
 Defaults to `<rootDir>/targets`.
+
+### `setsDirectoryPath`
+
+Path to the directory containing your [sets](/docs/sets/).
+
+Defaults to `<rootDir>/sets`.
 
 ### `attributesDirectoryPath`
 
@@ -101,6 +152,12 @@ Path to the directory containing your [groups](/docs/groups/).
 
 Defaults to `<rootDir>/groups`.
 
+### `schemasDirectoryPath`
+
+Path to the directory containing your reusable [schemas](/docs/schemas/).
+
+Defaults to `<rootDir>/schemas`.
+
 ### `testsDirectoryPath`
 
 Path to the directory containing your [tests](/docs/testing/).
@@ -111,9 +168,11 @@ Defaults to `<rootDir>/tests`.
 
 Path to the directory for your generated [datafiles](/docs/building-datafiles/).
 
-Defaults to `<rootDir>/dist`.
+Defaults to `<rootDir>/datafiles`.
 
 ### `datafileNamePattern`
+
+Pattern used to name generated datafiles, where `%s` is replaced by the [target](/docs/targets/) key.
 
 Defaults to `featurevisor-%s.json`.
 
@@ -130,6 +189,12 @@ Path to the directory containing your state.
 Defaults to `<rootDir>/.featurevisor`.
 
 Read more in [State files](/docs/state-files).
+
+### `catalogDirectoryPath`
+
+Path to the directory where the generated [catalog](/docs/site/) is written.
+
+Defaults to `<rootDir>/catalog`.
 
 ### `defaultBucketBy`
 

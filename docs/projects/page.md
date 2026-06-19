@@ -64,6 +64,8 @@ $ tree .
 ├── package.json
 ├── segments
 │   └── netherlands.yml
+├── targets
+│   └── all.yml
 └── tests
     ├── features
     │   └── showCookieBanner.spec.yml
@@ -82,6 +84,7 @@ These are the directories where you will be defining all the building blocks for
 - `attributes/`: contains all your [attribute](/docs/attributes/) definitions
 - `segments/`: contains all your reusable [segments](/docs/segments/), which work as targeting conditions
 - `features/`: contains all your [feature](/docs/features/) definitions
+- `targets/`: contains your [target](/docs/targets/) definitions, which decide the datafiles that get built
 - `tests/`: contains all your [test specs](/docs/testing/) against your features and segments
 
 ### Output

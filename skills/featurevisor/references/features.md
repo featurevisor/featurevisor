@@ -42,6 +42,7 @@ rules:
 | `disabledVariationValue` | no                                       | Variation value when feature is disabled (defaults to `null`)                     |
 | `deprecated`             | no                                       | `true` → still evaluable, logs warning                                            |
 | `archived`               | no                                       | `true` → excluded from datafiles entirely                                         |
+| `promotable`             | no                                       | `false` → never copied during set [promotions](https://featurevisor.com/docs/promotions); also settable per rule |
 
 ## Bucketing (`bucketBy`)
 

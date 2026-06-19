@@ -125,6 +125,17 @@ rules:
 
 Learn more in [Features](/docs/features).
 
+## Create a target
+
+Targets decide the datafiles that get built. The `init` command already created a default `all` target for you:
+
+```yml {% path="targets/all.yml" %}
+description: All features
+tag: all
+```
+
+This target selects every feature tagged with `all`, and builds a `featurevisor-all.json` datafile. Learn more in [Targets](/docs/targets).
+
 ## Linting
 
 We can lint the content of all our files to make sure they are all valid:
@@ -145,7 +156,7 @@ Now that we have all the definitions in place, we can build the project:
 $ npx featurevisor build
 ```
 
-This will generate datafiles in the `datafiles` directory for each of your [tags](/docs/tags/) against each [environment](/docs/environments/) as defined in your [`featurevisor.config.js`](/docs/configuration/) file.
+This will generate datafiles in the `datafiles` directory for each of your [targets](/docs/targets/) against each [environment](/docs/environments/) as defined in your [`featurevisor.config.js`](/docs/configuration/) file.
 
 With our example, we will have the following datafiles generated:
 

@@ -56,10 +56,16 @@ Lear more in [Linting](/docs/linting).
 
 ## Building datafiles
 
-Generate JSON files on a per environment and tag combination as exists in project [configuration](/docs/configuration):
+Generate JSON files, one per [target](/docs/targets/) and optional [environment](/docs/environments/) combination:
 
 ```
 $ npx featurevisor build
+```
+
+In a project with [sets](/docs/sets/), you can build a single set by passing `--set`:
+
+```
+$ npx featurevisor build --set=storefront
 ```
 
 Learn more in [Building datafiles](/docs/building-datafiles).
@@ -72,29 +78,53 @@ Test your features and segments:
 $ npx featurevisor test
 ```
 
+In a project with [sets](/docs/sets/), you can test a single set by passing `--set`:
+
+```
+$ npx featurevisor test --set=storefront
+```
+
 Learn more in [Testing](/docs/testing).
 
-## Generate static site
+## Promote between sets
 
-Build the site:
+In a project with [sets](/docs/sets/), you can preview and apply [promotions](/docs/promotions/) from one set to another.
 
-```
-$ npx featurevisor site export
-```
-
-Serve the built site (defaults to port 3000):
+Preview what would be copied:
 
 ```
-$ npx featurevisor site serve
+$ npx featurevisor promote --from=dev --to=staging
+```
+
+Apply the promotion to write destination files:
+
+```
+$ npx featurevisor promote --from=dev --to=staging --apply
+```
+
+Learn more in [Promotions](/docs/promotions).
+
+## Generate static catalog
+
+Build the catalog:
+
+```
+$ npx featurevisor catalog export
+```
+
+Serve the built catalog (defaults to port 3000):
+
+```
+$ npx featurevisor catalog serve
 ```
 
 Serve it in a specific port:
 
 ```
-$ npx featurevisor site serve -p 3000
+$ npx featurevisor catalog serve -p 3000
 ```
 
-Learn more in [Status site](/docs/status-site).
+Learn more in [Catalog](/docs/site).
 
 ## Generate code
 
@@ -204,7 +234,7 @@ $ npx featurevisor benchmark \
   --n=1000
 ```
 
-You can optionally pass `--schema-version=2` if you are using the new schema v2.
+The schema version defaults to `2`. You can optionally pass `--schema-version=1` to work against the older v1 schema format.
 
 ## Configuration
 
@@ -233,7 +263,7 @@ $ npx featurevisor evaluate \
 
 This will show you full [evaluation details](/docs/sdks/javascript/#evaluation-details) helping you debug better in case of any confusion.
 
-It is similar to [logging](/docs/sdks/javascript/#logging) in SDKs with `debug` level. But here instead, we are doing it at CLI directly in our Featurevisor project without having to involve our application(s).
+It is similar to [diagnostics](/docs/sdks/javascript/#diagnostics) in SDKs with `debug` level. But here instead, we are doing it at CLI directly in our Featurevisor project without having to involve our application(s).
 
 If you wish to print the evaluation details in plain JSON, you can pass `--json` at the end:
 
@@ -258,7 +288,7 @@ $ npx featurevisor evaluate \
   --verbose
 ```
 
-You can optionally pass `--schema-version=2` if you are using the new schema v2.
+The schema version defaults to `2`. You can optionally pass `--schema-version=1` to work against the older v1 schema format.
 
 ## List
 
