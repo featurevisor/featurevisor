@@ -244,17 +244,7 @@ function Sidebar(props: { setKey?: string }) {
             </NavLink>
           );
         })}
-        <NavLink
-          to={`${basePath}/history`}
-          className={({ isActive }) =>
-            [
-              "mt-4 block rounded-lg px-3 py-2 text-sm font-bold",
-              isActive
-                ? "bg-header-active !text-header-text"
-                : "text-muted hover:bg-elevated hover:text-text",
-            ].join(" ")
-          }
-        >
+        <NavLink to={`${basePath}/history`} className={sidebarClass}>
           History
         </NavLink>
       </nav>
