@@ -16,12 +16,12 @@ bundle-sizes:
 	npm run bundle-sizes
 
 lint:
-	npx prettier examples/ packages/ docs/ --check
+	npx prettier examples/ packages/ --check
 	npx eslint .
 	npx lerna run lint
 
 format:
-	npx prettier examples/ packages/ docs/ --write
+	npx prettier examples/ packages/ --write
 
 check:
 	make install
