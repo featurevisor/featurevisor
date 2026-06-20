@@ -56,6 +56,31 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts feature patterns and the direct all-features wildcard", () => {
+    expect(
+      parseTarget({
+        description: "Selected features",
+        includeFeatures: ["checkout*", "account.profile"],
+        excludeFeatures: ["checkout.internal*"],
+      }).success,
+    ).toBe(true);
+
+    expect(
+      parseTarget({
+        description: "All features",
+        includeFeatures: "*",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects non-wildcard scalar feature selectors and empty pattern arrays", () => {
+    expect(
+      parseTarget({ description: "Scalar feature", includeFeatures: "checkout" }).success,
+    ).toBe(false);
+    expect(parseTarget({ description: "Empty include", includeFeatures: [] }).success).toBe(false);
+    expect(parseTarget({ description: "Empty exclude", excludeFeatures: [] }).success).toBe(false);
+  });
+
   it("rejects unknown single tag", () => {
     const result = parseTarget({ description: "Unknown tag", tag: "unknown" });
 

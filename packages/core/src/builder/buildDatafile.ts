@@ -45,6 +45,8 @@ export interface CustomDatafileOptions {
   inflate?: number;
   tag?: string;
   tags?: BuildTags;
+  includeFeatures?: "*" | FeatureKey[];
+  excludeFeatures?: "*" | FeatureKey[];
 }
 
 export async function getCustomDatafile(
@@ -69,6 +71,8 @@ export async function getCustomDatafile(
       inflate: options.inflate,
       tag: options.tag,
       tags: options.tags,
+      includeFeatures: options.includeFeatures,
+      excludeFeatures: options.excludeFeatures,
     },
     existingState,
   );
@@ -106,6 +110,19 @@ function matchesBuildTags(candidateTags: string[], buildTags?: BuildTags): boole
   return true;
 }
 
+function matchesFeaturePatterns(featureKey: FeatureKey, patterns?: "*" | FeatureKey[]): boolean {
+  if (!patterns) {
+    return false;
+  }
+
+  const normalizedPatterns = patterns === "*" ? [patterns] : patterns;
+
+  return normalizedPatterns.some((pattern) => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    return new RegExp(`^${escaped}$`).test(featureKey);
+  });
+}
+
 export interface BuildOptions {
   schemaVersion: string;
   revision: string;
@@ -114,6 +131,8 @@ export interface BuildOptions {
   environment: string | false;
   tag?: string;
   tags?: BuildTags;
+  includeFeatures?: "*" | FeatureKey[];
+  excludeFeatures?: "*" | FeatureKey[];
   features?: FeatureKey[];
   inflate?: number;
 }
@@ -160,6 +179,17 @@ export async function buildDatafile(
       }
 
       if (options.tags && matchesBuildTags(featureTags, options.tags) === false) {
+        continue;
+      }
+
+      if (
+        options.includeFeatures &&
+        matchesFeaturePatterns(featureKey, options.includeFeatures) === false
+      ) {
+        continue;
+      }
+
+      if (options.excludeFeatures && matchesFeaturePatterns(featureKey, options.excludeFeatures)) {
         continue;
       }
 

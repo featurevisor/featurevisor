@@ -132,6 +132,8 @@ export async function buildTargetDatafile({
       environment,
       tag: target.tag,
       tags: target.tags,
+      includeFeatures: target.includeFeatures,
+      excludeFeatures: target.excludeFeatures,
       inflate,
       featurevisorVersion,
     },
@@ -206,6 +208,8 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       schemaVersion: cliOptions.schemaVersion,
       tag: target?.tag,
       tags: target?.tags,
+      includeFeatures: target?.includeFeatures,
+      excludeFeatures: target?.excludeFeatures,
     });
 
     if (target?.context) {

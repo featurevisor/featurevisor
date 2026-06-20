@@ -1,0 +1,10 @@
+description: Selected web features target
+tag: web
+includeFeatures:
+  - browser*
+  - checkout
+  - showBanner
+excludeFeatures:
+  - showBanner
+context:
+  browser: chrome

@@ -3,10 +3,10 @@ title: Targets
 nextjs:
   metadata:
     title: Targets
-    description: Define Featurevisor datafile targets with optional tag filters and build-time context.
+    description: Define Featurevisor datafile targets with feature patterns, tag filters, and build-time context.
     openGraph:
       title: Targets
-      description: Define Featurevisor datafile targets with optional tag filters and build-time context.
+      description: Define Featurevisor datafile targets with feature patterns, tag filters, and build-time context.
       images:
         - url: /img/og/docs.png
 ---
@@ -53,6 +53,37 @@ Supported shapes:
 - `tags: { and: ["web", "checkout"] }`
 
 `tag` and `tags` are mutually exclusive. If both are omitted, the target includes all non-archived features.
+
+## Features
+
+Use `includeFeatures` and `excludeFeatures` to select features by key. Patterns support `*` wildcards:
+
+```yml {% path="targets/checkout.yml" %}
+description: Checkout datafile
+includeFeatures:
+  - checkout*
+  - shared.navigation
+excludeFeatures:
+  - checkout.internal*
+```
+
+Exclusions take precedence over inclusions. If `includeFeatures` is omitted, all features are candidates. To state that explicitly, `*` can be used directly:
+
+```yml {% path="targets/all.yml" %}
+description: All features
+includeFeatures: "*"
+```
+
+Feature and tag selectors are combined with AND semantics. A feature must match both selectors to be included:
+
+```yml {% path="targets/web-checkout.yml" %}
+description: Web checkout features
+tag: web
+includeFeatures:
+  - checkout*
+```
+
+In this example, a `checkout` feature without the `web` tag is not included, even though its key matches `checkout*`.
 
 ## Context
 

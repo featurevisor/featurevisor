@@ -1,0 +1,13 @@
+feature: checkout
+assertions:
+  - at: 50
+    environment: staging
+    context: {}
+    expectedToBeEnabled: true
+
+  - at: 50
+    environment: staging
+    target: selected-web
+    description: Included feature without the web tag should be omitted by AND semantics
+    context: {}
+    expectedToBeEnabled: false

@@ -1,5 +1,5 @@
 import type { Context } from "./context";
-import type { Tag } from "./feature";
+import type { FeatureKey, Tag } from "./feature";
 
 export type TargetKey = string;
 
@@ -12,6 +12,7 @@ export interface TargetAndTags {
 }
 
 export type TargetTags = Tag[] | TargetOrTags | TargetAndTags;
+export type TargetFeatures = "*" | FeatureKey[];
 
 export interface Target {
   key?: TargetKey;
@@ -19,5 +20,7 @@ export interface Target {
   description: string;
   tag?: Tag;
   tags?: TargetTags;
+  includeFeatures?: TargetFeatures;
+  excludeFeatures?: TargetFeatures;
   context?: Context;
 }

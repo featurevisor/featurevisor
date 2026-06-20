@@ -73,8 +73,14 @@ function createDatasource(set = "") {
     listTargets: async () => ["premiumWeb", "mobile"],
     readTarget: async (key: string) =>
       key === "premiumWeb"
-        ? { key, description: "Premium web", tags: { and: ["web", "premium"] } }
-        : { key, description: "Mobile", tag: "mobile" },
+        ? {
+            key,
+            description: "Premium web",
+            tags: { and: ["web", "premium"] },
+            includeFeatures: ["checkout*"],
+            excludeFeatures: ["checkout.internal*"],
+          }
+        : { key, description: "Mobile", tag: "mobile", includeFeatures: "*" },
     listGroups: async () => [],
     readGroup: async () => undefined,
     listSchemas: async () => [],

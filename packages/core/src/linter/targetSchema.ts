@@ -12,6 +12,7 @@ const targetTagSchema = (projectConfig: ProjectConfig) =>
 
 export function getTargetZodSchema(projectConfig: ProjectConfig) {
   const tagSchema = targetTagSchema(projectConfig);
+  const featurePatternsSchema = z.union([z.literal("*"), z.array(z.string()).min(1)]);
 
   return z
     .object({
@@ -28,6 +29,8 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
           z.object({ and: z.array(tagSchema) }).strict(),
         ])
         .optional(),
+      includeFeatures: featurePatternsSchema.optional(),
+      excludeFeatures: featurePatternsSchema.optional(),
       context: z.record(z.string(), z.unknown()).optional(),
     })
     .strict()

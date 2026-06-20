@@ -49,3 +49,10 @@ assertions:
     description: "At ${{ at }}% in production with chrome target, should be enabled"
     context: {}
     expectedToBeEnabled: true
+
+  - at: 50
+    environment: production
+    target: selected-web
+    description: Included browser feature should exist in selected web target
+    context: {}
+    expectedToBeEnabled: true

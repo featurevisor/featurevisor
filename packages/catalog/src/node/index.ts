@@ -376,26 +376,39 @@ function getFeatureForce(feature: ParsedFeature) {
   return Array.isArray(feature.force) ? feature.force : Object.values(feature.force || {}).flat();
 }
 
-function targetIncludesFeature(target: Target, feature: ParsedFeature) {
+function matchesFeaturePatterns(featureKey: string, patterns?: "*" | string[]) {
+  if (!patterns) {
+    return false;
+  }
+
+  const normalizedPatterns = patterns === "*" ? [patterns] : patterns;
+
+  return normalizedPatterns.some((pattern) => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    return new RegExp(`^${escaped}$`).test(featureKey);
+  });
+}
+
+function targetIncludesFeature(target: Target, featureKey: string, feature: ParsedFeature) {
   const featureTags = feature.tags || [];
+  let matchesTags = true;
 
   if (target.tag) {
-    return featureTags.includes(target.tag);
+    matchesTags = featureTags.includes(target.tag);
+  } else if (Array.isArray(target.tags)) {
+    matchesTags = target.tags.some((tag) => featureTags.includes(tag));
+  } else if (target.tags && "or" in target.tags) {
+    matchesTags = target.tags.or.some((tag) => featureTags.includes(tag));
+  } else if (target.tags && "and" in target.tags) {
+    matchesTags = target.tags.and.every((tag) => featureTags.includes(tag));
   }
 
-  if (!target.tags) {
-    return true;
-  }
+  const matchesIncludedFeatures = target.includeFeatures
+    ? matchesFeaturePatterns(featureKey, target.includeFeatures)
+    : true;
+  const matchesExcludedFeatures = matchesFeaturePatterns(featureKey, target.excludeFeatures);
 
-  if (Array.isArray(target.tags)) {
-    return target.tags.some((tag) => featureTags.includes(tag));
-  }
-
-  if ("or" in target.tags) {
-    return target.tags.or.some((tag) => featureTags.includes(tag));
-  }
-
-  return target.tags.and.every((tag) => featureTags.includes(tag));
+  return matchesTags && matchesIncludedFeatures && !matchesExcludedFeatures;
 }
 
 function getHistoryEntityKey(type: CatalogEntityType, key: string, set?: string) {
@@ -983,7 +996,7 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
 
   for (const [targetKey, target] of Object.entries(maps.target)) {
     for (const [featureKey, feature] of Object.entries(maps.feature)) {
-      if (targetIncludesFeature(target, feature)) {
+      if (targetIncludesFeature(target, featureKey, feature)) {
         addToSet(relationships.targetFeatures, targetKey, featureKey);
         addToSet(relationships.featureTargets, featureKey, targetKey);
       }

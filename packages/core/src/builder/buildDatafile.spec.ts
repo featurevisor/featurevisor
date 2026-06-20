@@ -7,6 +7,7 @@ import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { buildDatafile } from "./buildDatafile";
+import { buildTargetDatafile } from "./buildProject";
 
 function createProjectConfig(root: string, stringify = true): ProjectConfig {
   return {
@@ -38,14 +39,16 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
   };
 }
 
-function createMockDatasource(feature: ParsedFeature) {
+function createMockDatasource(feature: ParsedFeature | Record<string, ParsedFeature>) {
+  const featuresByKey = "description" in feature ? { [feature.key]: feature } : feature;
+
   return {
     listSchemas: async () => [],
     readSchema: async () => {
       throw new Error("readSchema should not be called");
     },
-    listFeatures: async () => ["withRuleOverrides"],
-    readFeature: async () => feature,
+    listFeatures: async () => Object.keys(featuresByKey),
+    readFeature: async (key: string) => featuresByKey[key],
     listSegments: async () => [],
     readSegment: async () => {
       throw new Error("readSegment should not be called");
@@ -305,5 +308,52 @@ describe("core: buildDatafile", function () {
     )) as DatafileContent;
 
     expect(result.features.withRuleOverrides).toBeUndefined();
+  });
+
+  test("filters target features by include/exclude patterns and combines them with tags using AND", async function () {
+    const config = createProjectConfig(root, true);
+    const createFeature = (key: string, tags: string[]) => ({
+      ...createFeatureFixture(),
+      key,
+      description: key,
+      tags,
+    });
+    const datasource = createMockDatasource({
+      "checkout.web": createFeature("checkout.web", ["all", "web"]),
+      "checkout.mobile": createFeature("checkout.mobile", ["all", "mobile"]),
+      "admin.web": createFeature("admin.web", ["all", "web"]),
+      "admin.internal": createFeature("admin.internal", ["all", "web"]),
+    });
+
+    const filtered = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Selected web features",
+        tag: "web",
+        includeFeatures: ["checkout*", "admin*"],
+        excludeFeatures: ["admin.internal"],
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(Object.keys(filtered.features).sort()).toEqual(["admin.web", "checkout.web"]);
+
+    const all = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "All except admin features",
+        includeFeatures: "*",
+        excludeFeatures: ["admin*"],
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(Object.keys(all.features).sort()).toEqual(["checkout.mobile", "checkout.web"]);
   });
 });

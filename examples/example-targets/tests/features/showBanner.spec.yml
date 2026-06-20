@@ -119,3 +119,10 @@ assertions:
     description: "At ${{ at }}% in production, the feature should be disabled for android target"
     context: {}
     expectedToBeEnabled: false
+
+  - at: 10
+    environment: production
+    target: selected-web
+    description: Explicitly excluded feature should not exist in selected web target
+    context: {}
+    expectedToBeEnabled: false
