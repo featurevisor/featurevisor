@@ -21,7 +21,7 @@ export function slugifyFragment(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function isSchemaRef(schema: SchemaLike) {
+function isSchemaRef(schema: SchemaLike): schema is SchemaLike & { schema: string } {
   return typeof schema.schema === "string";
 }
 

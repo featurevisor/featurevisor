@@ -24,6 +24,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run transpile && vite build",
     "test": "jest --config jest.config.js --verbose",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
     "preview": "vite preview --host 127.0.0.1 --port 3000"
   },
   "author": {

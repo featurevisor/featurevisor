@@ -10,6 +10,7 @@
   "scripts": {
     "build": "lerna run build",
     "test": "lerna run test",
+    "typecheck": "lerna run typecheck",
     "bundle-sizes": "node scripts/bundle-sizes.mjs"
   },
   "author": {

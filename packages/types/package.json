@@ -16,7 +16,8 @@
     "transpile": "echo 'Nothing to transpile'",
     "dist": "echo 'Nothing to dist'",
     "build": "tsc --project tsconfig.json --noEmit",
-    "test": "echo 'Nothing to test in types package'"
+    "test": "echo 'Nothing to test in types package'",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "author": {
     "name": "Fahad Heylaal",

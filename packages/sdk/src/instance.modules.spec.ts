@@ -151,7 +151,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
 
     expect(result).toBeUndefined();
     expect(setups).toEqual(["first"]);
-    expect(diagnostics.at(-1)).toEqual(
+    expect(diagnostics[diagnostics.length - 1]).toEqual(
       expect.objectContaining({ code: "duplicate_module", moduleName: "same" }),
     );
   });
@@ -253,7 +253,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     });
 
     expect(sdk.isEnabled("experiment", { userId: "user" })).toBe(false);
-    expect(diagnostics.at(-1)).toEqual(
+    expect(diagnostics[diagnostics.length - 1]).toEqual(
       expect.objectContaining({ code: "evaluation_error", originalError: expect.any(Error) }),
     );
   });

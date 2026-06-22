@@ -121,7 +121,7 @@ describe("Featurevisor public API: datafiles", () => {
     expect(sdk.getRevision()).toBe("stable");
     expect(sdk.getFeature("stable")).toBeDefined();
     expect(events).toEqual([]);
-    expect(diagnostics.at(-1)).toEqual(
+    expect(diagnostics[diagnostics.length - 1]).toEqual(
       expect.objectContaining({ level: "error", code: "invalid_datafile" }),
     );
   });

@@ -897,7 +897,7 @@ function UsageSection(props: {
 export function UsageTab() {
   const { detail, setKey } = useEntityDetail();
   const relationships = detail.relationships || {};
-  const entries =
+  const entries: Array<[string, string[]]> =
     detail.type === "feature"
       ? [
           ["targets", relationships.targets || []],

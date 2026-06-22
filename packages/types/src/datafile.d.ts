@@ -60,7 +60,7 @@ export interface Feature {
 export interface DatafileContent {
   schemaVersion: string;
   revision: string;
-  featurevisorVersion?: string; // @TODO: make it required in v3
+  featurevisorVersion?: string;
   segments: {
     [key: SegmentKey]: Segment;
   };

@@ -7,11 +7,7 @@ export type VariationValue = string;
 
 export type VariableKey = string;
 export type VariableType = SchemaType | "json";
-export type VariableValue =
-  | Value
-  // @TODO: consider removing below items
-  | null
-  | undefined;
+export type VariableValue = Value | null;
 
 export interface VariableOverrideSegments {
   segments: GroupSegment | GroupSegment[];

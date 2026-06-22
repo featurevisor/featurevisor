@@ -11,7 +11,8 @@
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "echo 'Nothing to test in this package'"
+    "test": "echo 'Nothing to test in this package'",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "homepage": "https://featurevisor.com",
   "keywords": [

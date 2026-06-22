@@ -17,7 +17,8 @@
     "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
     "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile && npm run dist",
-    "test": "jest --config jest.config.js --verbose --coverage ./src/*.spec.ts"
+    "test": "jest --config jest.config.js --verbose --coverage ./src/*.spec.ts",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "author": {
     "name": "Fahad Heylaal",

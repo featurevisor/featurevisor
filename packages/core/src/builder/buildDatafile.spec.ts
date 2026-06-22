@@ -39,8 +39,20 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
   };
 }
 
+function isParsedFeature(
+  feature: ParsedFeature | Record<string, ParsedFeature>,
+): feature is ParsedFeature {
+  return typeof (feature as ParsedFeature).description === "string";
+}
+
 function createMockDatasource(feature: ParsedFeature | Record<string, ParsedFeature>) {
-  const featuresByKey = "description" in feature ? { [feature.key]: feature } : feature;
+  let featuresByKey: Record<string, ParsedFeature>;
+
+  if (isParsedFeature(feature)) {
+    featuresByKey = { [feature.key]: feature };
+  } else {
+    featuresByKey = feature;
+  }
 
   return {
     listSchemas: async () => [],
