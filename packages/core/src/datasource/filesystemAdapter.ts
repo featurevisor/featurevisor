@@ -218,8 +218,6 @@ export class FilesystemAdapter extends Adapter {
         ? JSON.stringify(existingState, null, 2)
         : JSON.stringify(existingState),
     );
-
-    fs.writeFileSync(filePath, JSON.stringify(existingState, null, 2));
   }
 
   /**

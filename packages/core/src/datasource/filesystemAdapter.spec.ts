@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { getProjectConfig } from "../config";
 import { Datasource } from "./datasource";
+import { getExistingStateFilePath } from "./filesystemAdapter";
 
 function writeFile(filePath: string, content: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -164,5 +165,31 @@ describe("core: filesystemAdapter", () => {
     );
     await storefrontDatasource.writeTarget("web", { description: "Storefront web" });
     await expect(storefrontDatasource.listTargets()).resolves.toEqual(["web"]);
+  });
+
+  it("writes compact state when prettyState is disabled", async () => {
+    const root = createProject("module.exports = { prettyState: false };");
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+    const state = { features: {} };
+
+    await datasource.writeState(false, state);
+
+    expect(fs.readFileSync(getExistingStateFilePath(config, false), "utf8")).toBe(
+      JSON.stringify(state),
+    );
+  });
+
+  it("writes formatted state when prettyState is enabled", async () => {
+    const root = createProject("module.exports = { prettyState: true };");
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+    const state = { features: {} };
+
+    await datasource.writeState(false, state);
+
+    expect(fs.readFileSync(getExistingStateFilePath(config, false), "utf8")).toBe(
+      JSON.stringify(state, null, 2),
+    );
   });
 });
