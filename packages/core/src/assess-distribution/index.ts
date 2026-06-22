@@ -5,7 +5,6 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
 import { buildDatafile } from "../builder";
-import { SCHEMA_VERSION } from "../config";
 import { prettyPercentage, prettyNumber } from "../utils";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
@@ -73,7 +72,6 @@ export interface AssessDistributionOptions {
   feature: FeatureKey;
   context: Context;
   n: number;
-  schemaVersion?: string;
   inflate?: number;
 
   populateUuid?: AttributeKey[];
@@ -100,7 +98,6 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
     projectConfig,
     datasource,
     {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment || false,
       inflate: options.inflate,

@@ -10,7 +10,6 @@ import { prettyDuration } from "./prettyDuration";
 import { printTestResult } from "./printTestResult";
 
 import { buildDatafile, buildTargetDatafile } from "../builder";
-import { SCHEMA_VERSION } from "../config";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
@@ -21,7 +20,6 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
-  schemaVersion?: string;
   inflate?: number;
 }
 
@@ -47,7 +45,6 @@ async function buildTestDatafilesForEnvironment(
     projectConfig,
     datasource,
     {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment,
       inflate: options.inflate,
@@ -67,7 +64,6 @@ async function buildTestDatafilesForEnvironment(
       environment,
       existingState,
       revision: "include-target-features",
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       inflate: options.inflate,
     });
 

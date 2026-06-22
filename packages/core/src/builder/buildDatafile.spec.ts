@@ -181,12 +181,13 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
       },
       existingState,
     )) as DatafileContent;
+
+    expect(result.schemaVersion).toBe("2");
 
     const trafficRule = result.features.withRuleOverrides.traffic.find((t) => t.key === "rule1");
 
@@ -252,7 +253,6 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
       },
@@ -279,7 +279,6 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
       },
@@ -299,7 +298,6 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
         tag: "all",

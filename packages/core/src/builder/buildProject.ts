@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import { SCHEMA_VERSION, ProjectConfig } from "../config";
+import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
@@ -16,7 +16,6 @@ import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../
 export interface BuildCLIOptions {
   revision?: string;
   revisionFromHash?: boolean;
-  schemaVersion?: string;
 
   // all three together
   environment?: string;
@@ -78,7 +77,6 @@ async function buildForEnvironment({
       existingState,
       revision: nextRevision,
       revisionFromHash: cliOptions.revisionFromHash,
-      schemaVersion: cliOptions.schemaVersion,
       inflate: cliOptions.inflate,
       featurevisorVersion,
     });
@@ -107,7 +105,6 @@ export async function buildTargetDatafile({
   existingState,
   revision,
   revisionFromHash,
-  schemaVersion,
   inflate,
   featurevisorVersion,
 }: {
@@ -118,7 +115,6 @@ export async function buildTargetDatafile({
   existingState: Awaited<ReturnType<Datasource["readState"]>>;
   revision: string;
   revisionFromHash?: boolean;
-  schemaVersion?: string;
   inflate?: number;
   featurevisorVersion?: string;
 }): Promise<DatafileContent> {
@@ -126,7 +122,6 @@ export async function buildTargetDatafile({
     projectConfig,
     datasource,
     {
-      schemaVersion: schemaVersion || SCHEMA_VERSION,
       revision,
       revisionFromHash,
       environment,
@@ -205,7 +200,6 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       projectConfig,
       datasource,
       revision: cliOptions.revision,
-      schemaVersion: cliOptions.schemaVersion,
       tag: target?.tag,
       tags: target?.tags,
       includeFeatures: target?.includeFeatures,

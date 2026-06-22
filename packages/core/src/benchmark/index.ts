@@ -1,7 +1,6 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
 import { Featurevisor, createFeaturevisor } from "@featurevisor/sdk";
 
-import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
@@ -85,7 +84,6 @@ export interface BenchmarkOptions {
   context: Record<string, unknown>;
   variation?: boolean;
   variable?: string;
-  schemaVersion?: string;
   inflate?: number;
 }
 
@@ -109,7 +107,6 @@ export async function benchmarkFeature(
     projectConfig,
     datasource,
     {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment || false,
       inflate: options.inflate,
@@ -197,7 +194,6 @@ export const benchmarkPlugin: Plugin = {
           context: parsed.context ? JSON.parse(parsed.context) : {},
           variation: parsed.variation || undefined,
           variable: parsed.variable || undefined,
-          schemaVersion: parsed.schemaVersion || undefined,
           inflate: parseInt(parsed.inflate, 10) || undefined,
         },
       );

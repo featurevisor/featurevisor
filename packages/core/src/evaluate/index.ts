@@ -2,7 +2,6 @@ import type { Context, DatafileContent } from "@featurevisor/types";
 import { Evaluation, createFeaturevisor, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
-import { SCHEMA_VERSION } from "../config";
 import { buildDatafile } from "../builder";
 import { Plugin } from "../cli";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
@@ -61,7 +60,6 @@ export interface EvaluateOptions {
   json?: boolean;
   pretty?: boolean;
   verbose?: boolean;
-  schemaVersion?: string;
   inflate?: number;
 }
 
@@ -73,7 +71,6 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     projectConfig,
     datasource,
     {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: "include-all-features",
       environment: options.environment || false,
       inflate: options.inflate,

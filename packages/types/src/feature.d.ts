@@ -33,20 +33,6 @@ export interface VariableOverride {
   segments?: GroupSegment | GroupSegment[];
 }
 
-export interface VariableV1 {
-  key: VariableKey;
-  value: VariableValue;
-  description?: string; // only available in YAML files
-  overrides?: VariableOverride[];
-}
-
-export interface VariationV1 {
-  description?: string; // only available in YAML files
-  value: VariationValue;
-  weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
-  variables?: VariableV1[];
-}
-
 export interface Variation {
   description?: string; // only available in YAML files
   value: VariationValue;

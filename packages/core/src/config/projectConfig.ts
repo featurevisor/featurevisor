@@ -34,8 +34,6 @@ export const DEFAULT_PRETTY_DATAFILE = false;
 
 export const DEFAULT_PARSER: Parser = "yml";
 
-export const SCHEMA_VERSION = "2"; // default schema version
-
 export interface ProjectConfig {
   promotionFlows?: Array<{
     from: string;

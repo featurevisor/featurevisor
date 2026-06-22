@@ -163,7 +163,6 @@ npx featurevisor evaluate \
 # extras
   --verbose                                       # more log detail
   --json --pretty                                 # JSON output
-  --schema-version=2                              # if project is on v2 schema
 ```
 
 Returns the full evaluation chain (sticky → required → force → rules → bucketing → fallback), so you don't have to reason about it by hand.
@@ -212,8 +211,6 @@ npx featurevisor benchmark --environment=production --feature=my_feature --conte
 npx featurevisor benchmark --environment=production --feature=my_feature --variation --context='{}' --n=1000
 npx featurevisor benchmark --environment=production --feature=my_feature --variable=bgColor --context='{}' --n=1000
 ```
-
-Append `--schema-version=2` if the project uses schema v2.
 
 ## config
 

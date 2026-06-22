@@ -1,4 +1,3 @@
-import type { Attribute } from "./attribute";
 import type { BucketBy } from "./bucket";
 import type {
   VariationValue,
@@ -8,11 +7,9 @@ import type {
   FeatureKey,
   Required,
   VariableKey,
-  VariableSchema,
   ResolvedVariableSchema,
   Variation,
   Force,
-  VariationV1,
   VariableOverride,
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
@@ -47,7 +44,7 @@ export interface Traffic {
 }
 
 export interface Feature {
-  key?: FeatureKey; // needed for supporting v1 datafile generation
+  key?: FeatureKey; // available while building, omitted from generated datafiles
   hash?: string;
   deprecated?: boolean;
   required?: Required[];
@@ -58,28 +55,6 @@ export interface Feature {
   traffic: Traffic[];
   force?: Force[];
   ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
-}
-
-export interface FeatureV1 {
-  key?: FeatureKey;
-  hash?: string;
-  deprecated?: boolean;
-  required?: Required[];
-  bucketBy: BucketBy;
-  traffic: Traffic[];
-  force?: Force[];
-  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
-
-  variablesSchema?: VariableSchema[];
-  variations?: VariationV1[];
-}
-
-export interface DatafileContentV1 {
-  schemaVersion: string;
-  revision: string;
-  attributes: Attribute[];
-  segments: Segment[];
-  features: FeatureV1[];
 }
 
 export interface DatafileContent {
