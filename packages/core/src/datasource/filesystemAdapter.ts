@@ -230,20 +230,7 @@ export class FilesystemAdapter extends Adapter {
       return fs.readFileSync(filePath, "utf8");
     }
 
-    // maintain backwards compatibility
-    try {
-      const pkg = require(path.join(this.rootDirectoryPath as string, "package.json"));
-      const pkgVersion = pkg.version;
-
-      if (pkgVersion) {
-        return pkgVersion;
-      }
-
-      return "0";
-      // eslint-disable-next-line
-    } catch (e) {
-      return "0";
-    }
+    return "0";
   }
 
   async writeRevision(revision: string): Promise<void> {

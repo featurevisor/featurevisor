@@ -1,8 +1,8 @@
 import { DatafileContent, Context, Traffic } from "@featurevisor/types";
 import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
-import { buildScopedConditions } from "./buildScopedConditions";
-import { buildScopedSegments } from "./buildScopedSegments";
+import { specializeConditionsForContext } from "./specializeConditionsForContext";
+import { specializeSegmentsForContext } from "./specializeSegmentsForContext";
 
 function parseIfStringified<T>(value: T): T {
   if (typeof value !== "string" || value === "*") {
@@ -21,7 +21,7 @@ function parseIfStringified<T>(value: T): T {
   }
 }
 
-export function buildScopedDatafile(
+export function specializeDatafileForContext(
   originalDatafileContent: DatafileContent,
   context: Context,
 ): DatafileContent {
@@ -30,31 +30,31 @@ export function buildScopedDatafile(
     reportDiagnostic: noopDiagnosticReporter,
   });
 
-  const scopedDatafileContent: DatafileContent = JSON.parse(
+  const specializedDatafileContent: DatafileContent = JSON.parse(
     JSON.stringify(originalDatafileContent),
   );
 
   const removeSegments: string[] = [];
 
   // segments
-  for (const segmentKey in scopedDatafileContent.segments) {
-    const segment = scopedDatafileContent.segments[segmentKey];
+  for (const segmentKey in specializedDatafileContent.segments) {
+    const segment = specializedDatafileContent.segments[segmentKey];
     const originalConditions = segment.conditions;
-    const scopedConditions = buildScopedConditions(
+    const specializedConditions = specializeConditionsForContext(
       originalDatafileReader,
       originalConditions,
       context,
     );
-    scopedDatafileContent.segments[segmentKey].conditions = scopedConditions;
+    specializedDatafileContent.segments[segmentKey].conditions = specializedConditions;
 
-    if (scopedConditions === "*") {
+    if (specializedConditions === "*") {
       removeSegments.push(segmentKey);
     }
   }
 
   // features
-  for (const featureKey in scopedDatafileContent.features) {
-    const feature = scopedDatafileContent.features[featureKey];
+  for (const featureKey in specializedDatafileContent.features) {
+    const feature = specializedDatafileContent.features[featureKey];
 
     // force
     if (feature.force) {
@@ -63,7 +63,7 @@ export function buildScopedDatafile(
 
         // segments
         if (force.segments) {
-          feature.force[forceI].segments = buildScopedSegments(
+          feature.force[forceI].segments = specializeSegmentsForContext(
             originalDatafileReader,
             force.segments,
             context,
@@ -73,7 +73,7 @@ export function buildScopedDatafile(
 
         // conditions
         if (force.conditions) {
-          feature.force[forceI].conditions = buildScopedConditions(
+          feature.force[forceI].conditions = specializeConditionsForContext(
             originalDatafileReader,
             force.conditions,
             context,
@@ -94,7 +94,7 @@ export function buildScopedDatafile(
         // segments
         if (traffic.segments) {
           const segments = parseIfStringified(traffic.segments);
-          feature.traffic[trafficI].segments = buildScopedSegments(
+          feature.traffic[trafficI].segments = specializeSegmentsForContext(
             originalDatafileReader,
             segments,
             context,
@@ -117,7 +117,7 @@ export function buildScopedDatafile(
               // segments
               if (variableOverride.segments) {
                 const segments = parseIfStringified(variableOverride.segments);
-                variableOverride.segments = buildScopedSegments(
+                variableOverride.segments = specializeSegmentsForContext(
                   originalDatafileReader,
                   segments,
                   context,
@@ -128,7 +128,7 @@ export function buildScopedDatafile(
               // conditions
               if (variableOverride.conditions) {
                 const conditions = parseIfStringified(variableOverride.conditions);
-                variableOverride.conditions = buildScopedConditions(
+                variableOverride.conditions = specializeConditionsForContext(
                   originalDatafileReader,
                   conditions,
                   context,
@@ -163,7 +163,7 @@ export function buildScopedDatafile(
 
               // segments
               if (variableOverride.segments) {
-                variableOverride.segments = buildScopedSegments(
+                variableOverride.segments = specializeSegmentsForContext(
                   originalDatafileReader,
                   variableOverride.segments,
                   context,
@@ -173,7 +173,7 @@ export function buildScopedDatafile(
 
               // conditions
               if (variableOverride.conditions) {
-                variableOverride.conditions = buildScopedConditions(
+                variableOverride.conditions = specializeConditionsForContext(
                   originalDatafileReader,
                   variableOverride.conditions,
                   context,
@@ -217,13 +217,13 @@ export function buildScopedDatafile(
       feature.traffic = newTrafficArray;
     }
 
-    scopedDatafileContent.features[featureKey] = feature;
+    specializedDatafileContent.features[featureKey] = feature;
   }
 
   // remove segments
   for (const removeSegment of removeSegments) {
-    delete scopedDatafileContent.segments[removeSegment];
+    delete specializedDatafileContent.segments[removeSegment];
   }
 
-  return scopedDatafileContent;
+  return specializedDatafileContent;
 }

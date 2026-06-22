@@ -1,13 +1,13 @@
 import type { Condition, DatafileContent } from "@featurevisor/types";
 
 import {
-  buildScopedCondition,
+  specializeConditionForContext,
   removeRedundantConditions,
-  buildScopedConditions,
-} from "./buildScopedConditions";
+  specializeConditionsForContext,
+} from "./specializeConditionsForContext";
 import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
-describe("core: buildScopedConditions", function () {
+describe("core: specializeConditionsForContext", function () {
   const emptyDatafile: DatafileContent = {
     schemaVersion: "2",
     revision: "unknown",
@@ -20,18 +20,18 @@ describe("core: buildScopedConditions", function () {
     reportDiagnostic: noopDiagnosticReporter,
   });
 
-  describe("buildScopedConditions (plural)", function () {
-    test("buildScopedConditions is a function", function () {
-      expect(buildScopedConditions).toBeInstanceOf(Function);
+  describe("specializeConditionsForContext (plural)", function () {
+    test("specializeConditionsForContext is a function", function () {
+      expect(specializeConditionsForContext).toBeInstanceOf(Function);
     });
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedConditions(datafileReader, "*", {})).toEqual("*");
+      expect(specializeConditionsForContext(datafileReader, "*", {})).toEqual("*");
 
       // Plain condition that matches
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -46,7 +46,7 @@ describe("core: buildScopedConditions", function () {
 
       // Plain condition that doesn't match
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -65,7 +65,7 @@ describe("core: buildScopedConditions", function () {
 
       // Array of conditions - partial match (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             {
@@ -93,7 +93,7 @@ describe("core: buildScopedConditions", function () {
 
       // Array of conditions - full match (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             {
@@ -116,7 +116,7 @@ describe("core: buildScopedConditions", function () {
 
       // Array of conditions - no match
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             {
@@ -152,7 +152,7 @@ describe("core: buildScopedConditions", function () {
     test("AND conditions", function () {
       // AND with all matching conditions (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -177,7 +177,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with partial match (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -209,7 +209,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with no matches
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -247,7 +247,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with "*" in it (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -271,7 +271,7 @@ describe("core: buildScopedConditions", function () {
       // Note: This would require both conditions to match, which isn't possible with same attribute
       // So testing with different attributes that both match
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -296,7 +296,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with partial match (redundant "*" removed, but OR structure remains)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -328,7 +328,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with no matches
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -367,7 +367,7 @@ describe("core: buildScopedConditions", function () {
     test("NOT conditions", function () {
       // NOT with matching condition (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             not: [
@@ -386,7 +386,7 @@ describe("core: buildScopedConditions", function () {
 
       // NOT with non-matching condition
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             not: [
@@ -413,7 +413,7 @@ describe("core: buildScopedConditions", function () {
 
       // NOT with multiple conditions (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             not: [
@@ -440,7 +440,7 @@ describe("core: buildScopedConditions", function () {
     test("nested AND conditions", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -475,7 +475,7 @@ describe("core: buildScopedConditions", function () {
 
       // Nested AND with partial match (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -523,7 +523,7 @@ describe("core: buildScopedConditions", function () {
     test("nested OR conditions", function () {
       // Nested OR with outer match (redundant "*" removed, but inner OR remains)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -573,7 +573,7 @@ describe("core: buildScopedConditions", function () {
 
       // Nested OR with inner match (redundant "*" removed, but outer OR remains)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -625,7 +625,7 @@ describe("core: buildScopedConditions", function () {
     test("nested NOT conditions", function () {
       // Nested NOT (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             not: [
@@ -656,7 +656,7 @@ describe("core: buildScopedConditions", function () {
     test("mixed nested conditions", function () {
       // AND with nested OR (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -702,7 +702,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [
@@ -744,7 +744,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with nested NOT (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -785,7 +785,7 @@ describe("core: buildScopedConditions", function () {
 
       // Complex nested structure (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [
@@ -843,7 +843,7 @@ describe("core: buildScopedConditions", function () {
     test("arrays with nested conditions", function () {
       // Array with AND condition (redundant "*" removed)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             {
@@ -876,7 +876,7 @@ describe("core: buildScopedConditions", function () {
 
       // Array with OR condition (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             {
@@ -920,7 +920,7 @@ describe("core: buildScopedConditions", function () {
     test("edge cases", function () {
       // Empty context
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -936,11 +936,11 @@ describe("core: buildScopedConditions", function () {
       });
 
       // Empty array (all "*" becomes "*")
-      expect(buildScopedConditions(datafileReader, [], {})).toEqual("*");
+      expect(specializeConditionsForContext(datafileReader, [], {})).toEqual("*");
 
       // "*" in array with matching condition (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           [
             "*",
@@ -958,7 +958,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with empty array (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             and: [],
@@ -969,7 +969,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with empty array (all "*" becomes "*")
       expect(
-        buildScopedConditions(
+        specializeConditionsForContext(
           datafileReader,
           {
             or: [],
@@ -980,18 +980,18 @@ describe("core: buildScopedConditions", function () {
     });
   });
 
-  describe("buildScopedCondition (singular)", function () {
-    test("buildScopedCondition is a function", function () {
-      expect(buildScopedCondition).toBeInstanceOf(Function);
+  describe("specializeConditionForContext (singular)", function () {
+    test("specializeConditionForContext is a function", function () {
+      expect(specializeConditionForContext).toBeInstanceOf(Function);
     });
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedCondition(datafileReader, "*", {})).toEqual("*");
+      expect(specializeConditionForContext(datafileReader, "*", {})).toEqual("*");
 
       // Plain condition that matches
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -1006,7 +1006,7 @@ describe("core: buildScopedConditions", function () {
 
       // Plain condition that doesn't match
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -1039,7 +1039,7 @@ describe("core: buildScopedConditions", function () {
 
       // Partial match
       expect(
-        buildScopedCondition(datafileReader, originalConditions, {
+        specializeConditionForContext(datafileReader, originalConditions, {
           platform: "web",
         }),
       ).toEqual([
@@ -1053,7 +1053,7 @@ describe("core: buildScopedConditions", function () {
 
       // Full match
       expect(
-        buildScopedCondition(datafileReader, originalConditions, {
+        specializeConditionForContext(datafileReader, originalConditions, {
           platform: "web",
           browser: "chrome",
         }),
@@ -1061,7 +1061,7 @@ describe("core: buildScopedConditions", function () {
 
       // No match
       expect(
-        buildScopedCondition(datafileReader, originalConditions, {
+        specializeConditionForContext(datafileReader, originalConditions, {
           platform: "mobile",
           browser: "safari",
         }),
@@ -1082,7 +1082,7 @@ describe("core: buildScopedConditions", function () {
     test("AND conditions", function () {
       // AND with all matching conditions
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1109,7 +1109,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with partial match
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1142,7 +1142,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with no matches
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1180,7 +1180,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with "*" in it
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1204,7 +1204,7 @@ describe("core: buildScopedConditions", function () {
     test("OR conditions", function () {
       // OR with all matching conditions
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1230,7 +1230,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with partial match (first matches)
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1263,7 +1263,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with no matches
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1302,7 +1302,7 @@ describe("core: buildScopedConditions", function () {
     test("NOT conditions", function () {
       // NOT with matching condition (should not match)
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             not: [
@@ -1323,7 +1323,7 @@ describe("core: buildScopedConditions", function () {
 
       // NOT with non-matching condition
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             not: [
@@ -1350,7 +1350,7 @@ describe("core: buildScopedConditions", function () {
 
       // NOT with multiple conditions
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             not: [
@@ -1379,7 +1379,7 @@ describe("core: buildScopedConditions", function () {
     test("nested AND conditions", function () {
       // Nested AND with all matching
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1421,7 +1421,7 @@ describe("core: buildScopedConditions", function () {
 
       // Nested AND with partial match
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1471,7 +1471,7 @@ describe("core: buildScopedConditions", function () {
     test("nested OR conditions", function () {
       // Nested OR with matching
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1522,7 +1522,7 @@ describe("core: buildScopedConditions", function () {
 
       // Nested OR with inner match
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1575,7 +1575,7 @@ describe("core: buildScopedConditions", function () {
     test("nested NOT conditions", function () {
       // Nested NOT
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             not: [
@@ -1613,7 +1613,7 @@ describe("core: buildScopedConditions", function () {
     test("mixed nested conditions", function () {
       // AND with nested OR
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1661,7 +1661,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with nested AND
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [
@@ -1706,7 +1706,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with nested NOT
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1748,7 +1748,7 @@ describe("core: buildScopedConditions", function () {
 
       // Complex nested structure
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [
@@ -1810,7 +1810,7 @@ describe("core: buildScopedConditions", function () {
     test("arrays with nested conditions", function () {
       // Array with AND condition
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           [
             {
@@ -1848,7 +1848,7 @@ describe("core: buildScopedConditions", function () {
 
       // Array with OR condition
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           [
             {
@@ -1894,7 +1894,7 @@ describe("core: buildScopedConditions", function () {
     test("edge cases", function () {
       // Empty context
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             attribute: "platform",
@@ -1910,11 +1910,11 @@ describe("core: buildScopedConditions", function () {
       });
 
       // Empty array
-      expect(buildScopedCondition(datafileReader, [], {})).toEqual([]);
+      expect(specializeConditionForContext(datafileReader, [], {})).toEqual([]);
 
       // "*" in array
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           [
             "*",
@@ -1932,7 +1932,7 @@ describe("core: buildScopedConditions", function () {
 
       // AND with empty array
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             and: [],
@@ -1945,7 +1945,7 @@ describe("core: buildScopedConditions", function () {
 
       // OR with empty array
       expect(
-        buildScopedCondition(
+        specializeConditionForContext(
           datafileReader,
           {
             or: [],

@@ -5,7 +5,7 @@ import { Plugin } from "../cli";
 
 export const DEFAULT_EXAMPLE = "yml";
 
-export const EXAMPLES_ORG_NAME = "fahad19";
+export const EXAMPLES_ORG_NAME = "featurevisor";
 export const EXAMPLES_REPO_NAME = "featurevisor";
 export const EXAMPLES_BRANCH_NAME = "main";
 

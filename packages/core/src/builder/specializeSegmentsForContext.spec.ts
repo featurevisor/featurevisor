@@ -1,14 +1,14 @@
 import type { DatafileContent } from "@featurevisor/types";
 
 import {
-  buildScopedSegments,
+  specializeSegmentsForContext,
   removeRedundantGroupSegments,
-  buildScopedGroupSegments,
-} from "./buildScopedSegments";
+  specializeGroupSegmentsForContext,
+} from "./specializeSegmentsForContext";
 import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
-describe("core: buildScopedSegments", function () {
-  describe("buildScopedSegments", function () {
+describe("core: specializeSegmentsForContext", function () {
+  describe("specializeSegmentsForContext", function () {
     const datafileWithSegments: DatafileContent = {
       schemaVersion: "2",
       revision: "unknown",
@@ -50,38 +50,38 @@ describe("core: buildScopedSegments", function () {
       reportDiagnostic: noopDiagnosticReporter,
     });
 
-    test("buildScopedSegments is a function", function () {
-      expect(buildScopedSegments).toBeInstanceOf(Function);
+    test("specializeSegmentsForContext is a function", function () {
+      expect(specializeSegmentsForContext).toBeInstanceOf(Function);
     });
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedSegments(datafileReaderWithSegments, "*", {})).toEqual("*");
+      expect(specializeSegmentsForContext(datafileReaderWithSegments, "*", {})).toEqual("*");
 
       // Plain segment that matches
       expect(
-        buildScopedSegments(datafileReaderWithSegments, "web", {
+        specializeSegmentsForContext(datafileReaderWithSegments, "web", {
           platform: "web",
         }),
       ).toEqual("*");
 
       // Plain segment that doesn't match
       expect(
-        buildScopedSegments(datafileReaderWithSegments, "web", {
+        specializeSegmentsForContext(datafileReaderWithSegments, "web", {
           platform: "mobile",
         }),
       ).toEqual("web");
 
       // Array of segments - partial match (redundant "*" removed)
       expect(
-        buildScopedSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "web",
         }),
       ).toEqual(["chrome"]);
 
       // Array of segments - full match (all "*" becomes "*")
       expect(
-        buildScopedSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "web",
           browser: "chrome",
         }),
@@ -89,7 +89,7 @@ describe("core: buildScopedSegments", function () {
 
       // Array of segments - no match
       expect(
-        buildScopedSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "mobile",
           browser: "safari",
         }),
@@ -99,7 +99,7 @@ describe("core: buildScopedSegments", function () {
     test("AND group segments", function () {
       // AND with all matching segments (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -113,7 +113,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with partial match (redundant "*" removed)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -128,7 +128,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with no matches
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -144,7 +144,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with "*" in it (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["*", "chrome"],
@@ -159,7 +159,7 @@ describe("core: buildScopedSegments", function () {
     test("OR group segments", function () {
       // OR with all matching segments (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -173,7 +173,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with partial match (redundant "*" removed, but OR structure remains)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -188,7 +188,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with no matches
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "mobile"],
@@ -205,7 +205,7 @@ describe("core: buildScopedSegments", function () {
     test("NOT group segments", function () {
       // NOT with matching segment (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web"],
@@ -218,7 +218,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT with non-matching segment
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web"],
@@ -233,7 +233,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT with multiple segments (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web", "chrome"],
@@ -249,7 +249,7 @@ describe("core: buildScopedSegments", function () {
     test("nested AND group segments", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -269,7 +269,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested AND with partial match (redundant "*" removed)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -296,7 +296,7 @@ describe("core: buildScopedSegments", function () {
     test("nested OR group segments", function () {
       // Nested OR with outer match (redundant "*" removed, but inner OR remains)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -320,7 +320,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested OR with inner match (redundant "*" removed, but outer OR remains)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -347,7 +347,7 @@ describe("core: buildScopedSegments", function () {
     test("nested NOT group segments", function () {
       // Nested NOT (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: [
@@ -368,7 +368,7 @@ describe("core: buildScopedSegments", function () {
     test("mixed nested group segments", function () {
       // AND with nested OR (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -393,7 +393,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -414,7 +414,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with nested NOT (redundant "*" removed)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -438,7 +438,7 @@ describe("core: buildScopedSegments", function () {
 
       // Complex nested structure (redundant "*" removed)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -471,7 +471,7 @@ describe("core: buildScopedSegments", function () {
     test("arrays with nested group segments", function () {
       // Array with AND group segment (redundant "*" removed)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           [
             "web",
@@ -489,7 +489,7 @@ describe("core: buildScopedSegments", function () {
 
       // Array with OR group segment (redundant "*" removed, but OR structure remains if not all match)
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           [
             "web",
@@ -512,7 +512,7 @@ describe("core: buildScopedSegments", function () {
     test("segments with complex conditions", function () {
       // Segment with AND conditions in its definition
       expect(
-        buildScopedSegments(datafileReaderWithSegments, "premium", {
+        specializeSegmentsForContext(datafileReaderWithSegments, "premium", {
           tier: "premium",
           status: "active",
         }),
@@ -520,7 +520,7 @@ describe("core: buildScopedSegments", function () {
 
       // Segment with AND conditions that doesn't match
       expect(
-        buildScopedSegments(datafileReaderWithSegments, "premium", {
+        specializeSegmentsForContext(datafileReaderWithSegments, "premium", {
           tier: "premium",
           status: "inactive",
         }),
@@ -529,21 +529,21 @@ describe("core: buildScopedSegments", function () {
 
     test("edge cases", function () {
       // Empty context
-      expect(buildScopedSegments(datafileReaderWithSegments, "web", {})).toEqual("web");
+      expect(specializeSegmentsForContext(datafileReaderWithSegments, "web", {})).toEqual("web");
 
       // Empty array (all "*" becomes "*")
-      expect(buildScopedSegments(datafileReaderWithSegments, [], {})).toEqual("*");
+      expect(specializeSegmentsForContext(datafileReaderWithSegments, [], {})).toEqual("*");
 
       // "*" in array with matching segment (all "*" becomes "*")
       expect(
-        buildScopedSegments(datafileReaderWithSegments, ["*", "web"], {
+        specializeSegmentsForContext(datafileReaderWithSegments, ["*", "web"], {
           platform: "web",
         }),
       ).toEqual("*");
 
       // AND with empty array (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [],
@@ -554,7 +554,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with empty array (all "*" becomes "*")
       expect(
-        buildScopedSegments(
+        specializeSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [],
@@ -898,7 +898,7 @@ describe("core: buildScopedSegments", function () {
     });
   });
 
-  describe("buildScopedGroupSegments", function () {
+  describe("specializeGroupSegmentsForContext", function () {
     const datafileWithSegments: DatafileContent = {
       schemaVersion: "2",
       revision: "unknown",
@@ -940,38 +940,38 @@ describe("core: buildScopedSegments", function () {
       reportDiagnostic: noopDiagnosticReporter,
     });
 
-    test("buildScopedGroupSegments is a function", function () {
-      expect(buildScopedGroupSegments).toBeInstanceOf(Function);
+    test("specializeGroupSegmentsForContext is a function", function () {
+      expect(specializeGroupSegmentsForContext).toBeInstanceOf(Function);
     });
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(buildScopedGroupSegments(datafileReaderWithSegments, "*", {})).toEqual("*");
+      expect(specializeGroupSegmentsForContext(datafileReaderWithSegments, "*", {})).toEqual("*");
 
       // Plain segment that matches
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, "web", {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "web", {
           platform: "web",
         }),
       ).toEqual("*");
 
       // Plain segment that doesn't match
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, "web", {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "web", {
           platform: "mobile",
         }),
       ).toEqual("web");
 
       // Array of segments - partial match
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "web",
         }),
       ).toEqual(["*", "chrome"]);
 
       // Array of segments - full match (all "*" - will be cleaned by removeRedundantGroupSegments later)
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "web",
           browser: "chrome",
         }),
@@ -979,7 +979,7 @@ describe("core: buildScopedSegments", function () {
 
       // Array of segments - no match
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {
           platform: "mobile",
           browser: "safari",
         }),
@@ -989,7 +989,7 @@ describe("core: buildScopedSegments", function () {
     test("AND group segments", function () {
       // AND with all matching segments (all "*" becomes "*")
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -1005,7 +1005,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with partial match
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -1020,7 +1020,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with no matches
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -1036,7 +1036,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND with "*" in it
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["*", "chrome"],
@@ -1053,7 +1053,7 @@ describe("core: buildScopedSegments", function () {
     test("OR group segments", function () {
       // OR with all matching segments (all "*" becomes "*")
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -1069,7 +1069,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with partial match
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -1084,7 +1084,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR with no matches
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "mobile"],
@@ -1101,7 +1101,7 @@ describe("core: buildScopedSegments", function () {
     test("NOT group segments", function () {
       // NOT with matching segment
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web"],
@@ -1116,7 +1116,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT with non-matching segment
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web"],
@@ -1131,7 +1131,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT with multiple segments (all "*" becomes "*")
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web", "chrome"],
@@ -1149,7 +1149,7 @@ describe("core: buildScopedSegments", function () {
     test("nested AND group segments", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1176,7 +1176,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested AND with partial match
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1204,7 +1204,7 @@ describe("core: buildScopedSegments", function () {
     test("nested OR group segments", function () {
       // Nested OR with all matching
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -1230,7 +1230,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested OR with partial match
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -1257,7 +1257,7 @@ describe("core: buildScopedSegments", function () {
     test("complex nested structures", function () {
       // Complex nested with AND, OR, NOT
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1291,7 +1291,7 @@ describe("core: buildScopedSegments", function () {
     test("segments with complex conditions", function () {
       // Segment with AND conditions in its definition
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, "premium", {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "premium", {
           tier: "premium",
           status: "active",
         }),
@@ -1299,7 +1299,7 @@ describe("core: buildScopedSegments", function () {
 
       // Segment with AND conditions that doesn't match
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, "premium", {
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "premium", {
           tier: "premium",
           status: "inactive",
         }),
@@ -1308,21 +1308,25 @@ describe("core: buildScopedSegments", function () {
 
     test("removeSegments parameter", function () {
       // Simple segment in removeSegments
-      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, ["web"])).toEqual("*");
+      expect(
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "web", {}, ["web"]),
+      ).toEqual("*");
 
       // Segment not in removeSegments
-      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, ["mobile"])).toEqual(
-        "web",
-      );
+      expect(
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, "web", {}, ["mobile"]),
+      ).toEqual("web");
 
       // Array with one segment in removeSegments
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, ["web"]),
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {}, [
+          "web",
+        ]),
       ).toEqual(["*", "chrome"]);
 
       // Array with all segments in removeSegments
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, [
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "chrome"], {}, [
           "web",
           "chrome",
         ]),
@@ -1330,7 +1334,7 @@ describe("core: buildScopedSegments", function () {
 
       // Array with multiple segments, some in removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           ["web", "chrome", "mobile", "safari"],
           {},
@@ -1340,7 +1344,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND group segment with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -1354,7 +1358,7 @@ describe("core: buildScopedSegments", function () {
 
       // AND group segment with all segments in removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: ["web", "chrome"],
@@ -1368,7 +1372,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR group segment with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -1382,7 +1386,7 @@ describe("core: buildScopedSegments", function () {
 
       // OR group segment with all segments in removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: ["web", "chrome"],
@@ -1396,7 +1400,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT group segment with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web", "chrome"],
@@ -1410,7 +1414,7 @@ describe("core: buildScopedSegments", function () {
 
       // NOT group segment with all segments in removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             not: ["web", "chrome"],
@@ -1424,7 +1428,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested AND with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1448,7 +1452,7 @@ describe("core: buildScopedSegments", function () {
 
       // Nested OR with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             or: [
@@ -1472,7 +1476,7 @@ describe("core: buildScopedSegments", function () {
 
       // Mixed nested structure with removeSegments
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1502,7 +1506,7 @@ describe("core: buildScopedSegments", function () {
 
       // removeSegments combined with matching context
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           ["web", "chrome"],
           {
@@ -1514,7 +1518,7 @@ describe("core: buildScopedSegments", function () {
 
       // removeSegments with segment that would match context
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           ["web", "chrome"],
           {
@@ -1527,7 +1531,7 @@ describe("core: buildScopedSegments", function () {
 
       // Complex: removeSegments, context matching, and nested structures
       expect(
-        buildScopedGroupSegments(
+        specializeGroupSegmentsForContext(
           datafileReaderWithSegments,
           {
             and: [
@@ -1555,18 +1559,22 @@ describe("core: buildScopedSegments", function () {
       });
 
       // Empty removeSegments array (should behave like no removeSegments)
-      expect(buildScopedGroupSegments(datafileReaderWithSegments, "web", {}, [])).toEqual("web");
+      expect(specializeGroupSegmentsForContext(datafileReaderWithSegments, "web", {}, [])).toEqual(
+        "web",
+      );
 
       // removeSegments with segment that doesn't exist in datafile
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["web", "nonexistent"], {}, [
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["web", "nonexistent"], {}, [
           "nonexistent",
         ]),
       ).toEqual(["web", "*"]);
 
       // removeSegments with "*" in array (should still work)
       expect(
-        buildScopedGroupSegments(datafileReaderWithSegments, ["*", "web", "chrome"], {}, ["web"]),
+        specializeGroupSegmentsForContext(datafileReaderWithSegments, ["*", "web", "chrome"], {}, [
+          "web",
+        ]),
       ).toEqual(["*", "*", "chrome"]);
     });
   });

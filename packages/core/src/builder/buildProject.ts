@@ -5,7 +5,7 @@ import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
-import { buildScopedDatafile } from "./buildScopedDatafile";
+import { specializeDatafileForContext } from "./specializeDatafileForContext";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 
@@ -136,7 +136,7 @@ export async function buildTargetDatafile({
   );
 
   if (target.context) {
-    return buildScopedDatafile(datafileContent as DatafileContent, target.context);
+    return specializeDatafileForContext(datafileContent as DatafileContent, target.context);
   }
 
   return datafileContent as DatafileContent;
@@ -207,7 +207,10 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
     });
 
     if (target?.context) {
-      datafileContent = buildScopedDatafile(datafileContent as DatafileContent, target.context);
+      datafileContent = specializeDatafileForContext(
+        datafileContent as DatafileContent,
+        target.context,
+      );
     }
 
     if (cliOptions.pretty) {
@@ -321,18 +324,6 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    if (typeof parsed.scope !== "undefined") {
-      throw new Error(
-        "--scope is no longer supported. Define a target in targets/ and use --target instead.",
-      );
-    }
-
-    if (typeof parsed.tag !== "undefined") {
-      throw new Error(
-        "--tag is no longer supported for build. Define a target in targets/ and use --target instead.",
-      );
-    }
-
     if (parsed.print) {
       parsed.json = true;
     }

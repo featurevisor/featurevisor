@@ -7,13 +7,13 @@ import type {
 } from "@featurevisor/types";
 import type { DatafileReader } from "@featurevisor/sdk";
 
-export function buildScopedConditions(
+export function specializeConditionsForContext(
   datafileReader: DatafileReader,
   conditions: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {
-  const scoped = buildScopedCondition(datafileReader, conditions, context);
-  const removed = removeRedundantConditions(scoped);
+  const specialized = specializeConditionForContext(datafileReader, conditions, context);
+  const removed = removeRedundantConditions(specialized);
 
   return removed;
 }
@@ -87,7 +87,7 @@ export function removeRedundantConditions(
   return conditions;
 }
 
-export function buildScopedCondition(
+export function specializeConditionForContext(
   datafileReader: DatafileReader,
   condition: Condition | Condition[],
   context: Context,
@@ -97,7 +97,9 @@ export function buildScopedCondition(
   }
 
   if (Array.isArray(condition)) {
-    return condition.map((c) => buildScopedCondition(datafileReader, c, context)) as Condition[];
+    return condition.map((c) =>
+      specializeConditionForContext(datafileReader, c, context),
+    ) as Condition[];
   }
 
   if (typeof condition === "object") {
@@ -113,19 +115,19 @@ export function buildScopedCondition(
     // AND, OR, NOT conditions
     if ("and" in condition) {
       return {
-        and: condition.and.map((c) => buildScopedCondition(datafileReader, c, context)),
+        and: condition.and.map((c) => specializeConditionForContext(datafileReader, c, context)),
       } as AndCondition;
     }
 
     if ("or" in condition) {
       return {
-        or: condition.or.map((c) => buildScopedCondition(datafileReader, c, context)),
+        or: condition.or.map((c) => specializeConditionForContext(datafileReader, c, context)),
       } as OrCondition;
     }
 
     if ("not" in condition) {
       return {
-        not: condition.not.map((c) => buildScopedCondition(datafileReader, c, context)),
+        not: condition.not.map((c) => specializeConditionForContext(datafileReader, c, context)),
       } as NotCondition;
     }
   }

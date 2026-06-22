@@ -30,6 +30,15 @@ describe("core: projectConfig", () => {
     expect("siteExportDirectoryPath" in config).toBe(false);
   });
 
+  it("silently ignores obsolete scopes configuration", () => {
+    const root = createTempProject(
+      'module.exports = { scopes: [{ name: "web", context: { platform: "web" } }] };',
+    );
+    const config = getProjectConfig(root);
+
+    expect("scopes" in config).toBe(false);
+  });
+
   it("throws when sets is not boolean", () => {
     const root = createTempProject("module.exports = { sets: 'yes' };");
 

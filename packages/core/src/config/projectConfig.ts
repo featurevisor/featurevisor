@@ -119,12 +119,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const configModulePath = path.join(rootDirectoryPath, CONFIG_MODULE_NAME);
   const customConfig = require(configModulePath);
 
-  if (typeof customConfig.scopes !== "undefined") {
-    throw new Error(
-      'Config "scopes" is no longer supported. Define datafile targets in targets/ instead.',
-    );
-  }
-
   const mergedConfig = {};
 
   Object.keys(baseConfig).forEach((key) => {

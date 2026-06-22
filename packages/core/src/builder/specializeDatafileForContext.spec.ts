@@ -1,9 +1,9 @@
 import type { DatafileContent } from "@featurevisor/types";
-import { buildScopedDatafile } from "./buildScopedDatafile";
+import { specializeDatafileForContext } from "./specializeDatafileForContext";
 
-describe("core: buildScopedDatafile", function () {
-  test("buildScopedDatafile is a function", function () {
-    expect(buildScopedDatafile).toBeInstanceOf(Function);
+describe("core: specializeDatafileForContext", function () {
+  test("specializeDatafileForContext is a function", function () {
+    expect(specializeDatafileForContext).toBeInstanceOf(Function);
   });
 
   describe("basic functionality", function () {
@@ -15,7 +15,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result).toEqual(datafile);
     });
@@ -39,7 +39,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.segments).toEqual({});
       expect(result.features.feature1).toBeDefined();
@@ -57,7 +57,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
       expect(result.features).toEqual({});
@@ -77,7 +77,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
     });
@@ -94,7 +94,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(result.segments.web).toBeDefined();
       expect(result.segments.web.conditions).toEqual([
@@ -114,7 +114,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.segments).toEqual({});
     });
@@ -137,7 +137,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.segments.web).toBeUndefined();
       expect(result.segments.mobile).toBeDefined();
@@ -161,7 +161,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { tier: "premium", status: "active" });
+      const result = specializeDatafileForContext(datafile, { tier: "premium", status: "active" });
 
       expect(result.segments).toEqual({});
     });
@@ -183,7 +183,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { tier: "premium" });
+      const result = specializeDatafileForContext(datafile, { tier: "premium" });
 
       expect(result.segments.premium).toBeDefined();
       expect(result.segments.premium.conditions).toEqual({
@@ -208,7 +208,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { browser: "chrome" });
 
       expect(result.segments).toEqual({
         browser: {
@@ -241,7 +241,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.segments).toEqual({});
     });
@@ -261,7 +261,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments.combined).toBeDefined();
       expect(result.segments.combined.conditions).toEqual([
@@ -294,7 +294,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
     });
@@ -322,7 +322,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("web");
     });
@@ -346,7 +346,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
@@ -370,7 +370,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(result.features.feature1.force?.[0].conditions).toEqual([
         { attribute: "platform", operator: "equals", value: "web" },
@@ -403,7 +403,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
     });
@@ -434,7 +434,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual(["chrome"]);
     });
@@ -465,7 +465,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
     });
@@ -496,7 +496,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual({ or: ["mobile"] });
     });
@@ -525,7 +525,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
@@ -554,7 +554,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].conditions).toEqual({
         or: [{ attribute: "platform", operator: "equals", value: "mobile" }],
@@ -591,7 +591,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
       expect(result.features.feature1.force?.[1].segments).toEqual("mobile");
@@ -622,7 +622,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
     });
@@ -650,7 +650,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("web");
     });
@@ -681,7 +681,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
     });
@@ -712,7 +712,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual(["chrome"]);
     });
@@ -743,7 +743,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
     });
@@ -774,7 +774,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual({ or: ["mobile"] });
     });
@@ -810,7 +810,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
       expect(result.features.feature1.traffic[1].segments).toEqual("mobile");
@@ -844,7 +844,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
@@ -873,7 +873,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
@@ -916,7 +916,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.traffic).toHaveLength(3);
     });
@@ -949,7 +949,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
@@ -983,7 +983,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { device: "mobile" });
+      const result = specializeDatafileForContext(datafile, { device: "mobile" });
 
       expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
         "*",
@@ -1016,7 +1016,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { device: "desktop" });
+      const result = specializeDatafileForContext(datafile, { device: "desktop" });
 
       expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
         "mobile",
@@ -1050,7 +1050,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { country: "nl" });
+      const result = specializeDatafileForContext(datafile, { country: "nl" });
 
       expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
         "*",
@@ -1084,7 +1084,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { country: "de" });
+      const result = specializeDatafileForContext(datafile, { country: "de" });
 
       expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual([
         { attribute: "country", operator: "equals", value: "nl" },
@@ -1134,7 +1134,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {
+      const result = specializeDatafileForContext(datafile, {
         device: "mobile",
         touch: true,
         country: "nl",
@@ -1189,7 +1189,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {
+      const result = specializeDatafileForContext(datafile, {
         device: "mobile",
         touch: true,
         country: "nl",
@@ -1240,7 +1240,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {
+      const result = specializeDatafileForContext(datafile, {
         platform: "web",
         device: "mobile",
       });
@@ -1280,7 +1280,7 @@ describe("core: buildScopedDatafile", function () {
 
       const original = JSON.stringify(datafile);
 
-      buildScopedDatafile(datafile, { device: "mobile" });
+      specializeDatafileForContext(datafile, { device: "mobile" });
 
       expect(JSON.stringify(datafile)).toEqual(original);
     });
@@ -1317,7 +1317,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1354,7 +1354,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "web",
@@ -1387,7 +1387,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
@@ -1420,7 +1420,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile" });
+      const result = specializeDatafileForContext(datafile, { platform: "mobile" });
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
@@ -1460,7 +1460,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1500,7 +1500,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1540,7 +1540,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         { or: ["mobile"] },
@@ -1578,7 +1578,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
@@ -1616,7 +1616,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
@@ -1662,7 +1662,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1708,7 +1708,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1762,7 +1762,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -1819,7 +1819,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
@@ -1864,13 +1864,13 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
       expect(result.features.feature2.traffic[0].segments).toEqual("mobile");
     });
 
-    test("segment used in multiple places - all scoped correctly", function () {
+    test("segment used in multiple places - all specialized correctly", function () {
       const datafile: DatafileContent = {
         schemaVersion: "2",
         revision: "unknown",
@@ -1912,7 +1912,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
@@ -1961,7 +1961,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
       expect(result.features.feature1.force?.[0].segments).toEqual({ or: ["mobile"] });
@@ -2009,7 +2009,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.force?.[0].conditions).toEqual("*");
       expect(
@@ -2034,7 +2034,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1).toBeDefined();
       expect(result.features.feature1.traffic).toEqual([]);
@@ -2054,7 +2054,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.force).toEqual([]);
     });
@@ -2073,7 +2073,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.variations).toEqual([]);
     });
@@ -2096,7 +2096,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.variations?.[0].variableOverrides).toBeUndefined();
     });
@@ -2120,7 +2120,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.variations?.[0].variableOverrides).toEqual({});
     });
@@ -2151,7 +2151,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
         "*",
@@ -2182,7 +2182,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.force?.[0].segments).toEqual("*");
       expect(result.features.feature1.force?.[0].conditions).toBeDefined();
@@ -2212,7 +2212,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, {});
+      const result = specializeDatafileForContext(datafile, {});
 
       expect(result.features.feature1.traffic).toHaveLength(1);
     });
@@ -2240,7 +2240,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
@@ -2258,7 +2258,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, {
+      const result = specializeDatafileForContext(datafile, {
         platform: "web",
         extraAttribute: "extraValue",
       });
@@ -2281,7 +2281,7 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.segments).toEqual({});
     });
@@ -2301,7 +2301,10 @@ describe("core: buildScopedDatafile", function () {
         features: {},
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "mobile", browser: "safari" });
+      const result = specializeDatafileForContext(datafile, {
+        platform: "mobile",
+        browser: "safari",
+      });
 
       expect(result.segments.web).toBeDefined();
       expect(result.segments.chrome).toBeDefined();
@@ -2345,7 +2348,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
@@ -2381,7 +2384,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web" });
+      const result = specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
@@ -2449,7 +2452,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.segments.web).toBeUndefined();
       expect(result.segments.chrome).toBeUndefined();
@@ -2513,7 +2516,7 @@ describe("core: buildScopedDatafile", function () {
         },
       };
 
-      const result = buildScopedDatafile(datafile, { platform: "web", browser: "chrome" });
+      const result = specializeDatafileForContext(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
       expect(result.features.feature1.force?.[0].conditions).toEqual({
@@ -2557,7 +2560,7 @@ describe("core: buildScopedDatafile", function () {
       const originalSegments = JSON.stringify(datafile.segments);
       const originalTraffic = JSON.stringify(datafile.features.feature1.traffic);
 
-      buildScopedDatafile(datafile, { platform: "web" });
+      specializeDatafileForContext(datafile, { platform: "web" });
 
       expect(JSON.stringify(datafile.segments)).toEqual(originalSegments);
       expect(JSON.stringify(datafile.features.feature1.traffic)).toEqual(originalTraffic);

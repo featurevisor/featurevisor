@@ -15,8 +15,7 @@
   },
   "scripts": {
     "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
-    "dist": "echo 'Nothing to dist here'",
-    "build": "npm run transpile && npm run dist",
+    "build": "npm run transpile",
     "test": "jest --config jest.config.js",
     "typecheck": "tsc -p tsconfig.typecheck.json"
   },

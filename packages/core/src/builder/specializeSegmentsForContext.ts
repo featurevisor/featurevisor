@@ -7,14 +7,19 @@ import type {
 } from "@featurevisor/types";
 import type { DatafileReader } from "@featurevisor/sdk";
 
-export function buildScopedSegments(
+export function specializeSegmentsForContext(
   datafileReader: DatafileReader,
   segments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],
 ): GroupSegment | GroupSegment[] {
-  const scoped = buildScopedGroupSegments(datafileReader, segments, context, removeSegments);
-  const removed = removeRedundantGroupSegments(scoped);
+  const specialized = specializeGroupSegmentsForContext(
+    datafileReader,
+    segments,
+    context,
+    removeSegments,
+  );
+  const removed = removeRedundantGroupSegments(specialized);
 
   return removed;
 }
@@ -94,7 +99,7 @@ export function removeRedundantGroupSegments(
   return groupSegments;
 }
 
-export function buildScopedGroupSegments(
+export function specializeGroupSegmentsForContext(
   datafileReader: DatafileReader,
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
@@ -106,7 +111,7 @@ export function buildScopedGroupSegments(
 
   if (Array.isArray(groupSegments)) {
     return groupSegments.map((gs) =>
-      buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
+      specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
     ) as GroupSegment[];
   }
 
@@ -127,7 +132,7 @@ export function buildScopedGroupSegments(
     if ("and" in groupSegments) {
       return {
         and: groupSegments.and.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
+          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as AndGroupSegment;
     }
@@ -135,7 +140,7 @@ export function buildScopedGroupSegments(
     if ("or" in groupSegments) {
       return {
         or: groupSegments.or.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
+          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as OrGroupSegment;
     }
@@ -143,7 +148,7 @@ export function buildScopedGroupSegments(
     if ("not" in groupSegments) {
       return {
         not: groupSegments.not.map((gs) =>
-          buildScopedGroupSegments(datafileReader, gs, context, removeSegments),
+          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as NotGroupSegment;
     }

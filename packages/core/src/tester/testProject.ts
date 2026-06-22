@@ -231,14 +231,6 @@ export async function testProject(
 export const testPlugin: Plugin = {
   command: "test",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    if (parsed.withScopes || parsed["with-scopes"]) {
-      throw new Error("--with-scopes is no longer supported. Use assertion target values instead.");
-    }
-
-    if (parsed.withTags || parsed["with-tags"]) {
-      throw new Error("--with-tags is no longer supported. Use assertion target values instead.");
-    }
-
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
     let hasError = false;
 
