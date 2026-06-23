@@ -136,11 +136,7 @@ function createSchemaRow(
   };
 }
 
-function appendAdditionalPropertyRows(
-  schema: SchemaLike,
-  prefix: string,
-  rows: FlatSchemaRow[],
-) {
+function appendAdditionalPropertyRows(schema: SchemaLike, prefix: string, rows: FlatSchemaRow[]) {
   const additionalProperties = schema.additionalProperties;
 
   if (additionalProperties === false) {
