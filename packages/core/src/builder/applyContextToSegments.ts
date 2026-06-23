@@ -7,19 +7,19 @@ import type {
 } from "@featurevisor/types";
 import type { DatafileReader } from "@featurevisor/sdk";
 
-export function specializeSegmentsForContext(
+export function applyContextToSegments(
   datafileReader: DatafileReader,
   segments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],
 ): GroupSegment | GroupSegment[] {
-  const specialized = specializeGroupSegmentsForContext(
+  const withContextApplied = applyContextToGroupSegments(
     datafileReader,
     segments,
     context,
     removeSegments,
   );
-  const removed = removeRedundantGroupSegments(specialized);
+  const removed = removeRedundantGroupSegments(withContextApplied);
 
   return removed;
 }
@@ -99,7 +99,7 @@ export function removeRedundantGroupSegments(
   return groupSegments;
 }
 
-export function specializeGroupSegmentsForContext(
+export function applyContextToGroupSegments(
   datafileReader: DatafileReader,
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
@@ -111,7 +111,7 @@ export function specializeGroupSegmentsForContext(
 
   if (Array.isArray(groupSegments)) {
     return groupSegments.map((gs) =>
-      specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
+      applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
     ) as GroupSegment[];
   }
 
@@ -132,7 +132,7 @@ export function specializeGroupSegmentsForContext(
     if ("and" in groupSegments) {
       return {
         and: groupSegments.and.map((gs) =>
-          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as AndGroupSegment;
     }
@@ -140,7 +140,7 @@ export function specializeGroupSegmentsForContext(
     if ("or" in groupSegments) {
       return {
         or: groupSegments.or.map((gs) =>
-          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as OrGroupSegment;
     }
@@ -148,7 +148,7 @@ export function specializeGroupSegmentsForContext(
     if ("not" in groupSegments) {
       return {
         not: groupSegments.not.map((gs) =>
-          specializeGroupSegmentsForContext(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
         ) as GroupSegment[],
       } as NotGroupSegment;
     }

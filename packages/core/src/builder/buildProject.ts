@@ -5,7 +5,7 @@ import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
-import { specializeDatafileForContext } from "./specializeDatafileForContext";
+import { applyContextToDatafile } from "./applyContextToDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 
@@ -136,7 +136,7 @@ export async function buildTargetDatafile({
   );
 
   if (target.context) {
-    return specializeDatafileForContext(datafileContent as DatafileContent, target.context);
+    return applyContextToDatafile(datafileContent as DatafileContent, target.context);
   }
 
   return datafileContent as DatafileContent;
@@ -207,10 +207,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
     });
 
     if (target?.context) {
-      datafileContent = specializeDatafileForContext(
-        datafileContent as DatafileContent,
-        target.context,
-      );
+      datafileContent = applyContextToDatafile(datafileContent as DatafileContent, target.context);
     }
 
     if (cliOptions.pretty) {

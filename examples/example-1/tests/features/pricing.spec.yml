@@ -20,3 +20,11 @@ assertions:
       country: de
     expectedToBeEnabled: true
     expectedVariation: treatment
+
+  - at: 20
+    target: checkout
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment

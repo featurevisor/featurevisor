@@ -1,8 +1,8 @@
 import { DatafileContent, Context, Traffic } from "@featurevisor/types";
 import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
 
-import { specializeConditionsForContext } from "./specializeConditionsForContext";
-import { specializeSegmentsForContext } from "./specializeSegmentsForContext";
+import { applyContextToConditions } from "./applyContextToConditions";
+import { applyContextToSegments } from "./applyContextToSegments";
 
 function parseIfStringified<T>(value: T): T {
   if (typeof value !== "string" || value === "*") {
@@ -21,7 +21,7 @@ function parseIfStringified<T>(value: T): T {
   }
 }
 
-export function specializeDatafileForContext(
+export function applyContextToDatafile(
   originalDatafileContent: DatafileContent,
   context: Context,
 ): DatafileContent {
@@ -30,31 +30,31 @@ export function specializeDatafileForContext(
     reportDiagnostic: noopDiagnosticReporter,
   });
 
-  const specializedDatafileContent: DatafileContent = JSON.parse(
+  const contextualDatafileContent: DatafileContent = JSON.parse(
     JSON.stringify(originalDatafileContent),
   );
 
   const removeSegments: string[] = [];
 
   // segments
-  for (const segmentKey in specializedDatafileContent.segments) {
-    const segment = specializedDatafileContent.segments[segmentKey];
+  for (const segmentKey in contextualDatafileContent.segments) {
+    const segment = contextualDatafileContent.segments[segmentKey];
     const originalConditions = segment.conditions;
-    const specializedConditions = specializeConditionsForContext(
+    const contextualConditions = applyContextToConditions(
       originalDatafileReader,
       originalConditions,
       context,
     );
-    specializedDatafileContent.segments[segmentKey].conditions = specializedConditions;
+    contextualDatafileContent.segments[segmentKey].conditions = contextualConditions;
 
-    if (specializedConditions === "*") {
+    if (contextualConditions === "*") {
       removeSegments.push(segmentKey);
     }
   }
 
   // features
-  for (const featureKey in specializedDatafileContent.features) {
-    const feature = specializedDatafileContent.features[featureKey];
+  for (const featureKey in contextualDatafileContent.features) {
+    const feature = contextualDatafileContent.features[featureKey];
 
     // force
     if (feature.force) {
@@ -63,7 +63,7 @@ export function specializeDatafileForContext(
 
         // segments
         if (force.segments) {
-          feature.force[forceI].segments = specializeSegmentsForContext(
+          feature.force[forceI].segments = applyContextToSegments(
             originalDatafileReader,
             force.segments,
             context,
@@ -73,7 +73,7 @@ export function specializeDatafileForContext(
 
         // conditions
         if (force.conditions) {
-          feature.force[forceI].conditions = specializeConditionsForContext(
+          feature.force[forceI].conditions = applyContextToConditions(
             originalDatafileReader,
             force.conditions,
             context,
@@ -88,13 +88,13 @@ export function specializeDatafileForContext(
       for (let trafficI = 0; trafficI < feature.traffic.length; trafficI++) {
         const traffic = feature.traffic[trafficI];
 
-        // Store original segments before scoping
+        // Store original segments before applying context
         originalTrafficSegments[trafficI] = traffic.segments;
 
         // segments
         if (traffic.segments) {
           const segments = parseIfStringified(traffic.segments);
-          feature.traffic[trafficI].segments = specializeSegmentsForContext(
+          feature.traffic[trafficI].segments = applyContextToSegments(
             originalDatafileReader,
             segments,
             context,
@@ -117,7 +117,7 @@ export function specializeDatafileForContext(
               // segments
               if (variableOverride.segments) {
                 const segments = parseIfStringified(variableOverride.segments);
-                variableOverride.segments = specializeSegmentsForContext(
+                variableOverride.segments = applyContextToSegments(
                   originalDatafileReader,
                   segments,
                   context,
@@ -128,7 +128,7 @@ export function specializeDatafileForContext(
               // conditions
               if (variableOverride.conditions) {
                 const conditions = parseIfStringified(variableOverride.conditions);
-                variableOverride.conditions = specializeConditionsForContext(
+                variableOverride.conditions = applyContextToConditions(
                   originalDatafileReader,
                   conditions,
                   context,
@@ -163,7 +163,7 @@ export function specializeDatafileForContext(
 
               // segments
               if (variableOverride.segments) {
-                variableOverride.segments = specializeSegmentsForContext(
+                variableOverride.segments = applyContextToSegments(
                   originalDatafileReader,
                   variableOverride.segments,
                   context,
@@ -173,7 +173,7 @@ export function specializeDatafileForContext(
 
               // conditions
               if (variableOverride.conditions) {
-                variableOverride.conditions = specializeConditionsForContext(
+                variableOverride.conditions = applyContextToConditions(
                   originalDatafileReader,
                   variableOverride.conditions,
                   context,
@@ -217,13 +217,13 @@ export function specializeDatafileForContext(
       feature.traffic = newTrafficArray;
     }
 
-    specializedDatafileContent.features[featureKey] = feature;
+    contextualDatafileContent.features[featureKey] = feature;
   }
 
   // remove segments
   for (const removeSegment of removeSegments) {
-    delete specializedDatafileContent.segments[removeSegment];
+    delete contextualDatafileContent.segments[removeSegment];
   }
 
-  return specializedDatafileContent;
+  return contextualDatafileContent;
 }
