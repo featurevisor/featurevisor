@@ -28,8 +28,10 @@ import {
 import { ConditionTree, GroupSegmentTree } from "../components/trees";
 import {
   FeatureVariablesList,
+  SchemaPropertiesOverview,
   SchemaTable,
   hasSchemaTableRows,
+  usesSchemaStructureTable,
   type SchemaLike,
 } from "../components/variables";
 import { FeatureVariationsList } from "../components/variations";
@@ -382,6 +384,10 @@ export function EntityDetailPage() {
 export function OverviewTab() {
   const { detail, setKey } = useEntityDetail();
   const entity = detail.entity as Record<string, unknown>;
+  const schema = entity as SchemaLike;
+  const hasStructureTable =
+    (detail.type === "schema" && usesSchemaStructureTable(schema) && hasSchemaTableRows(schema)) ||
+    (detail.type === "attribute" && hasSchemaTableRows(schema));
 
   return (
     <div className="space-y-6">
@@ -393,13 +399,25 @@ export function OverviewTab() {
         </OverviewSection>
       )}
 
+      {detail.type === "schema" && !usesSchemaStructureTable(entity as SchemaLike) && (
+        <SchemaPropertiesOverview schema={entity as SchemaLike} setKey={setKey} />
+      )}
+
+      {detail.type === "schema" &&
+        usesSchemaStructureTable(entity as SchemaLike) &&
+        hasSchemaTableRows(entity as SchemaLike) && (
+          <OverviewSection title="Structure">
+            <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+          </OverviewSection>
+        )}
+
       {detail.type === "attribute" && hasSchemaTableRows(entity as SchemaLike) && (
         <OverviewSection title="Structure">
           <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
         </OverviewSection>
       )}
 
-      <DescriptionField value={entity.description} />
+      <DescriptionField value={entity.description} showTopDivider={!hasStructureTable} />
     </div>
   );
 }
@@ -585,7 +603,12 @@ function EntityOverviewMeta(props: {
     );
   }
 
-  if (detail.type === "attribute" && entity.type) {
+  if (
+    (detail.type === "attribute" || detail.type === "schema") &&
+    (entity.type || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0))
+  ) {
+    const typeLabel = entity.type ? String(entity.type) : "oneOf";
+
     return (
       <OverviewMetaPanel>
         {hasStatus && (
@@ -594,7 +617,7 @@ function EntityOverviewMeta(props: {
           </OverviewMetaRow>
         )}
         <OverviewMetaRow label="Type">
-          <OverviewChip>{String(entity.type)}</OverviewChip>
+          <OverviewChip>{typeLabel}</OverviewChip>
         </OverviewMetaRow>
       </OverviewMetaPanel>
     );

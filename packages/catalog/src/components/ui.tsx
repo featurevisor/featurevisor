@@ -97,9 +97,11 @@ export function MarkdownContent(props: { value?: unknown }) {
   );
 }
 
-export function DescriptionField(props: { value?: unknown }) {
+export function DescriptionField(props: { value?: unknown; showTopDivider?: boolean }) {
+  const showTopDivider = props.showTopDivider !== false;
+
   return (
-    <div className="border-t border-border pt-6 first:border-t-0 first:pt-0">
+    <div className={showTopDivider ? "border-t border-border pt-6" : undefined}>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">
         Description
       </div>

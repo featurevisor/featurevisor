@@ -43,13 +43,17 @@ a {
 }
 
 .variable-schema-col-path {
-  width: 38%;
+  width: 28%;
 }
 
 .variable-schema-col-type {
-  width: 18%;
+  width: 14%;
+}
+
+.variable-schema-col-constraints {
+  width: 30%;
 }
 
 .variable-schema-col-description {
-  width: 44%;
+  width: 28%;
 }

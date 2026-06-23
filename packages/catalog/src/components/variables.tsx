@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { getEntityRoute } from "../entityTypes";
-import { Badge, EntityKey } from "./ui";
+import { Badge, EntityKey, OverviewChip, OverviewMetaPanel, OverviewMetaRow } from "./ui";
 
 export type SchemaLike = Record<string, unknown>;
 
@@ -12,6 +12,7 @@ type FlatSchemaRow = {
   isRef: boolean;
   required: boolean;
   description?: string;
+  constraints: string[];
 };
 
 export function slugifyFragment(value: string) {
@@ -37,6 +38,12 @@ export function hasSchemaStructure(schema: SchemaLike) {
   );
 }
 
+export function usesSchemaStructureTable(schema: SchemaLike) {
+  const type = typeof schema.type === "string" ? schema.type : undefined;
+
+  return type === "object" || type === "array";
+}
+
 export function hasSchemaTableRows(schema: SchemaLike) {
   return flattenSchemaRows(schema, "").length > 0;
 }
@@ -47,6 +54,125 @@ function getSchemaDescription(schema: SchemaLike) {
   return typeof description === "string" && description.trim().length > 0
     ? description.trim()
     : undefined;
+}
+
+function formatConstraintValue(value: unknown) {
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function getSchemaConstraintLines(schema: SchemaLike) {
+  const lines: string[] = [];
+
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    lines.push(`enum: ${schema.enum.map(formatConstraintValue).join(", ")}`);
+  }
+
+  if ("const" in schema && schema.const !== undefined) {
+    lines.push(`const: ${formatConstraintValue(schema.const)}`);
+  }
+
+  if (typeof schema.minimum === "number") {
+    lines.push(`minimum: ${schema.minimum}`);
+  }
+
+  if (typeof schema.maximum === "number") {
+    lines.push(`maximum: ${schema.maximum}`);
+  }
+
+  if (typeof schema.minLength === "number") {
+    lines.push(`minLength: ${schema.minLength}`);
+  }
+
+  if (typeof schema.maxLength === "number") {
+    lines.push(`maxLength: ${schema.maxLength}`);
+  }
+
+  if (typeof schema.pattern === "string") {
+    lines.push(`pattern: ${schema.pattern}`);
+  }
+
+  if (typeof schema.minItems === "number") {
+    lines.push(`minItems: ${schema.minItems}`);
+  }
+
+  if (typeof schema.maxItems === "number") {
+    lines.push(`maxItems: ${schema.maxItems}`);
+  }
+
+  if (schema.uniqueItems === true) {
+    lines.push("uniqueItems: true");
+  }
+
+  return lines;
+}
+
+function getArrayElementConstraintLines(schema: SchemaLike, items: SchemaLike) {
+  return [...getSchemaConstraintLines(schema), ...getSchemaConstraintLines(items)];
+}
+
+function createSchemaRow(
+  schema: SchemaLike,
+  path: string,
+  required: boolean,
+  typeLabel?: string,
+): FlatSchemaRow {
+  const schemaRef = isSchemaRef(schema);
+
+  return {
+    path,
+    typeLabel: typeLabel ?? (schemaRef ? schema.schema : getLeafTypeLabel(schema)),
+    isRef: schemaRef,
+    required,
+    description: getSchemaDescription(schema),
+    constraints: getSchemaConstraintLines(schema),
+  };
+}
+
+function appendAdditionalPropertyRows(
+  schema: SchemaLike,
+  prefix: string,
+  rows: FlatSchemaRow[],
+) {
+  const additionalProperties = schema.additionalProperties;
+
+  if (additionalProperties === false) {
+    rows.push({
+      path: prefix ? `${prefix}.*` : "*",
+      typeLabel: "—",
+      isRef: false,
+      required: false,
+      description: undefined,
+      constraints: ["additionalProperties: false"],
+    });
+    return rows;
+  }
+
+  if (!additionalProperties || typeof additionalProperties !== "object") {
+    return rows;
+  }
+
+  const propertyPath = prefix ? `${prefix}.*` : "*";
+  const propertySchema = additionalProperties as SchemaLike;
+
+  if (
+    propertySchema.type === "object" &&
+    propertySchema.properties &&
+    typeof propertySchema.properties === "object"
+  ) {
+    rows.push(...flattenSchemaRows(propertySchema, propertyPath, false));
+    return rows;
+  }
+
+  rows.push(createSchemaRow(propertySchema, propertyPath, false));
+  return rows;
 }
 
 function TypeBadge(props: { children: React.ReactNode }) {
@@ -98,15 +224,7 @@ function getLeafTypeLabel(schema: SchemaLike) {
 
 function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false): FlatSchemaRow[] {
   if (isSchemaRef(schema)) {
-    return [
-      {
-        path: prefix,
-        typeLabel: schema.schema,
-        isRef: true,
-        required,
-        description: getSchemaDescription(schema),
-      },
-    ];
+    return [createSchemaRow(schema, prefix || "—", required)];
   }
 
   if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
@@ -119,55 +237,72 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
 
   const type = typeof schema.type === "string" ? schema.type : undefined;
 
-  if (type === "object" && schema.properties && typeof schema.properties === "object") {
+  if (type === "object") {
     const requiredKeys = new Set(Array.isArray(schema.required) ? schema.required.map(String) : []);
-    const properties = schema.properties as Record<string, SchemaLike>;
-
-    return Object.entries(properties).flatMap(([key, propertySchema]) =>
+    const properties =
+      schema.properties && typeof schema.properties === "object"
+        ? (schema.properties as Record<string, SchemaLike>)
+        : {};
+    const rows = Object.entries(properties).flatMap(([key, propertySchema]) =>
       flattenSchemaRows(propertySchema, prefix ? `${prefix}.${key}` : key, requiredKeys.has(key)),
     );
+
+    return appendAdditionalPropertyRows(schema, prefix, rows);
   }
 
-  if (type === "array" && schema.items && typeof schema.items === "object") {
-    const items = schema.items as SchemaLike;
-    const itemType = getLeafTypeLabel(items);
+  if (type === "array") {
+    if (schema.items && typeof schema.items === "object") {
+      const items = schema.items as SchemaLike;
+      const itemType = getLeafTypeLabel(items);
+      const arrayPath = prefix ? `${prefix}[]` : "[]";
 
-    if (isSchemaRef(items) || (items.type && items.type !== "object")) {
-      return [
-        {
-          path: prefix ? `${prefix}[]` : "[]",
-          typeLabel: `${itemType}[]`,
-          isRef: isSchemaRef(items),
+      if (isSchemaRef(items) || (items.type && items.type !== "object")) {
+        const row = createSchemaRow(
+          schema,
+          arrayPath,
           required,
-          description: getSchemaDescription(schema) || getSchemaDescription(items),
-        },
-      ];
+          isSchemaRef(items) ? itemType : `${itemType}[]`,
+        );
+        row.isRef = isSchemaRef(items);
+        row.description = getSchemaDescription(schema) || getSchemaDescription(items);
+        row.constraints = getArrayElementConstraintLines(schema, items);
+
+        return [row];
+      }
+
+      if (items.type === "object" && items.properties && typeof items.properties === "object") {
+        const requiredKeys = new Set(
+          Array.isArray(items.required) ? items.required.map(String) : [],
+        );
+        const properties = items.properties as Record<string, SchemaLike>;
+        const rows = Object.entries(properties).flatMap(([key, propertySchema]) =>
+          flattenSchemaRows(
+            propertySchema,
+            prefix ? `${prefix}[].${key}` : `[].${key}`,
+            requiredKeys.has(key),
+          ),
+        );
+
+        if (getSchemaConstraintLines(schema).length > 0) {
+          rows.unshift({
+            path: arrayPath,
+            typeLabel: "object[]",
+            isRef: false,
+            required,
+            description: getSchemaDescription(schema),
+            constraints: getSchemaConstraintLines(schema),
+          });
+        }
+
+        return appendAdditionalPropertyRows(items, prefix ? `${prefix}[]` : "[]", rows);
+      }
     }
 
-    if (items.type === "object" && items.properties && typeof items.properties === "object") {
-      const requiredKeys = new Set(Array.isArray(items.required) ? items.required.map(String) : []);
-      const properties = items.properties as Record<string, SchemaLike>;
-
-      return Object.entries(properties).flatMap(([key, propertySchema]) =>
-        flattenSchemaRows(
-          propertySchema,
-          prefix ? `${prefix}[].${key}` : `[].${key}`,
-          requiredKeys.has(key),
-        ),
-      );
-    }
+    return [createSchemaRow(schema, prefix || "—", required)];
   }
 
-  if (type && prefix) {
-    return [
-      {
-        path: prefix,
-        typeLabel: type,
-        isRef: false,
-        required,
-        description: getSchemaDescription(schema),
-      },
-    ];
+  if (type) {
+    return [createSchemaRow(schema, prefix || "—", required)];
   }
 
   return [];
@@ -186,18 +321,20 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
         <colgroup>
           <col className="variable-schema-col-path" />
           <col className="variable-schema-col-type" />
+          <col className="variable-schema-col-constraints" />
           <col className="variable-schema-col-description" />
         </colgroup>
         <thead>
           <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wide text-faint">
             <th className="pb-1.5 pr-3 font-semibold">Path</th>
             <th className="pb-1.5 pr-3 font-semibold">Type</th>
+            <th className="pb-1.5 pr-3 font-semibold">Constraints</th>
             <th className="pb-1.5 font-semibold">Description</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.path} className="border-b border-border/60 align-top">
+          {rows.map((row, index) => (
+            <tr key={`${row.path}-${index}`} className="border-b border-border/60 align-top">
               <td className="py-1.5 pr-3 [overflow-wrap:anywhere]">
                 <span className="font-mono text-text">{row.path}</span>
                 {row.required && (
@@ -208,9 +345,23 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
               </td>
               <td className="py-1.5 pr-3">
                 {row.isRef ? (
-                  <SchemaRefLink name={row.typeLabel} setKey={props.setKey} />
+                  <span className="inline-flex items-center gap-1">
+                    <SchemaRefLink name={row.typeLabel} setKey={props.setKey} />
+                    {row.path.endsWith("[]") && <TypeBadge>[]</TypeBadge>}
+                  </span>
                 ) : (
                   <TypeBadge>{row.typeLabel}</TypeBadge>
+                )}
+              </td>
+              <td className="py-1.5 pr-3 font-mono text-[11px] text-muted [overflow-wrap:anywhere]">
+                {row.constraints.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {row.constraints.map((constraint) => (
+                      <li key={constraint}>{constraint}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-faint">—</span>
                 )}
               </td>
               <td className="py-1.5 text-muted [overflow-wrap:anywhere]">
@@ -222,6 +373,173 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
       </table>
     </div>
   );
+}
+
+type SchemaProperty = {
+  label: string;
+  value: React.ReactNode;
+};
+
+function SchemaPropertyValue(props: { children: React.ReactNode }) {
+  return <OverviewChip className="font-mono">{props.children}</OverviewChip>;
+}
+
+function getSchemaProperties(
+  schema: SchemaLike,
+  setKey?: string,
+  options: { includeType?: boolean } = {},
+): SchemaProperty[] {
+  const properties: SchemaProperty[] = [];
+
+  if (isSchemaRef(schema)) {
+    properties.push({
+      label: "Schema",
+      value: <SchemaRefLink name={schema.schema} setKey={setKey} />,
+    });
+    return properties;
+  }
+
+  if (options.includeType && typeof schema.type === "string") {
+    properties.push({
+      label: "Type",
+      value: <TypeBadge>{schema.type}</TypeBadge>,
+    });
+  }
+
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    properties.push({
+      label: "Enum",
+      value: (
+        <span className="flex flex-wrap gap-1.5">
+          {schema.enum.map((value, index) => (
+            <SchemaPropertyValue key={index}>{formatConstraintValue(value)}</SchemaPropertyValue>
+          ))}
+        </span>
+      ),
+    });
+  }
+
+  if ("const" in schema && schema.const !== undefined) {
+    properties.push({
+      label: "Const",
+      value: <SchemaPropertyValue>{formatConstraintValue(schema.const)}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.minimum === "number") {
+    properties.push({
+      label: "Minimum",
+      value: <SchemaPropertyValue>{schema.minimum}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.maximum === "number") {
+    properties.push({
+      label: "Maximum",
+      value: <SchemaPropertyValue>{schema.maximum}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.minLength === "number") {
+    properties.push({
+      label: "Min length",
+      value: <SchemaPropertyValue>{schema.minLength}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.maxLength === "number") {
+    properties.push({
+      label: "Max length",
+      value: <SchemaPropertyValue>{schema.maxLength}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.pattern === "string") {
+    properties.push({
+      label: "Pattern",
+      value: <SchemaPropertyValue>{schema.pattern}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.minItems === "number") {
+    properties.push({
+      label: "Min items",
+      value: <SchemaPropertyValue>{schema.minItems}</SchemaPropertyValue>,
+    });
+  }
+
+  if (typeof schema.maxItems === "number") {
+    properties.push({
+      label: "Max items",
+      value: <SchemaPropertyValue>{schema.maxItems}</SchemaPropertyValue>,
+    });
+  }
+
+  if (schema.uniqueItems === true) {
+    properties.push({
+      label: "Unique items",
+      value: <SchemaPropertyValue>true</SchemaPropertyValue>,
+    });
+  }
+
+  return properties;
+}
+
+function hasSchemaProperties(schema: SchemaLike) {
+  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
+    return true;
+  }
+
+  return getSchemaProperties(schema).length > 0;
+}
+
+function SchemaPropertiesPanel(props: {
+  schema: SchemaLike;
+  setKey?: string;
+  includeType?: boolean;
+}) {
+  const properties = getSchemaProperties(props.schema, props.setKey, {
+    includeType: props.includeType,
+  });
+
+  if (properties.length === 0) {
+    return null;
+  }
+
+  return (
+    <OverviewMetaPanel>
+      {properties.map((property) => (
+        <OverviewMetaRow key={property.label} label={property.label}>
+          {property.value}
+        </OverviewMetaRow>
+      ))}
+    </OverviewMetaPanel>
+  );
+}
+
+export function SchemaPropertiesOverview(props: { schema: SchemaLike; setKey?: string }) {
+  const schema = props.schema;
+
+  if (!hasSchemaProperties(schema)) {
+    return null;
+  }
+
+  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
+    return (
+      <div className="space-y-4">
+        {(schema.oneOf as SchemaLike[]).map((option, index) => (
+          <section key={index}>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+              Option {index + 1}
+            </h3>
+            <SchemaPropertiesPanel schema={option} setKey={props.setKey} includeType />
+          </section>
+        ))}
+      </div>
+    );
+  }
+
+  return <SchemaPropertiesPanel schema={schema} setKey={props.setKey} />;
 }
 
 function DefaultValueCodeBlock(props: { children: React.ReactNode; nested?: boolean }) {
