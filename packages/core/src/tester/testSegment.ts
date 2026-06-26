@@ -5,7 +5,7 @@ import type {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { noopDiagnosticReporter, DatafileReader } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk/internal";
 
 import { Datasource } from "../datasource";
 
@@ -41,14 +41,14 @@ export async function testSegment(
 
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
-  const datafileReader = new DatafileReader({
+  const datafileReader = createFeaturevisor({
     datafile: {
       schemaVersion: "2",
       revision: "tester",
       segments: {},
       features: {},
     },
-    reportDiagnostic: noopDiagnosticReporter,
+    logLevel: "fatal",
   });
 
   test.assertions.forEach(function (assertion) {

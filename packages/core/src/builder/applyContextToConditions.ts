@@ -5,10 +5,10 @@ import type {
   NotCondition,
   Context,
 } from "@featurevisor/types";
-import type { DatafileReader } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk/internal";
 
 export function applyContextToConditions(
-  datafileReader: DatafileReader,
+  datafileReader: Featurevisor,
   conditions: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {
@@ -92,7 +92,7 @@ export function removeRedundantConditions(
 }
 
 export function applyContextToCondition(
-  datafileReader: DatafileReader,
+  datafileReader: Featurevisor,
   condition: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {

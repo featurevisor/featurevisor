@@ -11,7 +11,12 @@ module.exports = {
   },
   collectCoverageFrom: ["src/**/*.ts"],
   coverageProvider: "v8",
-  coveragePathIgnorePatterns: ["src/index.ts", "src/murmurhash.ts", "src/compareVersions.ts"],
+  coveragePathIgnorePatterns: [
+    "src/index.ts",
+    "src/internal.ts",
+    "src/murmurhash.ts",
+    "src/compareVersions.ts",
+  ],
   coverageThreshold: {
     global: {
       statements: 95,

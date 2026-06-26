@@ -587,7 +587,7 @@ const INDENT_NS = "  ";
 const INDENT_NS_BODY = "    ";
 
 const instanceSnippet = `
-import { Featurevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 let _instance: Featurevisor;
 

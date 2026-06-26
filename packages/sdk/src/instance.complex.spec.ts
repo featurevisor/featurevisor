@@ -1,4 +1,4 @@
-import { createFeaturevisor, EvaluationReason, type FeaturevisorDiagnostic } from "./index";
+import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import { createComplexDatafile, deterministicBucketModule } from "./instance.test-fixtures";
 
 function createComplexSdk(onDiagnostic?: (diagnostic: FeaturevisorDiagnostic) => void) {
@@ -80,7 +80,7 @@ describe("Featurevisor public API: complex evaluation", () => {
 
     expect(sdk.isEnabled("dependent", { userId: "control", bucket: 1000 })).toBe(false);
     expect(sdk.evaluateFlag("dependent", { userId: "control", bucket: 1000 }).reason).toBe(
-      EvaluationReason.REQUIRED,
+      "required",
     );
     expect(sdk.isEnabled("dependent", { userId: "ready", bucket: 75000 })).toBe(true);
     expect(sdk.isEnabled("dependent", { userId: "blocked", role: "blocked", bucket: 75000 })).toBe(
@@ -186,9 +186,9 @@ describe("Featurevisor public API: complex evaluation", () => {
 
     expect(diagnostics).toContainEqual(
       expect.objectContaining({
-        code: EvaluationReason.ALLOCATED,
+        code: "allocated",
         featureKey: "experiment",
-        reason: EvaluationReason.ALLOCATED,
+        reason: "allocated",
         evaluation: expect.objectContaining({ bucketValue: 75000, ruleKey: "everyone" }),
       }),
     );

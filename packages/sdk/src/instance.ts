@@ -2,6 +2,8 @@ import type {
   Context,
   Feature,
   FeatureKey,
+  Segment,
+  SegmentKey,
   StickyFeatures,
   EvaluatedFeatures,
   EvaluatedFeature,
@@ -9,15 +11,20 @@ import type {
   VariationValue,
   VariableKey,
   DatafileContent,
+  Traffic,
+  Allocation,
+  GroupSegment,
+  Condition,
+  Force,
 } from "@featurevisor/types";
 
 import { ModulesManager, FeaturevisorModule, FeaturevisorModuleApi } from "./modules.js";
 import { Emitter, EventCallback, EventName } from "./emitter.js";
-import { DatafileReader } from "./datafileReader.js";
-import { Evaluation, EvaluateDependencies, evaluateWithModules } from "./evaluate.js";
+import { Evaluation, EvaluateDependencies, evaluateWithModules, ForceResult } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
 import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events.js";
 import { getValueByType } from "./helpers.js";
+import { conditionIsMatched } from "./conditions.js";
 import {
   FEATUREVISOR_DIAGNOSTIC_PREFIX,
   FeaturevisorDiagnostic,
@@ -77,7 +84,7 @@ export interface OverrideOptions {
   defaultVariableValue?: VariableValue;
 }
 
-export interface InstanceOptions {
+export interface FeaturevisorOptions {
   datafile?: DatafileContent | string;
   context?: Context;
   logLevel?: FeaturevisorLogLevel;
@@ -101,25 +108,19 @@ export class Featurevisor {
 
   // internally created
   private datafile: DatafileContent = emptyDatafile;
-  private datafileReader: DatafileReader;
+  private regexCache: Record<string, RegExp> = {};
   private modulesManager: ModulesManager;
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
   private emitter: Emitter;
   private closed = false;
 
-  constructor(options: InstanceOptions) {
+  constructor(options: FeaturevisorOptions) {
     // from options
     this.context = options.context || {};
     this.logLevel = options.logLevel || "info";
     this.onDiagnostic = options.onDiagnostic;
     this.emitter = new Emitter();
     this.sticky = options.sticky;
-
-    // datafile
-    this.datafileReader = new DatafileReader({
-      datafile: emptyDatafile,
-      reportDiagnostic: this.reportDiagnostic,
-    });
 
     this.modulesManager = new ModulesManager({
       modules: options.modules || [],
@@ -155,15 +156,10 @@ export class Featurevisor {
       const storedDatafile = replace
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
-      const newDatafileReader = new DatafileReader({
-        datafile: storedDatafile,
-        reportDiagnostic: this.reportDiagnostic,
-      });
-
-      const details = getParamsForDatafileSetEvent(this.datafileReader, newDatafileReader, replace);
+      const details = getParamsForDatafileSetEvent(this.datafile, storedDatafile, replace);
 
       this.datafile = storedDatafile;
-      this.datafileReader = newDatafileReader;
+      this.regexCache = {};
 
       this.reportDiagnostic({
         level: "info",
@@ -210,11 +206,262 @@ export class Featurevisor {
   }
 
   getRevision(): string {
-    return this.datafileReader.getRevision();
+    return this.datafile.revision;
+  }
+
+  getSchemaVersion(): string {
+    return this.datafile.schemaVersion;
+  }
+
+  getSegment(segmentKey: SegmentKey): Segment | undefined {
+    const segment = this.datafile.segments[segmentKey];
+
+    if (!segment) {
+      return undefined;
+    }
+
+    segment.conditions = this.parseConditionsIfStringified(segment.conditions);
+
+    return segment;
   }
 
   getFeature(featureKey: string): Feature | undefined {
-    return this.datafileReader.getFeature(featureKey);
+    return this.datafile.features[featureKey];
+  }
+
+  getFeatureKeys(): string[] {
+    return Object.keys(this.datafile.features);
+  }
+
+  getVariableKeys(featureKey: FeatureKey): string[] {
+    const feature = this.getFeature(featureKey);
+
+    if (!feature) {
+      return [];
+    }
+
+    return Object.keys(feature.variablesSchema || {});
+  }
+
+  hasVariations(featureKey: FeatureKey): boolean {
+    const feature = this.getFeature(featureKey);
+
+    if (!feature) {
+      return false;
+    }
+
+    return Array.isArray(feature.variations) && feature.variations.length > 0;
+  }
+
+  getRegex(regexString: string, regexFlags?: string): RegExp {
+    const flags = regexFlags || "";
+    const cacheKey = `${regexString}-${flags}`;
+
+    if (this.regexCache[cacheKey]) {
+      return this.regexCache[cacheKey];
+    }
+
+    const regex = new RegExp(regexString, flags);
+    this.regexCache[cacheKey] = regex;
+
+    return regex;
+  }
+
+  allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean {
+    if (typeof conditions === "string") {
+      return conditions === "*";
+    }
+
+    const getRegex = (regexString: string, regexFlags: string) =>
+      this.getRegex(regexString, regexFlags);
+
+    if ("attribute" in conditions) {
+      try {
+        return conditionIsMatched(conditions, context, getRegex);
+      } catch (e) {
+        this.reportDiagnostic({
+          level: "warn",
+          code: "condition_match_error",
+          message: e instanceof Error ? e.message : String(e),
+          originalError: e,
+          condition: conditions,
+          context,
+        });
+
+        return false;
+      }
+    }
+
+    if ("and" in conditions && Array.isArray(conditions.and)) {
+      return conditions.and.every((c) => this.allConditionsAreMatched(c, context));
+    }
+
+    if ("or" in conditions && Array.isArray(conditions.or)) {
+      return conditions.or.some((c) => this.allConditionsAreMatched(c, context));
+    }
+
+    if ("not" in conditions && Array.isArray(conditions.not)) {
+      if (conditions.not.length === 0) {
+        return false;
+      }
+
+      return this.allConditionsAreMatched({ and: conditions.not }, context) === false;
+    }
+
+    if (Array.isArray(conditions)) {
+      return conditions.every((c) => this.allConditionsAreMatched(c, context));
+    }
+
+    return false;
+  }
+
+  segmentIsMatched(segment: Segment, context: Context): boolean {
+    return this.allConditionsAreMatched(segment.conditions as Condition | Condition[], context);
+  }
+
+  allSegmentsAreMatched(
+    groupSegments: GroupSegment | GroupSegment[] | "*",
+    context: Context,
+  ): boolean {
+    if (groupSegments === "*") {
+      return true;
+    }
+
+    if (typeof groupSegments === "string") {
+      const segment = this.getSegment(groupSegments);
+
+      return segment ? this.segmentIsMatched(segment, context) : false;
+    }
+
+    if (typeof groupSegments === "object") {
+      if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
+        return groupSegments.and.every((groupSegment) =>
+          this.allSegmentsAreMatched(groupSegment, context),
+        );
+      }
+
+      if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
+        return groupSegments.or.some((groupSegment) =>
+          this.allSegmentsAreMatched(groupSegment, context),
+        );
+      }
+
+      if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
+        if (groupSegments.not.length === 0) {
+          return false;
+        }
+
+        return this.allSegmentsAreMatched({ and: groupSegments.not }, context) === false;
+      }
+    }
+
+    if (Array.isArray(groupSegments)) {
+      return groupSegments.every((groupSegment) =>
+        this.allSegmentsAreMatched(groupSegment, context),
+      );
+    }
+
+    return false;
+  }
+
+  getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined {
+    return traffic.find((t) => {
+      if (!this.allSegmentsAreMatched(this.parseSegmentsIfStringified(t.segments), context)) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
+    if (!traffic.allocation) {
+      return undefined;
+    }
+
+    for (const allocation of traffic.allocation) {
+      const [start, end] = allocation.range;
+
+      if (allocation.range && start <= bucketValue && end >= bucketValue) {
+        return allocation;
+      }
+    }
+
+    return undefined;
+  }
+
+  getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult {
+    const result: ForceResult = {
+      force: undefined,
+      forceIndex: undefined,
+    };
+
+    const feature = typeof featureKey === "string" ? this.getFeature(featureKey) : featureKey;
+
+    if (!feature || !feature.force) {
+      return result;
+    }
+
+    for (let i = 0; i < feature.force.length; i++) {
+      const currentForce = feature.force[i];
+
+      if (
+        currentForce.conditions &&
+        this.allConditionsAreMatched(
+          this.parseConditionsIfStringified(currentForce.conditions),
+          context,
+        )
+      ) {
+        result.force = currentForce;
+        result.forceIndex = i;
+        break;
+      }
+
+      if (
+        currentForce.segments &&
+        this.allSegmentsAreMatched(this.parseSegmentsIfStringified(currentForce.segments), context)
+      ) {
+        result.force = currentForce;
+        result.forceIndex = i;
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  parseConditionsIfStringified(conditions: Condition | Condition[]): Condition | Condition[] {
+    if (typeof conditions !== "string") {
+      return conditions;
+    }
+
+    if (conditions === "*") {
+      return conditions;
+    }
+
+    try {
+      return JSON.parse(conditions);
+    } catch (e) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "conditions_parse_error",
+        message: "Error parsing conditions",
+        originalError: e,
+        conditions,
+      });
+
+      return conditions;
+    }
+  }
+
+  parseSegmentsIfStringified(
+    segments: GroupSegment | GroupSegment[],
+  ): GroupSegment | GroupSegment[] {
+    if (typeof segments === "string" && (segments.startsWith("{") || segments.startsWith("["))) {
+      return JSON.parse(segments);
+    }
+
+    return segments;
   }
 
   addModule(module: FeaturevisorModule) {
@@ -384,7 +631,7 @@ export class Featurevisor {
 
       reportDiagnostic: this.reportDiagnostic,
       modulesManager: this.modulesManager,
-      datafileReader: this.datafileReader,
+      datafile: this,
 
       // OverrideOptions
       sticky: options.sticky
@@ -610,7 +857,7 @@ export class Featurevisor {
   ): EvaluatedFeatures {
     const result: EvaluatedFeatures = {};
 
-    const keys = featureKeys.length > 0 ? featureKeys : this.datafileReader.getFeatureKeys();
+    const keys = featureKeys.length > 0 ? featureKeys : this.getFeatureKeys();
     for (const featureKey of keys) {
       // isEnabled
       const evaluatedFeature: EvaluatedFeature = {
@@ -618,7 +865,7 @@ export class Featurevisor {
       };
 
       // variation
-      if (this.datafileReader.hasVariations(featureKey)) {
+      if (this.hasVariations(featureKey)) {
         const variation = this.getVariation(featureKey, context, options);
 
         if (variation) {
@@ -627,7 +874,7 @@ export class Featurevisor {
       }
 
       // variables
-      const variableKeys = this.datafileReader.getVariableKeys(featureKey);
+      const variableKeys = this.getVariableKeys(featureKey);
       if (variableKeys.length > 0) {
         evaluatedFeature.variables = {};
 
@@ -648,6 +895,6 @@ export class Featurevisor {
   }
 }
 
-export function createFeaturevisor(options: InstanceOptions = {}): Featurevisor {
+export function createFeaturevisor(options: FeaturevisorOptions = {}): Featurevisor {
   return new Featurevisor(options);
 }

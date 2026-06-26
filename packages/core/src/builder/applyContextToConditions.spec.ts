@@ -5,7 +5,7 @@ import {
   removeRedundantConditions,
   applyContextToConditions,
 } from "./applyContextToConditions";
-import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk/internal";
 
 describe("core: applyContextToConditions", function () {
   const emptyDatafile: DatafileContent = {
@@ -15,9 +15,9 @@ describe("core: applyContextToConditions", function () {
     features: {},
   };
 
-  const datafileReader = new DatafileReader({
+  const datafileReader = createFeaturevisor({
     datafile: emptyDatafile,
-    reportDiagnostic: noopDiagnosticReporter,
+    logLevel: "fatal",
   });
 
   describe("applyContextToConditions (plural)", function () {

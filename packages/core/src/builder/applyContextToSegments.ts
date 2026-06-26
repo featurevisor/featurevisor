@@ -5,10 +5,10 @@ import type {
   NotGroupSegment,
   Context,
 } from "@featurevisor/types";
-import type { DatafileReader } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk/internal";
 
 export function applyContextToSegments(
-  datafileReader: DatafileReader,
+  datafileReader: Featurevisor,
   segments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],
@@ -104,7 +104,7 @@ export function removeRedundantGroupSegments(
 }
 
 export function applyContextToGroupSegments(
-  datafileReader: DatafileReader,
+  datafileReader: Featurevisor,
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],

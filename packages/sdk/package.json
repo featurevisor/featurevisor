@@ -11,6 +11,11 @@
       "require": "./cjs/index.js",
       "import": "./node-esm/index.js"
     },
+    "./internal": {
+      "types": "./cjs/internal.d.ts",
+      "require": "./cjs/internal.js",
+      "import": "./node-esm/internal.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

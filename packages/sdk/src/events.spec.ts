@@ -1,6 +1,3 @@
-import { DatafileReader } from "./datafileReader";
-import { noopDiagnosticReporter } from "./diagnostics";
-
 import { getParamsForDatafileSetEvent, getParamsForStickySetEvent } from "./events";
 
 describe("sdk: events", function () {
@@ -42,32 +39,24 @@ describe("sdk: events", function () {
   });
 
   describe("getParamsForDatafileSetEvent", function () {
-    const reportDiagnostic = noopDiagnosticReporter;
-
     it("should get params for datafile set event: empty to new", function () {
-      const previousDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "1",
-          features: {},
-          segments: {},
+      const previousDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "1",
+        features: {},
+        segments: {},
+      };
+      const newDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "2",
+        features: {
+          feature1: { bucketBy: "userId", hash: "hash1", traffic: [] },
+          feature2: { bucketBy: "userId", hash: "hash2", traffic: [] },
         },
-        reportDiagnostic,
-      });
-      const newDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "2",
-          features: {
-            feature1: { bucketBy: "userId", hash: "hash1", traffic: [] },
-            feature2: { bucketBy: "userId", hash: "hash2", traffic: [] },
-          },
-          segments: {},
-        },
-        reportDiagnostic,
-      });
+        segments: {},
+      };
 
-      const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader);
+      const result = getParamsForDatafileSetEvent(previousDatafile, newDatafile);
 
       expect(result).toEqual({
         revision: "2",
@@ -79,33 +68,27 @@ describe("sdk: events", function () {
     });
 
     it("should get params for datafile set event: change hash, addition", function () {
-      const previousDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "1",
-          features: {
-            feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
-            feature2: { bucketBy: "userId", hash: "hash1-2", traffic: [] },
-          },
-          segments: {},
+      const previousDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "1",
+        features: {
+          feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
+          feature2: { bucketBy: "userId", hash: "hash1-2", traffic: [] },
         },
-        reportDiagnostic,
-      });
-      const newDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "2",
-          features: {
-            feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
-            feature2: { bucketBy: "userId", hash: "hash2-2", traffic: [] },
-            feature3: { bucketBy: "userId", hash: "hash2-3", traffic: [] },
-          },
-          segments: {},
+        segments: {},
+      };
+      const newDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "2",
+        features: {
+          feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
+          feature2: { bucketBy: "userId", hash: "hash2-2", traffic: [] },
+          feature3: { bucketBy: "userId", hash: "hash2-3", traffic: [] },
         },
-        reportDiagnostic,
-      });
+        segments: {},
+      };
 
-      const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader);
+      const result = getParamsForDatafileSetEvent(previousDatafile, newDatafile);
 
       expect(result).toEqual({
         revision: "2",
@@ -117,31 +100,25 @@ describe("sdk: events", function () {
     });
 
     it("should get params for datafile set event: change hash, removal", function () {
-      const previousDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "1",
-          features: {
-            feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
-            feature2: { bucketBy: "userId", hash: "hash1-2", traffic: [] },
-          },
-          segments: {},
+      const previousDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "1",
+        features: {
+          feature1: { bucketBy: "userId", hash: "hash-same", traffic: [] },
+          feature2: { bucketBy: "userId", hash: "hash1-2", traffic: [] },
         },
-        reportDiagnostic,
-      });
-      const newDatafileReader = new DatafileReader({
-        datafile: {
-          schemaVersion: "1.0.0",
-          revision: "2",
-          features: {
-            feature2: { bucketBy: "userId", hash: "hash2-2", traffic: [] },
-          },
-          segments: {},
+        segments: {},
+      };
+      const newDatafile = {
+        schemaVersion: "1.0.0",
+        revision: "2",
+        features: {
+          feature2: { bucketBy: "userId", hash: "hash2-2", traffic: [] },
         },
-        reportDiagnostic,
-      });
+        segments: {},
+      };
 
-      const result = getParamsForDatafileSetEvent(previousDatafileReader, newDatafileReader, true);
+      const result = getParamsForDatafileSetEvent(previousDatafile, newDatafile, true);
 
       expect(result).toEqual({
         revision: "2",

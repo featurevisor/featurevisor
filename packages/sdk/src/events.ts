@@ -1,6 +1,5 @@
-import type { StickyFeatures, FeatureKey } from "@featurevisor/types";
+import type { StickyFeatures, FeatureKey, DatafileContent } from "@featurevisor/types";
 
-import type { DatafileReader } from "./datafileReader.js";
 import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 
 export interface StickySetEventDetails {
@@ -52,15 +51,15 @@ export function getParamsForStickySetEvent(
 }
 
 export function getParamsForDatafileSetEvent(
-  previousDatafileReader: DatafileReader,
-  newDatafileReader: DatafileReader,
+  previousDatafile: DatafileContent,
+  newDatafile: DatafileContent,
   replace = false,
 ): DatafileSetEventDetails {
-  const previousRevision = previousDatafileReader.getRevision();
-  const previousFeatureKeys = previousDatafileReader.getFeatureKeys();
+  const previousRevision = previousDatafile.revision;
+  const previousFeatureKeys = Object.keys(previousDatafile.features);
 
-  const newRevision = newDatafileReader.getRevision();
-  const newFeatureKeys = newDatafileReader.getFeatureKeys();
+  const newRevision = newDatafile.revision;
+  const newFeatureKeys = Object.keys(newDatafile.features);
 
   // results
   const removedFeatures: FeatureKey[] = [];
@@ -77,8 +76,8 @@ export function getParamsForDatafileSetEvent(
     }
 
     // feature exists in both datafiles, check if it was changed
-    const previousFeature = previousDatafileReader.getFeature(previousFeatureKey);
-    const newFeature = newDatafileReader.getFeature(previousFeatureKey);
+    const previousFeature = previousDatafile.features[previousFeatureKey];
+    const newFeature = newDatafile.features[previousFeatureKey];
 
     if (previousFeature?.hash !== newFeature?.hash) {
       // feature was changed in new datafile

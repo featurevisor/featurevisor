@@ -5,7 +5,7 @@ import {
   removeRedundantGroupSegments,
   applyContextToGroupSegments,
 } from "./applyContextToSegments";
-import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk/internal";
 
 describe("core: applyContextToSegments", function () {
   describe("applyContextToSegments", function () {
@@ -45,9 +45,9 @@ describe("core: applyContextToSegments", function () {
       features: {},
     };
 
-    const datafileReaderWithSegments = new DatafileReader({
+    const datafileReaderWithSegments = createFeaturevisor({
       datafile: datafileWithSegments,
-      reportDiagnostic: noopDiagnosticReporter,
+      logLevel: "fatal",
     });
 
     test("applyContextToSegments is a function", function () {
@@ -953,9 +953,9 @@ describe("core: applyContextToSegments", function () {
       features: {},
     };
 
-    const datafileReaderWithSegments = new DatafileReader({
+    const datafileReaderWithSegments = createFeaturevisor({
       datafile: datafileWithSegments,
-      reportDiagnostic: noopDiagnosticReporter,
+      logLevel: "fatal",
     });
 
     test("applyContextToGroupSegments is a function", function () {

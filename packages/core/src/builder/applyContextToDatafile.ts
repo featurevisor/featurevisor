@@ -1,5 +1,5 @@
 import { DatafileContent, Context, Traffic } from "@featurevisor/types";
-import { DatafileReader, noopDiagnosticReporter } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk/internal";
 
 import { applyContextToConditions } from "./applyContextToConditions";
 import { applyContextToSegments } from "./applyContextToSegments";
@@ -25,9 +25,9 @@ export function applyContextToDatafile(
   originalDatafileContent: DatafileContent,
   context: Context,
 ): DatafileContent {
-  const originalDatafileReader = new DatafileReader({
+  const originalFeaturevisor = createFeaturevisor({
     datafile: originalDatafileContent,
-    reportDiagnostic: noopDiagnosticReporter,
+    logLevel: "fatal",
   });
 
   const contextualDatafileContent: DatafileContent = JSON.parse(
@@ -41,7 +41,7 @@ export function applyContextToDatafile(
     const segment = contextualDatafileContent.segments[segmentKey];
     const originalConditions = segment.conditions;
     const contextualConditions = applyContextToConditions(
-      originalDatafileReader,
+      originalFeaturevisor,
       originalConditions,
       context,
     );
@@ -64,7 +64,7 @@ export function applyContextToDatafile(
         // segments
         if (force.segments) {
           feature.force[forceI].segments = applyContextToSegments(
-            originalDatafileReader,
+            originalFeaturevisor,
             force.segments,
             context,
             removeSegments,
@@ -74,7 +74,7 @@ export function applyContextToDatafile(
         // conditions
         if (force.conditions) {
           feature.force[forceI].conditions = applyContextToConditions(
-            originalDatafileReader,
+            originalFeaturevisor,
             force.conditions,
             context,
           );
@@ -95,7 +95,7 @@ export function applyContextToDatafile(
         if (traffic.segments) {
           const segments = parseIfStringified(traffic.segments);
           feature.traffic[trafficI].segments = applyContextToSegments(
-            originalDatafileReader,
+            originalFeaturevisor,
             segments,
             context,
             removeSegments,
@@ -118,7 +118,7 @@ export function applyContextToDatafile(
               if (variableOverride.segments) {
                 const segments = parseIfStringified(variableOverride.segments);
                 variableOverride.segments = applyContextToSegments(
-                  originalDatafileReader,
+                  originalFeaturevisor,
                   segments,
                   context,
                   removeSegments,
@@ -129,7 +129,7 @@ export function applyContextToDatafile(
               if (variableOverride.conditions) {
                 const conditions = parseIfStringified(variableOverride.conditions);
                 variableOverride.conditions = applyContextToConditions(
-                  originalDatafileReader,
+                  originalFeaturevisor,
                   conditions,
                   context,
                 );
@@ -164,7 +164,7 @@ export function applyContextToDatafile(
               // segments
               if (variableOverride.segments) {
                 variableOverride.segments = applyContextToSegments(
-                  originalDatafileReader,
+                  originalFeaturevisor,
                   variableOverride.segments,
                   context,
                   removeSegments,
@@ -174,7 +174,7 @@ export function applyContextToDatafile(
               // conditions
               if (variableOverride.conditions) {
                 variableOverride.conditions = applyContextToConditions(
-                  originalDatafileReader,
+                  originalFeaturevisor,
                   variableOverride.conditions,
                   context,
                 );

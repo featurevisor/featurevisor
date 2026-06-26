@@ -1,4 +1,4 @@
-import { createFeaturevisor, EvaluationReason, type FeaturevisorDiagnostic } from "./index";
+import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import {
   createComplexDatafile,
   createDatafile,
@@ -73,7 +73,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
       expect.objectContaining({
         type: "flag",
         featureKey: "experiment",
-        reason: EvaluationReason.RULE,
+        reason: "rule",
         ruleKey: "everyone",
         bucketValue: 75000,
         enabled: true,
@@ -81,13 +81,13 @@ describe("Featurevisor public API: lifecycle and state", () => {
     );
     expect(sdk.evaluateVariation("experiment", { userId: "a", bucket: 75000 })).toEqual(
       expect.objectContaining({
-        reason: EvaluationReason.ALLOCATED,
+        reason: "allocated",
         variation: expect.objectContaining({ value: "treatment" }),
       }),
     );
     expect(sdk.evaluateVariable("experiment", "greeting", { userId: "a", bucket: 75000 })).toEqual(
       expect.objectContaining({
-        reason: EvaluationReason.ALLOCATED,
+        reason: "allocated",
         variableKey: "greeting",
         variableValue: "Welcome",
       }),

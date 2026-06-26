@@ -1,18 +1,16 @@
 import type { Condition } from "@featurevisor/types";
 
-import { noopDiagnosticReporter } from "./diagnostics";
-import { DatafileReader } from "./datafileReader";
+import { createFeaturevisor } from "./instance";
 
 describe("sdk: Conditions", function () {
-  const reportDiagnostic = noopDiagnosticReporter;
-  const datafileReader = new DatafileReader({
+  const datafileReader = createFeaturevisor({
     datafile: {
       schemaVersion: "2.0",
       revision: "1",
       segments: {},
       features: {},
     },
-    reportDiagnostic,
+    logLevel: "fatal",
   });
 
   it("should be a function", function () {

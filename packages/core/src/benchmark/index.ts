@@ -1,5 +1,6 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
-import { Featurevisor, createFeaturevisor } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 import { buildDatafile } from "../builder";
 import { Dependencies } from "../dependencies";

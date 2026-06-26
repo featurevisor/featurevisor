@@ -1,20 +1,13 @@
 import type { DatafileContent, GroupSegment } from "@featurevisor/types";
 
-import { DatafileReader } from "./datafileReader";
-import { noopDiagnosticReporter } from "./diagnostics";
+import { createFeaturevisor } from "./instance";
 
 interface Group {
   key: string;
   segments: GroupSegment | GroupSegment[] | "*";
 }
 
-describe("sdk: DatafileReader", function () {
-  const reportDiagnostic = noopDiagnosticReporter;
-
-  it("should be a function", function () {
-    expect(typeof DatafileReader).toEqual("function");
-  });
-
+describe("sdk: instance datafile methods", function () {
   it("v2 datafile schema: should return requested entities", function () {
     const datafileJson: DatafileContent = {
       schemaVersion: "2",
@@ -80,9 +73,9 @@ describe("sdk: DatafileReader", function () {
       },
     };
 
-    const reader = new DatafileReader({
+    const reader = createFeaturevisor({
       datafile: datafileJson,
-      reportDiagnostic,
+      logLevel: "fatal",
     });
 
     expect(reader.getRevision()).toEqual("1");
@@ -279,9 +272,9 @@ describe("sdk: DatafileReader", function () {
       },
     };
 
-    const datafileReader = new DatafileReader({
+    const datafileReader = createFeaturevisor({
       datafile: datafileContent,
-      reportDiagnostic,
+      logLevel: "fatal",
     });
 
     it("should match everyone", function () {

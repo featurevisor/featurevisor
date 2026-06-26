@@ -5,13 +5,9 @@ import type {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import {
-  createFeaturevisor,
-  Featurevisor,
-  FeaturevisorLogLevel,
-  MAX_BUCKETED_NUMBER,
-  OverrideOptions,
-} from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
+import type { Featurevisor, FeaturevisorLogLevel, OverrideOptions } from "@featurevisor/sdk";
+import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk/internal";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";

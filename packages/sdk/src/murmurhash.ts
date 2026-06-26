@@ -11,11 +11,8 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-const createBuffer = (val: string) => new TextEncoder().encode(val);
-
-export function MurmurHashV3(key: string | Uint8Array, seed: number): number {
-  if (typeof key === "string") key = createBuffer(key);
-
+export function MurmurHashV3(key: string, seed: number): number {
+  key = unescape(encodeURIComponent(key));
   let remainder, bytes, h1, h1b, c1, c2, k1, i;
 
   remainder = key.length & 3; // key.length % 4
@@ -27,10 +24,10 @@ export function MurmurHashV3(key: string | Uint8Array, seed: number): number {
 
   while (i < bytes) {
     k1 =
-      (key[i] & 0xff) |
-      ((key[++i] & 0xff) << 8) |
-      ((key[++i] & 0xff) << 16) |
-      ((key[++i] & 0xff) << 24);
+      (key.charCodeAt(i) & 0xff) |
+      ((key.charCodeAt(++i) & 0xff) << 8) |
+      ((key.charCodeAt(++i) & 0xff) << 16) |
+      ((key.charCodeAt(++i) & 0xff) << 24);
     ++i;
 
     k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff;
@@ -47,11 +44,11 @@ export function MurmurHashV3(key: string | Uint8Array, seed: number): number {
 
   switch (remainder) {
     case 3:
-      k1 ^= (key[i + 2] & 0xff) << 16;
+      k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
     case 2:
-      k1 ^= (key[i + 1] & 0xff) << 8;
+      k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
     case 1:
-      k1 ^= key[i] & 0xff;
+      k1 ^= key.charCodeAt(i) & 0xff;
 
       k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff;
       k1 = (k1 << 15) | (k1 >>> 17);

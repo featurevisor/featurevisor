@@ -6,7 +6,7 @@ import type {
   Range,
   Percentage,
 } from "@featurevisor/types";
-import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
+import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk/internal";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
 
