@@ -169,7 +169,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     sdk.setSticky({ late: { enabled: true } });
     sdk.setDatafile(createDatafile({ revision: "after" }));
     sdk.addModule({ name: "late", setup: () => calls.push("setup") });
-    sdk.removeModule("module");
+    await sdk.removeModule("module");
     const unsubscribe = sdk.on("context_set", () => calls.push("late-listener"));
     unsubscribe();
 

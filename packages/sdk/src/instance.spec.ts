@@ -240,7 +240,7 @@ describe("sdk: instance", function () {
     ]);
   });
 
-  it("should run modules and allow removing named modules", function () {
+  it("should run modules and allow removing named modules", async function () {
     const calls: string[] = [];
     const module = {
       name: "unit-test",
@@ -282,7 +282,7 @@ describe("sdk: instance", function () {
     });
 
     expect(sdk.isEnabled("test")).toEqual(true);
-    sdk.removeModule("unit-test");
+    await sdk.removeModule("unit-test");
     expect(sdk.isEnabled("test")).toEqual(true);
 
     expect(calls).toEqual(["setup", "before", "bucketKey", "bucketValue", "after"]);

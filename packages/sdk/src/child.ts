@@ -24,12 +24,23 @@ export class FeaturevisorChildInstance {
     this.emitter = new Emitter();
   }
 
-  on(eventName: EventName, callback: EventCallback) {
-    if (eventName === "context_set" || eventName === "sticky_set") {
-      return this.emitter.on(eventName, callback);
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void;
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
+    if (eventName === "context_set") {
+      return this.emitter.on("context_set", callback as EventCallback<"context_set">);
     }
 
-    return this.parent.on(eventName, callback);
+    if (eventName === "sticky_set") {
+      return this.emitter.on("sticky_set", callback as EventCallback<"sticky_set">);
+    }
+
+    return this.parent.on(eventName as never, callback as never);
   }
 
   close() {

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import type { DatafileContent, ExistingState, ParsedFeature } from "@featurevisor/types";
+import type { DatafileContent, ExistingState, ParsedFeature, Segment } from "@featurevisor/types";
 import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
@@ -45,7 +45,10 @@ function isParsedFeature(
   return typeof (feature as ParsedFeature).description === "string";
 }
 
-function createMockDatasource(feature: ParsedFeature | Record<string, ParsedFeature>) {
+function createMockDatasource(
+  feature: ParsedFeature | Record<string, ParsedFeature>,
+  segmentsByKey: Record<string, Segment> = {},
+) {
   let featuresByKey: Record<string, ParsedFeature>;
 
   if (isParsedFeature(feature)) {
@@ -61,10 +64,8 @@ function createMockDatasource(feature: ParsedFeature | Record<string, ParsedFeat
     },
     listFeatures: async () => Object.keys(featuresByKey),
     readFeature: async (key: string) => featuresByKey[key],
-    listSegments: async () => [],
-    readSegment: async () => {
-      throw new Error("readSegment should not be called");
-    },
+    listSegments: async () => Object.keys(segmentsByKey),
+    readSegment: async (key: string) => segmentsByKey[key],
     listAttributes: async () => [],
     readAttribute: async () => {
       throw new Error("readAttribute should not be called");
@@ -178,6 +179,7 @@ describe("core: buildDatafile", function () {
   beforeEach(function () {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-buildDatafile-"));
     fs.mkdirSync(path.join(root, "features"), { recursive: true });
+    fs.mkdirSync(path.join(root, "segments-missing"), { recursive: true });
     existingState = { features: {} };
   });
 
@@ -365,5 +367,79 @@ describe("core: buildDatafile", function () {
     });
 
     expect(Object.keys(all.features).sort()).toEqual(["checkout.mobile", "checkout.web"]);
+  });
+
+  test("builds target datafiles without broadening NOT segment rules", async function () {
+    const config = createProjectConfig(root, false);
+    const feature: ParsedFeature = {
+      key: "targeted",
+      description: "Targeted feature",
+      tags: ["all"],
+      bucketBy: "userId",
+      rules: {
+        staging: [
+          {
+            key: "not-web",
+            segments: {
+              not: ["web"],
+            },
+            percentage: 100,
+          },
+          {
+            key: "not-web-and-chrome",
+            segments: {
+              not: ["web", "chrome"],
+            },
+            percentage: 100,
+          },
+        ],
+      },
+    } as ParsedFeature;
+    const datasource = createMockDatasource(feature, {
+      web: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+      },
+      chrome: {
+        conditions: [{ attribute: "browser", operator: "equals", value: "chrome" }],
+      },
+    });
+
+    const webDatafile = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Web target",
+        context: { platform: "web" },
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(webDatafile.features.targeted.traffic[0].segments).toEqual({
+      not: ["*"],
+    });
+    expect(webDatafile.features.targeted.traffic[1].segments).toEqual({
+      not: ["chrome"],
+    });
+
+    const webChromeDatafile = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Web Chrome target",
+        context: { platform: "web", browser: "chrome" },
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(webChromeDatafile.features.targeted.traffic[0].segments).toEqual({
+      not: ["*"],
+    });
+    expect(webChromeDatafile.features.targeted.traffic[1].segments).toEqual({
+      not: ["*"],
+    });
   });
 });

@@ -203,7 +203,7 @@ describe("core: applyContextToSegments", function () {
     });
 
     test("NOT group segments", function () {
-      // NOT with matching segment (all "*" becomes "*")
+      // NOT with matching segment remains an always-false expression
       expect(
         applyContextToSegments(
           datafileReaderWithSegments,
@@ -214,7 +214,9 @@ describe("core: applyContextToSegments", function () {
             platform: "web",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: ["*"],
+      });
 
       // NOT with non-matching segment
       expect(
@@ -231,7 +233,7 @@ describe("core: applyContextToSegments", function () {
         not: ["web"],
       });
 
-      // NOT with multiple segments (all "*" becomes "*")
+      // NOT with multiple matching segments remains an always-false expression
       expect(
         applyContextToSegments(
           datafileReaderWithSegments,
@@ -243,7 +245,9 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: ["*"],
+      });
     });
 
     test("nested AND group segments", function () {
@@ -345,7 +349,7 @@ describe("core: applyContextToSegments", function () {
     });
 
     test("nested NOT group segments", function () {
-      // Nested NOT (all "*" becomes "*")
+      // Nested NOT preserves non-broadening false expressions
       expect(
         applyContextToSegments(
           datafileReaderWithSegments,
@@ -362,7 +366,13 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: [
+          {
+            not: ["*"],
+          },
+        ],
+      });
     });
 
     test("mixed nested group segments", function () {
@@ -629,7 +639,9 @@ describe("core: applyContextToSegments", function () {
 
     test("NOT group segments", function () {
       // All "*" in NOT
-      expect(removeRedundantGroupSegments({ not: ["*", "*", "*"] })).toEqual("*");
+      expect(removeRedundantGroupSegments({ not: ["*", "*", "*"] })).toEqual({
+        not: ["*"],
+      });
 
       // Mixed with "*" in NOT
       expect(
@@ -726,7 +738,13 @@ describe("core: applyContextToSegments", function () {
         removeRedundantGroupSegments({
           not: ["*", { not: ["*", "*", "*"] }, "*"],
         }),
-      ).toEqual("*");
+      ).toEqual({
+        not: [
+          {
+            not: ["*"],
+          },
+        ],
+      });
 
       // Nested NOT with mixed group segments
       expect(

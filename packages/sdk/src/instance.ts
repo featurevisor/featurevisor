@@ -233,7 +233,10 @@ export class Featurevisor {
     return this.modulesManager.remove(name);
   }
 
-  on(eventName: EventName, callback: EventCallback) {
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
     if (this.closed) {
       return () => {};
     }

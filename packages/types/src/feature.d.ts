@@ -10,7 +10,7 @@ export type VariableType = SchemaType | "json";
 export type VariableValue = Value | null;
 
 export interface VariableOverrideSegments {
-  segments: GroupSegment | GroupSegment[];
+  segments: GroupSegment | GroupSegment[] | "*";
 }
 
 export interface VariableOverrideConditions {
@@ -26,7 +26,7 @@ export interface VariableOverride {
 
   // one of the below must be present in YAML files
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
+  segments?: GroupSegment | GroupSegment[] | "*";
 }
 
 export interface Variation {
@@ -126,7 +126,7 @@ export interface Rule {
   key: RuleKey;
   description?: string; // only available in YAML
   promotable?: boolean; // only available in YAML
-  segments: GroupSegment | GroupSegment[];
+  segments: GroupSegment | GroupSegment[] | "*";
   percentage: Weight;
 
   enabled?: boolean;
@@ -149,7 +149,7 @@ export interface RulesByEnvironment {
 export interface Force {
   // one of the below must be present in YAML
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
+  segments?: GroupSegment | GroupSegment[] | "*";
 
   enabled?: boolean;
   variation?: VariationValue;

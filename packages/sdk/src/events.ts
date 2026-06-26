@@ -1,13 +1,42 @@
 import type { StickyFeatures, FeatureKey } from "@featurevisor/types";
 
-import type { EventDetails } from "./emitter.js";
 import type { DatafileReader } from "./datafileReader.js";
+import type { FeaturevisorDiagnostic } from "./diagnostics.js";
+
+export interface StickySetEventDetails {
+  features: FeatureKey[];
+  replaced: boolean;
+}
+
+export interface DatafileSetEventDetails {
+  revision: string;
+  previousRevision: string;
+  revisionChanged: boolean;
+  features: FeatureKey[];
+  replaced: boolean;
+}
+
+export interface ContextSetEventDetails {
+  context: Record<string, unknown>;
+  replaced: boolean;
+}
+
+export interface ErrorEventDetails {
+  diagnostic: FeaturevisorDiagnostic;
+}
+
+export interface EventDetailsByName {
+  datafile_set: DatafileSetEventDetails;
+  context_set: ContextSetEventDetails;
+  sticky_set: StickySetEventDetails;
+  error: ErrorEventDetails;
+}
 
 export function getParamsForStickySetEvent(
   previousStickyFeatures: StickyFeatures = {},
   newStickyFeatures: StickyFeatures = {},
   replace: boolean,
-): EventDetails {
+): StickySetEventDetails {
   const keysBefore = Object.keys(previousStickyFeatures);
   const keysAfter = Object.keys(newStickyFeatures);
 
@@ -26,7 +55,7 @@ export function getParamsForDatafileSetEvent(
   previousDatafileReader: DatafileReader,
   newDatafileReader: DatafileReader,
   replace = false,
-): EventDetails {
+): DatafileSetEventDetails {
   const previousRevision = previousDatafileReader.getRevision();
   const previousFeatureKeys = previousDatafileReader.getFeatureKeys();
 

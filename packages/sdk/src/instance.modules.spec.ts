@@ -100,8 +100,9 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     expect(getRevision?.()).toBe("next");
   });
 
-  it("removes named modules through both removeModule and addModule unsubscribe", () => {
+  it("removes named modules through both removeModule and addModule unsubscribe", async () => {
     let calls = 0;
+    const closed: string[] = [];
     const sdk = createFeaturevisor({ logLevel: "fatal", datafile });
     const unsubscribe = sdk.addModule({
       name: "dynamic",
@@ -109,33 +110,153 @@ describe("Featurevisor public API: modules and diagnostics", () => {
         calls += 1;
         return options;
       },
+      close: () => {
+        closed.push("dynamic");
+      },
     });
 
     sdk.isEnabled("experiment", { userId: "one" });
-    unsubscribe?.();
+    await unsubscribe?.();
     sdk.isEnabled("experiment", { userId: "two" });
-    sdk.addModule({ name: "dynamic", before: (options) => ((calls += 10), options) });
-    sdk.removeModule("dynamic");
+    sdk.addModule({
+      name: "dynamic",
+      before: (options) => ((calls += 10), options),
+      close: () => {
+        closed.push("dynamic-again");
+      },
+    });
+    await sdk.removeModule("dynamic");
     sdk.isEnabled("experiment", { userId: "three" });
 
     expect(calls).toBe(1);
+    expect(closed).toEqual(["dynamic", "dynamic-again"]);
   });
 
-  it("unsubscribes anonymous modules returned by addModule", () => {
+  it("awaits async close when unsubscribing modules returned by addModule", async () => {
     let calls = 0;
+    const closed: string[] = [];
     const sdk = createFeaturevisor({ logLevel: "fatal", datafile });
     const unsubscribe = sdk.addModule({
       before: (options) => {
         calls += 1;
         return options;
       },
+      close: async () => {
+        await Promise.resolve();
+        closed.push("closed");
+      },
     });
 
     sdk.isEnabled("experiment", { userId: "one" });
-    unsubscribe?.();
+    const unsubscribed = unsubscribe?.();
+    expect(closed).toEqual([]);
+    await unsubscribed;
+    await unsubscribe?.();
     sdk.isEnabled("experiment", { userId: "two" });
 
     expect(calls).toBe(1);
+    expect(closed).toEqual(["closed"]);
+  });
+
+  it("reports diagnostics when dynamically removed module close fails", async () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const errorEvents: FeaturevisorDiagnostic[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (item) => diagnostics.push(item),
+      datafile,
+    });
+    sdk.on("error", (event) => errorEvents.push(event.diagnostic));
+
+    sdk.addModule({
+      name: "broken-close",
+      close: () => {
+        throw new Error("broken-close");
+      },
+    });
+
+    await sdk.removeModule("broken-close");
+
+    expect(diagnostics[diagnostics.length - 1]).toEqual(
+      expect.objectContaining({
+        code: "module_close_error",
+        moduleName: "broken-close",
+        originalError: expect.any(Error),
+      }),
+    );
+    expect(errorEvents[errorEvents.length - 1]).toEqual(diagnostics[diagnostics.length - 1]);
+  });
+
+  it("reports diagnostics when unsubscribe close fails", async () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (item) => diagnostics.push(item),
+      datafile,
+    });
+
+    const unsubscribe = sdk.addModule({
+      name: "broken-unsubscribe",
+      close: async () => {
+        await Promise.resolve();
+        throw new Error("broken-unsubscribe");
+      },
+    });
+
+    await unsubscribe?.();
+
+    expect(diagnostics[diagnostics.length - 1]).toEqual(
+      expect.objectContaining({
+        code: "module_close_error",
+        moduleName: "broken-unsubscribe",
+        originalError: expect.any(Error),
+      }),
+    );
+  });
+
+  it("does not add or close rejected duplicate named modules", async () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const closed: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (item) => diagnostics.push(item),
+      datafile,
+    });
+
+    sdk.addModule({
+      name: "same",
+      close: () => {
+        closed.push("first");
+        throw new Error("first-close");
+      },
+    });
+    sdk.addModule({
+      close: () => {
+        closed.push("anonymous");
+      },
+    });
+    sdk.addModule({
+      name: "same",
+      close: () => {
+        closed.push("duplicate");
+      },
+    });
+
+    await sdk.removeModule("same");
+
+    expect(closed).toEqual(["first"]);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "duplicate_module",
+        moduleName: "same",
+      }),
+    );
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "module_close_error",
+        moduleName: "same",
+      }),
+    );
   });
 
   it("rejects duplicate names without running duplicate setup", () => {
@@ -208,7 +329,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     );
   });
 
-  it("unsubscribes diagnostic handlers explicitly and when a module is removed", () => {
+  it("unsubscribes diagnostic handlers explicitly and when a module is removed", async () => {
     const seen: string[] = [];
     let unsubscribe: (() => void) | undefined;
     const sdk = createFeaturevisor({
@@ -230,7 +351,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
       setup: ({ onDiagnostic }) =>
         onDiagnostic((item) => seen.push(item.code), { logLevel: "debug" }),
     });
-    sdk.removeModule("observer-two");
+    await sdk.removeModule("observer-two");
     sdk.setContext({ two: true });
 
     expect(seen).toEqual(["sdk_initialized"]);
@@ -283,5 +404,41 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     expect(calls).toEqual([]);
     await closing;
     expect(calls).toEqual(["one", "two"]);
+  });
+
+  it("reports close diagnostics and continues closing remaining modules on instance close", async () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const calls: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (item) => diagnostics.push(item),
+      modules: [
+        {
+          name: "broken",
+          close: async () => {
+            await Promise.resolve();
+            calls.push("broken");
+            throw new Error("broken-close");
+          },
+        },
+        {
+          name: "after",
+          close: () => {
+            calls.push("after");
+          },
+        },
+      ],
+    });
+
+    await sdk.close();
+
+    expect(calls).toEqual(["broken", "after"]);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "module_close_error",
+        moduleName: "broken",
+        originalError: expect.any(Error),
+      }),
+    );
   });
 });

@@ -1019,6 +1019,52 @@ describe("sdk: Conditions", function () {
         }),
       ).toEqual(false);
     });
+
+    it("should support NOT around OR for none-match checks", function () {
+      const conditions: Condition[] = [
+        {
+          not: [
+            {
+              or: [
+                {
+                  attribute: "browser_type",
+                  operator: "equals",
+                  value: "chrome",
+                },
+                {
+                  attribute: "browser_type",
+                  operator: "equals",
+                  value: "firefox",
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // match because the OR group does not match
+      expect(
+        datafileReader.allConditionsAreMatched(conditions, {
+          browser_type: "safari",
+        }),
+      ).toEqual(true);
+
+      // not match because the OR group matches
+      expect(
+        datafileReader.allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+        }),
+      ).toEqual(false);
+      expect(
+        datafileReader.allConditionsAreMatched(conditions, {
+          browser_type: "firefox",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should defensively reject empty NOT conditions", function () {
+      expect(datafileReader.allConditionsAreMatched({ not: [] }, {})).toEqual(false);
+    });
   });
 
   describe("nested conditions", function () {

@@ -365,7 +365,7 @@ describe("core: applyContextToConditions", function () {
     });
 
     test("NOT conditions", function () {
-      // NOT with matching condition (all "*" becomes "*")
+      // NOT with matching condition remains an always-false expression
       expect(
         applyContextToConditions(
           datafileReader,
@@ -382,7 +382,9 @@ describe("core: applyContextToConditions", function () {
             platform: "web",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: ["*"],
+      });
 
       // NOT with non-matching condition
       expect(
@@ -411,7 +413,7 @@ describe("core: applyContextToConditions", function () {
         ],
       });
 
-      // NOT with multiple conditions (all "*" becomes "*")
+      // NOT with multiple matching conditions remains an always-false expression
       expect(
         applyContextToConditions(
           datafileReader,
@@ -434,7 +436,9 @@ describe("core: applyContextToConditions", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: ["*"],
+      });
     });
 
     test("nested AND conditions", function () {
@@ -623,7 +627,7 @@ describe("core: applyContextToConditions", function () {
     });
 
     test("nested NOT conditions", function () {
-      // Nested NOT (all "*" becomes "*")
+      // Nested NOT preserves non-broadening false expressions
       expect(
         applyContextToConditions(
           datafileReader,
@@ -650,7 +654,13 @@ describe("core: applyContextToConditions", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual("*");
+      ).toEqual({
+        not: [
+          {
+            not: ["*"],
+          },
+        ],
+      });
     });
 
     test("mixed nested conditions", function () {
@@ -2126,7 +2136,9 @@ describe("core: applyContextToConditions", function () {
 
     test("NOT conditions", function () {
       // All "*" in NOT
-      expect(removeRedundantConditions({ not: ["*", "*", "*"] })).toEqual("*");
+      expect(removeRedundantConditions({ not: ["*", "*", "*"] })).toEqual({
+        not: ["*"],
+      });
 
       // Mixed with "*" in NOT
       expect(
@@ -2299,7 +2311,13 @@ describe("core: applyContextToConditions", function () {
             "*",
           ],
         }),
-      ).toEqual("*");
+      ).toEqual({
+        not: [
+          {
+            not: ["*"],
+          },
+        ],
+      });
 
       // Nested NOT with mixed conditions
       expect(

@@ -435,6 +435,12 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       });
     });
 
+    it("rejects empty and/or/not condition arrays", () => {
+      expectConditionsFailure({ and: [] });
+      expectConditionsFailure({ or: [] });
+      expectConditionsFailure({ not: [] });
+    });
+
     it("rejects invalid nested conditions", () => {
       expectConditionsFailure(
         {

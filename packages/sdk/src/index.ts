@@ -6,6 +6,6 @@ export * from "./conditions.js";
 export * from "./evaluate.js";
 export * from "./datafileReader.js";
 export * from "./child.js";
+export * from "./events.js";
 
-export type { AttributeKey, AttributeValue } from "@featurevisor/types";
-export type { Context } from "@featurevisor/types";
+export type * from "@featurevisor/types";

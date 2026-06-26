@@ -34,6 +34,7 @@ export interface ConfigureBucketValueOptions {
 export type ConfigureBucketValue = (options: ConfigureBucketValueOptions) => BucketValue;
 
 export type FeaturevisorUnsubscribe = () => void;
+export type FeaturevisorModuleUnsubscribe = () => Promise<void>;
 
 export interface FeaturevisorModuleApi {
   getRevision: () => string;
@@ -88,7 +89,21 @@ export class ModulesManager {
     }
   }
 
-  add(module: FeaturevisorModule): (() => void) | undefined {
+  private async closeModule(module: FeaturevisorModule): Promise<void> {
+    try {
+      await module.close?.();
+    } catch (error) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "module_close_error",
+        message: "Module close failed",
+        moduleName: module.name,
+        originalError: error,
+      });
+    }
+  }
+
+  add(module: FeaturevisorModule): FeaturevisorModuleUnsubscribe | undefined {
     if (module.name && this.modules.some((existingModule) => existingModule.name === module.name)) {
       this.reportDiagnostic({
         level: "error",
@@ -103,17 +118,25 @@ export class ModulesManager {
     module.setup?.(this.getModuleApi(module));
     this.modules.push(module);
 
-    return () => {
+    return async () => {
+      const moduleExists = this.modules.indexOf(module) !== -1;
       this.modules = this.modules.filter((existingModule) => existingModule !== module);
       this.clearModuleDiagnosticSubscriptions(module);
+
+      if (moduleExists) {
+        await this.closeModule(module);
+      }
     };
   }
 
-  remove(name: string): void {
+  async remove(name: string): Promise<void> {
     const removedModules = this.modules.filter((module) => module.name === name);
 
     this.modules = this.modules.filter((module) => module.name !== name);
-    removedModules.forEach((module) => this.clearModuleDiagnosticSubscriptions(module));
+    for (const module of removedModules) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      await this.closeModule(module);
+    }
   }
 
   getAll(): FeaturevisorModule[] {
@@ -126,7 +149,7 @@ export class ModulesManager {
 
     for (const module of modules) {
       this.clearModuleDiagnosticSubscriptions(module);
-      await module.close?.();
+      await this.closeModule(module);
     }
   }
 }

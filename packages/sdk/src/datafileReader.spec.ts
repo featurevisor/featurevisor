@@ -166,6 +166,22 @@ describe("sdk: DatafileReader", function () {
           },
         ],
       },
+      {
+        key: "notDutchMobileUsers",
+        segments: [
+          {
+            not: ["mobileUsers", "netherlands"],
+          },
+        ],
+      },
+      {
+        key: "notMobileOrDutchUsers",
+        segments: [
+          {
+            not: [{ or: ["mobileUsers", "netherlands"] }],
+          },
+        ],
+      },
     ];
 
     const datafileContent: DatafileContent = {
@@ -306,7 +322,7 @@ describe("sdk: DatafileReader", function () {
     });
 
     it("should match dutchMobileUsers2", function () {
-      const group = groups.find((g) => g.key === "dutchMobileUsers") as Group;
+      const group = groups.find((g) => g.key === "dutchMobileUsers2") as Group;
 
       // match
       expect(
@@ -488,7 +504,6 @@ describe("sdk: DatafileReader", function () {
 
       // match
       expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(true);
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(true);
       expect(datafileReader.allSegmentsAreMatched(group.segments, { version: "5.6" })).toEqual(
         true,
       );
@@ -503,6 +518,62 @@ describe("sdk: DatafileReader", function () {
         false,
       );
       expect(datafileReader.allSegmentsAreMatched(group.segments, { version: 5.5 })).toEqual(false);
+    });
+
+    it("should treat multiple segments inside NOT as negated AND", function () {
+      const group = groups.find((g) => g.key === "notDutchMobileUsers") as Group;
+
+      // match because not all direct children match
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+
+      // not match because all direct children match
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should support NOT around OR for none-match segment checks", function () {
+      const group = groups.find((g) => g.key === "notMobileOrDutchUsers") as Group;
+
+      // match because none of the OR children match
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+
+      // not match because at least one OR child matches
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(false);
+      expect(
+        datafileReader.allSegmentsAreMatched(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should defensively reject empty NOT segment groups", function () {
+      expect(datafileReader.allSegmentsAreMatched({ not: [] }, {})).toEqual(false);
     });
   });
 });

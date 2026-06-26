@@ -2534,6 +2534,63 @@ describe("core: applyContextToDatafile", function () {
       });
     });
 
+    test("datafile specialization preserves NOT rules as non-broadening expressions", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          web: {
+            conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+          },
+          chrome: {
+            conditions: [{ attribute: "browser", operator: "equals", value: "chrome" }],
+          },
+        },
+        features: {
+          feature1: {
+            bucketBy: ["userId"],
+            traffic: [
+              {
+                key: "not-web",
+                segments: {
+                  not: ["web"],
+                },
+                percentage: 100000,
+              },
+              {
+                key: "not-web-and-chrome",
+                segments: {
+                  not: ["web", "chrome"],
+                },
+                percentage: 100000,
+              },
+            ],
+          },
+        },
+      };
+
+      const webResult = applyContextToDatafile(datafile, { platform: "web" });
+
+      expect(webResult.features.feature1.traffic[0].segments).toEqual({
+        not: ["*"],
+      });
+      expect(webResult.features.feature1.traffic[1].segments).toEqual({
+        not: ["chrome"],
+      });
+
+      const webChromeResult = applyContextToDatafile(datafile, {
+        platform: "web",
+        browser: "chrome",
+      });
+
+      expect(webChromeResult.features.feature1.traffic[0].segments).toEqual({
+        not: ["*"],
+      });
+      expect(webChromeResult.features.feature1.traffic[1].segments).toEqual({
+        not: ["*"],
+      });
+    });
+
     test("datafile immutability - original not modified", function () {
       const datafile: DatafileContent = {
         schemaVersion: "2",

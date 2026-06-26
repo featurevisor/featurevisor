@@ -210,6 +210,37 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
     });
   });
 
+  describe("rule segments", () => {
+    it("rejects empty and/or/not group segment arrays", () => {
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { and: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { or: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { not: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+  });
+
   describe("attribute-aware rule and force conditions", () => {
     it("accepts force conditions using semver operators on oneOf attributes", () => {
       expectParseSuccess(

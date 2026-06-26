@@ -127,9 +127,11 @@ describe("Featurevisor public API: datafiles", () => {
   });
 
   it("reports exact changed keys and replacement state, and supports unsubscribe", () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
     const events: any[] = [];
     const sdk = createFeaturevisor({
-      logLevel: "fatal",
+      logLevel: "info",
+      onDiagnostic: (item) => diagnostics.push(item),
       datafile: createDatafile({
         revision: "one",
         features: {
@@ -163,6 +165,17 @@ describe("Featurevisor public API: datafiles", () => {
         replaced: false,
       },
     ]);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        level: "info",
+        code: "datafile_set",
+        revision: "two",
+        previousRevision: "one",
+        revisionChanged: true,
+        features: ["changed", "added"],
+        replaced: false,
+      }),
+    );
   });
 
   it("does not report merged-away entities as removed, but replacement does", () => {

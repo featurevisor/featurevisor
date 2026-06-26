@@ -155,14 +155,17 @@ export class DatafileReader {
     }
 
     if ("not" in conditions && Array.isArray(conditions.not)) {
-      return conditions.not.every(
-        () =>
-          this.allConditionsAreMatched(
-            {
-              and: conditions.not,
-            },
-            context,
-          ) === false,
+      if (conditions.not.length === 0) {
+        return false;
+      }
+
+      return (
+        this.allConditionsAreMatched(
+          {
+            and: conditions.not,
+          },
+          context,
+        ) === false
       );
     }
 
@@ -209,8 +212,17 @@ export class DatafileReader {
       }
 
       if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
-        return groupSegments.not.every(
-          (groupSegment) => this.allSegmentsAreMatched(groupSegment, context) === false,
+        if (groupSegments.not.length === 0) {
+          return false;
+        }
+
+        return (
+          this.allSegmentsAreMatched(
+            {
+              and: groupSegments.not,
+            },
+            context,
+          ) === false
         );
       }
     }

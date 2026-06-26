@@ -73,9 +73,13 @@ export function removeRedundantConditions(
       const processed = conditions.not.map((c) => removeRedundantConditions(c)) as Condition[];
       const filtered = processed.filter((c) => c !== "*");
 
-      // If all were "*", return "*"
+      // `not` negates the implicit AND of its children. Matched children are true
+      // and can be removed: not(true && X) becomes not(X). If every child was
+      // true, keep not("*") so it remains an always-false expression.
       if (filtered.length === 0) {
-        return "*";
+        return {
+          not: ["*"],
+        } as NotCondition;
       }
 
       return {

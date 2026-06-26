@@ -22,12 +22,24 @@ describe("Emitter", () => {
     expect(emitter.listeners["datafile_set"].length).toBe(1);
 
     // trigger already subscribed event
-    emitter.trigger("datafile_set", { key: "value" });
+    emitter.trigger("datafile_set", {
+      revision: "2",
+      previousRevision: "1",
+      revisionChanged: true,
+      features: ["feature"],
+      replaced: false,
+    });
     expect(handledDetails.length).toBe(1);
-    expect(handledDetails[0]).toEqual({ key: "value" });
+    expect(handledDetails[0]).toEqual({
+      revision: "2",
+      previousRevision: "1",
+      revisionChanged: true,
+      features: ["feature"],
+      replaced: false,
+    });
 
     // trigger unsubscribed event
-    emitter.trigger("sticky_set", { key: "value2" });
+    emitter.trigger("sticky_set", { features: ["feature"], replaced: false });
     expect(handledDetails.length).toBe(1);
 
     // unsubscribe
@@ -37,5 +49,23 @@ describe("Emitter", () => {
     // clear all
     emitter.clearAll();
     expect(emitter.listeners).toEqual({});
+  });
+
+  it("triggers a snapshot of listeners even if listeners unsubscribe during dispatch", function () {
+    const calls: string[] = [];
+    let unsubscribeSecond: (() => void) | undefined;
+
+    emitter.on("sticky_set", () => {
+      calls.push("first");
+      unsubscribeSecond?.();
+    });
+    unsubscribeSecond = emitter.on("sticky_set", () => {
+      calls.push("second");
+    });
+
+    emitter.trigger("sticky_set", { features: ["feature"], replaced: false });
+    emitter.trigger("sticky_set", { features: ["feature"], replaced: false });
+
+    expect(calls).toEqual(["first", "second", "first"]);
   });
 });

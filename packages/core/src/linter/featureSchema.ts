@@ -1322,17 +1322,17 @@ export function getFeatureZodSchema(
   const andOrNotGroupSegment = z.union([
     z
       .object({
-        and: z.array(z.lazy(() => groupSegmentZodSchema)),
+        and: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        or: z.array(z.lazy(() => groupSegmentZodSchema)),
+        or: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        not: z.array(z.lazy(() => groupSegmentZodSchema)),
+        not: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
   ]);
