@@ -14,6 +14,9 @@ module.exports = {
   coveragePathIgnorePatterns: [
     "src/index.ts",
     "src/internal.ts",
+    "src/events.ts",
+    "src/modules.ts",
+    "src/diagnostics.ts",
     "src/murmurhash.ts",
     "src/compareVersions.ts",
   ],

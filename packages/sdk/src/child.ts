@@ -7,21 +7,38 @@ import type {
   EvaluatedFeatures,
 } from "@featurevisor/types";
 
-import { EventName, EventCallback, Emitter } from "./emitter.js";
 import type { Featurevisor, OverrideOptions } from "./instance.js";
-import { getParamsForStickySetEvent } from "./events.js";
+import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
+
+function getStickySetEventDetails(
+  previousStickyFeatures: StickyFeatures = {},
+  newStickyFeatures: StickyFeatures = {},
+  replace: boolean,
+) {
+  const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
+
+  return {
+    features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    replaced: replace,
+  };
+}
+
+type ChildEventName = "context_set" | "sticky_set";
+
+type ChildListeners = {
+  [TEventName in ChildEventName]?: EventCallback<TEventName>[];
+};
 
 export class FeaturevisorChildInstance {
   private parent: Featurevisor;
   private context: Context;
   private sticky: StickyFeatures;
-  private emitter: Emitter;
+  private listeners: ChildListeners = {};
 
   constructor(options: { parent: Featurevisor; context: Context; sticky?: StickyFeatures }) {
     this.parent = options.parent;
     this.context = options.context;
     this.sticky = options.sticky || {};
-    this.emitter = new Emitter();
   }
 
   on<TEventName extends EventName>(
@@ -33,18 +50,64 @@ export class FeaturevisorChildInstance {
     callback: EventCallback<TEventName>,
   ): () => void {
     if (eventName === "context_set") {
-      return this.emitter.on("context_set", callback as EventCallback<"context_set">);
+      return this.onChildEvent("context_set", callback as EventCallback<"context_set">);
     }
 
     if (eventName === "sticky_set") {
-      return this.emitter.on("sticky_set", callback as EventCallback<"sticky_set">);
+      return this.onChildEvent("sticky_set", callback as EventCallback<"sticky_set">);
     }
 
     return this.parent.on(eventName as never, callback as never);
   }
 
+  private onChildEvent<TEventName extends ChildEventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
+    }
+
+    const listeners = this.listeners[eventName] as EventCallback<TEventName>[];
+    listeners.push(callback);
+
+    let isActive = true;
+
+    return function unsubscribe() {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+
+      const index = listeners.indexOf(callback);
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private trigger<TEventName extends ChildEventName>(
+    eventName: TEventName,
+    details: EventDetailsByName[TEventName],
+  ) {
+    const listeners = this.listeners[eventName];
+
+    if (!listeners) {
+      return;
+    }
+
+    listeners.slice().forEach(function (listener) {
+      try {
+        listener(details as never);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
   close() {
-    this.emitter.clearAll();
+    this.listeners = {};
   }
 
   setContext(context: Context, replace = false) {
@@ -54,7 +117,7 @@ export class FeaturevisorChildInstance {
       this.context = { ...this.context, ...context };
     }
 
-    this.emitter.trigger("context_set", {
+    this.trigger("context_set", {
       context: this.context,
       replaced: replace,
     });
@@ -93,9 +156,9 @@ export class FeaturevisorChildInstance {
       };
     }
 
-    const params = getParamsForStickySetEvent(previousStickyFeatures, this.sticky, replace);
+    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
 
-    this.emitter.trigger("sticky_set", params);
+    this.trigger("sticky_set", params);
   }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}, options: OverrideOptions = {}): boolean {

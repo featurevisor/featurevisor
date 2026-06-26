@@ -18,39 +18,28 @@ import type {
   GroupSegment,
 } from "@featurevisor/types";
 
-import { ModulesManager } from "./modules.js";
+import type { FeaturevisorModule } from "./modules.js";
 import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
-export const EvaluationReason = {
-  // feature specific
-  FEATURE_NOT_FOUND: "feature_not_found", // feature is not found in datafile
-  DISABLED: "disabled", // feature is disabled
-  REQUIRED: "required", // required features are not enabled
-  OUT_OF_RANGE: "out_of_range", // out of range when mutually exclusive experiments are involved via Groups
-
-  // variations specific
-  NO_VARIATIONS: "no_variations", // feature has no variations
-  VARIATION_DISABLED: "variation_disabled", // feature is disabled, and variation's disabledVariationValue is used
-
-  // variable specific
-  VARIABLE_NOT_FOUND: "variable_not_found", // variable's schema is not defined in the feature
-  VARIABLE_DEFAULT: "variable_default", // default variable value used
-  VARIABLE_DISABLED: "variable_disabled", // feature is disabled, and variable's disabledValue is used
-  VARIABLE_OVERRIDE_VARIATION: "variable_override_variation", // variable overridden from inside a variation
-  VARIABLE_OVERRIDE_RULE: "variable_override_rule", // variable overridden from inside a rule
-
-  // common
-  NO_MATCH: "no_match", // no rules matched
-  FORCED: "forced", // against a forced rule
-  STICKY: "sticky", // against a sticky feature
-  RULE: "rule", // against a regular rule
-  ALLOCATED: "allocated", // regular allocation based on bucketing
-
-  ERROR: "error", // error
-} as const;
-
-export type EvaluationReason = (typeof EvaluationReason)[keyof typeof EvaluationReason];
+export type EvaluationReason =
+  | "feature_not_found"
+  | "disabled"
+  | "required"
+  | "out_of_range"
+  | "no_variations"
+  | "variation_disabled"
+  | "variable_not_found"
+  | "variable_default"
+  | "variable_disabled"
+  | "variable_override_variation"
+  | "variable_override_rule"
+  | "no_match"
+  | "forced"
+  | "sticky"
+  | "rule"
+  | "allocated"
+  | "error";
 
 type EvaluationType = "flag" | "variation" | "variable";
 
@@ -108,7 +97,7 @@ export interface EvaluateDependencies {
   context: Context;
 
   reportDiagnostic: FeaturevisorDiagnosticReporter;
-  modulesManager: ModulesManager;
+  modules: FeaturevisorModule[];
   datafile: FeaturevisorDatafile;
 
   // OverrideOptions
@@ -147,12 +136,11 @@ function reportEvaluationDiagnostic(
 
 export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
   try {
-    const { modulesManager } = opts;
-    const modules = modulesManager.getAll();
+    const { modules } = opts;
 
     // run before modules
     let options = opts;
-    for (const module of modulesManager.getAll()) {
+    for (const module of modules) {
       if (module.before) {
         options = module.before(options);
       }
@@ -211,19 +199,10 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
   }
 }
 
-export function evaluate(options: EvaluateOptions): Evaluation {
-  const {
-    type,
-    featureKey,
-    variableKey,
-    context,
-    reportDiagnostic,
-    datafile,
-    sticky,
-    modulesManager,
-  } = options;
+function evaluate(options: EvaluateOptions): Evaluation {
+  const { type, featureKey, variableKey, context, reportDiagnostic, datafile, sticky, modules } =
+    options;
 
-  const modules = modulesManager.getAll();
   let evaluation: Evaluation;
 
   try {

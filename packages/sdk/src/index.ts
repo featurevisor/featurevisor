@@ -23,9 +23,11 @@ export type {
   ContextSetEventDetails,
   DatafileSetEventDetails,
   ErrorEventDetails,
+  EventCallback,
+  EventDetails,
   EventDetailsByName,
+  EventName,
   StickySetEventDetails,
 } from "./events.js";
-export type { EventCallback, EventDetails, EventName } from "./emitter.js";
 
 export type * from "@featurevisor/types";

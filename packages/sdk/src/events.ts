@@ -1,4 +1,4 @@
-import type { StickyFeatures, FeatureKey, DatafileContent } from "@featurevisor/types";
+import type { FeatureKey } from "@featurevisor/types";
 
 import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 
@@ -31,83 +31,10 @@ export interface EventDetailsByName {
   error: ErrorEventDetails;
 }
 
-export function getParamsForStickySetEvent(
-  previousStickyFeatures: StickyFeatures = {},
-  newStickyFeatures: StickyFeatures = {},
-  replace: boolean,
-): StickySetEventDetails {
-  const keysBefore = Object.keys(previousStickyFeatures);
-  const keysAfter = Object.keys(newStickyFeatures);
+export type EventName = keyof EventDetailsByName;
 
-  const allKeys = [...keysBefore, ...keysAfter];
-  const uniqueFeaturesAffected = allKeys.filter(
-    (element, index) => allKeys.indexOf(element) === index,
-  );
+export type EventDetails = EventDetailsByName[EventName];
 
-  return {
-    features: uniqueFeaturesAffected,
-    replaced: replace,
-  };
-}
-
-export function getParamsForDatafileSetEvent(
-  previousDatafile: DatafileContent,
-  newDatafile: DatafileContent,
-  replace = false,
-): DatafileSetEventDetails {
-  const previousRevision = previousDatafile.revision;
-  const previousFeatureKeys = Object.keys(previousDatafile.features);
-
-  const newRevision = newDatafile.revision;
-  const newFeatureKeys = Object.keys(newDatafile.features);
-
-  // results
-  const removedFeatures: FeatureKey[] = [];
-  const changedFeatures: FeatureKey[] = [];
-  const addedFeatures: FeatureKey[] = [];
-
-  // checking against existing datafile
-  for (const previousFeatureKey of previousFeatureKeys) {
-    if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
-      // feature was removed in new datafile
-      removedFeatures.push(previousFeatureKey);
-
-      continue;
-    }
-
-    // feature exists in both datafiles, check if it was changed
-    const previousFeature = previousDatafile.features[previousFeatureKey];
-    const newFeature = newDatafile.features[previousFeatureKey];
-
-    if (previousFeature?.hash !== newFeature?.hash) {
-      // feature was changed in new datafile
-      changedFeatures.push(previousFeatureKey);
-    }
-  }
-
-  // checking against new datafile
-  for (const newFeatureKey of newFeatureKeys) {
-    if (previousFeatureKeys.indexOf(newFeatureKey) === -1) {
-      // feature was added in new datafile
-      addedFeatures.push(newFeatureKey);
-    }
-  }
-
-  // combine all affected feature keys
-  const allAffectedFeatures: FeatureKey[] = [
-    ...removedFeatures,
-    ...changedFeatures,
-    ...addedFeatures,
-  ].filter((element, index, array) => array.indexOf(element) === index);
-
-  const details = {
-    revision: newRevision,
-    previousRevision,
-    revisionChanged: previousRevision !== newRevision,
-
-    features: allAffectedFeatures,
-    replaced: replace,
-  };
-
-  return details;
-}
+export type EventCallback<TEventName extends EventName = EventName> = (
+  details: EventDetailsByName[TEventName],
+) => void;

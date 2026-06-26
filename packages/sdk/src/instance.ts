@@ -16,25 +16,55 @@ import type {
   GroupSegment,
   Condition,
   Force,
+  VariableType,
 } from "@featurevisor/types";
 
-import { ModulesManager, FeaturevisorModule, FeaturevisorModuleApi } from "./modules.js";
-import { Emitter, EventCallback, EventName } from "./emitter.js";
-import { Evaluation, EvaluateDependencies, evaluateWithModules, ForceResult } from "./evaluate.js";
+import type {
+  FeaturevisorModule,
+  FeaturevisorModuleApi,
+  FeaturevisorModuleUnsubscribe,
+} from "./modules.js";
+import { evaluateWithModules } from "./evaluate.js";
+import type { Evaluation, EvaluateDependencies, ForceResult } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
-import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events.js";
-import { getValueByType } from "./helpers.js";
+import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 import { conditionIsMatched } from "./conditions.js";
-import {
-  FEATUREVISOR_DIAGNOSTIC_PREFIX,
+import type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
   FeaturevisorLogLevel,
   FeaturevisorModuleDiagnosticOptions,
   FeaturevisorModuleReportedDiagnostic,
-  getConsoleMethodForDiagnostic,
-  shouldLog,
 } from "./diagnostics.js";
+
+const FEATUREVISOR_DIAGNOSTIC_PREFIX = "[Featurevisor]";
+const FEATUREVISOR_LOG_LEVELS: FeaturevisorLogLevel[] = ["fatal", "error", "warn", "info", "debug"];
+
+function shouldLog(
+  configuredLevel: FeaturevisorLogLevel,
+  diagnosticLevel: FeaturevisorLogLevel,
+): boolean {
+  return (
+    FEATUREVISOR_LOG_LEVELS.indexOf(configuredLevel) >=
+    FEATUREVISOR_LOG_LEVELS.indexOf(diagnosticLevel)
+  );
+}
+
+function getConsoleMethodForDiagnostic(level: FeaturevisorLogLevel) {
+  if (level === "fatal" || level === "error") {
+    return "error";
+  }
+
+  if (level === "warn") {
+    return "warn";
+  }
+
+  if (level === "debug") {
+    return "debug";
+  }
+
+  return "info";
+}
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -77,6 +107,89 @@ function mergeStoredDatafile(
   };
 }
 
+function getStickySetEventDetails(
+  previousStickyFeatures: StickyFeatures = {},
+  newStickyFeatures: StickyFeatures = {},
+  replace: boolean,
+) {
+  const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
+
+  return {
+    features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    replaced: replace,
+  };
+}
+
+function getDatafileSetEventDetails(
+  previousDatafile: DatafileContent,
+  newDatafile: DatafileContent,
+  replace = false,
+) {
+  const previousRevision = previousDatafile.revision;
+  const previousFeatureKeys = Object.keys(previousDatafile.features);
+  const newRevision = newDatafile.revision;
+  const newFeatureKeys = Object.keys(newDatafile.features);
+  const features: FeatureKey[] = [];
+
+  for (const previousFeatureKey of previousFeatureKeys) {
+    if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
+      features.push(previousFeatureKey);
+      continue;
+    }
+
+    if (
+      previousDatafile.features[previousFeatureKey]?.hash !==
+      newDatafile.features[previousFeatureKey]?.hash
+    ) {
+      features.push(previousFeatureKey);
+    }
+  }
+
+  for (const newFeatureKey of newFeatureKeys) {
+    if (
+      previousFeatureKeys.indexOf(newFeatureKey) === -1 &&
+      features.indexOf(newFeatureKey) === -1
+    ) {
+      features.push(newFeatureKey);
+    }
+  }
+
+  return {
+    revision: newRevision,
+    previousRevision,
+    revisionChanged: previousRevision !== newRevision,
+    features,
+    replaced: replace,
+  };
+}
+
+function getValueByType(value: VariableValue, fieldType: string | VariableType): VariableValue {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  switch (fieldType) {
+    case "string":
+      return typeof value === "string" ? value : null;
+    case "integer": {
+      const result = typeof value === "number" ? value : Number(value);
+      return Number.isInteger(result) ? result : null;
+    }
+    case "double": {
+      const result = typeof value === "number" ? value : Number(value);
+      return Number.isFinite(result) ? result : null;
+    }
+    case "boolean":
+      return typeof value === "boolean" ? value : null;
+    case "array":
+      return Array.isArray(value) ? value : null;
+    case "object":
+      return typeof value === "object" && !Array.isArray(value) ? value : null;
+    default:
+      return value;
+  }
+}
+
 export interface OverrideOptions {
   sticky?: StickyFeatures;
 
@@ -99,6 +212,10 @@ interface FeaturevisorModuleDiagnosticSubscription {
   logLevel: FeaturevisorLogLevel;
 }
 
+type Listeners = {
+  [TEventName in EventName]?: EventCallback<TEventName>[];
+};
+
 export class Featurevisor {
   // from options
   private context: Context = {};
@@ -109,9 +226,9 @@ export class Featurevisor {
   // internally created
   private datafile: DatafileContent = emptyDatafile;
   private regexCache: Record<string, RegExp> = {};
-  private modulesManager: ModulesManager;
+  private modules: FeaturevisorModule[] = [];
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
-  private emitter: Emitter;
+  private listeners: Listeners = {};
   private closed = false;
 
   constructor(options: FeaturevisorOptions) {
@@ -119,14 +236,10 @@ export class Featurevisor {
     this.context = options.context || {};
     this.logLevel = options.logLevel || "info";
     this.onDiagnostic = options.onDiagnostic;
-    this.emitter = new Emitter();
     this.sticky = options.sticky;
 
-    this.modulesManager = new ModulesManager({
-      modules: options.modules || [],
-      reportDiagnostic: this.reportDiagnostic,
-      getModuleApi: this.getModuleApi,
-      clearModuleDiagnosticSubscriptions: this.clearModuleDiagnosticSubscriptions,
+    (options.modules || []).forEach((module) => {
+      this.addModule(module);
     });
 
     if (options.datafile) {
@@ -156,7 +269,7 @@ export class Featurevisor {
       const storedDatafile = replace
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
-      const details = getParamsForDatafileSetEvent(this.datafile, storedDatafile, replace);
+      const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
 
       this.datafile = storedDatafile;
       this.regexCache = {};
@@ -167,7 +280,7 @@ export class Featurevisor {
         message: "Datafile set",
         ...details,
       });
-      this.emitter.trigger("datafile_set", details);
+      this.trigger("datafile_set", details);
     } catch (e) {
       this.reportDiagnostic({
         level: "error",
@@ -194,7 +307,7 @@ export class Featurevisor {
       };
     }
 
-    const params = getParamsForStickySetEvent(previousStickyFeatures, this.sticky, replace);
+    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
 
     this.reportDiagnostic({
       level: "info",
@@ -202,7 +315,7 @@ export class Featurevisor {
       message: "Sticky features set",
       ...params,
     });
-    this.emitter.trigger("sticky_set", params);
+    this.trigger("sticky_set", params);
   }
 
   getRevision(): string {
@@ -464,20 +577,62 @@ export class Featurevisor {
     return segments;
   }
 
-  addModule(module: FeaturevisorModule) {
-    if (this.closed) {
-      return;
+  private async closeModule(module: FeaturevisorModule): Promise<void> {
+    try {
+      await module.close?.();
+    } catch (error) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "module_close_error",
+        message: "Module close failed",
+        moduleName: module.name,
+        originalError: error,
+      });
     }
-
-    return this.modulesManager.add(module);
   }
 
-  removeModule(name: string) {
+  addModule(module: FeaturevisorModule): FeaturevisorModuleUnsubscribe | undefined {
     if (this.closed) {
       return;
     }
 
-    return this.modulesManager.remove(name);
+    if (module.name && this.modules.some((existingModule) => existingModule.name === module.name)) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "duplicate_module",
+        message: "Duplicate module name",
+        moduleName: module.name,
+      });
+
+      return;
+    }
+
+    module.setup?.(this.getModuleApi(module));
+    this.modules.push(module);
+
+    return async () => {
+      const moduleExists = this.modules.indexOf(module) !== -1;
+      this.modules = this.modules.filter((existingModule) => existingModule !== module);
+      this.clearModuleDiagnosticSubscriptions(module);
+
+      if (moduleExists) {
+        await this.closeModule(module);
+      }
+    };
+  }
+
+  async removeModule(name: string): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+
+    const removedModules = this.modules.filter((module) => module.name === name);
+
+    this.modules = this.modules.filter((module) => module.name !== name);
+    for (const module of removedModules) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      await this.closeModule(module);
+    }
   }
 
   on<TEventName extends EventName>(
@@ -488,7 +643,46 @@ export class Featurevisor {
       return () => {};
     }
 
-    return this.emitter.on(eventName, callback);
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
+    }
+
+    const listeners = this.listeners[eventName] as EventCallback<TEventName>[];
+    listeners.push(callback);
+
+    let isActive = true;
+
+    return function unsubscribe() {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+
+      const index = listeners.indexOf(callback);
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private trigger<TEventName extends EventName>(
+    eventName: TEventName,
+    details: EventDetailsByName[TEventName],
+  ) {
+    const listeners = this.listeners[eventName];
+
+    if (!listeners) {
+      return;
+    }
+
+    listeners.slice().forEach(function (listener) {
+      try {
+        listener(details as never);
+      } catch (err) {
+        console.error(err);
+      }
+    });
   }
 
   async close() {
@@ -497,9 +691,16 @@ export class Featurevisor {
     }
 
     this.closed = true;
-    await this.modulesManager.closeAll();
+    const modules = this.modules.slice();
+    this.modules = [];
+
+    for (const module of modules) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      await this.closeModule(module);
+    }
+
     this.moduleDiagnosticSubscriptions = [];
-    this.emitter.clearAll();
+    this.listeners = {};
   }
 
   private reportDiagnostic = (
@@ -528,7 +729,7 @@ export class Featurevisor {
     }
 
     if (diagnostic.level === "error") {
-      this.emitter.trigger("error", { diagnostic });
+      this.trigger("error", { diagnostic });
     }
   };
 
@@ -589,7 +790,7 @@ export class Featurevisor {
       this.context = { ...this.context, ...context };
     }
 
-    this.emitter.trigger("context_set", {
+    this.trigger("context_set", {
       context: this.context,
       replaced: replace,
     });
@@ -630,7 +831,7 @@ export class Featurevisor {
       context: this.getContext(context),
 
       reportDiagnostic: this.reportDiagnostic,
-      modulesManager: this.modulesManager,
+      modules: this.modules,
       datafile: this,
 
       // OverrideOptions
