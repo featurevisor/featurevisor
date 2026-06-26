@@ -46,9 +46,9 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 
 | Term            | Meaning                                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Datafile**    | Static JSON output the SDK loads. One per target and optional environment.                                              |
+| **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Generated datafiles use schema version 2.   |
 | **Tag**         | Feature metadata used by targets to select features.                                                                    |
-| **Target**      | A generated datafile definition with optional tag filters and build-time context.                                       |
+| **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
 | **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout/promo`). Organizational only. |
 | **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
 | **State files** | `.featurevisor/state-*.json` snapshots used to preserve bucketing across builds.                                        |

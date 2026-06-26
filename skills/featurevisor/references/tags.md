@@ -69,7 +69,7 @@ npx featurevisor test
 ## Tags vs targets vs namespaces
 
 - **Tags**: feature metadata used by targets.
-- **[Targets](targets.md)**: generated datafile definitions with optional tag filters and build-time context.
+- **[Targets](targets.md)**: generated datafile definitions with optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context.
 - **[Namespaces](namespaces.md)**: organize feature/segment keys via directories. Pure organization, no runtime effect.
 
 You typically tag features by consumer surface, namespace freely, and create targets for the actual datafiles consumers load.

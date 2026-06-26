@@ -5,9 +5,9 @@ description: Author and query Featurevisor projects — Git-based feature flags 
 
 # Featurevisor
 
-You are helping the user author and query a [Featurevisor](https://featurevisor.com) project — a Git-based feature management tool. Featurevisor projects are standalone repositories of YAML (default) or JSON definitions that compile into per-environment/per-tag datafiles consumed by SDKs.
+You are helping the user author and query a [Featurevisor](https://featurevisor.com) project — a Git-based feature management tool. Featurevisor projects are standalone repositories of YAML (default) or JSON definitions that compile into per-environment/per-target datafiles consumed by SDKs.
 
-The full documentation as a single file is at <https://featurevisor.com/llms.txt>. Fetch it on demand if a topic isn't covered in this skill's references.
+The compact documentation index is at <https://featurevisor.com/llms.txt>. The complete documentation feed is at <https://featurevisor.com/llms-full.txt>. Fetch the full feed on demand if a topic isn't covered in this skill's references.
 
 ## Orient yourself first
 
@@ -53,7 +53,7 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | Any CLI invocation, flags, `list`/`find-usage`/`evaluate`                                                                                     | [cli.md](references/cli.md)                                       |
 | Answer "what's enabled where / who uses X"                                                                                                    | [querying.md](references/querying.md)                             |
 | Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
-| Analytics activation hooks (GA4 / Segment / etc.)                                                                                             | [tracking.md](references/tracking.md)                             |
+| Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
 | **Common patterns** — A/B, multivariate, entitlements, dependencies, testing-in-prod, deprecation, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
 | Terminology refresher                                                                                                                         | [glossary.md](references/glossary.md)                             |
 
@@ -151,6 +151,8 @@ Read [variables-schemas.md](references/variables-schemas.md) — covers all vari
 
 Both segment `conditions` and feature rule `segments` support `and`, `or`, `not` with nesting. See [segments.md](references/segments.md) and [templates/segment-complex.yml](templates/segment-complex.yml).
 
+Important `not` rule: multiple direct children are treated as an implicit **AND** and then negated. So `not: [A, B]` means `not (A and B)`, not `not A and not B`. For "none of these match", wrap them in `or`: `not: [{ or: [A, B] }]`.
+
 ### Mutual-exclusion experiments
 
 Read [groups.md](references/groups.md). Plan slot percentages **before** adding rules — once users are bucketed in a group, changing slot percentages re-buckets them. Use [templates/group.yml](templates/group.yml).
@@ -180,7 +182,8 @@ SDK implementation is **out of scope** for this skill — focus on authoring and
 - Vue: <https://featurevisor.com/docs/vue>
 - React Native: <https://featurevisor.com/docs/react-native>
 - Other languages (Python, Ruby, Go, Java, Swift, PHP, etc.): <https://featurevisor.com/docs/sdks>
-- Full docs as a single file: <https://featurevisor.com/llms.txt>
+- Compact docs index: <https://featurevisor.com/llms.txt>
+- Full docs feed: <https://featurevisor.com/llms-full.txt>
 
 You may briefly explain how an authored feature would be consumed (`f.isEnabled('key')`, `f.getVariation('key')`, `f.getVariable('key', 'varName')`), but don't write application code unless asked.
 

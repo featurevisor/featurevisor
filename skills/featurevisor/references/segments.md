@@ -73,6 +73,35 @@ conditions:
       value: us
 ```
 
+Multiple direct children are treated as an implicit `and`, then negated:
+
+```yaml
+conditions:
+  not:
+    - attribute: country
+      operator: equals
+      value: us
+    - attribute: device
+      operator: equals
+      value: iPhone
+```
+
+This means "not both US and iPhone". It still matches US non-iPhone users and iPhone users outside the US.
+
+For "none of these match", wrap the children in `or`:
+
+```yaml
+conditions:
+  not:
+    - or:
+        - attribute: country
+          operator: equals
+          value: us
+        - attribute: country
+          operator: equals
+          value: ca
+```
+
 ### Nested combinations
 
 ```yaml

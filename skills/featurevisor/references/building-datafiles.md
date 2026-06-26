@@ -6,7 +6,7 @@ Full docs:
 - Deployment: <https://featurevisor.com/docs/deployment>
 - State files: <https://featurevisor.com/docs/state-files>
 
-Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target.
+Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
 ## Build (agent default)
 

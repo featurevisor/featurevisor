@@ -91,8 +91,8 @@ npx featurevisor list --features --json --pretty
 Filter flags (combine as needed):
 
 | Flag                                         | Effect                                   |
-| -------------------------------------------- | ---------------------------------------- | ------------------ |
-| `--archived=true                             | false`                                   | by archived status |
+| -------------------------------------------- | ---------------------------------------- |
+| `--archived=true|false`                      | by archived status                       |
 | `--description=<pattern>`                    | description regex                        |
 | `--disabledIn=<env>`                         | feature disabled in env (no rule, or 0%) |
 | `--enabledIn=<env>`                          | feature has any rule >0% in env          |
@@ -243,6 +243,7 @@ Generates typed accessors from feature definitions. Other languages: see <https:
 npx featurevisor promote --from=dev --to=staging                       # preview
 npx featurevisor promote --from=dev --to=staging --apply               # write destination files
 npx featurevisor promote --from=dev --to=staging --includeFeatures="checkout*"
+npx featurevisor promote --from=dev --to=staging --excludeFeatures="experimental*"
 npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source | destination | fail (default source)
 npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
 ```

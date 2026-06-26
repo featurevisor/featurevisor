@@ -62,7 +62,7 @@ Tag a feature with `all` (or your project's chosen catch-all) only if every cons
 
 ## Targets
 
-Targets define generated datafiles under `targets/`. They can include optional tag filters and build-time context. See <https://featurevisor.com/docs/targets>.
+Targets define generated datafiles under `targets/`. They can include optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context. See <https://featurevisor.com/docs/targets>.
 
 ## Sets
 

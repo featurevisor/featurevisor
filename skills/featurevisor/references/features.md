@@ -115,6 +115,20 @@ segments:
   not:
     - germany
 
+# "not" negates the implicit AND of its direct children:
+# this matches users who are not both mobileUsers and netherlands
+segments:
+  not:
+    - mobileUsers
+    - netherlands
+
+# for "none of these segments match", wrap the children in `or`
+segments:
+  not:
+    - or:
+        - mobileUsers
+        - desktopUsers
+
 # combined (implicit and across siblings)
 segments:
   - and:

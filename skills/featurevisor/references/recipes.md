@@ -96,7 +96,7 @@ const v = f.getVariation('heroCopy', { userId })
 if (v === 'treatment') renderNew(); else renderOld()
 ```
 
-Track activation with the [tracking hook](tracking.md). Don't rename `control`/`treatment` after launch — your analytics dashboards key off these strings.
+Track activation with the [tracking module](tracking.md). Don't rename `control`/`treatment` after launch — your analytics dashboards key off these strings.
 
 ---
 
