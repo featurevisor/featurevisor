@@ -74,26 +74,26 @@ describe("sdk: instance datafile methods", function () {
       },
     };
 
-    const reader = createFeaturevisor({
+    const featurevisor = createFeaturevisor({
       datafile: datafileJson,
       logLevel: "fatal",
     });
     const segmentsAreMatched = (segments: GroupSegment | GroupSegment[] | "*", context: Context) =>
-      allSegmentsAreMatched(segments, context, (segmentKey) => reader.getSegment(segmentKey));
+      allSegmentsAreMatched(segments, context, (segmentKey) => featurevisor.getSegment(segmentKey));
 
-    expect(reader.getRevision()).toEqual("1");
-    expect(reader.getSchemaVersion()).toEqual("2");
-    expect(reader.getSegment("netherlands")).toEqual(datafileJson.segments.netherlands);
-    expect((reader.getSegment("germany") as any).conditions[0].value).toEqual("de");
-    expect(reader.getSegment("belgium")).toEqual(undefined);
+    expect(featurevisor.getRevision()).toEqual("1");
+    expect(featurevisor.getSchemaVersion()).toEqual("2");
+    expect(featurevisor.getSegment("netherlands")).toEqual(datafileJson.segments.netherlands);
+    expect((featurevisor.getSegment("germany") as any).conditions[0].value).toEqual("de");
+    expect(featurevisor.getSegment("belgium")).toEqual(undefined);
 
-    expect(reader.getFeature("test")).toEqual(datafileJson.features.test);
-    expect(reader.getVariableKeys("test")).toEqual([]);
-    expect(reader.getFeature("test2")).toEqual(undefined);
-    expect(reader.getVariableKeys("test2")).toEqual([]);
+    expect(featurevisor.getFeature("test")).toEqual(datafileJson.features.test);
+    expect(featurevisor.getVariableKeys("test")).toEqual([]);
+    expect(featurevisor.getFeature("test2")).toEqual(undefined);
+    expect(featurevisor.getVariableKeys("test2")).toEqual([]);
 
-    expect(reader.hasVariations("testWithNoVariations")).toEqual(false);
-    expect(reader.hasVariations("unknownFeature")).toEqual(false);
+    expect(featurevisor.hasVariations("testWithNoVariations")).toEqual(false);
+    expect(featurevisor.hasVariations("unknownFeature")).toEqual(false);
 
     expect(segmentsAreMatched("*", {})).toEqual(true);
     expect(segmentsAreMatched("unknownSegment", {})).toEqual(false);

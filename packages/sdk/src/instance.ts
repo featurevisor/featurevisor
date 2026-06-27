@@ -220,7 +220,7 @@ type Listeners = {
   [TEventName in EventName]?: EventCallback<TEventName>[];
 };
 
-type EvaluationDataProviderAdapter = EvaluateDependencies["datafile"];
+type InstanceEvaluationDataProvider = EvaluateDependencies["datafile"];
 
 export class Featurevisor {
   // from options
@@ -732,7 +732,7 @@ export class Featurevisor {
       // The evaluator only needs this small datafile/matching adapter shape.
       // The methods are private on the instance, so TypeScript needs this
       // internal cast; avoid widening these helpers into public instance APIs.
-      datafile: this as unknown as EvaluationDataProviderAdapter,
+      datafile: this as unknown as InstanceEvaluationDataProvider,
 
       // OverrideOptions
       sticky: options.sticky
