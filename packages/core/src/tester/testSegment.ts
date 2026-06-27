@@ -5,7 +5,7 @@ import type {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { createFeaturevisor } from "@featurevisor/sdk/internal";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 

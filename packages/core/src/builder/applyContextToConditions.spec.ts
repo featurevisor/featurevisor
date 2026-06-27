@@ -5,7 +5,7 @@ import {
   removeRedundantConditions,
   applyContextToConditions,
 } from "./applyContextToConditions";
-import { createFeaturevisor } from "@featurevisor/sdk/internal";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 describe("core: applyContextToConditions", function () {
   const emptyDatafile: DatafileContent = {

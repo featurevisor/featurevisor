@@ -5,7 +5,7 @@ import type {
   NotGroupSegment,
   Context,
 } from "@featurevisor/types";
-import type { Featurevisor } from "@featurevisor/sdk/internal";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 export function applyContextToSegments(
   datafileReader: Featurevisor,

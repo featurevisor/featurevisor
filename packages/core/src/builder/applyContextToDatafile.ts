@@ -1,5 +1,5 @@
 import { DatafileContent, Context, Traffic } from "@featurevisor/types";
-import { createFeaturevisor } from "@featurevisor/sdk/internal";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { applyContextToConditions } from "./applyContextToConditions";
 import { applyContextToSegments } from "./applyContextToSegments";

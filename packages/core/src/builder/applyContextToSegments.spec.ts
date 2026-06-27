@@ -5,7 +5,7 @@ import {
   removeRedundantGroupSegments,
   applyContextToGroupSegments,
 } from "./applyContextToSegments";
-import { createFeaturevisor } from "@featurevisor/sdk/internal";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 describe("core: applyContextToSegments", function () {
   describe("applyContextToSegments", function () {

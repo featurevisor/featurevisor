@@ -7,7 +7,7 @@ import type {
 } from "@featurevisor/types";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { Featurevisor, FeaturevisorLogLevel, OverrideOptions } from "@featurevisor/sdk";
-import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk/internal";
+import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 import { ProjectConfig } from "../config";

@@ -1,4 +1,5 @@
 export { createFeaturevisor } from "./instance.js";
+export { MAX_BUCKETED_NUMBER } from "./bucketer.js";
 
 export type { Featurevisor, FeaturevisorOptions, OverrideOptions } from "./instance.js";
 export type { Evaluation, EvaluationReason } from "./evaluate.js";
