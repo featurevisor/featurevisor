@@ -15,7 +15,6 @@ import type {
   Allocation,
   GroupSegment,
   Condition,
-  Force,
   VariableType,
 } from "@featurevisor/types";
 
