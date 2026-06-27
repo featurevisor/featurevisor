@@ -9,13 +9,13 @@ import { allSegmentsAreMatched } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
 
 export function applyContextToSegments(
-  datafileReader: Featurevisor,
+  featurevisor: Featurevisor,
   segments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],
 ): GroupSegment | GroupSegment[] {
   const withContextApplied = applyContextToGroupSegments(
-    datafileReader,
+    featurevisor,
     segments,
     context,
     removeSegments,
@@ -105,7 +105,7 @@ export function removeRedundantGroupSegments(
 }
 
 export function applyContextToGroupSegments(
-  datafileReader: Featurevisor,
+  featurevisor: Featurevisor,
   groupSegments: GroupSegment | GroupSegment[],
   context: Context,
   removeSegments: string[] = [],
@@ -116,7 +116,7 @@ export function applyContextToGroupSegments(
 
   if (Array.isArray(groupSegments)) {
     return groupSegments.map((gs) =>
-      applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
+      applyContextToGroupSegments(featurevisor, gs, context, removeSegments),
     ) as GroupSegment[];
   }
 
@@ -126,7 +126,7 @@ export function applyContextToGroupSegments(
     }
 
     const matched = allSegmentsAreMatched(groupSegments, context, (segmentKey) =>
-      datafileReader.getSegment(segmentKey),
+      featurevisor.getSegment(segmentKey),
     );
 
     if (matched) {
@@ -139,7 +139,7 @@ export function applyContextToGroupSegments(
     if ("and" in groupSegments) {
       return {
         and: groupSegments.and.map((gs) =>
-          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(featurevisor, gs, context, removeSegments),
         ) as GroupSegment[],
       } as AndGroupSegment;
     }
@@ -147,7 +147,7 @@ export function applyContextToGroupSegments(
     if ("or" in groupSegments) {
       return {
         or: groupSegments.or.map((gs) =>
-          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(featurevisor, gs, context, removeSegments),
         ) as GroupSegment[],
       } as OrGroupSegment;
     }
@@ -155,7 +155,7 @@ export function applyContextToGroupSegments(
     if ("not" in groupSegments) {
       return {
         not: groupSegments.not.map((gs) =>
-          applyContextToGroupSegments(datafileReader, gs, context, removeSegments),
+          applyContextToGroupSegments(featurevisor, gs, context, removeSegments),
         ) as GroupSegment[],
       } as NotGroupSegment;
     }

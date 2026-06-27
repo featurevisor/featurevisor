@@ -49,7 +49,10 @@ export interface ForceResult {
   forceIndex?: number;
 }
 
-export interface FeaturevisorDatafile {
+// Private evaluator dependency shape implemented by the main Featurevisor instance.
+// Keep this small so ports can mirror the evaluation hot path without exposing
+// every stored-datafile helper as public SDK API.
+export interface EvaluationDataProvider {
   getFeature(featureKey: FeatureKey): Feature | undefined;
   allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean;
   allSegmentsAreMatched(
@@ -95,7 +98,7 @@ export interface EvaluateDependencies {
 
   reportDiagnostic: FeaturevisorDiagnosticReporter;
   modules: FeaturevisorModule[];
-  datafile: FeaturevisorDatafile;
+  datafile: EvaluationDataProvider;
 
   // OverrideOptions
   sticky?: StickyFeatures;

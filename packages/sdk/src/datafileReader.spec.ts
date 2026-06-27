@@ -275,7 +275,7 @@ describe("sdk: instance datafile methods", function () {
       },
     };
 
-    const datafileReader = createFeaturevisor({
+    const featurevisor = createFeaturevisor({
       datafile: datafileContent,
       logLevel: "fatal",
     });
@@ -283,9 +283,7 @@ describe("sdk: instance datafile methods", function () {
       segments: GroupSegment | GroupSegment[] | "*",
       context: Context,
     ) =>
-      allSegmentsAreMatched(segments, context, (segmentKey) =>
-        datafileReader.getSegment(segmentKey),
-      );
+      allSegmentsAreMatched(segments, context, (segmentKey) => featurevisor.getSegment(segmentKey));
 
     it("should match everyone", function () {
       const group = groups.find((g) => g.key === "*") as Group;

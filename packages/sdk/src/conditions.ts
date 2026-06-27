@@ -135,6 +135,9 @@ function getUncachedRegex(regexString: string, regexFlags: string): RegExp {
   return new RegExp(regexString, regexFlags);
 }
 
+// Package-local normalization helpers. They remain exported from this module
+// so instance/evaluator tests can exercise them directly, but the SDK root
+// does not expose them as public runtime APIs.
 export function parseConditionsIfStringified(
   conditions: Condition | Condition[],
   reportDiagnostic?: FeaturevisorDiagnosticReporter,

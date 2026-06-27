@@ -9,11 +9,11 @@ import { allConditionsAreMatched } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
 
 export function applyContextToConditions(
-  datafileReader: Featurevisor,
+  featurevisor: Featurevisor,
   conditions: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {
-  const withContextApplied = applyContextToCondition(datafileReader, conditions, context);
+  const withContextApplied = applyContextToCondition(featurevisor, conditions, context);
   const removed = removeRedundantConditions(withContextApplied);
 
   return removed;
@@ -93,7 +93,7 @@ export function removeRedundantConditions(
 }
 
 export function applyContextToCondition(
-  datafileReader: Featurevisor,
+  featurevisor: Featurevisor,
   condition: Condition | Condition[],
   context: Context,
 ): Condition | Condition[] {
@@ -102,7 +102,7 @@ export function applyContextToCondition(
   }
 
   if (Array.isArray(condition)) {
-    return condition.map((c) => applyContextToCondition(datafileReader, c, context)) as Condition[];
+    return condition.map((c) => applyContextToCondition(featurevisor, c, context)) as Condition[];
   }
 
   if (typeof condition === "object") {
@@ -118,19 +118,19 @@ export function applyContextToCondition(
     // AND, OR, NOT conditions
     if ("and" in condition) {
       return {
-        and: condition.and.map((c) => applyContextToCondition(datafileReader, c, context)),
+        and: condition.and.map((c) => applyContextToCondition(featurevisor, c, context)),
       } as AndCondition;
     }
 
     if ("or" in condition) {
       return {
-        or: condition.or.map((c) => applyContextToCondition(datafileReader, c, context)),
+        or: condition.or.map((c) => applyContextToCondition(featurevisor, c, context)),
       } as OrCondition;
     }
 
     if ("not" in condition) {
       return {
-        not: condition.not.map((c) => applyContextToCondition(datafileReader, c, context)),
+        not: condition.not.map((c) => applyContextToCondition(featurevisor, c, context)),
       } as NotCondition;
     }
   }

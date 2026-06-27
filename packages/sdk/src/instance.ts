@@ -220,6 +220,8 @@ type Listeners = {
   [TEventName in EventName]?: EventCallback<TEventName>[];
 };
 
+type EvaluationDataProviderAdapter = EvaluateDependencies["datafile"];
+
 export class Featurevisor {
   // from options
   private context: Context = {};
@@ -727,7 +729,10 @@ export class Featurevisor {
 
       reportDiagnostic: this.reportDiagnostic,
       modules: this.modules,
-      datafile: this as unknown as EvaluateDependencies["datafile"],
+      // The evaluator only needs this small datafile/matching adapter shape.
+      // The methods are private on the instance, so TypeScript needs this
+      // internal cast; avoid widening these helpers into public instance APIs.
+      datafile: this as unknown as EvaluationDataProviderAdapter,
 
       // OverrideOptions
       sticky: options.sticky

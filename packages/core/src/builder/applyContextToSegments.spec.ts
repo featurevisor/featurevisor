@@ -45,7 +45,7 @@ describe("core: applyContextToSegments", function () {
       features: {},
     };
 
-    const datafileReaderWithSegments = createFeaturevisor({
+    const featurevisorWithSegments = createFeaturevisor({
       datafile: datafileWithSegments,
       logLevel: "fatal",
     });
@@ -56,32 +56,32 @@ describe("core: applyContextToSegments", function () {
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(applyContextToSegments(datafileReaderWithSegments, "*", {})).toEqual("*");
+      expect(applyContextToSegments(featurevisorWithSegments, "*", {})).toEqual("*");
 
       // Plain segment that matches
       expect(
-        applyContextToSegments(datafileReaderWithSegments, "web", {
+        applyContextToSegments(featurevisorWithSegments, "web", {
           platform: "web",
         }),
       ).toEqual("*");
 
       // Plain segment that doesn't match
       expect(
-        applyContextToSegments(datafileReaderWithSegments, "web", {
+        applyContextToSegments(featurevisorWithSegments, "web", {
           platform: "mobile",
         }),
       ).toEqual("web");
 
       // Array of segments - partial match (redundant "*" removed)
       expect(
-        applyContextToSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "web",
         }),
       ).toEqual(["chrome"]);
 
       // Array of segments - full match (all "*" becomes "*")
       expect(
-        applyContextToSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "web",
           browser: "chrome",
         }),
@@ -89,7 +89,7 @@ describe("core: applyContextToSegments", function () {
 
       // Array of segments - no match
       expect(
-        applyContextToSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "mobile",
           browser: "safari",
         }),
@@ -100,7 +100,7 @@ describe("core: applyContextToSegments", function () {
       // AND with all matching segments (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -114,7 +114,7 @@ describe("core: applyContextToSegments", function () {
       // AND with partial match (redundant "*" removed)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -129,7 +129,7 @@ describe("core: applyContextToSegments", function () {
       // AND with no matches
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -145,7 +145,7 @@ describe("core: applyContextToSegments", function () {
       // AND with "*" in it (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["*", "chrome"],
           },
@@ -160,7 +160,7 @@ describe("core: applyContextToSegments", function () {
       // OR with all matching segments (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -174,7 +174,7 @@ describe("core: applyContextToSegments", function () {
       // OR with partial match (redundant "*" removed, but OR structure remains)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -189,7 +189,7 @@ describe("core: applyContextToSegments", function () {
       // OR with no matches
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "mobile"],
           },
@@ -206,7 +206,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with matching segment remains an always-false expression
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web"],
           },
@@ -221,7 +221,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with non-matching segment
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web"],
           },
@@ -236,7 +236,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with multiple matching segments remains an always-false expression
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web", "chrome"],
           },
@@ -254,7 +254,7 @@ describe("core: applyContextToSegments", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -274,7 +274,7 @@ describe("core: applyContextToSegments", function () {
       // Nested AND with partial match (redundant "*" removed)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -301,7 +301,7 @@ describe("core: applyContextToSegments", function () {
       // Nested OR with outer match (redundant "*" removed, but inner OR remains)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -325,7 +325,7 @@ describe("core: applyContextToSegments", function () {
       // Nested OR with inner match (redundant "*" removed, but outer OR remains)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -352,7 +352,7 @@ describe("core: applyContextToSegments", function () {
       // Nested NOT preserves non-broadening false expressions
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: [
               "web",
@@ -379,7 +379,7 @@ describe("core: applyContextToSegments", function () {
       // AND with nested OR (redundant "*" removed, but OR structure remains if not all match)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -404,7 +404,7 @@ describe("core: applyContextToSegments", function () {
       // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -425,7 +425,7 @@ describe("core: applyContextToSegments", function () {
       // AND with nested NOT (redundant "*" removed)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -449,7 +449,7 @@ describe("core: applyContextToSegments", function () {
       // Complex nested structure (redundant "*" removed)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -482,7 +482,7 @@ describe("core: applyContextToSegments", function () {
       // Array with AND group segment (redundant "*" removed)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           [
             "web",
             {
@@ -500,7 +500,7 @@ describe("core: applyContextToSegments", function () {
       // Array with OR group segment (redundant "*" removed, but OR structure remains if not all match)
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           [
             "web",
             {
@@ -522,7 +522,7 @@ describe("core: applyContextToSegments", function () {
     test("segments with complex conditions", function () {
       // Segment with AND conditions in its definition
       expect(
-        applyContextToSegments(datafileReaderWithSegments, "premium", {
+        applyContextToSegments(featurevisorWithSegments, "premium", {
           tier: "premium",
           status: "active",
         }),
@@ -530,7 +530,7 @@ describe("core: applyContextToSegments", function () {
 
       // Segment with AND conditions that doesn't match
       expect(
-        applyContextToSegments(datafileReaderWithSegments, "premium", {
+        applyContextToSegments(featurevisorWithSegments, "premium", {
           tier: "premium",
           status: "inactive",
         }),
@@ -539,14 +539,14 @@ describe("core: applyContextToSegments", function () {
 
     test("edge cases", function () {
       // Empty context
-      expect(applyContextToSegments(datafileReaderWithSegments, "web", {})).toEqual("web");
+      expect(applyContextToSegments(featurevisorWithSegments, "web", {})).toEqual("web");
 
       // Empty array (all "*" becomes "*")
-      expect(applyContextToSegments(datafileReaderWithSegments, [], {})).toEqual("*");
+      expect(applyContextToSegments(featurevisorWithSegments, [], {})).toEqual("*");
 
       // "*" in array with matching segment (all "*" becomes "*")
       expect(
-        applyContextToSegments(datafileReaderWithSegments, ["*", "web"], {
+        applyContextToSegments(featurevisorWithSegments, ["*", "web"], {
           platform: "web",
         }),
       ).toEqual("*");
@@ -554,7 +554,7 @@ describe("core: applyContextToSegments", function () {
       // AND with empty array (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [],
           },
@@ -565,7 +565,7 @@ describe("core: applyContextToSegments", function () {
       // OR with empty array (all "*" becomes "*")
       expect(
         applyContextToSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [],
           },
@@ -953,7 +953,7 @@ describe("core: applyContextToSegments", function () {
       features: {},
     };
 
-    const datafileReaderWithSegments = createFeaturevisor({
+    const featurevisorWithSegments = createFeaturevisor({
       datafile: datafileWithSegments,
       logLevel: "fatal",
     });
@@ -964,32 +964,32 @@ describe("core: applyContextToSegments", function () {
 
     test("simple cases", function () {
       // "*" remains "*"
-      expect(applyContextToGroupSegments(datafileReaderWithSegments, "*", {})).toEqual("*");
+      expect(applyContextToGroupSegments(featurevisorWithSegments, "*", {})).toEqual("*");
 
       // Plain segment that matches
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, "web", {
+        applyContextToGroupSegments(featurevisorWithSegments, "web", {
           platform: "web",
         }),
       ).toEqual("*");
 
       // Plain segment that doesn't match
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, "web", {
+        applyContextToGroupSegments(featurevisorWithSegments, "web", {
           platform: "mobile",
         }),
       ).toEqual("web");
 
       // Array of segments - partial match
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "web",
         }),
       ).toEqual(["*", "chrome"]);
 
       // Array of segments - full match (all "*" - will be cleaned by removeRedundantGroupSegments later)
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "web",
           browser: "chrome",
         }),
@@ -997,7 +997,7 @@ describe("core: applyContextToSegments", function () {
 
       // Array of segments - no match
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "chrome"], {
           platform: "mobile",
           browser: "safari",
         }),
@@ -1008,7 +1008,7 @@ describe("core: applyContextToSegments", function () {
       // AND with all matching segments (all "*" becomes "*")
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -1024,7 +1024,7 @@ describe("core: applyContextToSegments", function () {
       // AND with partial match
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -1039,7 +1039,7 @@ describe("core: applyContextToSegments", function () {
       // AND with no matches
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -1055,7 +1055,7 @@ describe("core: applyContextToSegments", function () {
       // AND with "*" in it
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["*", "chrome"],
           },
@@ -1072,7 +1072,7 @@ describe("core: applyContextToSegments", function () {
       // OR with all matching segments (all "*" becomes "*")
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -1088,7 +1088,7 @@ describe("core: applyContextToSegments", function () {
       // OR with partial match
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -1103,7 +1103,7 @@ describe("core: applyContextToSegments", function () {
       // OR with no matches
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "mobile"],
           },
@@ -1120,7 +1120,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with matching segment
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web"],
           },
@@ -1135,7 +1135,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with non-matching segment
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web"],
           },
@@ -1150,7 +1150,7 @@ describe("core: applyContextToSegments", function () {
       // NOT with multiple segments (all "*" becomes "*")
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web", "chrome"],
           },
@@ -1168,7 +1168,7 @@ describe("core: applyContextToSegments", function () {
       // Nested AND with all matching (all "*" becomes "*")
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1195,7 +1195,7 @@ describe("core: applyContextToSegments", function () {
       // Nested AND with partial match
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1223,7 +1223,7 @@ describe("core: applyContextToSegments", function () {
       // Nested OR with all matching
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -1249,7 +1249,7 @@ describe("core: applyContextToSegments", function () {
       // Nested OR with partial match
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -1276,7 +1276,7 @@ describe("core: applyContextToSegments", function () {
       // Complex nested with AND, OR, NOT
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1309,7 +1309,7 @@ describe("core: applyContextToSegments", function () {
     test("segments with complex conditions", function () {
       // Segment with AND conditions in its definition
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, "premium", {
+        applyContextToGroupSegments(featurevisorWithSegments, "premium", {
           tier: "premium",
           status: "active",
         }),
@@ -1317,7 +1317,7 @@ describe("core: applyContextToSegments", function () {
 
       // Segment with AND conditions that doesn't match
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, "premium", {
+        applyContextToGroupSegments(featurevisorWithSegments, "premium", {
           tier: "premium",
           status: "inactive",
         }),
@@ -1326,23 +1326,23 @@ describe("core: applyContextToSegments", function () {
 
     test("removeSegments parameter", function () {
       // Simple segment in removeSegments
-      expect(applyContextToGroupSegments(datafileReaderWithSegments, "web", {}, ["web"])).toEqual(
+      expect(applyContextToGroupSegments(featurevisorWithSegments, "web", {}, ["web"])).toEqual(
         "*",
       );
 
       // Segment not in removeSegments
-      expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, "web", {}, ["mobile"]),
-      ).toEqual("web");
+      expect(applyContextToGroupSegments(featurevisorWithSegments, "web", {}, ["mobile"])).toEqual(
+        "web",
+      );
 
       // Array with one segment in removeSegments
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, ["web"]),
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "chrome"], {}, ["web"]),
       ).toEqual(["*", "chrome"]);
 
       // Array with all segments in removeSegments
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "chrome"], {}, [
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "chrome"], {}, [
           "web",
           "chrome",
         ]),
@@ -1351,7 +1351,7 @@ describe("core: applyContextToSegments", function () {
       // Array with multiple segments, some in removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           ["web", "chrome", "mobile", "safari"],
           {},
           ["web", "mobile"],
@@ -1361,7 +1361,7 @@ describe("core: applyContextToSegments", function () {
       // AND group segment with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -1375,7 +1375,7 @@ describe("core: applyContextToSegments", function () {
       // AND group segment with all segments in removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: ["web", "chrome"],
           },
@@ -1389,7 +1389,7 @@ describe("core: applyContextToSegments", function () {
       // OR group segment with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -1403,7 +1403,7 @@ describe("core: applyContextToSegments", function () {
       // OR group segment with all segments in removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: ["web", "chrome"],
           },
@@ -1417,7 +1417,7 @@ describe("core: applyContextToSegments", function () {
       // NOT group segment with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web", "chrome"],
           },
@@ -1431,7 +1431,7 @@ describe("core: applyContextToSegments", function () {
       // NOT group segment with all segments in removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             not: ["web", "chrome"],
           },
@@ -1445,7 +1445,7 @@ describe("core: applyContextToSegments", function () {
       // Nested AND with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1469,7 +1469,7 @@ describe("core: applyContextToSegments", function () {
       // Nested OR with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             or: [
               "web",
@@ -1493,7 +1493,7 @@ describe("core: applyContextToSegments", function () {
       // Mixed nested structure with removeSegments
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1523,7 +1523,7 @@ describe("core: applyContextToSegments", function () {
       // removeSegments combined with matching context
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           ["web", "chrome"],
           {
             platform: "web",
@@ -1535,7 +1535,7 @@ describe("core: applyContextToSegments", function () {
       // removeSegments with segment that would match context
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           ["web", "chrome"],
           {
             platform: "web",
@@ -1548,7 +1548,7 @@ describe("core: applyContextToSegments", function () {
       // Complex: removeSegments, context matching, and nested structures
       expect(
         applyContextToGroupSegments(
-          datafileReaderWithSegments,
+          featurevisorWithSegments,
           {
             and: [
               "web",
@@ -1575,20 +1575,18 @@ describe("core: applyContextToSegments", function () {
       });
 
       // Empty removeSegments array (should behave like no removeSegments)
-      expect(applyContextToGroupSegments(datafileReaderWithSegments, "web", {}, [])).toEqual("web");
+      expect(applyContextToGroupSegments(featurevisorWithSegments, "web", {}, [])).toEqual("web");
 
       // removeSegments with segment that doesn't exist in datafile
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["web", "nonexistent"], {}, [
+        applyContextToGroupSegments(featurevisorWithSegments, ["web", "nonexistent"], {}, [
           "nonexistent",
         ]),
       ).toEqual(["web", "*"]);
 
       // removeSegments with "*" in array (should still work)
       expect(
-        applyContextToGroupSegments(datafileReaderWithSegments, ["*", "web", "chrome"], {}, [
-          "web",
-        ]),
+        applyContextToGroupSegments(featurevisorWithSegments, ["*", "web", "chrome"], {}, ["web"]),
       ).toEqual(["*", "*", "chrome"]);
     });
   });

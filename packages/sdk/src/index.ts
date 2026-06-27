@@ -1,4 +1,10 @@
 export { createFeaturevisor } from "./instance.js";
+
+// Runtime exports below this line are intentionally narrow.
+// `createFeaturevisor()` is the main public API; these helpers stay public
+// because the core package uses them directly while building specialized
+// datafiles. Keep additional helper exports type-only unless a real runtime
+// consumer needs them.
 export { MAX_BUCKETED_NUMBER } from "./bucketer.js";
 export { allConditionsAreMatched, allSegmentsAreMatched } from "./conditions.js";
 
