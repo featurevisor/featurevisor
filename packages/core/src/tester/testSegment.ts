@@ -5,7 +5,7 @@ import type {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { createFeaturevisor } from "@featurevisor/sdk";
+import { allConditionsAreMatched } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
@@ -41,15 +41,6 @@ export async function testSegment(
 
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
-  const datafileReader = createFeaturevisor({
-    datafile: {
-      schemaVersion: "2",
-      revision: "tester",
-      segments: {},
-      features: {},
-    },
-    logLevel: "fatal",
-  });
 
   test.assertions.forEach(function (assertion) {
     const assertionStartTime = Date.now();
@@ -61,7 +52,7 @@ export async function testSegment(
     };
 
     const expected = assertion.expectedToMatch;
-    const actual = datafileReader.allConditionsAreMatched(conditions, assertion.context);
+    const actual = allConditionsAreMatched(conditions, assertion.context);
     const passed = actual === expected;
 
     if (!passed) {

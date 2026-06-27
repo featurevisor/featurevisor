@@ -21,6 +21,7 @@ import type {
 import type { FeaturevisorModule } from "./modules.js";
 import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
+import { parseSegmentsIfStringified } from "./conditions.js";
 
 export type EvaluationReason =
   | "feature_not_found"
@@ -58,10 +59,6 @@ export interface FeaturevisorDatafile {
   getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined;
   getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined;
   getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult;
-  parseConditionsIfStringified(conditions: Condition | Condition[]): Condition | Condition[];
-  parseSegmentsIfStringified(
-    segments: GroupSegment | GroupSegment[],
-  ): GroupSegment | GroupSegment[];
 }
 
 export interface Evaluation {
@@ -770,7 +767,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
             if (o.segments) {
               return datafile.allSegmentsAreMatched(
-                datafile.parseSegmentsIfStringified(o.segments),
+                parseSegmentsIfStringified(o.segments),
                 context,
               );
             }
@@ -854,7 +851,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
             if (o.segments) {
               return datafile.allSegmentsAreMatched(
-                datafile.parseSegmentsIfStringified(o.segments),
+                parseSegmentsIfStringified(o.segments),
                 context,
               );
             }

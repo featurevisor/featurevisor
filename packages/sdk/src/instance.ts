@@ -28,7 +28,12 @@ import { evaluateWithModules } from "./evaluate.js";
 import type { Evaluation, EvaluateDependencies, ForceResult } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
-import { conditionIsMatched } from "./conditions.js";
+import {
+  allConditionsAreMatched,
+  allSegmentsAreMatched,
+  parseConditionsIfStringified,
+  parseSegmentsIfStringified,
+} from "./conditions.js";
 import type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -333,7 +338,7 @@ export class Featurevisor {
       return undefined;
     }
 
-    segment.conditions = this.parseConditionsIfStringified(segment.conditions);
+    segment.conditions = parseConditionsIfStringified(segment.conditions, this.reportDiagnostic);
 
     return segment;
   }
@@ -366,7 +371,7 @@ export class Featurevisor {
     return Array.isArray(feature.variations) && feature.variations.length > 0;
   }
 
-  getRegex(regexString: string, regexFlags?: string): RegExp {
+  private getRegex(regexString: string, regexFlags?: string): RegExp {
     const flags = regexFlags || "";
     const cacheKey = `${regexString}-${flags}`;
 
@@ -380,106 +385,31 @@ export class Featurevisor {
     return regex;
   }
 
-  allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean {
-    if (typeof conditions === "string") {
-      return conditions === "*";
-    }
-
-    const getRegex = (regexString: string, regexFlags: string) =>
-      this.getRegex(regexString, regexFlags);
-
-    if ("attribute" in conditions) {
-      try {
-        return conditionIsMatched(conditions, context, getRegex);
-      } catch (e) {
-        this.reportDiagnostic({
-          level: "warn",
-          code: "condition_match_error",
-          message: e instanceof Error ? e.message : String(e),
-          originalError: e,
-          condition: conditions,
-          context,
-        });
-
-        return false;
-      }
-    }
-
-    if ("and" in conditions && Array.isArray(conditions.and)) {
-      return conditions.and.every((c) => this.allConditionsAreMatched(c, context));
-    }
-
-    if ("or" in conditions && Array.isArray(conditions.or)) {
-      return conditions.or.some((c) => this.allConditionsAreMatched(c, context));
-    }
-
-    if ("not" in conditions && Array.isArray(conditions.not)) {
-      if (conditions.not.length === 0) {
-        return false;
-      }
-
-      return this.allConditionsAreMatched({ and: conditions.not }, context) === false;
-    }
-
-    if (Array.isArray(conditions)) {
-      return conditions.every((c) => this.allConditionsAreMatched(c, context));
-    }
-
-    return false;
+  private allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean {
+    return allConditionsAreMatched(
+      conditions,
+      context,
+      (regexString, regexFlags) => this.getRegex(regexString, regexFlags),
+      this.reportDiagnostic,
+    );
   }
 
-  segmentIsMatched(segment: Segment, context: Context): boolean {
-    return this.allConditionsAreMatched(segment.conditions as Condition | Condition[], context);
-  }
-
-  allSegmentsAreMatched(
+  private allSegmentsAreMatched(
     groupSegments: GroupSegment | GroupSegment[] | "*",
     context: Context,
   ): boolean {
-    if (groupSegments === "*") {
-      return true;
-    }
-
-    if (typeof groupSegments === "string") {
-      const segment = this.getSegment(groupSegments);
-
-      return segment ? this.segmentIsMatched(segment, context) : false;
-    }
-
-    if (typeof groupSegments === "object") {
-      if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
-        return groupSegments.and.every((groupSegment) =>
-          this.allSegmentsAreMatched(groupSegment, context),
-        );
-      }
-
-      if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
-        return groupSegments.or.some((groupSegment) =>
-          this.allSegmentsAreMatched(groupSegment, context),
-        );
-      }
-
-      if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
-        if (groupSegments.not.length === 0) {
-          return false;
-        }
-
-        return this.allSegmentsAreMatched({ and: groupSegments.not }, context) === false;
-      }
-    }
-
-    if (Array.isArray(groupSegments)) {
-      return groupSegments.every((groupSegment) =>
-        this.allSegmentsAreMatched(groupSegment, context),
-      );
-    }
-
-    return false;
+    return allSegmentsAreMatched(
+      groupSegments,
+      context,
+      (segmentKey) => this.getSegment(segmentKey),
+      (regexString, regexFlags) => this.getRegex(regexString, regexFlags),
+      this.reportDiagnostic,
+    );
   }
 
-  getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined {
+  private getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined {
     return traffic.find((t) => {
-      if (!this.allSegmentsAreMatched(this.parseSegmentsIfStringified(t.segments), context)) {
+      if (!this.allSegmentsAreMatched(parseSegmentsIfStringified(t.segments), context)) {
         return false;
       }
 
@@ -487,7 +417,7 @@ export class Featurevisor {
     });
   }
 
-  getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
+  private getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
     if (!traffic.allocation) {
       return undefined;
     }
@@ -503,7 +433,7 @@ export class Featurevisor {
     return undefined;
   }
 
-  getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult {
+  private getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult {
     const result: ForceResult = {
       force: undefined,
       forceIndex: undefined,
@@ -521,7 +451,7 @@ export class Featurevisor {
       if (
         currentForce.conditions &&
         this.allConditionsAreMatched(
-          this.parseConditionsIfStringified(currentForce.conditions),
+          parseConditionsIfStringified(currentForce.conditions, this.reportDiagnostic),
           context,
         )
       ) {
@@ -532,7 +462,7 @@ export class Featurevisor {
 
       if (
         currentForce.segments &&
-        this.allSegmentsAreMatched(this.parseSegmentsIfStringified(currentForce.segments), context)
+        this.allSegmentsAreMatched(parseSegmentsIfStringified(currentForce.segments), context)
       ) {
         result.force = currentForce;
         result.forceIndex = i;
@@ -541,40 +471,6 @@ export class Featurevisor {
     }
 
     return result;
-  }
-
-  parseConditionsIfStringified(conditions: Condition | Condition[]): Condition | Condition[] {
-    if (typeof conditions !== "string") {
-      return conditions;
-    }
-
-    if (conditions === "*") {
-      return conditions;
-    }
-
-    try {
-      return JSON.parse(conditions);
-    } catch (e) {
-      this.reportDiagnostic({
-        level: "error",
-        code: "conditions_parse_error",
-        message: "Error parsing conditions",
-        originalError: e,
-        conditions,
-      });
-
-      return conditions;
-    }
-  }
-
-  parseSegmentsIfStringified(
-    segments: GroupSegment | GroupSegment[],
-  ): GroupSegment | GroupSegment[] {
-    if (typeof segments === "string" && (segments.startsWith("{") || segments.startsWith("["))) {
-      return JSON.parse(segments);
-    }
-
-    return segments;
   }
 
   private async closeModule(module: FeaturevisorModule): Promise<void> {
@@ -832,7 +728,7 @@ export class Featurevisor {
 
       reportDiagnostic: this.reportDiagnostic,
       modules: this.modules,
-      datafile: this,
+      datafile: this as unknown as EvaluateDependencies["datafile"],
 
       // OverrideOptions
       sticky: options.sticky

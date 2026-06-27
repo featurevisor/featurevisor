@@ -5,6 +5,7 @@ import type {
   NotGroupSegment,
   Context,
 } from "@featurevisor/types";
+import { allSegmentsAreMatched } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
 
 export function applyContextToSegments(
@@ -124,7 +125,9 @@ export function applyContextToGroupSegments(
       return "*";
     }
 
-    const matched = datafileReader.allSegmentsAreMatched(groupSegments, context);
+    const matched = allSegmentsAreMatched(groupSegments, context, (segmentKey) =>
+      datafileReader.getSegment(segmentKey),
+    );
 
     if (matched) {
       return "*";

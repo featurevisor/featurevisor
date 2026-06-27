@@ -5,6 +5,7 @@ import type {
   NotCondition,
   Context,
 } from "@featurevisor/types";
+import { allConditionsAreMatched } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
 
 export function applyContextToConditions(
@@ -107,7 +108,7 @@ export function applyContextToCondition(
   if (typeof condition === "object") {
     // plain condition
     if ("attribute" in condition) {
-      const matched = datafileReader.allConditionsAreMatched(condition, context);
+      const matched = allConditionsAreMatched(condition, context);
 
       if (matched) {
         return "*";

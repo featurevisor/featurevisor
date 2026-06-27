@@ -1,5 +1,6 @@
 export { createFeaturevisor } from "./instance.js";
 export { MAX_BUCKETED_NUMBER } from "./bucketer.js";
+export { allConditionsAreMatched, allSegmentsAreMatched } from "./conditions.js";
 
 export type { Featurevisor, FeaturevisorOptions, OverrideOptions } from "./instance.js";
 export type { Evaluation, EvaluationReason } from "./evaluate.js";

@@ -1,6 +1,15 @@
-import type { Context, PlainCondition, AttributeValue } from "@featurevisor/types";
+import type {
+  Context,
+  PlainCondition,
+  AttributeValue,
+  Condition,
+  GroupSegment,
+  Segment,
+  SegmentKey,
+} from "@featurevisor/types";
 
 import { compareVersions } from "./compareVersions.js";
+import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
@@ -117,6 +126,167 @@ export function conditionIsMatched(
     } else if (operator === "notIncludes") {
       return valueInContext.indexOf(primitiveValue) === -1;
     }
+  }
+
+  return false;
+}
+
+function getUncachedRegex(regexString: string, regexFlags: string): RegExp {
+  return new RegExp(regexString, regexFlags);
+}
+
+export function parseConditionsIfStringified(
+  conditions: Condition | Condition[],
+  reportDiagnostic?: FeaturevisorDiagnosticReporter,
+): Condition | Condition[] {
+  if (typeof conditions !== "string") {
+    return conditions;
+  }
+
+  if (conditions === "*") {
+    return conditions;
+  }
+
+  try {
+    return JSON.parse(conditions);
+  } catch (e) {
+    reportDiagnostic?.({
+      level: "error",
+      code: "conditions_parse_error",
+      message: "Error parsing conditions",
+      originalError: e,
+      conditions,
+    });
+
+    return conditions;
+  }
+}
+
+export function parseSegmentsIfStringified(
+  segments: GroupSegment | GroupSegment[],
+): GroupSegment | GroupSegment[] {
+  if (typeof segments === "string" && (segments.startsWith("{") || segments.startsWith("["))) {
+    return JSON.parse(segments);
+  }
+
+  return segments;
+}
+
+export function allConditionsAreMatched(
+  conditions: Condition[] | Condition,
+  context: Context,
+  getRegex: GetRegex = getUncachedRegex,
+  reportDiagnostic?: FeaturevisorDiagnosticReporter,
+): boolean {
+  if (typeof conditions === "string") {
+    return conditions === "*";
+  }
+
+  if ("attribute" in conditions) {
+    try {
+      return conditionIsMatched(conditions, context, getRegex);
+    } catch (e) {
+      reportDiagnostic?.({
+        level: "warn",
+        code: "condition_match_error",
+        message: e instanceof Error ? e.message : String(e),
+        originalError: e,
+        condition: conditions,
+        context,
+      });
+
+      return false;
+    }
+  }
+
+  if ("and" in conditions && Array.isArray(conditions.and)) {
+    return conditions.and.every((c) =>
+      allConditionsAreMatched(c, context, getRegex, reportDiagnostic),
+    );
+  }
+
+  if ("or" in conditions && Array.isArray(conditions.or)) {
+    return conditions.or.some((c) =>
+      allConditionsAreMatched(c, context, getRegex, reportDiagnostic),
+    );
+  }
+
+  if ("not" in conditions && Array.isArray(conditions.not)) {
+    if (conditions.not.length === 0) {
+      return false;
+    }
+
+    return (
+      allConditionsAreMatched({ and: conditions.not }, context, getRegex, reportDiagnostic) ===
+      false
+    );
+  }
+
+  if (Array.isArray(conditions)) {
+    return conditions.every((c) => allConditionsAreMatched(c, context, getRegex, reportDiagnostic));
+  }
+
+  return false;
+}
+
+export function allSegmentsAreMatched(
+  groupSegments: GroupSegment | GroupSegment[] | "*",
+  context: Context,
+  getSegment: (segmentKey: SegmentKey) => Segment | undefined,
+  getRegex: GetRegex = getUncachedRegex,
+  reportDiagnostic?: FeaturevisorDiagnosticReporter,
+): boolean {
+  if (groupSegments === "*") {
+    return true;
+  }
+
+  if (typeof groupSegments === "string") {
+    const segment = getSegment(groupSegments);
+
+    return segment
+      ? allConditionsAreMatched(
+          parseConditionsIfStringified(segment.conditions, reportDiagnostic),
+          context,
+          getRegex,
+          reportDiagnostic,
+        )
+      : false;
+  }
+
+  if (typeof groupSegments === "object") {
+    if ("and" in groupSegments && Array.isArray(groupSegments.and)) {
+      return groupSegments.and.every((groupSegment) =>
+        allSegmentsAreMatched(groupSegment, context, getSegment, getRegex, reportDiagnostic),
+      );
+    }
+
+    if ("or" in groupSegments && Array.isArray(groupSegments.or)) {
+      return groupSegments.or.some((groupSegment) =>
+        allSegmentsAreMatched(groupSegment, context, getSegment, getRegex, reportDiagnostic),
+      );
+    }
+
+    if ("not" in groupSegments && Array.isArray(groupSegments.not)) {
+      if (groupSegments.not.length === 0) {
+        return false;
+      }
+
+      return (
+        allSegmentsAreMatched(
+          { and: groupSegments.not },
+          context,
+          getSegment,
+          getRegex,
+          reportDiagnostic,
+        ) === false
+      );
+    }
+  }
+
+  if (Array.isArray(groupSegments)) {
+    return groupSegments.every((groupSegment) =>
+      allSegmentsAreMatched(groupSegment, context, getSegment, getRegex, reportDiagnostic),
+    );
   }
 
   return false;

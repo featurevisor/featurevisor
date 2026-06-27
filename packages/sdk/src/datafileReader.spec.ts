@@ -1,5 +1,6 @@
-import type { DatafileContent, GroupSegment } from "@featurevisor/types";
+import type { Context, DatafileContent, GroupSegment } from "@featurevisor/types";
 
+import { allSegmentsAreMatched } from "./conditions";
 import { createFeaturevisor } from "./instance";
 
 interface Group {
@@ -77,6 +78,8 @@ describe("sdk: instance datafile methods", function () {
       datafile: datafileJson,
       logLevel: "fatal",
     });
+    const segmentsAreMatched = (segments: GroupSegment | GroupSegment[] | "*", context: Context) =>
+      allSegmentsAreMatched(segments, context, (segmentKey) => reader.getSegment(segmentKey));
 
     expect(reader.getRevision()).toEqual("1");
     expect(reader.getSchemaVersion()).toEqual("2");
@@ -92,9 +95,9 @@ describe("sdk: instance datafile methods", function () {
     expect(reader.hasVariations("testWithNoVariations")).toEqual(false);
     expect(reader.hasVariations("unknownFeature")).toEqual(false);
 
-    expect(reader.allSegmentsAreMatched("*", {})).toEqual(true);
-    expect(reader.allSegmentsAreMatched("unknownSegment", {})).toEqual(false);
-    expect(reader.allSegmentsAreMatched({ and: ["unknownSegment"] }, {})).toEqual(false);
+    expect(segmentsAreMatched("*", {})).toEqual(true);
+    expect(segmentsAreMatched("unknownSegment", {})).toEqual(false);
+    expect(segmentsAreMatched({ and: ["unknownSegment"] }, {})).toEqual(false);
   });
 
   describe("segments", function () {
@@ -276,14 +279,21 @@ describe("sdk: instance datafile methods", function () {
       datafile: datafileContent,
       logLevel: "fatal",
     });
+    const allSegmentsAreMatchedForTest = (
+      segments: GroupSegment | GroupSegment[] | "*",
+      context: Context,
+    ) =>
+      allSegmentsAreMatched(segments, context, (segmentKey) =>
+        datafileReader.getSegment(segmentKey),
+      );
 
     it("should match everyone", function () {
       const group = groups.find((g) => g.key === "*") as Group;
 
       // match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(true);
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { foo: "foo" })).toEqual(true);
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { bar: "bar" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { foo: "foo" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { bar: "bar" })).toEqual(true);
     });
 
     it("should match dutchMobileUsers", function () {
@@ -291,13 +301,13 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
           browser: "chrome",
@@ -305,9 +315,9 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
@@ -319,13 +329,13 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
           browser: "chrome",
@@ -333,9 +343,9 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
@@ -347,26 +357,26 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
           browser: "chrome",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
           browser: "chrome",
@@ -374,15 +384,15 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
       ).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "desktop",
         }),
@@ -394,26 +404,26 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
           browser: "chrome",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
           browser: "chrome",
@@ -421,15 +431,15 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
       ).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "desktop",
         }),
@@ -441,13 +451,13 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
           browser: "chrome",
@@ -455,9 +465,9 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
@@ -469,13 +479,13 @@ describe("sdk: instance datafile methods", function () {
 
       // match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "desktop",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "desktop",
           browser: "chrome",
@@ -483,9 +493,9 @@ describe("sdk: instance datafile methods", function () {
       ).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
         }),
@@ -496,21 +506,15 @@ describe("sdk: instance datafile methods", function () {
       const group = groups.find((g) => g.key === "notVersion5.5") as Group;
 
       // match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, {})).toEqual(true);
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: "5.6" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: 5.6 })).toEqual(true);
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: "5.7" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: 5.7 })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.6" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.6 })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.7" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.7 })).toEqual(true);
 
       // not match
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: "5.5" })).toEqual(
-        false,
-      );
-      expect(datafileReader.allSegmentsAreMatched(group.segments, { version: 5.5 })).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.5" })).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.5 })).toEqual(false);
     });
 
     it("should treat multiple segments inside NOT as negated AND", function () {
@@ -518,13 +522,13 @@ describe("sdk: instance datafile methods", function () {
 
       // match because not all direct children match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
         }),
@@ -532,7 +536,7 @@ describe("sdk: instance datafile methods", function () {
 
       // not match because all direct children match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "mobile",
         }),
@@ -544,7 +548,7 @@ describe("sdk: instance datafile methods", function () {
 
       // match because none of the OR children match
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "desktop",
         }),
@@ -552,13 +556,13 @@ describe("sdk: instance datafile methods", function () {
 
       // not match because at least one OR child matches
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "nl",
           deviceType: "desktop",
         }),
       ).toEqual(false);
       expect(
-        datafileReader.allSegmentsAreMatched(group.segments, {
+        allSegmentsAreMatchedForTest(group.segments, {
           country: "de",
           deviceType: "mobile",
         }),
@@ -566,7 +570,7 @@ describe("sdk: instance datafile methods", function () {
     });
 
     it("should defensively reject empty NOT segment groups", function () {
-      expect(datafileReader.allSegmentsAreMatched({ not: [] }, {})).toEqual(false);
+      expect(allSegmentsAreMatchedForTest({ not: [] }, {})).toEqual(false);
     });
   });
 });
