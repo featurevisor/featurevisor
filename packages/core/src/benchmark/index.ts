@@ -77,9 +77,7 @@ export function benchmarkFeatureVariable(
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  return benchmarkEvaluation(n, () =>
-    f.getVariable(featureKey, variableKey, context as Context),
-  );
+  return benchmarkEvaluation(n, () => f.getVariable(featureKey, variableKey, context as Context));
 }
 
 export interface BenchmarkOptions {
