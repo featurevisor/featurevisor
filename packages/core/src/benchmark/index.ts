@@ -12,6 +12,44 @@ import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../
 export interface BenchmarkOutput {
   value: any;
   duration: number; // ms
+  minDuration: number; // ms
+  averageDuration: number; // ms
+  maxDuration: number; // ms
+}
+
+function benchmarkEvaluation(n: number, evaluate: () => any): BenchmarkOutput {
+  let value: any;
+  let totalDurationNs = 0n;
+  let minDurationNs: bigint | undefined;
+  let maxDurationNs = 0n;
+
+  for (let i = 0; i < n; i++) {
+    const start = process.hrtime.bigint();
+    value = evaluate();
+    const durationNs = process.hrtime.bigint() - start;
+
+    totalDurationNs += durationNs;
+    if (typeof minDurationNs === "undefined" || durationNs < minDurationNs) {
+      minDurationNs = durationNs;
+    }
+    if (durationNs > maxDurationNs) {
+      maxDurationNs = durationNs;
+    }
+  }
+
+  const duration = Number(totalDurationNs) / 1_000_000;
+
+  return {
+    value,
+    duration,
+    minDuration: Number(minDurationNs || 0n) / 1_000_000,
+    averageDuration: duration / n,
+    maxDuration: Number(maxDurationNs) / 1_000_000,
+  };
+}
+
+function formatDurationMs(duration: number): string {
+  return `${duration.toFixed(6)}ms`;
 }
 
 export function benchmarkFeatureFlag(
@@ -20,19 +58,7 @@ export function benchmarkFeatureFlag(
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.isEnabled(featureKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () => f.isEnabled(featureKey, context as Context));
 }
 
 export function benchmarkFeatureVariation(
@@ -41,19 +67,7 @@ export function benchmarkFeatureVariation(
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.getVariation(featureKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () => f.getVariation(featureKey, context as Context));
 }
 
 export function benchmarkFeatureVariable(
@@ -63,19 +77,9 @@ export function benchmarkFeatureVariable(
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.getVariable(featureKey, variableKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () =>
+    f.getVariable(featureKey, variableKey, context as Context),
+  );
 }
 
 export interface BenchmarkOptions {
@@ -169,7 +173,13 @@ export async function benchmarkFeature(
     `  ${colorize("Total duration", CLI_COLOR_CYAN)}: ${prettyDuration(output.duration)}`,
   );
   console.log(
-    `  ${colorize("Average duration", CLI_COLOR_CYAN)}: ${prettyDuration(output.duration / options.n)}`,
+    `  ${colorize("Minimum duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.minDuration)}`,
+  );
+  console.log(
+    `  ${colorize("Average duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.averageDuration)}`,
+  );
+  console.log(
+    `  ${colorize("Maximum duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.maxDuration)}`,
   );
 }
 
