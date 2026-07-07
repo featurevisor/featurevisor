@@ -200,6 +200,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       projectConfig,
       datasource,
       revision: cliOptions.revision,
+      inflate: cliOptions.inflate,
       tag: target?.tag,
       tags: target?.tags,
       includeFeatures: target?.includeFeatures,

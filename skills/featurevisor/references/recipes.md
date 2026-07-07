@@ -383,7 +383,7 @@ Combines well with [Testing in production](#testing-in-production--qa-force) and
 
 ## Microfrontends
 
-Single Featurevisor project; one tagged datafile per microfrontend.
+Single Featurevisor project; one Target datafile per microfrontend, usually selected by tags.
 
 ```js
 // featurevisor.config.js
@@ -391,6 +391,18 @@ module.exports = {
   environments: ['staging', 'production'],
   tags: ['products', 'signup', 'signin', 'checkout', 'account'],
 }
+```
+
+```yaml
+# targets/products.yml
+description: Products microfrontend
+tag: products
+```
+
+```yaml
+# targets/checkout.yml
+description: Checkout microfrontend
+tag: checkout
 ```
 
 Each feature tags itself with the MF(s) it belongs to:
