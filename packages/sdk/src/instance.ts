@@ -195,10 +195,16 @@ function getValueByType(value: VariableValue, fieldType: string | VariableType):
 }
 
 export interface OverrideOptions {
-  sticky?: StickyFeatures;
-
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
+}
+
+export interface SpawnOptions {
+  sticky?: StickyFeatures;
+}
+
+interface InternalOverrideOptions extends OverrideOptions {
+  __featurevisorChildSticky?: StickyFeatures;
 }
 
 export interface FeaturevisorOptions {
@@ -256,6 +262,7 @@ export class Featurevisor {
       level: "info",
       code: "sdk_initialized",
       message: "SDK initialized",
+      details: {},
     });
   }
 
@@ -284,7 +291,7 @@ export class Featurevisor {
         level: "info",
         code: "datafile_set",
         message: "Datafile set",
-        ...details,
+        details,
       });
       this.trigger("datafile_set", details);
     } catch (e) {
@@ -293,6 +300,7 @@ export class Featurevisor {
         code: "invalid_datafile",
         message: "Could not parse datafile",
         originalError: e,
+        details: {},
       });
     }
   }
@@ -319,7 +327,7 @@ export class Featurevisor {
       level: "info",
       code: "sticky_set",
       message: "Sticky features set",
-      ...params,
+      details: params,
     });
     this.trigger("sticky_set", params);
   }
@@ -484,6 +492,7 @@ export class Featurevisor {
         message: "Module close failed",
         moduleName: module.name,
         originalError: error,
+        details: {},
       });
     }
   }
@@ -499,6 +508,7 @@ export class Featurevisor {
         code: "duplicate_module",
         message: "Duplicate module name",
         moduleName: module.name,
+        details: {},
       });
 
       return;
@@ -604,29 +614,47 @@ export class Featurevisor {
     diagnostic: FeaturevisorDiagnostic,
     sourceModule?: FeaturevisorModule,
   ): void => {
+    const normalizedDiagnostic: FeaturevisorDiagnostic = {
+      ...diagnostic,
+      details: diagnostic.details || {},
+    };
+    if (normalizedDiagnostic.module === undefined) {
+      delete normalizedDiagnostic.module;
+    }
+    if (normalizedDiagnostic.moduleName === undefined) {
+      delete normalizedDiagnostic.moduleName;
+    }
+    if (normalizedDiagnostic.originalError === undefined) {
+      delete normalizedDiagnostic.originalError;
+    }
+
     this.moduleDiagnosticSubscriptions.slice().forEach((subscription) => {
       if (subscription.module === sourceModule) {
         return;
       }
 
-      if (!shouldLog(subscription.logLevel, diagnostic.level)) {
+      if (!shouldLog(subscription.logLevel, normalizedDiagnostic.level)) {
         return;
       }
 
-      subscription.handler(diagnostic);
+      subscription.handler(normalizedDiagnostic);
     });
 
-    if (shouldLog(this.logLevel, diagnostic.level)) {
+    if (shouldLog(this.logLevel, normalizedDiagnostic.level)) {
       if (this.onDiagnostic) {
-        this.onDiagnostic(diagnostic);
+        this.onDiagnostic(normalizedDiagnostic);
       } else {
-        const method = getConsoleMethodForDiagnostic(diagnostic.level);
-        console[method](FEATUREVISOR_DIAGNOSTIC_PREFIX, diagnostic.message, diagnostic);
+        const method = getConsoleMethodForDiagnostic(normalizedDiagnostic.level);
+        console[method](
+          FEATUREVISOR_DIAGNOSTIC_PREFIX,
+          normalizedDiagnostic.message,
+          normalizedDiagnostic,
+        );
       }
     }
 
-    if (diagnostic.level === "error") {
-      this.trigger("error", { diagnostic });
+    if (normalizedDiagnostic.level === "error") {
+      this.trigger("error", { diagnostic: normalizedDiagnostic });
     }
   };
 
@@ -651,7 +679,10 @@ export class Featurevisor {
     };
 
     const reportDiagnostic = (diagnostic: FeaturevisorModuleReportedDiagnostic) => {
-      const moduleDiagnostic: FeaturevisorDiagnostic = { ...diagnostic };
+      const moduleDiagnostic: FeaturevisorDiagnostic = {
+        ...diagnostic,
+        details: diagnostic.details || {},
+      };
 
       if (module.name) {
         moduleDiagnostic.module = module.name;
@@ -695,8 +726,10 @@ export class Featurevisor {
       level: "debug",
       code: "context_set",
       message: replace ? "Context replaced" : "Context updated",
-      context: this.context,
-      replaced: replace,
+      details: {
+        context: this.context,
+        replaced: replace,
+      },
     });
   }
 
@@ -709,7 +742,7 @@ export class Featurevisor {
       : this.context;
   }
 
-  spawn(context: Context = {}, options: OverrideOptions = {}): FeaturevisorChildInstance {
+  spawn(context: Context = {}, options: SpawnOptions = {}): FeaturevisorChildInstance {
     return new FeaturevisorChildInstance({
       parent: this,
       context: this.getContext(context),
@@ -722,7 +755,7 @@ export class Featurevisor {
    */
   private getEvaluationDependencies(
     context: Context,
-    options: OverrideOptions = {},
+    options: InternalOverrideOptions = {},
   ): EvaluateDependencies {
     return {
       context: this.getContext(context),
@@ -734,13 +767,7 @@ export class Featurevisor {
       // internal cast; avoid widening these helpers into public instance APIs.
       datafile: this as unknown as InstanceEvaluationDataProvider,
 
-      // OverrideOptions
-      sticky: options.sticky
-        ? {
-            ...this.sticky,
-            ...options.sticky,
-          }
-        : this.sticky,
+      sticky: options.__featurevisorChildSticky || this.sticky,
       defaultVariationValue: options.defaultVariationValue,
       defaultVariableValue: options.defaultVariableValue,
     };
@@ -768,8 +795,8 @@ export class Featurevisor {
         level: "error",
         code: "evaluation_error",
         message: "isEnabled failed",
-        featureKey,
         originalError: e,
+        details: { featureKey },
       });
 
       return false;
@@ -813,8 +840,8 @@ export class Featurevisor {
         level: "error",
         code: "evaluation_error",
         message: "getVariation failed",
-        featureKey,
         originalError: e,
+        details: { featureKey },
       });
 
       return null;
@@ -865,9 +892,8 @@ export class Featurevisor {
         level: "error",
         code: "evaluation_error",
         message: "getVariable failed",
-        featureKey,
-        variableKey,
         originalError: e,
+        details: { featureKey, variableKey },
       });
 
       return null;

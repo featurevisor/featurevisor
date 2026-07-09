@@ -158,7 +158,7 @@ export function parseConditionsIfStringified(
       code: "conditions_parse_error",
       message: "Error parsing conditions",
       originalError: e,
-      conditions,
+      details: { conditions },
     });
 
     return conditions;
@@ -194,8 +194,7 @@ export function allConditionsAreMatched(
         code: "condition_match_error",
         message: e instanceof Error ? e.message : String(e),
         originalError: e,
-        condition: conditions,
-        context,
+        details: { condition: conditions, context },
       });
 
       return false;

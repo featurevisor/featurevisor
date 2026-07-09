@@ -317,7 +317,12 @@ describe("Featurevisor public API: modules and diagnostics", () => {
           name: "source",
           setup: ({ onDiagnostic, reportDiagnostic }) => {
             onDiagnostic((item) => source.push(item.code), { logLevel: "debug" });
-            reportDiagnostic({ level: "warn", code: "custom", message: "Custom", payload: 42 });
+            reportDiagnostic({
+              level: "warn",
+              code: "custom",
+              message: "Custom",
+              details: { payload: 42 },
+            });
           },
         },
       ],
@@ -325,7 +330,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
 
     expect(source).not.toContain("custom");
     expect(observer).toContainEqual(
-      expect.objectContaining({ code: "custom", module: "source", payload: 42 }),
+      expect.objectContaining({ code: "custom", module: "source", details: { payload: 42 } }),
     );
   });
 

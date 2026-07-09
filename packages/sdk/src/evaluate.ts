@@ -126,10 +126,12 @@ function reportEvaluationDiagnostic(
     level,
     code,
     message,
-    featureKey: evaluation.featureKey,
-    variableKey: evaluation.variableKey,
-    reason: evaluation.reason,
-    evaluation,
+    details: {
+      featureKey: evaluation.featureKey,
+      variableKey: evaluation.variableKey,
+      reason: evaluation.reason,
+      evaluation,
+    },
     originalError: evaluation.error,
   });
 }
@@ -370,7 +372,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
         level: "warn",
         code: "deprecated_feature",
         message: "Feature is deprecated",
-        featureKey,
+        details: { featureKey },
       });
     }
 
@@ -407,8 +409,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
           level: "warn",
           code: "deprecated_variable",
           message: "Variable is deprecated",
-          featureKey,
-          variableKey,
+          details: { featureKey, variableKey },
         });
       }
     }

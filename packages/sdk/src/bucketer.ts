@@ -61,8 +61,7 @@ export function getBucketKey(options: GetBucketKeyOptions): BucketKey {
       level: "error",
       code: "invalid_bucket_by",
       message: "Invalid bucketBy",
-      featureKey,
-      bucketBy,
+      details: { featureKey, bucketBy },
     });
 
     throw new Error("invalid bucketBy");

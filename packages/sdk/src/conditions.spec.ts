@@ -1196,7 +1196,7 @@ describe("sdk: Conditions", function () {
           level: "error",
           code: "conditions_parse_error",
           message: "Error parsing conditions",
-          conditions: "{",
+          details: { conditions: "{" },
         }),
       );
     });

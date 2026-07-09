@@ -52,7 +52,7 @@ describe("Featurevisor public API: child instances", () => {
     ]);
   });
 
-  it("isolates sticky state between siblings and supports per-call overrides", () => {
+  it("isolates sticky state between siblings and ignores per-call sticky values", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({ features: { flag: createFeature() } }),
@@ -64,7 +64,9 @@ describe("Featurevisor public API: child instances", () => {
     expect(parent.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag")).toBe(false);
     expect(inheritedChild.isEnabled("flag")).toBe(true);
-    expect(offChild.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } })).toBe(true);
+    expect(offChild.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(
+      false,
+    );
     expect(offChild.isEnabled("flag")).toBe(false);
   });
 

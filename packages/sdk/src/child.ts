@@ -137,10 +137,14 @@ export class FeaturevisorChildInstance {
     };
   }
 
-  private getChildOptions(options: OverrideOptions = {}): OverrideOptions {
+  private getChildOptions(
+    options: OverrideOptions = {},
+  ): OverrideOptions & { __featurevisorChildSticky: StickyFeatures } {
     return {
-      sticky: this.sticky,
       ...options,
+      // This is an SDK-private transport field. Public evaluation options do
+      // not accept sticky values; sticky belongs to the child instance.
+      __featurevisorChildSticky: this.sticky,
     };
   }
 

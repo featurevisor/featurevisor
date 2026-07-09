@@ -125,7 +125,7 @@ describe("Featurevisor public API: complex evaluation", () => {
     expect(sdk.getVariableObject("experiment", "items", context)).toBeNull();
   });
 
-  it("lets sticky values override force and rules for each evaluation type", () => {
+  it("lets instance sticky values override force and rules for each evaluation type", () => {
     const sdk = createComplexSdk();
     const context = { userId: "blocked", role: "blocked", bucket: 1000 };
     const sticky = {
@@ -136,9 +136,11 @@ describe("Featurevisor public API: complex evaluation", () => {
       },
     };
 
-    expect(sdk.isEnabled("experiment", context, { sticky })).toBe(true);
-    expect(sdk.getVariation("experiment", context, { sticky })).toBe("treatment");
-    expect(sdk.getVariableString("experiment", "greeting", context, { sticky })).toBe("Sticky");
+    sdk.setSticky(sticky);
+
+    expect(sdk.isEnabled("experiment", context)).toBe(true);
+    expect(sdk.getVariation("experiment", context)).toBe("treatment");
+    expect(sdk.getVariableString("experiment", "greeting", context)).toBe("Sticky");
   });
 
   it("applies default variation and variable options only when evaluation has no value", () => {
@@ -167,13 +169,15 @@ describe("Featurevisor public API: complex evaluation", () => {
     expect(sdk.getVariableString("experiment", "retired", { bucket: 1000 })).toBe("old");
 
     expect(diagnostics).toContainEqual(
-      expect.objectContaining({ code: "deprecated_feature", featureKey: "deprecatedFeature" }),
+      expect.objectContaining({
+        code: "deprecated_feature",
+        details: expect.objectContaining({ featureKey: "deprecatedFeature" }),
+      }),
     );
     expect(diagnostics).toContainEqual(
       expect.objectContaining({
         code: "deprecated_variable",
-        featureKey: "experiment",
-        variableKey: "retired",
+        details: expect.objectContaining({ featureKey: "experiment", variableKey: "retired" }),
       }),
     );
   });
@@ -187,9 +191,11 @@ describe("Featurevisor public API: complex evaluation", () => {
     expect(diagnostics).toContainEqual(
       expect.objectContaining({
         code: "allocated",
-        featureKey: "experiment",
-        reason: "allocated",
-        evaluation: expect.objectContaining({ bucketValue: 75000, ruleKey: "everyone" }),
+        details: expect.objectContaining({
+          featureKey: "experiment",
+          reason: "allocated",
+          evaluation: expect.objectContaining({ bucketValue: 75000, ruleKey: "everyone" }),
+        }),
       }),
     );
   });

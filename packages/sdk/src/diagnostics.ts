@@ -25,23 +25,14 @@ export interface FeaturevisorDiagnostic {
   message: string;
   module?: string;
   moduleName?: string;
-  featureKey?: string;
-  variableKey?: string;
-  reason?: string;
   originalError?: unknown;
-  [key: string]: unknown;
+  details: Record<string, unknown>;
 }
 
-export interface FeaturevisorModuleReportedDiagnostic {
-  level: FeaturevisorLogLevel;
-  code: FeaturevisorDiagnosticCode;
-  message: string;
-  moduleName?: string;
-  featureKey?: string;
-  variableKey?: string;
-  reason?: string;
-  originalError?: unknown;
-  [key: string]: unknown;
+export interface FeaturevisorModuleReportedDiagnostic
+  extends Omit<FeaturevisorDiagnostic, "details" | "module"> {
+  /** Additional diagnostic data, normalized to an object by the SDK. */
+  details?: Record<string, unknown>;
 }
 
 export type FeaturevisorDiagnosticHandler = (diagnostic: FeaturevisorDiagnostic) => void;

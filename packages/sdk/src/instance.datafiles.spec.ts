@@ -169,11 +169,13 @@ describe("Featurevisor public API: datafiles", () => {
       expect.objectContaining({
         level: "info",
         code: "datafile_set",
-        revision: "two",
-        previousRevision: "one",
-        revisionChanged: true,
-        features: ["changed", "added"],
-        replaced: false,
+        details: {
+          revision: "two",
+          previousRevision: "one",
+          revisionChanged: true,
+          features: ["changed", "added"],
+          replaced: false,
+        },
       }),
     );
   });

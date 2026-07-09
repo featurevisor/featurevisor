@@ -51,7 +51,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     ]);
   });
 
-  it("lets per-call sticky values override instance sticky values", () => {
+  it("ignores consumer-supplied per-call sticky values", () => {
     const sdk = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({ features: { flag: createFeature() } }),
@@ -59,7 +59,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     });
 
     expect(sdk.isEnabled("flag")).toBe(false);
-    expect(sdk.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } })).toBe(true);
+    expect(sdk.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(false);
   });
 
   it("returns raw evaluations with stable reasons and details", () => {
