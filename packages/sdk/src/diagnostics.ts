@@ -29,8 +29,10 @@ export interface FeaturevisorDiagnostic {
   details: Record<string, unknown>;
 }
 
-export interface FeaturevisorModuleReportedDiagnostic
-  extends Omit<FeaturevisorDiagnostic, "details" | "module"> {
+export interface FeaturevisorModuleReportedDiagnostic extends Omit<
+  FeaturevisorDiagnostic,
+  "details" | "module"
+> {
   /** Additional diagnostic data, normalized to an object by the SDK. */
   details?: Record<string, unknown>;
 }
