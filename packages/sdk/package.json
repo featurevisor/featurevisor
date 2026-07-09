@@ -5,6 +5,11 @@
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "types": "cjs/index.d.ts",
+  "files": [
+    "cjs",
+    "esm",
+    "node-esm"
+  ],
   "exports": {
     ".": {
       "types": "./cjs/index.d.ts",

@@ -4,6 +4,10 @@
   "description": "CLI package of Featurevisor",
   "main": "bin.js",
   "types": "lib/index.d.ts",
+  "files": [
+    "bin.js",
+    "lib"
+  ],
   "bin": {
     "featurevisor": "bin.js"
   },
