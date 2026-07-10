@@ -17,6 +17,7 @@ export interface DatafileOptions {
 export interface DatafileFile {
   path: string;
   size: number;
+  gzipSize: number;
 }
 
 export abstract class Adapter {

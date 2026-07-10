@@ -88,7 +88,7 @@ Non-zero exit on failure.
 npx featurevisor list --datafiles --json --pretty
 ```
 
-Lists generated datafile paths relative to `datafiles/` and their sizes in aligned columns, excluding `REVISION` and hidden files. Sizes are right-aligned, with `dev*` directories first and `prod*` directories last. `--json` returns `{ path, size }` items with byte sizes in the same order. Run `build` first when you need freshly generated output.
+Lists generated datafile paths relative to `datafiles/` with uncompressed and gzip-compressed sizes in aligned columns, excluding `REVISION` and hidden files. Sizes are right-aligned with two decimal places, and padded `B` suffixes align with `kB`/`mB`; `dev*` directories appear first and `prod*` directories last. `--json` returns `{ path, size, gzipSize }` items with byte sizes in the same order. Run `build` first when you need freshly generated output.
 
 ### Features
 

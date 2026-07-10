@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { execSync, spawn } from "child_process";
+import { gzipSync } from "zlib";
 
 import type {
   ExistingState,
@@ -259,10 +260,15 @@ export class FilesystemAdapter extends Adapter {
     return getAllEntityFilePathsRecursively(directoryPath)
       .filter((filePath) => path.basename(filePath) !== this.config.revisionFileName)
       .filter((filePath) => !path.basename(filePath).startsWith("."))
-      .map((filePath) => ({
-        path: path.relative(directoryPath, filePath).split(path.sep).join("/"),
-        size: fs.statSync(filePath).size,
-      }))
+      .map((filePath) => {
+        const content = fs.readFileSync(filePath);
+
+        return {
+          path: path.relative(directoryPath, filePath).split(path.sep).join("/"),
+          size: content.length,
+          gzipSize: gzipSync(content).length,
+        };
+      })
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 

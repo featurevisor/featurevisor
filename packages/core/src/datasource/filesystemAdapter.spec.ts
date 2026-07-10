@@ -29,10 +29,10 @@ describe("core: filesystemAdapter", () => {
 
     const datasource = new Datasource(getProjectConfig(root), root);
 
-    await expect(datasource.listDatafiles()).resolves.toEqual([
-      { path: "production/featurevisor-all.json", size: 2 },
-      { path: "staging/featurevisor-mobile.txt", size: 4 },
-      { path: "staging/nested/featurevisor-web.json", size: 3 },
+    await expect(datasource.listDatafiles()).resolves.toMatchObject([
+      { path: "production/featurevisor-all.json", size: 2, gzipSize: expect.any(Number) },
+      { path: "staging/featurevisor-mobile.txt", size: 4, gzipSize: expect.any(Number) },
+      { path: "staging/nested/featurevisor-web.json", size: 3, gzipSize: expect.any(Number) },
     ]);
   });
 

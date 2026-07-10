@@ -437,7 +437,7 @@ function printResult({ result, entityType, options }) {
 
 function getDatafileSizeParts(size: number): { value: string; unit: string; color: number } {
   if (size < 1024) {
-    return { value: `${size}`, unit: "B", color: CLI_COLOR_YELLOW };
+    return { value: size.toFixed(2), unit: "B", color: CLI_COLOR_YELLOW };
   }
 
   if (size < 1024 * 1024) {
@@ -451,6 +451,12 @@ export function formatDatafileSize(size: number): string {
   const { value, unit, color } = getDatafileSizeParts(size);
 
   return `${value} ${colorize(unit, color)}`;
+}
+
+function formatDatafileSizeColumn(size: number, valueWidth: number): string {
+  const { value, unit, color } = getDatafileSizeParts(size);
+
+  return `${value.padStart(valueWidth)} ${" ".repeat(2 - unit.length)}${colorize(unit, color)}`;
 }
 
 function getDatafileDirectory(datafilePath: string): string {
@@ -503,21 +509,30 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
     "Datafile".length,
     ...sortedResult.map((datafile) => datafile.path.length),
   );
-  const sizeWidth = Math.max(
-    "Size".length,
+  const sizeValueWidth = Math.max(
     ...sortedResult.map((datafile) => {
       const { value, unit } = getDatafileSizeParts(datafile.size);
-      return `${value} ${unit}`.length;
+      return value.length;
     }),
   );
+  const gzipSizeValueWidth = Math.max(
+    ...sortedResult.map((datafile) => {
+      const { value, unit } = getDatafileSizeParts(datafile.gzipSize);
+      return value.length;
+    }),
+  );
+  const sizeWidth = Math.max("Size".length, sizeValueWidth + 3);
+  const gzipSizeWidth = Math.max("Gzip".length, gzipSizeValueWidth + 3);
 
   console.log(
     `  ${colorize("Datafile".padEnd(pathWidth), CLI_COLOR_CYAN)}  ${colorize(
       "Size".padStart(sizeWidth),
       CLI_COLOR_CYAN,
-    )}`,
+    )}  ${colorize("Gzip".padStart(gzipSizeWidth), CLI_COLOR_CYAN)}`,
   );
-  console.log(`  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}`);
+  console.log(
+    `  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}  ${"-".repeat(gzipSizeWidth)}`,
+  );
 
   let previousDirectory: string | undefined;
   for (const datafile of sortedResult) {
@@ -526,12 +541,9 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
       console.log("");
     }
 
-    const { value, unit } = getDatafileSizeParts(datafile.size);
-    const rawSize = `${value} ${unit}`;
-    const formattedSize = `${" ".repeat(sizeWidth - rawSize.length)}${formatDatafileSize(
-      datafile.size,
-    )}`;
-    console.log(`  ${datafile.path.padEnd(pathWidth)}  ${formattedSize}`);
+    const formattedSize = formatDatafileSizeColumn(datafile.size, sizeValueWidth);
+    const formattedGzipSize = formatDatafileSizeColumn(datafile.gzipSize, gzipSizeValueWidth);
+    console.log(`  ${datafile.path.padEnd(pathWidth)}  ${formattedSize}  ${formattedGzipSize}`);
     previousDirectory = directory;
   }
 

@@ -40,7 +40,9 @@ describe("core: list", function () {
   test("lists generated datafiles", async function () {
     const log = jest.spyOn(console, "log").mockImplementation();
     const datasource = {
-      listDatafiles: async () => [{ path: "production/featurevisor-all.json", size: 42 }],
+      listDatafiles: async () => [
+        { path: "production/featurevisor-all.json", size: 42, gzipSize: 62 },
+      ],
     };
 
     await listProject({
@@ -50,12 +52,14 @@ describe("core: list", function () {
       options: { datafiles: true, json: true },
     });
 
-    expect(log).toHaveBeenCalledWith('[{"path":"production/featurevisor-all.json","size":42}]');
+    expect(log).toHaveBeenCalledWith(
+      '[{"path":"production/featurevisor-all.json","size":42,"gzipSize":62}]',
+    );
     log.mockRestore();
   });
 
   test("formats datafile sizes with colored units", function () {
-    expect(formatDatafileSize(42)).toBe("42 \u001b[33mB\u001b[0m");
+    expect(formatDatafileSize(42)).toBe("42.00 \u001b[33mB\u001b[0m");
     expect(formatDatafileSize(1024)).toBe("1.00 \u001b[36mkB\u001b[0m");
     expect(formatDatafileSize(1024 * 1024)).toBe("1.00 \u001b[32mmB\u001b[0m");
   });
@@ -64,9 +68,9 @@ describe("core: list", function () {
     const log = jest.spyOn(console, "log").mockImplementation();
     const datasource = {
       listDatafiles: async () => [
-        { path: "production/featurevisor-all.json", size: 1024 * 1024 },
-        { path: "staging/featurevisor-checkout.json", size: 42 },
-        { path: "development/featurevisor-all.json", size: 1024 },
+        { path: "production/featurevisor-all.json", size: 1024 * 1024, gzipSize: 1024 },
+        { path: "staging/featurevisor-checkout.json", size: 42, gzipSize: 24 },
+        { path: "development/featurevisor-all.json", size: 1024, gzipSize: 512 },
       ],
     };
 
@@ -82,6 +86,7 @@ describe("core: list", function () {
 
     expect(uncoloredOutput).toContain("Datafile");
     expect(uncoloredOutput).toContain("Size");
+    expect(uncoloredOutput).toContain("Gzip");
     expect(uncoloredOutput).toContain("production/featurevisor-all.json");
     expect(uncoloredOutput).toContain("staging/featurevisor-checkout.json");
     expect(uncoloredOutput.indexOf("development/featurevisor-all.json")).toBeLessThan(
@@ -91,10 +96,11 @@ describe("core: list", function () {
       uncoloredOutput.indexOf("production/featurevisor-all.json"),
     );
     expect(uncoloredOutput).toMatch(/development\/featurevisor-all\.json\s+1\.00 kB/);
-    expect(uncoloredOutput).toMatch(/staging\/featurevisor-checkout\.json\s+42 B/);
+    expect(uncoloredOutput).toMatch(/development\/featurevisor-all\.json\s+1\.00 kB\s+512\.00  B/);
+    expect(uncoloredOutput).toMatch(/staging\/featurevisor-checkout\.json\s+42\.00  B/);
     expect(uncoloredOutput).toMatch(/production\/featurevisor-all\.json\s+1\.00 mB/);
-    expect(uncoloredOutput).toContain("1.00 kB\n\n  staging/");
-    expect(uncoloredOutput).toContain("42 B\n\n  production/");
+    expect(uncoloredOutput).toContain("512.00  B\n\n  staging/");
+    expect(uncoloredOutput).toContain("24.00  B\n\n  production/");
     expect(output).toContain("\u001b[36mkB\u001b[0m");
     expect(output).toContain("\u001b[33mB\u001b[0m");
     expect(output).toContain("\u001b[32mmB\u001b[0m");
