@@ -504,8 +504,6 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
   }
 
   console.log("");
-  console.log(CLI_FORMAT_BOLD, "Datafiles");
-  console.log("");
 
   const pathWidth = Math.max(
     "Datafile".length,
