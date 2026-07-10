@@ -492,7 +492,9 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
   const sortedResult = sortDatafiles(result);
 
   if (options.json) {
-    console.log(options.pretty ? JSON.stringify(sortedResult, null, 2) : JSON.stringify(sortedResult));
+    console.log(
+      options.pretty ? JSON.stringify(sortedResult, null, 2) : JSON.stringify(sortedResult),
+    );
     return;
   }
 
@@ -511,13 +513,13 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
   );
   const sizeValueWidth = Math.max(
     ...sortedResult.map((datafile) => {
-      const { value, unit } = getDatafileSizeParts(datafile.size);
+      const { value } = getDatafileSizeParts(datafile.size);
       return value.length;
     }),
   );
   const gzipSizeValueWidth = Math.max(
     ...sortedResult.map((datafile) => {
-      const { value, unit } = getDatafileSizeParts(datafile.gzipSize);
+      const { value } = getDatafileSizeParts(datafile.gzipSize);
       return value.length;
     }),
   );
@@ -530,9 +532,7 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
       CLI_COLOR_CYAN,
     )}  ${colorize("Gzip".padStart(gzipSizeWidth), CLI_COLOR_CYAN)}`,
   );
-  console.log(
-    `  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}  ${"-".repeat(gzipSizeWidth)}`,
-  );
+  console.log(`  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}  ${"-".repeat(gzipSizeWidth)}`);
 
   let previousDirectory: string | undefined;
   for (const datafile of sortedResult) {
