@@ -81,6 +81,10 @@ export class Datasource {
   /**
    * Datafile
    */
+  listDatafiles() {
+    return this.adapter.listDatafiles ? this.adapter.listDatafiles() : Promise.resolve([]);
+  }
+
   readDatafile(options: DatafileOptions) {
     return this.adapter.readDatafile(options);
   }

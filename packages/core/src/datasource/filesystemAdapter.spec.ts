@@ -19,6 +19,23 @@ function createProject(configBody: string) {
 }
 
 describe("core: filesystemAdapter", () => {
+  it("lists generated datafiles as sorted relative paths", async () => {
+    const root = createProject("module.exports = {};");
+    writeFile(path.join(root, "datafiles", "production", "featurevisor-all.json"), "{}");
+    writeFile(path.join(root, "datafiles", "staging", "nested", "featurevisor-web.json"), "{}");
+    writeFile(path.join(root, "datafiles", "staging", "featurevisor-mobile.txt"), "{}");
+    writeFile(path.join(root, "datafiles", "REVISION"), "1");
+    writeFile(path.join(root, "datafiles", ".DS_Store"), "");
+
+    const datasource = new Datasource(getProjectConfig(root), root);
+
+    await expect(datasource.listDatafiles()).resolves.toEqual([
+      "production/featurevisor-all.json",
+      "staging/featurevisor-mobile.txt",
+      "staging/nested/featurevisor-web.json",
+    ]);
+  });
+
   it("lists nested entity paths with dot namespace character by default", async () => {
     const root = createProject("module.exports = {};");
 

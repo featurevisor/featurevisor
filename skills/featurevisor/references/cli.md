@@ -82,6 +82,14 @@ Non-zero exit on failure.
 
 `list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output.
 
+### Datafiles
+
+```bash
+npx featurevisor list --datafiles --json --pretty
+```
+
+Lists generated datafile paths relative to `datafiles/`, excluding `REVISION` and hidden files. Run `build` first when you need freshly generated output.
+
 ### Features
 
 ```bash

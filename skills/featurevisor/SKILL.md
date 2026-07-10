@@ -113,6 +113,7 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 | `npx featurevisor info`                                                                                               | Counts of features / segments / attributes / tests    |
 | `npx featurevisor lint`                                                                                               | Validate definitions (run after every edit)           |
 | `npx featurevisor list --features --json [--filters…]`                                                                | Find features by tag, env, variable, archived, etc.   |
+| `npx featurevisor list --datafiles --json`                                                                            | List generated datafile paths                         |
 | `npx featurevisor list --segments --json`                                                                             | List segments                                         |
 | `npx featurevisor list --attributes --json`                                                                           | List attributes                                       |
 | `npx featurevisor find-usage --segment=<key>`                                                                         | Where a segment is used                               |

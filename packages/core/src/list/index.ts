@@ -432,8 +432,38 @@ function printResult({ result, entityType, options }) {
   console.log(CLI_FORMAT_GREEN, `Found ${result.length} ${entityType}s.`);
 }
 
+function printDatafiles({ result, options }: { result: string[]; options: any }) {
+  if (options.json) {
+    console.log(options.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
+    return;
+  }
+
+  if (result.length === 0) {
+    console.log(CLI_FORMAT_YELLOW, "No datafiles found.");
+    return;
+  }
+
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Datafiles");
+  console.log("");
+
+  for (const datafilePath of result) {
+    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${datafilePath}`);
+  }
+
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, `Found ${result.length} datafiles.`);
+}
+
 export async function listProject(deps: Dependencies) {
   const { options } = deps;
+
+  // datafiles
+  if (options.datafiles) {
+    const result = await deps.datasource.listDatafiles();
+
+    return printDatafiles({ result, options });
+  }
 
   // features
   if (options.features) {
@@ -493,7 +523,9 @@ export async function listProject(deps: Dependencies) {
   console.log("");
   console.log(CLI_FORMAT_YELLOW, "Nothing to list.");
   console.log("");
-  console.log("Please pass `--features`, `--segments`, `--attributes`, or `--targets`.");
+  console.log(
+    "Please pass `--datafiles`, `--features`, `--segments`, `--attributes`, or `--targets`.",
+  );
 }
 
 export const listPlugin: Plugin = {

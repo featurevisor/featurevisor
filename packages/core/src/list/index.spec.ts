@@ -1,6 +1,6 @@
 import type { ParsedFeature } from "@featurevisor/types";
 
-import { listEntities } from "./index";
+import { listEntities, listProject } from "./index";
 
 function createFeatureFixture(overrides: Partial<ParsedFeature> = {}): ParsedFeature {
   return {
@@ -35,5 +35,22 @@ describe("core: list", function () {
     );
 
     expect(result).toEqual([]);
+  });
+
+  test("lists generated datafiles", async function () {
+    const log = jest.spyOn(console, "log").mockImplementation();
+    const datasource = {
+      listDatafiles: async () => ["production/featurevisor-all.json"],
+    };
+
+    await listProject({
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: datasource as any,
+      options: { datafiles: true, json: true },
+    });
+
+    expect(log).toHaveBeenCalledWith('["production/featurevisor-all.json"]');
+    log.mockRestore();
   });
 });

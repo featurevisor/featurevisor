@@ -32,7 +32,7 @@ export function getRevisionFilePath(projectConfig: ProjectConfig): string {
   return path.join(projectConfig.stateDirectoryPath, projectConfig.revisionFileName);
 }
 
-export function getAllEntityFilePathsRecursively(directoryPath, extension) {
+export function getAllEntityFilePathsRecursively(directoryPath, extension?: string) {
   let entities: string[] = [];
 
   if (!fs.existsSync(directoryPath)) {
@@ -47,7 +47,7 @@ export function getAllEntityFilePathsRecursively(directoryPath, extension) {
 
     if (fs.statSync(filePath).isDirectory()) {
       entities = entities.concat(getAllEntityFilePathsRecursively(filePath, extension));
-    } else if (file.endsWith(`.${extension}`)) {
+    } else if (!extension || file.endsWith(`.${extension}`)) {
       entities.push(filePath);
     }
   }
@@ -253,6 +253,16 @@ export class FilesystemAdapter extends Adapter {
   /**
    * Datafile
    */
+  async listDatafiles(): Promise<string[]> {
+    const directoryPath = this.config.datafilesDirectoryPath;
+
+    return getAllEntityFilePathsRecursively(directoryPath)
+      .filter((filePath) => path.basename(filePath) !== this.config.revisionFileName)
+      .filter((filePath) => !path.basename(filePath).startsWith("."))
+      .map((filePath) => path.relative(directoryPath, filePath).split(path.sep).join("/"))
+      .sort();
+  }
+
   getDatafilePath(options: DatafileOptions): string {
     const pattern = this.config.datafileNamePattern || "featurevisor-%s.json";
 

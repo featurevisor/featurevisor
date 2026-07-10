@@ -32,6 +32,7 @@ export abstract class Adapter {
   ): Promise<void>;
 
   // datafile
+  listDatafiles?(): Promise<string[]>;
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 
