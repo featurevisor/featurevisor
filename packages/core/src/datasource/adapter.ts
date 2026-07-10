@@ -14,6 +14,11 @@ export interface DatafileOptions {
   datafilesDir?: string;
 }
 
+export interface DatafileFile {
+  path: string;
+  size: number;
+}
+
 export abstract class Adapter {
   abstract listSets(): Promise<string[]>;
 
@@ -32,7 +37,7 @@ export abstract class Adapter {
   ): Promise<void>;
 
   // datafile
-  listDatafiles?(): Promise<string[]>;
+  listDatafiles?(): Promise<DatafileFile[]>;
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 

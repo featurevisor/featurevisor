@@ -10,11 +10,14 @@ import type {
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
+import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
   CLI_COLOR_CYAN,
+  CLI_COLOR_GREEN,
+  CLI_COLOR_YELLOW,
   CLI_FORMAT_BOLD,
   CLI_FORMAT_GREEN,
   CLI_FORMAT_YELLOW,
@@ -432,13 +435,62 @@ function printResult({ result, entityType, options }) {
   console.log(CLI_FORMAT_GREEN, `Found ${result.length} ${entityType}s.`);
 }
 
-function printDatafiles({ result, options }: { result: string[]; options: any }) {
+function getDatafileSizeParts(size: number): { value: string; unit: string; color: number } {
+  if (size < 1024) {
+    return { value: `${size}`, unit: "B", color: CLI_COLOR_YELLOW };
+  }
+
+  if (size < 1024 * 1024) {
+    return { value: (size / 1024).toFixed(2), unit: "kB", color: CLI_COLOR_CYAN };
+  }
+
+  return { value: (size / (1024 * 1024)).toFixed(2), unit: "mB", color: CLI_COLOR_GREEN };
+}
+
+export function formatDatafileSize(size: number): string {
+  const { value, unit, color } = getDatafileSizeParts(size);
+
+  return `${value} ${colorize(unit, color)}`;
+}
+
+function getDatafileDirectory(datafilePath: string): string {
+  const lastSlashIndex = datafilePath.lastIndexOf("/");
+
+  return lastSlashIndex === -1 ? "" : datafilePath.slice(0, lastSlashIndex);
+}
+
+function getDatafileDirectoryPriority(datafilePath: string): number {
+  const directory = datafilePath.split("/", 1)[0].toLowerCase();
+
+  if (directory.startsWith("dev")) {
+    return 0;
+  }
+
+  if (directory.startsWith("prod")) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function sortDatafiles(datafiles: DatafileFile[]): DatafileFile[] {
+  return datafiles.slice().sort((a, b) => {
+    const priorityDifference =
+      getDatafileDirectoryPriority(a.path) - getDatafileDirectoryPriority(b.path);
+
+    return priorityDifference || a.path.localeCompare(b.path);
+  });
+}
+
+function printDatafiles({ result, options }: { result: DatafileFile[]; options: any }) {
+  const sortedResult = sortDatafiles(result);
+
   if (options.json) {
-    console.log(options.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
+    console.log(options.pretty ? JSON.stringify(sortedResult, null, 2) : JSON.stringify(sortedResult));
     return;
   }
 
-  if (result.length === 0) {
+  if (sortedResult.length === 0) {
     console.log(CLI_FORMAT_YELLOW, "No datafiles found.");
     return;
   }
@@ -447,12 +499,44 @@ function printDatafiles({ result, options }: { result: string[]; options: any })
   console.log(CLI_FORMAT_BOLD, "Datafiles");
   console.log("");
 
-  for (const datafilePath of result) {
-    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${datafilePath}`);
+  const pathWidth = Math.max(
+    "Datafile".length,
+    ...sortedResult.map((datafile) => datafile.path.length),
+  );
+  const sizeWidth = Math.max(
+    "Size".length,
+    ...sortedResult.map((datafile) => {
+      const { value, unit } = getDatafileSizeParts(datafile.size);
+      return `${value} ${unit}`.length;
+    }),
+  );
+
+  console.log(
+    `  ${colorize("Datafile".padEnd(pathWidth), CLI_COLOR_CYAN)}  ${colorize(
+      "Size".padStart(sizeWidth),
+      CLI_COLOR_CYAN,
+    )}`,
+  );
+  console.log(`  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}`);
+
+  let previousDirectory: string | undefined;
+  for (const datafile of sortedResult) {
+    const directory = getDatafileDirectory(datafile.path);
+    if (previousDirectory !== undefined && directory !== previousDirectory) {
+      console.log("");
+    }
+
+    const { value, unit } = getDatafileSizeParts(datafile.size);
+    const rawSize = `${value} ${unit}`;
+    const formattedSize = `${" ".repeat(sizeWidth - rawSize.length)}${formatDatafileSize(
+      datafile.size,
+    )}`;
+    console.log(`  ${datafile.path.padEnd(pathWidth)}  ${formattedSize}`);
+    previousDirectory = directory;
   }
 
   console.log("");
-  console.log(CLI_FORMAT_GREEN, `Found ${result.length} datafiles.`);
+  console.log(CLI_FORMAT_GREEN, `Found ${sortedResult.length} datafiles.`);
 }
 
 export async function listProject(deps: Dependencies) {

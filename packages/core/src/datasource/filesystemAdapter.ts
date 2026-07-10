@@ -14,7 +14,7 @@ import type {
 } from "@featurevisor/types";
 import type { CustomParser } from "@featurevisor/parsers";
 
-import { Adapter, DatafileOptions } from "./adapter";
+import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 import { ProjectConfig } from "../config";
 import { getCommit } from "../utils/git";
 import { CLI_COLOR_CYAN, CLI_COLOR_GREEN, colorize } from "../tester/cliFormat";
@@ -253,14 +253,17 @@ export class FilesystemAdapter extends Adapter {
   /**
    * Datafile
    */
-  async listDatafiles(): Promise<string[]> {
+  async listDatafiles(): Promise<DatafileFile[]> {
     const directoryPath = this.config.datafilesDirectoryPath;
 
     return getAllEntityFilePathsRecursively(directoryPath)
       .filter((filePath) => path.basename(filePath) !== this.config.revisionFileName)
       .filter((filePath) => !path.basename(filePath).startsWith("."))
-      .map((filePath) => path.relative(directoryPath, filePath).split(path.sep).join("/"))
-      .sort();
+      .map((filePath) => ({
+        path: path.relative(directoryPath, filePath).split(path.sep).join("/"),
+        size: fs.statSync(filePath).size,
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path));
   }
 
   getDatafilePath(options: DatafileOptions): string {

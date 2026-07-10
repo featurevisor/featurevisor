@@ -20,7 +20,7 @@ import type {
 import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
-import { Adapter, DatafileOptions } from "./adapter";
+import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 
 export class Datasource {
   private adapter: Adapter;
@@ -81,7 +81,7 @@ export class Datasource {
   /**
    * Datafile
    */
-  listDatafiles() {
+  listDatafiles(): Promise<DatafileFile[]> {
     return this.adapter.listDatafiles ? this.adapter.listDatafiles() : Promise.resolve([]);
   }
 
