@@ -11,6 +11,7 @@ import type {
   RulesByEnvironment,
   Schema,
   Segment,
+  Group,
   Target,
   Test,
 } from "@featurevisor/types";
@@ -36,6 +37,7 @@ type EntityValue =
   | Attribute
   | Segment
   | ParsedFeature
+  | Group
   | Record<string, unknown>
   | Schema
   | Target
@@ -63,6 +65,8 @@ export interface PromoteProjectSetsOptions {
   to?: string;
   includeFeatures?: string | string[];
   excludeFeatures?: string | string[];
+  target?: string | string[];
+  tag?: string | string[];
   conflicts?: ConflictPolicy;
   allowEmpty?: boolean;
   apply?: boolean;
@@ -78,6 +82,8 @@ export interface PromoteProjectSetsResult {
   filters: {
     includeFeatures: string[];
     excludeFeatures: string[];
+    targets: string[];
+    tags: string[];
     conflicts: ConflictPolicy;
   };
   dependencies: Record<EntityType, number>;
@@ -159,6 +165,33 @@ function matchesPattern(key: string, patterns: string[]) {
     const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
     return new RegExp(`^${escaped}$`).test(key);
   });
+}
+
+function matchesTags(candidateTags: string[], selector: Target["tags"]): boolean {
+  if (!selector) return true;
+  if (Array.isArray(selector)) {
+    return selector.some((tag) => candidateTags.includes(tag));
+  }
+  if ("or" in selector) {
+    return selector.or.some((tag) => candidateTags.includes(tag));
+  }
+  return selector.and.every((tag) => candidateTags.includes(tag));
+}
+
+function matchesTarget(featureKey: string, feature: ParsedFeature, target: Target): boolean {
+  const featureTags = feature.tags || [];
+  if (feature.archived === true) return false;
+  if (target.tag && !featureTags.includes(target.tag)) return false;
+  if (target.tags && !matchesTags(featureTags, target.tags)) return false;
+
+  const included = target.includeFeatures
+    ? matchesPattern(featureKey, toArray(target.includeFeatures))
+    : true;
+  const excluded = target.excludeFeatures
+    ? matchesPattern(featureKey, toArray(target.excludeFeatures))
+    : false;
+
+  return included && !excluded;
 }
 
 function withoutKey<T extends Record<string, unknown>>(entity: T): T {
@@ -307,6 +340,14 @@ function collectFeatureDependencies(
   attributeKeys: Set<string>,
   schemaKeys: Set<string>,
 ) {
+  if (typeof feature.bucketBy === "string") {
+    attributeKeys.add(feature.bucketBy);
+  } else if (Array.isArray(feature.bucketBy)) {
+    feature.bucketBy.forEach((attributeKey) => attributeKeys.add(attributeKey));
+  } else if (feature.bucketBy && "or" in feature.bucketBy) {
+    feature.bucketBy.or.forEach((attributeKey) => attributeKeys.add(attributeKey));
+  }
+
   collectSchemaReferences(feature.variablesSchema, schemaKeys);
 
   for (const required of feature.required || []) {
@@ -487,13 +528,26 @@ async function getPromotionPlan(
   options: Required<
     Pick<
       PromoteProjectSetsOptions,
-      "includeFeatures" | "excludeFeatures" | "allowEmpty" | "conflicts"
+      "includeFeatures" | "excludeFeatures" | "target" | "tag" | "allowEmpty" | "conflicts"
     >
   >,
 ) {
   const includeFeatures = toArray(options.includeFeatures);
   const excludeFeatures = toArray(options.excludeFeatures);
-  const hasNoFilters = includeFeatures.length === 0 && excludeFeatures.length === 0;
+  const targetSelectors = toArray(options.target);
+  const tagSelectors = toArray(options.tag);
+  const availableTags = sourceDatasource.getConfig().tags;
+  const unknownTag = tagSelectors.find((tag) => !availableTags.includes(tag));
+  if (unknownTag) {
+    throw new Error(
+      `Unknown source tag "${unknownTag}". Available tags: ${availableTags.join(", ") || "none"}.`,
+    );
+  }
+  const hasNoFilters =
+    includeFeatures.length === 0 &&
+    excludeFeatures.length === 0 &&
+    targetSelectors.length === 0 &&
+    tagSelectors.length === 0;
 
   const [featureKeys, segmentKeys, attributeKeys, groupKeys, schemaKeys, targetKeys, testKeys] =
     await Promise.all([
@@ -510,7 +564,7 @@ async function getPromotionPlan(
     safeRead<ParsedFeature>(featureKeys, (key) => sourceDatasource.readFeature(key)),
     safeRead<Segment>(segmentKeys, (key) => sourceDatasource.readSegment(key)),
     safeRead<Attribute>(attributeKeys, (key) => sourceDatasource.readAttribute(key)),
-    safeRead<Record<string, unknown>>(groupKeys, (key) => sourceDatasource.readGroup(key) as any),
+    safeRead<Group>(groupKeys, (key) => sourceDatasource.readGroup(key)),
     safeRead<Schema>(schemaKeys, (key) => sourceDatasource.readSchema(key)),
     safeRead<Target>(targetKeys, (key) => sourceDatasource.readTarget(key)),
     safeRead<Test>(testKeys, (key) => sourceDatasource.readTest(key)),
@@ -523,6 +577,18 @@ async function getPromotionPlan(
   const promotedSchemaKeys = new Set<string>();
   const promotedTargetKeys = new Set<string>();
 
+  const selectedTargets: Target[] = [];
+  for (const key of targetSelectors) {
+    const target = targets[key];
+    if (!target) {
+      throw new Error(
+        `Unknown source target "${key}". Available targets: ${targetKeys.join(", ") || "none"}.`,
+      );
+    }
+    selectedTargets.push(target);
+    promotedTargetKeys.add(key);
+  }
+
   if (hasNoFilters) {
     featureKeys.forEach((key) => promotedFeatureKeys.add(key));
     segmentKeys.forEach((key) => promotedSegmentKeys.add(key));
@@ -531,33 +597,54 @@ async function getPromotionPlan(
     schemaKeys.forEach((key) => promotedSchemaKeys.add(key));
     targetKeys.forEach((key) => promotedTargetKeys.add(key));
   } else {
-    let matchedFeatureCount = 0;
-
     for (const key of featureKeys) {
-      if (matchesPattern(key, includeFeatures) && !matchesPattern(key, excludeFeatures)) {
+      const feature = features[key];
+      const matchesIncludes = includeFeatures.length === 0 || matchesPattern(key, includeFeatures);
+      const matchesExcludes = matchesPattern(key, excludeFeatures);
+      const matchesSelectedTags =
+        tagSelectors.length === 0 || tagSelectors.some((tag) => (feature.tags || []).includes(tag));
+      const matchesSelectedTargets =
+        selectedTargets.length === 0 ||
+        selectedTargets.some((target) => matchesTarget(key, feature, target));
+
+      if (matchesIncludes && !matchesExcludes && matchesSelectedTags && matchesSelectedTargets) {
         promotedFeatureKeys.add(key);
-        matchedFeatureCount++;
       }
     }
 
-    if (includeFeatures.length > 0 && matchedFeatureCount === 0 && !options.allowEmpty) {
-      throw new Error(
-        `No source features matched --includeFeatures=${includeFeatures.join(", ")}.`,
-      );
+    if (promotedFeatureKeys.size === 0 && !options.allowEmpty) {
+      throw new Error("No source features matched the promotion filters.");
     }
   }
 
-  for (const key of Array.from(promotedFeatureKeys)) {
-    const feature = features[key];
-    if (feature) {
-      collectFeatureDependencies(
-        feature,
-        features,
-        promotedFeatureKeys,
-        promotedSegmentKeys,
-        promotedAttributeKeys,
-        promotedSchemaKeys,
-      );
+  let previousFeatureCount = -1;
+  while (previousFeatureCount !== promotedFeatureKeys.size) {
+    previousFeatureCount = promotedFeatureKeys.size;
+
+    for (const key of Array.from(promotedFeatureKeys)) {
+      const feature = features[key];
+      if (feature) {
+        collectFeatureDependencies(
+          feature,
+          features,
+          promotedFeatureKeys,
+          promotedSegmentKeys,
+          promotedAttributeKeys,
+          promotedSchemaKeys,
+        );
+      }
+    }
+
+    for (const key of groupKeys) {
+      const group = groups[key];
+      const groupFeatureKeys = group.slots
+        .map((slot) => slot.feature)
+        .filter((featureKey): featureKey is string => typeof featureKey === "string");
+
+      if (groupFeatureKeys.some((featureKey) => promotedFeatureKeys.has(featureKey))) {
+        promotedGroupKeys.add(key);
+        groupFeatureKeys.forEach((featureKey) => promotedFeatureKeys.add(featureKey));
+      }
     }
   }
 
@@ -674,7 +761,7 @@ async function getPromotionPlan(
       await plan(
         "group",
         key,
-        groups[key],
+        groups[key] as any,
         (entryKey) => destinationDatasource.readGroup(entryKey) as any,
       );
   }
@@ -960,6 +1047,8 @@ export async function promoteProjectSets(
   const plans = await getPromotionPlan(sourceDatasource, destinationDatasource, {
     includeFeatures: options.includeFeatures || [],
     excludeFeatures: options.excludeFeatures || [],
+    target: options.target || [],
+    tag: options.tag || [],
     allowEmpty: options.allowEmpty === true,
     conflicts: conflictPolicy,
   });
@@ -1024,6 +1113,8 @@ export async function promoteProjectSets(
     filters: {
       includeFeatures: toArray(options.includeFeatures),
       excludeFeatures: toArray(options.excludeFeatures),
+      targets: toArray(options.target),
+      tags: toArray(options.tag),
       conflicts: conflictPolicy,
     },
     dependencies,
@@ -1085,6 +1176,12 @@ function printPromoteResult(
   if (result.filters.excludeFeatures.length > 0) {
     console.log(`  Exclude features: ${result.filters.excludeFeatures.join(", ")}`);
   }
+  if (result.filters.targets.length > 0) {
+    console.log(`  Targets: ${result.filters.targets.join(", ")}`);
+  }
+  if (result.filters.tags.length > 0) {
+    console.log(`  Tags: ${result.filters.tags.join(", ")}`);
+  }
   console.log(`  Conflict policy: ${result.filters.conflicts}`);
   console.log("");
   console.log(
@@ -1120,6 +1217,8 @@ export const promotePlugin: Plugin = {
       to: parsed.to,
       includeFeatures: parsed.includeFeatures,
       excludeFeatures: parsed.excludeFeatures,
+      target: parsed.target,
+      tag: parsed.tag,
       conflicts: parsed.conflicts,
       allowEmpty: parsed.allowEmpty === true || parsed.allowEmpty === "true",
       apply: parsed.apply === true || parsed.apply === "true",
@@ -1134,6 +1233,14 @@ export const promotePlugin: Plugin = {
     {
       command: "promote --from=dev --to=staging",
       description: "preview definitions that can be promoted from one set to another",
+    },
+    {
+      command: "promote --from=dev --to=staging --target=web",
+      description: "preview the target and every definition needed to build its datafile",
+    },
+    {
+      command: "promote --from=dev --to=staging --tag=web",
+      description: "preview definitions affecting features with a tag",
     },
     {
       command: 'promote --from=dev --to=staging --includeFeatures="checkout*"',

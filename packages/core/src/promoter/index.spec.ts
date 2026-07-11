@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { getProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { getCustomDatafile } from "../builder/buildDatafile";
 import { promotePlugin, promoteProjectSets } from "./index";
 
 async function writeFile(root: string, relativePath: string, content: string) {
@@ -16,7 +17,7 @@ async function createProject(options?: { configContent?: string; sets?: string[]
   const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
   const configContent =
     options?.configContent ??
-    ["module.exports = {", "  sets: true,", "  tags: ['all'],", "};", ""].join("\n");
+    ["module.exports = {", "  sets: true,", "  tags: ['all', 'web'],", "};", ""].join("\n");
   const sets = options?.sets ?? ["dev", "staging"];
 
   await writeFile(root, "featurevisor.config.js", configContent);
@@ -127,10 +128,223 @@ describe("promoteProjectSets", function () {
     expect(result.apply).toEqual(true);
     expect(result.dependencies.feature).toEqual(1);
     expect(result.dependencies.segment).toEqual(1);
-    expect(result.dependencies.attribute).toEqual(1);
+    expect(result.dependencies.attribute).toEqual(2);
     expect(result.dependencies.schema).toEqual(1);
     expect(result.dependencies.test).toEqual(2);
     expect(feature.description).toEqual("Checkout flow in dev");
+  });
+
+  it("uses all features as the starting set when only excludeFeatures is provided", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/experimentalBanner.yml",
+      [
+        "description: Experimental banner",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      excludeFeatures: "experimental*",
+    });
+
+    expect(result.dependencies.feature).toEqual(1);
+    expect(result.files.updated).toEqual(
+      expect.arrayContaining([expect.stringContaining("features/checkoutFlow.yml")]),
+    );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("features/experimentalBanner.yml")]),
+    );
+  });
+
+  it("selects a target and all definitions needed by its matching features", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/targets/web.yml",
+      [
+        "description: Web datafile",
+        "tags:",
+        "  and:",
+        "    - web",
+        "    - all",
+        "includeFeatures:",
+        "  - web*",
+        "excludeFeatures:",
+        "  - webInternal*",
+        "",
+      ].join("\n"),
+    );
+    for (const [key, segment] of [
+      ["webCheckout", "internal"],
+      ["webInternalTools", '"*"'],
+    ]) {
+      await writeFile(
+        root,
+        `sets/dev/features/${key}.yml`,
+        [
+          `description: ${key}`,
+          "tags:",
+          "  - web",
+          "  - all",
+          "bucketBy: userId",
+          "rules:",
+          "  - key: everyone",
+          `    segments: ${segment}`,
+          "    percentage: 100",
+          "",
+        ].join("\n"),
+      );
+    }
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      target: "web",
+      apply: true,
+    });
+
+    expect(result.filters.targets).toEqual(["web"]);
+    expect(result.dependencies.target).toEqual(1);
+    expect(result.dependencies.feature).toEqual(1);
+    expect(result.dependencies.segment).toEqual(1);
+    expect(result.dependencies.attribute).toEqual(2);
+    expect(result.files.created).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("targets/web.yml"),
+        expect.stringContaining("features/webCheckout.yml"),
+      ]),
+    );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("features/webInternalTools.yml")]),
+    );
+
+    const destinationDatasource = datasource.forSet("staging");
+    const target = await destinationDatasource.readTarget("web");
+    const datafile = await getCustomDatafile({
+      environment: false,
+      projectConfig: destinationDatasource.getConfig(),
+      datasource: destinationDatasource,
+      revision: "test",
+      tag: target.tag,
+      tags: target.tags,
+      includeFeatures: target.includeFeatures,
+      excludeFeatures: target.excludeFeatures,
+    });
+    expect(Object.keys(datafile.features)).toEqual(["webCheckout"]);
+    expect(Object.keys(datafile.segments)).toEqual(["internal"]);
+  });
+
+  it("selects features by tag and includes exclusion group members", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/webCheckout.yml",
+      [
+        "description: Web checkout",
+        "tags:",
+        "  - web",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 50",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutFlow.yml",
+      [
+        "description: Checkout flow in dev",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        "    segments: internal",
+        "    percentage: 50",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/groups/webExperiments.yml",
+      [
+        "description: Web experiments",
+        "slots:",
+        "  - feature: webCheckout",
+        "    percentage: 50",
+        "  - feature: checkoutFlow",
+        "    percentage: 50",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+    });
+
+    expect(result.filters.tags).toEqual(["web"]);
+    expect(result.dependencies.feature).toEqual(2);
+    expect(result.dependencies.group).toEqual(1);
+    expect(result.dependencies.segment).toEqual(1);
+  });
+
+  it("rejects unknown targets and empty filtered results unless allowEmpty is used", async function () {
+    const root = await createProject();
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await expect(
+      promoteProjectSets(projectConfig, datasource, {
+        from: "dev",
+        to: "staging",
+        target: "missing",
+      }),
+    ).rejects.toThrow('Unknown source target "missing"');
+
+    await expect(
+      promoteProjectSets(projectConfig, datasource, {
+        from: "dev",
+        to: "staging",
+        tag: "missing",
+      }),
+    ).rejects.toThrow('Unknown source tag "missing"');
+
+    await expect(
+      promoteProjectSets(projectConfig, datasource, {
+        from: "dev",
+        to: "staging",
+        tag: "web",
+      }),
+    ).rejects.toThrow("No source features matched the promotion filters.");
+
+    const empty = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      allowEmpty: true,
+    });
+    expect(empty.dependencies.feature).toEqual(0);
   });
 
   it("validates sets and promotion flow constraints", async function () {

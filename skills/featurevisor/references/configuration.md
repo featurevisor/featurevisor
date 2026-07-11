@@ -77,6 +77,7 @@ Sets are commonly used to model release lanes (`dev`, `staging`, `production`) o
 In a project with sets, `npx featurevisor promote --from=<set> --to=<set>` copies definitions (and their dependencies) from one set to another. It previews by default; pass `--apply` to write files.
 
 - `promotionFlows` in the config restricts which `from` → `to` promotions are allowed. When omitted, any flow is allowed.
-- Set `promotable: false` on a definition (feature, rule, segment, attribute, group, schema, target, or test) to keep it from being promoted.
+- Filter with `--target`, `--tag`, `--includeFeatures`, or `--excludeFeatures`. Featurevisor adds the selected features' complete dependency closure. A selected target definition is included too.
+- Set `promotable: false` on a top level definition to protect an existing destination value. Missing destination definitions are still created. On rules, source entries are omitted and destination entries are preserved.
 
 See <https://featurevisor.com/docs/promotions>.

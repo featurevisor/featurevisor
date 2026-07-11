@@ -250,13 +250,15 @@ Generates typed accessors from feature definitions. Other languages: see <https:
 ```bash
 npx featurevisor promote --from=dev --to=staging                       # preview
 npx featurevisor promote --from=dev --to=staging --apply               # write destination files
+npx featurevisor promote --from=dev --to=staging --target=web          # target and its feature dependency closure
+npx featurevisor promote --from=dev --to=staging --tag=web             # tagged features and their dependencies
 npx featurevisor promote --from=dev --to=staging --includeFeatures="checkout*"
 npx featurevisor promote --from=dev --to=staging --excludeFeatures="experimental*"
 npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source | destination | fail (default source)
 npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
 ```
 
-Copies definitions (and their dependencies) between [sets](https://featurevisor.com/docs/sets). Allowed directions can be constrained by `promotionFlows` in the config, and a definition with `promotable: false` is never promoted. See <https://featurevisor.com/docs/promotions>.
+Copies definitions and their dependencies between [sets](https://featurevisor.com/docs/sets). `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config. See <https://featurevisor.com/docs/promotions>.
 
 ## catalog
 

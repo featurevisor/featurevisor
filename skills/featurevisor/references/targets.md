@@ -78,7 +78,7 @@ If all selectors are omitted, the target includes all non-archived features.
 
 Target `context` represents values known at build time. Featurevisor applies this context while building the target datafile and removes redundant rules or segments where possible.
 
-In a sets project, a target can carry `promotable: false` to keep it out of [promotions](https://featurevisor.com/docs/promotions).
+In a sets project, a target can carry `promotable: false` to protect an existing destination target from later [promotion](https://featurevisor.com/docs/promotions) updates. A missing destination target is still created.
 
 Use `target` in feature test assertions:
 
