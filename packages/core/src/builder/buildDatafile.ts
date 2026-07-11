@@ -44,6 +44,7 @@ export interface CustomDatafileOptions {
   tags?: BuildTags;
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
+  featurevisorVersion?: string;
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
@@ -67,6 +68,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       tags: options.tags,
       includeFeatures: options.includeFeatures,
       excludeFeatures: options.excludeFeatures,
+      featurevisorVersion: options.featurevisorVersion,
     },
     existingState,
   );

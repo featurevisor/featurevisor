@@ -10,4 +10,13 @@ module.exports = {
     ],
   },
   testMatch: ["<rootDir>/src/**/*.spec.ts"],
+  collectCoverageFrom: ["src/**/*.ts", "!src/**/*.spec.ts"],
+  coverageThreshold: {
+    global: {
+      statements: 58,
+      branches: 59,
+      functions: 63,
+      lines: 59,
+    },
+  },
 };

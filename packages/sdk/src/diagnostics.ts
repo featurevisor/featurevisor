@@ -7,6 +7,7 @@ export type FeaturevisorDiagnosticCode =
   | "sticky_set"
   | "invalid_datafile"
   | "duplicate_module"
+  | "module_setup_error"
   | "module_close_error"
   | "evaluation_error"
   | "invalid_bucket_by"

@@ -1,6 +1,7 @@
 module.exports = {
   bail: true,
   testEnvironment: "node",
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   transform: {
     "^.+\\.[tj]sx?$": [
       "@swc/jest",

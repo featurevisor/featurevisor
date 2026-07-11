@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import { createComplexDatafile, deterministicBucketModule } from "./instance.test-fixtures";
 
@@ -9,6 +12,10 @@ function createComplexSdk(onDiagnostic?: (diagnostic: FeaturevisorDiagnostic) =>
     modules: [deterministicBucketModule()],
   });
 }
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: complex evaluation", () => {
   it("honours nested AND/NOT segments and ordered rule precedence", () => {
@@ -64,15 +71,27 @@ describe("Featurevisor public API: complex evaluation", () => {
   it("handles exact allocation and percentage boundaries", () => {
     const sdk = createComplexSdk();
 
-    expect(sdk.getVariation("experiment", { userId: "a", bucket: 0 })).toBe("control");
-    expect(sdk.getVariation("experiment", { userId: "a", bucket: 49999 })).toBe("control");
-    expect(sdk.getVariation("experiment", { userId: "a", bucket: 50000 })).toBe("control");
-    expect(sdk.getVariation("experiment", { userId: "a", bucket: 50001 })).toBe("treatment");
-    expect(sdk.getVariation("experiment", { userId: "a", bucket: 99999 })).toBe("treatment");
+    for (const [bucket, variation] of Object.entries(
+      conformance.bucketing.allocationExpectations,
+    )) {
+      expect(sdk.getVariation("experiment", { userId: "a", bucket: Number(bucket) })).toBe(
+        variation,
+      );
+    }
 
     const beta = { userId: "beta", plan: "beta", device: "desktop" };
     expect(sdk.isEnabled("experiment", { ...beta, bucket: 50000 })).toBe(true);
     expect(sdk.isEnabled("experiment", { ...beta, bucket: 50001 })).toBe(false);
+  });
+
+  it("does not coerce mismatched values in typed variable getters", () => {
+    const sdk = createComplexSdk();
+    const context = { userId: "qa", role: "qa", bucket: 1000 };
+
+    expect(sdk.getVariableString("experiment", "count", context)).toBeNull();
+    expect(sdk.getVariableBoolean("experiment", "count", context)).toBeNull();
+    expect(sdk.getVariableInteger("experiment", "greeting", context)).toBeNull();
+    expect(sdk.getVariableDouble("experiment", "greeting", context)).toBeNull();
   });
 
   it("enforces required flags and required variations recursively", () => {

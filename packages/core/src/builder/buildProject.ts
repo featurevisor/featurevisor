@@ -205,6 +205,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       tags: target?.tags,
       includeFeatures: target?.includeFeatures,
       excludeFeatures: target?.excludeFeatures,
+      featurevisorVersion: getFeaturevisorVersion(),
     });
 
     if (target?.context) {

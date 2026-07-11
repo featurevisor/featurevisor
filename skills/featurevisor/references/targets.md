@@ -15,7 +15,7 @@ Only `description` is required.
 
 ## Tags
 
-Use `tag` for one tag, or `tags` for multi-tag selectors like `{ or: [...] }` and `{ and: [...] }`.
+Use `tag` for one tag, or `tags` for multiple tag selectors like `{ or: [...] }` and `{ and: [...] }`. The arrays must not be empty.
 
 Supported shapes:
 
@@ -41,7 +41,7 @@ tags:
 
 ## Features
 
-Use `includeFeatures` and `excludeFeatures` to select features by key. Patterns support `*` wildcards:
+Use `includeFeatures` and `excludeFeatures` to select features by key. Patterns use glob style `*` matching:
 
 ```yaml
 description: Checkout datafile
@@ -58,6 +58,8 @@ Exclusions take precedence over inclusions. If `includeFeatures` is omitted, all
 description: All features
 includeFeatures: "*"
 ```
+
+Pattern arrays must not be empty. Patterns must not have surrounding spaces or repeated `**`. A direct string value is only valid when it is exactly `*`.
 
 Feature and tag selectors are combined with **AND** semantics. If both `tag`/`tags` and `includeFeatures`/`excludeFeatures` are present, a feature must satisfy the tag selector and the feature-key selector to be included.
 

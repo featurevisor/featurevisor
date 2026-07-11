@@ -578,10 +578,10 @@ export function getConditionsZodSchema(
               return true;
             }
 
-            return /^[gimsuy]{1,}$/.test(value);
+            return /^[gimsuy]+$/.test(value) && new Set(value).size === value.length;
           },
           {
-            message: `regexFlags must of one or more of these characters: g, i, m, s, u, y`,
+            message: `regexFlags must contain unique characters from: g, i, m, s, u, y`,
           },
         )
         .optional(),

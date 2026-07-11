@@ -285,6 +285,26 @@ describe("sdk: Conditions", function () {
       expect(allConditionsAreMatched(conditions, { name: 123 })).toEqual(false);
     });
 
+    it("should reset cached stateful regular expressions before every match", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "browser_type",
+          operator: "matches",
+          value: "chrome",
+          regexFlags: "g",
+        },
+      ];
+      const regex = /chrome/g;
+      const getRegex = () => regex;
+
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, getRegex)).toBe(
+        false,
+      );
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
+    });
+
     it("should match with operator: notMatches", function () {
       const conditions: Condition[] = [
         {

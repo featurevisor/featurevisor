@@ -40,35 +40,11 @@ import type {
   FeaturevisorModuleDiagnosticOptions,
   FeaturevisorModuleReportedDiagnostic,
 } from "./diagnostics.js";
-
-const FEATUREVISOR_DIAGNOSTIC_PREFIX = "[Featurevisor]";
-const FEATUREVISOR_LOG_LEVELS: FeaturevisorLogLevel[] = ["fatal", "error", "warn", "info", "debug"];
-
-function shouldLog(
-  configuredLevel: FeaturevisorLogLevel,
-  diagnosticLevel: FeaturevisorLogLevel,
-): boolean {
-  return (
-    FEATUREVISOR_LOG_LEVELS.indexOf(configuredLevel) >=
-    FEATUREVISOR_LOG_LEVELS.indexOf(diagnosticLevel)
-  );
-}
-
-function getConsoleMethodForDiagnostic(level: FeaturevisorLogLevel) {
-  if (level === "fatal" || level === "error") {
-    return "error";
-  }
-
-  if (level === "warn") {
-    return "warn";
-  }
-
-  if (level === "debug") {
-    return "debug";
-  }
-
-  return "info";
-}
+import {
+  FEATUREVISOR_DIAGNOSTIC_PREFIX,
+  getConsoleMethodForDiagnostic,
+  shouldLog,
+} from "./diagnostics.js";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -176,12 +152,10 @@ function getValueByType(value: VariableValue, fieldType: string | VariableType):
     case "string":
       return typeof value === "string" ? value : null;
     case "integer": {
-      const result = typeof value === "number" ? value : Number(value);
-      return Number.isInteger(result) ? result : null;
+      return typeof value === "number" && Number.isInteger(value) ? value : null;
     }
     case "double": {
-      const result = typeof value === "number" ? value : Number(value);
-      return Number.isFinite(result) ? result : null;
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
     }
     case "boolean":
       return typeof value === "boolean" ? value : null;
@@ -514,7 +488,22 @@ export class Featurevisor {
       return;
     }
 
-    module.setup?.(this.getModuleApi(module));
+    try {
+      module.setup?.(this.getModuleApi(module));
+    } catch (error) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      this.reportDiagnostic({
+        level: "error",
+        code: "module_setup_error",
+        message: "Module setup failed",
+        moduleName: module.name,
+        originalError: error,
+        details: {},
+      });
+      void this.closeModule(module);
+
+      return;
+    }
     this.modules.push(module);
 
     return async () => {
@@ -637,12 +626,20 @@ export class Featurevisor {
         return;
       }
 
-      subscription.handler(normalizedDiagnostic);
+      try {
+        subscription.handler(normalizedDiagnostic);
+      } catch (error) {
+        console.error(FEATUREVISOR_DIAGNOSTIC_PREFIX, "Diagnostic handler failed", error);
+      }
     });
 
     if (shouldLog(this.logLevel, normalizedDiagnostic.level)) {
       if (this.onDiagnostic) {
-        this.onDiagnostic(normalizedDiagnostic);
+        try {
+          this.onDiagnostic(normalizedDiagnostic);
+        } catch (error) {
+          console.error(FEATUREVISOR_DIAGNOSTIC_PREFIX, "Diagnostic handler failed", error);
+        }
       } else {
         const method = getConsoleMethodForDiagnostic(normalizedDiagnostic.level);
         console[method](

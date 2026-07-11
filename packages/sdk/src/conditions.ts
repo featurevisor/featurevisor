@@ -88,9 +88,11 @@ export function conditionIsMatched(
       return compareVersions(valueInContext, value) <= 0;
     } else if (operator === "matches") {
       const regex = getRegex(value, regexFlags || "");
+      regex.lastIndex = 0;
       return regex.test(valueInContext);
     } else if (operator === "notMatches") {
       const regex = getRegex(value, regexFlags || "");
+      regex.lastIndex = 0;
       return !regex.test(valueInContext);
     }
   } else if (typeof contextValueFromPath === "number" && typeof value === "number") {

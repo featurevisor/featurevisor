@@ -391,6 +391,18 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       );
     });
 
+    it("rejects duplicate regexFlags", () => {
+      expectConditionsFailure(
+        {
+          attribute: "browser.version",
+          operator: "matches",
+          value: "x",
+          regexFlags: "ii",
+        },
+        "unique",
+      );
+    });
+
     it("rejects regexFlags when operator is not matches/notMatches", () => {
       expectConditionsFailure(
         {

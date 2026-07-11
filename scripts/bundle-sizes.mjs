@@ -68,7 +68,7 @@ async function bundlePackage(packageConfig, minify) {
         minify,
         sourcemap: false,
         reportCompressedSize: false,
-        target: "es2018",
+        target: "es2015",
         rollupOptions: {
           external: packageConfig.external,
         },

@@ -277,6 +277,82 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     );
   });
 
+  it("reports setup failures and leaves the failed module unregistered", async () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const closed: string[] = [];
+    const sdk = createFeaturevisor({
+      datafile,
+      logLevel: "error",
+      onDiagnostic: (item) => diagnostics.push(item),
+    });
+
+    const result = sdk.addModule({
+      name: "broken-setup",
+      setup: ({ onDiagnostic }) => {
+        onDiagnostic(() => undefined);
+        throw new Error("broken-setup");
+      },
+      before: (options) => {
+        throw new Error(`should not run ${options.featureKey}`);
+      },
+      close: () => {
+        closed.push("broken-setup");
+      },
+    });
+
+    await Promise.resolve();
+
+    expect(result).toBeUndefined();
+    expect(sdk.isEnabled("experiment", { userId: "user" })).toBe(true);
+    expect(closed).toEqual(["broken-setup"]);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "module_setup_error",
+        moduleName: "broken-setup",
+        originalError: expect.any(Error),
+      }),
+    );
+  });
+
+  it("isolates throwing root and module diagnostic handlers", () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const observed: string[] = [];
+    const sdk = createFeaturevisor({
+      datafile,
+      logLevel: "debug",
+      onDiagnostic: () => {
+        throw new Error("broken-root-handler");
+      },
+      modules: [
+        {
+          name: "broken-observer",
+          setup: ({ onDiagnostic }) =>
+            onDiagnostic(
+              () => {
+                throw new Error("broken-module-handler");
+              },
+              { logLevel: "debug" },
+            ),
+        },
+        {
+          name: "working-observer",
+          setup: ({ onDiagnostic }) =>
+            onDiagnostic((diagnostic) => observed.push(diagnostic.code), { logLevel: "debug" }),
+        },
+      ],
+    });
+
+    expect(sdk.isEnabled("experiment", { userId: "user" })).toBe(true);
+    expect(observed).toContain("sdk_initialized");
+    expect(consoleError).toHaveBeenCalledWith(
+      "[Featurevisor]",
+      "Diagnostic handler failed",
+      expect.any(Error),
+    );
+
+    consoleError.mockRestore();
+  });
+
   it("gives module subscriptions independent log levels", () => {
     const root: string[] = [];
     const info: string[] = [];

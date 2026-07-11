@@ -81,6 +81,24 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     expect(parseTarget({ description: "Empty exclude", excludeFeatures: [] }).success).toBe(false);
   });
 
+  it("rejects empty tag selectors", () => {
+    expect(parseTarget({ description: "Empty tags", tags: [] }).success).toBe(false);
+    expect(parseTarget({ description: "Empty or", tags: { or: [] } }).success).toBe(false);
+    expect(parseTarget({ description: "Empty and", tags: { and: [] } }).success).toBe(false);
+  });
+
+  it("rejects malformed feature glob patterns", () => {
+    expect(parseTarget({ description: "Empty pattern", includeFeatures: [""] }).success).toBe(
+      false,
+    );
+    expect(parseTarget({ description: "Spaces", includeFeatures: [" checkout*"] }).success).toBe(
+      false,
+    );
+    expect(
+      parseTarget({ description: "Double wildcard", includeFeatures: ["checkout**"] }).success,
+    ).toBe(false);
+  });
+
   it("rejects unknown single tag", () => {
     const result = parseTarget({ description: "Unknown tag", tag: "unknown" });
 
