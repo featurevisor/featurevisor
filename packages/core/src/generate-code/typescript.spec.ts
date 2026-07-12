@@ -117,7 +117,7 @@ describe("generate-code/typescript", () => {
     expect(indexContent).not.toMatch(/Feature";/);
   });
 
-  it("generates only tagged feature types and optional React hooks", async () => {
+  it("generates the union of repeated tags and optional React hooks", async () => {
     const projectConfig = getProjectConfig(tempProjectPath);
     const datasource = new Datasource(projectConfig, tempProjectPath);
 
@@ -129,7 +129,7 @@ describe("generate-code/typescript", () => {
         options: {},
       } as any,
       outputPath,
-      { tag: "checkout", react: true },
+      { tag: ["checkout", "ecommerce"], react: true },
     );
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
@@ -138,9 +138,77 @@ describe("generate-code/typescript", () => {
 
     expect(featuresContent).toContain("discount: null;");
     expect(featuresContent).toContain("pricing: {");
+    expect(featuresContent).toContain("withComplexSchema: {");
     expect(featuresContent).not.toContain("accountTargeting:");
     expect(generatedFiles).toContain("react.ts");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).toContain('export * from "./react";');
+  });
+
+  it("generates the union of repeated targets using their full selectors", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "ecommerce-code.yml"),
+      [
+        "description: Ecommerce code",
+        "tags:",
+        "  and:",
+        "    - all",
+        "    - ecommerce",
+        "includeFeatures:",
+        "  - with*",
+        "excludeFeatures:",
+        "  - withMutations",
+      ].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { target: ["checkout", "ecommerce-code"] },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+
+    expect(featuresContent).toContain("discount: null;");
+    expect(featuresContent).toContain("pricing: {");
+    expect(featuresContent).toContain("withComplexSchema: {");
+    expect(featuresContent).not.toContain("withMutations:");
+    expect(featuresContent).not.toContain("accountTargeting:");
+  });
+
+  it("combines tags and targets as a union and rejects unknown selectors", async () => {
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+    const deps = {
+      rootDirectoryPath: tempProjectPath,
+      projectConfig,
+      datasource,
+      options: {},
+    } as any;
+
+    await generateTypeScriptCodeForProject(deps, outputPath, {
+      tag: "sign-in",
+      target: "checkout",
+    });
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    expect(featuresContent).toContain("foo: {");
+    expect(featuresContent).toContain("discount: null;");
+    expect(featuresContent).not.toContain("accountTargeting:");
+
+    await expect(
+      generateTypeScriptCodeForProject(deps, outputPath, { tag: "missing" }),
+    ).rejects.toThrow('Unknown tag "missing"');
+    await expect(
+      generateTypeScriptCodeForProject(deps, outputPath, { target: "missing" }),
+    ).rejects.toThrow('Unknown target "missing"');
   });
 });

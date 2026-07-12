@@ -14,10 +14,13 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 
 Optional flags:
 
-| Flag          | Effect                                                                 |
-| ------------- | ---------------------------------------------------------------------- |
-| `--tag=<tag>` | Generate for one tag's features only (matches a deployed bundle)       |
-| `--react`     | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
+| Flag                | Effect                                                                 |
+| ------------------- | ---------------------------------------------------------------------- |
+| `--tag=<tag>`       | Generate for features carrying the tag                                 |
+| `--target=<target>` | Generate for features selected by the target                           |
+| `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
+
+`--tag` and `--target` are repeatable. All supplied tags and targets form a union. A target applies its `tag` or `tags`, `includeFeatures`, and `excludeFeatures` selectors. Target context does not specialize generated types.
 
 ## Output
 

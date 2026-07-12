@@ -5,6 +5,7 @@ import type {
   Attribute,
   ParsedFeature,
   Schema,
+  Target,
   VariableSchema,
   VariableSchemaWithInline,
 } from "@featurevisor/types";
@@ -12,7 +13,45 @@ import { Dependencies } from "../dependencies";
 
 export interface TypeScriptGenerationOptions {
   tag?: string | string[];
+  target?: string | string[];
   react?: boolean;
+}
+
+function toArray(value: string | string[] | undefined): string[] {
+  if (typeof value === "undefined") return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function matchesFeaturePatterns(featureKey: string, patterns: Target["includeFeatures"]): boolean {
+  if (!patterns) return false;
+  return toArray(patterns).some((pattern) => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    return new RegExp(`^${escaped}$`).test(featureKey);
+  });
+}
+
+function matchesTargetTags(candidateTags: string[], selector: Target["tags"]): boolean {
+  if (!selector) return true;
+  if (Array.isArray(selector)) {
+    return selector.some((tag) => candidateTags.includes(tag));
+  }
+  if ("or" in selector) {
+    return selector.or.some((tag) => candidateTags.includes(tag));
+  }
+  return selector.and.every((tag) => candidateTags.includes(tag));
+}
+
+function matchesTarget(featureKey: string, feature: ParsedFeature, target: Target): boolean {
+  const featureTags = feature.tags || [];
+  if (target.tag && !featureTags.includes(target.tag)) return false;
+  if (target.tags && !matchesTargetTags(featureTags, target.tags)) return false;
+  if (target.includeFeatures && !matchesFeaturePatterns(featureKey, target.includeFeatures)) {
+    return false;
+  }
+  if (target.excludeFeatures && matchesFeaturePatterns(featureKey, target.excludeFeatures)) {
+    return false;
+  }
+  return true;
 }
 
 function shouldWrapArrayItemType(typeName: string): boolean {
@@ -332,13 +371,28 @@ export async function generateTypeScriptCodeForProject(
   outputPath: string,
   options: TypeScriptGenerationOptions = {},
 ) {
-  const { rootDirectoryPath, datasource } = deps;
-  const selectedTags = options.tag
-    ? Array.isArray(options.tag)
-      ? options.tag
-      : [options.tag]
-    : [];
+  const { rootDirectoryPath, projectConfig, datasource } = deps;
+  const selectedTags = toArray(options.tag);
+  const selectedTargetKeys = toArray(options.target);
   const shouldGenerateReact = Boolean(options.react);
+
+  const unknownTag = selectedTags.find((tag) => !projectConfig.tags.includes(tag));
+  if (unknownTag) {
+    throw new Error(
+      `Unknown tag "${unknownTag}". Available tags: ${projectConfig.tags.join(", ") || "none"}.`,
+    );
+  }
+
+  const availableTargetKeys = await datasource.listTargets();
+  const selectedTargets: Target[] = [];
+  for (const targetKey of selectedTargetKeys) {
+    if (!availableTargetKeys.includes(targetKey)) {
+      throw new Error(
+        `Unknown target "${targetKey}". Available targets: ${availableTargetKeys.join(", ") || "none"}.`,
+      );
+    }
+    selectedTargets.push(await datasource.readTarget(targetKey));
+  }
 
   console.log("\nGenerating TypeScript code...\n");
 
@@ -445,12 +499,17 @@ ${attributeProperties}
       continue;
     }
 
-    if (selectedTags.length > 0) {
-      const featureTags = Array.isArray(parsedFeature.tags) ? parsedFeature.tags : [];
-      const hasTags = selectedTags.every((tag) => featureTags.includes(tag));
-      if (!hasTags) {
-        continue;
-      }
+    const featureTags = Array.isArray(parsedFeature.tags) ? parsedFeature.tags : [];
+    const matchesSelectedTag = selectedTags.some((tag) => featureTags.includes(tag));
+    const matchesSelectedTarget = selectedTargets.some((target) =>
+      matchesTarget(featureKey, parsedFeature, target),
+    );
+    if (
+      (selectedTags.length > 0 || selectedTargets.length > 0) &&
+      !matchesSelectedTag &&
+      !matchesSelectedTarget
+    ) {
+      continue;
     }
 
     parsedFeatures.push({ featureKey, parsedFeature });

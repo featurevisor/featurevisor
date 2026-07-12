@@ -13,6 +13,7 @@ export interface GenerateCodeCLIOptions {
   language: string;
   outDir: string;
   tag?: string | string[];
+  target?: string | string[];
   react?: boolean;
 }
 
@@ -51,6 +52,7 @@ export async function generateCodeForProject(
   if (cliOptions.language === "typescript") {
     return await generateTypeScriptCodeForProject(deps, absolutePath, {
       tag: cliOptions.tag,
+      target: cliOptions.target,
       react: cliOptions.react,
     });
   }
@@ -81,6 +83,7 @@ export const generateCodePlugin: Plugin = {
           language: parsed.language,
           outDir: parsed.outDir,
           tag: parsed.tag,
+          target: parsed.target,
           react: parsed.react,
         },
       );
@@ -94,6 +97,10 @@ export const generateCodePlugin: Plugin = {
     {
       command: "generate-code --language typescript --out-dir src/generated --tag web --react",
       description: "Generate TypeScript and React helper code for tagged features",
+    },
+    {
+      command: "generate-code --language typescript --out-dir src/generated --target web",
+      description: "Generate TypeScript code for features selected by a target",
     },
   ],
 };
