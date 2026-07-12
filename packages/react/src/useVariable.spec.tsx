@@ -2,7 +2,7 @@ import * as React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 import { DatafileContent } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
@@ -42,7 +42,7 @@ function getNewDatafile(colorValue = "red"): DatafileContent {
 }
 
 function getNewInstance() {
-  const sdk = createInstance({
+  const sdk = createFeaturevisor({
     datafile: getNewDatafile(),
   });
 
@@ -104,7 +104,7 @@ describe("react: useVariable", function () {
       return <p data-testid="var">{String(value)}</p>;
     }
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -168,7 +168,7 @@ describe("react: useVariable", function () {
   });
 
   test("should update when setSticky provides a variable override", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -222,7 +222,7 @@ describe("react: useVariable", function () {
   });
 
   test("should default context and react to SDK context for merged evaluation", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",

@@ -5,15 +5,17 @@ import type {
   TestResultAssertion,
   TestResultAssertionError,
 } from "@featurevisor/types";
-import { createLogger, DatafileReader, LogLevel } from "@featurevisor/sdk";
+import { allConditionsAreMatched } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
 
 export async function testSegment(
   datasource: Datasource,
   test: TestSegment,
-  options: { verbose?: boolean; quiet?: boolean } = {},
+  _options: { verbose?: boolean; quiet?: boolean } = {},
 ): Promise<TestResult> {
+  void _options;
+
   const testStartTime = Date.now();
   const segmentKey = test.segment;
 
@@ -37,27 +39,8 @@ export async function testSegment(
     return testResult;
   }
 
-  let logLevel: LogLevel = "warn";
-  if (options.verbose) {
-    logLevel = "debug";
-  } else if (options.quiet) {
-    logLevel = "fatal";
-  }
-
   const parsedSegment = await datasource.readSegment(segmentKey);
   const conditions = parsedSegment.conditions as Condition | Condition[];
-  const logger = createLogger({
-    level: logLevel,
-  });
-  const datafileReader = new DatafileReader({
-    datafile: {
-      schemaVersion: "2",
-      revision: "tester",
-      segments: {},
-      features: {},
-    },
-    logger,
-  });
 
   test.assertions.forEach(function (assertion) {
     const assertionStartTime = Date.now();
@@ -69,7 +52,7 @@ export async function testSegment(
     };
 
     const expected = assertion.expectedToMatch;
-    const actual = datafileReader.allConditionsAreMatched(conditions, assertion.context);
+    const actual = allConditionsAreMatched(conditions, assertion.context);
     const passed = actual === expected;
 
     if (!passed) {

@@ -1,3 +1,5 @@
+.PHONY: install build test typecheck bundle-sizes lint format check
+
 ##
 # Packages
 #
@@ -6,35 +8,27 @@ install:
 
 build:
 	npm run build
-	make print-bundle-size
 
 test:
 	npm test
 
+typecheck:
+	npm run typecheck
+
+bundle-sizes:
+	npm run bundle-sizes
+
 lint:
-	npx prettier examples/ packages/ docs/ --check
+	npx prettier examples/ packages/ --check
 	npx eslint .
 	npx lerna run lint
 
 format:
-	npx prettier examples/ packages/ docs/ --write
+	npx prettier examples/ packages/ --write
 
-##
-# Misc.
-#
-print-bundle-size:
-	@gzip -c packages/sdk/dist/index.mjs > packages/sdk/dist/index.mjs.gz
-	@echo 'SDK package size:'
-	@ls -alh packages/sdk/dist | grep index.mjs | awk '{print $$9 "\t" $$5}'
-
-	@echo ''
-
-	@gzip -c packages/react/dist/index.js > packages/react/dist/index.js.gz
-	@echo 'React package size:'
-	@ls -alh packages/react/dist | grep index.js | awk '{print $$9 "\t" $$5}'
-
-	@echo ''
-
-	@gzip -c packages/vue/dist/index.js > packages/vue/dist/index.js.gz
-	@echo 'Vue package size:'
-	@ls -alh packages/vue/dist | grep index.js | awk '{print $$9 "\t" $$5}'
+check:
+	make install
+	make build
+	make test
+	make lint
+	make typecheck

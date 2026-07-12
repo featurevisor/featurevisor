@@ -1,7 +1,7 @@
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 import type { FeatureKey } from "@featurevisor/types";
 
-export function onFeatureChange(sdk: FeaturevisorInstance, featureKey: FeatureKey, fn) {
+export function onFeatureChange(sdk: Featurevisor, featureKey: FeatureKey, fn: () => void) {
   // datafile_set
   const unsubscribeDatafileSet = sdk.on("datafile_set", ({ features }) => {
     if (Array.isArray(features) && features.indexOf(featureKey) > -1) {

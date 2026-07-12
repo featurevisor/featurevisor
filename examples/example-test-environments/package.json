@@ -1,0 +1,14 @@
+{
+  "name": "@featurevisor/example-test-environments",
+  "private": true,
+  "version": "2.27.0",
+  "description": "Featurevisor project using sets as test release environments",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build --no-state-files",
+    "test": "featurevisor test"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "2.27.0"
+  }
+}

@@ -32,12 +32,12 @@ rules:
   production:
     - key: nl
       segments:
-        - countries/netherlands
+        - countries.netherlands
       percentage: 100
       variation: treatment
     - key: ch
       segments:
-        - countries/switzerland
+        - countries.switzerland
       percentage: 100
       variationWeights:
         control: 10

@@ -14,11 +14,13 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 
 Optional flags:
 
-| Flag                            | Effect                                                              |
-| ------------------------------- | ------------------------------------------------------------------- |
-| `--tag=<tag>`                   | Generate for one tag's features only (matches a deployed bundle)    |
-| `--react`                       | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
-| `--no-individual-features`      | Skip per-feature `*Feature.ts` modules; only emit the function-style API |
+| Flag                | Effect                                                                 |
+| ------------------- | ---------------------------------------------------------------------- |
+| `--tag=<tag>`       | Generate for features carrying the tag                                 |
+| `--target=<target>` | Generate for features selected by the target                           |
+| `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
+
+`--tag` and `--target` are repeatable. All supplied tags and targets form a union. A target applies its `tag` or `tags`, `includeFeatures`, and `excludeFeatures` selectors. Target context does not specialize generated types.
 
 ## Output
 
@@ -27,17 +29,19 @@ Inside `--out-dir`:
 - `context.ts` — typed `Context` interface built from all attribute definitions.
 - `attributes.ts` — typed per-attribute types (`CountryAttribute`, `UserIdAttribute`, etc.).
 - `schemas.ts` — reusable schema types from `schemas/`.
+- `features.ts` — feature keys, variation values, variable keys, and variable value types.
+- `functions.ts` — typed `isEnabled`, `getVariation`, and `getVariable` functions.
+- `instance.ts` — SDK instance wiring through `setInstance`.
 - `index.ts` — barrel exports for the function API (`isEnabled`, `getVariation`, `getVariable`, plus `setInstance`).
-- `<FeatureName>Feature.ts` — per-feature namespaces (unless `--no-individual-features`).
-- `React.ts` — typed hooks (only with `--react`).
+- `react.ts` — typed hooks (only with `--react`).
 
 ## Wiring into an application
 
 ```ts
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 import { setInstance, isEnabled, getVariation, getVariable } from '@yourorg/features'
 
-const f = createInstance({ datafile })
+const f = createFeaturevisor({ datafile })
 setInstance(f)
 
 // from here on, calls are type-checked
@@ -68,4 +72,4 @@ The skill does not author the npm package itself — that's project setup work; 
 - The user is rolling out a new attribute and worries about wrong-type context payloads.
 - The user manages many features and reports churn from typo-driven bugs.
 
-For SDK usage in JS/TS *without* code-gen, just point at <https://featurevisor.com/docs/sdks/javascript>.
+For SDK usage in JS/TS _without_ code-gen, just point at <https://featurevisor.com/docs/sdks/javascript>.

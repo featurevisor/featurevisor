@@ -1,8 +1,7 @@
-import * as fs from "fs";
+import * as fs from "node:fs";
 
-import { parse, parseDocument, stringify } from "yaml";
-import type { Pair, YAMLMap, YAMLSeq } from "yaml/types";
-import { Scalar as ScalarCtor } from "yaml/types";
+import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
+import type { Pair, YAMLMap, YAMLSeq } from "yaml";
 
 import type { CustomParser } from "./index";
 
@@ -15,8 +14,22 @@ function getKeyString(keyNode: unknown): string | undefined {
 }
 
 function copyComments(source: Pair, target: Pair): void {
-  if (source.comment != null) target.comment = source.comment;
-  if (source.commentBefore != null) target.commentBefore = source.commentBefore;
+  const sourcePair = source as Pair & { comment?: string | null; commentBefore?: string | null };
+  const targetPair = target as Pair & { comment?: string | null; commentBefore?: string | null };
+  if (sourcePair.comment != null) targetPair.comment = sourcePair.comment;
+  if (sourcePair.commentBefore != null) targetPair.commentBefore = sourcePair.commentBefore;
+  const srcKey = source.key as
+    | { comment?: string | null; commentBefore?: string | null }
+    | undefined;
+  const tgtKey = target.key;
+  if (srcKey && tgtKey && typeof tgtKey === "object") {
+    const t = tgtKey as {
+      comment?: string | null;
+      commentBefore?: string | null;
+    };
+    if (srcKey.comment != null) t.comment = srcKey.comment;
+    if (srcKey.commentBefore != null) t.commentBefore = srcKey.commentBefore;
+  }
   const srcVal = source.value as
     | { comment?: string | null; commentBefore?: string | null }
     | undefined;
@@ -48,8 +61,13 @@ function primitiveValueKey(v: unknown): string {
   return JSON.stringify(v);
 }
 
+interface NodeCreator {
+  createNode: (value: unknown) => unknown;
+  createPair: (key: unknown, value: unknown) => Pair;
+}
+
 function createValueWithComments(
-  schema: { createNode: (v: unknown) => unknown; createPair: (k: unknown, v: unknown) => Pair },
+  creator: NodeCreator,
   oldNode: unknown,
   newValue: unknown,
 ): unknown {
@@ -70,10 +88,10 @@ function createValueWithComments(
         oldItemsByValue.set(seqItemValueKey(item), item);
       }
     }
-    const newSeq = schema.createNode([]) as YAMLSeq;
+    const newSeq = creator.createNode([]) as YAMLSeq;
     for (const el of newValue) {
       const oldItem = oldItemsByValue.get(primitiveValueKey(el));
-      const itemNode = createValueWithComments(schema, oldItem, el);
+      const itemNode = createValueWithComments(creator, oldItem, el);
       newSeq.add(itemNode);
     }
     return newSeq;
@@ -87,13 +105,13 @@ function createValueWithComments(
       if (keyStr !== undefined) oldPairsByKey.set(keyStr, pair);
     }
   }
-  const newMap = schema.createNode({}) as YAMLMap;
+  const newMap = creator.createNode({}) as YAMLMap;
   const obj = newValue as Record<string, unknown>;
   for (const k of Object.keys(obj)) {
     const oldPair = oldPairsByKey.get(k);
     const childOldNode = oldPair ? oldPair.value : undefined;
-    const childNewValue = createValueWithComments(schema, childOldNode, obj[k]);
-    const newPair = schema.createPair(k, childNewValue);
+    const childNewValue = createValueWithComments(creator, childOldNode, obj[k]);
+    const newPair = creator.createPair(k, childNewValue);
     if (oldPair) copyComments(oldPair, newPair);
     newMap.add(newPair);
   }
@@ -109,28 +127,26 @@ function createValueWithComments(
 function replaceContentsPreservingComments(
   doc: {
     contents: unknown;
-    schema: { createNode: (v: unknown) => unknown; createPair: (k: unknown, v: unknown) => Pair };
-  },
+  } & NodeCreator,
   newContent: Record<string, unknown>,
 ): void {
   const oldRoot = doc.contents as YAMLMap | null | undefined;
   if (!oldRoot || !Array.isArray((oldRoot as YAMLMap).items)) {
-    doc.contents = doc.schema.createNode(newContent) as typeof doc.contents;
+    doc.contents = doc.createNode(newContent) as typeof doc.contents;
     return;
   }
 
-  const schema = doc.schema;
   const oldPairsByKey = new Map<string, Pair>();
   for (const pair of (oldRoot as YAMLMap).items as Pair[]) {
     const keyStr = getKeyString(pair.key);
     if (keyStr !== undefined) oldPairsByKey.set(keyStr, pair);
   }
 
-  const newMap = schema.createNode({}) as YAMLMap;
+  const newMap = doc.createNode({}) as YAMLMap;
   for (const key of Object.keys(newContent)) {
     const oldPair = oldPairsByKey.get(key);
-    const valueNode = createValueWithComments(schema, oldPair?.value, newContent[key]);
-    const newPair = schema.createPair(key, valueNode);
+    const valueNode = createValueWithComments(doc, oldPair?.value, newContent[key]);
+    const newPair = doc.createPair(key, valueNode);
     if (oldPair) copyComments(oldPair, newPair);
     newMap.add(newPair);
   }
@@ -158,10 +174,7 @@ export const ymlParser: CustomParser = {
       throw new Error("Cannot set root document to a primitive value");
     }
 
-    const doc = parseDocument(fileContent) as {
-      contents: unknown;
-      schema: { createNode: (v: unknown) => unknown; createPair: (k: unknown, v: unknown) => Pair };
-    };
+    const doc = parseDocument(fileContent) as unknown as { contents: unknown } & NodeCreator;
     replaceContentsPreservingComments(doc, content);
     return doc.toString();
   },

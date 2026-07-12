@@ -1,15 +1,41 @@
 import type { DatafileContent } from "@featurevisor/types";
 
-import { createInstance } from "./instance";
-import { createLogger } from "./logger";
+import { createFeaturevisor } from "./instance";
+
+function createTestFeature(hash: string) {
+  return {
+    key: hash,
+    hash,
+    bucketBy: "userId",
+    traffic: [
+      {
+        key: "1",
+        segments: "*",
+        percentage: 100000,
+        allocation: [],
+      },
+    ],
+  };
+}
+
+function createTestDatafile(overrides: Partial<DatafileContent> = {}): DatafileContent {
+  return {
+    schemaVersion: "2",
+    revision: "1",
+    featurevisorVersion: "1.0.0",
+    segments: {},
+    features: {},
+    ...overrides,
+  };
+}
 
 describe("sdk: instance", function () {
   it("should be a function", function () {
-    expect(typeof createInstance).toEqual("function");
+    expect(typeof createFeaturevisor).toEqual("function");
   });
 
   it("should create instance with datafile content", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -21,10 +47,338 @@ describe("sdk: instance", function () {
     expect(typeof sdk.getVariation).toEqual("function");
   });
 
+  it("should merge datafile by default when setting it again", function () {
+    const sdk = createFeaturevisor({
+      datafile: createTestDatafile({
+        revision: "1",
+        featurevisorVersion: "1.0.0",
+        segments: {
+          oldSegment: { conditions: "*" },
+          sharedSegment: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+        },
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+          sharedFeature: createTestFeature("old-shared-hash"),
+        },
+      }),
+    });
+
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createTestDatafile({
+        schemaVersion: "3",
+        revision: "2",
+        featurevisorVersion: "2.0.0",
+        segments: {
+          newSegment: { conditions: "*" },
+          sharedSegment: { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        },
+        features: {
+          newFeature: createTestFeature("new-hash"),
+          sharedFeature: createTestFeature("new-shared-hash"),
+        },
+      }),
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(sdk.getFeature("newFeature")?.hash).toEqual("new-hash");
+    expect(sdk.getFeature("sharedFeature")?.hash).toEqual("new-shared-hash");
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        revision: "2",
+        previousRevision: "1",
+        revisionChanged: true,
+        features: ["sharedFeature", "newFeature"],
+        replaced: false,
+      }),
+    ]);
+  });
+
+  it("should merge JSON string datafile input by default", function () {
+    const sdk = createFeaturevisor({
+      datafile: createTestDatafile({
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+        },
+      }),
+    });
+
+    sdk.setDatafile(
+      JSON.stringify(
+        createTestDatafile({
+          revision: "2",
+          features: {
+            newFeature: createTestFeature("new-hash"),
+          },
+        }),
+      ),
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(sdk.getFeature("newFeature")?.hash).toEqual("new-hash");
+  });
+
+  it("should replace datafile when setting it with replace enabled", function () {
+    const sdk = createFeaturevisor({
+      datafile: createTestDatafile({
+        revision: "1",
+        segments: {
+          oldSegment: { conditions: "*" },
+        },
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+          sharedFeature: createTestFeature("old-shared-hash"),
+        },
+      }),
+    });
+
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createTestDatafile({
+        revision: "2",
+        segments: {
+          newSegment: { conditions: "*" },
+        },
+        features: {
+          sharedFeature: createTestFeature("new-shared-hash"),
+        },
+      }),
+      true,
+    );
+
+    expect(sdk.getRevision()).toEqual("2");
+    expect(sdk.getFeature("oldFeature")).toBeUndefined();
+    expect(sdk.getFeature("sharedFeature")?.hash).toEqual("new-shared-hash");
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        revision: "2",
+        previousRevision: "1",
+        revisionChanged: true,
+        features: ["oldFeature", "sharedFeature"],
+        replaced: true,
+      }),
+    ]);
+  });
+
+  it("should ignore invalid datafile input without emitting event", function () {
+    const diagnostics: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      datafile: createTestDatafile({
+        revision: "1",
+        features: {
+          oldFeature: createTestFeature("old-hash"),
+        },
+      }),
+    });
+    const events: any[] = [];
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile({ schemaVersion: "2" } as any);
+    sdk.setDatafile("{not json");
+
+    expect(sdk.getRevision()).toEqual("1");
+    expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
+    expect(events).toEqual([]);
+    expect(diagnostics).toEqual([
+      expect.objectContaining({ level: "error", code: "invalid_datafile" }),
+      expect.objectContaining({ level: "error", code: "invalid_datafile" }),
+    ]);
+  });
+
+  it("should filter diagnostics by instance logLevel", function () {
+    const diagnostics: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "warn",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      datafile: createTestDatafile(),
+    });
+
+    sdk.isEnabled("missingFeature");
+
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["feature_not_found"]);
+  });
+
+  it("should log diagnostics to console when no handler is provided", function () {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const sdk = createFeaturevisor({
+      logLevel: "warn",
+      datafile: createTestDatafile(),
+    });
+
+    sdk.isEnabled("missingFeature");
+
+    expect(warn).toHaveBeenCalledWith(
+      "[Featurevisor]",
+      "Feature not found",
+      expect.objectContaining({ code: "feature_not_found" }),
+    );
+
+    warn.mockRestore();
+  });
+
+  it("should emit error events for error-level diagnostics", function () {
+    const errors: any[] = [];
+    const sdk = createFeaturevisor({ logLevel: "fatal" });
+
+    sdk.on("error", (event) => errors.push(event));
+    sdk.setDatafile("{not json");
+
+    expect(errors).toEqual([
+      expect.objectContaining({
+        diagnostic: expect.objectContaining({ code: "invalid_datafile", level: "error" }),
+      }),
+    ]);
+  });
+
+  it("should run modules and allow removing named modules", async function () {
+    const calls: string[] = [];
+    const module = {
+      name: "unit-test",
+      setup() {
+        calls.push("setup");
+      },
+      before(options) {
+        calls.push("before");
+        return {
+          ...options,
+          context: {
+            ...options.context,
+            userId: "123",
+          },
+        };
+      },
+      bucketKey({ bucketKey }) {
+        calls.push("bucketKey");
+        return bucketKey;
+      },
+      bucketValue({ bucketValue }) {
+        calls.push("bucketValue");
+        return bucketValue;
+      },
+      after(evaluation) {
+        calls.push("after");
+        return evaluation;
+      },
+    };
+
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createTestDatafile({
+        features: {
+          test: createTestFeature("test"),
+        },
+      }),
+      modules: [module],
+    });
+
+    expect(sdk.isEnabled("test")).toEqual(true);
+    await sdk.removeModule("unit-test");
+    expect(sdk.isEnabled("test")).toEqual(true);
+
+    expect(calls).toEqual(["setup", "before", "bucketKey", "bucketValue", "after"]);
+  });
+
+  it("should reject duplicate named modules with a diagnostic", function () {
+    const diagnostics: any[] = [];
+
+    createFeaturevisor({
+      logLevel: "error",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      modules: [{ name: "duplicate" }, { name: "duplicate" }],
+    });
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: "duplicate_module",
+        level: "error",
+        moduleName: "duplicate",
+      }),
+    ]);
+  });
+
+  it("should let modules subscribe to and report diagnostics", function () {
+    const instanceDiagnostics: any[] = [];
+    const subscriberDiagnostics: any[] = [];
+    const selfDiagnostics: any[] = [];
+
+    createFeaturevisor({
+      logLevel: "fatal",
+      onDiagnostic: (diagnostic) => instanceDiagnostics.push(diagnostic),
+      modules: [
+        {
+          name: "subscriber",
+          setup({ onDiagnostic }) {
+            onDiagnostic((diagnostic) => subscriberDiagnostics.push(diagnostic), {
+              logLevel: "debug",
+            });
+          },
+        },
+        {
+          name: "self-reporter",
+          setup({ onDiagnostic, reportDiagnostic }) {
+            onDiagnostic((diagnostic) => selfDiagnostics.push(diagnostic), {
+              logLevel: "debug",
+            });
+
+            reportDiagnostic({
+              level: "warn",
+              code: "module_warning",
+              message: "Module warning",
+            });
+          },
+        },
+      ],
+    });
+
+    expect(instanceDiagnostics).toEqual([]);
+    expect(
+      subscriberDiagnostics.filter((diagnostic) => diagnostic.code === "module_warning"),
+    ).toEqual([expect.objectContaining({ code: "module_warning", module: "self-reporter" })]);
+    expect(selfDiagnostics.filter((diagnostic) => diagnostic.code === "module_warning")).toEqual(
+      [],
+    );
+  });
+
+  it("should close modules and ignore later mutations", async function () {
+    const calls: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "closer",
+          close() {
+            calls.push("close");
+          },
+        },
+      ],
+    });
+
+    await sdk.close();
+    sdk.addModule({
+      name: "late",
+      setup() {
+        calls.push("late");
+      },
+    });
+    sdk.setContext({ plan: "pro" });
+
+    expect(calls).toEqual(["close"]);
+  });
+
   it("should configure plain bucketBy", function () {
     let capturedBucketKey = "";
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -48,7 +402,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -73,7 +427,7 @@ describe("sdk: instance", function () {
   it("should configure and bucketBy", function () {
     let capturedBucketKey = "";
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -97,7 +451,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -122,7 +476,7 @@ describe("sdk: instance", function () {
   it("should configure or bucketBy", function () {
     let capturedBucketKey = "";
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -146,7 +500,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           bucketKey: ({ bucketKey }) => {
@@ -180,12 +534,12 @@ describe("sdk: instance", function () {
     expect(capturedBucketKey).toEqual("456.test");
   });
 
-  it("should intercept context: before hook", function () {
+  it("should intercept context: before module", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -209,7 +563,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           before: (options) => {
@@ -235,12 +589,12 @@ describe("sdk: instance", function () {
     expect(interceptedVariableKey).toEqual(undefined);
   });
 
-  it("should intercept value: after hook", function () {
+  it("should intercept value: after module", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -264,7 +618,7 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      hooks: [
+      modules: [
         {
           name: "unit-test",
           after: (options) => {
@@ -317,7 +671,7 @@ describe("sdk: instance", function () {
       segments: {},
     };
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       sticky: {
         test: {
           enabled: true,
@@ -364,7 +718,7 @@ describe("sdk: instance", function () {
   });
 
   it("should honour simple required features", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -404,7 +758,7 @@ describe("sdk: instance", function () {
     expect(sdk.isEnabled("myKey")).toEqual(false);
 
     // enabling required should enable the feature too
-    const sdk2 = createInstance({
+    const sdk2 = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -444,7 +798,7 @@ describe("sdk: instance", function () {
 
   it("should honour required features with variation", function () {
     // should be disabled because required has different variation
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -492,7 +846,7 @@ describe("sdk: instance", function () {
     expect(sdk.isEnabled("myKey")).toEqual(false);
 
     // child should be enabled because required has desired variation
-    const sdk2 = createInstance({
+    const sdk2 = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -542,7 +896,7 @@ describe("sdk: instance", function () {
   it("should emit warnings for deprecated feature", function () {
     let deprecatedCount = 0;
 
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -583,13 +937,12 @@ describe("sdk: instance", function () {
         },
         segments: {},
       },
-      logger: createLogger({
-        handler: function (level, message) {
-          if (level === "warn" && message.indexOf("is deprecated")) {
-            deprecatedCount += 1;
-          }
-        },
-      }),
+      logLevel: "warn",
+      onDiagnostic: function (diagnostic) {
+        if (diagnostic.level === "warn" && diagnostic.code === "deprecated_feature") {
+          deprecatedCount += 1;
+        }
+      },
     });
 
     const testVariation = sdk.getVariation("test", {
@@ -605,7 +958,7 @@ describe("sdk: instance", function () {
   });
 
   it("should check if enabled for overridden flags from rules", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -652,8 +1005,8 @@ describe("sdk: instance", function () {
   it("should check if enabled for mutually exclusive features", function () {
     let bucketValue = 10000;
 
-    const sdk = createInstance({
-      hooks: [
+    const sdk = createFeaturevisor({
+      modules: [
         {
           name: "unit-test",
           bucketValue: function () {
@@ -688,7 +1041,7 @@ describe("sdk: instance", function () {
   });
 
   it("should get variation", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -767,7 +1120,7 @@ describe("sdk: instance", function () {
   });
 
   it("should get variable", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -1078,7 +1431,7 @@ describe("sdk: instance", function () {
   });
 
   it("should get variables without any variations", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -1148,7 +1501,7 @@ describe("sdk: instance", function () {
   });
 
   it("should apply rule variableOverrides on top of rule variables", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",
@@ -1403,7 +1756,7 @@ describe("sdk: instance", function () {
     const context = { userId: "user-1" };
 
     it("should get array variables via getVariable and getVariableArray (no generics)", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       const simpleArray = sdk.getVariable("withArray", "simpleArray", context);
       expect(simpleArray).toEqual(["red", "blue", "green"]);
@@ -1437,7 +1790,7 @@ describe("sdk: instance", function () {
     });
 
     it("should get array variables with generics for type safety", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       const stringArray = sdk.getVariableArray<string>("withArray", "simpleArray", context);
       expect(stringArray).toEqual(["red", "blue", "green"]);
@@ -1464,7 +1817,7 @@ describe("sdk: instance", function () {
     });
 
     it("should get object variables via getVariable and getVariableObject (no generics)", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       const themeConfig = sdk.getVariable("withObject", "themeConfig", context);
       expect(themeConfig).toEqual({ theme: "light", darkMode: false });
@@ -1517,7 +1870,7 @@ describe("sdk: instance", function () {
     });
 
     it("should get object variables with generics for type safety", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       interface ThemeConfig {
         theme: string;
@@ -1561,7 +1914,7 @@ describe("sdk: instance", function () {
     });
 
     it("should return null for getVariableArray and getVariableObject when variable or feature missing", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       expect(sdk.getVariableArray("withArray", "nonExisting", context)).toBeNull();
       expect(sdk.getVariableObject("withObject", "nonExisting", context)).toBeNull();
@@ -1570,7 +1923,7 @@ describe("sdk: instance", function () {
     });
 
     it("should include array and object variables in getAllEvaluations", function () {
-      const sdk = createInstance({ datafile: arrayAndObjectDatafile });
+      const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
       const all = sdk.getAllEvaluations(context);
 
@@ -1603,7 +1956,7 @@ describe("sdk: instance", function () {
   });
 
   it("should check if enabled for individually named segments", function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",

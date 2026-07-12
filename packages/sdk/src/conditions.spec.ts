@@ -1,36 +1,25 @@
 import type { Condition } from "@featurevisor/types";
 
-import { createLogger } from "./logger";
-import { DatafileReader } from "./datafileReader";
+import {
+  allConditionsAreMatched,
+  allSegmentsAreMatched,
+  parseConditionsIfStringified,
+  parseSegmentsIfStringified,
+} from "./conditions";
 
 describe("sdk: Conditions", function () {
-  const logger = createLogger();
-  const datafileReader = new DatafileReader({
-    datafile: {
-      schemaVersion: "2.0",
-      revision: "1",
-      segments: {},
-      features: {},
-    },
-    logger,
-  });
-
   it("should be a function", function () {
-    expect(typeof datafileReader.allConditionsAreMatched).toEqual("function");
+    expect(typeof allConditionsAreMatched).toEqual("function");
   });
 
   it("should match all via *", function () {
     // match
     const conditions: Condition = "*";
-    expect(datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(
-      true,
-    );
+    expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
 
     // not match
     const conditions2: Condition = "blah";
-    expect(datafileReader.allConditionsAreMatched(conditions2, { browser_type: "chrome" })).toEqual(
-      false,
-    );
+    expect(allConditionsAreMatched(conditions2, { browser_type: "chrome" })).toEqual(false);
   });
 
   describe("operators", function () {
@@ -44,14 +33,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
     });
 
     it("should match with operator: equals with dot separated path", function () {
@@ -64,20 +49,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { type: "chrome" } }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser: { type: "chrome" } })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { type: "firefox" } }),
-      ).toEqual(false);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { blah: "firefox" } }),
-      ).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { browser: "firefox" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { browser: { type: "firefox" } })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser: { blah: "firefox" } })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser: "firefox" })).toEqual(false);
     });
 
     it("should match with operator: notEquals", function () {
@@ -90,14 +67,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
     });
 
     it("should match with operator: equals", function () {
@@ -110,14 +83,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
     });
 
     it("should match with operator: exists", function () {
@@ -129,14 +98,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { not_browser_type: "chrome" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { not_browser_type: "chrome" })).toEqual(false);
     });
 
     it("should match with operator: exists (dot separated path)", function () {
@@ -148,20 +113,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { name: "chrome" } }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser: { name: "chrome" } })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { browser: "chrome" })).toEqual(
-        false,
-      );
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { version: "1.2.3" } }),
-      ).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.2.3" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { browser: "chrome" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser: { version: "1.2.3" } })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { version: "1.2.3" })).toEqual(false);
     });
 
     it("should match with operator: notExists", function () {
@@ -173,17 +130,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { not_name: "Hello World" }),
-      ).toEqual(true);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { not_name: "Hello Universe" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { not_name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { not_name: "Hello Universe" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
     });
 
     it("should match with operator: notExists (with dot separated path)", function () {
@@ -196,18 +147,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser: { not_name: "Hello World" },
         }),
       ).toEqual(true);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { not_name: "Hello Universe" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { not_name: "Hello Universe" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser: { name: "Chrome" } }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser: { name: "Chrome" } })).toEqual(false);
     });
 
     it("should match with operator: endsWith", function () {
@@ -220,17 +167,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi Universe" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hi Universe" })).toEqual(false);
     });
 
     it("should match with operator: includes", function () {
@@ -243,14 +184,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { permissions: ["read", "write"] }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { permissions: ["read", "write"] })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { permissions: ["read"] })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { permissions: ["read"] })).toEqual(false);
     });
 
     it("should match with operator: notIncludes", function () {
@@ -263,13 +200,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { permissions: ["read", "admin"] }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { permissions: ["read", "admin"] })).toEqual(true);
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           permissions: ["read", "write", "admin"],
         }),
       ).toEqual(false);
@@ -285,17 +220,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(false);
     });
 
     it("should match with operator: notContains", function () {
@@ -308,17 +237,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(
-        false,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Yo! Hello!" })).toEqual(false);
     });
 
     it("should match with operator: matches", function () {
@@ -331,20 +254,14 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(true);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Helloooooo" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Helloooooo" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(
-        false,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hell123" })).toEqual(
-        false,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "123" })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: 123 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hell123" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "123" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: 123 })).toEqual(false);
     });
 
     it("should match with operator: matches with regexFlags", function () {
@@ -358,20 +275,34 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(true);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Helloooooo" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Helloooooo" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(
+      expect(allConditionsAreMatched(conditions, { name: "Hello World" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hell123" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "123" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: 123 })).toEqual(false);
+    });
+
+    it("should reset cached stateful regular expressions before every match", function () {
+      const conditions: Condition[] = [
+        {
+          attribute: "browser_type",
+          operator: "matches",
+          value: "chrome",
+          regexFlags: "g",
+        },
+      ];
+      const regex = /chrome/g;
+      const getRegex = () => regex;
+
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" }, getRegex)).toBe(
         false,
       );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hell123" })).toEqual(
-        false,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "123" })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: 123 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" }, getRegex)).toBe(true);
     });
 
     it("should match with operator: notMatches", function () {
@@ -384,19 +315,15 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "123" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "123" })).toEqual(true);
 
       // @NOTE: improve later
-      // expect(datafileReader.allConditionsAreMatched(conditions, { name: 123 }, )).toEqual(true);
+      // expect(allConditionsAreMatched(conditions, { name: 123 }, )).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hellooooooo" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hellooooooo" })).toEqual(false);
     });
 
     it("should match with operator: notMatches with regexFlags", function () {
@@ -410,19 +337,15 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "123" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "Hi World" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { name: "123" })).toEqual(true);
 
       // @NOTE: improve later
-      // expect(datafileReader.allConditionsAreMatched(conditions, { name: 123 }, )).toEqual(true);
+      // expect(allConditionsAreMatched(conditions, { name: 123 }, )).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { name: "Hellooooooo" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { name: "Hello" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { name: "Hellooooooo" })).toEqual(false);
     });
 
     it("should match with operator: in", function () {
@@ -435,20 +358,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" }),
-      ).toEqual(true);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(
-        false,
-      );
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "safari" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(false);
     });
 
     it("should match with operator: notIn", function () {
@@ -461,20 +376,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(
-        true,
-      );
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "safari" }),
-      ).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "edge" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { browser_type: "safari" })).toEqual(true);
 
       // not match
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "chrome" }),
-      ).toEqual(false);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, { browser_type: "firefox" }),
-      ).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "chrome" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { browser_type: "firefox" })).toEqual(false);
     });
 
     it("should match with operator: greaterThan", function () {
@@ -487,10 +394,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
     });
 
     it("should match with operator: greaterThanOrEquals", function () {
@@ -503,12 +410,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 16 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 16 })).toEqual(false);
     });
 
     it("should match with operator: lessThan", function () {
@@ -521,10 +428,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
     });
 
     it("should match with operator: lessThanOrEquals", function () {
@@ -537,12 +444,12 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 17 })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { age: 18 })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
-      expect(datafileReader.allConditionsAreMatched(conditions, { age: 20 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 19 })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { age: 20 })).toEqual(false);
     });
 
     it("should match with operator: semverEquals", function () {
@@ -555,14 +462,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(false);
     });
 
     it("should match with operator: semverNotEquals", function () {
@@ -575,14 +478,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(false);
     });
 
     it("should match with operator: semverGreaterThan", function () {
@@ -595,14 +494,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
     });
 
     it("should match with operator: semverGreaterThanOrEquals", function () {
@@ -615,17 +510,11 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(
-        true,
-      );
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
+      expect(allConditionsAreMatched(conditions, { version: "2.0.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(false);
     });
 
     it("should match with operator: semverLessThan", function () {
@@ -638,14 +527,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "0.9.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
     });
 
     it("should match with operator: semverLessThanOrEquals", function () {
@@ -658,14 +543,10 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(
-        true,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.0.0" })).toEqual(true);
 
       // not match
-      expect(datafileReader.allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(
-        false,
-      );
+      expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
     });
 
     it("should match with operator: before", function () {
@@ -678,21 +559,17 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(true);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" }),
-      ).toEqual(true);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           date: new Date("2023-05-12T00:00:00Z"),
         }),
       ).toEqual(true);
 
       // not match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(false);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" }),
-      ).toEqual(false);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           date: new Date("2023-05-14T00:00:00Z"),
         }),
       ).toEqual(false);
@@ -708,21 +585,17 @@ describe("sdk: Conditions", function () {
       ];
 
       // match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(true);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" }),
-      ).toEqual(true);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           date: new Date("2023-05-14T00:00:00Z"),
         }),
       ).toEqual(true);
 
       // not match
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" })).toEqual(false);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00Z" }),
-      ).toEqual(false);
-      expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           date: new Date("2023-05-12T00:00:00Z"),
         }),
       ).toEqual(false);
@@ -741,7 +614,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions[0], {
+        allConditionsAreMatched(conditions[0], {
           browser_type: "chrome",
         }),
       ).toEqual(true);
@@ -758,7 +631,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(true);
@@ -769,14 +642,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(true);
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
         }),
       ).toEqual(true);
@@ -793,7 +666,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "1.0",
         }),
@@ -816,7 +689,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "1.0",
           foo: "bar",
@@ -841,14 +714,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(true);
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
         }),
       ).toEqual(false);
@@ -874,7 +747,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "1.0",
         }),
@@ -882,7 +755,7 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(false);
@@ -905,7 +778,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(true);
@@ -931,14 +804,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_version: "1.0",
         }),
       ).toEqual(true);
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
         }),
       ).toEqual(false);
@@ -961,14 +834,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
         }),
       ).toEqual(true);
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(false);
@@ -994,18 +867,18 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
           browser_version: "2.0",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
       ).toEqual(true);
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "2.0",
         }),
@@ -1013,11 +886,57 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "1.0",
         }),
       ).toEqual(false);
+    });
+
+    it("should support NOT around OR for none-match checks", function () {
+      const conditions: Condition[] = [
+        {
+          not: [
+            {
+              or: [
+                {
+                  attribute: "browser_type",
+                  operator: "equals",
+                  value: "chrome",
+                },
+                {
+                  attribute: "browser_type",
+                  operator: "equals",
+                  value: "firefox",
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // match because the OR group does not match
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "safari",
+        }),
+      ).toEqual(true);
+
+      // not match because the OR group matches
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "chrome",
+        }),
+      ).toEqual(false);
+      expect(
+        allConditionsAreMatched(conditions, {
+          browser_type: "firefox",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should defensively reject empty NOT conditions", function () {
+      expect(allConditionsAreMatched({ not: [] }, {})).toEqual(false);
     });
   });
 
@@ -1051,14 +970,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "1.0",
         }),
       ).toEqual(true);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "2.0",
         }),
@@ -1066,14 +985,14 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "3.0",
         }),
       ).toEqual(false);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_version: "2.0",
         }),
       ).toEqual(false);
@@ -1113,7 +1032,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "nl",
           browser_type: "chrome",
           browser_version: "1.0",
@@ -1121,7 +1040,7 @@ describe("sdk: Conditions", function () {
       ).toEqual(true);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "nl",
           browser_type: "chrome",
           browser_version: "2.0",
@@ -1130,14 +1049,14 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "3.0",
         }),
       ).toEqual(false);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "us",
           browser_version: "2.0",
         }),
@@ -1173,14 +1092,14 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "chrome",
           browser_version: "2.0",
         }),
       ).toEqual(true);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
           device_type: "mobile",
           orientation: "portrait",
@@ -1189,14 +1108,14 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
           browser_version: "2.0",
         }),
       ).toEqual(false);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
           device_type: "desktop",
         }),
@@ -1237,7 +1156,7 @@ describe("sdk: Conditions", function () {
 
       // match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "nl",
           browser_type: "chrome",
           browser_version: "2.0",
@@ -1245,7 +1164,7 @@ describe("sdk: Conditions", function () {
       ).toEqual(true);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "nl",
           browser_type: "firefox",
           device_type: "mobile",
@@ -1255,19 +1174,101 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           browser_type: "firefox",
           browser_version: "2.0",
         }),
       ).toEqual(false);
 
       expect(
-        datafileReader.allConditionsAreMatched(conditions, {
+        allConditionsAreMatched(conditions, {
           country: "de",
           browser_type: "firefox",
           device_type: "desktop",
         }),
       ).toEqual(false);
+    });
+  });
+
+  describe("helpers", function () {
+    it("should parse stringified conditions", function () {
+      const conditions = '[{"attribute":"country","operator":"equals","value":"nl"}]' as Condition;
+
+      expect(parseConditionsIfStringified(conditions)).toEqual([
+        {
+          attribute: "country",
+          operator: "equals",
+          value: "nl",
+        },
+      ]);
+      expect(parseConditionsIfStringified("*")).toEqual("*");
+      expect(
+        parseConditionsIfStringified([{ attribute: "country", operator: "equals", value: "nl" }]),
+      ).toEqual([{ attribute: "country", operator: "equals", value: "nl" }]);
+    });
+
+    it("should report invalid stringified conditions", function () {
+      const reportDiagnostic = jest.fn();
+
+      expect(parseConditionsIfStringified("{", reportDiagnostic)).toEqual("{");
+      expect(reportDiagnostic).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: "error",
+          code: "conditions_parse_error",
+          message: "Error parsing conditions",
+          details: { conditions: "{" },
+        }),
+      );
+    });
+
+    it("should parse stringified segments", function () {
+      expect(parseSegmentsIfStringified('{"and":["netherlands"]}')).toEqual({
+        and: ["netherlands"],
+      });
+      expect(parseSegmentsIfStringified('["netherlands"]')).toEqual(["netherlands"]);
+      expect(parseSegmentsIfStringified("netherlands")).toEqual("netherlands");
+    });
+
+    it("should report condition match errors", function () {
+      const reportDiagnostic = jest.fn();
+
+      expect(
+        allConditionsAreMatched(
+          {
+            attribute: "name",
+            operator: "matches",
+            value: "[",
+          },
+          { name: "Featurevisor" },
+          undefined,
+          reportDiagnostic,
+        ),
+      ).toEqual(false);
+      expect(reportDiagnostic).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: "warn",
+          code: "condition_match_error",
+        }),
+      );
+    });
+
+    it("should match segments with supplied segment getter", function () {
+      const getSegment = jest.fn((segmentKey: string) => {
+        if (segmentKey === "netherlands") {
+          return {
+            key: "netherlands",
+            conditions: '[{"attribute":"country","operator":"equals","value":"nl"}]',
+          };
+        }
+
+        return undefined;
+      });
+
+      expect(allSegmentsAreMatched("netherlands", { country: "nl" }, getSegment)).toEqual(true);
+      expect(allSegmentsAreMatched("netherlands", { country: "de" }, getSegment)).toEqual(false);
+      expect(allSegmentsAreMatched("unknown", { country: "nl" }, getSegment)).toEqual(false);
+      expect(allSegmentsAreMatched({ not: [] }, {}, getSegment)).toEqual(false);
+      expect(allSegmentsAreMatched(["netherlands"], { country: "nl" }, getSegment)).toEqual(true);
     });
   });
 });

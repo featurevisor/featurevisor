@@ -2,11 +2,12 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import type { DatafileContent, ExistingState, ParsedFeature } from "@featurevisor/types";
+import type { DatafileContent, ExistingState, ParsedFeature, Segment } from "@featurevisor/types";
 import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { buildDatafile } from "./buildDatafile";
+import { buildTargetDatafile } from "./buildProject";
 
 function createProjectConfig(root: string, stringify = true): ProjectConfig {
   return {
@@ -15,17 +16,18 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
     attributesDirectoryPath: path.join(root, "attributes-missing"),
     groupsDirectoryPath: path.join(root, "groups-missing"),
     schemasDirectoryPath: path.join(root, "schemas-missing"),
+    targetsDirectoryPath: path.join(root, "targets-missing"),
     testsDirectoryPath: path.join(root, "tests-missing"),
     stateDirectoryPath: path.join(root, ".featurevisor"),
     datafilesDirectoryPath: path.join(root, "datafiles"),
     datafileNamePattern: "featurevisor-%s.json",
     revisionFileName: "REVISION",
-    siteExportDirectoryPath: path.join(root, "out"),
-    environmentsDirectoryPath: path.join(root, "environments"),
+    catalogDirectoryPath: path.join(root, "catalog"),
+    setsDirectoryPath: path.join(root, "sets"),
     environments: ["staging", "production"],
-    splitByEnvironment: false,
+    sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
-    scopes: [],
     adapter: {},
     plugins: [],
     defaultBucketBy: "userId",
@@ -37,18 +39,33 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
   };
 }
 
-function createMockDatasource(feature: ParsedFeature) {
+function isParsedFeature(
+  feature: ParsedFeature | Record<string, ParsedFeature>,
+): feature is ParsedFeature {
+  return typeof (feature as ParsedFeature).description === "string";
+}
+
+function createMockDatasource(
+  feature: ParsedFeature | Record<string, ParsedFeature>,
+  segmentsByKey: Record<string, Segment> = {},
+) {
+  let featuresByKey: Record<string, ParsedFeature>;
+
+  if (isParsedFeature(feature)) {
+    featuresByKey = { [feature.key]: feature };
+  } else {
+    featuresByKey = feature;
+  }
+
   return {
     listSchemas: async () => [],
     readSchema: async () => {
       throw new Error("readSchema should not be called");
     },
-    listFeatures: async () => ["withRuleOverrides"],
-    readFeature: async () => feature,
-    listSegments: async () => [],
-    readSegment: async () => {
-      throw new Error("readSegment should not be called");
-    },
+    listFeatures: async () => Object.keys(featuresByKey),
+    readFeature: async (key: string) => featuresByKey[key],
+    listSegments: async () => Object.keys(segmentsByKey),
+    readSegment: async (key: string) => segmentsByKey[key],
     listAttributes: async () => [],
     readAttribute: async () => {
       throw new Error("readAttribute should not be called");
@@ -162,6 +179,7 @@ describe("core: buildDatafile", function () {
   beforeEach(function () {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-buildDatafile-"));
     fs.mkdirSync(path.join(root, "features"), { recursive: true });
+    fs.mkdirSync(path.join(root, "segments-missing"), { recursive: true });
     existingState = { features: {} };
   });
 
@@ -177,12 +195,13 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
       },
       existingState,
     )) as DatafileContent;
+
+    expect(result.schemaVersion).toBe("2");
 
     const trafficRule = result.features.withRuleOverrides.traffic.find((t) => t.key === "rule1");
 
@@ -248,7 +267,6 @@ describe("core: buildDatafile", function () {
       config,
       datasource,
       {
-        schemaVersion: "2",
         revision: "1",
         environment: "staging",
       },
@@ -263,5 +281,165 @@ describe("core: buildDatafile", function () {
     expect(trafficRule?.variableOverrides?.config[1].conditions).toEqual([
       { attribute: "country", operator: "equals", value: "de" },
     ]);
+  });
+
+  test("includes features with missing tags when no tag filter is provided", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    delete feature.tags;
+    const datasource = createMockDatasource(feature);
+
+    const result = (await buildDatafile(
+      config,
+      datasource,
+      {
+        revision: "1",
+        environment: "staging",
+      },
+      existingState,
+    )) as DatafileContent;
+
+    expect(result.features.withRuleOverrides).toBeDefined();
+  });
+
+  test("excludes features with missing tags when tag filter is provided", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    delete feature.tags;
+    const datasource = createMockDatasource(feature);
+
+    const result = (await buildDatafile(
+      config,
+      datasource,
+      {
+        revision: "1",
+        environment: "staging",
+        tag: "all",
+      },
+      existingState,
+    )) as DatafileContent;
+
+    expect(result.features.withRuleOverrides).toBeUndefined();
+  });
+
+  test("filters target features by include/exclude patterns and combines them with tags using AND", async function () {
+    const config = createProjectConfig(root, true);
+    const createFeature = (key: string, tags: string[]) => ({
+      ...createFeatureFixture(),
+      key,
+      description: key,
+      tags,
+    });
+    const datasource = createMockDatasource({
+      "checkout.web": createFeature("checkout.web", ["all", "web"]),
+      "checkout.mobile": createFeature("checkout.mobile", ["all", "mobile"]),
+      "admin.web": createFeature("admin.web", ["all", "web"]),
+      "admin.internal": createFeature("admin.internal", ["all", "web"]),
+    });
+
+    const filtered = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Selected web features",
+        tag: "web",
+        includeFeatures: ["checkout*", "admin*"],
+        excludeFeatures: ["admin.internal"],
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(Object.keys(filtered.features).sort()).toEqual(["admin.web", "checkout.web"]);
+
+    const all = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "All except admin features",
+        includeFeatures: "*",
+        excludeFeatures: ["admin*"],
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(Object.keys(all.features).sort()).toEqual(["checkout.mobile", "checkout.web"]);
+  });
+
+  test("builds target datafiles without broadening NOT segment rules", async function () {
+    const config = createProjectConfig(root, false);
+    const feature: ParsedFeature = {
+      key: "targeted",
+      description: "Targeted feature",
+      tags: ["all"],
+      bucketBy: "userId",
+      rules: {
+        staging: [
+          {
+            key: "not-web",
+            segments: {
+              not: ["web"],
+            },
+            percentage: 100,
+          },
+          {
+            key: "not-web-and-chrome",
+            segments: {
+              not: ["web", "chrome"],
+            },
+            percentage: 100,
+          },
+        ],
+      },
+    } as ParsedFeature;
+    const datasource = createMockDatasource(feature, {
+      web: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+      },
+      chrome: {
+        conditions: [{ attribute: "browser", operator: "equals", value: "chrome" }],
+      },
+    });
+
+    const webDatafile = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Web target",
+        context: { platform: "web" },
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(webDatafile.features.targeted.traffic[0].segments).toEqual({
+      not: ["*"],
+    });
+    expect(webDatafile.features.targeted.traffic[1].segments).toEqual({
+      not: ["chrome"],
+    });
+
+    const webChromeDatafile = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: {
+        description: "Web Chrome target",
+        context: { platform: "web", browser: "chrome" },
+      },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(webChromeDatafile.features.targeted.traffic[0].segments).toEqual({
+      not: ["*"],
+    });
+    expect(webChromeDatafile.features.targeted.traffic[1].segments).toEqual({
+      not: ["*"],
+    });
   });
 });

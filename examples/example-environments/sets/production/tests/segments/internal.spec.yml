@@ -1,0 +1,9 @@
+segment: internal
+assertions:
+  - context:
+      team: engineering
+    expectedToMatch: true
+
+  - context:
+      team: support
+    expectedToMatch: false

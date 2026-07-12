@@ -1,6 +1,7 @@
 # Bucketing and state
 
 Full docs:
+
 - Bucketing: <https://featurevisor.com/docs/bucketing>
 - State files: <https://featurevisor.com/docs/state-files>
 
@@ -21,13 +22,13 @@ Because the hash is deterministic, the **same user** evaluating the **same featu
 
 ## Picking `bucketBy`
 
-| Surface                                    | Use                                       |
-| ------------------------------------------ | ----------------------------------------- |
-| Signed-in (you have a user identity)       | `userId`                                  |
-| Anonymous (web/mobile pre-login)           | `deviceId`                                |
-| Mixed (could be either)                    | `bucketBy: {or: [userId, deviceId]}`      |
-| Org-scoped product (B2B)                   | `bucketBy: [organizationId, userId]` (concat) |
-| Org-scoped rollout (everyone in an org)    | `bucketBy: organizationId`                |
+| Surface                                 | Use                                           |
+| --------------------------------------- | --------------------------------------------- |
+| Signed-in (you have a user identity)    | `userId`                                      |
+| Anonymous (web/mobile pre-login)        | `deviceId`                                    |
+| Mixed (could be either)                 | `bucketBy: {or: [userId, deviceId]}`          |
+| Org-scoped product (B2B)                | `bucketBy: [organizationId, userId]` (concat) |
+| Org-scoped rollout (everyone in an org) | `bucketBy: organizationId`                    |
 
 **Attribute names may differ in this project.** Always inspect `attributes/` (or `npx featurevisor list --attributes --json`) and ask the user when ambiguous — don't invent.
 
@@ -77,7 +78,7 @@ f.setSticky({
 })
 ```
 
-When the user asks "how do I force a known user into a specific variation?" — prefer authoring a `force:` rule in the feature ([features.md](features.md#force)) over sticky, because YAML is the source of truth and reviewed in PRs. Sticky is best for cases where the application *itself* already knows the answer (e.g. an entitlements service returned a plan).
+When the user asks "how do I force a known user into a specific variation?" — prefer authoring a `force:` rule in the feature ([features.md](features.md#force)) over sticky, because YAML is the source of truth and reviewed in PRs. Sticky is best for cases where the application _itself_ already knows the answer (e.g. an entitlements service returned a plan).
 
 ## Debugging bucketing
 
@@ -97,3 +98,5 @@ npx featurevisor assess-distribution \
   --populateUuid=userId \
   --n=10000
 ```
+
+Both commands accept repeatable `--target=<target>` options and run independently against every selected target datafile.

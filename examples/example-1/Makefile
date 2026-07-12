@@ -12,14 +12,14 @@ endef
 
 test-datafiles:
 	@echo "Testing staging datafiles"
-	$(call notExists,showBanner,./datafiles/staging/featurevisor-tag-all.json)
-	$(call exists,showBanner,./datafiles/staging/featurevisor-tag-checkout.json)
-	$(call exists,hidden,./datafiles/staging/featurevisor-tag-all.json)
+	$(call notExists,showBanner,./datafiles/staging/featurevisor-all.json)
+	$(call exists,showBanner,./datafiles/staging/featurevisor-checkout.json)
+	$(call exists,hidden,./datafiles/staging/featurevisor-all.json)
 
 	@echo "\nTesting production datafiles"
-	$(call exists,showBanner,./datafiles/production/featurevisor-tag-all.json)
-	$(call exists,showBanner,./datafiles/production/featurevisor-tag-checkout.json)
-	$(call notExists,hidden,./datafiles/production/featurevisor-tag-all.json)
+	$(call exists,showBanner,./datafiles/production/featurevisor-all.json)
+	$(call exists,showBanner,./datafiles/production/featurevisor-checkout.json)
+	$(call notExists,hidden,./datafiles/production/featurevisor-all.json)
 
 test-assess-distribution:
 	@echo "Testing distribution files"

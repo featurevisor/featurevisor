@@ -578,10 +578,10 @@ export function getConditionsZodSchema(
               return true;
             }
 
-            return /^[gimsuy]{1,}$/.test(value);
+            return /^[gimsuy]+$/.test(value) && new Set(value).size === value.length;
           },
           {
-            message: `regexFlags must of one or more of these characters: g, i, m, s, u, y`,
+            message: `regexFlags must contain unique characters from: g, i, m, s, u, y`,
           },
         )
         .optional(),
@@ -687,17 +687,17 @@ export function getConditionsZodSchema(
   const andOrNotConditionZodSchema = z.union([
     z
       .object({
-        and: z.array(z.lazy(() => conditionZodSchema)),
+        and: z.array(z.lazy(() => conditionZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        or: z.array(z.lazy(() => conditionZodSchema)),
+        or: z.array(z.lazy(() => conditionZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        not: z.array(z.lazy(() => conditionZodSchema)),
+        not: z.array(z.lazy(() => conditionZodSchema)).min(1),
       })
       .strict(),
   ]);

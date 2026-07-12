@@ -18,6 +18,8 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 │   └── qa.yml                   # force-target QA
 ├── features/
 │   └── checkout.yml             # flag + variations + variables + force
+├── targets/
+│   └── all.yml                  # builds one datafile from the `all` tag
 └── tests/
     ├── features/
     │   └── checkout.spec.yml
@@ -31,6 +33,7 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 - Signed-in + anonymous bucketing via `bucketBy: {or: [userId, deviceId]}`.
 - A namespaced segment (`countries/netherlands`).
 - A QA `force:` block so a known segment always sees the feature regardless of rollout %.
+- A `targets/all.yml` so `npx featurevisor build` produces a `featurevisor-all.json` datafile per environment.
 - A/B test with two variations (`control`/`treatment`).
 - Variables of multiple types (string, boolean, array of strings, object).
 - A per-rule variable override (NL gets a different `paymentMethods` array).

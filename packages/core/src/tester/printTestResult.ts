@@ -1,6 +1,12 @@
 import type { TestResult } from "@featurevisor/types";
 
-import { CLI_FORMAT_BOLD, CLI_FORMAT_RED } from "./cliFormat";
+import {
+  CLI_COLOR_CYAN,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_RED,
+  colorize,
+} from "./cliFormat";
 import { prettyDuration } from "./prettyDuration";
 
 export function printTestResult(testResult: TestResult, relativeTestFilePath, rootDirectoryPath) {
@@ -9,7 +15,7 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
   const title = `Testing: ${relativeTestFilePath.replace(rootDirectoryPath, "")} (${prettyDuration(
     testResult.duration,
   )})`;
-  console.log(title);
+  console.log(colorize(title, CLI_COLOR_CYAN));
 
   if (testResult.notFound) {
     console.log(CLI_FORMAT_RED, `  => ${testResult.type} ${testResult.key} not found`);
@@ -21,7 +27,10 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
 
   testResult.assertions.forEach(function (assertion) {
     if (assertion.passed) {
-      console.log(`  ✔ ${assertion.description} (${prettyDuration(assertion.duration)})`);
+      console.log(
+        CLI_FORMAT_GREEN,
+        `  ✔ ${assertion.description} (${prettyDuration(assertion.duration)})`,
+      );
     } else {
       console.log(
         CLI_FORMAT_RED,

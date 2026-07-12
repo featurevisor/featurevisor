@@ -1,13 +1,13 @@
 ---
 name: featurevisor
-description: Author and query Featurevisor projects — Git-based feature flags and experimentation. Use whenever the user mentions Featurevisor, edits files under attributes/, segments/, features/, groups/, schemas/, or tests/, asks to roll out / target / A-B test a feature, asks where a feature/segment is enabled or used, runs `featurevisor` CLI commands, or works in a directory containing featurevisor.config.js. Covers creating features (flags, variations, variables), segments (conditions, operators), attributes, reusable schemas, groups (mutual exclusion), force rules, required dependencies, test specs, linting, building datafiles, evaluation debugging, and querying the project via CLI. SDK usage is out of scope — link to featurevisor.com/docs/sdks for that.
+description: Author and query Featurevisor projects — Git-based feature flags and experimentation. Use whenever the user mentions Featurevisor, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, asks to roll out / target / A-B test a feature, asks where a feature/segment is enabled or used, runs `featurevisor` CLI commands, or works in a directory containing featurevisor.config.js. Covers creating features (flags, variations, variables), segments (conditions, operators), attributes, reusable schemas, groups (mutual exclusion), force rules, required dependencies, test specs, linting, building datafiles, evaluation debugging, and querying the project via CLI. SDK usage is out of scope — link to featurevisor.com/docs/sdks for that.
 ---
 
 # Featurevisor
 
-You are helping the user author and query a [Featurevisor](https://featurevisor.com) project — a Git-based feature management tool. Featurevisor projects are standalone repositories of YAML (default) or JSON definitions that compile into per-environment/per-tag datafiles consumed by SDKs.
+You are helping the user author and query a [Featurevisor](https://featurevisor.com) project — a Git-based feature management tool. Featurevisor projects are standalone repositories of YAML (default) or JSON definitions that compile into per-environment/per-target datafiles consumed by SDKs.
 
-The full documentation as a single file is at <https://featurevisor.com/llms.txt>. Fetch it on demand if a topic isn't covered in this skill's references.
+The compact documentation index is at <https://featurevisor.com/llms.txt>. The complete documentation feed is at <https://featurevisor.com/llms-full.txt>. Fetch the full feed on demand if a topic isn't covered in this skill's references.
 
 ## Orient yourself first
 
@@ -19,9 +19,10 @@ npx featurevisor info
 ```
 
 From the config note:
-- `environments` — array of env names (or `false` for no envs). Their names drive `rules:`, `force:`, `expose:` keys.
+
+- `environments` — optional array of env names. If omitted, the project has no environments and `rules`, `force`, and `expose` are direct values.
 - `tags` — must include any tag you put on a feature.
-- `splitByEnvironment` — if `true`, rules/force/expose live in `environments/<env>/<feature>.yml`, **not** in the base feature file.
+- `sets` — if `true`, each directory under `sets/<set>/` is an independent project tree.
 - `parser` — if `"json"` author in JSON; otherwise YAML. Inspect a couple of existing files to confirm the on-disk style.
 - `defaultBucketBy` — default is `userId`, but projects may override.
 - Directory paths (`featuresDirectoryPath`, etc.) — respect any overrides.
@@ -32,29 +33,29 @@ Then read one or two existing entities (a feature, a segment) to match local sty
 
 This file is loaded eagerly. The files below are loaded only when relevant — read them in full **before** authoring or debugging in that area, don't rely on the summary in this file.
 
-| Task                                                          | Read                                               |
-| ------------------------------------------------------------- | -------------------------------------------------- |
-| Create or edit a feature (flags, variations, variables, etc.) | [features.md](references/features.md)              |
-| Write or change segment conditions                            | [segments.md](references/segments.md)              |
-| Look up a condition operator                                  | [operators.md](references/operators.md)            |
-| Define or change an attribute                                 | [attributes.md](references/attributes.md)          |
-| Variables, JSON-Schema-ish types, reusable `schemas/`         | [variables-schemas.md](references/variables-schemas.md) |
-| Variable overrides with deep merge (`mutations`)              | [variables-schemas.md](references/variables-schemas.md#mutations) |
-| Mutually-exclusive experiments via `groups/`                  | [groups.md](references/groups.md)                  |
-| Bucketing, `bucketBy`, state files, sticky                    | [bucketing.md](references/bucketing.md)            |
-| Tags — per-app datafile bundling                              | [tags.md](references/tags.md)                      |
-| Scopes — pre-evaluated, smaller datafiles                     | [scopes.md](references/scopes.md)                  |
-| Namespaces — directory-based feature/segment key prefixes     | [namespaces.md](references/namespaces.md)          |
-| `featurevisor.config.js`, environments, `splitByEnvironment`  | [configuration.md](references/configuration.md)    |
-| JSON / TOML / other format projects                           | [custom-parsers.md](references/custom-parsers.md)  |
-| Build datafiles, deploy to CDN, CI pipeline                   | [building-datafiles.md](references/building-datafiles.md) |
-| Write a `.spec.yml` test, run `featurevisor test`             | [testing.md](references/testing.md)                |
-| Any CLI invocation, flags, `list`/`find-usage`/`evaluate`     | [cli.md](references/cli.md)                        |
-| Answer "what's enabled where / who uses X"                    | [querying.md](references/querying.md)              |
-| Code generation (typed TS bindings)                           | [code-generation.md](references/code-generation.md) |
-| Analytics activation hooks (GA4 / Segment / etc.)             | [tracking.md](references/tracking.md)              |
-| **Common patterns** — A/B, multivariate, entitlements, dependencies, testing-in-prod, deprecation, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md) |
-| Terminology refresher                                         | [glossary.md](references/glossary.md)              |
+| Task                                                                                                                                          | Read                                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Create or edit a feature (flags, variations, variables, etc.)                                                                                 | [features.md](references/features.md)                             |
+| Write or change segment conditions                                                                                                            | [segments.md](references/segments.md)                             |
+| Look up a condition operator                                                                                                                  | [operators.md](references/operators.md)                           |
+| Define or change an attribute                                                                                                                 | [attributes.md](references/attributes.md)                         |
+| Variables, JSON-Schema-ish types, reusable `schemas/`                                                                                         | [variables-schemas.md](references/variables-schemas.md)           |
+| Variable overrides with deep merge (`mutations`)                                                                                              | [variables-schemas.md](references/variables-schemas.md#mutations) |
+| Mutually-exclusive experiments via `groups/`                                                                                                  | [groups.md](references/groups.md)                                 |
+| Bucketing, `bucketBy`, state files, sticky                                                                                                    | [bucketing.md](references/bucketing.md)                           |
+| Tags — feature metadata used by targets                                                                                                       | [tags.md](references/tags.md)                                     |
+| Targets — generated datafile definitions                                                                                                      | [targets.md](references/targets.md)                               |
+| Namespaces — directory-based feature/segment key prefixes                                                                                     | [namespaces.md](references/namespaces.md)                         |
+| `featurevisor.config.js`, environments, sets, promotions                                                                                      | [configuration.md](references/configuration.md)                   |
+| JSON / TOML / other format projects                                                                                                           | [custom-parsers.md](references/custom-parsers.md)                 |
+| Build datafiles, deploy to CDN, CI pipeline                                                                                                   | [building-datafiles.md](references/building-datafiles.md)         |
+| Write a `.spec.yml` test, run `featurevisor test`                                                                                             | [testing.md](references/testing.md)                               |
+| Any CLI invocation, flags, `list`/`find-usage`/`evaluate`                                                                                     | [cli.md](references/cli.md)                                       |
+| Answer "what's enabled where / who uses X"                                                                                                    | [querying.md](references/querying.md)                             |
+| Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
+| Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
+| **Common patterns** — A/B, multivariate, entitlements, dependencies, testing-in-prod, deprecation, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
+| Terminology refresher                                                                                                                         | [glossary.md](references/glossary.md)                             |
 
 Per-entity templates live in [templates/](templates/) — copy and adapt rather than writing from memory.
 
@@ -80,17 +81,11 @@ Rules are evaluated top-to-bottom per environment. Put narrow targeting (e.g. co
 
 Before referencing `segments: foo` in a rule, confirm `segments/foo.yml` exists (or create it). Same for attributes referenced inside segment conditions. Run `npx featurevisor lint` after edits — it catches dangling refs, percentage-sum errors in groups and variations, and schema mismatches.
 
-### 4. Respect `splitByEnvironment` if enabled
-
-If `splitByEnvironment: true`:
-- Base file `features/<key>.yml` holds metadata (description, tags, bucketBy, variations, variablesSchema, required, etc.) — **no** `rules`, `force`, or `expose`.
-- Per-environment file `environments/<env>/<key>.yml` holds `rules`, `force`, `expose` for that env.
-
-### 5. Variations weights sum to 100; group slot percentages sum to 100
+### 4. Variations weights sum to 100; group slot percentages sum to 100
 
 And a feature in a group cannot use a rollout `percentage` higher than its slot's percentage.
 
-### 6. After any edit, lint
+### 5. After any edit, lint
 
 ```bash
 npx featurevisor lint
@@ -112,26 +107,29 @@ npx featurevisor build --no-state-files
 
 The most useful commands for an authoring agent (full reference in [cli.md](references/cli.md)):
 
-| Command                                                           | Purpose                                                |
-| ----------------------------------------------------------------- | ------------------------------------------------------ |
-| `npx featurevisor config --json --pretty`                         | Project configuration                                  |
-| `npx featurevisor info`                                           | Counts of features / segments / attributes / tests     |
-| `npx featurevisor lint`                                           | Validate definitions (run after every edit)            |
-| `npx featurevisor list --features --json [--filters…]`            | Find features by tag, env, variable, archived, etc.    |
-| `npx featurevisor list --segments --json`                         | List segments                                          |
-| `npx featurevisor list --attributes --json`                       | List attributes                                        |
-| `npx featurevisor find-usage --segment=<key>`                     | Where a segment is used                                |
-| `npx featurevisor find-usage --attribute=<key>`                   | Where an attribute is used                             |
-| `npx featurevisor find-usage --feature=<key>`                     | Feature usage details                                  |
-| `npx featurevisor find-usage --unusedSegments`                    | Dead segments                                          |
-| `npx featurevisor find-usage --unusedAttributes`                  | Dead attributes                                        |
-| `npx featurevisor find-duplicate-segments`                        | Segments with identical conditions                     |
-| `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'` | Why a feature evaluates the way it does (debug) |
-| `npx featurevisor assess-distribution --environment=<e> --feature=<k> --context='{…}' --populateUuid=userId --n=1000` | Simulate rollout distribution |
-| `npx featurevisor test [--keyPattern=…] [--assertionPattern=…]`   | Run test specs                                         |
-| `npx featurevisor build --no-state-files`                         | Build datafiles without touching local revision/state  |
+| Command                                                                                                               | Purpose                                               |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `npx featurevisor config --json --pretty`                                                                             | Project configuration                                 |
+| `npx featurevisor info`                                                                                               | Counts of features / segments / attributes / tests    |
+| `npx featurevisor lint`                                                                                               | Validate definitions (run after every edit)           |
+| `npx featurevisor list --features --json [--filters…]`                                                                | Find features by tag, env, variable, archived, etc.   |
+| `npx featurevisor list --datafiles --json`                                                                            | List generated datafile paths                         |
+| `npx featurevisor list --segments --json`                                                                             | List segments                                         |
+| `npx featurevisor list --attributes --json`                                                                           | List attributes                                       |
+| `npx featurevisor find-usage --segment=<key>`                                                                         | Where a segment is used                               |
+| `npx featurevisor find-usage --attribute=<key>`                                                                       | Where an attribute is used                            |
+| `npx featurevisor find-usage --feature=<key>`                                                                         | Feature usage details                                 |
+| `npx featurevisor find-usage --unusedSegments`                                                                        | Dead segments                                         |
+| `npx featurevisor find-usage --unusedAttributes`                                                                      | Dead attributes                                       |
+| `npx featurevisor find-duplicate-segments`                                                                            | Segments with identical conditions                    |
+| `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'`                                           | Why a feature evaluates the way it does (debug)       |
+| `npx featurevisor assess-distribution --environment=<e> --feature=<k> --context='{…}' --populateUuid=userId --n=1000` | Simulate rollout distribution                         |
+| `npx featurevisor test [--keyPattern=…] [--assertionPattern=…]`                                                       | Run test specs                                        |
+| `npx featurevisor build --no-state-files`                                                                             | Build datafiles without touching local revision/state |
 
 **Prefer the CLI over grepping** when answering questions like "what features use segment X?", "which features are enabled in production?", or "why does feature F evaluate to disabled for this context?". The CLI's `--json` output is parseable and authoritative.
+
+Use optional, repeatable `--target=<target>` selection with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info` when the question concerns deployed target datafiles. Runtime commands process each selected target independently. `build --json` and `build --print` accept only one target because they emit one datafile.
 
 ## Common authoring flows
 
@@ -155,6 +153,8 @@ Read [variables-schemas.md](references/variables-schemas.md) — covers all vari
 ### Complex targeting (and/or/not)
 
 Both segment `conditions` and feature rule `segments` support `and`, `or`, `not` with nesting. See [segments.md](references/segments.md) and [templates/segment-complex.yml](templates/segment-complex.yml).
+
+Important `not` rule: multiple direct children are treated as an implicit **AND** and then negated. So `not: [A, B]` means `not (A and B)`, not `not A and not B`. For "none of these match", wrap them in `or`: `not: [{ or: [A, B] }]`.
 
 ### Mutual-exclusion experiments
 
@@ -185,7 +185,8 @@ SDK implementation is **out of scope** for this skill — focus on authoring and
 - Vue: <https://featurevisor.com/docs/vue>
 - React Native: <https://featurevisor.com/docs/react-native>
 - Other languages (Python, Ruby, Go, Java, Swift, PHP, etc.): <https://featurevisor.com/docs/sdks>
-- Full docs as a single file: <https://featurevisor.com/llms.txt>
+- Compact docs index: <https://featurevisor.com/llms.txt>
+- Full docs feed: <https://featurevisor.com/llms-full.txt>
 
 You may briefly explain how an authored feature would be consumed (`f.isEnabled('key')`, `f.getVariation('key')`, `f.getVariable('key', 'varName')`), but don't write application code unless asked.
 

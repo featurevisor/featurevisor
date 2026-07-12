@@ -1,10 +1,10 @@
 import * as React from "react";
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
-import { FeaturevisorContext } from "./FeaturevisorContext";
+import { FeaturevisorContext } from "./FeaturevisorContext.js";
 
-export function useSdk(): FeaturevisorInstance {
+export function useSdk(): Featurevisor {
   const sdk = React.useContext(FeaturevisorContext);
 
-  return sdk as FeaturevisorInstance;
+  return sdk as Featurevisor;
 }

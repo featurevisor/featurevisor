@@ -552,6 +552,7 @@ export function getAttributeZodSchema() {
   const attributeZodSchema = z
     .object({
       archived: z.boolean().optional(),
+      promotable: z.boolean().optional(),
       type: attributeTypeEnum.optional(),
       description: z.string(),
       enum: z.array(valueZodSchema).optional(),

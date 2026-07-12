@@ -4,42 +4,42 @@ Full docs: <https://featurevisor.com/docs/segments#operators>
 
 Used in segment `conditions`, feature `force[].conditions`, and `variableOverrides[].conditions`.
 
-| Operator                    | Attribute type    | Description                          |
-| --------------------------- | ----------------- | ------------------------------------ |
-| `exists`                    | any               | attribute is present in context      |
-| `notExists`                 | any               | attribute is absent from context     |
-| `equals`                    | any               | strict equality                      |
-| `notEquals`                 | any               | strict inequality                    |
-| `greaterThan`               | integer, double   | `>`                                  |
-| `greaterThanOrEquals`       | integer, double   | `>=`                                 |
-| `lessThan`                  | integer, double   | `<`                                  |
-| `lessThanOrEquals`          | integer, double   | `<=`                                 |
-| `contains`                  | string            | substring                            |
-| `notContains`               | string            | not substring                        |
-| `startsWith`                | string            | prefix                               |
-| `endsWith`                  | string            | suffix                               |
-| `in`                        | string            | in array of strings                  |
-| `notIn`                     | string            | not in array of strings              |
-| `before`                    | date / ISO string | date before                          |
-| `after`                     | date / ISO string | date after                           |
-| `matches`                   | string            | regex (use `regexFlags` for flags)   |
-| `notMatches`                | string            | regex negated                        |
-| `semverEquals`              | string (semver)   | `=`                                  |
-| `semverNotEquals`           | string (semver)   | `!=`                                 |
-| `semverGreaterThan`         | string (semver)   | `>`                                  |
-| `semverGreaterThanOrEquals` | string (semver)   | `>=`                                 |
-| `semverLessThan`            | string (semver)   | `<`                                  |
-| `semverLessThanOrEquals`    | string (semver)   | `<=`                                 |
-| `includes`                  | array of strings  | array contains the value             |
-| `notIncludes`               | array of strings  | array does not contain the value     |
+| Operator                    | Attribute type    | Description                        |
+| --------------------------- | ----------------- | ---------------------------------- |
+| `exists`                    | any               | attribute is present in context    |
+| `notExists`                 | any               | attribute is absent from context   |
+| `equals`                    | any               | strict equality                    |
+| `notEquals`                 | any               | strict inequality                  |
+| `greaterThan`               | integer, double   | `>`                                |
+| `greaterThanOrEquals`       | integer, double   | `>=`                               |
+| `lessThan`                  | integer, double   | `<`                                |
+| `lessThanOrEquals`          | integer, double   | `<=`                               |
+| `contains`                  | string            | substring                          |
+| `notContains`               | string            | not substring                      |
+| `startsWith`                | string            | prefix                             |
+| `endsWith`                  | string            | suffix                             |
+| `in`                        | string            | in array of strings                |
+| `notIn`                     | string            | not in array of strings            |
+| `before`                    | date / ISO string | date before                        |
+| `after`                     | date / ISO string | date after                         |
+| `matches`                   | string            | regex (use `regexFlags` for flags) |
+| `notMatches`                | string            | regex negated                      |
+| `semverEquals`              | string (semver)   | `=`                                |
+| `semverNotEquals`           | string (semver)   | `!=`                               |
+| `semverGreaterThan`         | string (semver)   | `>`                                |
+| `semverGreaterThanOrEquals` | string (semver)   | `>=`                               |
+| `semverLessThan`            | string (semver)   | `<`                                |
+| `semverLessThanOrEquals`    | string (semver)   | `<=`                               |
+| `includes`                  | array of strings  | array contains the value           |
+| `notIncludes`               | array of strings  | array does not contain the value   |
 
 ## Notes
 
 - `equals`/`notEquals` work on any scalar; for arrays/objects prefer the dedicated operators.
 - `in`/`notIn` are for matching a string attribute against a list of allowed values.
-- `includes`/`notIncludes` are the inverse direction — checking that an array-typed attribute contains a given scalar.
+- `includes`/`notIncludes` check that an array attribute contains a given scalar.
 - Dates accept ISO 8601 strings (e.g. `2025-12-25T00:00:00Z`). The `date` attribute type stores ISO strings.
-- `matches`/`notMatches` accept a `regexFlags` sibling: `regexFlags: i` for case-insensitive, etc.
+- `matches`/`notMatches` accept a `regexFlags` sibling. Flags may contain unique characters from `gimsuy`, such as `regexFlags: i` for case insensitive matching. Cached regular expressions are reset before every evaluation, so stateful flags such as `g` behave like a fresh regular expression.
 - Nested object attributes use dot-paths in `attribute`: `attribute: account.plan`.
 
 ## Example: each operator

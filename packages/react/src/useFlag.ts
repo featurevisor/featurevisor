@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 import type { Context, FeatureKey } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk";
-import { onFeatureChange } from "./onFeatureChange";
+import { useSdk } from "./useSdk.js";
+import { onFeatureChange } from "./onFeatureChange.js";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   const sdk = useSdk();

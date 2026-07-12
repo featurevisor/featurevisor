@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   DatafileContent,
   EnvironmentKey,
@@ -9,23 +8,21 @@ import type {
   EntityType,
 } from "@featurevisor/types";
 
-import type { Scope } from "../config";
-
 export interface DatafileOptions {
   environment: EnvironmentKey | false;
-  tag?: string;
-  scope?: Scope;
+  target?: string;
   datafilesDir?: string;
 }
 
-export type FeatureEnvironmentProperty = "rules" | "force" | "expose";
-
-export interface FeatureSourcePaths {
-  baseFilePath: string;
-  environmentFilePaths: Record<string, string>;
+export interface DatafileFile {
+  path: string;
+  size: number;
+  gzipSize: number;
 }
 
 export abstract class Adapter {
+  abstract listSets(): Promise<string[]>;
+
   // entities
   abstract listEntities(entityType: EntityType): Promise<string[]>;
   abstract entityExists(entityType: EntityType, entityKey: string): Promise<boolean>;
@@ -41,6 +38,7 @@ export abstract class Adapter {
   ): Promise<void>;
 
   // datafile
+  listDatafiles?(): Promise<DatafileFile[]>;
   abstract readDatafile(options: DatafileOptions): Promise<DatafileContent>;
   abstract writeDatafile(datafileContent: DatafileContent, options: DatafileOptions): Promise<void>;
 
@@ -55,17 +53,4 @@ export abstract class Adapter {
     entityType?: EntityType,
     entityKey?: string,
   ): Promise<Commit>;
-
-  // feature source helpers (used by lint/history attribution)
-  async getFeatureSourcePaths(_featureKey: string): Promise<FeatureSourcePaths | undefined> {
-    return undefined;
-  }
-
-  async getFeaturePropertySourcePath(
-    _featureKey: string,
-    _property: FeatureEnvironmentProperty,
-    _environment?: string,
-  ): Promise<string | undefined> {
-    return undefined;
-  }
 }

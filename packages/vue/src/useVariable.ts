@@ -1,6 +1,6 @@
 import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk";
+import { useSdk } from "./useSdk.js";
 
 export function useVariable(
   featureKey: FeatureKey,

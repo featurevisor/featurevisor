@@ -19,15 +19,17 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     attributesDirectoryPath: "",
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
+    targetsDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
     datafileNamePattern: "",
     revisionFileName: "",
-    siteExportDirectoryPath: "",
-    environmentsDirectoryPath: "",
+    catalogDirectoryPath: "",
+    setsDirectoryPath: "",
     environments: ["staging", "production"],
-    splitByEnvironment: false,
+    sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
     adapter: {},
     plugins: [],
@@ -80,7 +82,7 @@ const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
   "version",
   "traits",
 ];
-const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries/germany", "countries/france"];
+const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries.germany", "countries.france"];
 const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
 
@@ -107,8 +109,8 @@ const TEST_SCHEMAS_BY_KEY: Record<string, Schema> = {
   slugSchema: slugSchemaResolved,
 };
 
-function getFeatureSchema() {
-  const projectConfig = minimalProjectConfig();
+function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
+  const projectConfig = minimalProjectConfig(projectConfigOverrides);
   const conditionsZodSchema = getConditionsZodSchema(projectConfig, TEST_ATTRIBUTES);
   return getFeatureZodSchema(
     projectConfig,
@@ -135,12 +137,18 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function parseFeature(feature: unknown): z.ZodSafeParseResult<unknown> {
-  return getFeatureSchema().safeParse(feature);
+function parseFeature(
+  feature: unknown,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): z.ZodSafeParseResult<unknown> {
+  return getFeatureSchema(projectConfigOverrides).safeParse(feature);
 }
 
-function expectParseSuccess(feature: unknown): void {
-  const result = parseFeature(feature);
+function expectParseSuccess(
+  feature: unknown,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): void {
+  const result = parseFeature(feature, projectConfigOverrides);
   expect(result.success).toBe(true);
   if (!result.success) {
     const err = (result as z.ZodSafeParseError<unknown>).error;
@@ -149,8 +157,12 @@ function expectParseSuccess(feature: unknown): void {
   }
 }
 
-function expectParseFailure(feature: unknown, messageSubstring?: string): z.ZodError {
-  const result = parseFeature(feature);
+function expectParseFailure(
+  feature: unknown,
+  messageSubstring?: string,
+  projectConfigOverrides: Partial<ProjectConfig> = {},
+): z.ZodError {
+  const result = parseFeature(feature, projectConfigOverrides);
   expect(result.success).toBe(false);
   if (result.success) throw new Error("Expected parse failure");
   const err = (result as z.ZodSafeParseError<unknown>).error;
@@ -177,6 +189,58 @@ function expectErrorSurfaces(
 }
 
 describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable values)", () => {
+  describe("tags", () => {
+    it("accepts missing tags", () => {
+      const feature = baseFeature();
+      delete feature.tags;
+
+      expectParseSuccess(feature);
+    });
+
+    it("accepts tags defined in project config", () => {
+      expectParseSuccess(baseFeature({ tags: ["all", "beta"] }), { tags: ["all", "beta"] });
+    });
+
+    it("rejects tags missing from project config", () => {
+      expectParseFailure(baseFeature({ tags: ["unknown"] }), 'Unknown tag "unknown"');
+    });
+
+    it("rejects duplicate tags", () => {
+      expectParseFailure(baseFeature({ tags: ["all", "all"] }), "Duplicate tags found: all, all");
+    });
+  });
+
+  describe("rule segments", () => {
+    it("rejects empty and/or/not group segment arrays", () => {
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { and: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { or: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+
+      expectParseFailure(
+        baseFeature({
+          rules: {
+            staging: [{ key: "r1", segments: { not: [] }, percentage: 100 }],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+  });
+
   describe("attribute-aware rule and force conditions", () => {
     it("accepts force conditions using semver operators on oneOf attributes", () => {
       expectParseSuccess(
@@ -659,8 +723,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               variables: { slug: "treatment" },
               variableOverrides: {
                 slug: [
-                  { segments: "countries/germany", value: "de" },
-                  { segments: "countries/france", value: "fr" },
+                  { segments: "countries.germany", value: "de" },
+                  { segments: "countries.france", value: "fr" },
                 ],
               },
             },
@@ -777,7 +841,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { title: "Germany" },
               },
@@ -799,7 +863,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { count: 100 },
               },
@@ -822,7 +886,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               { key: "r1", segments: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries/germany",
+                segments: "countries.germany",
                 percentage: 100,
                 variables: { unknownVar: "x" },
               },
@@ -885,7 +949,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 variableOverrides: {
                   config: [
                     {
-                      segments: "countries/germany",
+                      segments: "countries.germany",
                       value: {
                         "nested.count": 5,
                       },
@@ -1100,6 +1164,21 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
   });
 
   describe("environment maps", () => {
+    it("allows direct rules, force, and expose when environments are omitted", () => {
+      expectParseSuccess(
+        baseFeature({
+          expose: true,
+          force: [{ segments: "*", variation: "control" }],
+          variations: [
+            { value: "control", weight: 50 },
+            { value: "treatment", weight: 50 },
+          ],
+          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+        }),
+        { environments: undefined },
+      );
+    });
+
     it("allows a subset of configured environments in rules, force, and expose", () => {
       expectParseSuccess(
         baseFeature({
@@ -1118,6 +1197,16 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
         }),
       );
+    });
+
+    it("rejects direct rules when environments are configured", () => {
+      const err = expectParseFailure(
+        baseFeature({
+          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+        }),
+      );
+
+      expect(err.issues.some((issue) => issue.path.join(".").includes("rules"))).toBe(true);
     });
 
     it("rejects unknown environment keys in rules", () => {

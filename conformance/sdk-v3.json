@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "description": "Featurevisor v3 cross SDK compatibility contracts",
+  "bucketing": {
+    "minimum": 0,
+    "maximum": 100000,
+    "percentage": {
+      "percentage": 50000,
+      "enabledAt": [0, 50000],
+      "disabledAt": [50001, 100000]
+    },
+    "allocations": [
+      { "variation": "control", "range": [0, 50000] },
+      { "variation": "treatment", "range": [50000, 100000] }
+    ],
+    "allocationExpectations": {
+      "0": "control",
+      "49999": "control",
+      "50000": "control",
+      "50001": "treatment",
+      "99999": "treatment",
+      "100000": "treatment"
+    }
+  },
+  "regularExpressions": {
+    "pattern": "chrome",
+    "flags": "g",
+    "values": ["chrome", "chrome", "firefox", "chrome"],
+    "matches": [true, true, false, true]
+  },
+  "typedVariables": [
+    { "type": "integer", "value": 1, "valid": true },
+    { "type": "integer", "value": 1.5, "valid": false },
+    { "type": "integer", "value": "1", "valid": false },
+    { "type": "double", "value": 1.5, "valid": true },
+    { "type": "double", "value": "1.5", "valid": false },
+    { "type": "boolean", "value": true, "valid": true },
+    { "type": "boolean", "value": "true", "valid": false }
+  ],
+  "datafile": {
+    "schemaVersionIsInformational": true,
+    "schemaVersionType": "string"
+  },
+  "diagnostics": {
+    "requiredFields": ["level", "code", "message", "details"],
+    "detailsType": "object",
+    "emptyDetailsJson": "{}"
+  }
+}

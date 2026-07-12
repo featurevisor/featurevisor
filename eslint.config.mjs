@@ -8,8 +8,11 @@ export default [
   {
     ignores: [
       // directories
+      "**/cjs/",
       "**/dist/",
       "**/datafiles/",
+      "**/esm/",
+      "**/node-esm/",
       "**/lib/",
       "**/coverage/",
       "**/out/",
@@ -19,12 +22,12 @@ export default [
       "**/*.config.js",
       "**/*.config.mjs",
       "**/*.setup.js",
-      "**/webpack*.js",
       "**/*.d.ts",
 
       // examples
       "**/examples/example*/plugins/",
       "**/examples/example*/src/",
+      "**/examples/example*/catalog/",
     ],
   },
 

@@ -49,17 +49,17 @@ variations:
     variableOverrides:
       color:
         - segments:
-            - countries/germany
+            - countries.germany
           value: yellow
         - segments:
-            - countries/switzerland
+            - countries.switzerland
           value: white
       sections:
         - segments:
-            - countries/germany
+            - countries.germany
           value: ["home", "about", "contact", "imprint"]
         - segments:
-            - countries/netherlands
+            - countries.netherlands
           value: ["home", "about", "contact", "bitterballen"]
 
 rules:

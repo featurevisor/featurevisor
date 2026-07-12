@@ -1,0 +1,5 @@
+description: Premium Chrome browser target
+tag: web
+context:
+  subscription: premium
+  browser: chrome

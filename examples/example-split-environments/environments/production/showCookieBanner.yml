@@ -1,9 +1,0 @@
-rules:
-  - key: nl
-    segments:
-      - netherlands
-    percentage: 100
-
-  - key: everyone
-    segments: "*"
-    percentage: 0

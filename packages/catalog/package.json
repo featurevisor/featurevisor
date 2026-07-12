@@ -1,0 +1,67 @@
+{
+  "name": "@featurevisor/catalog",
+  "version": "2.27.0",
+  "description": "Static catalog UI for Featurevisor projects",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "lib",
+    "public",
+    "src",
+    "package.json"
+  ],
+  "scripts": {
+    "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
+    "dev1": "node scripts/dev.mjs --project ../../examples/example-1",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run transpile && vite build",
+    "test": "jest --config jest.config.js --verbose",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "preview": "vite preview --host 127.0.0.1 --port 3000"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/featurevisor/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/featurevisor/featurevisor/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@featurevisor/types": "2.23.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.15",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.0",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

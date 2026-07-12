@@ -20,7 +20,7 @@ npx featurevisor test --onlyFailures
 feature: foo
 assertions:
   - description: Control in NL at 40th percentile
-    environment: production       # omit if project has environments: false
+    environment: production       # omit if project has no environments configured
     at: 40                        # bucketed percentile (0–100) the assertion runs at
     context:
       userId: '123'
@@ -33,12 +33,12 @@ assertions:
 
 Available expectations on a feature assertion:
 
-| Field                     | Type     | Notes                                                 |
-| ------------------------- | -------- | ----------------------------------------------------- |
-| `expectedToBeEnabled`     | boolean  | Flag check                                            |
-| `expectedVariation`       | string   | Expected variation value                              |
-| `expectedVariables`       | object   | Map of variable key → expected value                  |
-| `expectedEvaluations`     | object   | Lower-level evaluation result checks (advanced)       |
+| Field                 | Type    | Notes                                           |
+| --------------------- | ------- | ----------------------------------------------- |
+| `expectedToBeEnabled` | boolean | Flag check                                      |
+| `expectedVariation`   | string  | Expected variation value                        |
+| `expectedVariables`   | object  | Map of variable key → expected value            |
+| `expectedEvaluations` | object  | Lower-level evaluation result checks (advanced) |
 
 ## Segment spec
 
@@ -79,32 +79,33 @@ assertions:
 
 Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix-driven fields is fine — only interpolate where it changes.
 
-## Testing against tagged or scoped datafiles
+## Testing against target datafiles
 
-By default the runner builds a single in-memory datafile containing everything. To imitate a real consumer that loads a tag-/scope-specific datafile:
+The runner builds target datafiles in memory. To imitate a real consumer that loads a target-specific datafile:
 
 ```yaml
 assertions:
   - environment: production
     at: 90
     context: { country: nl }
-    tag: web                       # or:   scope: browsers
+    target: web
     expectedToBeEnabled: true
 ```
 
 Then run:
 
 ```bash
-npx featurevisor test --withTags
-# or
-npx featurevisor test --withScopes
+npx featurevisor test
 ```
+
+Pass `--target=web` to build only that target datafile and run untargeted assertions plus assertions for `web`. Repeat the option to select several targets. Segment tests are always run because they do not select a target datafile.
 
 ## When you create a feature or segment
 
 Offer (don't force): "I can add a `tests/.../spec.yml` for this — want me to?" If yes, use [templates/test-feature.spec.yml](../templates/test-feature.spec.yml) / [templates/test-segment.spec.yml](../templates/test-segment.spec.yml).
 
 Cover at minimum:
+
 - The catch-all rule at a high `at` (e.g. 99) in each environment that should be enabled.
 - One assertion **inside** any targeted segment (e.g. country = nl) and one outside it.
 - If variations exist, one assertion per variation by picking `at` values in their weight bands.

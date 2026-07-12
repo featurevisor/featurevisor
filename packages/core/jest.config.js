@@ -1,13 +1,22 @@
 module.exports = {
-  preset: "ts-jest",
   bail: true,
   transform: {
-    "^.+\\.ts$": [
-      "ts-jest",
+    "^.+\\.[tj]sx?$": [
+      "@swc/jest",
       {
-        tsconfig: "<rootDir>/tsconfig.cjs.json",
+        jsc: { parser: { syntax: "typescript", tsx: true } },
+        module: { type: "commonjs" },
       },
     ],
   },
   testMatch: ["<rootDir>/src/**/*.spec.ts"],
+  collectCoverageFrom: ["src/**/*.ts", "!src/**/*.spec.ts"],
+  coverageThreshold: {
+    global: {
+      statements: 58,
+      branches: 59,
+      functions: 63,
+      lines: 59,
+    },
+  },
 };

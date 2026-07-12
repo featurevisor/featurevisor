@@ -1,0 +1,10 @@
+description: New checkout flow in dev
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  - key: everyone
+    segments: "*"
+    percentage: 100

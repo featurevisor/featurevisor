@@ -14,8 +14,6 @@ import {
 } from "./schema";
 import { refineWithMessage } from "./zodHelpers";
 
-const tagRegex = /^[a-z0-9-]+$/;
-
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
@@ -1324,17 +1322,17 @@ export function getFeatureZodSchema(
   const andOrNotGroupSegment = z.union([
     z
       .object({
-        and: z.array(z.lazy(() => groupSegmentZodSchema)),
+        and: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        or: z.array(z.lazy(() => groupSegmentZodSchema)),
+        or: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
     z
       .object({
-        not: z.array(z.lazy(() => groupSegmentZodSchema)),
+        not: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
       })
       .strict(),
   ]);
@@ -1353,6 +1351,7 @@ export function getFeatureZodSchema(
         .object({
           key: z.string(),
           description: z.string().optional(),
+          promotable: z.boolean().optional(),
           segments: groupSegmentsZodSchema,
           percentage: z.number().min(0).max(100),
 
@@ -1456,21 +1455,23 @@ export function getFeatureZodSchema(
     (value) => `Unknown feature "${value}"`,
   );
 
-  const environmentKeys = projectConfig.environments || [];
+  const environmentKeys = Array.isArray(projectConfig.environments)
+    ? projectConfig.environments
+    : [];
 
   const featureZodSchema = z
     .object({
       archived: z.boolean().optional(),
       deprecated: z.boolean().optional(),
+      promotable: z.boolean().optional(),
       description: z.string(),
 
       tags: z
         .array(
           refineWithMessage(
             z.string(),
-            (value) => tagRegex.test(value),
-            (value) =>
-              `Tag "${value}" must be lower cased and alphanumeric, and may contain hyphens.`,
+            (value) => projectConfig.tags.includes(value),
+            (value) => `Unknown tag "${value}"`,
           ),
         )
         .superRefine((value, ctx) => {
@@ -1480,7 +1481,8 @@ export function getFeatureZodSchema(
               message: "Duplicate tags found: " + value.join(", "),
             });
           }
-        }),
+        })
+        .optional(),
 
       required: z
         .array(
@@ -1675,24 +1677,19 @@ export function getFeatureZodSchema(
         })
         .optional(),
 
-      expose:
-        projectConfig.environments === false
-          ? exposeSchema.optional()
-          : z
-              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
-              .optional(),
+      expose: !Array.isArray(projectConfig.environments)
+        ? exposeSchema.optional()
+        : z
+            .partialRecord(z.enum(environmentKeys as [string, ...string[]]), exposeSchema)
+            .optional(),
 
-      force:
-        projectConfig.environments === false
-          ? forceSchema
-          : z
-              .partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema)
-              .optional(),
+      force: !Array.isArray(projectConfig.environments)
+        ? forceSchema
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
 
-      rules:
-        projectConfig.environments === false
-          ? rulesSchema
-          : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
+      rules: !Array.isArray(projectConfig.environments)
+        ? rulesSchema
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
     })
     .strict()
     .superRefine((value, ctx) => {

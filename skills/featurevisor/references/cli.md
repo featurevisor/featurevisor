@@ -40,9 +40,8 @@ The `--json` output has a stable shape:
 }
 ```
 
-When `splitByEnvironment: true`, lint additionally enforces that base feature files contain no `rules`/`force`/`expose` and that every configured environment has a per-feature file under `environments/<env>/`.
-
 Run this after every edit. It catches:
+
 - Unknown segments/attributes referenced in features
 - Variation weight sums ≠ 100
 - Group slot percentage sums ≠ 100
@@ -56,11 +55,13 @@ If `enforceCatchAllRule: true` is set in config, lint also requires every featur
 
 ```bash
 npx featurevisor build --no-state-files
+npx featurevisor build --no-state-files --set=storefront   # one set only (sets projects)
+npx featurevisor build --no-state-files --target=web --target=mobile
 ```
 
 **Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
 
-Datafiles end up in `<datafilesDirectoryPath>` (default `dist/`) organized by environment and tag.
+Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
 
 ## Test
 
@@ -73,8 +74,8 @@ npx featurevisor test --verbose                   # SDK trace per assertion
 npx featurevisor test --quiet                     # suppress SDK warnings
 npx featurevisor test --onlyFailures
 npx featurevisor test --showDatafile              # combine with --keyPattern
-npx featurevisor test --withTags                  # run each against its tagged datafile
-npx featurevisor test --withScopes                # run each against its scoped datafile
+npx featurevisor test --set=storefront            # one set only (sets projects)
+npx featurevisor test --target=web --target=mobile # selected target assertions and untargeted assertions
 ```
 
 Non-zero exit on failure.
@@ -82,6 +83,14 @@ Non-zero exit on failure.
 ## List
 
 `list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output.
+
+### Datafiles
+
+```bash
+npx featurevisor list --datafiles --json --pretty
+```
+
+Lists generated datafile paths relative to `datafiles/` with uncompressed and gzip-compressed sizes in aligned columns, excluding `REVISION` and hidden files. Sizes are right-aligned with two decimal places, and padded `B` suffixes align with `kB`/`mB`; `dev*` directories appear first and `prod*` directories last. `--json` returns `{ path, size, gzipSize }` items with byte sizes in the same order. Run `build` first when you need freshly generated output.
 
 ### Features
 
@@ -91,19 +100,20 @@ npx featurevisor list --features --json --pretty
 
 Filter flags (combine as needed):
 
-| Flag                            | Effect                                           |
-| ------------------------------- | ------------------------------------------------ |
-| `--archived=true|false`         | by archived status                               |
-| `--description=<pattern>`       | description regex                                |
-| `--disabledIn=<env>`            | feature disabled in env (no rule, or 0%)         |
-| `--enabledIn=<env>`             | feature has any rule >0% in env                  |
-| `--keyPattern=<regex>`          | feature key regex                                |
-| `--tag=<tag>`                   | includes a tag                                   |
-| `--variable=<key>`              | has variable in its schema                       |
-| `--variation=<value>`           | has a variation with given value                 |
-| `--with-tests` / `--without-tests`        | has any `.spec.yml` / has none         |
-| `--with-variables` / `--without-variables` | has / has not                          |
-| `--with-variations` / `--without-variations` | has / has not                        |
+| Flag                                         | Effect                                   |
+| -------------------------------------------- | ---------------------------------------- |
+| `--archived=true|false`                      | by archived status                       |
+| `--description=<pattern>`                    | description regex                        |
+| `--disabledIn=<env>`                         | feature disabled in env (no rule, or 0%) |
+| `--enabledIn=<env>`                          | feature has any rule >0% in env          |
+| `--keyPattern=<regex>`                       | feature key regex                        |
+| `--tag=<tag>`                                | includes a tag                           |
+| `--target=<target>`                          | selected by target; repeatable union     |
+| `--variable=<key>`                           | has variable in its schema               |
+| `--variation=<value>`                        | has a variation with given value         |
+| `--with-tests` / `--without-tests`           | has any `.spec.yml` / has none           |
+| `--with-variables` / `--without-variables`   | has / has not                            |
+| `--with-variations` / `--without-variations` | has / has not                            |
 
 ### Segments
 
@@ -164,10 +174,11 @@ npx featurevisor evaluate \
 # extras
   --verbose                                       # more log detail
   --json --pretty                                 # JSON output
-  --schema-version=2                              # if project is on v2 schema
 ```
 
 Returns the full evaluation chain (sticky → required → force → rules → bucketing → fallback), so you don't have to reason about it by hand.
+
+Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
 
 You can also debug variation/variable:
 
@@ -201,6 +212,7 @@ npx featurevisor assess-distribution \
 
 - `--populateUuid=<attr>` generates a fresh UUID per iteration for that attribute (repeatable for multiple attrs like `--populateUuid=userId --populateUuid=deviceId`).
 - `--n` higher = more accurate.
+- `--target=<target>` assesses one target datafile and can be repeated.
 
 Use this when the user asks "is my 25% rollout really going to hit 25%?" or "will my variation weights actually split traffic 50/50?".
 
@@ -214,7 +226,7 @@ npx featurevisor benchmark --environment=production --feature=my_feature --varia
 npx featurevisor benchmark --environment=production --feature=my_feature --variable=bgColor --context='{}' --n=1000
 ```
 
-Append `--schema-version=2` if the project uses schema v2.
+Use repeatable `--target=<target>` options to benchmark each selected target datafile independently.
 
 ## config
 
@@ -223,7 +235,7 @@ npx featurevisor config
 npx featurevisor config --json --pretty
 ```
 
-Always run this once at the start of a session to discover envs, tags, parser, splitByEnvironment, defaultBucketBy, and directory overrides.
+Always run this once at the start of a session to discover envs, tags, parser, sets, defaultBucketBy, and directory overrides.
 
 ## info
 
@@ -233,19 +245,38 @@ npx featurevisor info
 
 Quick counts of features/segments/attributes/tests/groups/schemas. Useful sanity check.
 
+With repeatable `--target=<target>` options, it prints feature, segment, variable, and datafile size information per selected target and environment.
+
 ## generate-code
 
 ```bash
 npx featurevisor generate-code --language typescript --out-dir ./src
+npx featurevisor generate-code --language typescript --out-dir ./src --tag=shared --target=web --target=mobile
 ```
 
-Generates typed accessors from feature definitions. Other languages: see <https://featurevisor.com/docs/code-generation>.
+Generates typed accessors from feature definitions. Repeatable `--tag` and `--target` selectors form a union. Other languages: see <https://featurevisor.com/docs/code-generation>.
 
-## site
+## promote (sets projects only)
 
 ```bash
-npx featurevisor site export                      # build static status site into ./out
-npx featurevisor site serve [-p 3000]             # serve a built site
+npx featurevisor promote --from=dev --to=staging                       # preview
+npx featurevisor promote --from=dev --to=staging --apply               # write destination files
+npx featurevisor promote --from=dev --to=staging --target=web          # target and its feature dependency closure
+npx featurevisor promote --from=dev --to=staging --tag=web             # tagged features and their dependencies
+npx featurevisor promote --from=dev --to=staging --includeFeatures="checkout*"
+npx featurevisor promote --from=dev --to=staging --excludeFeatures="experimental*"
+npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source | destination | fail (default source)
+npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
+```
+
+Copies definitions and their dependencies between [sets](https://featurevisor.com/docs/sets). `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config. See <https://featurevisor.com/docs/promotions>.
+
+## catalog
+
+```bash
+npx featurevisor catalog                          # export, serve, and watch the catalog
+npx featurevisor catalog export                   # build the static catalog
+npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
 ```
 
 ## version

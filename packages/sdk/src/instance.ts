@@ -2,6 +2,8 @@ import type {
   Context,
   Feature,
   FeatureKey,
+  Segment,
+  SegmentKey,
   StickyFeatures,
   EvaluatedFeatures,
   EvaluatedFeature,
@@ -9,16 +11,40 @@ import type {
   VariationValue,
   VariableKey,
   DatafileContent,
+  Traffic,
+  Allocation,
+  GroupSegment,
+  Condition,
+  VariableType,
 } from "@featurevisor/types";
 
-import { createLogger, Logger, LogLevel } from "./logger";
-import { HooksManager, Hook } from "./hooks";
-import { Emitter, EventCallback, EventName } from "./emitter";
-import { DatafileReader } from "./datafileReader";
-import { Evaluation, EvaluateDependencies, evaluateWithHooks } from "./evaluate";
-import { FeaturevisorChildInstance } from "./child";
-import { getParamsForStickySetEvent, getParamsForDatafileSetEvent } from "./events";
-import { getValueByType } from "./helpers";
+import type {
+  FeaturevisorModule,
+  FeaturevisorModuleApi,
+  FeaturevisorModuleUnsubscribe,
+} from "./modules.js";
+import { evaluateWithModules } from "./evaluate.js";
+import type { Evaluation, EvaluateDependencies, ForceResult } from "./evaluate.js";
+import { FeaturevisorChildInstance } from "./child.js";
+import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
+import {
+  allConditionsAreMatched,
+  allSegmentsAreMatched,
+  parseConditionsIfStringified,
+  parseSegmentsIfStringified,
+} from "./conditions.js";
+import type {
+  FeaturevisorDiagnostic,
+  FeaturevisorDiagnosticHandler,
+  FeaturevisorLogLevel,
+  FeaturevisorModuleDiagnosticOptions,
+  FeaturevisorModuleReportedDiagnostic,
+} from "./diagnostics.js";
+import {
+  FEATUREVISOR_DIAGNOSTIC_PREFIX,
+  getConsoleMethodForDiagnostic,
+  shouldLog,
+} from "./diagnostics.js";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -27,87 +53,237 @@ const emptyDatafile: DatafileContent = {
   features: {},
 };
 
-export interface OverrideOptions {
-  sticky?: StickyFeatures;
+function assertDatafileContent(datafile: unknown): asserts datafile is DatafileContent {
+  if (
+    typeof datafile !== "object" ||
+    datafile === null ||
+    typeof (datafile as DatafileContent).schemaVersion !== "string" ||
+    typeof (datafile as DatafileContent).revision !== "string" ||
+    typeof (datafile as DatafileContent).segments !== "object" ||
+    (datafile as DatafileContent).segments === null ||
+    typeof (datafile as DatafileContent).features !== "object" ||
+    (datafile as DatafileContent).features === null
+  ) {
+    throw new Error("Invalid datafile");
+  }
+}
 
+function mergeStoredDatafile(
+  existing: DatafileContent,
+  incoming: DatafileContent,
+): DatafileContent {
+  return {
+    schemaVersion: incoming.schemaVersion,
+    revision: incoming.revision,
+    featurevisorVersion: incoming.featurevisorVersion,
+    segments: {
+      ...(existing.segments || {}),
+      ...(incoming.segments || {}),
+    },
+    features: {
+      ...(existing.features || {}),
+      ...(incoming.features || {}),
+    },
+  };
+}
+
+function getStickySetEventDetails(
+  previousStickyFeatures: StickyFeatures = {},
+  newStickyFeatures: StickyFeatures = {},
+  replace: boolean,
+) {
+  const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
+
+  return {
+    features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    replaced: replace,
+  };
+}
+
+function getDatafileSetEventDetails(
+  previousDatafile: DatafileContent,
+  newDatafile: DatafileContent,
+  replace = false,
+) {
+  const previousRevision = previousDatafile.revision;
+  const previousFeatureKeys = Object.keys(previousDatafile.features);
+  const newRevision = newDatafile.revision;
+  const newFeatureKeys = Object.keys(newDatafile.features);
+  const features: FeatureKey[] = [];
+
+  for (const previousFeatureKey of previousFeatureKeys) {
+    if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
+      features.push(previousFeatureKey);
+      continue;
+    }
+
+    if (
+      previousDatafile.features[previousFeatureKey]?.hash !==
+      newDatafile.features[previousFeatureKey]?.hash
+    ) {
+      features.push(previousFeatureKey);
+    }
+  }
+
+  for (const newFeatureKey of newFeatureKeys) {
+    if (
+      previousFeatureKeys.indexOf(newFeatureKey) === -1 &&
+      features.indexOf(newFeatureKey) === -1
+    ) {
+      features.push(newFeatureKey);
+    }
+  }
+
+  return {
+    revision: newRevision,
+    previousRevision,
+    revisionChanged: previousRevision !== newRevision,
+    features,
+    replaced: replace,
+  };
+}
+
+function getValueByType(value: VariableValue, fieldType: string | VariableType): VariableValue {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  switch (fieldType) {
+    case "string":
+      return typeof value === "string" ? value : null;
+    case "integer": {
+      return typeof value === "number" && Number.isInteger(value) ? value : null;
+    }
+    case "double": {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    }
+    case "boolean":
+      return typeof value === "boolean" ? value : null;
+    case "array":
+      return Array.isArray(value) ? value : null;
+    case "object":
+      return typeof value === "object" && !Array.isArray(value) ? value : null;
+    default:
+      return value;
+  }
+}
+
+export interface OverrideOptions {
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
 }
 
-export interface InstanceOptions {
-  datafile?: DatafileContent | string;
-  context?: Context;
-  logLevel?: LogLevel;
-  logger?: Logger;
+export interface SpawnOptions {
   sticky?: StickyFeatures;
-  hooks?: Hook[];
 }
 
-export class FeaturevisorInstance {
+interface InternalOverrideOptions extends OverrideOptions {
+  __featurevisorChildSticky?: StickyFeatures;
+}
+
+export interface FeaturevisorOptions {
+  datafile?: DatafileContent | string;
+  context?: Context;
+  logLevel?: FeaturevisorLogLevel;
+  onDiagnostic?: FeaturevisorDiagnosticHandler;
+  sticky?: StickyFeatures;
+  modules?: FeaturevisorModule[];
+}
+
+interface FeaturevisorModuleDiagnosticSubscription {
+  module: FeaturevisorModule;
+  handler: FeaturevisorDiagnosticHandler;
+  logLevel: FeaturevisorLogLevel;
+}
+
+type Listeners = {
+  [TEventName in EventName]?: EventCallback<TEventName>[];
+};
+
+type InstanceEvaluationDataProvider = EvaluateDependencies["datafile"];
+
+export class Featurevisor {
   // from options
   private context: Context = {};
-  private logger: Logger;
+  private logLevel: FeaturevisorLogLevel = "info";
+  private onDiagnostic?: FeaturevisorDiagnosticHandler;
   private sticky?: StickyFeatures;
 
   // internally created
-  private datafileReader: DatafileReader;
-  private hooksManager: HooksManager;
-  private emitter: Emitter;
+  private datafile: DatafileContent = emptyDatafile;
+  private regexCache: Record<string, RegExp> = {};
+  private modules: FeaturevisorModule[] = [];
+  private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
+  private listeners: Listeners = {};
+  private closed = false;
 
-  constructor(options: InstanceOptions) {
+  constructor(options: FeaturevisorOptions) {
     // from options
     this.context = options.context || {};
-    this.logger =
-      options.logger ||
-      createLogger({
-        level: options.logLevel || Logger.defaultLevel,
-      });
-    this.hooksManager = new HooksManager({
-      hooks: options.hooks || [],
-      logger: this.logger,
-    });
-    this.emitter = new Emitter();
+    this.logLevel = options.logLevel || "info";
+    this.onDiagnostic = options.onDiagnostic;
     this.sticky = options.sticky;
 
-    // datafile
-    this.datafileReader = new DatafileReader({
-      datafile: emptyDatafile,
-      logger: this.logger,
+    (options.modules || []).forEach((module) => {
+      this.addModule(module);
     });
+
     if (options.datafile) {
-      this.datafileReader = new DatafileReader({
-        datafile:
-          typeof options.datafile === "string" ? JSON.parse(options.datafile) : options.datafile,
-        logger: this.logger,
-      });
+      this.setDatafile(options.datafile, true);
     }
 
-    this.logger.info("Featurevisor SDK initialized");
+    this.reportDiagnostic({
+      level: "info",
+      code: "sdk_initialized",
+      message: "SDK initialized",
+      details: {},
+    });
   }
 
-  setLogLevel(level: LogLevel) {
-    this.logger.setLevel(level);
+  setLogLevel(level: FeaturevisorLogLevel) {
+    this.logLevel = level;
   }
 
-  setDatafile(datafile: DatafileContent | string) {
+  setDatafile(datafile: DatafileContent | string, replace = false) {
+    if (this.closed) {
+      return;
+    }
+
     try {
-      const newDatafileReader = new DatafileReader({
-        datafile: typeof datafile === "string" ? JSON.parse(datafile) : datafile,
-        logger: this.logger,
+      const resolvedDatafile = typeof datafile === "string" ? JSON.parse(datafile) : datafile;
+      assertDatafileContent(resolvedDatafile);
+
+      const storedDatafile = replace
+        ? resolvedDatafile
+        : mergeStoredDatafile(this.datafile, resolvedDatafile);
+      const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
+
+      this.datafile = storedDatafile;
+      this.regexCache = {};
+
+      this.reportDiagnostic({
+        level: "info",
+        code: "datafile_set",
+        message: "Datafile set",
+        details,
       });
-
-      const details = getParamsForDatafileSetEvent(this.datafileReader, newDatafileReader);
-
-      this.datafileReader = newDatafileReader;
-
-      this.logger.info("datafile set", details);
-      this.emitter.trigger("datafile_set", details);
+      this.trigger("datafile_set", details);
     } catch (e) {
-      this.logger.error("could not parse datafile", { error: e });
+      this.reportDiagnostic({
+        level: "error",
+        code: "invalid_datafile",
+        message: "Could not parse datafile",
+        originalError: e,
+        details: {},
+      });
     }
   }
 
   setSticky(sticky: StickyFeatures, replace = false) {
+    if (this.closed) {
+      return;
+    }
+
     const previousStickyFeatures = this.sticky || {};
 
     if (replace) {
@@ -119,49 +295,438 @@ export class FeaturevisorInstance {
       };
     }
 
-    const params = getParamsForStickySetEvent(previousStickyFeatures, this.sticky, replace);
+    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
 
-    this.logger.info("sticky features set", params);
-    this.emitter.trigger("sticky_set", params);
+    this.reportDiagnostic({
+      level: "info",
+      code: "sticky_set",
+      message: "Sticky features set",
+      details: params,
+    });
+    this.trigger("sticky_set", params);
   }
 
   getRevision(): string {
-    return this.datafileReader.getRevision();
+    return this.datafile.revision;
+  }
+
+  getSchemaVersion(): string {
+    return this.datafile.schemaVersion;
+  }
+
+  getSegment(segmentKey: SegmentKey): Segment | undefined {
+    const segment = this.datafile.segments[segmentKey];
+
+    if (!segment) {
+      return undefined;
+    }
+
+    segment.conditions = parseConditionsIfStringified(segment.conditions, this.reportDiagnostic);
+
+    return segment;
   }
 
   getFeature(featureKey: string): Feature | undefined {
-    return this.datafileReader.getFeature(featureKey);
+    return this.datafile.features[featureKey];
   }
 
-  addHook(hook: Hook) {
-    return this.hooksManager.add(hook);
+  getFeatureKeys(): string[] {
+    return Object.keys(this.datafile.features);
   }
 
-  on(eventName: EventName, callback: EventCallback) {
-    return this.emitter.on(eventName, callback);
+  getVariableKeys(featureKey: FeatureKey): string[] {
+    const feature = this.getFeature(featureKey);
+
+    if (!feature) {
+      return [];
+    }
+
+    return Object.keys(feature.variablesSchema || {});
   }
 
-  close() {
-    this.emitter.clearAll();
+  hasVariations(featureKey: FeatureKey): boolean {
+    const feature = this.getFeature(featureKey);
+
+    if (!feature) {
+      return false;
+    }
+
+    return Array.isArray(feature.variations) && feature.variations.length > 0;
   }
+
+  private getRegex(regexString: string, regexFlags?: string): RegExp {
+    const flags = regexFlags || "";
+    const cacheKey = `${regexString}-${flags}`;
+
+    if (this.regexCache[cacheKey]) {
+      return this.regexCache[cacheKey];
+    }
+
+    const regex = new RegExp(regexString, flags);
+    this.regexCache[cacheKey] = regex;
+
+    return regex;
+  }
+
+  private allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean {
+    return allConditionsAreMatched(
+      conditions,
+      context,
+      (regexString, regexFlags) => this.getRegex(regexString, regexFlags),
+      this.reportDiagnostic,
+    );
+  }
+
+  private allSegmentsAreMatched(
+    groupSegments: GroupSegment | GroupSegment[] | "*",
+    context: Context,
+  ): boolean {
+    return allSegmentsAreMatched(
+      groupSegments,
+      context,
+      (segmentKey) => this.getSegment(segmentKey),
+      (regexString, regexFlags) => this.getRegex(regexString, regexFlags),
+      this.reportDiagnostic,
+    );
+  }
+
+  private getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined {
+    return traffic.find((t) => {
+      if (!this.allSegmentsAreMatched(parseSegmentsIfStringified(t.segments), context)) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  private getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
+    if (!traffic.allocation) {
+      return undefined;
+    }
+
+    for (const allocation of traffic.allocation) {
+      const [start, end] = allocation.range;
+
+      if (allocation.range && start <= bucketValue && end >= bucketValue) {
+        return allocation;
+      }
+    }
+
+    return undefined;
+  }
+
+  private getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult {
+    const result: ForceResult = {
+      force: undefined,
+      forceIndex: undefined,
+    };
+
+    const feature = typeof featureKey === "string" ? this.getFeature(featureKey) : featureKey;
+
+    if (!feature || !feature.force) {
+      return result;
+    }
+
+    for (let i = 0; i < feature.force.length; i++) {
+      const currentForce = feature.force[i];
+
+      if (
+        currentForce.conditions &&
+        this.allConditionsAreMatched(
+          parseConditionsIfStringified(currentForce.conditions, this.reportDiagnostic),
+          context,
+        )
+      ) {
+        result.force = currentForce;
+        result.forceIndex = i;
+        break;
+      }
+
+      if (
+        currentForce.segments &&
+        this.allSegmentsAreMatched(parseSegmentsIfStringified(currentForce.segments), context)
+      ) {
+        result.force = currentForce;
+        result.forceIndex = i;
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  private async closeModule(module: FeaturevisorModule): Promise<void> {
+    try {
+      await module.close?.();
+    } catch (error) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "module_close_error",
+        message: "Module close failed",
+        moduleName: module.name,
+        originalError: error,
+        details: {},
+      });
+    }
+  }
+
+  addModule(module: FeaturevisorModule): FeaturevisorModuleUnsubscribe | undefined {
+    if (this.closed) {
+      return;
+    }
+
+    if (module.name && this.modules.some((existingModule) => existingModule.name === module.name)) {
+      this.reportDiagnostic({
+        level: "error",
+        code: "duplicate_module",
+        message: "Duplicate module name",
+        moduleName: module.name,
+        details: {},
+      });
+
+      return;
+    }
+
+    try {
+      module.setup?.(this.getModuleApi(module));
+    } catch (error) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      this.reportDiagnostic({
+        level: "error",
+        code: "module_setup_error",
+        message: "Module setup failed",
+        moduleName: module.name,
+        originalError: error,
+        details: {},
+      });
+      void this.closeModule(module);
+
+      return;
+    }
+    this.modules.push(module);
+
+    return async () => {
+      const moduleExists = this.modules.indexOf(module) !== -1;
+      this.modules = this.modules.filter((existingModule) => existingModule !== module);
+      this.clearModuleDiagnosticSubscriptions(module);
+
+      if (moduleExists) {
+        await this.closeModule(module);
+      }
+    };
+  }
+
+  async removeModule(name: string): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+
+    const removedModules = this.modules.filter((module) => module.name === name);
+
+    this.modules = this.modules.filter((module) => module.name !== name);
+    for (const module of removedModules) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      await this.closeModule(module);
+    }
+  }
+
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
+    if (this.closed) {
+      return () => {};
+    }
+
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
+    }
+
+    const listeners = this.listeners[eventName] as EventCallback<TEventName>[];
+    listeners.push(callback);
+
+    let isActive = true;
+
+    return function unsubscribe() {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+
+      const index = listeners.indexOf(callback);
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private trigger<TEventName extends EventName>(
+    eventName: TEventName,
+    details: EventDetailsByName[TEventName],
+  ) {
+    const listeners = this.listeners[eventName];
+
+    if (!listeners) {
+      return;
+    }
+
+    listeners.slice().forEach(function (listener) {
+      try {
+        listener(details as never);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  async close() {
+    if (this.closed) {
+      return;
+    }
+
+    this.closed = true;
+    const modules = this.modules.slice();
+    this.modules = [];
+
+    for (const module of modules) {
+      this.clearModuleDiagnosticSubscriptions(module);
+      await this.closeModule(module);
+    }
+
+    this.moduleDiagnosticSubscriptions = [];
+    this.listeners = {};
+  }
+
+  private reportDiagnostic = (
+    diagnostic: FeaturevisorDiagnostic,
+    sourceModule?: FeaturevisorModule,
+  ): void => {
+    const normalizedDiagnostic: FeaturevisorDiagnostic = {
+      ...diagnostic,
+      details: diagnostic.details || {},
+    };
+    if (normalizedDiagnostic.module === undefined) {
+      delete normalizedDiagnostic.module;
+    }
+    if (normalizedDiagnostic.moduleName === undefined) {
+      delete normalizedDiagnostic.moduleName;
+    }
+    if (normalizedDiagnostic.originalError === undefined) {
+      delete normalizedDiagnostic.originalError;
+    }
+
+    this.moduleDiagnosticSubscriptions.slice().forEach((subscription) => {
+      if (subscription.module === sourceModule) {
+        return;
+      }
+
+      if (!shouldLog(subscription.logLevel, normalizedDiagnostic.level)) {
+        return;
+      }
+
+      try {
+        subscription.handler(normalizedDiagnostic);
+      } catch (error) {
+        console.error(FEATUREVISOR_DIAGNOSTIC_PREFIX, "Diagnostic handler failed", error);
+      }
+    });
+
+    if (shouldLog(this.logLevel, normalizedDiagnostic.level)) {
+      if (this.onDiagnostic) {
+        try {
+          this.onDiagnostic(normalizedDiagnostic);
+        } catch (error) {
+          console.error(FEATUREVISOR_DIAGNOSTIC_PREFIX, "Diagnostic handler failed", error);
+        }
+      } else {
+        const method = getConsoleMethodForDiagnostic(normalizedDiagnostic.level);
+        console[method](
+          FEATUREVISOR_DIAGNOSTIC_PREFIX,
+          normalizedDiagnostic.message,
+          normalizedDiagnostic,
+        );
+      }
+    }
+
+    if (normalizedDiagnostic.level === "error") {
+      this.trigger("error", { diagnostic: normalizedDiagnostic });
+    }
+  };
+
+  private getModuleApi = (module: FeaturevisorModule): FeaturevisorModuleApi => {
+    const onDiagnostic = (
+      handler: FeaturevisorDiagnosticHandler,
+      options: FeaturevisorModuleDiagnosticOptions = {},
+    ) => {
+      const subscription: FeaturevisorModuleDiagnosticSubscription = {
+        module,
+        handler,
+        logLevel: options.logLevel || "info",
+      };
+
+      this.moduleDiagnosticSubscriptions.push(subscription);
+
+      return () => {
+        this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
+          (currentSubscription) => currentSubscription !== subscription,
+        );
+      };
+    };
+
+    const reportDiagnostic = (diagnostic: FeaturevisorModuleReportedDiagnostic) => {
+      const moduleDiagnostic: FeaturevisorDiagnostic = {
+        ...diagnostic,
+        details: diagnostic.details || {},
+      };
+
+      if (module.name) {
+        moduleDiagnostic.module = module.name;
+      }
+
+      this.reportDiagnostic(moduleDiagnostic, module);
+    };
+
+    return {
+      getRevision: () => this.getRevision(),
+      onDiagnostic,
+      reportDiagnostic,
+    };
+  };
+
+  private clearModuleDiagnosticSubscriptions = (module: FeaturevisorModule): void => {
+    this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
+      (subscription) => subscription.module !== module,
+    );
+  };
 
   /**
    * Context
    */
   setContext(context: Context, replace = false) {
+    if (this.closed) {
+      return;
+    }
+
     if (replace) {
       this.context = context;
     } else {
       this.context = { ...this.context, ...context };
     }
 
-    this.emitter.trigger("context_set", {
+    this.trigger("context_set", {
       context: this.context,
       replaced: replace,
     });
-    this.logger.debug(replace ? "context replaced" : "context updated", {
-      context: this.context,
-      replaced: replace,
+    this.reportDiagnostic({
+      level: "debug",
+      code: "context_set",
+      message: replace ? "Context replaced" : "Context updated",
+      details: {
+        context: this.context,
+        replaced: replace,
+      },
     });
   }
 
@@ -174,7 +739,7 @@ export class FeaturevisorInstance {
       : this.context;
   }
 
-  spawn(context: Context = {}, options: OverrideOptions = {}): FeaturevisorChildInstance {
+  spawn(context: Context = {}, options: SpawnOptions = {}): FeaturevisorChildInstance {
     return new FeaturevisorChildInstance({
       parent: this,
       context: this.getContext(context),
@@ -187,22 +752,19 @@ export class FeaturevisorInstance {
    */
   private getEvaluationDependencies(
     context: Context,
-    options: OverrideOptions = {},
+    options: InternalOverrideOptions = {},
   ): EvaluateDependencies {
     return {
       context: this.getContext(context),
 
-      logger: this.logger,
-      hooksManager: this.hooksManager,
-      datafileReader: this.datafileReader,
+      reportDiagnostic: this.reportDiagnostic,
+      modules: this.modules,
+      // The evaluator only needs this small datafile/matching adapter shape.
+      // The methods are private on the instance, so TypeScript needs this
+      // internal cast; avoid widening these helpers into public instance APIs.
+      datafile: this as unknown as InstanceEvaluationDataProvider,
 
-      // OverrideOptions
-      sticky: options.sticky
-        ? {
-            ...this.sticky,
-            ...options.sticky,
-          }
-        : this.sticky,
+      sticky: options.__featurevisorChildSticky || this.sticky,
       defaultVariationValue: options.defaultVariationValue,
       defaultVariableValue: options.defaultVariableValue,
     };
@@ -213,7 +775,7 @@ export class FeaturevisorInstance {
     context: Context = {},
     options: OverrideOptions = {},
   ): Evaluation {
-    return evaluateWithHooks({
+    return evaluateWithModules({
       ...this.getEvaluationDependencies(context, options),
       type: "flag",
       featureKey,
@@ -226,7 +788,13 @@ export class FeaturevisorInstance {
 
       return evaluation.enabled === true;
     } catch (e) {
-      this.logger.error("isEnabled", { featureKey, error: e });
+      this.reportDiagnostic({
+        level: "error",
+        code: "evaluation_error",
+        message: "isEnabled failed",
+        originalError: e,
+        details: { featureKey },
+      });
 
       return false;
     }
@@ -240,7 +808,7 @@ export class FeaturevisorInstance {
     context: Context = {},
     options: OverrideOptions = {},
   ): Evaluation {
-    return evaluateWithHooks({
+    return evaluateWithModules({
       ...this.getEvaluationDependencies(context, options),
       type: "variation",
       featureKey,
@@ -265,7 +833,13 @@ export class FeaturevisorInstance {
 
       return null;
     } catch (e) {
-      this.logger.error("getVariation", { featureKey, error: e });
+      this.reportDiagnostic({
+        level: "error",
+        code: "evaluation_error",
+        message: "getVariation failed",
+        originalError: e,
+        details: { featureKey },
+      });
 
       return null;
     }
@@ -280,7 +854,7 @@ export class FeaturevisorInstance {
     context: Context = {},
     options: OverrideOptions = {},
   ): Evaluation {
-    return evaluateWithHooks({
+    return evaluateWithModules({
       ...this.getEvaluationDependencies(context, options),
       type: "variable",
       featureKey,
@@ -311,7 +885,13 @@ export class FeaturevisorInstance {
 
       return null;
     } catch (e) {
-      this.logger.error("getVariable", { featureKey, variableKey, error: e });
+      this.reportDiagnostic({
+        level: "error",
+        code: "evaluation_error",
+        message: "getVariable failed",
+        originalError: e,
+        details: { featureKey, variableKey },
+      });
 
       return null;
     }
@@ -401,7 +981,7 @@ export class FeaturevisorInstance {
   ): EvaluatedFeatures {
     const result: EvaluatedFeatures = {};
 
-    const keys = featureKeys.length > 0 ? featureKeys : this.datafileReader.getFeatureKeys();
+    const keys = featureKeys.length > 0 ? featureKeys : this.getFeatureKeys();
     for (const featureKey of keys) {
       // isEnabled
       const evaluatedFeature: EvaluatedFeature = {
@@ -409,7 +989,7 @@ export class FeaturevisorInstance {
       };
 
       // variation
-      if (this.datafileReader.hasVariations(featureKey)) {
+      if (this.hasVariations(featureKey)) {
         const variation = this.getVariation(featureKey, context, options);
 
         if (variation) {
@@ -418,7 +998,7 @@ export class FeaturevisorInstance {
       }
 
       // variables
-      const variableKeys = this.datafileReader.getVariableKeys(featureKey);
+      const variableKeys = this.getVariableKeys(featureKey);
       if (variableKeys.length > 0) {
         evaluatedFeature.variables = {};
 
@@ -439,6 +1019,6 @@ export class FeaturevisorInstance {
   }
 }
 
-export function createInstance(options: InstanceOptions = {}): FeaturevisorInstance {
-  return new FeaturevisorInstance(options);
+export function createFeaturevisor(options: FeaturevisorOptions = {}): Featurevisor {
+  return new Featurevisor(options);
 }

@@ -1,4 +1,5 @@
 // for use in node only
+import * as fs from "fs";
 import * as path from "path";
 
 import type { Attribute, Schema } from "@featurevisor/types";
@@ -11,15 +12,24 @@ import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { getSchemaZodSchema } from "./schema";
 import { getTestsZodSchema } from "./testSchema";
+import { getTargetZodSchema } from "./targetSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
 import { getLintIssuesFromZodError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
-import { CLI_FORMAT_RED, CLI_FORMAT_BOLD_UNDERLINE } from "../tester/cliFormat";
+import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
 import { Plugin } from "../cli";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
-export type LintEntityType = "attribute" | "segment" | "feature" | "group" | "schema" | "test";
+export type LintEntityType =
+  | "attribute"
+  | "segment"
+  | "feature"
+  | "group"
+  | "schema"
+  | "target"
+  | "test";
 
 export interface LintProjectOptions {
   keyPattern?: string;
@@ -37,8 +47,6 @@ export interface LintErrorItem {
   path: (string | number)[];
   code?: string;
   value?: unknown;
-  /** Present only when splitByEnvironment is true and the error is from an environment-specific file (rules/force/expose). */
-  environment?: string;
 }
 
 export interface LintResult {
@@ -47,10 +55,65 @@ export interface LintResult {
 }
 
 const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
-const ENTITY_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, -, and .";
+const ENTITY_NAME_REGEX_ERROR =
+  "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
 
-const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-/]+$/;
-const ATTRIBUTE_NAME_REGEX_ERROR = "Names must be alphanumeric and can contain _, and -";
+const ATTRIBUTE_NAME_REGEX_ERROR =
+  "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
+  const keyWithoutNamespaceCharacter = key.replace(
+    new RegExp(escapeRegExp(namespaceCharacter), "g"),
+    "",
+  );
+
+  return ENTITY_NAME_REGEX.test(keyWithoutNamespaceCharacter);
+}
+
+function getPathSegmentsFromKey(
+  key: string,
+  namespaceCharacter: string,
+  entityType?: LintEntityType,
+): string[] {
+  const pathSegments = key.split(namespaceCharacter);
+
+  if (
+    entityType === "test" &&
+    pathSegments.length > 1 &&
+    ["spec", "feature", "segment"].includes(pathSegments[pathSegments.length - 1])
+  ) {
+    const suffix = pathSegments[pathSegments.length - 1];
+    pathSegments[pathSegments.length - 2] = `${pathSegments[pathSegments.length - 2]}.${suffix}`;
+    pathSegments.pop();
+  }
+
+  return pathSegments;
+}
+
+function getReservedNameCheckValue(
+  entityType: LintEntityType,
+  name: string,
+  isFile: boolean,
+  extension: string,
+): string {
+  let value =
+    isFile && name.endsWith(`.${extension}`) ? name.slice(0, -extension.length - 1) : name;
+
+  if (entityType === "test" && isFile) {
+    for (const suffix of [".spec", ".feature", ".segment"]) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        break;
+      }
+    }
+  }
+
+  return value;
+}
 
 async function getAuthorsOfEntity(datasource, entityType, entityKey): Promise<string[]> {
   const entries = await datasource.listHistoryEntries(entityType, entityKey);
@@ -97,7 +160,9 @@ export async function lintProject(
   }
 
   function getFullPathFromKey(type: LintEntityType, key: string, relative = false) {
-    const fileName = `${key}.${datasource.getExtension()}`;
+    const fileName = `${getPathSegmentsFromKey(key, projectConfig.namespaceCharacter, type).join(
+      path.sep,
+    )}.${datasource.getExtension()}`;
     let fullPath = "";
 
     if (type === "attribute") {
@@ -110,6 +175,8 @@ export async function lintProject(
       fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
     } else if (type === "schema") {
       fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
+    } else if (type === "target") {
+      fullPath = path.join(projectConfig.targetsDirectoryPath, fileName);
     } else {
       fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
     }
@@ -121,60 +188,71 @@ export async function lintProject(
     return fullPath;
   }
 
-  async function getFeaturePathFromIssuePath(
-    featureKey: string,
-    issuePath: (string | number)[] = [],
-  ): Promise<string> {
-    const defaultPath = getFullPathFromKey("feature", featureKey);
-
-    if (!projectConfig.splitByEnvironment) {
-      return defaultPath;
+  function getEntityDirectoryPath(type: LintEntityType): string {
+    if (type === "attribute") {
+      return projectConfig.attributesDirectoryPath;
+    }
+    if (type === "segment") {
+      return projectConfig.segmentsDirectoryPath;
+    }
+    if (type === "feature") {
+      return projectConfig.featuresDirectoryPath;
+    }
+    if (type === "group") {
+      return projectConfig.groupsDirectoryPath;
+    }
+    if (type === "schema") {
+      return projectConfig.schemasDirectoryPath;
+    }
+    if (type === "target") {
+      return projectConfig.targetsDirectoryPath;
     }
 
-    if (!Array.isArray(projectConfig.environments)) {
-      return defaultPath;
-    }
-
-    const [topLevelKey, environment] = issuePath;
-    if (
-      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
-      typeof environment === "string"
-    ) {
-      const sourcePath = await datasource.getFeaturePropertySourcePath(
-        featureKey,
-        topLevelKey,
-        environment,
-      );
-
-      if (sourcePath) {
-        return sourcePath;
-      }
-    }
-
-    return defaultPath;
+    return projectConfig.testsDirectoryPath;
   }
 
-  /**
-   * When the error is from an environment-specific file (splitByEnvironment), the Zod path
-   * is against the merged feature (e.g. rules.production.1.variables.foo). Return the path
-   * as it appears in that file (e.g. rules.1.variables.foo) by stripping the environment segment.
-   */
-  function getPathRelativeToFeatureFile(
-    issuePath: (string | number)[],
-    targetPath: string,
-    defaultFeaturePath: string,
-  ): (string | number)[] {
-    if (targetPath === defaultFeaturePath || issuePath.length < 2) {
-      return issuePath;
+  async function lintReservedNamespaceCharacterInPathNames(
+    entityType: LintEntityType,
+    directoryPath: string,
+  ) {
+    if (!fs.existsSync(directoryPath)) {
+      return;
     }
-    const [topLevelKey, second] = issuePath;
-    if (
-      (topLevelKey === "rules" || topLevelKey === "force" || topLevelKey === "expose") &&
-      typeof second === "string"
-    ) {
-      return [topLevelKey, ...issuePath.slice(2)];
+
+    const extension = datasource.getExtension();
+    const namespaceCharacter = projectConfig.namespaceCharacter;
+    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directoryPath, entry.name);
+      const isFile = entry.isFile();
+      const isDirectory = entry.isDirectory();
+
+      if (!isDirectory && !(isFile && entry.name.endsWith(`.${extension}`))) {
+        continue;
+      }
+
+      const nameToCheck = getReservedNameCheckValue(entityType, entry.name, isFile, extension);
+
+      if (nameToCheck.includes(namespaceCharacter)) {
+        await reportSimpleError({
+          entityType,
+          key: path.relative(getEntityDirectoryPath(entityType), entryPath),
+          fullPath: entryPath,
+          message: `Invalid file or directory name: "${entry.name}"`,
+          detail: `Namespace character "${namespaceCharacter}" is not allowed in entity file or directory names.`,
+          code: "invalid_name",
+        });
+      }
+
+      if (isDirectory) {
+        await lintReservedNamespaceCharacterInPathNames(entityType, entryPath);
+      }
     }
-    return issuePath;
+  }
+
+  async function lintReservedNamespaceCharacterInEntityPaths(entityType: LintEntityType) {
+    await lintReservedNamespaceCharacterInPathNames(entityType, getEntityDirectoryPath(entityType));
   }
 
   async function printEntityHeader(entityType: LintEntityType, key: string, fullPath: string) {
@@ -272,8 +350,6 @@ export async function lintProject(
     error: ZodError,
   ) {
     const issues = getLintIssuesFromZodError(error);
-    const defaultFeaturePath =
-      entityType === "feature" ? getFullPathFromKey("feature", key) : fullPath;
 
     const issuesWithTargetPath: {
       issue: (typeof issues)[0];
@@ -281,19 +357,8 @@ export async function lintProject(
       pathRelativeToFile: (string | number)[];
     }[] = [];
     for (const issue of issues) {
-      const targetPath =
-        entityType === "feature" ? await getFeaturePathFromIssuePath(key, issue.path) : fullPath;
-      const pathRelativeToFile =
-        entityType === "feature"
-          ? getPathRelativeToFeatureFile(issue.path, targetPath, defaultFeaturePath)
-          : issue.path;
-      const isFromEnvFile =
-        entityType === "feature" &&
-        targetPath !== defaultFeaturePath &&
-        issue.path.length >= 2 &&
-        (issue.path[0] === "rules" || issue.path[0] === "force" || issue.path[0] === "expose") &&
-        typeof issue.path[1] === "string";
-      const environment = isFromEnvFile ? (issue.path[1] as string) : undefined;
+      const targetPath = fullPath;
+      const pathRelativeToFile = issue.path;
       issuesWithTargetPath.push({ issue, targetPath, pathRelativeToFile });
 
       recordError({
@@ -304,7 +369,6 @@ export async function lintProject(
         path: pathRelativeToFile,
         code: issue.code,
         value: issue.value,
-        ...(environment !== undefined && { environment }),
       });
     }
 
@@ -373,6 +437,8 @@ export async function lintProject(
   }
 
   if (!options.entityType || options.entityType === "attribute") {
+    await lintReservedNamespaceCharacterInEntityPaths("attribute");
+
     const filteredKeys = !keyPattern
       ? attributes
       : attributes.filter((key) => keyPattern.test(key));
@@ -384,7 +450,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("attribute", key);
 
-      if (!ATTRIBUTE_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "attribute",
           key,
@@ -425,6 +491,8 @@ export async function lintProject(
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
 
   if (!options.entityType || options.entityType === "segment") {
+    await lintReservedNamespaceCharacterInEntityPaths("segment");
+
     const filteredKeys = !keyPattern ? segments : segments.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -434,7 +502,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("segment", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "segment",
           key,
@@ -471,6 +539,8 @@ export async function lintProject(
   );
 
   if (!options.entityType || options.entityType === "feature") {
+    await lintReservedNamespaceCharacterInEntityPaths("feature");
+
     const filteredKeys = !keyPattern ? features : features.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -480,7 +550,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "feature",
           key,
@@ -526,6 +596,8 @@ export async function lintProject(
   const groupZodSchema = getGroupZodSchema(projectConfig, datasource, features);
 
   if (!options.entityType || options.entityType === "group") {
+    await lintReservedNamespaceCharacterInEntityPaths("group");
+
     const filteredKeys = !keyPattern ? groups : groups.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -535,7 +607,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("group", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "group",
           key,
@@ -582,6 +654,8 @@ export async function lintProject(
   const schemaZodSchema = getSchemaZodSchema(schemas);
 
   if (!options.entityType || options.entityType === "schema") {
+    await lintReservedNamespaceCharacterInEntityPaths("schema");
+
     const filteredKeys = !keyPattern ? schemas : schemas.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -591,7 +665,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("schema", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "schema",
           key,
@@ -616,6 +690,47 @@ export async function lintProject(
     }
   }
 
+  // lint targets
+  const targets = await datasource.listTargets();
+  const targetZodSchema = getTargetZodSchema(projectConfig);
+
+  if (!options.entityType || options.entityType === "target") {
+    await lintReservedNamespaceCharacterInEntityPaths("target");
+
+    const filteredKeys = !keyPattern ? targets : targets.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      log(`Linting ${filteredKeys.length} targets...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("target", key);
+
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+        await reportSimpleError({
+          entityType: "target",
+          key,
+          fullPath,
+          message: `Invalid name: "${key}"`,
+          detail: ENTITY_NAME_REGEX_ERROR,
+          code: "invalid_name",
+        });
+      }
+
+      try {
+        const parsed = await datasource.readTarget(key);
+
+        const result = targetZodSchema.safeParse(parsed);
+
+        if (!result.success && "error" in result) {
+          await reportZodValidationError("target", key, fullPath, result.error);
+        }
+      } catch (error) {
+        await reportThrownError("target", key, fullPath, error);
+      }
+    }
+  }
+
   // lint tests
   const tests = await datasource.listTests();
 
@@ -623,9 +738,12 @@ export async function lintProject(
     projectConfig,
     features as [string, ...string[]],
     segments as [string, ...string[]],
+    targets as [string, ...string[]],
   );
 
   if (!options.entityType || options.entityType === "test") {
+    await lintReservedNamespaceCharacterInEntityPaths("test");
+
     const filteredKeys = !keyPattern ? tests : tests.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
@@ -635,7 +753,7 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("test", key);
 
-      if (!ENTITY_NAME_REGEX.test(key)) {
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
           entityType: "test",
           key,
@@ -671,29 +789,47 @@ export const lintPlugin: Plugin = {
   handler: async function (options) {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
-    const result = await lintProject(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        keyPattern: parsed.keyPattern,
-        entityType: parsed.entityType,
-        authors: parsed.authors,
-        json: parsed.json,
-        pretty: parsed.pretty,
-      },
-    );
+    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
 
-    if (parsed.json) {
-      const payload = { errors: result.errors };
-      console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+    let hasError = false;
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set, parsed.json);
+
+      const result = await lintProject(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          keyPattern: parsed.keyPattern,
+          entityType: parsed.entityType,
+          authors: parsed.authors,
+          json: parsed.json,
+          pretty: parsed.pretty,
+        },
+      );
+
+      if (parsed.json) {
+        const payload = { errors: result.errors };
+        console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+      }
+
+      if (result.hasError) {
+        hasError = true;
+      }
     }
 
-    if (result.hasError) {
+    if (hasError) {
       return false;
+    }
+
+    if (!parsed.json) {
+      console.log("");
+      console.log(CLI_FORMAT_GREEN, "✔ No lint errors found");
     }
   },
   examples: [

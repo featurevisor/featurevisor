@@ -1,0 +1,15 @@
+description: Buckets users by a single attribute (plain bucketBy)
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      segments: "*"
+      percentage: 50

@@ -2,14 +2,14 @@ import * as React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useFlag } from "./useFlag";
 import { useSdk } from "./useSdk";
 
 function makeInstance() {
-  return createInstance({
+  return createFeaturevisor({
     datafile: {
       schemaVersion: "2",
       revision: "1.0",

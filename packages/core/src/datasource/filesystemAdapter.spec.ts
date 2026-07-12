@@ -4,100 +4,45 @@ import * as path from "path";
 
 import { getProjectConfig } from "../config";
 import { Datasource } from "./datasource";
+import { getExistingStateFilePath } from "./filesystemAdapter";
 
 function writeFile(filePath: string, content: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function createSplitProject(configBody: string) {
+function createProject(configBody: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-fs-adapter-"));
   writeFile(path.join(root, "featurevisor.config.js"), configBody);
 
   return root;
 }
 
-describe("core: filesystemAdapter (splitByEnvironment)", () => {
-  it("merges environment files into readFeature output", async () => {
-    const root = createSplitProject(
-      "module.exports = { environments: ['staging', 'production'], splitByEnvironment: true };",
-    );
+describe("core: filesystemAdapter", () => {
+  it("lists generated datafiles as sorted relative paths", async () => {
+    const root = createProject("module.exports = {};");
+    writeFile(path.join(root, "datafiles", "production", "featurevisor-all.json"), "{}");
+    writeFile(path.join(root, "datafiles", "staging", "nested", "featurevisor-web.json"), "abc");
+    writeFile(path.join(root, "datafiles", "staging", "featurevisor-mobile.txt"), "abcd");
+    writeFile(path.join(root, "datafiles", "REVISION"), "1");
+    writeFile(path.join(root, "datafiles", ".DS_Store"), "");
 
-    writeFile(
-      path.join(root, "features", "checkout.yml"),
-      [
-        "key: checkout",
-        "description: Checkout feature",
-        "tags:",
-        "  - all",
-        "bucketBy: userId",
-      ].join("\n"),
-    );
+    const datasource = new Datasource(getProjectConfig(root), root);
 
-    writeFile(
-      path.join(root, "environments", "staging", "checkout.yml"),
-      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
-    );
-
-    writeFile(
-      path.join(root, "environments", "production", "checkout.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: 0",
-        "expose: false",
-      ].join("\n"),
-    );
-
-    const config = getProjectConfig(root);
-    const datasource = new Datasource(config, root);
-    const feature = await datasource.readFeature("checkout");
-    const rulesByEnvironment = feature.rules as Record<string, any[]>;
-    const exposeByEnvironment = feature.expose as Record<string, unknown>;
-
-    expect(rulesByEnvironment?.staging?.[0]?.percentage).toBe(100);
-    expect(rulesByEnvironment?.production?.[0]?.percentage).toBe(0);
-    expect(exposeByEnvironment?.production).toBe(false);
+    await expect(datasource.listDatafiles()).resolves.toMatchObject([
+      { path: "production/featurevisor-all.json", size: 2, gzipSize: expect.any(Number) },
+      { path: "staging/featurevisor-mobile.txt", size: 4, gzipSize: expect.any(Number) },
+      { path: "staging/nested/featurevisor-web.json", size: 3, gzipSize: expect.any(Number) },
+    ]);
   });
 
-  it("throws when any environment feature file is missing", async () => {
-    const root = createSplitProject(
-      "module.exports = { environments: ['staging', 'production'], splitByEnvironment: true };",
-    );
+  it("lists nested entity paths with dot namespace character by default", async () => {
+    const root = createProject("module.exports = {};");
 
     writeFile(
-      path.join(root, "features", "myFeature.yml"),
-      ["key: myFeature", "description: My feature", "tags:", "  - all", "bucketBy: userId"].join(
-        "\n",
-      ),
-    );
-
-    writeFile(
-      path.join(root, "environments", "staging", "myFeature.yml"),
-      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
-    );
-
-    const config = getProjectConfig(root);
-    const datasource = new Datasource(config, root);
-
-    await expect(datasource.readFeature("myFeature")).rejects.toMatchObject({
-      featurevisorFilePath: expect.stringContaining(
-        path.join("environments", "production", "myFeature.yml"),
-      ),
-    });
-  });
-
-  it("throws when base feature file still defines rules in split mode", async () => {
-    const root = createSplitProject(
-      "module.exports = { environments: ['staging'], splitByEnvironment: true };",
-    );
-
-    writeFile(
-      path.join(root, "features", "foo.yml"),
+      path.join(root, "features", "checkout", "page.yml"),
       [
-        "key: foo",
-        "description: Foo",
+        "description: Checkout page",
         "tags:",
         "  - all",
         "bucketBy: userId",
@@ -106,48 +51,162 @@ describe("core: filesystemAdapter (splitByEnvironment)", () => {
         "    - key: everyone",
         "      segments: '*'",
         "      percentage: 100",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
       ].join("\n"),
     );
-
     writeFile(
-      path.join(root, "environments", "staging", "foo.yml"),
-      ["rules:", "  - key: everyone", "    segments: '*'", "    percentage: 100"].join("\n"),
+      path.join(root, "segments", "countries", "germany.yml"),
+      [
+        "description: Germany",
+        "conditions:",
+        "  - attribute: country",
+        "    operator: equals",
+        "    value: de",
+      ].join("\n"),
     );
 
     const config = getProjectConfig(root);
     const datasource = new Datasource(config, root);
 
-    await expect(datasource.readFeature("foo")).rejects.toThrow(
-      "base file must not define rules, force, or expose when splitByEnvironment=true",
+    await expect(datasource.listFeatures()).resolves.toEqual(["checkout.page"]);
+    await expect(datasource.listSegments()).resolves.toEqual(["countries.germany"]);
+    await datasource.writeTarget("apps.web", {
+      description: "Web app",
+      tags: ["all"],
+      context: { platform: "web" },
+    });
+    await expect(datasource.listTargets()).resolves.toEqual(["apps.web"]);
+    await expect(datasource.readTarget("apps.web")).resolves.toMatchObject({
+      description: "Web app",
+      tags: ["all"],
+    });
+    await datasource.deleteTarget("apps.web");
+    await expect(datasource.listTargets()).resolves.toEqual([]);
+    await expect(datasource.readFeature("checkout.page")).resolves.toMatchObject({
+      description: "Checkout page",
+    });
+  });
+
+  it("keeps slash-separated keys when namespaceCharacter is slash", async () => {
+    const root = createProject('module.exports = { namespaceCharacter: "/" };');
+
+    writeFile(
+      path.join(root, "features", "checkout", "page.yml"),
+      [
+        "description: Checkout page",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+      ].join("\n"),
+    );
+
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+
+    await expect(datasource.listFeatures()).resolves.toEqual(["checkout/page"]);
+    await expect(datasource.readFeature("checkout/page")).resolves.toMatchObject({
+      description: "Checkout page",
+    });
+  });
+
+  it("lists sets and reads entities from selected set", async () => {
+    const root = createProject("module.exports = { sets: true };");
+
+    writeFile(
+      path.join(root, "sets", "storefront", "features", "banner.yml"),
+      [
+        "key: banner",
+        "description: Storefront banner",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 100",
+      ].join("\n"),
+    );
+
+    writeFile(
+      path.join(root, "sets", "admin", "features", "banner.yml"),
+      [
+        "key: banner",
+        "description: Admin banner",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 0",
+        "  production:",
+        "    - key: everyone",
+        "      segments: '*'",
+        "      percentage: 0",
+      ].join("\n"),
+    );
+
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+
+    await expect(datasource.listSets()).resolves.toEqual(["admin", "storefront"]);
+
+    const storefrontDatasource = datasource.forSet("storefront");
+    const feature = await storefrontDatasource.readFeature("banner");
+
+    expect(feature.description).toBe("Storefront banner");
+    expect(storefrontDatasource.getSet()).toBe("storefront");
+    expect(storefrontDatasource.getConfig().featuresDirectoryPath).toBe(
+      path.join(root, "sets", "storefront", "features"),
+    );
+    expect(storefrontDatasource.getConfig().targetsDirectoryPath).toBe(
+      path.join(root, "sets", "storefront", "targets"),
+    );
+    await storefrontDatasource.writeTarget("web", { description: "Storefront web" });
+    await expect(storefrontDatasource.listTargets()).resolves.toEqual(["web"]);
+  });
+
+  it("writes compact state when prettyState is disabled", async () => {
+    const root = createProject("module.exports = { prettyState: false };");
+    const config = getProjectConfig(root);
+    const datasource = new Datasource(config, root);
+    const state = { features: {} };
+
+    await datasource.writeState(false, state);
+
+    expect(fs.readFileSync(getExistingStateFilePath(config, false), "utf8")).toBe(
+      JSON.stringify(state),
     );
   });
 
-  it("throws when environment file has unknown keys", async () => {
-    const root = createSplitProject(
-      "module.exports = { environments: ['staging'], splitByEnvironment: true };",
-    );
-
-    writeFile(
-      path.join(root, "features", "foo.yml"),
-      ["key: foo", "description: Foo", "tags:", "  - all", "bucketBy: userId"].join("\n"),
-    );
-
-    writeFile(
-      path.join(root, "environments", "staging", "foo.yml"),
-      [
-        "rules:",
-        "  - key: everyone",
-        "    segments: '*'",
-        "    percentage: 100",
-        "extraKey: not allowed",
-      ].join("\n"),
-    );
-
+  it("writes formatted state when prettyState is enabled", async () => {
+    const root = createProject("module.exports = { prettyState: true };");
     const config = getProjectConfig(root);
     const datasource = new Datasource(config, root);
+    const state = { features: {} };
 
-    await expect(datasource.readFeature("foo")).rejects.toThrow(
-      "Unknown key(s) in environment feature file: extraKey",
+    await datasource.writeState(false, state);
+
+    expect(fs.readFileSync(getExistingStateFilePath(config, false), "utf8")).toBe(
+      JSON.stringify(state, null, 2),
     );
   });
 });

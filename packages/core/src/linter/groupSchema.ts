@@ -12,6 +12,7 @@ export function getGroupZodSchema(
   const groupZodSchema = z
     .object({
       description: z.string(),
+      promotable: z.boolean().optional(),
       slots: z
         .array(
           z

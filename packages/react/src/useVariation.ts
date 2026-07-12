@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 import { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk";
-import { onFeatureChange } from "./onFeatureChange";
+import { useSdk } from "./useSdk.js";
+import { onFeatureChange } from "./onFeatureChange.js";
 
 export function useVariation(featureKey: FeatureKey, context: Context = {}): VariationValue | null {
   const sdk = useSdk();

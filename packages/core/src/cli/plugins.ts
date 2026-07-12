@@ -1,4 +1,5 @@
 import type { Plugin } from "./cli";
+import { createCatalogPlugin } from "@featurevisor/catalog";
 
 import { initPlugin } from "../init";
 import { lintPlugin } from "../linter";
@@ -13,7 +14,8 @@ import { evaluatePlugin } from "../evaluate";
 import { assessDistributionPlugin } from "../assess-distribution";
 import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
-import { sitePlugin } from "../site";
+import { promotePlugin } from "../promoter";
+import { getProjectSetExecutions } from "../sets";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
@@ -32,7 +34,10 @@ export const projectBasedPlugins: Plugin[] = [
   assessDistributionPlugin,
   infoPlugin,
   listPlugin,
-  sitePlugin,
+  promotePlugin,
+  createCatalogPlugin({
+    getProjectSetExecutions,
+  }),
 ];
 
 export const commonPlugins: Plugin[] = [];

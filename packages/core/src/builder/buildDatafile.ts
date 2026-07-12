@@ -5,7 +5,6 @@ import {
   Segment,
   Feature,
   DatafileContent,
-  DatafileContentV1,
   Variation,
   VariableOverride,
   Traffic,
@@ -22,14 +21,13 @@ import {
   Force,
 } from "@featurevisor/types";
 
-import { ProjectConfig, SCHEMA_VERSION } from "../config";
+import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
 import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } from "./hashes";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
-import { convertToV1 } from "./convertToV1";
 import {
   resolveMutationsForMultipleVariables,
   resolveMutationsForSingleVariable,
@@ -37,19 +35,19 @@ import {
 
 export interface CustomDatafileOptions {
   featureKey?: string;
-  environment: string;
+  environment: string | false;
   projectConfig: ProjectConfig;
   datasource: Datasource;
   revision?: string;
-  schemaVersion?: string;
   inflate?: number;
   tag?: string;
   tags?: BuildTags;
+  includeFeatures?: "*" | FeatureKey[];
+  excludeFeatures?: "*" | FeatureKey[];
+  featurevisorVersion?: string;
 }
 
-export async function getCustomDatafile(
-  options: CustomDatafileOptions,
-): Promise<DatafileContent | DatafileContentV1> {
+export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
   let featuresToInclude;
 
   if (options.featureKey) {
@@ -62,13 +60,15 @@ export async function getCustomDatafile(
     options.projectConfig,
     options.datasource,
     {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
       revision: options.revision || "tester",
       environment: options.environment,
       features: featuresToInclude,
       inflate: options.inflate,
       tag: options.tag,
       tags: options.tags,
+      includeFeatures: options.includeFeatures,
+      excludeFeatures: options.excludeFeatures,
+      featurevisorVersion: options.featurevisorVersion,
     },
     existingState,
   );
@@ -86,14 +86,48 @@ export interface BuildAndTags {
 
 export type BuildTags = BuildOrTags | BuildAndTags | string[];
 
+function matchesBuildTags(candidateTags: string[], buildTags?: BuildTags): boolean {
+  if (!buildTags) {
+    return true;
+  }
+
+  if (Array.isArray(buildTags)) {
+    return buildTags.some((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  if ("or" in buildTags) {
+    return buildTags.or.some((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  if ("and" in buildTags) {
+    return buildTags.and.every((searchTag) => candidateTags.indexOf(searchTag) !== -1);
+  }
+
+  return true;
+}
+
+function matchesFeaturePatterns(featureKey: FeatureKey, patterns?: "*" | FeatureKey[]): boolean {
+  if (!patterns) {
+    return false;
+  }
+
+  const normalizedPatterns = patterns === "*" ? [patterns] : patterns;
+
+  return normalizedPatterns.some((pattern) => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    return new RegExp(`^${escaped}$`).test(featureKey);
+  });
+}
+
 export interface BuildOptions {
-  schemaVersion: string;
   revision: string;
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
   environment: string | false;
   tag?: string;
   tags?: BuildTags;
+  includeFeatures?: "*" | FeatureKey[];
+  excludeFeatures?: "*" | FeatureKey[];
   features?: FeatureKey[];
   inflate?: number;
 }
@@ -103,7 +137,7 @@ export async function buildDatafile(
   datasource: Datasource,
   options: BuildOptions,
   existingState: ExistingState,
-): Promise<DatafileContent | DatafileContentV1> {
+): Promise<DatafileContent> {
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
@@ -133,40 +167,25 @@ export async function buildDatafile(
         continue;
       }
 
-      if (options.tag && parsedFeature.tags.indexOf(options.tag) === -1) {
+      const featureTags = parsedFeature.tags || [];
+
+      if (options.tag && featureTags.indexOf(options.tag) === -1) {
         continue;
       }
 
-      if (options.tags) {
-        // plain array of tags: treat as OR tags
-        if (Array.isArray(options.tags)) {
-          if (
-            options.tags.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
-          ) {
-            continue;
-          }
-        } else {
-          // OR tags
-          const orTags = options.tags as BuildOrTags;
-          if (orTags.or) {
-            if (
-              orTags.or.some((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) === false
-            ) {
-              continue;
-            }
-          }
+      if (options.tags && matchesBuildTags(featureTags, options.tags) === false) {
+        continue;
+      }
 
-          // AND tags
-          const andTags = options.tags as BuildAndTags;
-          if (andTags.and) {
-            if (
-              andTags.and.every((searchTag) => parsedFeature.tags.indexOf(searchTag) !== -1) ===
-              false
-            ) {
-              continue;
-            }
-          }
-        }
+      if (
+        options.includeFeatures &&
+        matchesFeaturePatterns(featureKey, options.includeFeatures) === false
+      ) {
+        continue;
+      }
+
+      if (options.excludeFeatures && matchesFeaturePatterns(featureKey, options.excludeFeatures)) {
+        continue;
       }
 
       if (options.features && options.features.indexOf(featureKey) === -1) {
@@ -195,6 +214,10 @@ export async function buildDatafile(
         const exposeTags = expose;
 
         if (options.tag && exposeTags.indexOf(options.tag) === -1) {
+          continue;
+        }
+
+        if (options.tags && matchesBuildTags(exposeTags, options.tags) === false) {
           continue;
         }
       }
@@ -569,19 +592,7 @@ export async function buildDatafile(
     }
   }
 
-  // schema v1
-  if (options.schemaVersion === "1") {
-    return convertToV1({
-      revision: options.revision,
-      projectConfig,
-      attributes,
-      features,
-      segments,
-    });
-  }
-
-  // schema v2
-  const datafileContentV2: DatafileContent = {
+  const datafileContent: DatafileContent = {
     schemaVersion: "2",
     featurevisorVersion: options.featurevisorVersion,
     revision: options.revision,
@@ -589,8 +600,7 @@ export async function buildDatafile(
     features: {},
   };
 
-  datafileContentV2.segments = segments.reduce((acc, segment) => {
-    // key check needed for supporting v1 datafile generation
+  datafileContent.segments = segments.reduce((acc, segment) => {
     if (segment.key) {
       acc[segment.key] = segment;
       delete acc[segment.key].key; // remove key from segment, as it is not needed in v2 datafile
@@ -599,7 +609,7 @@ export async function buildDatafile(
     return acc;
   }, {});
 
-  datafileContentV2.features = features.reduce((acc, feature) => {
+  datafileContent.features = features.reduce((acc, feature) => {
     if (!feature.key) {
       return acc;
     }
@@ -625,11 +635,11 @@ export async function buildDatafile(
   }, {});
 
   // add feature hashes for change detection
-  const segmentHashes = getSegmentHashes(datafileContentV2.segments);
-  Object.keys(datafileContentV2.features).forEach((featureKey) => {
-    const hash = generateHashForFeature(featureKey, datafileContentV2.features, segmentHashes);
+  const segmentHashes = getSegmentHashes(datafileContent.segments);
+  Object.keys(datafileContent.features).forEach((featureKey) => {
+    const hash = generateHashForFeature(featureKey, datafileContent.features, segmentHashes);
 
-    datafileContentV2.features[featureKey].hash = hash;
+    datafileContent.features[featureKey].hash = hash;
 
     // check needed to support --inflate option
     if (existingState.features[featureKey]) {
@@ -638,9 +648,9 @@ export async function buildDatafile(
   });
 
   if (options.revisionFromHash) {
-    const datafileHash = generateHashForDatafile(datafileContentV2);
-    datafileContentV2.revision = `${datafileHash}`;
+    const datafileHash = generateHashForDatafile(datafileContent);
+    datafileContent.revision = `${datafileHash}`;
   }
 
-  return datafileContentV2;
+  return datafileContent;
 }

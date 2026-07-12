@@ -3,4 +3,7 @@ packages/*/lib
 
 examples/*/src
 
+**/.catalog-dev/**
+examples/*/catalog/**
+
 CHANGELOG.md

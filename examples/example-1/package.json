@@ -8,9 +8,9 @@
     "build": "npm run build:datafiles && npm run export && npm run find-duplicate-segments && npm run generate-code",
     "build:datafiles": "featurevisor build",
     "test": "make test",
-    "export": "featurevisor site export",
-    "start": "npm run export && featurevisor site serve",
-    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src --no-individual-features",
+    "export": "featurevisor catalog export",
+    "start": "featurevisor catalog",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {

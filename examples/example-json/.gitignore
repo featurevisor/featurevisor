@@ -5,5 +5,6 @@ npm-debug.log*
 
 dist
 datafiles
+catalog
 out
 src

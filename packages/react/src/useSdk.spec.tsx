@@ -4,10 +4,10 @@ import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useSdk } from "./useSdk";
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 
 function getNewInstance() {
-  const sdk = createInstance({
+  const sdk = createFeaturevisor({
     datafile: {
       schemaVersion: "2",
       revision: "1.0",

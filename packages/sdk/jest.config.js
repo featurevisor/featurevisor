@@ -1,6 +1,34 @@
 module.exports = {
-  preset: "ts-jest",
   bail: true,
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  transform: {
+    "^.+\\.[tj]sx?$": [
+      "@swc/jest",
+      {
+        jsc: { parser: { syntax: "typescript", tsx: true } },
+        module: { type: "commonjs" },
+      },
+    ],
+  },
   collectCoverageFrom: ["src/**/*.ts"],
-  coveragePathIgnorePatterns: ["src/index.ts", "src/murmurhash.ts", "src/compareVersions.ts"],
+  coverageProvider: "v8",
+  coveragePathIgnorePatterns: [
+    "src/index.ts",
+    "src/events.ts",
+    "src/modules.ts",
+    "src/diagnostics.ts",
+    "src/murmurhash.ts",
+    "src/compareVersions.ts",
+  ],
+  coverageThreshold: {
+    global: {
+      statements: 95,
+      branches: 90,
+      functions: 99,
+      lines: 95,
+    },
+  },
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
 };

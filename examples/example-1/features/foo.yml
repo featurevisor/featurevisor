@@ -31,11 +31,11 @@ variations:
       bar:
         - segments:
             or:
-              - countries/germany
-              - countries/switzerland
+              - countries.germany
+              - countries.switzerland
           value: bar for DE or CH
       baz:
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value: baz for NL
 
 force:
@@ -69,8 +69,8 @@ rules:
         and:
           - mobile
           - or:
-              - countries/germany
-              - countries/switzerland
+              - countries.germany
+              - countries.switzerland
       percentage: 80
       variables:
         qux: true

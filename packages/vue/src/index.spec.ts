@@ -1,12 +1,12 @@
 import { createApp } from "vue";
-import { createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
 import { mount } from "@vue/test-utils";
 
 import { setupApp, PROVIDER_NAME } from "./setupApp";
 
 describe("vue: index", function () {
   it("can set up sdk in app and then inject the sdk instance", async function () {
-    const sdk = createInstance({
+    const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",

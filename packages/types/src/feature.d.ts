@@ -7,14 +7,10 @@ export type VariationValue = string;
 
 export type VariableKey = string;
 export type VariableType = SchemaType | "json";
-export type VariableValue =
-  | Value
-  // @TODO: consider removing below items
-  | null
-  | undefined;
+export type VariableValue = Value | null;
 
 export interface VariableOverrideSegments {
-  segments: GroupSegment | GroupSegment[];
+  segments: GroupSegment | GroupSegment[] | "*";
 }
 
 export interface VariableOverrideConditions {
@@ -30,21 +26,7 @@ export interface VariableOverride {
 
   // one of the below must be present in YAML files
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
-}
-
-export interface VariableV1 {
-  key: VariableKey;
-  value: VariableValue;
-  description?: string; // only available in YAML files
-  overrides?: VariableOverride[];
-}
-
-export interface VariationV1 {
-  description?: string; // only available in YAML files
-  value: VariationValue;
-  weight?: Weight; // 0 to 100 (available from parsed YAML, but not in datafile)
-  variables?: VariableV1[];
+  segments?: GroupSegment | GroupSegment[] | "*";
 }
 
 export interface Variation {
@@ -143,7 +125,8 @@ export type RuleKey = string;
 export interface Rule {
   key: RuleKey;
   description?: string; // only available in YAML
-  segments: GroupSegment | GroupSegment[];
+  promotable?: boolean; // only available in YAML
+  segments: GroupSegment | GroupSegment[] | "*";
   percentage: Weight;
 
   enabled?: boolean;
@@ -166,7 +149,7 @@ export interface RulesByEnvironment {
 export interface Force {
   // one of the below must be present in YAML
   conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[];
+  segments?: GroupSegment | GroupSegment[] | "*";
 
   enabled?: boolean;
   variation?: VariationValue;
@@ -190,9 +173,10 @@ export interface ParsedFeature {
 
   archived?: boolean;
   deprecated?: boolean;
+  promotable?: boolean;
 
   description: string;
-  tags: Tag[];
+  tags?: Tag[];
 
   required?: Required[];
 

@@ -1,0 +1,5 @@
+description: Browser web target
+tag: web
+includeFeatures: "*"
+context:
+  platform: web

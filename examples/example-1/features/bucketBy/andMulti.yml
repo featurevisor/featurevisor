@@ -1,0 +1,18 @@
+description: Buckets users by combining country, userId, and deviceId together
+tags:
+  - all
+
+bucketBy:
+  - country
+  - userId
+  - deviceId
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      segments: "*"
+      percentage: 50

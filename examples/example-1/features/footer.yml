@@ -9,7 +9,7 @@ rules:
     - key: "1"
       segments:
         - not:
-            - version_5.5
+            - version_5_5
       percentage: 100
 
     - key: "2"

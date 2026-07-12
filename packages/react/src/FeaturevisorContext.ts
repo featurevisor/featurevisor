@@ -1,4 +1,4 @@
 import * as React from "react";
-import { FeaturevisorInstance } from "@featurevisor/sdk";
+import { Featurevisor } from "@featurevisor/sdk";
 
-export const FeaturevisorContext = React.createContext<FeaturevisorInstance | undefined>(undefined);
+export const FeaturevisorContext = React.createContext<Featurevisor | undefined>(undefined);

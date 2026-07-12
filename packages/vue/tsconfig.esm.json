@@ -1,7 +1,8 @@
 {
   "extends": "../../tsconfig.esm.json",
   "compilerOptions": {
-    "outDir": "./lib",
+    "outDir": "./esm",
+    "rootDir": "./src",
     "lib": ["es2015", "dom"],
     "jsx": "preserve",
     "types": ["jest"],
@@ -10,5 +11,5 @@
     }
   },
   "include": ["./src/**/*.ts"],
-  "exclude": []
+  "exclude": ["./src/**/*.spec.ts"]
 }

@@ -3,7 +3,6 @@ export * from "./linter";
 export * from "./builder";
 export * from "./tester";
 export * from "./init";
-export * from "./site";
 export * from "./generate-code";
 export * from "./find-duplicate-segments";
 export * from "./find-usage";
@@ -14,6 +13,8 @@ export * from "./evaluate";
 export * from "./assess-distribution";
 export * from "./info";
 export * from "./list";
+export * from "./sets";
+export * from "./promoter";
 export * from "./cli";
 
 export * from "@featurevisor/parsers";

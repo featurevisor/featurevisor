@@ -50,6 +50,7 @@ export interface AttributeSchema {
 
 export type Attribute = AttributeSchema & {
   archived?: boolean; // only available in YAML files
+  promotable?: boolean; // only available in YAML files
   key?: AttributeKey; // needed for supporting v1 datafile generation
   type?: AttributeType; // required when not using oneOf
 };

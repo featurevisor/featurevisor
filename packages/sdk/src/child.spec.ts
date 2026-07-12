@@ -1,8 +1,8 @@
-import { createInstance } from "./instance";
+import { createFeaturevisor } from "./instance";
 
 describe("sdk: child", function () {
   it("should create a child instance", function () {
-    const f = createInstance({
+    const f = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
         revision: "1.0",

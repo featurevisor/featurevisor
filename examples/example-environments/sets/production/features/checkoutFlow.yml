@@ -1,0 +1,10 @@
+description: New checkout flow in production
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  - key: everyone
+    segments: "*"
+    percentage: 0

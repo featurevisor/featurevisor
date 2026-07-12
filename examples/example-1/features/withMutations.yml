@@ -354,42 +354,42 @@ variations:
     # Path-map style variableOverrides (resolveMutationsForSingleVariable)
     variableOverrides:
       title:
-        - segments: countries/germany
+        - segments: countries.germany
           value: "Behandlung (DE)"
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value: "Behandeling (NL)"
       config:
-        - segments: countries/germany
+        - segments: countries.germany
           value:
             theme: dark
             compact: true
             width: 1400
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value:
             theme: dark
             width: 1800
       settings:
-        - segments: countries/germany
+        - segments: countries.germany
           value:
             "display.fontSize": 20
             "layout.width": 280
       items:
-        - segments: countries/germany
+        - segments: countries.germany
           value:
             "[0].name": "Erste"
             "[1].meta.score": 1.0
       # Schema-ref variables: path-map overrides (resolved via referenced schema)
       primaryLink:
-        - segments: countries/germany
+        - segments: countries.germany
           value:
             title: "Startseite (DE)"
             url: /de
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value:
             title: "Start (NL)"
             url: /nl
       page:
-        - segments: countries/germany
+        - segments: countries.germany
           value:
             "mainLink.title": "Dokumentation"
             "mainLink.url": /de/docs
@@ -397,7 +397,7 @@ variations:
 rules:
   staging:
     - key: germany
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       # Mix of full keys and dot-notation / array-index mutation keys
       variables:
@@ -468,8 +468,8 @@ rules:
     - key: nl_or_ch
       segments:
         or:
-          - countries/netherlands
-          - countries/switzerland
+          - countries.netherlands
+          - countries.switzerland
       percentage: 100
       variables:
         title: "NL/CH Title"
@@ -520,7 +520,7 @@ rules:
 
   production:
     - key: germany
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       variables:
         title: "Germany (Production)"
@@ -535,8 +535,8 @@ rules:
     - key: nl_or_ch
       segments:
         or:
-          - countries/netherlands
-          - countries/switzerland
+          - countries.netherlands
+          - countries.switzerland
       percentage: 100
       variables:
         title: "NL/CH (Production)"

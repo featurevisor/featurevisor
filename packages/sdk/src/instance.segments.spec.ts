@@ -1,0 +1,574 @@
+import type { Context, DatafileContent, GroupSegment } from "@featurevisor/types";
+
+import { allSegmentsAreMatched } from "./conditions";
+import { createFeaturevisor } from "./instance";
+
+interface Group {
+  key: string;
+  segments: GroupSegment | GroupSegment[] | "*";
+}
+
+describe("sdk: instance datafile methods", function () {
+  it("v2 datafile schema: should return requested entities", function () {
+    const datafileJson: DatafileContent = {
+      schemaVersion: "2",
+      revision: "1",
+      segments: {
+        netherlands: {
+          key: "netherlands",
+          conditions: [
+            {
+              attribute: "country",
+              operator: "equals",
+              value: "nl",
+            },
+          ],
+        },
+        germany: {
+          key: "germany",
+          conditions: JSON.stringify([
+            {
+              attribute: "country",
+              operator: "equals",
+              value: "de",
+            },
+          ]),
+        },
+      },
+      features: {
+        test: {
+          key: "test",
+          bucketBy: "userId",
+          variations: [
+            { value: "control" },
+            {
+              value: "treatment",
+              variables: {
+                showSidebar: true,
+              },
+            },
+          ],
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+              allocation: [
+                { variation: "control", range: [0, 0] },
+                { variation: "treatment", range: [0, 100000] },
+              ],
+            },
+          ],
+        },
+        testWithNoVariations: {
+          key: "testWithNoVariations",
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "1",
+              segments: "*",
+              percentage: 100000,
+            },
+          ],
+        },
+      },
+    };
+
+    const featurevisor = createFeaturevisor({
+      datafile: datafileJson,
+      logLevel: "fatal",
+    });
+    const segmentsAreMatched = (segments: GroupSegment | GroupSegment[] | "*", context: Context) =>
+      allSegmentsAreMatched(segments, context, (segmentKey) => featurevisor.getSegment(segmentKey));
+
+    expect(featurevisor.getRevision()).toEqual("1");
+    expect(featurevisor.getSchemaVersion()).toEqual("2");
+    expect(featurevisor.getSegment("netherlands")).toEqual(datafileJson.segments.netherlands);
+    expect((featurevisor.getSegment("germany") as any).conditions[0].value).toEqual("de");
+    expect(featurevisor.getSegment("belgium")).toEqual(undefined);
+
+    expect(featurevisor.getFeature("test")).toEqual(datafileJson.features.test);
+    expect(featurevisor.getVariableKeys("test")).toEqual([]);
+    expect(featurevisor.getFeature("test2")).toEqual(undefined);
+    expect(featurevisor.getVariableKeys("test2")).toEqual([]);
+
+    expect(featurevisor.hasVariations("testWithNoVariations")).toEqual(false);
+    expect(featurevisor.hasVariations("unknownFeature")).toEqual(false);
+
+    expect(segmentsAreMatched("*", {})).toEqual(true);
+    expect(segmentsAreMatched("unknownSegment", {})).toEqual(false);
+    expect(segmentsAreMatched({ and: ["unknownSegment"] }, {})).toEqual(false);
+  });
+
+  describe("segments", function () {
+    const groups = [
+      // everyone
+      {
+        key: "*",
+        segments: "*",
+      },
+
+      // dutch
+      {
+        key: "dutchMobileUsers",
+        segments: ["mobileUsers", "netherlands"],
+      },
+      {
+        key: "dutchMobileUsers2",
+        segments: {
+          and: ["mobileUsers", "netherlands"],
+        },
+      },
+      {
+        key: "dutchMobileOrDesktopUsers",
+        segments: ["netherlands", { or: ["mobileUsers", "desktopUsers"] }],
+      },
+      {
+        key: "dutchMobileOrDesktopUsers2",
+        segments: {
+          and: ["netherlands", { or: ["mobileUsers", "desktopUsers"] }],
+        },
+      },
+
+      // german
+      {
+        key: "germanMobileUsers",
+        segments: [
+          {
+            and: ["mobileUsers", "germany"],
+          },
+        ],
+      },
+      {
+        key: "germanNonMobileUsers",
+        segments: [
+          {
+            and: [
+              "germany",
+              {
+                not: ["mobileUsers"],
+              },
+            ],
+          },
+        ],
+      },
+
+      // version
+      {
+        key: "notVersion5.5",
+        segments: [
+          {
+            not: ["version_5_5"],
+          },
+        ],
+      },
+      {
+        key: "notDutchMobileUsers",
+        segments: [
+          {
+            not: ["mobileUsers", "netherlands"],
+          },
+        ],
+      },
+      {
+        key: "notMobileOrDutchUsers",
+        segments: [
+          {
+            not: [{ or: ["mobileUsers", "netherlands"] }],
+          },
+        ],
+      },
+    ];
+
+    const datafileContent: DatafileContent = {
+      schemaVersion: "2",
+      revision: "1",
+      features: {},
+
+      segments: {
+        // deviceType
+        mobileUsers: {
+          key: "mobileUsers",
+          conditions: [
+            {
+              attribute: "deviceType",
+              operator: "equals",
+              value: "mobile",
+            },
+          ],
+        },
+        desktopUsers: {
+          key: "desktopUsers",
+          conditions: [
+            {
+              attribute: "deviceType",
+              operator: "equals",
+              value: "desktop",
+            },
+          ],
+        },
+
+        // browser
+        chromeBrowser: {
+          key: "chromeBrowser",
+          conditions: [
+            {
+              attribute: "browser",
+              operator: "equals",
+              value: "chrome",
+            },
+          ],
+        },
+        firefoxBrowser: {
+          key: "firefoxBrowser",
+          conditions: [
+            {
+              attribute: "browser",
+              operator: "equals",
+              value: "firefox",
+            },
+          ],
+        },
+
+        // country
+        netherlands: {
+          key: "netherlands",
+          conditions: [
+            {
+              attribute: "country",
+              operator: "equals",
+              value: "nl",
+            },
+          ],
+        },
+        germany: {
+          key: "germany",
+          conditions: [
+            {
+              attribute: "country",
+              operator: "equals",
+              value: "de",
+            },
+          ],
+        },
+
+        // version
+        version_5_5: {
+          key: "version_5_5",
+          conditions: [
+            {
+              or: [
+                {
+                  attribute: "version",
+                  operator: "equals",
+                  value: "5.5",
+                },
+                {
+                  attribute: "version",
+                  operator: "equals",
+                  value: 5.5,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const featurevisor = createFeaturevisor({
+      datafile: datafileContent,
+      logLevel: "fatal",
+    });
+    const allSegmentsAreMatchedForTest = (
+      segments: GroupSegment | GroupSegment[] | "*",
+      context: Context,
+    ) =>
+      allSegmentsAreMatched(segments, context, (segmentKey) => featurevisor.getSegment(segmentKey));
+
+    it("should match everyone", function () {
+      const group = groups.find((g) => g.key === "*") as Group;
+
+      // match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { foo: "foo" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { bar: "bar" })).toEqual(true);
+    });
+
+    it("should match dutchMobileUsers", function () {
+      const group = groups.find((g) => g.key === "dutchMobileUsers") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match dutchMobileUsers2", function () {
+      const group = groups.find((g) => g.key === "dutchMobileUsers2") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match dutchMobileOrDesktopUsers", function () {
+      const group = groups.find((g) => g.key === "dutchMobileOrDesktopUsers") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match dutchMobileOrDesktopUsers2", function () {
+      const group = groups.find((g) => g.key === "dutchMobileOrDesktopUsers2") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match germanMobileUsers", function () {
+      const group = groups.find((g) => g.key === "germanMobileUsers") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match germanNonMobileUsers", function () {
+      const group = groups.find((g) => g.key === "germanNonMobileUsers") as Group;
+
+      // match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+          browser: "chrome",
+        }),
+      ).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should match notVersion5.5", function () {
+      const group = groups.find((g) => g.key === "notVersion5.5") as Group;
+
+      // match
+      expect(allSegmentsAreMatchedForTest(group.segments, {})).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.6" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.6 })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.7" })).toEqual(true);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.7 })).toEqual(true);
+
+      // not match
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: "5.5" })).toEqual(false);
+      expect(allSegmentsAreMatchedForTest(group.segments, { version: 5.5 })).toEqual(false);
+    });
+
+    it("should treat multiple segments inside NOT as negated AND", function () {
+      const group = groups.find((g) => g.key === "notDutchMobileUsers") as Group;
+
+      // match because not all direct children match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(true);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+
+      // not match because all direct children match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should support NOT around OR for none-match segment checks", function () {
+      const group = groups.find((g) => g.key === "notMobileOrDutchUsers") as Group;
+
+      // match because none of the OR children match
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "desktop",
+        }),
+      ).toEqual(true);
+
+      // not match because at least one OR child matches
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "nl",
+          deviceType: "desktop",
+        }),
+      ).toEqual(false);
+      expect(
+        allSegmentsAreMatchedForTest(group.segments, {
+          country: "de",
+          deviceType: "mobile",
+        }),
+      ).toEqual(false);
+    });
+
+    it("should defensively reject empty NOT segment groups", function () {
+      expect(allSegmentsAreMatchedForTest({ not: [] }, {})).toEqual(false);
+    });
+  });
+});

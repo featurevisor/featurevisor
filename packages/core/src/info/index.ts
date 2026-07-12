@@ -1,14 +1,62 @@
 import { Dependencies } from "../dependencies";
 import { getMatrixCombinations } from "../list/matrix";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
+
+async function showTargetInfo(deps: Dependencies, target: string | string[]) {
+  const { projectConfig } = deps;
+  const environments = Array.isArray(projectConfig.environments)
+    ? projectConfig.environments
+    : [false as const];
+
+  for (const environment of environments) {
+    const datafiles = await buildRuntimeDatafiles(deps, {
+      environment,
+      target,
+      revision: "info",
+    });
+
+    for (const entry of datafiles) {
+      const variables = Object.values(entry.datafile.features).reduce((count, feature) => {
+        const schemas = feature.variablesSchema;
+        return (
+          count + (Array.isArray(schemas) ? schemas.length : Object.keys(schemas || {}).length)
+        );
+      }, 0);
+
+      console.log("");
+      console.log(CLI_FORMAT_BOLD, `Target "${entry.target}"`);
+      console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${environment}`);
+      console.log(
+        `  ${colorize("Features", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.features).length}`,
+      );
+      console.log(
+        `  ${colorize("Segments", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.segments).length}`,
+      );
+      console.log(`  ${colorize("Variables", CLI_COLOR_CYAN)}:   ${variables}`);
+      console.log(
+        `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
+      );
+    }
+  }
+}
 
 export async function showProjectInfo(deps: Dependencies) {
-  const { datasource } = deps;
+  const { datasource, options } = deps;
 
-  console.log("\nProject info:\n");
+  if (options.target) {
+    await showTargetInfo(deps, options.target);
+    return;
+  }
+
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Project info");
+  console.log("");
 
   const revision = await datasource.readRevision();
-  console.log("  - Revision:         ", revision);
+  console.log(`  ${colorize("Revision", CLI_COLOR_CYAN)}:         ${revision}`);
 
   console.log("");
 
@@ -16,6 +64,7 @@ export async function showProjectInfo(deps: Dependencies) {
   const segments = await datasource.listSegments();
   const features = await datasource.listFeatures();
   const groups = await datasource.listGroups();
+  const targets = await datasource.listTargets();
 
   let variablesCount = 0;
   for (const featureKey of features) {
@@ -26,16 +75,17 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log("  - Total attributes: ", attributes.length);
-  console.log("  - Total segments:   ", segments.length);
-  console.log("  - Total features:   ", features.length);
-  console.log("  - Total variables:  ", variablesCount);
-  console.log("  - Total groups:     ", groups.length);
+  console.log(`  ${colorize("Total attributes", CLI_COLOR_CYAN)}: ${attributes.length}`);
+  console.log(`  ${colorize("Total segments", CLI_COLOR_CYAN)}:   ${segments.length}`);
+  console.log(`  ${colorize("Total features", CLI_COLOR_CYAN)}:   ${features.length}`);
+  console.log(`  ${colorize("Total variables", CLI_COLOR_CYAN)}:  ${variablesCount}`);
+  console.log(`  ${colorize("Total groups", CLI_COLOR_CYAN)}:     ${groups.length}`);
+  console.log(`  ${colorize("Total targets", CLI_COLOR_CYAN)}:    ${targets.length}`);
 
   console.log("");
 
   const tests = await datasource.listTests();
-  console.log("  - Total test specs: ", tests.length);
+  console.log(`  ${colorize("Total test specs", CLI_COLOR_CYAN)}: ${tests.length}`);
 
   let assertionsCount = 0;
   for (const test of tests) {
@@ -51,18 +101,24 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log("  - Total assertions: ", assertionsCount);
+  console.log(`  ${colorize("Total assertions", CLI_COLOR_CYAN)}: ${assertionsCount}`);
 }
 
 export const infoPlugin: Plugin = {
   command: "info",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await showProjectInfo({
-      rootDirectoryPath,
-      projectConfig,
-      datasource,
-      options: parsed,
-    });
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await showProjectInfo({
+        rootDirectoryPath,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+        options: parsed,
+      });
+    }
   },
   examples: [
     {

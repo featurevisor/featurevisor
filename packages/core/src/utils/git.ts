@@ -95,15 +95,12 @@ export function getCommit(
       type = "segment";
     } else if (isWithinDirectory(projectConfig.featuresDirectoryPath, relativeDir)) {
       type = "feature";
-    } else if (
-      projectConfig.splitByEnvironment &&
-      isWithinDirectory(projectConfig.environmentsDirectoryPath, relativeDir)
-    ) {
-      type = "feature";
     } else if (isWithinDirectory(projectConfig.groupsDirectoryPath, relativeDir)) {
       type = "group";
     } else if (isWithinDirectory(projectConfig.schemasDirectoryPath, relativeDir)) {
       type = "schema";
+    } else if (isWithinDirectory(projectConfig.targetsDirectoryPath, relativeDir)) {
+      type = "target";
     } else if (isWithinDirectory(projectConfig.testsDirectoryPath, relativeDir)) {
       type = "test";
     } else {
@@ -123,24 +120,19 @@ export function getCommit(
     let key = fileName.replace(extensionWithDot, "");
 
     if (
-      type === "feature" &&
-      projectConfig.splitByEnvironment &&
-      absolutePath.startsWith(projectConfig.environmentsDirectoryPath + path.sep)
+      (type === "feature" || type === "target") &&
+      absolutePath.startsWith(
+        (type === "feature"
+          ? projectConfig.featuresDirectoryPath
+          : projectConfig.targetsDirectoryPath) + path.sep,
+      )
     ) {
-      const featureRelativePath = absolutePath
-        .replace(projectConfig.environmentsDirectoryPath + path.sep, "")
-        .split(path.sep)
-        .slice(1)
-        .join(path.sep)
-        .replace(extensionWithDot, "");
-
-      key = featureRelativePath.replace(/\\/g, "/");
-    } else if (
-      type === "feature" &&
-      absolutePath.startsWith(projectConfig.featuresDirectoryPath + path.sep)
-    ) {
+      const entityDirectoryPath =
+        type === "feature"
+          ? projectConfig.featuresDirectoryPath
+          : projectConfig.targetsDirectoryPath;
       key = absolutePath
-        .replace(projectConfig.featuresDirectoryPath + path.sep, "")
+        .replace(entityDirectoryPath + path.sep, "")
         .replace(extensionWithDot, "")
         .replace(/\\/g, "/");
     }

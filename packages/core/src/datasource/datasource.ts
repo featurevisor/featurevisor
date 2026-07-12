@@ -13,29 +13,45 @@ import type {
   EntityType,
   SchemaKey,
   Schema,
+  Target,
+  TargetKey,
 } from "@featurevisor/types";
 
-import { ProjectConfig } from "../config";
+import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
-import {
-  Adapter,
-  DatafileOptions,
-  FeatureEnvironmentProperty,
-  FeatureSourcePaths,
-} from "./adapter";
+import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 
 export class Datasource {
   private adapter: Adapter;
+  private rootConfig: ProjectConfig;
 
   constructor(
     private config: ProjectConfig,
     private rootDirectoryPath?: string,
+    private set?: string,
   ) {
-    this.adapter = new config.adapter(config, rootDirectoryPath);
+    this.rootConfig = config;
+    this.config = set ? getProjectConfigForSet(this.rootConfig, set) : config;
+    this.adapter = new this.config.adapter(this.config, rootDirectoryPath);
   }
 
-  // @NOTE: only site generator needs it, find a way to get it out of here later
+  getConfig() {
+    return this.config;
+  }
+
+  getSet() {
+    return this.set;
+  }
+
+  forSet(set: string) {
+    return new Datasource(this.rootConfig, this.rootDirectoryPath, set);
+  }
+
+  listSets() {
+    return this.adapter.listSets();
+  }
+
   getExtension() {
     return (this.config.parser as CustomParser).extension;
   }
@@ -65,6 +81,10 @@ export class Datasource {
   /**
    * Datafile
    */
+  listDatafiles(): Promise<DatafileFile[]> {
+    return this.adapter.listDatafiles ? this.adapter.listDatafiles() : Promise.resolve([]);
+  }
+
   readDatafile(options: DatafileOptions) {
     return this.adapter.readDatafile(options);
   }
@@ -96,18 +116,6 @@ export class Datasource {
 
   deleteFeature(featureKey: FeatureKey) {
     return this.adapter.deleteEntity("feature", featureKey);
-  }
-
-  getFeatureSourcePaths(featureKey: FeatureKey): Promise<FeatureSourcePaths | undefined> {
-    return this.adapter.getFeatureSourcePaths(featureKey);
-  }
-
-  getFeaturePropertySourcePath(
-    featureKey: FeatureKey,
-    property: FeatureEnvironmentProperty,
-    environment?: string,
-  ): Promise<string | undefined> {
-    return this.adapter.getFeaturePropertySourcePath(featureKey, property, environment);
   }
 
   async getRequiredFeaturesChain(
@@ -242,6 +250,27 @@ export class Datasource {
 
   deleteSchema(schemaKey: SchemaKey) {
     return this.adapter.deleteEntity("schema", schemaKey);
+  }
+
+  // targets
+  listTargets() {
+    return this.adapter.listEntities("target");
+  }
+
+  targetExists(targetKey: TargetKey) {
+    return this.adapter.entityExists("target", targetKey);
+  }
+
+  readTarget(targetKey: TargetKey) {
+    return this.adapter.readEntity<Target>("target", targetKey);
+  }
+
+  writeTarget(targetKey: TargetKey, target: Target) {
+    return this.adapter.writeEntity<Target>("target", targetKey, target);
+  }
+
+  deleteTarget(targetKey: TargetKey) {
+    return this.adapter.deleteEntity("target", targetKey);
   }
 
   // tests

@@ -1,5 +1,5 @@
 import { getBucketedNumber, MAX_BUCKETED_NUMBER, getBucketKey } from "./bucketer";
-import { createLogger } from "./logger";
+import { noopDiagnosticReporter } from "./diagnostics";
 
 describe("sdk: Bucket", function () {
   describe("getBucketedNumber", function () {
@@ -39,9 +39,7 @@ describe("sdk: Bucket", function () {
   });
 
   describe("getBucketKey", function () {
-    const logger = createLogger({
-      level: "warn",
-    });
+    const reportDiagnostic = noopDiagnosticReporter;
 
     it("should be a function", function () {
       expect(typeof getBucketKey).toEqual("function");
@@ -56,7 +54,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("123.test-feature");
@@ -71,7 +69,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("test-feature");
@@ -86,7 +84,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("123.234.test-feature");
@@ -101,7 +99,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("123.test-feature");
@@ -122,7 +120,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("123.234.test-feature");
@@ -139,7 +137,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("234.test-feature");
@@ -156,7 +154,7 @@ describe("sdk: Bucket", function () {
         featureKey,
         bucketBy,
         context,
-        logger,
+        reportDiagnostic,
       });
 
       expect(bucketKey).toEqual("deviceIdHere.test-feature");

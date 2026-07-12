@@ -1,11 +1,12 @@
 # Building and deploying datafiles
 
 Full docs:
+
 - Building: <https://featurevisor.com/docs/building-datafiles>
 - Deployment: <https://featurevisor.com/docs/deployment>
 - State files: <https://featurevisor.com/docs/state-files>
 
-Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × tag (and optionally × scope).
+Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
 ## Build (agent default)
 
@@ -20,41 +21,43 @@ Output lands in `<datafilesDirectoryPath>` (default `dist/`):
 ```
 dist/
 ├── staging/
-│   └── featurevisor-tag-all.json
+│   └── featurevisor-all.json
 └── production/
-    └── featurevisor-tag-all.json
+    └── featurevisor-all.json
 ```
 
-With multiple tags and scopes, you'll see `featurevisor-tag-<tag>.json` and `featurevisor-scope-<scope>.json` files per environment.
+With multiple targets, you'll see one `featurevisor-<target>.json` file per target and environment. Without `--target`, every configured target is built.
 
 ## Build options
 
-| Flag                                    | Effect                                                          |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `--no-state-files`                      | Don't touch `.featurevisor/REVISION` or state-*.json            |
-| `--revision <value>`                    | Stamp a custom revision into every datafile (e.g. git SHA)      |
-| `--revision-from-hash`                  | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
-| `--feature=<key>`                       | Print one feature's datafile entry to stdout instead of writing |
-| `--environment=<env>`                   | Limit to one environment                                        |
-| `--tag=<tag>`                           | Limit to one tag                                                |
-| `--pretty`                              | Pretty-print the output                                         |
-| `--print`                               | Print full datafile to stdout (no files written)                |
+| Flag                   | Effect                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or state-\*.json                                            |
+| `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
+| `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
+| `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
+| `--environment=<env>`  | Limit to one environment                                                                         |
+| `--target=<target>`    | Build only this target; repeat to build several                                                   |
+| `--pretty`             | Pretty-print the output                                                                          |
+| `--print`              | Print full datafile to stdout (no files written)                                                 |
 
 When debugging the shape of a datafile entry, prefer `--feature=<key> --print` over reading the full file.
+
+`--json` and `--print` accept at most one target because they emit one datafile to standard output.
 
 ## State files
 
 Live under `<stateDirectoryPath>` (default `.featurevisor/`):
 
 - `REVISION` — integer, incremented per successful build.
-- `state-<environment>.json` — traffic allocation snapshots that let the *next* build maintain [consistent bucketing](bucketing.md) when percentages change.
+- `state-<environment>.json` — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
 
 Authoring rules:
 
 - **CI**: builds without `--no-state-files`; commits the updated state files back with `[skip ci]`.
 - **Local / agent**: builds **with** `--no-state-files`; never commit state changes from local.
 
-The user usually has `dist/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` *tracked*. Don't fight that layout.
+The user usually has `dist/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
 
 ## Deployment (CI pipeline)
 
@@ -84,13 +87,13 @@ When the user asks you to set this up:
 
 ## Consuming the deployed datafile
 
-Once hosted (e.g. `https://cdn.example.com/production/featurevisor-tag-web.json`), SDK init looks like:
+Once hosted (e.g. `https://cdn.example.com/production/featurevisor-web.json`), SDK init looks like:
 
 ```js
-import { createInstance } from '@featurevisor/sdk'
+import { createFeaturevisor } from '@featurevisor/sdk'
 
 const datafile = await fetch(url).then(r => r.json())
-const f = createInstance({ datafile })
+const f = createFeaturevisor({ datafile })
 ```
 
 Full SDK docs (out of scope for this skill, link only): <https://featurevisor.com/docs/sdks/javascript>

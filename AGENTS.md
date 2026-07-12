@@ -102,6 +102,4 @@ $ make format
 
 ## Documentation
 
-Project documentation can be found in the `docs/` directory.
-
-They are written in Markdown, and the files there are consumed by a separate Next.js application (outside of this monorepo) that is used to generate the website at: https://featurevisor.com.
+Documentation is maintained separately in the Featurevisor website repository and published at https://featurevisor.com. This repository does not contain the documentation source.

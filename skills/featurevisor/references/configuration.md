@@ -1,10 +1,11 @@
 # Project configuration
 
 Full docs:
+
 - Configuration: <https://featurevisor.com/docs/configuration>
 - Environments: <https://featurevisor.com/docs/environments>
 - Tags: <https://featurevisor.com/docs/tags>
-- Scopes: <https://featurevisor.com/docs/scopes>
+- Targets: <https://featurevisor.com/docs/targets>
 - Projects: <https://featurevisor.com/docs/projects>
 
 The single source of truth is `featurevisor.config.js` at the project root.
@@ -25,65 +26,58 @@ npx featurevisor config --json --pretty
 
 ## Keys you will encounter
 
-| Key                              | Purpose                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `environments`                   | Array of env names, or `false` for no envs                                             |
-| `tags`                           | Array of tag names — features must tag themselves with a subset                        |
-| `splitByEnvironment`             | `true` → rules/force/expose move to `environments/<env>/<feature>.yml`                 |
-| `environmentsDirectoryPath`      | Override path when `splitByEnvironment: true` (default `environments/`)                |
-| `scopes`                         | Define scopes for additional optimized datafiles                                       |
-| `parser`                         | `"json"`, `"yml"` (default), or custom parser                                          |
-| `defaultBucketBy`                | Default `bucketBy` for features (defaults to `userId`)                                 |
-| `enforceCatchAllRule`            | Lint requires a `segments: '*'` last rule in every feature/env                         |
-| `attributesDirectoryPath`        | default `attributes/`                                                                  |
-| `segmentsDirectoryPath`          | default `segments/`                                                                    |
-| `featuresDirectoryPath`          | default `features/`                                                                    |
-| `groupsDirectoryPath`            | default `groups/`                                                                      |
-| `testsDirectoryPath`             | default `tests/`                                                                       |
-| `datafilesDirectoryPath`         | default `dist/`                                                                        |
-| `datafileNamePattern`            | default `featurevisor-%s.json`                                                         |
-| `revisionFileName`               | default `REVISION`                                                                     |
-| `stateDirectoryPath`             | default `.featurevisor/`                                                               |
-| `prettyState`, `prettyDatafile`  | pretty-printing toggles                                                                |
-| `stringify`                      | stringify conditions in datafiles for lazy client-side parsing (default `true`)        |
-| `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps |
-| `plugins`                        | Featurevisor plugins to hook into build / lint                                         |
-
-## splitByEnvironment
-
-When set:
-
-- Base `features/<key>.yml` holds metadata only — **no `rules`, `force`, or `expose`**.
-- For every configured environment, a sibling file at `environments/<env>/<key>.yml` (or wherever `environmentsDirectoryPath` points) holds that env's `rules`, `force`, `expose`.
-- `environments` must be an array (cannot be `false`).
-
-Authoring shape:
-
-```yaml
-# features/showBanner.yml
-description: Show banner
-tags: [all]
-bucketBy: userId
-variablesSchema:
-  color:
-    type: string
-    defaultValue: red
-```
-
-```yaml
-# environments/production/showBanner.yml
-rules:
-  - key: everyone
-    segments: '*'
-    percentage: 100
-```
+| Key                                                                                                                                      | Purpose                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `environments`                                                                                                                           | Optional array of env names; omit for no environments                           |
+| `tags`                                                                                                                                   | Array of tag names — features must tag themselves with a subset                 |
+| `sets`                                                                                                                                   | `true` → each `sets/<set>/` directory is an independent project tree            |
+| `promotionFlows`                                                                                                                         | Optional allowed set promotion directions, for example dev → staging            |
+| `namespaceCharacter`                                                                                                                     | Separator for namespaced keys (default `.`)                                     |
+| `targetsDirectoryPath`                                                                                                                   | Directory containing target definitions (default `targets/`)                    |
+| `parser`                                                                                                                                 | `"json"`, `"yml"` (default), or custom parser                                   |
+| `defaultBucketBy`                                                                                                                        | Default `bucketBy` for features (defaults to `userId`)                          |
+| `enforceCatchAllRule`                                                                                                                    | Lint requires a `segments: '*'` last rule in every feature/env                  |
+| `attributesDirectoryPath`                                                                                                                | default `attributes/`                                                           |
+| `segmentsDirectoryPath`                                                                                                                  | default `segments/`                                                             |
+| `featuresDirectoryPath`                                                                                                                  | default `features/`                                                             |
+| `groupsDirectoryPath`                                                                                                                    | default `groups/`                                                               |
+| `schemasDirectoryPath`                                                                                                                   | default `schemas/`                                                             |
+| `setsDirectoryPath`                                                                                                                      | default `sets/`                                                                 |
+| `testsDirectoryPath`                                                                                                                     | default `tests/`                                                                |
+| `datafilesDirectoryPath`                                                                                                                 | default `datafiles/`                                                            |
+| `catalogDirectoryPath`                                                                                                                   | default `catalog/`                                                             |
+| `datafileNamePattern`                                                                                                                    | default `featurevisor-%s.json`                                                  |
+| `revisionFileName`                                                                                                                       | default `REVISION`                                                              |
+| `stateDirectoryPath`                                                                                                                     | default `.featurevisor/`                                                        |
+| `prettyState`, `prettyDatafile`                                                                                                          | pretty-printing toggles                                                         |
+| `stringify`                                                                                                                              | stringify conditions in datafiles for lazy client-side parsing (default `true`) |
+| `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps                                                          |
+| `plugins`                                                                                                                                | Featurevisor plugins to hook into build / lint                                  |
 
 ## Tags
 
-Each feature lists tags it belongs to. Build emits one datafile per `<environment>/featurevisor-tag-<tag>.json`. Tag selection at consumption time keeps each app's payload minimal.
+Each feature lists tags it belongs to. Targets use tags to decide which features are included in each generated datafile.
 
 Tag a feature with `all` (or your project's chosen catch-all) only if every consumer should load it. Otherwise tag by surface (`web`, `ios`, `android`, `internal-tools`, etc.).
 
-## Scopes
+## Targets
 
-Scopes allow producing extra datafiles that combine specific tag/feature subsets — useful when one app needs features that span multiple tags. See <https://featurevisor.com/docs/scopes> when the user asks about reducing bundle size further or running scope-specific tests.
+Targets define generated datafiles under `targets/`. They can include optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context. See <https://featurevisor.com/docs/targets>.
+
+## Sets
+
+When `sets: true`, the project is split into independent trees under `sets/<set>/`. Each set has its own `attributes/`, `segments/`, `features/`, `targets/`, and `tests/`, and needs at least one target of its own.
+
+Datafiles build under `datafiles/<set>/[<environment>/]featurevisor-<target>.json`, and state lives under `.featurevisor/sets/<set>/`. Scope any command to one set with `--set=<set>`.
+
+Sets are commonly used to model release lanes (`dev`, `staging`, `production`) or distinct surfaces (`storefront`, `admin`). See <https://featurevisor.com/docs/sets>.
+
+## Promotions
+
+In a project with sets, `npx featurevisor promote --from=<set> --to=<set>` copies definitions (and their dependencies) from one set to another. It previews by default; pass `--apply` to write files.
+
+- `promotionFlows` in the config restricts which `from` → `to` promotions are allowed. When omitted, any flow is allowed.
+- Filter with `--target`, `--tag`, `--includeFeatures`, or `--excludeFeatures`. Featurevisor adds the selected features' complete dependency closure. A selected target definition is included too.
+- Set `promotable: false` on a top level definition to protect an existing destination value. Missing destination definitions are still created. On rules, source entries are omitted and destination entries are preserved.
+
+See <https://featurevisor.com/docs/promotions>.

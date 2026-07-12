@@ -4,14 +4,18 @@
   "description": "CLI package of Featurevisor",
   "main": "bin.js",
   "types": "lib/index.d.ts",
+  "files": [
+    "bin.js",
+    "lib"
+  ],
   "bin": {
     "featurevisor": "bin.js"
   },
   "scripts": {
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
-    "dist": "echo 'Nothing to dist here'",
     "build": "npm run transpile",
-    "test": "echo 'Nothing to test in this package'"
+    "test": "node --test test/smoke.cjs",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "homepage": "https://featurevisor.com",
   "keywords": [

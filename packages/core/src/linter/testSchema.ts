@@ -7,9 +7,8 @@ export function getTestsZodSchema(
   projectConfig: ProjectConfig,
   availableFeatureKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
+  availableTargetKeys: [string, ...string[]],
 ) {
-  const scopeNames = projectConfig.scopes ? projectConfig.scopes.map((scope) => scope.name) : [];
-
   const matrixZodSchema = z.record(
     z.string(),
     z.array(
@@ -25,6 +24,7 @@ export function getTestsZodSchema(
 
   const segmentTestZodSchema = z
     .object({
+      promotable: z.boolean().optional(),
       segment: refineWithMessage(
         z.string(),
         (value) => availableSegmentKeys.includes(value),
@@ -45,6 +45,7 @@ export function getTestsZodSchema(
 
   const featureTestZodSchema = z
     .object({
+      promotable: z.boolean().optional(),
       feature: refineWithMessage(
         z.string(),
         (value) => availableFeatureKeys.includes(value),
@@ -83,15 +84,16 @@ export function getTestsZodSchema(
                   (value) => `Unknown environment "${value}"`,
                 )
               : z.never().optional(),
-            tag: refineWithMessage(
+            target: refineWithMessage(
               z.string(),
-              (value) => projectConfig.tags.includes(value),
-              (value) => `Unknown tag "${value}"`,
-            ).optional(),
-            scope: refineWithMessage(
-              z.string(),
-              (value) => scopeNames.includes(value),
-              (value) => `Unknown scope "${value}"`,
+              (value) => {
+                if (value.indexOf("${{") === 0) {
+                  return true;
+                }
+
+                return availableTargetKeys.includes(value);
+              },
+              (value) => `Unknown target "${value}"`,
             ).optional(),
 
             // parent

@@ -1,0 +1,7 @@
+feature: checkoutFlow
+assertions:
+  - description: Enabled for everyone in dev
+    at: 10
+    context:
+      userId: "user-1"
+    expectedToBeEnabled: true

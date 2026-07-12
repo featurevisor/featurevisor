@@ -6,7 +6,8 @@
     "module": "ESNext",
     "declaration": true,
     "sourceMap": true,
-    "moduleResolution": "node",
+    "strict": false,
+    "moduleResolution": "Bundler",
     "esModuleInterop": true,
     "jsx": "react"
   },

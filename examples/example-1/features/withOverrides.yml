@@ -201,7 +201,7 @@ variations:
             label: variation-base
     variableOverrides:
       variationOverrideOnly:
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value:
             "deep.count": 10
             "deep.tags:append": nl
@@ -213,7 +213,7 @@ variations:
             base: variation-de
             "deep.count": 20
       partialMutationShowcase:
-        - segments: countries/netherlands
+        - segments: countries.netherlands
           value:
             "nested.meta.region": nl-variation-override
             "list:prepend": nl
@@ -234,7 +234,7 @@ variations:
 rules:
   staging:
     - key: germany_both
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       variables:
         "partialMutationShowcase.text": rule-de
@@ -303,7 +303,7 @@ rules:
               "rows[id=2]:remove": null
 
     - key: netherlands_variables_only
-      segments: countries/netherlands
+      segments: countries.netherlands
       percentage: 100
       variables:
         ruleVariablesOnly:

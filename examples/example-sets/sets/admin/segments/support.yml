@@ -1,0 +1,5 @@
+description: Support team members
+conditions:
+  - attribute: role
+    operator: equals
+    value: support

@@ -16,15 +16,17 @@ function minimalProjectConfig(): ProjectConfig {
     attributesDirectoryPath: "",
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
+    targetsDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
     datafileNamePattern: "",
     revisionFileName: "",
-    siteExportDirectoryPath: "",
-    environmentsDirectoryPath: "",
+    catalogDirectoryPath: "",
+    setsDirectoryPath: "",
     environments: ["staging", "production"],
-    splitByEnvironment: false,
+    sets: false,
+    namespaceCharacter: ".",
     tags: ["all"],
     adapter: {},
     plugins: [],
@@ -389,6 +391,18 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       );
     });
 
+    it("rejects duplicate regexFlags", () => {
+      expectConditionsFailure(
+        {
+          attribute: "browser.version",
+          operator: "matches",
+          value: "x",
+          regexFlags: "ii",
+        },
+        "unique",
+      );
+    });
+
     it("rejects regexFlags when operator is not matches/notMatches", () => {
       expectConditionsFailure(
         {
@@ -431,6 +445,12 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
           { attribute: "permissions", operator: "includes", value: "admin" },
         ],
       });
+    });
+
+    it("rejects empty and/or/not condition arrays", () => {
+      expectConditionsFailure({ and: [] });
+      expectConditionsFailure({ or: [] });
+      expectConditionsFailure({ not: [] });
     });
 
     it("rejects invalid nested conditions", () => {

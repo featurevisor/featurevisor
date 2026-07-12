@@ -27,7 +27,7 @@ rules:
 
   production:
     - key: "1"
-      segments: countries/netherlands
+      segments: countries.netherlands
       percentage: 100
       variables:
         paymentMethods:
@@ -35,7 +35,7 @@ rules:
           - paypal
 
     - key: "2"
-      segments: countries/germany
+      segments: countries.germany
       percentage: 100
       variables:
         paymentMethods:
@@ -43,7 +43,7 @@ rules:
           - paypal
 
     - key: "ch"
-      segments: countries/switzerland
+      segments: countries.switzerland
       percentage: 0
 
     - key: "3"

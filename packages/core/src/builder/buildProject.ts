@@ -1,19 +1,22 @@
-import { SCHEMA_VERSION, ProjectConfig } from "../config";
+import * as path from "path";
+
+import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
-import { buildScopedDatafile } from "./buildScopedDatafile";
+import { applyContextToDatafile } from "./applyContextToDatafile";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
-import type { Scope } from "../config";
 
-import type { DatafileContent } from "@featurevisor/types";
+import type { DatafileContent, Target } from "@featurevisor/types";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
+import { resolveTargets } from "../targeting";
 
 export interface BuildCLIOptions {
   revision?: string;
   revisionFromHash?: boolean;
-  schemaVersion?: string;
 
   // all three together
   environment?: string;
@@ -24,8 +27,8 @@ export interface BuildCLIOptions {
   inflate?: number;
   datafilesDir?: string;
 
-  tag?: string;
-  scope?: string; // scope name only
+  target?: string | string[];
+  set?: string;
 }
 
 function getFeaturevisorVersion(): string {
@@ -39,89 +42,51 @@ function getFeaturevisorVersion(): string {
   }
 }
 
+function getEnvironmentLabel(environment: string | false) {
+  return environment === false ? "No environment" : `Environment "${environment}"`;
+}
+
 async function buildForEnvironment({
   projectConfig,
   datasource,
   nextRevision,
   environment,
-  tags,
-  scopes,
+  targets,
   cliOptions,
 }: {
   projectConfig: ProjectConfig;
   datasource: Datasource;
   nextRevision: string;
   environment: string | false;
-  tags: string[];
-  scopes?: Scope[];
+  targets: Array<Target & { key: string }>;
   cliOptions: BuildCLIOptions;
 }) {
-  console.log(`\nBuilding datafiles for environment: ${environment}`);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, getEnvironmentLabel(environment));
 
   const existingState = await datasource.readState(environment);
   const featurevisorVersion = getFeaturevisorVersion();
 
-  // by tag
-  for (const tag of tags) {
-    console.log(`\n  => Tag: ${tag}`);
+  for (const target of targets) {
+    console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target.key}`);
 
-    const datafileContent = await buildDatafile(
+    const datafileContent = await buildTargetDatafile({
       projectConfig,
       datasource,
-      {
-        schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
-        revision: nextRevision,
-        revisionFromHash: cliOptions.revisionFromHash,
-        environment: environment,
-        tag: tag,
-        inflate: cliOptions.inflate,
-        featurevisorVersion,
-      },
-      existingState,
-    );
-
-    // write datafile for environment/tag
-    await datasource.writeDatafile(datafileContent as DatafileContent, {
+      target,
       environment,
-      tag,
+      existingState,
+      revision: nextRevision,
+      revisionFromHash: cliOptions.revisionFromHash,
+      inflate: cliOptions.inflate,
+      featurevisorVersion,
+    });
+
+    await datasource.writeDatafile(datafileContent, {
+      environment,
+      target: target.key,
       datafilesDir: cliOptions.datafilesDir,
     });
-  }
-
-  // by scope
-  if (scopes) {
-    for (const scope of scopes) {
-      console.log(`\n  => Scope: ${scope.name}`);
-
-      const datafileContent = await buildDatafile(
-        projectConfig,
-        datasource,
-        {
-          schemaVersion: cliOptions.schemaVersion || SCHEMA_VERSION,
-          revision: nextRevision,
-          revisionFromHash: cliOptions.revisionFromHash,
-          environment: environment,
-          tag: scope.tag,
-          tags: scope.tags,
-          inflate: cliOptions.inflate,
-          featurevisorVersion,
-        },
-        existingState,
-      );
-
-      const scopedDatafileContent = buildScopedDatafile(
-        datafileContent as DatafileContent,
-        scope.context,
-      );
-
-      // write scoped datafile
-      await datasource.writeDatafile(scopedDatafileContent, {
-        environment,
-        tag: scope.tag,
-        scope: scope,
-        datafilesDir: cliOptions.datafilesDir,
-      });
-    }
   }
 
   if (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) {
@@ -131,6 +96,51 @@ async function buildForEnvironment({
     // write revision
     await datasource.writeRevision(nextRevision);
   }
+}
+
+export async function buildTargetDatafile({
+  projectConfig,
+  datasource,
+  target,
+  environment,
+  existingState,
+  revision,
+  revisionFromHash,
+  inflate,
+  featurevisorVersion,
+}: {
+  projectConfig: ProjectConfig;
+  datasource: Datasource;
+  target: Target;
+  environment: string | false;
+  existingState: Awaited<ReturnType<Datasource["readState"]>>;
+  revision: string;
+  revisionFromHash?: boolean;
+  inflate?: number;
+  featurevisorVersion?: string;
+}): Promise<DatafileContent> {
+  const datafileContent = await buildDatafile(
+    projectConfig,
+    datasource,
+    {
+      revision,
+      revisionFromHash,
+      environment,
+      tag: target.tag,
+      tags: target.tags,
+      includeFeatures: target.includeFeatures,
+      excludeFeatures: target.excludeFeatures,
+      inflate,
+      featurevisorVersion,
+    },
+    existingState,
+  );
+
+  if (target.context) {
+    return applyContextToDatafile(datafileContent as DatafileContent, target.context);
+  }
+
+  return datafileContent as DatafileContent;
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -146,24 +156,38 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * This way we centralize the datafile generation in one place,
    * while tests can be run anywhere else.
    */
-  if (cliOptions.environment && cliOptions.json) {
-    const scope = cliOptions.scope
-      ? projectConfig.scopes?.find((scope) => scope.name === cliOptions.scope)
-      : undefined;
+  if (cliOptions.json) {
+    const environment = cliOptions.environment || false;
+
+    if (Array.isArray(projectConfig.environments) && !cliOptions.environment) {
+      throw new Error("Pass --environment=<environment> when printing a datafile.");
+    }
+
+    const targets = await resolveTargets(datasource, cliOptions.target, {
+      defaultToAll: false,
+      requireTargets: false,
+    });
+    if (targets.length > 1) {
+      throw new Error("Only one --target can be used with --json or --print.");
+    }
+    const target = targets[0];
 
     let datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
-      environment: cliOptions.environment,
+      environment,
       projectConfig,
       datasource,
       revision: cliOptions.revision,
-      schemaVersion: cliOptions.schemaVersion,
-      tag: cliOptions.tag,
-      tags: scope?.tags,
+      inflate: cliOptions.inflate,
+      tag: target?.tag,
+      tags: target?.tags,
+      includeFeatures: target?.includeFeatures,
+      excludeFeatures: target?.excludeFeatures,
+      featurevisorVersion: getFeaturevisorVersion(),
     });
 
-    if (scope) {
-      datafileContent = buildScopedDatafile(datafileContent as DatafileContent, scope.context);
+    if (target?.context) {
+      datafileContent = applyContextToDatafile(datafileContent as DatafileContent, target.context);
     }
 
     if (cliOptions.pretty) {
@@ -178,10 +202,13 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   /**
    * Regular build process that writes to disk.
    */
-  const { tags, environments, scopes } = projectConfig;
+  const { environments } = projectConfig;
+  const targets = await resolveTargets(datasource, cliOptions.target);
 
   const currentRevision = await datasource.readRevision();
-  console.log("\nCurrent revision:", currentRevision);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, "Building Featurevisor datafiles");
+  console.log(`  Current revision: ${currentRevision}`);
 
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
@@ -194,33 +221,91 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
         datasource,
         nextRevision,
         environment,
-        tags,
-        scopes,
+        targets,
         cliOptions,
       });
     }
   }
 
   // no environment
-  if (environments === false) {
+  if (!Array.isArray(environments)) {
     await buildForEnvironment({
       projectConfig,
       datasource,
       nextRevision,
       environment: false,
-      tags,
-      scopes,
+      targets,
       cliOptions,
     });
   }
 
-  console.log("\nLatest revision:", nextRevision);
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, "Datafiles built");
+  console.log(CLI_FORMAT_BOLD, `Latest revision: ${nextRevision}`);
+}
+
+export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
+  const { projectConfig, datasource } = deps;
+
+  assertProjectSetJsonSelection(projectConfig, cliOptions.set, cliOptions.json);
+
+  const executions = await getProjectSetExecutions(projectConfig, datasource, cliOptions.set);
+  const currentRevision = await datasource.readRevision();
+  const nextRevision =
+    (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
+
+  if (projectConfig.sets && !cliOptions.json) {
+    console.log("");
+    console.log(CLI_FORMAT_BOLD, "Building Featurevisor sets");
+    console.log(`  Sets: ${executions.map((execution) => execution.set).join(", ")}`);
+    console.log(`  Current project revision: ${currentRevision}`);
+  }
+
+  for (const execution of executions) {
+    printSetHeader(projectConfig, execution.set, cliOptions.json);
+
+    const executionCliOptions =
+      projectConfig.sets && cliOptions.datafilesDir
+        ? {
+            ...cliOptions,
+            datafilesDir: path.join(cliOptions.datafilesDir, execution.set),
+          }
+        : cliOptions;
+
+    await buildProject(
+      {
+        ...deps,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+      },
+      {
+        ...executionCliOptions,
+        revision: projectConfig.sets ? nextRevision : cliOptions.revision,
+      },
+    );
+  }
+
+  if (
+    projectConfig.sets &&
+    !cliOptions.json &&
+    (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) &&
+    !cliOptions.revision
+  ) {
+    await datasource.writeRevision(nextRevision);
+    console.log("");
+    console.log(CLI_FORMAT_GREEN, "Featurevisor sets built");
+    console.log(CLI_FORMAT_BOLD, `Latest project revision: ${nextRevision}`);
+  }
 }
 
 export const buildPlugin: Plugin = {
   command: "build",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await buildProject(
+    if (parsed.print) {
+      parsed.json = true;
+    }
+
+    await buildProjectSets(
       {
         rootDirectoryPath,
         projectConfig,
@@ -233,7 +318,7 @@ export const buildPlugin: Plugin = {
   examples: [
     {
       command: "build",
-      description: "build datafiles for all environments and tags",
+      description: "build datafiles for all environments and targets",
     },
     {
       command: "build --revision=123",
@@ -244,7 +329,7 @@ export const buildPlugin: Plugin = {
       description: "build datafiles for production environment",
     },
     {
-      command: "build --print --environment=production --feature=featureKey",
+      command: "build --print --environment=production --feature=featureKey --target=web",
       description: "print datafile for a feature in production environment",
     },
     {

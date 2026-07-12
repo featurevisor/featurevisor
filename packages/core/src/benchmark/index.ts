@@ -1,79 +1,83 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
-import { FeaturevisorInstance, createInstance } from "@featurevisor/sdk";
+import { createFeaturevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 
-import { SCHEMA_VERSION } from "../config";
-import { buildDatafile } from "../builder";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
 import { Plugin } from "../cli";
+import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
 export interface BenchmarkOutput {
   value: any;
   duration: number; // ms
+  minDuration: number; // ms
+  averageDuration: number; // ms
+  maxDuration: number; // ms
+}
+
+function benchmarkEvaluation(n: number, evaluate: () => any): BenchmarkOutput {
+  let value: any;
+  let totalDurationNs = 0n;
+  let minDurationNs: bigint | undefined;
+  let maxDurationNs = 0n;
+
+  for (let i = 0; i < n; i++) {
+    const start = process.hrtime.bigint();
+    value = evaluate();
+    const durationNs = process.hrtime.bigint() - start;
+
+    totalDurationNs += durationNs;
+    if (typeof minDurationNs === "undefined" || durationNs < minDurationNs) {
+      minDurationNs = durationNs;
+    }
+    if (durationNs > maxDurationNs) {
+      maxDurationNs = durationNs;
+    }
+  }
+
+  const duration = Number(totalDurationNs) / 1_000_000;
+
+  return {
+    value,
+    duration,
+    minDuration: Number(minDurationNs || 0n) / 1_000_000,
+    averageDuration: duration / n,
+    maxDuration: Number(maxDurationNs) / 1_000_000,
+  };
+}
+
+function formatDurationMs(duration: number): string {
+  return `${duration.toFixed(6)}ms`;
 }
 
 export function benchmarkFeatureFlag(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.isEnabled(featureKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () => f.isEnabled(featureKey, context as Context));
 }
 
 export function benchmarkFeatureVariation(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.getVariation(featureKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () => f.getVariation(featureKey, context as Context));
 }
 
 export function benchmarkFeatureVariable(
-  f: FeaturevisorInstance,
+  f: Featurevisor,
   featureKey: string,
   variableKey: string,
   context: Record<string, unknown>,
   n: number,
 ): BenchmarkOutput {
-  const start = Date.now();
-  let value: any;
-
-  for (let i = 0; i < n; i++) {
-    value = f.getVariable(featureKey, variableKey, context as Context);
-  }
-
-  const duration = Date.now() - start;
-
-  return {
-    value,
-    duration,
-  };
+  return benchmarkEvaluation(n, () => f.getVariable(featureKey, variableKey, context as Context));
 }
 
 export interface BenchmarkOptions {
@@ -83,55 +87,46 @@ export interface BenchmarkOptions {
   context: Record<string, unknown>;
   variation?: boolean;
   variable?: string;
-  schemaVersion?: string;
   inflate?: number;
+  target?: string | string[];
 }
 
-export async function benchmarkFeature(
-  deps: Dependencies,
+async function benchmarkFeatureWithDatafile(
+  datafileContent: DatafileContent,
   options: BenchmarkOptions,
+  target?: string,
 ): Promise<void> {
-  const { datasource, projectConfig } = deps;
-
   console.log("");
-  console.log(`Running benchmark for feature "${options.feature}"...`);
+  console.log(CLI_FORMAT_BOLD, "Benchmark Featurevisor feature");
+  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
+  console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${options.n}`);
 
-  console.log("");
-
-  console.log(`Building datafile containing all features for "${options.environment}"...`);
-  const datafileBuildStart = Date.now();
-  const existingState = await datasource.readState(options.environment || false);
-  const datafileContent = await buildDatafile(
-    projectConfig,
-    datasource,
-    {
-      schemaVersion: options.schemaVersion || SCHEMA_VERSION,
-      revision: "include-all-features",
-      environment: options.environment || false,
-      inflate: options.inflate,
-    },
-    existingState,
+  console.log(
+    `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`,
   );
-  const datafileBuildDuration = Date.now() - datafileBuildStart;
-  console.log(`Datafile build duration: ${datafileBuildDuration}ms`);
-  console.log(`Datafile size: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`);
 
   if (options.inflate) {
     console.log("");
-    console.log("Features count:", Object.keys(datafileContent.features).length);
-    console.log("Segments count:", Object.keys(datafileContent.segments).length);
+    console.log(
+      `  ${colorize("Features count", CLI_COLOR_CYAN)}: ${Object.keys(datafileContent.features).length}`,
+    );
+    console.log(
+      `  ${colorize("Segments count", CLI_COLOR_CYAN)}: ${Object.keys(datafileContent.segments).length}`,
+    );
   }
 
   console.log("");
 
-  const f = createInstance({
+  const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
     logLevel: "warn",
   });
-  console.log("...SDK initialized");
+  console.log(CLI_FORMAT_GREEN, "SDK initialized");
 
   console.log("");
-  console.log(`Against context: ${JSON.stringify(options.context)}`);
+  console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
 
   let output: BenchmarkOutput;
   if (options.variable) {
@@ -156,32 +151,70 @@ export async function benchmarkFeature(
 
   console.log("");
 
-  console.log(`Evaluated value : ${JSON.stringify(output.value)}`);
-  console.log(`Total duration  : ${prettyDuration(output.duration)}`);
-  console.log(`Average duration: ${prettyDuration(output.duration / options.n)}`);
+  console.log(`  ${colorize("Evaluated value", CLI_COLOR_CYAN)}: ${JSON.stringify(output.value)}`);
+  console.log(
+    `  ${colorize("Total duration", CLI_COLOR_CYAN)}: ${prettyDuration(output.duration)}`,
+  );
+  console.log(
+    `  ${colorize("Minimum duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.minDuration)}`,
+  );
+  console.log(
+    `  ${colorize("Average duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.averageDuration)}`,
+  );
+  console.log(
+    `  ${colorize("Maximum duration", CLI_COLOR_CYAN)}: ${formatDurationMs(output.maxDuration)}`,
+  );
+}
+
+export async function benchmarkFeature(
+  deps: Dependencies,
+  options: BenchmarkOptions,
+): Promise<void> {
+  const datafileBuildStart = Date.now();
+  const datafiles = await buildRuntimeDatafiles(deps, {
+    environment: options.environment || false,
+    target: options.target,
+    revision: "include-all-features",
+    inflate: options.inflate,
+  });
+  const datafileBuildDuration = Date.now() - datafileBuildStart;
+
+  console.log("");
+  console.log(`Building ${datafiles.length} datafile${datafiles.length === 1 ? "" : "s"}...`);
+  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
+
+  for (const entry of datafiles) {
+    await benchmarkFeatureWithDatafile(entry.datafile, options, entry.target);
+  }
 }
 
 export const benchmarkPlugin: Plugin = {
   command: "benchmark",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
-    await benchmarkFeature(
-      {
-        rootDirectoryPath,
-        projectConfig,
-        datasource,
-        options: parsed,
-      },
-      {
-        environment: parsed.environment,
-        feature: parsed.feature,
-        n: parseInt(parsed.n, 10) || 1,
-        context: parsed.context ? JSON.parse(parsed.context) : {},
-        variation: parsed.variation || undefined,
-        variable: parsed.variable || undefined,
-        schemaVersion: parsed.schemaVersion || undefined,
-        inflate: parseInt(parsed.inflate, 10) || undefined,
-      },
-    );
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set);
+
+      await benchmarkFeature(
+        {
+          rootDirectoryPath,
+          projectConfig: execution.projectConfig,
+          datasource: execution.datasource,
+          options: parsed,
+        },
+        {
+          environment: parsed.environment,
+          feature: parsed.feature,
+          n: parseInt(parsed.n, 10) || 1,
+          context: parsed.context ? JSON.parse(parsed.context) : {},
+          variation: parsed.variation || undefined,
+          variable: parsed.variable || undefined,
+          inflate: parseInt(parsed.inflate, 10) || undefined,
+          target: parsed.target,
+        },
+      );
+    }
   },
   examples: [
     {

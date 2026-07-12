@@ -6,11 +6,24 @@ import type {
   TestSegment,
   FeatureAssertion,
   SegmentAssertion,
+  Target,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
+import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
+import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { getTargetFeatureKeys, resolveTargets } from "../targeting";
+import {
+  CLI_COLOR_CYAN,
+  CLI_COLOR_GREEN,
+  CLI_COLOR_YELLOW,
+  CLI_FORMAT_BOLD,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_YELLOW,
+  colorize,
+} from "../tester/cliFormat";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -53,6 +66,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entityKeys = await datasource.listAttributes();
   } else if (entityType === "test") {
     entityKeys = await datasource.listTests();
+  } else if (entityType === "target") {
+    entityKeys = await datasource.listTargets();
   }
 
   if (entityKeys.length === 0) {
@@ -64,6 +79,12 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     segments: [],
   };
   let entitiesWithTestsInitialized = false;
+  let targetFeatureKeys: Set<string> | undefined;
+
+  if (entityType === "feature" && options.target) {
+    const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
+    targetFeatureKeys = await getTargetFeatureKeys(datasource, targets);
+  }
 
   async function initializeEntitiesWithTests() {
     if (entitiesWithTestsInitialized) {
@@ -85,11 +106,17 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       entity = (await datasource.readAttribute(key)) as T;
     } else if (entityType === "test") {
       entity = (await datasource.readTest(key)) as T;
+    } else if (entityType === "target") {
+      entity = (await datasource.readTarget(key)) as T;
     }
 
     // filter
     if (entityType === "feature") {
       const parsedFeature = entity as ParsedFeature;
+
+      if (targetFeatureKeys && !targetFeatureKeys.has(key)) {
+        continue;
+      }
 
       // --archived=true|false
       if (parsedFeature.archived) {
@@ -143,7 +170,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       // --tag=<tag>
       if (options.tag) {
         const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
-        const hasTags = tags.every((tag) => parsedFeature.tags.includes(tag));
+        const featureTags = parsedFeature.tags || [];
+        const hasTags = tags.every((tag) => featureTags.includes(tag));
 
         if (!hasTags) {
           continue;
@@ -402,21 +430,145 @@ function printResult({ result, entityType, options }) {
   }
 
   if (result.length === 0) {
-    console.log(`No ${entityType}s found.`);
+    console.log(CLI_FORMAT_YELLOW, `No ${entityType}s found.`);
     return;
   }
 
-  console.log(`\n${ucfirst(entityType)}s:\n`);
+  console.log("");
+  console.log(CLI_FORMAT_BOLD, `${ucfirst(entityType)}s`);
+  console.log("");
 
   for (const item of result) {
-    console.log(`- ${item.key}`);
+    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}`);
   }
 
-  console.log(`\n\nFound ${result.length} ${entityType}s.`);
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, `Found ${result.length} ${entityType}s.`);
+}
+
+function getDatafileSizeParts(size: number): { value: string; unit: string; color: number } {
+  if (size < 1024) {
+    return { value: size.toFixed(2), unit: "B", color: CLI_COLOR_YELLOW };
+  }
+
+  if (size < 1024 * 1024) {
+    return { value: (size / 1024).toFixed(2), unit: "kB", color: CLI_COLOR_CYAN };
+  }
+
+  return { value: (size / (1024 * 1024)).toFixed(2), unit: "mB", color: CLI_COLOR_GREEN };
+}
+
+export function formatDatafileSize(size: number): string {
+  const { value, unit, color } = getDatafileSizeParts(size);
+
+  return `${value} ${colorize(unit, color)}`;
+}
+
+function formatDatafileSizeColumn(size: number, valueWidth: number): string {
+  const { value, unit, color } = getDatafileSizeParts(size);
+
+  return `${value.padStart(valueWidth)} ${" ".repeat(2 - unit.length)}${colorize(unit, color)}`;
+}
+
+function getDatafileDirectory(datafilePath: string): string {
+  const lastSlashIndex = datafilePath.lastIndexOf("/");
+
+  return lastSlashIndex === -1 ? "" : datafilePath.slice(0, lastSlashIndex);
+}
+
+function getDatafileDirectoryPriority(datafilePath: string): number {
+  const directory = datafilePath.split("/", 1)[0].toLowerCase();
+
+  if (directory.startsWith("dev")) {
+    return 0;
+  }
+
+  if (directory.startsWith("prod")) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function sortDatafiles(datafiles: DatafileFile[]): DatafileFile[] {
+  return datafiles.slice().sort((a, b) => {
+    const priorityDifference =
+      getDatafileDirectoryPriority(a.path) - getDatafileDirectoryPriority(b.path);
+
+    return priorityDifference || a.path.localeCompare(b.path);
+  });
+}
+
+function printDatafiles({ result, options }: { result: DatafileFile[]; options: any }) {
+  const sortedResult = sortDatafiles(result);
+
+  if (options.json) {
+    console.log(
+      options.pretty ? JSON.stringify(sortedResult, null, 2) : JSON.stringify(sortedResult),
+    );
+    return;
+  }
+
+  if (sortedResult.length === 0) {
+    console.log(CLI_FORMAT_YELLOW, "No datafiles found.");
+    return;
+  }
+
+  console.log("");
+
+  const pathWidth = Math.max(
+    "Datafile".length,
+    ...sortedResult.map((datafile) => datafile.path.length),
+  );
+  const sizeValueWidth = Math.max(
+    ...sortedResult.map((datafile) => {
+      const { value } = getDatafileSizeParts(datafile.size);
+      return value.length;
+    }),
+  );
+  const gzipSizeValueWidth = Math.max(
+    ...sortedResult.map((datafile) => {
+      const { value } = getDatafileSizeParts(datafile.gzipSize);
+      return value.length;
+    }),
+  );
+  const sizeWidth = Math.max("Size".length, sizeValueWidth + 3);
+  const gzipSizeWidth = Math.max("Gzip".length, gzipSizeValueWidth + 3);
+
+  console.log(
+    `  ${colorize("Datafile".padEnd(pathWidth), CLI_COLOR_CYAN)}  ${colorize(
+      "Size".padStart(sizeWidth),
+      CLI_COLOR_CYAN,
+    )}  ${colorize("Gzip".padStart(gzipSizeWidth), CLI_COLOR_CYAN)}`,
+  );
+  console.log(`  ${"-".repeat(pathWidth)}  ${"-".repeat(sizeWidth)}  ${"-".repeat(gzipSizeWidth)}`);
+
+  let previousDirectory: string | undefined;
+  for (const datafile of sortedResult) {
+    const directory = getDatafileDirectory(datafile.path);
+    if (previousDirectory !== undefined && directory !== previousDirectory) {
+      console.log("");
+    }
+
+    const formattedSize = formatDatafileSizeColumn(datafile.size, sizeValueWidth);
+    const formattedGzipSize = formatDatafileSizeColumn(datafile.gzipSize, gzipSizeValueWidth);
+    console.log(`  ${datafile.path.padEnd(pathWidth)}  ${formattedSize}  ${formattedGzipSize}`);
+    previousDirectory = directory;
+  }
+
+  console.log("");
+  console.log(CLI_FORMAT_GREEN, `Found ${sortedResult.length} datafiles.`);
 }
 
 export async function listProject(deps: Dependencies) {
   const { options } = deps;
+
+  // datafiles
+  if (options.datafiles) {
+    const result = await deps.datasource.listDatafiles();
+
+    return printDatafiles({ result, options });
+  }
 
   // features
   if (options.features) {
@@ -462,18 +614,42 @@ export async function listProject(deps: Dependencies) {
     });
   }
 
-  console.log("\nNothing to list. \n\nPlease pass `--features`, `--segments`, or `--attributes`.");
+  // targets
+  if (options.targets) {
+    const result = await listEntities<Target>(deps, "target");
+
+    return printResult({
+      result,
+      entityType: "target",
+      options,
+    });
+  }
+
+  console.log("");
+  console.log(CLI_FORMAT_YELLOW, "Nothing to list.");
+  console.log("");
+  console.log(
+    "Please pass `--datafiles`, `--features`, `--segments`, `--attributes`, or `--targets`.",
+  );
 }
 
 export const listPlugin: Plugin = {
   command: "list",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    await listProject({
-      rootDirectoryPath,
-      projectConfig,
-      datasource,
-      options: parsed,
-    });
+    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+
+    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+
+    for (const execution of executions) {
+      printSetHeader(projectConfig, execution.set, parsed.json);
+
+      await listProject({
+        rootDirectoryPath,
+        projectConfig: execution.projectConfig,
+        datasource: execution.datasource,
+        options: parsed,
+      });
+    }
   },
   examples: [
     {

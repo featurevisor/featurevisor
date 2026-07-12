@@ -7,33 +7,107 @@ import type {
   EvaluatedFeatures,
 } from "@featurevisor/types";
 
-import { EventName, EventCallback, Emitter } from "./emitter";
-import type { FeaturevisorInstance, OverrideOptions } from "./instance";
-import { getParamsForStickySetEvent } from "./events";
+import type { Featurevisor, OverrideOptions } from "./instance.js";
+import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
+
+function getStickySetEventDetails(
+  previousStickyFeatures: StickyFeatures = {},
+  newStickyFeatures: StickyFeatures = {},
+  replace: boolean,
+) {
+  const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
+
+  return {
+    features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    replaced: replace,
+  };
+}
+
+type ChildEventName = "context_set" | "sticky_set";
+
+type ChildListeners = {
+  [TEventName in ChildEventName]?: EventCallback<TEventName>[];
+};
 
 export class FeaturevisorChildInstance {
-  private parent: FeaturevisorInstance;
+  private parent: Featurevisor;
   private context: Context;
   private sticky: StickyFeatures;
-  private emitter: Emitter;
+  private listeners: ChildListeners = {};
 
-  constructor(options) {
+  constructor(options: { parent: Featurevisor; context: Context; sticky?: StickyFeatures }) {
     this.parent = options.parent;
     this.context = options.context;
     this.sticky = options.sticky || {};
-    this.emitter = new Emitter();
   }
 
-  on(eventName: EventName, callback: EventCallback) {
-    if (eventName === "context_set" || eventName === "sticky_set") {
-      return this.emitter.on(eventName, callback);
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void;
+  on<TEventName extends EventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
+    if (eventName === "context_set") {
+      return this.onChildEvent("context_set", callback as EventCallback<"context_set">);
     }
 
-    return this.parent.on(eventName, callback);
+    if (eventName === "sticky_set") {
+      return this.onChildEvent("sticky_set", callback as EventCallback<"sticky_set">);
+    }
+
+    return this.parent.on(eventName as never, callback as never);
+  }
+
+  private onChildEvent<TEventName extends ChildEventName>(
+    eventName: TEventName,
+    callback: EventCallback<TEventName>,
+  ): () => void {
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
+    }
+
+    const listeners = this.listeners[eventName] as EventCallback<TEventName>[];
+    listeners.push(callback);
+
+    let isActive = true;
+
+    return function unsubscribe() {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+
+      const index = listeners.indexOf(callback);
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private trigger<TEventName extends ChildEventName>(
+    eventName: TEventName,
+    details: EventDetailsByName[TEventName],
+  ) {
+    const listeners = this.listeners[eventName];
+
+    if (!listeners) {
+      return;
+    }
+
+    listeners.slice().forEach(function (listener) {
+      try {
+        listener(details as never);
+      } catch (err) {
+        console.error(err);
+      }
+    });
   }
 
   close() {
-    this.emitter.clearAll();
+    this.listeners = {};
   }
 
   setContext(context: Context, replace = false) {
@@ -43,7 +117,7 @@ export class FeaturevisorChildInstance {
       this.context = { ...this.context, ...context };
     }
 
-    this.emitter.trigger("context_set", {
+    this.trigger("context_set", {
       context: this.context,
       replaced: replace,
     });
@@ -54,6 +128,24 @@ export class FeaturevisorChildInstance {
       ...this.context,
       ...context,
     });
+  }
+
+  private getChildContext(context: Context = {}): Context {
+    return {
+      ...this.context,
+      ...context,
+    };
+  }
+
+  private getChildOptions(
+    options: OverrideOptions = {},
+  ): OverrideOptions & { __featurevisorChildSticky: StickyFeatures } {
+    return {
+      ...options,
+      // This is an SDK-private transport field. Public evaluation options do
+      // not accept sticky values; sticky belongs to the child instance.
+      __featurevisorChildSticky: this.sticky,
+    };
   }
 
   setSticky(sticky: StickyFeatures, replace = false) {
@@ -68,22 +160,16 @@ export class FeaturevisorChildInstance {
       };
     }
 
-    const params = getParamsForStickySetEvent(previousStickyFeatures, this.sticky, replace);
+    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
 
-    this.emitter.trigger("sticky_set", params);
+    this.trigger("sticky_set", params);
   }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}, options: OverrideOptions = {}): boolean {
     return this.parent.isEnabled(
       featureKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -94,14 +180,8 @@ export class FeaturevisorChildInstance {
   ): VariationValue | null {
     return this.parent.getVariation(
       featureKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -114,14 +194,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariable(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -134,14 +208,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableBoolean(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -154,14 +222,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableString(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -174,14 +236,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableInteger(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -194,14 +250,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableDouble(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -214,14 +264,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableArray<T>(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -234,14 +278,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableObject<T>(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -254,14 +292,8 @@ export class FeaturevisorChildInstance {
     return this.parent.getVariableJSON<T>(
       featureKey,
       variableKey,
-      {
-        ...this.context,
-        ...context,
-      },
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildContext(context),
+      this.getChildOptions(options),
     );
   }
 
@@ -271,15 +303,9 @@ export class FeaturevisorChildInstance {
     options: OverrideOptions = {},
   ): EvaluatedFeatures {
     return this.parent.getAllEvaluations(
-      {
-        ...this.context,
-        ...context,
-      },
+      this.getChildContext(context),
       featureKeys,
-      {
-        sticky: this.sticky,
-        ...options,
-      },
+      this.getChildOptions(options),
     );
   }
 }

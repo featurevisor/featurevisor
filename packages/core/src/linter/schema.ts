@@ -445,6 +445,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
     z
       .object({
         description: z.string().optional(),
+        promotable: z.boolean().optional(),
         type: propertyTypeEnum.optional(),
         enum: z.array(valueZodSchema).optional(),
         const: valueZodSchema.optional(),
