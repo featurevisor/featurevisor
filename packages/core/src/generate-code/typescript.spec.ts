@@ -80,7 +80,10 @@ describe("generate-code/typescript", () => {
 
     const attributesContent = fs.readFileSync(path.join(outputPath, "attributes.ts"), "utf8");
     const contextContent = fs.readFileSync(path.join(outputPath, "context.ts"), "utf8");
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const functionsContent = fs.readFileSync(path.join(outputPath, "functions.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
+    const generatedFiles = fs.readdirSync(outputPath).sort();
 
     expect(attributesContent).toContain(
       'export type AccountAttribute = { plan: "free" | "pro"; locale?: string };',
@@ -104,5 +107,40 @@ describe("generate-code/typescript", () => {
     expect(contextContent).toContain("browser?: BrowserAttribute;");
 
     expect(indexContent).toContain('export * from "./attributes";');
+    expect(indexContent).toContain('export * from "./features";');
+    expect(indexContent).toContain('export * from "./functions";');
+    expect(featuresContent).toContain("export type FeatureKey = keyof Features;");
+    expect(functionsContent).toContain("export function isEnabled(");
+    expect(functionsContent).toContain("export function getVariation<");
+    expect(functionsContent).toContain("export function getVariable<");
+    expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
+    expect(indexContent).not.toMatch(/Feature";/);
+  });
+
+  it("generates only tagged feature types and optional React hooks", async () => {
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { tag: "checkout", react: true },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
+    const generatedFiles = fs.readdirSync(outputPath).sort();
+
+    expect(featuresContent).toContain("discount: null;");
+    expect(featuresContent).toContain("pricing: {");
+    expect(featuresContent).not.toContain("accountTargeting:");
+    expect(generatedFiles).toContain("react.ts");
+    expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
+    expect(indexContent).toContain('export * from "./react";');
   });
 });

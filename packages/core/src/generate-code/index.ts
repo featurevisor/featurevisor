@@ -14,7 +14,6 @@ export interface GenerateCodeCLIOptions {
   outDir: string;
   tag?: string | string[];
   react?: boolean;
-  individualFeatures?: boolean;
 }
 
 export async function generateCodeForProject(
@@ -53,7 +52,6 @@ export async function generateCodeForProject(
     return await generateTypeScriptCodeForProject(deps, absolutePath, {
       tag: cliOptions.tag,
       react: cliOptions.react,
-      individualFeatures: cliOptions.individualFeatures,
     });
   }
 
@@ -84,12 +82,6 @@ export const generateCodePlugin: Plugin = {
           outDir: parsed.outDir,
           tag: parsed.tag,
           react: parsed.react,
-          individualFeatures:
-            parsed.individualFeatures !== undefined
-              ? Boolean(parsed.individualFeatures)
-              : parsed["individual-features"] !== undefined
-                ? Boolean(parsed["individual-features"])
-                : true,
         },
       );
     }

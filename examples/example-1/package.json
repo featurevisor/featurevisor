@@ -10,7 +10,7 @@
     "test": "make test",
     "export": "featurevisor catalog export",
     "start": "featurevisor catalog",
-    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src --no-individual-features",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
     "find-duplicate-segments": "featurevisor find-duplicate-segments"
   },
   "dependencies": {

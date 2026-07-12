@@ -14,11 +14,10 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 
 Optional flags:
 
-| Flag                       | Effect                                                                   |
-| -------------------------- | ------------------------------------------------------------------------ |
-| `--tag=<tag>`              | Generate for one tag's features only (matches a deployed bundle)         |
-| `--react`                  | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`)   |
-| `--no-individual-features` | Skip per-feature `*Feature.ts` modules; only emit the function-style API |
+| Flag          | Effect                                                                 |
+| ------------- | ---------------------------------------------------------------------- |
+| `--tag=<tag>` | Generate for one tag's features only (matches a deployed bundle)       |
+| `--react`     | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
 
 ## Output
 
@@ -27,9 +26,11 @@ Inside `--out-dir`:
 - `context.ts` — typed `Context` interface built from all attribute definitions.
 - `attributes.ts` — typed per-attribute types (`CountryAttribute`, `UserIdAttribute`, etc.).
 - `schemas.ts` — reusable schema types from `schemas/`.
+- `features.ts` — feature keys, variation values, variable keys, and variable value types.
+- `functions.ts` — typed `isEnabled`, `getVariation`, and `getVariable` functions.
+- `instance.ts` — SDK instance wiring through `setInstance`.
 - `index.ts` — barrel exports for the function API (`isEnabled`, `getVariation`, `getVariable`, plus `setInstance`).
-- `<FeatureName>Feature.ts` — per-feature namespaces (unless `--no-individual-features`).
-- `React.ts` — typed hooks (only with `--react`).
+- `react.ts` — typed hooks (only with `--react`).
 
 ## Wiring into an application
 
