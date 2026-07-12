@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-environments",
   "private": true,
-  "version": "2.27.0",
+  "version": "3.0.1",
   "description": "Featurevisor project using sets as release environments",
   "scripts": {
     "lint": "featurevisor lint",
@@ -9,6 +9,6 @@
     "test": "featurevisor test"
   },
   "dependencies": {
-    "@featurevisor/cli": "2.27.0"
+    "@featurevisor/cli": "3.0.1"
   }
 }

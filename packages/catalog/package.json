@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/catalog",
-  "version": "2.27.0",
+  "version": "3.0.1",
   "description": "Static catalog UI for Featurevisor projects",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -45,12 +45,12 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "2.23.0",
+    "@featurevisor/types": "3.0.1",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/postcss": "^4.3.1",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
