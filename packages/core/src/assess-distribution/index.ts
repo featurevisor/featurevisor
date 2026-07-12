@@ -4,7 +4,7 @@ import type { FeatureKey, AttributeKey, Context, DatafileContent } from "@featur
 import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
-import { buildDatafile } from "../builder";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { prettyPercentage, prettyNumber } from "../utils";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
@@ -76,36 +76,20 @@ export interface AssessDistributionOptions {
 
   populateUuid?: AttributeKey[];
   verbose?: boolean;
+  target?: string | string[];
 }
 
-export async function assessDistribution(deps: Dependencies, options: AssessDistributionOptions) {
-  const { projectConfig, datasource } = deps;
-
+async function assessDistributionWithDatafile(
+  datafileContent: DatafileContent,
+  options: AssessDistributionOptions,
+  target?: string,
+) {
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Assess Featurevisor distribution");
   console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
   console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${prettyNumber(options.n)}`);
-
-  /**
-   * Prepare datafile
-   */
-  const datafileBuildStart = Date.now();
-  console.log("");
-  console.log("Building datafile containing all features...");
-  const existingState = await datasource.readState(options.environment || false);
-  const datafileContent = await buildDatafile(
-    projectConfig,
-    datasource,
-    {
-      revision: "include-all-features",
-      environment: options.environment || false,
-      inflate: options.inflate,
-    },
-    existingState,
-  );
-  const datafileBuildDuration = Date.now() - datafileBuildStart;
-  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
 
   /**
    * Initialize SDK
@@ -181,6 +165,25 @@ export async function assessDistribution(deps: Dependencies, options: AssessDist
   }
 }
 
+export async function assessDistribution(deps: Dependencies, options: AssessDistributionOptions) {
+  const datafileBuildStart = Date.now();
+  const datafiles = await buildRuntimeDatafiles(deps, {
+    environment: options.environment || false,
+    target: options.target,
+    revision: "include-all-features",
+    inflate: options.inflate,
+  });
+  const datafileBuildDuration = Date.now() - datafileBuildStart;
+
+  console.log("");
+  console.log(`Building ${datafiles.length} datafile${datafiles.length === 1 ? "" : "s"}...`);
+  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
+
+  for (const entry of datafiles) {
+    await assessDistributionWithDatafile(entry.datafile, options, entry.target);
+  }
+}
+
 export const assessDistributionPlugin: Plugin = {
   command: "assess-distribution",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
@@ -205,6 +208,7 @@ export const assessDistributionPlugin: Plugin = {
             ? parsed.populateUuid
             : [parsed.populateUuid as string].filter(Boolean),
           verbose: parsed.verbose,
+          target: parsed.target,
         },
       );
     }

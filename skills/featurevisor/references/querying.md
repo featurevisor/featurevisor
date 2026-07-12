@@ -87,6 +87,8 @@ npx featurevisor evaluate \
 
 Add `--variation` or `--variable=<key>` to debug variation / variable outputs specifically. Add `--json --pretty` for parseable output.
 
+Add repeatable `--target=<target>` options to evaluate the exact selected target datafiles independently.
+
 The evaluation trace walks through sticky → required → force → rules → bucketing → fallback. See [features.md](features.md#evaluation-flow) for the order.
 
 ## "Will this 25% rollout actually distribute correctly?"
@@ -102,6 +104,8 @@ npx featurevisor assess-distribution \
 
 `--populateUuid=userId` synthesizes a fresh user per iteration. Repeat the flag for multi-attribute bucketing. Bump `--n` higher for tighter distribution estimates.
 
+Add repeatable `--target=<target>` options to assess each selected target datafile independently.
+
 ## "What does the project even contain?"
 
 ```bash
@@ -109,6 +113,8 @@ npx featurevisor info
 ```
 
 Counts of features, segments, attributes, tests, groups, schemas.
+
+Add repeatable `--target=<target>` options for per-target and per-environment datafile counts and sizes.
 
 ## "What does the config look like?"
 

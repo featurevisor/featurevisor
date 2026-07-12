@@ -26,7 +26,7 @@ dist/
     └── featurevisor-all.json
 ```
 
-With multiple targets, you'll see one `featurevisor-<target>.json` file per target and environment.
+With multiple targets, you'll see one `featurevisor-<target>.json` file per target and environment. Without `--target`, every configured target is built.
 
 ## Build options
 
@@ -37,11 +37,13 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 | `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
 | `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
 | `--environment=<env>`  | Limit to one environment                                                                         |
-| `--target=<target>`    | Limit to one target                                                                              |
+| `--target=<target>`    | Build only this target; repeat to build several                                                   |
 | `--pretty`             | Pretty-print the output                                                                          |
 | `--print`              | Print full datafile to stdout (no files written)                                                 |
 
 When debugging the shape of a datafile entry, prefer `--feature=<key> --print` over reading the full file.
+
+`--json` and `--print` accept at most one target because they emit one datafile to standard output.
 
 ## State files
 

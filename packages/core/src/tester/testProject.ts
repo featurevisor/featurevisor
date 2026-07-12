@@ -13,6 +13,7 @@ import { buildDatafile, buildTargetDatafile } from "../builder";
 import { Plugin } from "../cli";
 import { listEntities } from "../list";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { resolveTargets } from "../targeting";
 
 export interface TestProjectOptions {
   keyPattern?: string;
@@ -21,6 +22,7 @@ export interface TestProjectOptions {
   showDatafile?: boolean;
   onlyFailures?: boolean;
   inflate?: number;
+  target?: string | string[];
 }
 
 export interface ExecutionResult {
@@ -34,10 +36,22 @@ export interface ExecutionResult {
 // the key can be either "<EnvironmentKey>" or "<EnvironmentKey>-target-<Target>"
 export type DatafileContentByKey = Map<string | false, DatafileContent>;
 
+export function filterTestForTargets(test: Test, selectedTargetKeys?: string[]): Test | undefined {
+  if (!selectedTargetKeys || !(test as TestFeature).feature) return test;
+
+  const featureTest = test as TestFeature;
+  const assertions = featureTest.assertions.filter(
+    (assertion) => !assertion.target || selectedTargetKeys.includes(assertion.target),
+  );
+
+  return assertions.length > 0 ? { ...featureTest, assertions } : undefined;
+}
+
 async function buildTestDatafilesForEnvironment(
   deps: Dependencies,
   datafileContentByKey: DatafileContentByKey,
   environment: string | false,
+  selectedTargetKeys?: string[],
 ) {
   const { projectConfig, datasource, options } = deps;
   const existingState = await datasource.readState(environment);
@@ -54,7 +68,7 @@ async function buildTestDatafilesForEnvironment(
 
   datafileContentByKey.set(environment, datafileContent as DatafileContent);
 
-  const targetKeys = await datasource.listTargets();
+  const targetKeys = selectedTargetKeys || (await datasource.listTargets());
   for (const targetKey of targetKeys) {
     const target = await datasource.readTarget(targetKey);
     const targetDatafileContent = await buildTargetDatafile({
@@ -162,17 +176,26 @@ export async function testProject(
   let failedAssertionsCount = 0;
 
   const datafileContentByKey: DatafileContentByKey = new Map();
+  const selectedTargets = testOptions.target
+    ? await resolveTargets(datasource, testOptions.target, { defaultToAll: false })
+    : undefined;
+  const selectedTargetKeys = selectedTargets?.map((target) => target.key);
 
   // with environments
   if (Array.isArray(projectConfig.environments)) {
     for (const environment of projectConfig.environments) {
-      await buildTestDatafilesForEnvironment(deps, datafileContentByKey, environment);
+      await buildTestDatafilesForEnvironment(
+        deps,
+        datafileContentByKey,
+        environment,
+        selectedTargetKeys,
+      );
     }
   }
 
   // no environments
   if (!Array.isArray(projectConfig.environments)) {
-    await buildTestDatafilesForEnvironment(deps, datafileContentByKey, false);
+    await buildTestDatafilesForEnvironment(deps, datafileContentByKey, false, selectedTargetKeys);
   }
 
   const tests = await listEntities<Test>(
@@ -188,7 +211,10 @@ export async function testProject(
     "test",
   );
 
-  for (const test of tests) {
+  for (const originalTest of tests) {
+    const test = filterTestForTargets(originalTest, selectedTargetKeys);
+    if (!test) continue;
+
     const executionResult = await executeTest(test, deps, options, datafileContentByKey);
 
     if (!executionResult) {

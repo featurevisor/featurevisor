@@ -14,6 +14,7 @@ import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { getTargetFeatureKeys, resolveTargets } from "../targeting";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_GREEN,
@@ -78,6 +79,12 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     segments: [],
   };
   let entitiesWithTestsInitialized = false;
+  let targetFeatureKeys: Set<string> | undefined;
+
+  if (entityType === "feature" && options.target) {
+    const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
+    targetFeatureKeys = await getTargetFeatureKeys(datasource, targets);
+  }
 
   async function initializeEntitiesWithTests() {
     if (entitiesWithTestsInitialized) {
@@ -106,6 +113,10 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     // filter
     if (entityType === "feature") {
       const parsedFeature = entity as ParsedFeature;
+
+      if (targetFeatureKeys && !targetFeatureKeys.has(key)) {
+        continue;
+      }
 
       // --archived=true|false
       if (parsedFeature.archived) {

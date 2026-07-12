@@ -98,6 +98,8 @@ Then run:
 npx featurevisor test
 ```
 
+Pass `--target=web` to build only that target datafile and run untargeted assertions plus assertions for `web`. Repeat the option to select several targets. Segment tests are always run because they do not select a target datafile.
+
 ## When you create a feature or segment
 
 Offer (don't force): "I can add a `tests/.../spec.yml` for this — want me to?" If yes, use [templates/test-feature.spec.yml](../templates/test-feature.spec.yml) / [templates/test-segment.spec.yml](../templates/test-segment.spec.yml).

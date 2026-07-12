@@ -56,6 +56,7 @@ If `enforceCatchAllRule: true` is set in config, lint also requires every featur
 ```bash
 npx featurevisor build --no-state-files
 npx featurevisor build --no-state-files --set=storefront   # one set only (sets projects)
+npx featurevisor build --no-state-files --target=web --target=mobile
 ```
 
 **Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
@@ -74,6 +75,7 @@ npx featurevisor test --quiet                     # suppress SDK warnings
 npx featurevisor test --onlyFailures
 npx featurevisor test --showDatafile              # combine with --keyPattern
 npx featurevisor test --set=storefront            # one set only (sets projects)
+npx featurevisor test --target=web --target=mobile # selected target assertions and untargeted assertions
 ```
 
 Non-zero exit on failure.
@@ -106,6 +108,7 @@ Filter flags (combine as needed):
 | `--enabledIn=<env>`                          | feature has any rule >0% in env          |
 | `--keyPattern=<regex>`                       | feature key regex                        |
 | `--tag=<tag>`                                | includes a tag                           |
+| `--target=<target>`                          | selected by target; repeatable union     |
 | `--variable=<key>`                           | has variable in its schema               |
 | `--variation=<value>`                        | has a variation with given value         |
 | `--with-tests` / `--without-tests`           | has any `.spec.yml` / has none           |
@@ -175,6 +178,8 @@ npx featurevisor evaluate \
 
 Returns the full evaluation chain (sticky → required → force → rules → bucketing → fallback), so you don't have to reason about it by hand.
 
+Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
+
 You can also debug variation/variable:
 
 ```bash
@@ -207,6 +212,7 @@ npx featurevisor assess-distribution \
 
 - `--populateUuid=<attr>` generates a fresh UUID per iteration for that attribute (repeatable for multiple attrs like `--populateUuid=userId --populateUuid=deviceId`).
 - `--n` higher = more accurate.
+- `--target=<target>` assesses one target datafile and can be repeated.
 
 Use this when the user asks "is my 25% rollout really going to hit 25%?" or "will my variation weights actually split traffic 50/50?".
 
@@ -219,6 +225,8 @@ npx featurevisor benchmark --environment=production --feature=my_feature --conte
 npx featurevisor benchmark --environment=production --feature=my_feature --variation --context='{}' --n=1000
 npx featurevisor benchmark --environment=production --feature=my_feature --variable=bgColor --context='{}' --n=1000
 ```
+
+Use repeatable `--target=<target>` options to benchmark each selected target datafile independently.
 
 ## config
 
@@ -236,6 +244,8 @@ npx featurevisor info
 ```
 
 Quick counts of features/segments/attributes/tests/groups/schemas. Useful sanity check.
+
+With repeatable `--target=<target>` options, it prints feature, segment, variable, and datafile size information per selected target and environment.
 
 ## generate-code
 

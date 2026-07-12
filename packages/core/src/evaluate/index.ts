@@ -3,7 +3,7 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
-import { buildDatafile } from "../builder";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Plugin } from "../cli";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
@@ -62,23 +62,14 @@ export interface EvaluateOptions {
   pretty?: boolean;
   verbose?: boolean;
   inflate?: number;
+  target?: string | string[];
 }
 
-export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
-  const { datasource, projectConfig } = deps;
-
-  const existingState = await datasource.readState(options.environment || false);
-  const datafileContent = await buildDatafile(
-    projectConfig,
-    datasource,
-    {
-      revision: "include-all-features",
-      environment: options.environment || false,
-      inflate: options.inflate,
-    },
-    existingState,
-  );
-
+async function evaluateFeatureWithDatafile(
+  datafileContent: DatafileContent,
+  options: EvaluateOptions,
+  target?: string,
+) {
   let diagnostics: FeaturevisorDiagnostic[] = [];
   const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
@@ -124,17 +115,14 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
   };
 
   if (options.json) {
-    console.log(
-      options.pretty ? JSON.stringify(allEvaluations, null, 2) : JSON.stringify(allEvaluations),
-    );
-
-    return;
+    return allEvaluations;
   }
 
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor feature");
   console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
   console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
 
   // flag
@@ -191,6 +179,28 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
     console.log(CLI_FORMAT_YELLOW, "No variables defined.");
   }
+
+  return allEvaluations;
+}
+
+export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
+  const datafiles = await buildRuntimeDatafiles(deps, {
+    environment: options.environment || false,
+    target: options.target,
+    revision: "include-all-features",
+    inflate: options.inflate,
+  });
+
+  const results = [];
+  for (const entry of datafiles) {
+    const evaluations = await evaluateFeatureWithDatafile(entry.datafile, options, entry.target);
+    results.push({ target: entry.target, evaluations });
+  }
+
+  if (options.json) {
+    const output = results.length === 1 ? results[0].evaluations : results;
+    console.log(options.pretty ? JSON.stringify(output, null, 2) : JSON.stringify(output));
+  }
 }
 
 export const evaluatePlugin: Plugin = {
@@ -218,6 +228,7 @@ export const evaluatePlugin: Plugin = {
           json: parsed.json,
           pretty: parsed.pretty,
           verbose: parsed.verbose,
+          target: parsed.target,
         },
       );
     }

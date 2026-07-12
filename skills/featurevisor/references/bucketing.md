@@ -98,3 +98,5 @@ npx featurevisor assess-distribution \
   --populateUuid=userId \
   --n=10000
 ```
+
+Both commands accept repeatable `--target=<target>` options and run independently against every selected target datafile.

@@ -2,7 +2,7 @@ import type { Context, DatafileContent } from "@featurevisor/types";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
 
-import { buildDatafile } from "../builder";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
 import { Plugin } from "../cli";
@@ -88,36 +88,21 @@ export interface BenchmarkOptions {
   variation?: boolean;
   variable?: string;
   inflate?: number;
+  target?: string | string[];
 }
 
-export async function benchmarkFeature(
-  deps: Dependencies,
+async function benchmarkFeatureWithDatafile(
+  datafileContent: DatafileContent,
   options: BenchmarkOptions,
+  target?: string,
 ): Promise<void> {
-  const { datasource, projectConfig } = deps;
-
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Benchmark Featurevisor feature");
   console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
   console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${options.n}`);
 
-  console.log("");
-  console.log(`Building datafile containing all features...`);
-  const datafileBuildStart = Date.now();
-  const existingState = await datasource.readState(options.environment || false);
-  const datafileContent = await buildDatafile(
-    projectConfig,
-    datasource,
-    {
-      revision: "include-all-features",
-      environment: options.environment || false,
-      inflate: options.inflate,
-    },
-    existingState,
-  );
-  const datafileBuildDuration = Date.now() - datafileBuildStart;
-  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
   console.log(
     `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(datafileContent).length / 1024).toFixed(2)} kB`,
   );
@@ -181,6 +166,28 @@ export async function benchmarkFeature(
   );
 }
 
+export async function benchmarkFeature(
+  deps: Dependencies,
+  options: BenchmarkOptions,
+): Promise<void> {
+  const datafileBuildStart = Date.now();
+  const datafiles = await buildRuntimeDatafiles(deps, {
+    environment: options.environment || false,
+    target: options.target,
+    revision: "include-all-features",
+    inflate: options.inflate,
+  });
+  const datafileBuildDuration = Date.now() - datafileBuildStart;
+
+  console.log("");
+  console.log(`Building ${datafiles.length} datafile${datafiles.length === 1 ? "" : "s"}...`);
+  console.log(`  ${colorize("Build duration", CLI_COLOR_CYAN)}: ${datafileBuildDuration}ms`);
+
+  for (const entry of datafiles) {
+    await benchmarkFeatureWithDatafile(entry.datafile, options, entry.target);
+  }
+}
+
 export const benchmarkPlugin: Plugin = {
   command: "benchmark",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
@@ -204,6 +211,7 @@ export const benchmarkPlugin: Plugin = {
           variation: parsed.variation || undefined,
           variable: parsed.variable || undefined,
           inflate: parseInt(parsed.inflate, 10) || undefined,
+          target: parsed.target,
         },
       );
     }

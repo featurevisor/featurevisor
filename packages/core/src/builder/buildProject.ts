@@ -12,6 +12,7 @@ import { Plugin } from "../cli";
 import type { DatafileContent, Target } from "@featurevisor/types";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
+import { resolveTargets } from "../targeting";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -26,7 +27,7 @@ export interface BuildCLIOptions {
   inflate?: number;
   datafilesDir?: string;
 
-  target?: string;
+  target?: string | string[];
   set?: string;
 }
 
@@ -142,34 +143,6 @@ export async function buildTargetDatafile({
   return datafileContent as DatafileContent;
 }
 
-async function getSelectedTargets(datasource: Datasource, requestedTarget?: string) {
-  const targetKeys = await datasource.listTargets();
-
-  if (targetKeys.length === 0) {
-    throw new Error(
-      'No targets found. Add at least one target definition, for example "targets/all.yml".',
-    );
-  }
-
-  if (requestedTarget) {
-    if (!targetKeys.includes(requestedTarget)) {
-      throw new Error(
-        `Unknown target "${requestedTarget}". Available targets: ${targetKeys.join(", ")}`,
-      );
-    }
-
-    const target = await datasource.readTarget(requestedTarget);
-    return [{ ...target, key: requestedTarget }];
-  }
-
-  return Promise.all(
-    targetKeys.map(async (targetKey) => ({
-      ...(await datasource.readTarget(targetKey)),
-      key: targetKey,
-    })),
-  );
-}
-
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
   const { projectConfig, datasource } = deps;
 
@@ -190,9 +163,14 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       throw new Error("Pass --environment=<environment> when printing a datafile.");
     }
 
-    const target = cliOptions.target
-      ? (await getSelectedTargets(datasource, cliOptions.target))[0]
-      : undefined;
+    const targets = await resolveTargets(datasource, cliOptions.target, {
+      defaultToAll: false,
+      requireTargets: false,
+    });
+    if (targets.length > 1) {
+      throw new Error("Only one --target can be used with --json or --print.");
+    }
+    const target = targets[0];
 
     let datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
@@ -225,7 +203,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * Regular build process that writes to disk.
    */
   const { environments } = projectConfig;
-  const targets = await getSelectedTargets(datasource, cliOptions.target);
+  const targets = await resolveTargets(datasource, cliOptions.target);
 
   const currentRevision = await datasource.readRevision();
   console.log("");

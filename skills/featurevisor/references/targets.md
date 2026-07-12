@@ -90,3 +90,5 @@ assertions:
     context: { userId: "123" }
     expectedToBeEnabled: true
 ```
+
+Use optional, repeatable `--target=<target>` options with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info`. Runtime commands process each selected target datafile independently. Without this option they keep their normal project-wide behavior. A normal build builds every target, while `build --json` and `build --print` accept at most one target.

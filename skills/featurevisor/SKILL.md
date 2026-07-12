@@ -129,6 +129,8 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 
 **Prefer the CLI over grepping** when answering questions like "what features use segment X?", "which features are enabled in production?", or "why does feature F evaluate to disabled for this context?". The CLI's `--json` output is parseable and authoritative.
 
+Use optional, repeatable `--target=<target>` selection with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info` when the question concerns deployed target datafiles. Runtime commands process each selected target independently. `build --json` and `build --print` accept only one target because they emit one datafile.
+
 ## Common authoring flows
 
 ### Adding a new feature flag

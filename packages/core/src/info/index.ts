@@ -3,9 +3,53 @@ import { getMatrixCombinations } from "../list/matrix";
 import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
+import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
+
+async function showTargetInfo(deps: Dependencies, target: string | string[]) {
+  const { projectConfig } = deps;
+  const environments = Array.isArray(projectConfig.environments)
+    ? projectConfig.environments
+    : [false as const];
+
+  for (const environment of environments) {
+    const datafiles = await buildRuntimeDatafiles(deps, {
+      environment,
+      target,
+      revision: "info",
+    });
+
+    for (const entry of datafiles) {
+      const variables = Object.values(entry.datafile.features).reduce((count, feature) => {
+        const schemas = feature.variablesSchema;
+        return (
+          count + (Array.isArray(schemas) ? schemas.length : Object.keys(schemas || {}).length)
+        );
+      }, 0);
+
+      console.log("");
+      console.log(CLI_FORMAT_BOLD, `Target "${entry.target}"`);
+      console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${environment}`);
+      console.log(
+        `  ${colorize("Features", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.features).length}`,
+      );
+      console.log(
+        `  ${colorize("Segments", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.segments).length}`,
+      );
+      console.log(`  ${colorize("Variables", CLI_COLOR_CYAN)}:   ${variables}`);
+      console.log(
+        `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
+      );
+    }
+  }
+}
 
 export async function showProjectInfo(deps: Dependencies) {
-  const { datasource } = deps;
+  const { datasource, options } = deps;
+
+  if (options.target) {
+    await showTargetInfo(deps, options.target);
+    return;
+  }
 
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Project info");

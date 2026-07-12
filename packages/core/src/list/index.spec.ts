@@ -37,6 +37,32 @@ describe("core: list", function () {
     expect(result).toEqual([]);
   });
 
+  test("lists the union of features selected by repeated targets", async function () {
+    const featureFixtures = {
+      web: createFeatureFixture({ key: "web", tags: ["web"] }),
+      mobile: createFeatureFixture({ key: "mobile", tags: ["mobile"] }),
+      internal: createFeatureFixture({ key: "internal", tags: ["internal"] }),
+    };
+    const datasource = {
+      listFeatures: async () => Object.keys(featureFixtures),
+      readFeature: async (key: keyof typeof featureFixtures) => featureFixtures[key],
+      listTargets: async () => ["web", "mobile"],
+      readTarget: async (key: string) => ({ description: key, tag: key }),
+    };
+
+    const result = await listEntities<ParsedFeature>(
+      {
+        rootDirectoryPath: "",
+        projectConfig: {} as any,
+        datasource: datasource as any,
+        options: { target: ["web", "mobile"] },
+      },
+      "feature",
+    );
+
+    expect(result.map((feature) => feature.key).sort()).toEqual(["mobile", "web"]);
+  });
+
   test("lists generated datafiles", async function () {
     const log = jest.spyOn(console, "log").mockImplementation();
     const datasource = {
