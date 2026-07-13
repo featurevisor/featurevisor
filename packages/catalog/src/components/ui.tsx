@@ -123,18 +123,14 @@ export function LabelValueBadge(props: {
       {props.value}
     </Link>
   ) : (
-    <span className={props.compact ? undefined : "font-medium text-text"}>{props.value}</span>
+    <span className="font-medium text-text">{props.value}</span>
   );
 
   if (props.compact) {
     return (
-      <span className="inline-flex h-6 shrink-0 overflow-hidden rounded-full border border-border text-[11px] leading-none text-faint transition-colors group-hover:text-muted">
-        <span className="flex items-center bg-slate-100 pl-1.5 pr-1.5 font-medium transition-colors group-hover:bg-slate-200">
-          {props.label}
-        </span>
-        <span className="flex items-center bg-surface pl-1.5 pr-1.5 transition-colors group-hover:bg-slate-100">
-          {valueContent}
-        </span>
+      <span className="inline-flex h-5 shrink-0 overflow-hidden rounded-md border border-border/70 text-[10px] leading-none">
+        <span className="flex items-center bg-elevated px-1.5 text-muted">{props.label}</span>
+        <span className="flex items-center bg-surface px-1.5 text-text">{valueContent}</span>
       </span>
     );
   }
