@@ -4,7 +4,9 @@ Full docs: <https://featurevisor.com/docs/sdks/javascript>
 
 `@featurevisor/sdk` is universal — the same package works in Node.js, browsers, edge runtimes, and React Native. It evaluates features locally against a loaded [datafile](building-datafiles.md); **no network call happens at evaluation time**, so evaluations are synchronous and fast.
 
-Framework wrappers: [sdk-react.md](sdk-react.md) (React / React Native), [sdk-vue.md](sdk-vue.md) (Vue). Other languages (Python, Ruby, Go, Java, Swift, PHP, Roku): <https://featurevisor.com/docs/sdks> — same concepts, per-language syntax.
+Framework wrappers: [sdk-react.md](sdk-react.md) (React / React Native), [sdk-vue.md](sdk-vue.md) (Vue).
+
+**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Swift, PHP, Roku, and a growing list of others live at <https://featurevisor.com/docs/sdks>. All SDKs consume the same datafiles, expose the same concepts (context, flag/variation/variable evaluation), and implement the same deterministic bucketing — the same user gets the same variation in every language, so one project can serve web, backend, and mobile consistently. Everything in this file transfers conceptually; only syntax differs.
 
 ## Install and initialize
 

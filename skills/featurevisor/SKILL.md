@@ -19,7 +19,7 @@ Featurevisor is used by engineers, product managers, marketers, and people who d
 - **Not sure of the vocabulary?** Someone asking to "turn on the banner for 10% of Dutch users" wants a rollout rule — don't make them learn the words `segment`, `bucketBy`, or `percentage` first. Do the mapping for them, then show the result in their language: what changed, who is affected, what happens next.
 - **Safe vs. risky changes.** Ramping a percentage up, adding a new rule, adding a feature, force-enabling for QA — routine; do them confidently. Renaming rule keys, changing `bucketBy`, resizing group slots, decreasing percentages — these silently re-bucket users; warn plainly ("some users would lose the feature mid-session") before proceeding.
 - **Always close the loop.** After any change, say in one or two sentences what will happen when it ships (e.g. "once this merges and CI deploys the datafile, ~10% of users in NL will see the banner; the rest see nothing").
-- For non-engineers who want to *see* the project, suggest the **Catalog** — a browsable read-only UI (`npx featurevisor catalog`, see [querying.md](references/querying.md)).
+- For anyone who wants to *see* the project, offer the **Catalog** — a browsable read-only UI with live reload (see [Visual review with Catalog](#visual-review-with-catalog)).
 
 ## Orient yourself first
 
@@ -202,6 +202,16 @@ Use `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'
 
 See [querying.md](references/querying.md). It shows the right `list`/`find-usage`/`evaluate` invocations for the common questions a developer asks about an existing project, plus the Catalog for browsing.
 
+### Visual review with Catalog
+
+`npx featurevisor catalog` serves a read-only UI of the whole project at `http://127.0.0.1:3000` **in watch mode** — it rebuilds and reloads the browser whenever definition files change. That makes it the ideal companion to an authoring session:
+
+1. Start it once as a background process (it's local and read-only — safe to leave running).
+2. If you have a browser tool, open `http://127.0.0.1:3000` in it; otherwise give the user the URL.
+3. Author changes as usual — every edit shows up in the Catalog on save, so the user watches features, rules, variables, and test coverage evolve visually while they prompt you.
+
+Offer this proactively when a session involves several authoring changes or when the user is less comfortable reading YAML — prompting plus a live Catalog is the best way to experience Featurevisor. Details in [querying.md](references/querying.md).
+
 ### Recipes for higher-level use cases
 
 When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements/RBAC, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
@@ -213,7 +223,7 @@ When the task is consuming features from application code:
 - **JavaScript / TypeScript / Node / browser / edge** → read [sdk-javascript.md](references/sdk-javascript.md) in full. It covers install, context, all evaluation methods, datafile refresh and on-demand loading, events, sticky, server-side child instances (`spawn`), diagnostics, and modules.
 - **React / React Native** → [sdk-react.md](references/sdk-react.md). **Vue** → [sdk-vue.md](references/sdk-vue.md).
 - **Type-safe bindings** (generated `isEnabled`/`getVariation` with compile-checked keys) → [code-generation.md](references/code-generation.md).
-- **Other languages** (Python, Ruby, Go, Java, Swift, PHP, Roku): same concepts, per-language syntax — <https://featurevisor.com/docs/sdks>.
+- **Other languages** — SDKs are **cross-platform**: Python, Ruby, Go, Java, Swift, PHP, Roku, and more, with the up-to-date list at <https://featurevisor.com/docs/sdks>. Every SDK consumes the same datafiles, exposes the same concepts (context, `isEnabled`/`getVariation`/`getVariable`), and implements the same deterministic bucketing — so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too. One Featurevisor project can serve an entire polyglot stack. If the user's language isn't in this skill's references, apply the concepts from [sdk-javascript.md](references/sdk-javascript.md) and fetch the language page from the website for syntax.
 - **Framework guides** (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>.
 
 Key facts that prevent most integration mistakes: evaluations are local and synchronous (no network at evaluation time); the app must load a **datafile** (built and deployed from the project repo) and decide its own refresh strategy; feature keys, variable keys, and attribute names must match the project's definitions exactly — verify against the project (or its Catalog) rather than guessing.

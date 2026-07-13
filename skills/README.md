@@ -28,8 +28,9 @@ A single skill, `featurevisor`, that the agent invokes (e.g. as `/featurevisor` 
 
 - **Authoring** — features (flags, variations, variables, force, required, expose), segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
 - **Testing** — declarative `.spec.yml` assertions, matrix expansion, sticky/children inputs, per-target and per-set runs.
-- **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML, plus the browsable Catalog.
-- **Application integration** — `@featurevisor/sdk` (JavaScript/TypeScript, Node, browser, edge), `@featurevisor/react`, and `@featurevisor/vue`: context, evaluation, datafile refresh, server-side child instances, events, sticky, modules, and typed code generation. Other language SDKs (Python, Ruby, Go, Java, Swift, PHP, Roku) are linked from the skill.
+- **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML.
+- **Visual review** — pairs authoring with `npx featurevisor catalog` running locally in watch mode: the agent makes changes by prompt, and the Catalog in your (or the agent's) browser live-reloads so you see every change visually.
+- **Application integration** — `@featurevisor/sdk` (JavaScript/TypeScript, Node, browser, edge), `@featurevisor/react`, and `@featurevisor/vue`: context, evaluation, datafile refresh, server-side child instances, events, sticky, modules, and typed code generation. Featurevisor SDKs are cross-platform — the same datafiles and bucketing work identically in Python, Ruby, Go, Java, Swift, PHP, Roku, and more (see [featurevisor.com/docs/sdks](https://featurevisor.com/docs/sdks)).
 - **Templates** — copy-and-adapt YAML for every common authoring shape, plus a complete lint- and test-passing example project.
 
 ## Updating

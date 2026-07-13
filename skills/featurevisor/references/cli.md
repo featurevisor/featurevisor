@@ -275,10 +275,10 @@ Copies definitions and their dependencies between [sets](https://featurevisor.co
 
 ## catalog
 
-Static, read-only web UI for browsing the whole project — features, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. Ideal for sharing with non-engineers.
+Read-only web UI for browsing the whole project — features, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. Ideal for sharing with non-engineers, and for live visual review during authoring sessions: the no-subcommand form watches the project and reloads the browser on every file change, so run it in the background (and open it in your browser tool if you have one) while making changes.
 
 ```bash
-npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch
+npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch (live reload)
 npx featurevisor catalog --port=4000              # (-p also works)
 npx featurevisor catalog export                   # build static output to catalogDirectoryPath (default catalog/)
 npx featurevisor catalog export --outDir=./out    # write elsewhere

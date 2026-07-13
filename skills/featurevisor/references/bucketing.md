@@ -18,7 +18,7 @@ The key is hashed deterministically to a number in **[0, 100]** (represented int
 - If that rule's `percentage` is ≥ the hash, the flag evaluates true; else false.
 - If the feature has `variations`, the same hash space is partitioned by variation `weight`s — the user lands in the variation whose band contains the hash.
 
-Because the hash is deterministic, the **same user** evaluating the **same feature** with the **same `bucketBy` value** always lands in the same place. That's "consistent bucketing."
+Because the hash is deterministic, the **same user** evaluating the **same feature** with the **same `bucketBy` value** always lands in the same place. That's "consistent bucketing." It holds **across SDKs and languages** too — every Featurevisor SDK (JavaScript, Python, Ruby, Go, Java, Swift, PHP, Roku, …; see <https://featurevisor.com/docs/sdks>) implements the same hashing, so a user bucketed into a variation on the web gets the same variation on the backend and on mobile.
 
 ## Picking `bucketBy`
 
