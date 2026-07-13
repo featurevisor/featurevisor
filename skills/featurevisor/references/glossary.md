@@ -15,6 +15,8 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Group**     | Mutual-exclusion container that constrains percentage caps for member features. `groups/<name>.yml`.                                             |
 | **Schema**    | Reusable variable shape, referenced by name from `variablesSchema` entries. `schemas/<name>.yml`.                                                |
 | **Test spec** | Declarative `.spec.yml` asserting expected evaluation outcomes. `tests/features/...` or `tests/segments/...`.                                    |
+| **Set**       | Independent project tree under `sets/<set>/` with its own attributes/segments/features/targets/tests. See [sets-promotions.md](sets-promotions.md). |
+| **Promotion** | Copying definitions (plus dependency closure) from one set to another via `promote`. Preview by default; `--apply` writes.                       |
 
 ## Evaluations
 
@@ -51,7 +53,7 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
 | **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |
 | **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
-| **State files** | `.featurevisor/state-*.json` snapshots used to preserve bucketing across builds.                                        |
+| **State files** | `.featurevisor/existing-state-*.json` snapshots used to preserve bucketing across builds.                               |
 
 ## Patterns / use cases
 

@@ -50,13 +50,13 @@ Featurevisor tries to minimize disruption when increasing `percentage` (existing
 
 Featurevisor maintains state in `<stateDirectoryPath>` (default `.featurevisor/`):
 
-- `state-<environment>.json` — traffic allocation snapshots used so the **next** build preserves bucketing for already-exposed users when percentages change.
+- `existing-state-<environment>.json` (or `existing-state.json` without environments) — traffic allocation snapshots used so the **next** build preserves bucketing for already-exposed users when percentages change. In sets projects: per set under `.featurevisor/sets/<set>/`.
 - `REVISION` — integer revision number, incremented by every successful `featurevisor build`. Stamped into generated datafiles.
 
 ### Authoring guidance
 
 - **Commit state files** to Git from CI (after a successful `build`). The next build needs them to maintain consistency.
-- **Do not commit them from local builds.** When an agent runs `build`, always pass `--no-state-files` so neither `state-*.json` nor `REVISION` changes locally.
+- **Do not commit them from local builds.** When an agent runs `build`, always pass `--no-state-files` so neither `existing-state-*.json` nor `REVISION` changes locally.
 - The user does not edit state files manually.
 
 ### Custom revision

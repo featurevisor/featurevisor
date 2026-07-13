@@ -61,7 +61,7 @@ npx featurevisor build --no-state-files --set=storefront   # one set only (sets 
 npx featurevisor build --no-state-files --target=web --target=mobile
 ```
 
-**Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
+**Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/existing-state-*.json` files are written, which the user probably doesn't want in a non-CI run.
 
 Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
 
@@ -271,7 +271,9 @@ npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source 
 npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
 ```
 
-Copies definitions and their dependencies between [sets](https://featurevisor.com/docs/sets). `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config. See <https://featurevisor.com/docs/promotions>.
+Copies definitions and their dependencies between sets. `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config.
+
+**This is the one CLI command that writes definition files** (with `--apply`) — preview first, show the user the summary, and lint + test afterwards. Full semantics, `promotable: false` protection, and the release-lane workflow: [sets-promotions.md](sets-promotions.md).
 
 ## catalog
 

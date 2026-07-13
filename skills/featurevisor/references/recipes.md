@@ -26,7 +26,7 @@ Source docs (the authoritative versions): <https://featurevisor.com/docs/use-cas
 | [Backend migrations (strangler pattern)](#backend-migrations-strangler-pattern)    | Ramp traffic from an old implementation to a new one            |
 | [Cleaning up stale flags](#cleaning-up-stale-flags)                                | Find and retire flags that finished their job                   |
 
-Two further patterns live elsewhere: **RBAC / roles-and-permissions** is the [entitlements recipe](#user-entitlements--plans) with roles as variations (docs: <https://featurevisor.com/docs/use-cases/rbac>), and **loading datafiles on demand** (start small, merge more target datafiles as the user navigates) is an SDK pattern — see [sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile).
+Three further patterns live elsewhere: **RBAC / roles-and-permissions** is the [entitlements recipe](#user-entitlements--plans) with roles as variations (docs: <https://featurevisor.com/docs/use-cases/rbac>); **loading datafiles on demand** (start small, merge more target datafiles as the user navigates) is an SDK pattern — see [sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile); and **release lanes with promotion gates** (dev → staging → production as independent trees, QA-owned production) is the sets workflow — see [sets-promotions.md](sets-promotions.md#release-lane-workflow-canonical-shape).
 
 ---
 
@@ -459,7 +459,7 @@ segments/qa.yml     @yourorg/qa-team
 attributes/*        @yourorg/platform-team
 ```
 
-Use sets if QA owns production rollout decisions:
+Use [sets](sets-promotions.md) if QA owns production rollout decisions:
 
 ```
 sets/dev/features/payment/*        @yourorg/payments-team

@@ -40,7 +40,7 @@ From the config note:
 - `environments` — optional array of env names. If omitted, the project has no environments and `rules`, `force`, and `expose` are direct values.
 - `tags` — must include any tag you put on a feature.
 - `namespaceCharacter` — separator for directory-namespaced keys. **Default `.`** (`features/checkout/promo.yml` → `checkout.promo`); some projects use `/`.
-- `sets` — if `true`, each directory under `sets/<set>/` is an independent project tree.
+- `sets` — if `true`, each directory under `sets/<set>/` is an independent project tree; author inside the right set and scope commands with `--set`. Read [sets-promotions.md](references/sets-promotions.md) before doing anything in such a project.
 - `parser` — if `"json"` author in JSON; otherwise YAML. Inspect a couple of existing files to confirm the on-disk style.
 - `defaultBucketBy` — default is `userId`, but projects may override.
 - Directory paths (`featuresDirectoryPath`, etc.) — respect any overrides.
@@ -64,7 +64,8 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | Tags — feature metadata used by targets                                                                                                       | [tags.md](references/tags.md)                                     |
 | Targets — generated datafile definitions                                                                                                      | [targets.md](references/targets.md)                               |
 | Namespaces — directory-based feature/segment key prefixes                                                                                     | [namespaces.md](references/namespaces.md)                         |
-| `featurevisor.config.js`, environments, sets, promotions                                                                                      | [configuration.md](references/configuration.md)                   |
+| `featurevisor.config.js`, environments, directory overrides                                                                                  | [configuration.md](references/configuration.md)                   |
+| **Sets** (independent trees: release lanes, surfaces) and **promotions** between them                                                        | [sets-promotions.md](references/sets-promotions.md)               |
 | JSON / TOML / other format projects                                                                                                           | [custom-parsers.md](references/custom-parsers.md)                 |
 | Build datafiles, deploy to CDN, CI pipeline                                                                                                   | [building-datafiles.md](references/building-datafiles.md)         |
 | Write a `.spec.yml` test, run `featurevisor test`                                                                                             | [testing.md](references/testing.md)                               |
@@ -120,7 +121,7 @@ npx featurevisor test --keyPattern=<theKey>
 
 ## CLI: run freely
 
-All `featurevisor` CLI commands are local and safe to run without confirmation. For `build`, **always pass `--no-state-files`** so it doesn't increment the project's revision locally:
+All `featurevisor` CLI commands are local and safe to run without confirmation, with two caveats: `build` should **always get `--no-state-files`** so it doesn't increment the project's revision locally, and `promote --apply` (sets projects) **writes definition files** — preview first and treat applying like any other edit ([sets-promotions.md](references/sets-promotions.md)).
 
 ```bash
 npx featurevisor build --no-state-files
@@ -206,6 +207,10 @@ Read [groups.md](references/groups.md). Plan slot percentages **before** adding 
 ### Force-enabling for QA / a specific user
 
 Use `force:` on the feature (per-environment), not `rules`. No `key`/`percentage` needed. See [features.md](references/features.md#force).
+
+### Promoting between sets ("move X to staging/production")
+
+Only in sets projects. Read [sets-promotions.md](references/sets-promotions.md), then: preview with `npx featurevisor promote --from=<a> --to=<b> --includeFeatures="<key>"`, show the user the created/updated/conflicts summary, apply with `--apply` on their go-ahead, and lint + test the destination set. Use `promotable: false` to protect lane-specific rules from being overwritten.
 
 ### Debugging an evaluation
 

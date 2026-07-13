@@ -14,7 +14,7 @@ Datafiles are the static JSON artifacts the SDKs consume. They are produced per 
 npx featurevisor build --no-state-files
 ```
 
-**Always pass `--no-state-files` when an agent runs build locally** — it prevents `.featurevisor/REVISION` and `.featurevisor/state-*.json` from being touched, which the user generally doesn't want in non-CI runs.
+**Always pass `--no-state-files` when an agent runs build locally** — it prevents `.featurevisor/REVISION` and `.featurevisor/existing-state-*.json` from being touched, which the user generally doesn't want in non-CI runs.
 
 Output lands in `<datafilesDirectoryPath>` (default `datafiles/`):
 
@@ -32,7 +32,7 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 
 | Flag                   | Effect                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or state-\*.json                                            |
+| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or existing-state-\*.json                                   |
 | `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
 | `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
 | `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
@@ -50,7 +50,8 @@ When debugging the shape of a datafile entry, prefer `--feature=<key> --print` o
 Live under `<stateDirectoryPath>` (default `.featurevisor/`):
 
 - `REVISION` — integer, incremented per successful build.
-- `state-<environment>.json` — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
+- `existing-state-<environment>.json` (or `existing-state.json` in projects without environments) — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
+- In sets projects, both live per set under `.featurevisor/sets/<set>/` — see [sets-promotions.md](sets-promotions.md).
 
 Authoring rules:
 
