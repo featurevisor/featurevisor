@@ -1203,6 +1203,13 @@ async function buildSetCatalog(
       );
       const lastModified = getLastModified(context.historyIndex, plan.type, key, set);
       const entityRelationships = getEntityRelationships(plan.type, key, relationships);
+      const entityTests =
+        plan.type === "feature" || plan.type === "segment"
+          ? (entityRelationships.tests || []).map((testKey) => ({
+              ...maps.test[testKey],
+              key: maps.test[testKey].key || testKey,
+            }))
+          : undefined;
       const detail: EntityDetail = {
         type: plan.type,
         key,
@@ -1211,6 +1218,7 @@ async function buildSetCatalog(
         editLinks: getEditorLinks(context.devEditors, sourceFileInfo),
         lastModified,
         relationships: entityRelationships,
+        tests: entityTests?.length ? entityTests : undefined,
         environments: projectConfig.environments,
         historyPath: `${path.posix.join(
           "data",

@@ -35,6 +35,7 @@ import {
   type SchemaLike,
 } from "../components/variables";
 import { FeatureVariationsList } from "../components/variations";
+import { EntityTests } from "../components/tests";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
   return (
@@ -485,6 +486,7 @@ export function EntityDetailPage() {
           { to: "force", label: "Force" },
         ]
       : []),
+    ...(type === "feature" || type === "segment" ? [{ to: "tests", label: "Tests" }] : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
     { to: "history", label: "History" },
   ];
@@ -1070,6 +1072,20 @@ export function UsageTab() {
       ))}
     </div>
   );
+}
+
+export function TestsTab() {
+  const { detail } = useEntityDetail();
+
+  if (detail.type !== "feature" && detail.type !== "segment") {
+    return <Navigate to=".." replace />;
+  }
+
+  if (!detail.tests?.length) {
+    return <EmptyState title="No test specs found" />;
+  }
+
+  return <EntityTests tests={detail.tests} />;
 }
 
 export function HistoryTab() {

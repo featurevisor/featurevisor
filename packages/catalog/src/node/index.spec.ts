@@ -85,8 +85,51 @@ function createDatasource(set = "") {
     readGroup: async () => undefined,
     listSchemas: async () => [],
     readSchema: async () => undefined,
-    listTests: async () => ["checkout"],
-    readTest: async () => ({ key: "checkout", feature: featureKey, assertions: [] }),
+    listTests: async () => ["checkout-primary", "checkout-matrix", "premium-users"],
+    readTest: async (key: string) => {
+      if (key === "premium-users") {
+        return {
+          key,
+          segment: segmentKey,
+          assertions: [
+            {
+              context: { plan: "premium" },
+              expectedToMatch: true,
+            },
+          ],
+        };
+      }
+
+      if (key === "checkout-matrix") {
+        return {
+          key,
+          feature: featureKey,
+          assertions: [
+            {
+              matrix: { country: ["nl", "de"], at: [10, 90] },
+              description: "${{ country }} at ${{ at }}%",
+              environment: "production",
+              at: "${{ at }}",
+              context: { country: "${{ country }}" },
+              expectedToBeEnabled: true,
+            },
+          ],
+        };
+      }
+
+      return {
+        key,
+        feature: featureKey,
+        assertions: [
+          {
+            description: "Enabled in staging",
+            environment: "staging",
+            context: { country: "nl" },
+            expectedToBeEnabled: true,
+          },
+        ],
+      };
+    },
   };
 }
 
@@ -161,8 +204,27 @@ describe("catalog export", () => {
       segments: ["premiumUsers"],
       attributes: ["country"],
       targets: ["premiumWeb"],
-      tests: ["checkout"],
+      tests: ["checkout-matrix", "checkout-primary"],
     });
+    expect(detail.tests).toHaveLength(2);
+    expect(detail.tests.map((test: any) => test.key)).toEqual([
+      "checkout-matrix",
+      "checkout-primary",
+    ]);
+    expect(detail.tests[0].assertions[0].matrix).toEqual({
+      country: ["nl", "de"],
+      at: [10, 90],
+    });
+
+    const segmentDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "segment", "premiumUsers.json"),
+        "utf8",
+      ),
+    );
+    expect(segmentDetail.tests).toEqual([
+      expect.objectContaining({ key: "premium-users", segment: "premiumUsers" }),
+    ]);
   });
 
   it("writes per-set catalog files for sets-enabled projects", async () => {

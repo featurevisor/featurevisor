@@ -1,4 +1,4 @@
-import type { EntityType } from "@featurevisor/types";
+import type { EntityType, Test } from "@featurevisor/types";
 
 export type CatalogEntityType = EntityType;
 export type EntityPath =
@@ -106,6 +106,7 @@ export interface EntityDetail<T = Record<string, unknown>> {
   editLinks?: Partial<Record<DevEditorId, string>>;
   lastModified?: LastModified;
   relationships?: Record<string, string[]>;
+  tests?: Test[];
   environments?: string[];
   historyPath?: string;
 }
