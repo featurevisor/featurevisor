@@ -92,6 +92,26 @@ Supported SDKs include:
 - [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
 
+## Using Featurevisor with AI agents
+
+Featurevisor ships an official [skill](https://featurevisor.com/docs/skills/) that teaches AI agents (like Claude Code, Cursor, Codex, and OpenCode) how to work with your project: creating features and segments, writing rollout rules and test specs, debugging evaluations, promoting between sets, and integrating SDKs in your applications.
+
+Install it in your Featurevisor project (or your app repository) via [skills.sh](https://skills.sh):
+
+```
+$ npx skills add featurevisor/featurevisor
+```
+
+Then prompt your agent naturally:
+
+- "Create a `showWishlist` feature, tagged web, starting at 5% in production"
+- "Why is `checkout` disabled for userId 123 in the Netherlands?"
+- "Roll out `newEditor` to employees first, then beta users, then everyone"
+
+Pair it with `npx featurevisor catalog` running locally to visually review every change your agent makes, live in the browser.
+
+The skill's source lives in this repository under [`skills/`](./skills/).
+
 ## Why should I use Featurevisor?
 
 Several use cases include:
