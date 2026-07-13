@@ -24,6 +24,19 @@ Always inspect the active config before authoring:
 npx featurevisor config --json --pretty
 ```
 
+## The four shape-changers
+
+Four values determine the *shape* of every file in the project — classify the project on these before writing anything:
+
+| Value                | If set / changed                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `sets`               | `true` → every definition lives under `sets/<set>/…`; commands scope with `--set`. See [sets-promotions.md](sets-promotions.md).      |
+| `environments`       | Present → `rules`/`force`/`expose` are per-env maps. **Absent → they are direct lists** (no env level).                                |
+| `parser`             | `"json"` → author `.json` files; custom parser → author in that format. See [custom-parsers.md](custom-parsers.md).                    |
+| `namespaceCharacter` | Key separator for namespaced entities — default `.`, sometimes `/`. Every key reference must use it. See [namespaces.md](namespaces.md). |
+
+The same request ("add a feature at 10%") produces structurally different files depending on these four — always detect first, then author.
+
 ## Keys you will encounter
 
 | Key                                                                                                                                      | Purpose                                                                         |
@@ -64,20 +77,8 @@ Tag a feature with `all` (or your project's chosen catch-all) only if every cons
 
 Targets define generated datafiles under `targets/`. They can include optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context. See <https://featurevisor.com/docs/targets>.
 
-## Sets
+## Sets and promotions
 
-When `sets: true`, the project is split into independent trees under `sets/<set>/`. Each set has its own `attributes/`, `segments/`, `features/`, `targets/`, and `tests/`, and needs at least one target of its own.
+When `sets: true`, the project is split into independent trees under `sets/<set>/` — each with its own `attributes/`, `segments/`, `features/`, `targets/`, and `tests/`. The same feature key can exist in several sets with different definitions. `npx featurevisor promote --from=<set> --to=<set>` copies definitions (plus their full dependency closure) between sets, previewing by default and writing only with `--apply`; `promotionFlows` restricts allowed directions.
 
-Datafiles build under `datafiles/<set>/[<environment>/]featurevisor-<target>.json`, and state lives under `.featurevisor/sets/<set>/`. Scope any command to one set with `--set=<set>`.
-
-Sets are commonly used to model release lanes (`dev`, `staging`, `production`) or distinct surfaces (`storefront`, `admin`). See <https://featurevisor.com/docs/sets>.
-
-## Promotions
-
-In a project with sets, `npx featurevisor promote --from=<set> --to=<set>` copies definitions (and their dependencies) from one set to another. It previews by default; pass `--apply` to write files.
-
-- `promotionFlows` in the config restricts which `from` → `to` promotions are allowed. When omitted, any flow is allowed.
-- Filter with `--target`, `--tag`, `--includeFeatures`, or `--excludeFeatures`. Featurevisor adds the selected features' complete dependency closure. A selected target definition is included too.
-- Set `promotable: false` on a top level definition to protect an existing destination value. Missing destination definitions are still created. On rules, source entries are omitted and destination entries are preserved.
-
-See <https://featurevisor.com/docs/promotions>.
+**Read [sets-promotions.md](sets-promotions.md) in full before working in a sets project** — it covers when sets are (and aren't) the right tool, layout, per-set builds and state, `--set` scoping, promotion filters, conflicts, and `promotable: false` semantics.

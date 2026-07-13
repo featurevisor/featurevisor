@@ -6,12 +6,27 @@ Source of truth: <https://featurevisor.com/docs/cli>
 
 ## Setup
 
+Before scaffolding, run the setup interview in SKILL.md (environments? sets? tags/targets? format? bucketing identity?) — then pick the example that matches:
+
 ```bash
 # inside an empty directory
-npx @featurevisor/cli init                      # default example
-npx @featurevisor/cli init --example=json       # specific example from the monorepo
+npx @featurevisor/cli init                      # default: yml, staging+production, one `all` tag/target
+npx @featurevisor/cli init --example=<name>
 npm install
 ```
+
+| `--example=`        | Matches                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| `yml` (default)     | YAML, `staging` + `production` environments, single tree             |
+| `json`              | Same but JSON definitions                                             |
+| `toml`              | Custom-parser (TOML) demo                                             |
+| `no-environments`   | No environments — rules are direct lists                              |
+| `sets`              | Sets as surfaces (`storefront` / `admin`), with environments          |
+| `test-environments` | Sets as release lanes (`dev` / `staging` / `production`) with `promotionFlows`, no environments |
+| `targets`           | Many targets/tag-selector shapes demo                                 |
+| `namespace-slash`   | `namespaceCharacter: "/"` demo                                        |
+
+`init` downloads the matching `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). Each scaffold is a working project out of the box — adjust `featurevisor.config.js` to the user's answers afterwards.
 
 ## Lint
 
@@ -59,7 +74,7 @@ npx featurevisor build --no-state-files --set=storefront   # one set only (sets 
 npx featurevisor build --no-state-files --target=web --target=mobile
 ```
 
-**Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/state-*.json` files are written, which the user probably doesn't want in a non-CI run.
+Bare `build` is meant for **CI**, where incrementing `.featurevisor/REVISION` and updating `existing-state-*.json` is the point (CI commits them back). For **local development — yours or the user's — default to `--no-state-files`**: identical datafile output and build confirmation, no revision/state side effects. See [building-datafiles.md](building-datafiles.md).
 
 Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
 
@@ -269,15 +284,24 @@ npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source 
 npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
 ```
 
-Copies definitions and their dependencies between [sets](https://featurevisor.com/docs/sets). `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config. See <https://featurevisor.com/docs/promotions>.
+Copies definitions and their dependencies between sets. `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config.
+
+**This is the one CLI command that writes definition files** (with `--apply`) — preview first, show the user the summary, and lint + test afterwards. Full semantics, `promotable: false` protection, and the release-lane workflow: [sets-promotions.md](sets-promotions.md).
 
 ## catalog
 
+Read-only web UI for browsing the whole project — features, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. Ideal for sharing with non-engineers, and for live visual review during authoring sessions: the no-subcommand form watches the project and reloads the browser on every file change, so run it in the background (and open it in your browser tool if you have one) while making changes.
+
 ```bash
-npx featurevisor catalog                          # export, serve, and watch the catalog
-npx featurevisor catalog export                   # build the static catalog
-npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
+npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch (live reload)
+npx featurevisor catalog --port=4000              # (-p also works)
+npx featurevisor catalog export                   # build static output to catalogDirectoryPath (default catalog/)
+npx featurevisor catalog export --outDir=./out    # write elsewhere
+npx featurevisor catalog export --hash-router     # for static hosts without an index.html fallback
+npx featurevisor catalog serve [-p 3000]          # serve an existing export (exports first if missing)
 ```
+
+Full docs: <https://featurevisor.com/docs/catalog>
 
 ## version
 
@@ -285,3 +309,7 @@ npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
 npx featurevisor --version
 npx featurevisor -v
 ```
+
+## Custom commands (plugins)
+
+Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins — read their source before using. Docs: <https://featurevisor.com/docs/plugins>.

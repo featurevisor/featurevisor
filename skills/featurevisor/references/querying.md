@@ -46,6 +46,26 @@ npx featurevisor list --features --variable=bgColor --json --pretty
 npx featurevisor list --features --without-tests --json --pretty
 ```
 
+## "What's live in staging but not in production yet?"
+
+Filters combine (intersection), so environment-parity questions are one call:
+
+```bash
+npx featurevisor list --features --enabledIn=staging --disabledIn=production --json --pretty
+```
+
+This is the "what's waiting to be released" report — useful before release reviews or when a PM asks what's in the pipeline.
+
+## "Which flags are stale and ready for cleanup?"
+
+Candidates are features enabled everywhere with no experiment attached:
+
+```bash
+npx featurevisor list --features --enabledIn=production --without-variations --json --pretty
+```
+
+Cross-check each candidate's rules for an unconditional 100% and its Git history for age, then follow the [cleanup recipe](recipes.md#cleaning-up-stale-flags).
+
 ## "Which features use this segment?"
 
 ```bash
@@ -121,6 +141,28 @@ Add repeatable `--target=<target>` options for per-target and per-environment da
 ```bash
 npx featurevisor config --json --pretty
 ```
+
+## "Can I just browse everything?" (Catalog)
+
+When the user wants to *explore* rather than query — or wants something to share with less technical teammates — offer the Catalog: a read-only web UI showing every feature, segment, attribute, target, group, and schema with relationships, rules, variables, test coverage, and Git history.
+
+```bash
+npx featurevisor catalog                 # export + serve at http://127.0.0.1:3000 + watch mode (live reload)
+npx featurevisor catalog export          # build static output to catalog/ for hosting
+npx featurevisor catalog serve           # serve a previous export
+```
+
+Its feature search supports qualifiers like `tag:web`, `in:production`, `with:variations`, `variable:bgColor`, `archived:false`. The export deploys to any static host. Full docs: <https://featurevisor.com/docs/catalog>.
+
+### Pair it with an authoring session (best experience)
+
+The no-subcommand form runs in **watch mode**: it rebuilds project data and reloads the browser whenever definition files change. That turns the Catalog into a live visual review surface for agent-driven authoring:
+
+1. Start `npx featurevisor catalog` as a background process (local, read-only — safe to leave running for the whole session).
+2. If you have a browser tool, open `http://127.0.0.1:3000` in it; otherwise tell the user to open that URL.
+3. As you author features, segments, and tests, every save appears in the Catalog immediately — the user reviews changes visually instead of reading YAML diffs.
+
+Offer this proactively for multi-change sessions and for PMs/marketers/vibe coders who'd rather see the project than read it. Use `--port=<n>` if 3000 is taken.
 
 ## Workflow tip
 

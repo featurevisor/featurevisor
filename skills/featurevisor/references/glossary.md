@@ -15,6 +15,8 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Group**     | Mutual-exclusion container that constrains percentage caps for member features. `groups/<name>.yml`.                                             |
 | **Schema**    | Reusable variable shape, referenced by name from `variablesSchema` entries. `schemas/<name>.yml`.                                                |
 | **Test spec** | Declarative `.spec.yml` asserting expected evaluation outcomes. `tests/features/...` or `tests/segments/...`.                                    |
+| **Set**       | Independent project tree under `sets/<set>/` with its own attributes/segments/features/targets/tests. See [sets-promotions.md](sets-promotions.md). |
+| **Promotion** | Copying definitions (plus dependency closure) from one set to another via `promote`. Preview by default; `--apply` writes.                       |
 
 ## Evaluations
 
@@ -27,7 +29,7 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` → number in [0,100].                                                             |
 | **Sticky**            | SDK-side override for a feature (variation/variables/enabled) consulted before rules.                                                            |
 | **Activation**        | The event of a user being assigned a variation; commonly piped to analytics.                                                                     |
-| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `allocated`, `error`, `out_of_traffic`, etc. — surfaced by `featurevisor evaluate --verbose`. |
+| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
 
 ## Rollout terms
 
@@ -49,9 +51,9 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Generated datafiles use schema version 2.   |
 | **Tag**         | Feature metadata used by targets to select features.                                                                    |
 | **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
-| **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout/promo`). Organizational only. |
+| **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |
 | **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
-| **State files** | `.featurevisor/state-*.json` snapshots used to preserve bucketing across builds.                                        |
+| **State files** | `.featurevisor/existing-state-*.json` snapshots used to preserve bucketing across builds.                               |
 
 ## Patterns / use cases
 
@@ -65,6 +67,9 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Entitlements**                   | Variables holding lists of capabilities, often pinned via sticky from a profile service.          |
 | **Mutually exclusive experiments** | Multiple features sharing a [group](groups.md) so no user sees both.                              |
 | **Trunk-based development**        | Merging incomplete features behind a 0%-rolled-out flag.                                          |
+| **Kill switch / ops flag**         | Always-on flag around a risky surface; flipped to 0% during incidents. See recipes.               |
+| **Scheduled release**              | Segment with date `before`/`after` conditions; app passes current date in context. See recipes.   |
+| **Staged rollout**                 | Ordered rules: employees → beta users → everyone. See recipes.                                    |
 | **Decouple deploy from release**   | The whole point of the tool: ship code at any time, expose it via Featurevisor whenever you want. |
 
 ## Operators (quick recall)

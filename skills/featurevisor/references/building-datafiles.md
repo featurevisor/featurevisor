@@ -8,18 +8,22 @@ Full docs:
 
 Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
-## Build (agent default)
+## Two kinds of build
+
+Bare `npx featurevisor build` is a **CI command**: besides writing datafiles, it increments `.featurevisor/REVISION` and updates `.featurevisor/existing-state-*.json`, which CI commits back — that state is how the *next* build preserves consistent bucketing.
+
+**Local development builds should default to `--no-state-files`:**
 
 ```bash
 npx featurevisor build --no-state-files
 ```
 
-**Always pass `--no-state-files` when an agent runs build locally** — it prevents `.featurevisor/REVISION` and `.featurevisor/state-*.json` from being touched, which the user generally doesn't want in non-CI runs.
+You get the exact same datafile output and the same success/failure confirmation — only the REVISION and state files stay untouched. That's what a local build is for: verifying the project builds cleanly, inspecting output, previewing a datafile — not producing the canonical revision. This applies to the user building locally just as much as to you; if they run bare `build` by habit, point out the `--no-state-files` default and that local state changes shouldn't be committed.
 
-Output lands in `<datafilesDirectoryPath>` (default `dist/`):
+Output lands in `<datafilesDirectoryPath>` (default `datafiles/`):
 
 ```
-dist/
+datafiles/
 ├── staging/
 │   └── featurevisor-all.json
 └── production/
@@ -32,7 +36,7 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 
 | Flag                   | Effect                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or state-\*.json                                            |
+| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or existing-state-\*.json                                   |
 | `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
 | `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
 | `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
@@ -50,14 +54,15 @@ When debugging the shape of a datafile entry, prefer `--feature=<key> --print` o
 Live under `<stateDirectoryPath>` (default `.featurevisor/`):
 
 - `REVISION` — integer, incremented per successful build.
-- `state-<environment>.json` — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
+- `existing-state-<environment>.json` (or `existing-state.json` in projects without environments) — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
+- In sets projects, both live per set under `.featurevisor/sets/<set>/` — see [sets-promotions.md](sets-promotions.md).
 
 Authoring rules:
 
 - **CI**: builds without `--no-state-files`; commits the updated state files back with `[skip ci]`.
 - **Local / agent**: builds **with** `--no-state-files`; never commit state changes from local.
 
-The user usually has `dist/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
+The user usually has `datafiles/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
 
 ## Deployment (CI pipeline)
 
@@ -76,7 +81,7 @@ git add .featurevisor/
 git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
 git push origin main
 
-# 4. upload dist/ to CDN
+# 4. upload datafiles/ to CDN
 #    (provider-specific: aws s3 sync, wrangler pages deploy, gh-pages, etc.)
 ```
 
@@ -84,6 +89,14 @@ When the user asks you to set this up:
 
 - Don't run `git commit`/`git push` from an agent without explicit confirmation.
 - Don't run a full `build` (without `--no-state-files`) without explicit confirmation — state changes are intended to be CI-managed.
+
+Step-by-step hosting guides exist for common providers — fetch the matching one instead of improvising:
+
+- GitHub Actions: <https://featurevisor.com/docs/integrations/github-actions>
+- Cloudflare Pages: <https://featurevisor.com/docs/integrations/cloudflare-pages>
+- GitHub Pages: <https://featurevisor.com/docs/integrations/github-pages>
+- PartyKit: <https://featurevisor.com/docs/integrations/partykit>
+- General deployment guidance: <https://featurevisor.com/docs/deployment>
 
 ## Consuming the deployed datafile
 
@@ -96,16 +109,16 @@ const datafile = await fetch(url).then(r => r.json())
 const f = createFeaturevisor({ datafile })
 ```
 
-Full SDK docs (out of scope for this skill, link only): <https://featurevisor.com/docs/sdks/javascript>
+For full SDK integration (context, evaluation, refresh, React/Vue, server-side), read [sdk-javascript.md](sdk-javascript.md).
 
 ## Refreshing in production
 
 Two common patterns:
 
-- **Polling** — SDK refreshes the datafile periodically (e.g. every 30s).
-- **Push** — your deploy pipeline broadcasts a "refresh now" signal to running apps.
+- **Polling** — the application refetches the datafile periodically (e.g. every 5 minutes) and calls `setDatafile` again.
+- **Push** — your deploy pipeline broadcasts a "refresh now" signal (websocket/SSE) to running apps.
 
-Both are SDK-side concerns — out of scope here. Link: <https://featurevisor.com/docs/sdks/javascript>.
+Both are application-side concerns — see [sdk-javascript.md](sdk-javascript.md#keeping-the-datafile-fresh).
 
 ## Inspecting a datafile entry
 

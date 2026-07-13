@@ -45,7 +45,7 @@ const f = createFeaturevisor({ datafile })
 setInstance(f)
 
 // from here on, calls are type-checked
-const ok = isEnabled('checkout/express')                // wrong key → TS error
+const ok = isEnabled('checkout.express')                // wrong key → TS error
 const v  = getVariation('sidebar', { userId: 'u_1' })   // wrong context attribute type → TS error
 const c  = getVariable('sidebar', 'color')              // wrong variable key for this feature → TS error
 ```
@@ -55,7 +55,7 @@ React hooks (if generated):
 ```tsx
 import { useFlag, useVariation, useVariable } from '@yourorg/features'
 
-const show = useFlag('checkout/express')
+const show = useFlag('checkout.express')
 const v    = useVariation('sidebar')
 const color = useVariable('sidebar', 'color')
 ```
@@ -72,4 +72,4 @@ The skill does not author the npm package itself — that's project setup work; 
 - The user is rolling out a new attribute and worries about wrong-type context payloads.
 - The user manages many features and reports churn from typo-driven bugs.
 
-For SDK usage in JS/TS _without_ code-gen, just point at <https://featurevisor.com/docs/sdks/javascript>.
+For SDK usage in JS/TS _without_ code-gen, see [sdk-javascript.md](sdk-javascript.md).
