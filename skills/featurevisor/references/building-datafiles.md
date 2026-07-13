@@ -8,13 +8,17 @@ Full docs:
 
 Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
-## Build (agent default)
+## Two kinds of build
+
+Bare `npx featurevisor build` is a **CI command**: besides writing datafiles, it increments `.featurevisor/REVISION` and updates `.featurevisor/existing-state-*.json`, which CI commits back — that state is how the *next* build preserves consistent bucketing.
+
+**Local development builds should default to `--no-state-files`:**
 
 ```bash
 npx featurevisor build --no-state-files
 ```
 
-**Always pass `--no-state-files` when an agent runs build locally** — it prevents `.featurevisor/REVISION` and `.featurevisor/existing-state-*.json` from being touched, which the user generally doesn't want in non-CI runs.
+You get the exact same datafile output and the same success/failure confirmation — only the REVISION and state files stay untouched. That's what a local build is for: verifying the project builds cleanly, inspecting output, previewing a datafile — not producing the canonical revision. This applies to the user building locally just as much as to you; if they run bare `build` by habit, point out the `--no-state-files` default and that local state changes shouldn't be committed.
 
 Output lands in `<datafilesDirectoryPath>` (default `datafiles/`):
 

@@ -136,7 +136,10 @@ npx featurevisor test --keyPattern=<theKey>
 
 ## CLI: run freely
 
-All `featurevisor` CLI commands are local and safe to run without confirmation, with two caveats: `build` should **always get `--no-state-files`** so it doesn't increment the project's revision locally, and `promote --apply` (sets projects) **writes definition files** — preview first and treat applying like any other edit ([sets-promotions.md](references/sets-promotions.md)).
+All `featurevisor` CLI commands are local and safe to run without confirmation, with two caveats:
+
+- Bare `build` is a **CI command** — it increments `.featurevisor/REVISION` and updates state files, which only CI should commit. For local builds (yours *and* the user's), default to `--no-state-files`: same datafiles, same success/failure confirmation, no state side effects.
+- `promote --apply` (sets projects) **writes definition files** — preview first and treat applying like any other edit ([sets-promotions.md](references/sets-promotions.md)).
 
 ```bash
 npx featurevisor build --no-state-files
@@ -268,6 +271,6 @@ Key facts that prevent most integration mistakes: evaluations are local and sync
 - Do not invent attribute, segment, or feature key names — in YAML or in application code. Verify they exist; create them explicitly if needed.
 - Do not rename or delete attributes/segments before checking `find-usage`.
 - Do not add `expose:` unless the user asks — it's a short-term migration tool.
-- Do not run `build` without `--no-state-files`.
+- Do not run bare `build` locally — incrementing REVISION and state files is CI's job. Local builds always get `--no-state-files`.
 - Do not skip `npx featurevisor lint` after edits.
 - Do not author project definitions inside an application repo — they belong in the Featurevisor project repo.

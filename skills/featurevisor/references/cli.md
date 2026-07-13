@@ -74,7 +74,7 @@ npx featurevisor build --no-state-files --set=storefront   # one set only (sets 
 npx featurevisor build --no-state-files --target=web --target=mobile
 ```
 
-**Always pass `--no-state-files` when an agent runs build** — without it, the project's revision number increments and `.featurevisor/existing-state-*.json` files are written, which the user probably doesn't want in a non-CI run.
+Bare `build` is meant for **CI**, where incrementing `.featurevisor/REVISION` and updating `existing-state-*.json` is the point (CI commits them back). For **local development — yours or the user's — default to `--no-state-files`**: identical datafile output and build confirmation, no revision/state side effects. See [building-datafiles.md](building-datafiles.md).
 
 Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
 
