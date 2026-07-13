@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/catalog",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Static catalog UI for Featurevisor projects",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

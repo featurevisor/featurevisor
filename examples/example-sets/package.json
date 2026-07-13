@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/example-sets",
   "private": true,
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Featurevisor project using independent sets",
   "scripts": {
     "lint": "featurevisor lint",
@@ -9,6 +9,6 @@
     "test": "featurevisor test"
   },
   "dependencies": {
-    "@featurevisor/cli": "3.0.1"
+    "@featurevisor/cli": "3.1.0"
   }
 }
