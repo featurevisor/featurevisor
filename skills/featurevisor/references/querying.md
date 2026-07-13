@@ -46,6 +46,26 @@ npx featurevisor list --features --variable=bgColor --json --pretty
 npx featurevisor list --features --without-tests --json --pretty
 ```
 
+## "What's live in staging but not in production yet?"
+
+Filters combine (intersection), so environment-parity questions are one call:
+
+```bash
+npx featurevisor list --features --enabledIn=staging --disabledIn=production --json --pretty
+```
+
+This is the "what's waiting to be released" report — useful before release reviews or when a PM asks what's in the pipeline.
+
+## "Which flags are stale and ready for cleanup?"
+
+Candidates are features enabled everywhere with no experiment attached:
+
+```bash
+npx featurevisor list --features --enabledIn=production --without-variations --json --pretty
+```
+
+Cross-check each candidate's rules for an unconditional 100% and its Git history for age, then follow the [cleanup recipe](recipes.md#cleaning-up-stale-flags).
+
 ## "Which features use this segment?"
 
 ```bash

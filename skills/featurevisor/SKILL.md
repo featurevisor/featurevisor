@@ -75,7 +75,7 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | Vue integration                                                                                                                               | [sdk-vue.md](references/sdk-vue.md)                               |
 | Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
 | Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
-| **Common patterns** — A/B, multivariate, entitlements, dependencies, testing-in-prod, deprecation, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
+| **Common patterns** — A/B, multivariate, entitlements, kill switches, scheduled releases, staged rollouts, version gating, migrations, testing-in-prod, deprecation/cleanup, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
 | Terminology refresher                                                                                                                         | [glossary.md](references/glossary.md)                             |
 
 Per-entity templates live in [templates/](templates/) — copy and adapt rather than writing from memory.
@@ -153,6 +153,19 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 
 Use optional, repeatable `--target=<target>` selection with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info` when the question concerns deployed target datafiles. Runtime commands process each selected target independently. `build --json` and `build --print` accept only one target because they emit one datafile.
 
+## Changes ship through Git
+
+Featurevisor is GitOps: nothing you write takes effect until it travels the pipeline —
+
+**edit → PR review → merge → CI (lint, test, build) → datafile deployed to CDN → each app's next datafile refresh.**
+
+Practical consequences:
+
+- **Don't commit or push unless asked.** Editing files and running the CLI is your job; landing the change is the user's (or their CI's).
+- Keep one logical change per branch/PR (a rollout bump, a new feature, a cleanup) — flags get reviewed like code, and small diffs get approved fast.
+- Update or add the matching `.spec.yml` in the same change when behavior expectations shift.
+- When the user asks **"when will this be live?"**, walk that pipeline: after merge, CI deploys the datafile, and apps pick it up on their next refresh (an app polling every 5 minutes lags up to 5 minutes). For emergency paths, see the kill-switch recipe in [recipes.md](references/recipes.md).
+
 ## Common authoring flows
 
 ### Starting a brand-new project
@@ -214,7 +227,7 @@ Offer this proactively when a session involves several authoring changes or when
 
 ### Recipes for higher-level use cases
 
-When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements/RBAC, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
+When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements/RBAC, kill switch, scheduled/time-window release, staged rollout ladder (employees → beta → everyone), app version gating, backend migration, stale-flag cleanup, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
 
 ## Application integration (SDKs)
 

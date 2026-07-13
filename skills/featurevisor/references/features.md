@@ -10,6 +10,8 @@ A feature in Featurevisor produces three evaluable outputs:
 
 Features live in `features/<key>.yml` by default. The filename usually matches the feature key.
 
+Choose keys deliberately — they become permanent identifiers in application code and analytics (docs convention: camelCase, e.g. `showWishlist`, `checkoutRedesign`). Renaming a shipped feature key breaks every consumer.
+
 ## Minimal feature
 
 ```yaml

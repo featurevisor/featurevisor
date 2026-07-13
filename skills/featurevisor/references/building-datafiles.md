@@ -85,6 +85,14 @@ When the user asks you to set this up:
 - Don't run `git commit`/`git push` from an agent without explicit confirmation.
 - Don't run a full `build` (without `--no-state-files`) without explicit confirmation — state changes are intended to be CI-managed.
 
+Step-by-step hosting guides exist for common providers — fetch the matching one instead of improvising:
+
+- GitHub Actions: <https://featurevisor.com/docs/integrations/github-actions>
+- Cloudflare Pages: <https://featurevisor.com/docs/integrations/cloudflare-pages>
+- GitHub Pages: <https://featurevisor.com/docs/integrations/github-pages>
+- PartyKit: <https://featurevisor.com/docs/integrations/partykit>
+- General deployment guidance: <https://featurevisor.com/docs/deployment>
+
 ## Consuming the deployed datafile
 
 Once hosted (e.g. `https://cdn.example.com/production/featurevisor-web.json`), SDK init looks like:

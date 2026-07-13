@@ -86,6 +86,17 @@ f.getVariableJSON<T>(featureKey, variableKey, context?)
 
 Namespaced features use the full key with the project's separator (default `.`): `f.isEnabled('checkout.promo')`.
 
+### Per-call defaults instead of null
+
+`getVariation` and the variable getters accept an options object with fallback values, so call sites don't need null-handling:
+
+```js
+f.getVariation('checkout', context, { defaultVariationValue: 'control' })
+f.getVariable('checkout', 'paymentMethods', context, { defaultVariableValue: ['creditCard'] })
+```
+
+Prefer defining sane `defaultValue` (and `useDefaultWhenDisabled`) in the project's `variablesSchema` — per-call defaults are the app-side safety net, not the source of truth.
+
 ### All evaluations at once
 
 ```js
@@ -93,7 +104,7 @@ const all = f.getAllEvaluations(context)
 // { checkout: { enabled: true, variation: 'control', variables: {…} }, … }
 ```
 
-Useful for passing a server-evaluated snapshot to the frontend, which can then feed it into a client instance as [sticky](#sticky) values.
+Useful for passing a server-evaluated snapshot to the frontend, which can then feed it into a client instance as [sticky](#sticky) values — see [SSR handoff](#ssr-handoff) below.
 
 ### Why did it evaluate that way?
 
@@ -193,6 +204,46 @@ app.get('/dashboard', (req, res) => {
 ```
 
 Children support the same evaluation methods plus `setContext`, `setSticky`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { sticky })` also accepts child-scoped sticky values. Datafile updates on the parent are visible to children automatically.
+
+### SSR handoff
+
+For server-rendered apps, avoid client/server mismatch (and flag "flicker" on load) by evaluating once on the server and handing the results to the client as sticky values:
+
+```js
+// server (per request)
+const childF = f.spawn({ userId: req.user.id })
+const evaluations = childF.getAllEvaluations()
+// serialize `evaluations` into the rendered page
+
+// client (at startup)
+const f = createFeaturevisor({ sticky: window.__FEATURES__ })
+// render matches the server exactly; later, once a datafile is loaded,
+// f.setSticky({}, true) releases evaluation back to live rules
+```
+
+## Resilience
+
+Evaluations never throw: `isEnabled` returns `false`, `getVariation`/`getVariable` return `null`, and errors surface as diagnostics — so a missing or stale datafile degrades to "features off", not a crash. Still, plan for the fetch failing:
+
+- Write app code so the **disabled path is always the safe path** (that's also what un-shipped datafiles mean).
+- For critical UIs, bundle a datafile snapshot at build time as a fallback, then refresh from the CDN: `createFeaturevisor({ datafile: bundledSnapshot })` followed by a fetched `setDatafile(fresh, true)`.
+- Watch the `error` event / diagnostics in your observability system so silent fallback doesn't go unnoticed.
+
+## Testing application code
+
+To unit-test code that consumes flags, you don't need datafile fixtures — an instance with only **sticky** values forces any state:
+
+```js
+const f = createFeaturevisor({
+  sticky: {
+    checkout: { enabled: true, variation: 'treatment', variables: { paymentMethods: ['ideal'] } },
+    newDashboard: { enabled: false },
+  },
+})
+// f.isEnabled('checkout') === true — no datafile involved
+```
+
+Sticky is consulted before the datafile, so this works for every evaluation method. For closer-to-production tests, generate a real datafile from the project (`npx featurevisor build --environment=<env> --print`) and pass it as `datafile`. Note this tests *your app's branching*; the project's own rules are tested with spec files in the project repo ([testing.md](testing.md)).
 
 ## Diagnostics
 

@@ -19,6 +19,12 @@ Source docs (the authoritative versions): <https://featurevisor.com/docs/use-cas
 | [Microfrontends](#microfrontends)                                                  | Single Featurevisor project, one datafile per microfrontend     |
 | [Decouple release from deploy](#decouple-release-from-deploy)                      | Ship code anytime, expose features independently                |
 | [Establishing ownership](#establishing-ownership)                                  | CODEOWNERS for feature/segment files                            |
+| [Kill switch / operational flags](#kill-switch--operational-flags)                 | Instantly disable a risky surface or degraded dependency        |
+| [Scheduled releases / time windows](#scheduled-releases--time-windows)             | Launch at a date/time, Black Friday campaigns, limited events   |
+| [Staged rollout ladder](#staged-rollout-ladder)                                    | Employees → beta users → everyone                               |
+| [App version gating](#app-version-gating)                                          | Only clients on version ≥ X get the feature (semver)            |
+| [Backend migrations (strangler pattern)](#backend-migrations-strangler-pattern)    | Ramp traffic from an old implementation to a new one            |
+| [Cleaning up stale flags](#cleaning-up-stale-flags)                                | Find and retire flags that finished their job                   |
 
 Two further patterns live elsewhere: **RBAC / roles-and-permissions** is the [entitlements recipe](#user-entitlements--plans) with roles as variations (docs: <https://featurevisor.com/docs/use-cases/rbac>), and **loading datafiles on demand** (start small, merge more target datafiles as the user navigates) is an SDK pattern — see [sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile).
 
@@ -462,3 +468,206 @@ sets/production/features/payment/* @yourorg/qa-team
 ```
 
 Pair with branch protection ("Require review from Code Owners") to enforce.
+
+---
+
+## Kill switch / operational flags
+
+Wrap risky surfaces — a third-party payment provider, a recommendation service, an expensive background job — in a flag that is normally on for everyone, so it can be turned off instantly during an incident without deploying anything.
+
+```yaml
+# features/paymentsProviderX.yml
+description: 'KILL SWITCH — route payments through Provider X. Set percentage to 0 to fall back.'
+tags:
+  - all
+bucketBy: userId
+
+rules:
+  production:
+    - key: everyone
+      segments: '*'
+      percentage: 100    # incident? change to 0, merge, done
+```
+
+App side falls back when disabled:
+
+```js
+if (f.isEnabled('paymentsProviderX')) { payWithProviderX() } else { payWithFallback() }
+```
+
+Guidance:
+
+- **Keep kill switches boring**: no variations, no variables, one catch-all rule. Anything cleverer slows down the 3 a.m. responder.
+- **Know your propagation time**: the change goes live after merge → CI datafile build/deploy → each app's next datafile refresh. If the user needs sub-minute reaction, make sure their apps refresh the datafile frequently ([sdk-javascript.md](sdk-javascript.md#keeping-the-datafile-fresh)).
+- **Decreasing to 0 is fine here.** The re-bucketing warnings elsewhere in this skill protect *user-experience consistency* in experiments; a kill switch on an infrastructure path has no experience to preserve — turning it off for everyone is the whole point.
+- Make the emergency procedure discoverable: state it in the feature's `description`.
+
+---
+
+## Scheduled releases / time windows
+
+Featurevisor has no clock — **the application passes the current date into context**, and segments compare against it with the `before` / `after` operators. This powers launch moments, Black Friday campaigns, and limited-time events without anyone editing YAML at midnight.
+
+```yaml
+# attributes/date.yml
+description: Current date, passed by the application as ISO 8601 string or Date object
+type: date
+```
+
+```yaml
+# segments/blackFridayWeekend.yml
+description: Black Friday weekend 2026
+conditions:
+  and:
+    - attribute: date
+      operator: after
+      value: 2026-11-27T00:00:00Z
+    - attribute: date
+      operator: before
+      value: 2026-11-30T00:00:00Z
+```
+
+```yaml
+# features/promoBanner.yml (rules excerpt)
+rules:
+  production:
+    - key: bf
+      segments: blackFridayWeekend
+      percentage: 100
+    - key: everyone
+      segments: '*'
+      percentage: 0
+```
+
+App side supplies the date on every evaluation (or in instance context refreshed periodically):
+
+```js
+f.isEnabled('promoBanner', { date: new Date() })
+```
+
+Guidance:
+
+- The window boundaries are only as sharp as the app's evaluation cadence — long-lived SPAs should re-evaluate on navigation or on an interval, not once at startup.
+- Merge and deploy the definitions **ahead of time**; the date condition does the launching. This is the calm way to ship a marketing moment.
+- Combine freely with other targeting (`and` a country segment for regional campaigns).
+
+---
+
+## Staged rollout ladder
+
+The classic product-engineering sequence: employees first, then opted-in beta users, then everyone. First-match-wins rule ordering expresses it directly.
+
+```yaml
+# segments/internalUsers.yml
+description: Employees (by email domain)
+conditions:
+  - attribute: email
+    operator: endsWith
+    value: '@yourcompany.com'
+```
+
+```yaml
+# segments/betaUsers.yml
+description: Users who opted into the beta program
+conditions:
+  - attribute: betaOptIn
+    operator: equals
+    value: true
+```
+
+```yaml
+# features/newEditor.yml (rules excerpt)
+rules:
+  production:
+    - key: internal            # stage 1: employees, day one
+      segments: internalUsers
+      percentage: 100
+    - key: beta                # stage 2: beta cohort
+      segments: betaUsers
+      percentage: 100
+    - key: everyone            # stage 3: ramp the general public
+      segments: '*'
+      percentage: 0            # → 5 → 25 → 100 over time
+```
+
+Each stage is its own rule with its own stable key, so ramping `everyone` never disturbs employees or beta users. Attribute names (`email`, `betaOptIn`) must exist in `attributes/` and be supplied by the app in context.
+
+---
+
+## App version gating
+
+Mobile (and desktop) clients run many versions at once. Gate features on the client version with semver operators so only builds that actually contain the code light up:
+
+```yaml
+# segments/appVersion55Plus.yml
+description: App version 5.5.0 or newer
+conditions:
+  - attribute: appVersion
+    operator: semverGreaterThanOrEquals
+    value: 5.5.0
+```
+
+```yaml
+# features/newOnboarding.yml (rules excerpt)
+rules:
+  production:
+    - key: v55
+      segments: appVersion55Plus
+      percentage: 100
+    - key: everyone
+      segments: '*'
+      percentage: 0
+```
+
+The pattern to internalize: **ship the code dark in version X, flip the flag when adoption of X is high enough**, and the flag+version gate together guarantee old builds never half-render a feature they don't contain.
+
+---
+
+## Backend migrations (strangler pattern)
+
+Moving reads from an old service/datastore to a new one? Put the routing decision behind a flag and ramp it — with server-side [child instances](sdk-javascript.md#child-instances-server-side) giving per-request evaluation:
+
+```yaml
+# features/ordersFromNewService.yml
+description: Route order reads to the new orders service
+tags:
+  - backend
+bucketBy: requestId    # or userId if per-user consistency matters during migration
+
+rules:
+  production:
+    - key: everyone
+      segments: '*'
+      percentage: 1     # 1 → 10 → 50 → 100 as confidence grows
+```
+
+```js
+const childF = f.spawn({ requestId: req.id })
+const orders = childF.isEnabled('ordersFromNewService')
+  ? await newOrdersService.get(userId)
+  : await legacyOrders.get(userId)
+```
+
+Guidance:
+
+- Bucket by a **request-scoped attribute** when the migration is stateless — then ramping down after a bad deploy is completely safe (no user-visible consistency to break).
+- Bucket by `userId` instead if the new path has user-visible differences that shouldn't flap between requests.
+- When the migration completes at 100%, follow [Cleaning up stale flags](#cleaning-up-stale-flags) — delete the legacy branch from code, then the flag.
+
+---
+
+## Cleaning up stale flags
+
+Flags that reached 100% everywhere and stopped mattering are debt: dead branches in code, noise in the project, misleading dashboards. Sweep periodically:
+
+1. **Find candidates** — enabled everywhere, no experiment attached:
+   ```bash
+   npx featurevisor list --features --enabledIn=production --without-variations --json --pretty
+   ```
+   Cross-check age with Git history and confirm every environment sits at an unconditional 100%.
+2. **Confirm nothing depends on them**: `npx featurevisor find-usage --feature=<key>` (other features' `required`, groups).
+3. **Mark `deprecated: true`** — SDKs log warnings so consuming teams notice ([deprecation recipe](#deprecating-a-feature-safely)).
+4. **Remove the flag checks from application code** — the `isEnabled` calls and the dead `else` branches. This is the step that pays the debt down.
+5. **Archive or delete** the feature file once code no longer references it, then `npx featurevisor lint`.
+
+Offer this sweep when you notice a project with many long-lived 100% flags — most teams want it, few remember to ask.

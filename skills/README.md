@@ -21,6 +21,9 @@ Then in your agent (Claude Code, Cursor, Codex, OpenCode, etc.) ask things like:
 - "What features are enabled in production without test coverage?"
 - "Set up a brand-new Featurevisor project for my team"
 - "Wire the `checkout` feature into my React app"
+- "Add a kill switch around the payments provider"
+- "Launch `promoBanner` automatically over Black Friday weekend, NL and DE only"
+- "Roll out `newEditor` to employees first, then beta users, then everyone"
 
 ## What's included
 

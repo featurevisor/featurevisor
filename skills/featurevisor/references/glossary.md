@@ -65,6 +65,9 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Entitlements**                   | Variables holding lists of capabilities, often pinned via sticky from a profile service.          |
 | **Mutually exclusive experiments** | Multiple features sharing a [group](groups.md) so no user sees both.                              |
 | **Trunk-based development**        | Merging incomplete features behind a 0%-rolled-out flag.                                          |
+| **Kill switch / ops flag**         | Always-on flag around a risky surface; flipped to 0% during incidents. See recipes.               |
+| **Scheduled release**              | Segment with date `before`/`after` conditions; app passes current date in context. See recipes.   |
+| **Staged rollout**                 | Ordered rules: employees → beta users → everyone. See recipes.                                    |
 | **Decouple deploy from release**   | The whole point of the tool: ship code at any time, expose it via Featurevisor whenever you want. |
 
 ## Operators (quick recall)
