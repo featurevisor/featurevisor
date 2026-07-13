@@ -4,7 +4,7 @@ Full docs: <https://featurevisor.com/docs/namespaces>
 
 Namespaces are purely **organizational**: putting a feature or segment inside a subdirectory under `features/` or `segments/` turns the directory name into a key prefix. They have no runtime effect beyond changing the key.
 
-The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead — check the config (`npx featurevisor config --json --pretty`) and existing keys before referencing anything.
+The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead. **Adapt to the project — never assume**: check `npx featurevisor config --json --pretty`, then confirm against real keys (`npx featurevisor list --segments --json`, `list --features --json`) before writing any namespaced reference. A key written with the wrong separator fails lint at best, or silently creates a new un-namespaced entity at worst.
 
 ## Layout (default `.` separator)
 

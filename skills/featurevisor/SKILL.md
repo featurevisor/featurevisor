@@ -23,27 +23,42 @@ Featurevisor is used by engineers, product managers, marketers, and people who d
 
 ## Orient yourself first
 
-**If there is no `featurevisor.config.js`** anywhere in the working tree, there is no Featurevisor project yet. Two possibilities:
+### No project yet? Interview, then scaffold
 
-- The user wants one → scaffold it: `npx @featurevisor/cli init` in an empty directory (then `npm install`), or copy [templates/example-project/](templates/example-project/) as a starting point. Keep the project a **separate repo** from application code — that separation (review flags like code, deploy datafiles independently) is the point of the tool.
-- The user is in an **application repo** consuming Featurevisor → this is SDK work; see [Application integration](#application-integration-sdks) below. Author definitions in the project repo, not here.
+**If there is no `featurevisor.config.js`** anywhere in the working tree, there is no Featurevisor project yet. If the user is in an **application repo** consuming Featurevisor, this is SDK work — see [Application integration](#application-integration-sdks); author definitions in the project repo, not here. If they want a new project, **ask a few setup questions before scaffolding** — these choices shape every file written afterwards and are annoying to retrofit:
 
-**If a project exists, always run these once at the start:**
+1. **Environments?** Classic `staging` + `production` (recommended default), a custom list, or none (single-environment tools, internal apps — rules become direct lists instead of per-env maps).
+2. **Sets?** Default **no** — one tree is right for most projects. Offer sets only if they want independent trees: release lanes with promotion gates (dev → staging → production) or fully separate surfaces (storefront/admin). See [sets-promotions.md](references/sets-promotions.md) for the trade-off; sets add real structure overhead.
+3. **Consumers → tags and targets?** Who loads datafiles: one app (single `all` tag + one `all` target is fine) or several surfaces (a tag per surface — `web`, `ios`, `android` — and a target per datafile they'll load)?
+4. **File format?** YAML (default) or JSON.
+5. **What identifies a user?** `userId`, `deviceId`, or both (`{or: [userId, deviceId]}`) — this becomes `defaultBucketBy` and the first attributes.
+
+Then scaffold in an empty directory — a **separate repo** from application code (review flags like code, deploy datafiles independently — that separation is the point of the tool):
+
+```bash
+npx @featurevisor/cli init                # yml default; --example=json | no-environments | sets | test-environments (release lanes) | toml | namespace-slash
+npm install
+```
+
+Pick the `--example` closest to their answers, then adjust `featurevisor.config.js` to match exactly. [templates/example-project/](templates/example-project/) is an alternative lint-clean starting point.
+
+### Existing project? Detect the setup before touching anything
+
+**Always run these once at the start:**
 
 ```bash
 npx featurevisor config --json --pretty
 npx featurevisor info
 ```
 
-From the config note:
+Four config values change the **shape of everything you write** — get them wrong and files won't lint or, worse, will mean something else:
 
-- `environments` — optional array of env names. If omitted, the project has no environments and `rules`, `force`, and `expose` are direct values.
-- `tags` — must include any tag you put on a feature.
-- `namespaceCharacter` — separator for directory-namespaced keys. **Default `.`** (`features/checkout/promo.yml` → `checkout.promo`); some projects use `/`.
-- `sets` — if `true`, each directory under `sets/<set>/` is an independent project tree; author inside the right set and scope commands with `--set`. Read [sets-promotions.md](references/sets-promotions.md) before doing anything in such a project.
-- `parser` — if `"json"` author in JSON; otherwise YAML. Inspect a couple of existing files to confirm the on-disk style.
-- `defaultBucketBy` — default is `userId`, but projects may override.
-- Directory paths (`featuresDirectoryPath`, etc.) — respect any overrides.
+- `sets` — if `true`, every path moves under `sets/<set>/…` and you must author in the right set and scope commands with `--set`. Read [sets-promotions.md](references/sets-promotions.md) before doing anything in such a project.
+- `environments` — if present, `rules`, `force`, and `expose` are maps keyed by env; **if omitted, they are direct lists** with no env level at all.
+- `parser` — if `"json"` author in JSON; otherwise YAML.
+- `namespaceCharacter` — separator for directory-namespaced keys. **Default `.`** (`features/checkout/promo.yml` → `checkout.promo`); some projects use `/` (→ `checkout/promo`). Every key you write — in `segments:` of rules, `required:`, test specs, SDK calls — must use the project's separator. Confirm against reality, not assumption: `npx featurevisor list --segments --json` shows keys exactly as the project spells them.
+
+Also note: `tags` (must include any tag you put on a feature), `defaultBucketBy` (default `userId`), and directory-path overrides (`featuresDirectoryPath`, etc.).
 
 Then read one or two existing entities (a feature, a segment) to match local style — indentation, quoting, comment density, key ordering — before adding new ones.
 
@@ -171,11 +186,12 @@ Practical consequences:
 
 ### Starting a brand-new project
 
-1. In an empty directory (a new repo, separate from app code): `npx @featurevisor/cli init`, then `npm install`.
-2. Adjust `featurevisor.config.js` (`environments`, `tags`) to the user's world.
-3. Replace the scaffolded example entities with the user's first real attribute → segment → feature, in that order (features reference segments; segments reference attributes).
-4. `npx featurevisor lint && npx featurevisor build --no-state-files` to prove the pipeline.
-5. Offer the CI/CDN deployment setup from [building-datafiles.md](references/building-datafiles.md) when they're ready to ship.
+1. Run the setup interview from [Orient yourself first](#no-project-yet-interview-then-scaffold) — environments, sets or not, tags/targets, format, bucketing identity.
+2. Scaffold in an empty directory (a new repo, separate from app code) with the closest `init --example=…`, then `npm install`.
+3. Adjust `featurevisor.config.js` until it matches the interview answers exactly (`environments`, `tags`, `sets`, `defaultBucketBy`, parser).
+4. Replace the scaffolded example entities with the user's first real attribute → segment → feature, in that order (features reference segments; segments reference attributes), and matching targets.
+5. `npx featurevisor lint && npx featurevisor test && npx featurevisor build --no-state-files` to prove the pipeline.
+6. Offer the CI/CDN deployment setup from [building-datafiles.md](references/building-datafiles.md) when they're ready to ship — and `npx featurevisor catalog` so they can see what they built.
 
 ### Adding a new feature flag
 

@@ -6,14 +6,27 @@ Source of truth: <https://featurevisor.com/docs/cli>
 
 ## Setup
 
+Before scaffolding, run the setup interview in SKILL.md (environments? sets? tags/targets? format? bucketing identity?) — then pick the example that matches:
+
 ```bash
 # inside an empty directory
-npx @featurevisor/cli init                      # scaffold the default (yml) example
-npx @featurevisor/cli init --example=json       # or a specific example: yml | json | toml | sets | targets | no-environments | …
+npx @featurevisor/cli init                      # default: yml, staging+production, one `all` tag/target
+npx @featurevisor/cli init --example=<name>
 npm install
 ```
 
-`init` downloads an `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). The scaffold includes `featurevisor.config.js`, starter attributes/segments/features, a `targets/all.yml`, and tests — a working project out of the box.
+| `--example=`        | Matches                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| `yml` (default)     | YAML, `staging` + `production` environments, single tree             |
+| `json`              | Same but JSON definitions                                             |
+| `toml`              | Custom-parser (TOML) demo                                             |
+| `no-environments`   | No environments — rules are direct lists                              |
+| `sets`              | Sets as surfaces (`storefront` / `admin`), with environments          |
+| `test-environments` | Sets as release lanes (`dev` / `staging` / `production`) with `promotionFlows`, no environments |
+| `targets`           | Many targets/tag-selector shapes demo                                 |
+| `namespace-slash`   | `namespaceCharacter: "/"` demo                                        |
+
+`init` downloads the matching `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). Each scaffold is a working project out of the box — adjust `featurevisor.config.js` to the user's answers afterwards.
 
 ## Lint
 

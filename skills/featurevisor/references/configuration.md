@@ -24,6 +24,19 @@ Always inspect the active config before authoring:
 npx featurevisor config --json --pretty
 ```
 
+## The four shape-changers
+
+Four values determine the *shape* of every file in the project — classify the project on these before writing anything:
+
+| Value                | If set / changed                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `sets`               | `true` → every definition lives under `sets/<set>/…`; commands scope with `--set`. See [sets-promotions.md](sets-promotions.md).      |
+| `environments`       | Present → `rules`/`force`/`expose` are per-env maps. **Absent → they are direct lists** (no env level).                                |
+| `parser`             | `"json"` → author `.json` files; custom parser → author in that format. See [custom-parsers.md](custom-parsers.md).                    |
+| `namespaceCharacter` | Key separator for namespaced entities — default `.`, sometimes `/`. Every key reference must use it. See [namespaces.md](namespaces.md). |
+
+The same request ("add a feature at 10%") produces structurally different files depending on these four — always detect first, then author.
+
 ## Keys you will encounter
 
 | Key                                                                                                                                      | Purpose                                                                         |
