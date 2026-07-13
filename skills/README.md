@@ -1,6 +1,6 @@
 # Featurevisor skills
 
-Agent skills for authoring and querying [Featurevisor](https://featurevisor.com) projects — Git-based feature flags and experimentation.
+Agent skills for authoring, querying, and integrating [Featurevisor](https://featurevisor.com) — Git-based feature flags, experimentation, and remote config.
 
 Installable via [`npx skills`](https://www.skills.sh):
 
@@ -19,17 +19,18 @@ Then in your agent (Claude Code, Cursor, Codex, OpenCode, etc.) ask things like:
 - "Which features depend on `checkoutRedesign`?"
 - "Add an A/B test variation to `pricingPage`"
 - "What features are enabled in production without test coverage?"
+- "Set up a brand-new Featurevisor project for my team"
+- "Wire the `checkout` feature into my React app"
 
 ## What's included
 
 A single skill, `featurevisor`, that the agent invokes (e.g. as `/featurevisor` in Claude Code) covering:
 
 - **Authoring** — features (flags, variations, variables, force, required, expose), segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
-- **Testing** — declarative `.spec.yml` assertions, matrix expansion, per-target and per-set runs.
-- **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML.
-- **Templates** — copy-and-adapt YAML for every common authoring shape.
-
-SDK / application integration is intentionally out of scope — the skill links to <https://featurevisor.com/docs/sdks> on demand.
+- **Testing** — declarative `.spec.yml` assertions, matrix expansion, sticky/children inputs, per-target and per-set runs.
+- **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML, plus the browsable Catalog.
+- **Application integration** — `@featurevisor/sdk` (JavaScript/TypeScript, Node, browser, edge), `@featurevisor/react`, and `@featurevisor/vue`: context, evaluation, datafile refresh, server-side child instances, events, sticky, modules, and typed code generation. Other language SDKs (Python, Ruby, Go, Java, Swift, PHP, Roku) are linked from the skill.
+- **Templates** — copy-and-adapt YAML for every common authoring shape, plus a complete lint- and test-passing example project.
 
 ## Updating
 

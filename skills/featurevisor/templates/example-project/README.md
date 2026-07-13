@@ -14,7 +14,7 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 │   └── plan.yml                 # string, enum-validated
 ├── segments/
 │   ├── countries/
-│   │   └── netherlands.yml      # namespaced
+│   │   └── netherlands.yml      # namespaced: key is countries.netherlands
 │   └── qa.yml                   # force-target QA
 ├── features/
 │   └── checkout.yml             # flag + variations + variables + force
@@ -31,7 +31,7 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 
 - Two environments (`staging`, `production`) and two tags (`web`, `all`).
 - Signed-in + anonymous bucketing via `bucketBy: {or: [userId, deviceId]}`.
-- A namespaced segment (`countries/netherlands`).
+- A namespaced segment (`countries.netherlands` — directory name + default `.` separator).
 - A QA `force:` block so a known segment always sees the feature regardless of rollout %.
 - A `targets/all.yml` so `npx featurevisor build` produces a `featurevisor-all.json` datafile per environment.
 - A/B test with two variations (`control`/`treatment`).

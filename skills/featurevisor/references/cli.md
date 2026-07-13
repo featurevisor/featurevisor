@@ -8,10 +8,12 @@ Source of truth: <https://featurevisor.com/docs/cli>
 
 ```bash
 # inside an empty directory
-npx @featurevisor/cli init                      # default example
-npx @featurevisor/cli init --example=json       # specific example from the monorepo
+npx @featurevisor/cli init                      # scaffold the default (yml) example
+npx @featurevisor/cli init --example=json       # or a specific example: yml | json | toml | sets | targets | no-environments | …
 npm install
 ```
+
+`init` downloads an `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). The scaffold includes `featurevisor.config.js`, starter attributes/segments/features, a `targets/all.yml`, and tests — a working project out of the box.
 
 ## Lint
 
@@ -273,11 +275,18 @@ Copies definitions and their dependencies between [sets](https://featurevisor.co
 
 ## catalog
 
+Static, read-only web UI for browsing the whole project — features, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. Ideal for sharing with non-engineers.
+
 ```bash
-npx featurevisor catalog                          # export, serve, and watch the catalog
-npx featurevisor catalog export                   # build the static catalog
-npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
+npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch
+npx featurevisor catalog --port=4000              # (-p also works)
+npx featurevisor catalog export                   # build static output to catalogDirectoryPath (default catalog/)
+npx featurevisor catalog export --outDir=./out    # write elsewhere
+npx featurevisor catalog export --hash-router     # for static hosts without an index.html fallback
+npx featurevisor catalog serve [-p 3000]          # serve an existing export (exports first if missing)
 ```
+
+Full docs: <https://featurevisor.com/docs/catalog>
 
 ## version
 
@@ -285,3 +294,7 @@ npx featurevisor catalog serve [-p 3000]          # serve an exported catalog
 npx featurevisor --version
 npx featurevisor -v
 ```
+
+## Custom commands (plugins)
+
+Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins — read their source before using. Docs: <https://featurevisor.com/docs/plugins>.

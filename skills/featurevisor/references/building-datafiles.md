@@ -16,10 +16,10 @@ npx featurevisor build --no-state-files
 
 **Always pass `--no-state-files` when an agent runs build locally** — it prevents `.featurevisor/REVISION` and `.featurevisor/state-*.json` from being touched, which the user generally doesn't want in non-CI runs.
 
-Output lands in `<datafilesDirectoryPath>` (default `dist/`):
+Output lands in `<datafilesDirectoryPath>` (default `datafiles/`):
 
 ```
-dist/
+datafiles/
 ├── staging/
 │   └── featurevisor-all.json
 └── production/
@@ -57,7 +57,7 @@ Authoring rules:
 - **CI**: builds without `--no-state-files`; commits the updated state files back with `[skip ci]`.
 - **Local / agent**: builds **with** `--no-state-files`; never commit state changes from local.
 
-The user usually has `dist/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
+The user usually has `datafiles/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
 
 ## Deployment (CI pipeline)
 
@@ -76,7 +76,7 @@ git add .featurevisor/
 git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
 git push origin main
 
-# 4. upload dist/ to CDN
+# 4. upload datafiles/ to CDN
 #    (provider-specific: aws s3 sync, wrangler pages deploy, gh-pages, etc.)
 ```
 
@@ -96,16 +96,16 @@ const datafile = await fetch(url).then(r => r.json())
 const f = createFeaturevisor({ datafile })
 ```
 
-Full SDK docs (out of scope for this skill, link only): <https://featurevisor.com/docs/sdks/javascript>
+For full SDK integration (context, evaluation, refresh, React/Vue, server-side), read [sdk-javascript.md](sdk-javascript.md).
 
 ## Refreshing in production
 
 Two common patterns:
 
-- **Polling** — SDK refreshes the datafile periodically (e.g. every 30s).
-- **Push** — your deploy pipeline broadcasts a "refresh now" signal to running apps.
+- **Polling** — the application refetches the datafile periodically (e.g. every 5 minutes) and calls `setDatafile` again.
+- **Push** — your deploy pipeline broadcasts a "refresh now" signal (websocket/SSE) to running apps.
 
-Both are SDK-side concerns — out of scope here. Link: <https://featurevisor.com/docs/sdks/javascript>.
+Both are application-side concerns — see [sdk-javascript.md](sdk-javascript.md#keeping-the-datafile-fresh).
 
 ## Inspecting a datafile entry
 

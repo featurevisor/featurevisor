@@ -40,6 +40,37 @@ Available expectations on a feature assertion:
 | `expectedVariables`   | object  | Map of variable key → expected value            |
 | `expectedEvaluations` | object  | Lower-level evaluation result checks (advanced) |
 
+Additional inputs an assertion can set up (advanced, all optional):
+
+| Field                                             | Purpose                                                                                                                                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sticky`                                          | Sticky features for the test SDK instance — consulted before evaluation, exactly like `f.setSticky()` at runtime                                                                            |
+| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`                                                                                                                                      |
+| `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
+
+```yaml
+assertions:
+  # child instances (server-side spawn behavior)
+  - at: 10
+    environment: production
+    context: {}
+    expectedToBeEnabled: true
+    children:
+      - context: { country: nl }
+        expectedToBeEnabled: false
+
+  # sticky input
+  - at: 40
+    environment: production
+    sticky:
+      redesign:
+        enabled: true
+    context: { country: de }
+    expectedToBeEnabled: true
+```
+
+`expectedEvaluations` asserts fields of the raw evaluation objects (`flag:`, `variation:`, `variables.<key>:`) such as `reason` or `ruleKey` — useful for pinning *why* a value was returned, not just what.
+
 ## Segment spec
 
 ```yaml

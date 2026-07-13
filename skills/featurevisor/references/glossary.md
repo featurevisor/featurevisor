@@ -27,7 +27,7 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` → number in [0,100].                                                             |
 | **Sticky**            | SDK-side override for a feature (variation/variables/enabled) consulted before rules.                                                            |
 | **Activation**        | The event of a user being assigned a variation; commonly piped to analytics.                                                                     |
-| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `allocated`, `error`, `out_of_traffic`, etc. — surfaced by `featurevisor evaluate --verbose`. |
+| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
 
 ## Rollout terms
 
@@ -49,7 +49,7 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Generated datafiles use schema version 2.   |
 | **Tag**         | Feature metadata used by targets to select features.                                                                    |
 | **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
-| **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout/promo`). Organizational only. |
+| **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |
 | **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
 | **State files** | `.featurevisor/state-*.json` snapshots used to preserve bucketing across builds.                                        |
 

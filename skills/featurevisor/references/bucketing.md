@@ -12,7 +12,7 @@ For each evaluation, the SDK builds a **bucketing key** from:
 1. The feature key (string)
 2. The value of the feature's `bucketBy` attribute(s) in the provided context
 
-The key is hashed deterministically to a number in **[0, 100]** with 2-decimal precision. Then:
+The key is hashed deterministically to a number in **[0, 100]** (represented internally as an integer 0–100,000, i.e. 3-decimal precision — that's the `bucketValue` you see in evaluation output). Then:
 
 - Rules are evaluated top-to-bottom against `context`. The first rule whose `segments` match wins.
 - If that rule's `percentage` is ≥ the hash, the flag evaluates true; else false.
@@ -70,7 +70,7 @@ npx featurevisor build --revision-from-hash    # per-datafile hash; unchanged co
 
 ## Sticky values (SDK-side override)
 
-Independent of bucketing, the SDK supports **sticky** values — application-supplied per-feature overrides (variation/variables/enabled) consulted **before** evaluation. Documented for completeness; sticky is set at SDK init time, not in YAML:
+Independent of bucketing, the SDK supports **sticky** values — application-supplied per-feature overrides (variation/variables/enabled) consulted **before** evaluation. Sticky is set from application code, not in YAML (details in [sdk-javascript.md](sdk-javascript.md#sticky)):
 
 ```js
 f.setSticky({

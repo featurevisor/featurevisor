@@ -20,6 +20,8 @@ Source docs (the authoritative versions): <https://featurevisor.com/docs/use-cas
 | [Decouple release from deploy](#decouple-release-from-deploy)                      | Ship code anytime, expose features independently                |
 | [Establishing ownership](#establishing-ownership)                                  | CODEOWNERS for feature/segment files                            |
 
+Two further patterns live elsewhere: **RBAC / roles-and-permissions** is the [entitlements recipe](#user-entitlements--plans) with roles as variations (docs: <https://featurevisor.com/docs/use-cases/rbac>), and **loading datafiles on demand** (start small, merge more target datafiles as the user navigates) is an SDK pattern — see [sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile).
+
 ---
 
 ## Progressive delivery / gradual rollout
@@ -57,7 +59,7 @@ Guidance:
 rules:
   production:
     - key: nl                            # target NL first at 100%
-      segments: countries/netherlands
+      segments: countries.netherlands
       percentage: 100
     - key: everyone                      # then ramp the rest
       segments: '*'
@@ -229,7 +231,7 @@ variablesSchema:
 rules:
   production:
     - key: nl
-      segments: countries/netherlands
+      segments: countries.netherlands
       percentage: 100
       variables:
         paymentMethods: [paypal, ideal]

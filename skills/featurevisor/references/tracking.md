@@ -4,7 +4,7 @@ Featurevisor itself is not an analytics platform. To measure experiments you wir
 
 Full docs:
 
-- Modules API: <https://featurevisor.com/docs/sdks/javascript> (search "modules")
+- Modules API: [sdk-javascript.md](sdk-javascript.md#modules) and <https://featurevisor.com/docs/sdks/javascript>
 - GTM / GA4 recipe: <https://featurevisor.com/docs/tracking/google-analytics>
 
 ## What "activation" means

@@ -122,6 +122,18 @@ Add repeatable `--target=<target>` options for per-target and per-environment da
 npx featurevisor config --json --pretty
 ```
 
+## "Can I just browse everything?" (Catalog — great for PMs and non-engineers)
+
+When the user wants to *explore* rather than query — or wants something to share with less technical teammates — offer the Catalog: a static, read-only web UI showing every feature, segment, attribute, target, group, and schema with relationships, rules, variables, test coverage, and Git history.
+
+```bash
+npx featurevisor catalog                 # export + serve at http://127.0.0.1:3000 + live reload
+npx featurevisor catalog export          # build static output to catalog/ for hosting
+npx featurevisor catalog serve           # serve a previous export
+```
+
+Its feature search supports qualifiers like `tag:web`, `in:production`, `with:variations`, `variable:bgColor`, `archived:false`. The export deploys to any static host. Full docs: <https://featurevisor.com/docs/catalog>.
+
 ## Workflow tip
 
 When answering a multi-part question ("show me all web features in production that have an A/B test running and no tests"), chain filters in one `list` call rather than running multiple and intersecting. The JSON output then feeds directly into your reasoning:
