@@ -1,0 +1,35 @@
+description: Checkout promotion configured through variables
+tags:
+  - all
+  - checkout
+
+bucketBy: user/id
+
+variablesSchema:
+  headline:
+    type: string
+    defaultValue: Save on your order
+  discountPercentage:
+    type: integer
+    defaultValue: 10
+  showCountdown:
+    type: boolean
+    defaultValue: false
+
+rules:
+  staging:
+    - key: everyone
+      segments: "*"
+      percentage: 100
+      variables:
+        showCountdown: true
+  production:
+    - key: netherlands
+      segments: audience/netherlands
+      percentage: 100
+      variables:
+        headline: Special offer for the Netherlands
+        discountPercentage: 20
+    - key: everyone
+      segments: "*"
+      percentage: 100

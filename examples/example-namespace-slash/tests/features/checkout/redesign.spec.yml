@@ -1,0 +1,10 @@
+feature: checkout/redesign
+assertions:
+  - description: Users in the Netherlands receive the redesigned checkout
+    at: 50
+    environment: production
+    context:
+      user/id: user-123
+      user/country: nl
+    expectedToBeEnabled: true
+    expectedVariation: redesigned

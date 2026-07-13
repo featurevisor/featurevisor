@@ -200,6 +200,88 @@ describe("catalog export", () => {
     ).toBe(true);
   });
 
+  it("writes slash-namespaced entity details as nested data paths", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+    const projectConfig = {
+      ...createProjectConfig(root),
+      namespaceCharacter: "/",
+    };
+    const baseDatasource = createDatasource();
+    const featureKey = "checkout/redesign";
+    const datasource = {
+      ...baseDatasource,
+      listHistoryEntries: async () => [
+        {
+          commit: "root123456789",
+          author: "Test",
+          timestamp: "2026-01-01T00:00:00.000Z",
+          entities: [{ type: "feature", key: featureKey }],
+        },
+      ],
+      listFeatures: async () => [featureKey],
+      readFeature: async () => ({
+        ...(await baseDatasource.readFeature()),
+        key: featureKey,
+      }),
+      listTests: async () => ["features/checkout/redesign.spec"],
+      readTest: async () => ({
+        key: "features/checkout/redesign.spec",
+        feature: featureKey,
+        assertions: [],
+      }),
+    };
+
+    await exportCatalog(createRuntime(), root, projectConfig, datasource, {
+      copyAssets: false,
+    });
+
+    const nestedDetailPath = path.join(
+      root,
+      "catalog",
+      "data",
+      "root",
+      "entities",
+      "feature",
+      "checkout",
+      "redesign.json",
+    );
+    const legacyFlatDetailPath = path.join(
+      root,
+      "catalog",
+      "data",
+      "root",
+      "entities",
+      "feature",
+      "checkout%2Fredesign.json",
+    );
+    const detail = JSON.parse(fs.readFileSync(nestedDetailPath, "utf8"));
+    const index = JSON.parse(
+      fs.readFileSync(path.join(root, "catalog", "data", "root", "index.json"), "utf8"),
+    );
+
+    expect(fs.existsSync(legacyFlatDetailPath)).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          root,
+          "catalog",
+          "data",
+          "root",
+          "entities",
+          "feature",
+          "checkout",
+          "redesign",
+          "history",
+          "page-1.json",
+        ),
+      ),
+    ).toBe(true);
+    expect(index.entities.feature[0].key).toBe(featureKey);
+    expect(index.entities.feature[0].href).toBe("entities/feature/checkout/redesign.json");
+    expect(detail.sourcePath).toBe("features/checkout/redesign.yml");
+    expect(detail.historyPath).toBe("data/root/entities/feature/checkout/redesign/history");
+  });
+
   it("exports repository source links and dev editor links", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
 
