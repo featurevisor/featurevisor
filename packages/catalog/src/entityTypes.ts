@@ -55,6 +55,13 @@ export function encodeDataSegment(value: string) {
   return encodeURIComponent(value);
 }
 
+export function encodeDataPath(value: string) {
+  return value
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 export function getBasePath(setKey?: string) {
   return setKey ? `/sets/${encodeRouteSegment(setKey)}` : "";
 }

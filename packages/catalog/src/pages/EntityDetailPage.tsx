@@ -35,6 +35,7 @@ import {
   type SchemaLike,
 } from "../components/variables";
 import { FeatureVariationsList } from "../components/variations";
+import { EntityTests } from "../components/tests";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
   return (
@@ -75,6 +76,129 @@ function RulePermalink(props: { targetId: string }) {
         <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L13 20" />
       </svg>
     </a>
+  );
+}
+
+async function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through for browsers that expose the API but deny access in the current context.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  let copied = false;
+
+  try {
+    copied = document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  if (!copied) {
+    throw new Error("Could not copy entity key");
+  }
+}
+
+function CopyEntityKeyButton(props: { entityKey: string }) {
+  const [status, setStatus] = React.useState<"idle" | "copied" | "error">("idle");
+  const resetTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (resetTimer.current) {
+        clearTimeout(resetTimer.current);
+      }
+    };
+  }, []);
+
+  async function handleCopy() {
+    if (resetTimer.current) {
+      clearTimeout(resetTimer.current);
+    }
+
+    try {
+      await copyText(props.entityKey);
+      setStatus("copied");
+    } catch {
+      setStatus("error");
+    }
+
+    resetTimer.current = setTimeout(() => {
+      setStatus("idle");
+      resetTimer.current = null;
+    }, 2000);
+  }
+
+  const label =
+    status === "copied"
+      ? `Copied ${props.entityKey}`
+      : status === "error"
+        ? `Could not copy ${props.entityKey}`
+        : `Copy ${props.entityKey}`;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        onClick={handleCopy}
+        className={[
+          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-faint outline-none transition-all",
+          "opacity-100 md:opacity-0 md:group-hover:opacity-100",
+          "hover:border-border hover:bg-elevated hover:text-text",
+          "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary",
+          status === "copied"
+            ? "border-green-200 bg-green-50 text-green-600 !opacity-100"
+            : status === "error"
+              ? "border-red-200 bg-red-50 text-red-600 !opacity-100"
+              : "border-border/70 bg-surface",
+        ].join(" ")}
+      >
+        {status === "copied" ? (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+            className="h-4 w-4"
+          >
+            <path d="m4 10 3.5 3.5L16 5" />
+          </svg>
+        ) : (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+            className="h-4 w-4"
+          >
+            <rect x="6.5" y="6.5" width="9" height="9" rx="1.5" />
+            <path d="M13.5 6.5V5A1.5 1.5 0 0 0 12 3.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5" />
+          </svg>
+        )}
+      </button>
+      <span className="sr-only" aria-live="polite">
+        {status === "copied" ? "Entity key copied" : status === "error" ? "Copy failed" : ""}
+      </span>
+    </>
   );
 }
 
@@ -362,6 +486,7 @@ export function EntityDetailPage() {
           { to: "force", label: "Force" },
         ]
       : []),
+    ...(type === "feature" || type === "segment" ? [{ to: "tests", label: "Tests" }] : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
     { to: "history", label: "History" },
   ];
@@ -370,6 +495,7 @@ export function EntityDetailPage() {
     <div>
       <PageHeader
         title={detail.key}
+        titleAction={<CopyEntityKeyButton entityKey={detail.key} />}
         description={entityLabels[type].singular}
         actions={<EditLink sourcePath={detail.sourcePath} editLinks={detail.editLinks} />}
       />
@@ -946,6 +1072,20 @@ export function UsageTab() {
       ))}
     </div>
   );
+}
+
+export function TestsTab() {
+  const { detail } = useEntityDetail();
+
+  if (detail.type !== "feature" && detail.type !== "segment") {
+    return <Navigate to=".." replace />;
+  }
+
+  if (!detail.tests?.length) {
+    return <EmptyState title="No test specs found" />;
+  }
+
+  return <EntityTests tests={detail.tests} />;
 }
 
 export function HistoryTab() {

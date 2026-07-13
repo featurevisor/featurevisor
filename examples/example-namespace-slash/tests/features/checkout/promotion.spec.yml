@@ -1,0 +1,13 @@
+feature: checkout/promotion
+assertions:
+  - description: Dutch users receive the localized promotion
+    at: 50
+    environment: production
+    context:
+      user/id: user-123
+      user/country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      headline: Special offer for the Netherlands
+      discountPercentage: 20
+      showCountdown: false

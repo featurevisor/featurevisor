@@ -1,0 +1,16 @@
+{
+  "name": "@featurevisor/example-namespace-slash",
+  "private": true,
+  "version": "3.0.1",
+  "description": "Featurevisor project using slash-separated entity namespaces",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test --only-failures",
+    "export": "featurevisor catalog export",
+    "start": "featurevisor catalog"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "3.0.1"
+  }
+}

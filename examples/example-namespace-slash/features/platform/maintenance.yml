@@ -1,0 +1,16 @@
+description: Simple maintenance mode flag
+tags:
+  - all
+  - platform
+
+bucketBy: user/id
+
+rules:
+  staging:
+    - key: enabled
+      segments: "*"
+      percentage: 100
+  production:
+    - key: disabled
+      segments: "*"
+      percentage: 0

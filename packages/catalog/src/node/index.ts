@@ -242,8 +242,18 @@ class CatalogProgressReporter {
   }
 }
 
-function encodeKey(key: string) {
-  return encodeURIComponent(key);
+function encodeKeyPath(key: string) {
+  return key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join(path.sep);
+}
+
+function encodeKeyUrlPath(key: string) {
+  return key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
 }
 
 function toPosixPath(value: string) {
@@ -448,7 +458,7 @@ function getEntitySummary(
     promotable: entity.promotable,
     ...extra,
     lastModified: getLastModified(historyIndex, type, key, set),
-    href: `entities/${type}/${encodeKey(key)}.json`,
+    href: `entities/${type}/${encodeKeyUrlPath(key)}.json`,
   };
 }
 
@@ -1193,6 +1203,13 @@ async function buildSetCatalog(
       );
       const lastModified = getLastModified(context.historyIndex, plan.type, key, set);
       const entityRelationships = getEntityRelationships(plan.type, key, relationships);
+      const entityTests =
+        plan.type === "feature" || plan.type === "segment"
+          ? (entityRelationships.tests || []).map((testKey) => ({
+              ...maps.test[testKey],
+              key: maps.test[testKey].key || testKey,
+            }))
+          : undefined;
       const detail: EntityDetail = {
         type: plan.type,
         key,
@@ -1201,25 +1218,26 @@ async function buildSetCatalog(
         editLinks: getEditorLinks(context.devEditors, sourceFileInfo),
         lastModified,
         relationships: entityRelationships,
+        tests: entityTests?.length ? entityTests : undefined,
         environments: projectConfig.environments,
         historyPath: `${path.posix.join(
           "data",
           outputRelativeDirectory.split(path.sep).join(path.posix.sep),
           "entities",
           plan.type,
-          encodeKey(key),
+          encodeKeyUrlPath(key),
           "history",
         )}`,
       };
 
       await context.writer.write(
-        path.join(outputDirectoryPath, "entities", plan.type, `${encodeKey(key)}.json`),
+        path.join(outputDirectoryPath, "entities", plan.type, `${encodeKeyPath(key)}.json`),
         detail,
       );
 
       await writeHistoryPages(
         context.writer,
-        path.join(outputDirectoryPath, "entities", plan.type, encodeKey(key), "history"),
+        path.join(outputDirectoryPath, "entities", plan.type, encodeKeyPath(key), "history"),
         context.historyIndex.byEntity[getHistoryEntityKey(plan.type, key, set)] || [],
       );
 

@@ -123,18 +123,14 @@ export function LabelValueBadge(props: {
       {props.value}
     </Link>
   ) : (
-    <span className={props.compact ? undefined : "font-medium text-text"}>{props.value}</span>
+    <span className="font-medium text-text">{props.value}</span>
   );
 
   if (props.compact) {
     return (
-      <span className="inline-flex h-6 shrink-0 overflow-hidden rounded-full border border-border text-[11px] leading-none text-faint transition-colors group-hover:text-muted">
-        <span className="flex items-center bg-slate-100 pl-1.5 pr-1.5 font-medium transition-colors group-hover:bg-slate-200">
-          {props.label}
-        </span>
-        <span className="flex items-center bg-surface pl-1.5 pr-1.5 transition-colors group-hover:bg-slate-100">
-          {valueContent}
-        </span>
+      <span className="inline-flex h-5 shrink-0 overflow-hidden rounded-md border border-border/70 text-[10px] leading-none">
+        <span className="flex items-center bg-elevated px-1.5 text-muted">{props.label}</span>
+        <span className="flex items-center bg-surface px-1.5 text-text">{valueContent}</span>
       </span>
     );
   }
@@ -241,15 +237,19 @@ export function EmptyState(props: { title: string; description?: string }) {
 
 export function PageHeader(props: {
   title: React.ReactNode;
+  titleAction?: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   return (
     <div className="mb-6 flex flex-col justify-between gap-4 border-b border-border px-6 pb-4 pt-8 md:flex-row md:items-start">
       <div className="min-w-0 flex-1">
-        <h1 className="min-w-0 text-3xl font-black text-text [overflow-wrap:anywhere]">
-          {props.title}
-        </h1>
+        <div className="group flex min-w-0 items-center gap-2">
+          <h1 className="min-w-0 text-3xl font-black text-text [overflow-wrap:anywhere]">
+            {props.title}
+          </h1>
+          {props.titleAction ? <div className="shrink-0">{props.titleAction}</div> : null}
+        </div>
         {props.description && (
           <div className="mt-2 min-w-0 text-sm text-muted [overflow-wrap:anywhere]">
             {props.description}

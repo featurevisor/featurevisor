@@ -450,7 +450,7 @@ function VariationsIcon() {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex h-4 min-w-4 items-center justify-center font-mono text-[9px] font-bold leading-none tracking-tight"
+      className="inline-flex items-center justify-center font-mono text-[9px] font-semibold leading-none tracking-tight"
     >
       a/b
     </span>
@@ -461,22 +461,10 @@ function VariablesIcon() {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex h-4 min-w-4 items-center justify-center font-mono text-[9px] font-bold leading-none"
+      className="inline-flex items-center justify-center font-mono text-[9px] font-semibold leading-none"
     >
       {"{ }"}
     </span>
-  );
-}
-
-function TargetIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-      <path
-        fillRule="evenodd"
-        d="M10 2.75a7.25 7.25 0 1 0 0 14.5 7.25 7.25 0 0 0 0-14.5ZM4.25 10a5.75 5.75 0 1 1 11.5 0 5.75 5.75 0 0 1-11.5 0ZM10 6.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5ZM7.75 10a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0Z"
-        clipRule="evenodd"
-      />
-    </svg>
   );
 }
 
@@ -484,8 +472,8 @@ function sortValues(values?: string[]) {
   return Array.from(new Set(values || [])).sort((left, right) => left.localeCompare(right));
 }
 
-const rowMetadataIconClassName =
-  "rounded-full bg-slate-100 p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600";
+const rowMetadataItemClassName =
+  "h-full min-w-5 items-center justify-center px-1 text-faint transition-colors hover:bg-elevated hover:text-muted";
 
 function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityType }) {
   const targets = sortValues(props.entity.targets);
@@ -498,20 +486,26 @@ function RowMetadataIcons(props: { entity: EntitySummary; type: CatalogEntityTyp
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex h-5 shrink-0 divide-x divide-border/70 overflow-hidden rounded-md border border-border/70 bg-surface">
       {showVariations && (
-        <HoverTooltip label="Has variations" className={rowMetadataIconClassName}>
+        <HoverTooltip label="Has variations" className={rowMetadataItemClassName}>
           <VariationsIcon />
         </HoverTooltip>
       )}
       {showVariables && (
-        <HoverTooltip label="Has variables" className={rowMetadataIconClassName}>
+        <HoverTooltip label="Has variables" className={rowMetadataItemClassName}>
           <VariablesIcon />
         </HoverTooltip>
       )}
       {targets.length > 0 && (
-        <HoverTooltip label={`Targets: ${targets.join(", ")}`} className={rowMetadataIconClassName}>
-          <TargetIcon />
+        <HoverTooltip
+          label={`Targets: ${targets.join(", ")}`}
+          className={`${rowMetadataItemClassName} px-1.5`}
+        >
+          <span className="inline-flex items-baseline gap-1 text-[10px] leading-none">
+            <span>Targets</span>
+            <span className="font-semibold tabular-nums text-muted">{targets.length}</span>
+          </span>
         </HoverTooltip>
       )}
     </div>
