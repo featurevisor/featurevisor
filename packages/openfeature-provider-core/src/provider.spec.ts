@@ -236,11 +236,20 @@ describe("Featurevisor OpenFeature mapping", () => {
     const featurevisor = createFeaturevisor({
       datafile: datafile(),
       logLevel: "fatal",
-      modules: [{ name: "owner", close: () => { closed = true; } }],
+      modules: [
+        {
+          name: "owner",
+          close: () => {
+            closed = true;
+          },
+        },
+      ],
     });
     const provider = new FeaturevisorProvider({ featurevisor });
     expect(provider.featurevisor).toBe(featurevisor);
-    expect(provider.resolve("checkout", false, { targetingKey: "user" }, "boolean").value).toBe(true);
+    expect(provider.resolve("checkout", false, { targetingKey: "user" }, "boolean").value).toBe(
+      true,
+    );
 
     await provider.close();
     expect(closed).toBe(false);
