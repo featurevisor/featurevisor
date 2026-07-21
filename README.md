@@ -91,6 +91,7 @@ Supported SDKs include:
 - [Swift](https://featurevisor.com/docs/sdks/swift/)
 - [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
+- [OpenFeature providers](https://featurevisor.com/docs/sdks/openfeature/) for Node.js, browsers, and other supported SDK languages
 
 ## Using Featurevisor with AI agents
 

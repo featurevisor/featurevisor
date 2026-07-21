@@ -1,5 +1,11 @@
 import { ErrorCode, StandardResolutionReasons } from "@openfeature/core";
-import { createFeaturevisor, type DatafileContent, type Feature } from "@featurevisor/sdk";
+import {
+  createFeaturevisor,
+  type DatafileContent,
+  type Evaluation,
+  type EvaluationReason,
+  type Feature,
+} from "@featurevisor/sdk";
 import { FeaturevisorProvider } from "./provider";
 
 function feature(overrides: Partial<Feature> = {}): Feature {
@@ -190,6 +196,67 @@ describe("Featurevisor OpenFeature mapping", () => {
     );
   });
 
+  it.each([
+    ["required", StandardResolutionReasons.TARGETING_MATCH],
+    ["forced", StandardResolutionReasons.TARGETING_MATCH],
+    ["sticky", StandardResolutionReasons.TARGETING_MATCH],
+    ["rule", StandardResolutionReasons.TARGETING_MATCH],
+    ["variable_override_variation", StandardResolutionReasons.TARGETING_MATCH],
+    ["variable_override_rule", StandardResolutionReasons.TARGETING_MATCH],
+    ["allocated", StandardResolutionReasons.SPLIT],
+    ["disabled", StandardResolutionReasons.DISABLED],
+    ["variation_disabled", StandardResolutionReasons.DISABLED],
+    ["variable_disabled", StandardResolutionReasons.DISABLED],
+    ["out_of_range", StandardResolutionReasons.DEFAULT],
+    ["no_match", StandardResolutionReasons.DEFAULT],
+    ["variable_default", StandardResolutionReasons.DEFAULT],
+  ] satisfies Array<[EvaluationReason, string]>)(
+    "maps the %s evaluation reason to %s",
+    (reason, expectedReason) => {
+      const featurevisor = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+      jest.spyOn(featurevisor, "evaluateFlag").mockReturnValue({
+        type: "flag",
+        featureKey: "checkout",
+        reason,
+        enabled: true,
+      });
+
+      const result = new FeaturevisorProvider({ featurevisor }).resolve(
+        "checkout",
+        false,
+        {},
+        "boolean",
+      );
+      expect(result.reason).toBe(expectedReason);
+      expect(result.errorCode).toBeUndefined();
+    },
+  );
+
+  it("maps general evaluation errors", () => {
+    const featurevisor = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    jest.spyOn(featurevisor, "evaluateFlag").mockReturnValue({
+      type: "flag",
+      featureKey: "checkout",
+      reason: "error",
+      error: new Error("Evaluation failed"),
+    });
+
+    const result = new FeaturevisorProvider({ featurevisor }).resolve(
+      "checkout",
+      false,
+      {},
+      "boolean",
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        value: false,
+        reason: StandardResolutionReasons.ERROR,
+        errorCode: ErrorCode.GENERAL,
+        errorMessage: "Evaluation failed",
+      }),
+    );
+  });
+
   it("returns stable Featurevisor metadata", () => {
     const result = new FeaturevisorProvider({ datafile: datafile() }).resolve(
       "checkout:title",
@@ -206,6 +273,43 @@ describe("Featurevisor OpenFeature mapping", () => {
         schemaVersion: "2",
       }),
     );
+  });
+
+  it("includes all available Featurevisor metadata and the selected variant", () => {
+    const featurevisor = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    const evaluation: Evaluation = {
+      type: "variation",
+      featureKey: "checkout",
+      variableKey: "title",
+      reason: "allocated",
+      ruleKey: "rule-1",
+      bucketKey: "checkout.user-1",
+      bucketValue: 0,
+      forceIndex: 0,
+      variableOverrideIndex: 0,
+      variationValue: "on",
+    };
+    jest.spyOn(featurevisor, "evaluateVariation").mockReturnValue(evaluation);
+
+    const result = new FeaturevisorProvider({ featurevisor }).resolve(
+      "checkout:variation",
+      "fallback",
+      {},
+      "string",
+    );
+    expect(result.variant).toBe("on");
+    expect(result.flagMetadata).toEqual({
+      featureKey: "checkout",
+      variableKey: "title",
+      featurevisorReason: "allocated",
+      revision: "revision-1",
+      schemaVersion: "2",
+      ruleKey: "rule-1",
+      bucketKey: "checkout.user-1",
+      bucketValue: 0,
+      forceIndex: 0,
+      variableOverrideIndex: 0,
+    });
   });
 
   it("forwards tracking and closes the Featurevisor instance", async () => {

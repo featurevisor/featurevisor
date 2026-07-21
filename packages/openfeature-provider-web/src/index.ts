@@ -2,6 +2,7 @@ import {
   FeaturevisorProvider,
   type FeaturevisorProviderOptions,
 } from "@featurevisor/openfeature-provider-core";
+import type { Featurevisor } from "@featurevisor/sdk";
 import type {
   EvaluationContext,
   JsonValue,
@@ -19,7 +20,7 @@ export type {
 export class FeaturevisorOpenFeatureProvider implements Provider {
   readonly metadata = { name: "Featurevisor" } as const;
   readonly runsOn = "client" as const;
-  readonly featurevisor;
+  readonly featurevisor: Featurevisor;
   private readonly provider: FeaturevisorProvider;
 
   constructor(options: FeaturevisorProviderOptions = {}) {

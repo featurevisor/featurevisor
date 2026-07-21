@@ -48,8 +48,15 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "license": "MIT",
+  "sideEffects": false,
   "dependencies": {
     "@featurevisor/openfeature-provider-core": "0.1.0",
+    "@featurevisor/sdk": "^3.0.1"
+  },
+  "peerDependencies": {
+    "@openfeature/web-sdk": "^1.9.0"
+  },
+  "devDependencies": {
     "@openfeature/web-sdk": "^1.9.0"
   }
 }
