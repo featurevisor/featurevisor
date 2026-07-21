@@ -34,12 +34,32 @@ describe("Node.js OpenFeature provider", () => {
   });
 
   it("accepts an existing Featurevisor instance", async () => {
-    const featurevisor = createFeaturevisor({ datafile, logLevel: "fatal" });
+    let closeCount = 0;
+    const featurevisor = createFeaturevisor({
+      datafile,
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "close-counter",
+          close: () => {
+            closeCount++;
+          },
+        },
+      ],
+    });
     const provider = new FeaturevisorOpenFeatureProvider({ featurevisor });
 
     expect(provider.featurevisor).toBe(featurevisor);
+    await OpenFeature.setProviderAndWait("featurevisor-existing", provider);
+    const client = OpenFeature.getClient("featurevisor-existing");
+    await expect(client.getBooleanValue("enabled", false, { targetingKey: "user" })).resolves.toBe(
+      true,
+    );
 
-    await provider.onClose();
+    await OpenFeature.close();
+    expect(closeCount).toBe(0);
+    expect(featurevisor.evaluateFlag("enabled", { userId: "user" }).enabled).toBe(true);
     await featurevisor.close();
+    expect(closeCount).toBe(1);
   });
 });

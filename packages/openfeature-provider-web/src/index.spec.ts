@@ -33,12 +33,31 @@ describe("browser OpenFeature provider", () => {
   });
 
   it("accepts an existing Featurevisor instance", async () => {
-    const featurevisor = createFeaturevisor({ datafile, logLevel: "fatal" });
+    let closeCount = 0;
+    const featurevisor = createFeaturevisor({
+      datafile,
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "close-counter",
+          close: () => {
+            closeCount++;
+          },
+        },
+      ],
+    });
     const provider = new FeaturevisorOpenFeatureProvider({ featurevisor });
 
     expect(provider.featurevisor).toBe(featurevisor);
+    await OpenFeature.setProviderAndWait("featurevisor-existing", provider);
+    await OpenFeature.setContext("featurevisor-existing", { targetingKey: "user" });
+    const client = OpenFeature.getClient("featurevisor-existing");
+    expect(client.getBooleanValue("enabled", false)).toBe(true);
 
-    await provider.onClose();
+    await OpenFeature.close();
+    expect(closeCount).toBe(0);
+    expect(featurevisor.evaluateFlag("enabled", { userId: "user" }).enabled).toBe(true);
     await featurevisor.close();
+    expect(closeCount).toBe(1);
   });
 });
