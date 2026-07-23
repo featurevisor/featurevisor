@@ -66,6 +66,7 @@ try {
     const forbidden = entries.filter(
       (entry) =>
         /\.spec\.[cm]?[jt]sx?(?:\.map)?$/.test(entry) ||
+        /\/(?:jest\.config\.[cm]?js|tsconfig(?:\.[^/]+)?\.json)$/.test(entry) ||
         entry.includes("instance.test-fixtures") ||
         (["core", "parsers", "catalog"].includes(directory) && entry.startsWith("package/src/")),
     );

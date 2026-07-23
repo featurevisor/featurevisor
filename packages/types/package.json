@@ -5,12 +5,16 @@
   "main": "src/index.js",
   "module": "src/index.js",
   "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
       "import": "./src/index.js",
       "require": "./src/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json --noEmit",
