@@ -31,6 +31,26 @@ assertions:
         allowGoogleSignUp:
           reason: variable_default
 
+    children:
+      - context:
+          country: nl
+        expectedToBeEnabled: true
+        expectedVariation: treatment
+        expectedVariables:
+          allowGoogleSignUp: true
+        expectedEvaluations:
+          flag:
+            reason: rule
+            ruleKey: nl
+            bucketValue: 40000
+          variation:
+            reason: rule
+            ruleKey: nl
+          variables:
+            allowGoogleSignUp:
+              reason: allocated
+              ruleKey: nl
+
   - matrix:
       at: [60]
     description: "DE at ${{ at }}% should have treatment variation"

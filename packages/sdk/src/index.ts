@@ -14,6 +14,7 @@ export type {
   OverrideOptions,
   SpawnOptions,
 } from "./instance.js";
+export type { FeaturevisorChildInstance } from "./child.js";
 export type { Evaluation, EvaluationReason } from "./evaluate.js";
 export type {
   FeaturevisorDiagnostic,

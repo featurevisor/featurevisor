@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "description": "Featurevisor v3 cross SDK compatibility contracts",
   "bucketing": {
     "minimum": 0,
@@ -26,7 +26,47 @@
     "pattern": "chrome",
     "flags": "g",
     "values": ["chrome", "chrome", "firefox", "chrome"],
-    "matches": [true, true, false, true]
+    "matches": [true, true, false, true],
+    "portableCases": [
+      {
+        "pattern": "^chrome$",
+        "flags": "",
+        "value": "chrome",
+        "expected": true
+      },
+      {
+        "pattern": "^(chrome|firefox)$",
+        "flags": "i",
+        "value": "Firefox",
+        "expected": true
+      },
+      {
+        "pattern": "^second$",
+        "flags": "m",
+        "value": "first\nsecond",
+        "expected": true
+      },
+      {
+        "pattern": "first.*second",
+        "flags": "s",
+        "value": "first\nsecond",
+        "expected": true
+      },
+      {
+        "pattern": "\\(literal\\)",
+        "flags": "g",
+        "value": "(literal)",
+        "expected": true
+      }
+    ],
+    "rejectedSyntax": [
+      "foo(?=bar)",
+      "(?<=foo)bar",
+      "(?:foo|bar)",
+      "(?<name>foo)",
+      "(foo)\\1",
+      "foo++"
+    ]
   },
   "typedVariables": [
     { "type": "integer", "value": 1, "valid": true },
@@ -44,6 +84,135 @@
   "diagnostics": {
     "requiredFields": ["level", "code", "message", "details"],
     "detailsType": "object",
-    "emptyDetailsJson": "{}"
+    "emptyDetailsJson": "{}",
+    "evaluationDetailFields": ["featureKey", "variableKey", "reason", "evaluation"],
+    "moduleEnvelopeFields": ["module", "moduleName", "originalError"],
+    "errorEventLevels": ["error"]
+  },
+  "numericBucketKeys": [
+    { "value": 1.2345678901234567, "expected": "1.2345678901234567" },
+    { "value": 0.30000000000000004, "expected": "0.30000000000000004" },
+    { "value": 0.000001, "expected": "0.000001" },
+    { "value": 1e-7, "expected": "1e-7" },
+    { "value": 100000000000000000000, "expected": "100000000000000000000" },
+    { "value": 1e21, "expected": "1e+21" }
+  ],
+  "portableConditions": {
+    "regexFlags": ["g", "i", "m", "s"],
+    "rejectedRegexFlags": ["d", "u", "v", "y"],
+    "dateFormat": "ISO 8601 with an explicit timezone",
+    "dates": [
+      "2024-01-01T00:00:00Z",
+      "2024-01-01T01:00:00+01:00",
+      "2024-01-01T00:00:00.250Z",
+      "2024-01-01T01:00:00.250+01:00"
+    ],
+    "semanticVersions": [
+      "1.2.3",
+      "1.2.3-beta.1",
+      "1.2.3+build.5"
+    ],
+    "invalidSemanticVersion": "invalid",
+    "invalidSemanticVersionDiagnosticCode": "condition_match_error"
+  },
+  "conditionCases": [
+    {
+      "name": "strict primitive equality",
+      "condition": {
+        "attribute": "value",
+        "operator": "equals",
+        "value": 1
+      },
+      "context": { "value": "1" },
+      "expected": false
+    },
+    {
+      "name": "not negates implicit and",
+      "condition": {
+        "not": [
+          { "attribute": "country", "operator": "equals", "value": "us" },
+          { "attribute": "device", "operator": "equals", "value": "mobile" }
+        ]
+      },
+      "context": { "country": "us", "device": "desktop" },
+      "expected": true
+    },
+    {
+      "name": "not with nested or means none match",
+      "condition": {
+        "not": [
+          {
+            "or": [
+              { "attribute": "country", "operator": "equals", "value": "us" },
+              { "attribute": "country", "operator": "equals", "value": "nl" }
+            ]
+          }
+        ]
+      },
+      "context": { "country": "de" },
+      "expected": true
+    },
+    {
+      "name": "empty not fails defensively",
+      "condition": { "not": [] },
+      "context": {},
+      "expected": false
+    },
+    {
+      "name": "fractional ISO date with offset",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.500Z"
+      },
+      "context": { "date": "2024-01-01T01:00:00.250+01:00" },
+      "expected": true
+    }
+  ],
+  "childInstances": {
+    "contextModel": "snapshot existing parent keys at spawn, inherit newly introduced parent keys, child keys win",
+    "closeRemovesLocalAndDelegatedSubscriptions": true,
+    "detailedEvaluationMethods": ["flag", "variation", "variable"],
+    "contextCase": {
+      "parentAtSpawn": { "country": "nl", "plan": "free" },
+      "child": { "country": "de" },
+      "parentAfterSpawn": { "country": "us", "plan": "pro", "region": "eu" },
+      "expected": { "country": "de", "plan": "free", "region": "eu" }
+    }
+  },
+  "defaults": {
+    "presenceBased": true,
+    "values": ["", 0, false, null],
+    "aggregateEvaluationPreservesEmptyVariation": true,
+    "aggregateCase": {
+      "datafile": {
+        "schemaVersion": "2",
+        "revision": "defaults",
+        "segments": {},
+        "features": {
+          "experiment": {
+            "key": "experiment",
+            "bucketBy": "userId",
+            "variations": [{ "value": "control" }],
+            "traffic": []
+          }
+        }
+      },
+      "defaultVariationValue": "",
+      "expected": {
+        "enabled": false,
+        "variation": ""
+      }
+    }
+  },
+  "diagnosticCase": {
+    "featureKey": "missing",
+    "expectedLevel": "warn",
+    "expectedCode": "feature_not_found",
+    "detailsMustBeObject": true
+  },
+  "nativeContexts": {
+    "numericTypesUseOneComparisonContract": true,
+    "primitiveNativeSlicesSupportIncludes": true
   }
 }

@@ -1,5 +1,11 @@
 import { getBucketedNumber, MAX_BUCKETED_NUMBER, getBucketKey } from "./bucketer";
 import { noopDiagnosticReporter } from "./diagnostics";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("sdk: Bucket", function () {
   describe("getBucketedNumber", function () {
@@ -21,7 +27,7 @@ describe("sdk: Bucket", function () {
     // these assertions will be copied to unit tests of SDKs ported to other languages,
     // so we can keep consistent bucketing across all SDKs
     it("should return expected number for known keys", function () {
-      const expectedResults = {
+      const expectedResults: Record<string, number> = {
         foo: 20602,
         bar: 89144,
         "123.foo": 3151,
@@ -58,6 +64,19 @@ describe("sdk: Bucket", function () {
       });
 
       expect(bucketKey).toEqual("123.test-feature");
+    });
+
+    it("uses the canonical JavaScript number representation", function () {
+      for (const testCase of conformance.numericBucketKeys) {
+        expect(
+          getBucketKey({
+            featureKey: "feature",
+            bucketBy: "value",
+            context: { value: testCase.value },
+            reportDiagnostic,
+          }),
+        ).toBe(`${testCase.expected}.feature`);
+      }
     });
 
     it("plain: should return a bucket key with feature key only if value is missing in context", function () {
