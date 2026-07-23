@@ -117,8 +117,8 @@ export async function testFeature(
     /**
      * expectedToBeEnabled
      */
-    function testExpectedToBeEnabled(sdk, assertion, details = {}) {
-      const isEnabled = sdk.isEnabled(featureKey, context);
+    function testExpectedToBeEnabled(sdk, assertion, details = {}, evaluationContext = context) {
+      const isEnabled = sdk.isEnabled(featureKey, evaluationContext);
 
       if (isEnabled !== assertion.expectedToBeEnabled) {
         testResult.passed = false;
@@ -140,13 +140,13 @@ export async function testFeature(
     /**
      * expectedVariation
      */
-    function testExpectedVariation(sdk, assertion, details = {}) {
+    function testExpectedVariation(sdk, assertion, details = {}, evaluationContext = context) {
       const overrideOptions: OverrideOptions = {};
-      if (assertion.defaultVariationValue) {
+      if (Object.prototype.hasOwnProperty.call(assertion, "defaultVariationValue")) {
         overrideOptions.defaultVariationValue = assertion.defaultVariationValue;
       }
 
-      const variation = sdk.getVariation(featureKey, context, overrideOptions);
+      const variation = sdk.getVariation(featureKey, evaluationContext, overrideOptions);
 
       if (variation !== assertion.expectedVariation) {
         testResult.passed = false;
@@ -168,17 +168,25 @@ export async function testFeature(
     /**
      * expectedVariables
      */
-    function testExpectedVariables(sdk, assertion, details = {}) {
+    function testExpectedVariables(sdk, assertion, details = {}, evaluationContext = context) {
       Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
         const expectedValue =
           assertion.expectedVariables && assertion.expectedVariables[variableKey];
 
         const overrideOptions: OverrideOptions = {};
-        if (assertion.defaultVariableValues && assertion.defaultVariableValues[variableKey]) {
+        if (
+          assertion.defaultVariableValues &&
+          Object.prototype.hasOwnProperty.call(assertion.defaultVariableValues, variableKey)
+        ) {
           overrideOptions.defaultVariableValue = assertion.defaultVariableValues[variableKey];
         }
 
-        const actualValue = sdk.getVariable(featureKey, variableKey, context, overrideOptions);
+        const actualValue = sdk.getVariable(
+          featureKey,
+          variableKey,
+          evaluationContext,
+          overrideOptions,
+        );
 
         let passed;
 
@@ -263,7 +271,12 @@ export async function testFeature(
     /**
      * expectedEvaluations
      */
-    function testExpectedEvaluations(sdk, assertion, rootDetails = {}) {
+    function testExpectedEvaluations(
+      sdk,
+      assertion,
+      rootDetails = {},
+      evaluationContext = context,
+    ) {
       function testEvaluation(type, evaluation, expected, details = {}) {
         for (const [key, value] of Object.entries(expected)) {
           if (evaluation[key] !== value) {
@@ -286,12 +299,12 @@ export async function testFeature(
       }
 
       if (assertion.expectedEvaluations.flag) {
-        const evaluation = sdk.evaluateFlag(featureKey, context);
+        const evaluation = sdk.evaluateFlag(featureKey, evaluationContext);
         testEvaluation("flag", evaluation, assertion.expectedEvaluations.flag);
       }
 
       if (assertion.expectedEvaluations.variation) {
-        const evaluation = sdk.evaluateVariation(featureKey, context);
+        const evaluation = sdk.evaluateVariation(featureKey, evaluationContext);
         testEvaluation("variation", evaluation, assertion.expectedEvaluations.variation);
       }
 
@@ -299,7 +312,7 @@ export async function testFeature(
         const variableKeys = Object.keys(assertion.expectedEvaluations.variables);
 
         for (const variableKey of variableKeys) {
-          const evaluation = sdk.evaluateVariable(featureKey, variableKey, context);
+          const evaluation = sdk.evaluateVariable(featureKey, variableKey, evaluationContext);
           testEvaluation(
             "variable",
             evaluation,
@@ -327,30 +340,50 @@ export async function testFeature(
 
         // expectedToBeEnabled
         if (typeof child.expectedToBeEnabled !== "undefined") {
-          testExpectedToBeEnabled(childSdk, child, {
-            childIndex,
-          });
+          testExpectedToBeEnabled(
+            childSdk,
+            child,
+            {
+              childIndex,
+            },
+            {},
+          );
         }
 
         // expectedVariation
         if (typeof child.expectedVariation !== "undefined") {
-          testExpectedVariation(childSdk, child, {
-            childIndex,
-          });
+          testExpectedVariation(
+            childSdk,
+            child,
+            {
+              childIndex,
+            },
+            {},
+          );
         }
 
         // expectedVariables
         if (typeof child.expectedVariables === "object") {
-          testExpectedVariables(childSdk, child, {
-            childIndex,
-          });
+          testExpectedVariables(
+            childSdk,
+            child,
+            {
+              childIndex,
+            },
+            {},
+          );
         }
 
         // expectedEvaluations
         if (typeof child.expectedEvaluations === "object") {
-          testExpectedEvaluations(childSdk, child, {
-            childIndex,
-          });
+          testExpectedEvaluations(
+            childSdk,
+            child,
+            {
+              childIndex,
+            },
+            {},
+          );
         }
 
         childIndex++;

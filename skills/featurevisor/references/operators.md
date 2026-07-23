@@ -39,7 +39,8 @@ Used in segment `conditions`, feature `force[].conditions`, and `variableOverrid
 - `in`/`notIn` are for matching a string attribute against a list of allowed values.
 - `includes`/`notIncludes` check that an array attribute contains a given scalar.
 - Dates accept ISO 8601 strings (e.g. `2025-12-25T00:00:00Z`). The `date` attribute type stores ISO strings.
-- `matches`/`notMatches` accept a `regexFlags` sibling. Flags may contain unique characters from `gimsuy`, such as `regexFlags: i` for case insensitive matching. Cached regular expressions are reset before every evaluation, so stateful flags such as `g` behave like a fresh regular expression.
+- `matches`/`notMatches` accept a `regexFlags` sibling. Flags may contain unique characters from the cross-SDK set `gims`, such as `regexFlags: i` for case insensitive matching. Cached regular expressions behave like a fresh regular expression for each evaluation.
+- Keep patterns portable across SDK runtimes. Character classes, anchors, capturing groups, alternation, escaped literals, and ordinary quantifiers are supported. Do not use lookaround, backreferences, named or noncapturing groups, atomic groups, inline mode groups, or possessive quantifiers. `npx featurevisor lint` rejects these constructs.
 - Nested object attributes use dot-paths in `attribute`: `attribute: account.plan`.
 
 ## Example: each operator

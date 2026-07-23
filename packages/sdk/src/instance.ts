@@ -992,7 +992,7 @@ export class Featurevisor {
       if (this.hasVariations(featureKey)) {
         const variation = this.getVariation(featureKey, context, options);
 
-        if (variation) {
+        if (variation !== null) {
           evaluatedFeature.variation = variation;
         }
       }

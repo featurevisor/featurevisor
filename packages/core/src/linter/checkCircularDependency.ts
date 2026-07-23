@@ -19,13 +19,13 @@ export async function checkForCircularDependencyInRequired(
   }
 
   for (const requiredKey of requiredKeys) {
-    chain.push(requiredKey);
+    const nextChain = [...chain, requiredKey];
 
-    if (chain.indexOf(featureKey) > -1) {
-      throw new Error(`circular dependency found: ${chain.join(" -> ")}`);
+    if (nextChain.indexOf(featureKey) > -1) {
+      throw new Error(`circular dependency found: ${nextChain.join(" -> ")}`);
     }
 
-    const requiredFeatureExists = await datasource.featureExists(featureKey);
+    const requiredFeatureExists = await datasource.featureExists(requiredKey);
 
     if (!requiredFeatureExists) {
       throw new Error(`required feature "${requiredKey}" not found`);
@@ -33,12 +33,12 @@ export async function checkForCircularDependencyInRequired(
 
     const requiredParsedFeature = await datasource.readFeature(requiredKey);
 
-    if (requiredParsedFeature.required) {
+    if (requiredParsedFeature?.required) {
       await checkForCircularDependencyInRequired(
         datasource,
         featureKey,
         requiredParsedFeature.required,
-        chain,
+        nextChain,
       );
     }
   }

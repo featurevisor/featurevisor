@@ -15,7 +15,6 @@
     "dist",
     "lib",
     "public",
-    "src",
     "package.json"
   ],
   "scripts": {

@@ -4,6 +4,9 @@
   "description": "Parsers package of Featurevisor",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "transpile": "rimraf lib && tsc --project tsconfig.cjs.json",
     "build": "npm run transpile",

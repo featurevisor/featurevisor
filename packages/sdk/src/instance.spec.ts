@@ -1,6 +1,7 @@
 import type { DatafileContent } from "@featurevisor/types";
 
 import { createFeaturevisor } from "./instance";
+import type { FeaturevisorModule } from "./modules";
 
 function createTestFeature(hash: string) {
   return {
@@ -242,7 +243,7 @@ describe("sdk: instance", function () {
 
   it("should run modules and allow removing named modules", async function () {
     const calls: string[] = [];
-    const module = {
+    const module: FeaturevisorModule = {
       name: "unit-test",
       setup() {
         calls.push("setup");

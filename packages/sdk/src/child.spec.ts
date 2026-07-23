@@ -219,9 +219,27 @@ describe("sdk: child", function () {
 
     expect(childF.isEnabled("test")).toBe(true);
     expect(childF.getVariation("test")).toEqual("control");
+    expect(childF.evaluateFlag("test")).toEqual(
+      expect.objectContaining({ type: "flag", featureKey: "test", enabled: true }),
+    );
+    expect(childF.evaluateVariation("test")).toEqual(
+      expect.objectContaining({
+        type: "variation",
+        featureKey: "test",
+        variation: expect.objectContaining({ value: "control" }),
+      }),
+    );
 
     expect(childF.getVariable("test", "color")).toEqual("black");
     expect(childF.getVariableString("test", "color")).toEqual("black");
+    expect(childF.evaluateVariable("test", "color")).toEqual(
+      expect.objectContaining({
+        type: "variable",
+        featureKey: "test",
+        variableKey: "color",
+        variableValue: "black",
+      }),
+    );
 
     expect(childF.getVariable("test", "showSidebar")).toEqual(false);
     expect(childF.getVariableBoolean("test", "showSidebar")).toEqual(false);
@@ -258,6 +276,9 @@ describe("sdk: child", function () {
       },
     });
     expect(childF.isEnabled("newFeature")).toEqual(true);
+    expect(childF.evaluateFlag("newFeature")).toEqual(
+      expect.objectContaining({ enabled: true, reason: "sticky" }),
+    );
 
     const allEvaluations = childF.getAllEvaluations();
     expect(Object.keys(allEvaluations)).toEqual(["test", "anotherTest"]);

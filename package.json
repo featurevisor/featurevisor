@@ -9,8 +9,10 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "test": "lerna run test && npm run test:package-exports",
+    "test": "lerna run test && npm run test:package-exports && npm run test:packed-packages && npm run test:browser",
     "test:package-exports": "node scripts/test-package-exports.mjs",
+    "test:packed-packages": "node scripts/test-packed-packages.mjs",
+    "test:browser": "node scripts/test-browser.mjs",
     "typecheck": "lerna run typecheck",
     "bundle-sizes": "node scripts/bundle-sizes.mjs"
   },

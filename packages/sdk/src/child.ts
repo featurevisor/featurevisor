@@ -8,6 +8,7 @@ import type {
 } from "@featurevisor/types";
 
 import type { Featurevisor, OverrideOptions } from "./instance.js";
+import type { Evaluation } from "./evaluate.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 
 function getStickySetEventDetails(
@@ -34,6 +35,7 @@ export class FeaturevisorChildInstance {
   private context: Context;
   private sticky: StickyFeatures;
   private listeners: ChildListeners = {};
+  private parentUnsubscribers: (() => void)[] = [];
 
   constructor(options: { parent: Featurevisor; context: Context; sticky?: StickyFeatures }) {
     this.parent = options.parent;
@@ -57,7 +59,26 @@ export class FeaturevisorChildInstance {
       return this.onChildEvent("sticky_set", callback as EventCallback<"sticky_set">);
     }
 
-    return this.parent.on(eventName as never, callback as never);
+    const unsubscribeFromParent = this.parent.on(eventName as never, callback as never);
+    let isActive = true;
+
+    const unsubscribe = () => {
+      if (!isActive) {
+        return;
+      }
+
+      isActive = false;
+      unsubscribeFromParent();
+
+      const index = this.parentUnsubscribers.indexOf(unsubscribe);
+      if (index !== -1) {
+        this.parentUnsubscribers.splice(index, 1);
+      }
+    };
+
+    this.parentUnsubscribers.push(unsubscribe);
+
+    return unsubscribe;
   }
 
   private onChildEvent<TEventName extends ChildEventName>(
@@ -107,6 +128,10 @@ export class FeaturevisorChildInstance {
   }
 
   close() {
+    this.parentUnsubscribers.slice().forEach(function (unsubscribe) {
+      unsubscribe();
+    });
+    this.parentUnsubscribers = [];
     this.listeners = {};
   }
 
@@ -165,8 +190,32 @@ export class FeaturevisorChildInstance {
     this.trigger("sticky_set", params);
   }
 
+  evaluateFlag(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: OverrideOptions = {},
+  ): Evaluation {
+    return this.parent.evaluateFlag(
+      featureKey,
+      this.getChildContext(context),
+      this.getChildOptions(options),
+    );
+  }
+
   isEnabled(featureKey: FeatureKey, context: Context = {}, options: OverrideOptions = {}): boolean {
     return this.parent.isEnabled(
+      featureKey,
+      this.getChildContext(context),
+      this.getChildOptions(options),
+    );
+  }
+
+  evaluateVariation(
+    featureKey: FeatureKey,
+    context: Context = {},
+    options: OverrideOptions = {},
+  ): Evaluation {
+    return this.parent.evaluateVariation(
       featureKey,
       this.getChildContext(context),
       this.getChildOptions(options),
@@ -180,6 +229,20 @@ export class FeaturevisorChildInstance {
   ): VariationValue | null {
     return this.parent.getVariation(
       featureKey,
+      this.getChildContext(context),
+      this.getChildOptions(options),
+    );
+  }
+
+  evaluateVariable(
+    featureKey: FeatureKey,
+    variableKey: string,
+    context: Context = {},
+    options: OverrideOptions = {},
+  ): Evaluation {
+    return this.parent.evaluateVariable(
+      featureKey,
+      variableKey,
       this.getChildContext(context),
       this.getChildOptions(options),
     );
