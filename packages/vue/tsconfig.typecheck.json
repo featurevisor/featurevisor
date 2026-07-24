@@ -2,7 +2,8 @@
   "extends": "./tsconfig.cjs.json",
   "compilerOptions": {
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "strict": true
   },
   "exclude": []
 }

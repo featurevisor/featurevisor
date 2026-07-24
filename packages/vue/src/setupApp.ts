@@ -1,5 +1,5 @@
-import { App } from "vue";
-import { Featurevisor } from "@featurevisor/sdk";
+import type { App } from "vue";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 export const PROVIDER_NAME = "featurevisor";
 

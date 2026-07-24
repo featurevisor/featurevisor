@@ -29,6 +29,14 @@ const packages = [
     fileName: "featurevisor-vue",
     external: ["vue", "@featurevisor/sdk"],
   },
+  {
+    name: "@featurevisor/openfeature-provider-web",
+    entry: path.join(rootDir, "packages/openfeature-provider-web/src/index.ts"),
+    fileName: "featurevisor-openfeature-provider-web",
+    external: [
+      // "@openfeature/web-sdk"
+    ],
+  },
 ];
 
 function formatBytes(bytes) {
