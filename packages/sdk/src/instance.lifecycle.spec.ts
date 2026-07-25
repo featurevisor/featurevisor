@@ -132,6 +132,33 @@ describe("Featurevisor public API: lifecycle and state", () => {
     expect(sdk.getAllEvaluations().falsey.variables).toEqual({ bool: false, count: 0, text: "" });
   });
 
+  it("preserves an explicit empty default variation in getAllEvaluations", () => {
+    const sdk = createFeaturevisor({
+      datafile: {
+        schemaVersion: "2",
+        revision: "1",
+        segments: {},
+        features: {
+          experiment: {
+            key: "experiment",
+            bucketBy: "userId",
+            variations: [{ value: "control" }],
+            traffic: [],
+          },
+        },
+      },
+    });
+
+    expect(
+      sdk.getAllEvaluations({}, [], {
+        defaultVariationValue: "",
+      }).experiment,
+    ).toEqual({
+      enabled: false,
+      variation: "",
+    });
+  });
+
   it("updates diagnostic filtering at runtime", () => {
     const diagnostics: FeaturevisorDiagnostic[] = [];
     const sdk = createFeaturevisor({

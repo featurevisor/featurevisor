@@ -1,0 +1,55 @@
+{
+  "name": "@featurevisor/openfeature-provider-core",
+  "version": "0.1.0",
+  "description": "Shared OpenFeature provider mapping for Featurevisor",
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "cjs/index.d.ts",
+  "files": [
+    "cjs",
+    "esm",
+    "node-esm"
+  ],
+  "exports": {
+    ".": {
+      "types": "./cjs/index.d.ts",
+      "require": "./cjs/index.js",
+      "import": "./node-esm/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
+    "build": "npm run transpile",
+    "test": "jest --config jest.config.js --verbose --coverage",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "openfeature",
+    "feature flags",
+    "provider"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/featurevisor/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/featurevisor/featurevisor/issues"
+  },
+  "license": "MIT",
+  "sideEffects": false,
+  "dependencies": {
+    "@featurevisor/sdk": "^3.0.1",
+    "@openfeature/core": "^1.11.0"
+  }
+}

@@ -105,7 +105,7 @@ describe("Featurevisor public API: child instances", () => {
     expect(errors[0].diagnostic.code).toBe("invalid_datafile");
   });
 
-  it("closing a child clears local listeners without closing its parent", () => {
+  it("closing a child clears local and delegated listeners without closing its parent", () => {
     const local: unknown[] = [];
     const forwarded: unknown[] = [];
     const parent = createFeaturevisor({ logLevel: "fatal" });
@@ -118,8 +118,23 @@ describe("Featurevisor public API: child instances", () => {
     parent.setDatafile(createDatafile({ revision: "still-open" }));
 
     expect(local).toEqual([]);
-    expect(forwarded).toHaveLength(1);
+    expect(forwarded).toEqual([]);
     expect(parent.getRevision()).toBe("still-open");
+  });
+
+  it("removes delegated listeners idempotently through unsubscribe and close", () => {
+    const parent = createFeaturevisor({ logLevel: "fatal" });
+    const child = parent.spawn();
+    const forwarded: unknown[] = [];
+    const unsubscribe = child.on("datafile_set", (event) => forwarded.push(event));
+
+    unsubscribe();
+    unsubscribe();
+    child.close();
+    child.close();
+    parent.setDatafile(createDatafile({ revision: "still-open" }));
+
+    expect(forwarded).toEqual([]);
   });
 
   it("delegates every typed getter and getAllEvaluations with child context", () => {

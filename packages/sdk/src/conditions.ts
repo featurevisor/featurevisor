@@ -13,6 +13,22 @@ import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
+function getPortableDate(value: unknown): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (
+    typeof value !== "string" ||
+    !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+\-]\d{2}:\d{2})$/.test(value)
+  ) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function getValueFromContext(obj: Context, path: string): AttributeValue {
   if (path.indexOf(".") === -1) {
     return obj[path];
@@ -40,11 +56,12 @@ export function conditionIsMatched(
     return contextValueFromPath !== value;
   } else if (operator === "before" || operator === "after") {
     // date comparisons
-    const valueInContext = contextValueFromPath as string | Date;
+    const dateInContext = getPortableDate(contextValueFromPath);
+    const dateInCondition = getPortableDate(value);
 
-    const dateInContext =
-      valueInContext instanceof Date ? valueInContext : new Date(valueInContext);
-    const dateInCondition = value instanceof Date ? value : new Date(value as string);
+    if (!dateInContext || !dateInCondition) {
+      return false;
+    }
 
     return operator === "before"
       ? dateInContext < dateInCondition

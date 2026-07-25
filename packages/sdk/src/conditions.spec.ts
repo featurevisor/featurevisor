@@ -1,4 +1,6 @@
 import type { Condition } from "@featurevisor/types";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   allConditionsAreMatched,
@@ -7,7 +9,21 @@ import {
   parseSegmentsIfStringified,
 } from "./conditions";
 
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
+
 describe("sdk: Conditions", function () {
+  it("executes every shared condition conformance case", () => {
+    expect(conformance.version).toBe(2);
+
+    for (const testCase of conformance.conditionCases) {
+      expect(allConditionsAreMatched(testCase.condition as Condition, testCase.context)).toBe(
+        testCase.expected,
+      );
+    }
+  });
+
   it("should be a function", function () {
     expect(typeof allConditionsAreMatched).toEqual("function");
   });
@@ -23,6 +39,22 @@ describe("sdk: Conditions", function () {
   });
 
   describe("operators", function () {
+    it("executes every portable regular expression conformance case", () => {
+      for (const testCase of conformance.regularExpressions.portableCases) {
+        expect(
+          allConditionsAreMatched(
+            {
+              attribute: "value",
+              operator: "matches",
+              value: testCase.pattern,
+              regexFlags: testCase.flags,
+            },
+            { value: testCase.value },
+          ),
+        ).toBe(testCase.expected);
+      }
+    });
+
     it("should match with operator: equals", function () {
       const conditions: Condition[] = [
         {
@@ -549,6 +581,21 @@ describe("sdk: Conditions", function () {
       expect(allConditionsAreMatched(conditions, { version: "1.1.0" })).toEqual(false);
     });
 
+    it("should compare semver prereleases and ignore build metadata", function () {
+      expect(
+        allConditionsAreMatched(
+          [{ attribute: "version", operator: "semverLessThan", value: "1.2.3" }],
+          { version: "1.2.3-beta.1" },
+        ),
+      ).toEqual(true);
+      expect(
+        allConditionsAreMatched(
+          [{ attribute: "version", operator: "semverEquals", value: "1.2.3+build.9" }],
+          { version: "1.2.3+build.5" },
+        ),
+      ).toEqual(true);
+    });
+
     it("should match with operator: before", function () {
       const conditions: Condition[] = [
         {
@@ -568,6 +615,10 @@ describe("sdk: Conditions", function () {
 
       // not match
       expect(allConditionsAreMatched(conditions, { date: "2023-05-14T00:00:00Z" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-12T00:00:00" })).toEqual(false);
+      expect(allConditionsAreMatched(conditions, { date: "2023-05-13T17:23:59+01:00" })).toEqual(
+        false,
+      );
       expect(
         allConditionsAreMatched(conditions, {
           date: new Date("2023-05-14T00:00:00Z"),

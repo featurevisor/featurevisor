@@ -1,72 +1,132 @@
-import { createApp } from "vue";
-import { createFeaturevisor } from "@featurevisor/sdk";
+import { defineComponent, type App, type Plugin } from "vue";
+import type { Context, Featurevisor } from "@featurevisor/sdk";
 import { mount } from "@vue/test-utils";
 
-import { setupApp, PROVIDER_NAME } from "./setupApp";
+import { setupApp } from "./setupApp";
+import { useFlag } from "./useFlag";
+import { useSdk } from "./useSdk";
+import { useVariable } from "./useVariable";
+import { useVariation } from "./useVariation";
 
-describe("vue: index", function () {
-  it("can set up sdk in app and then inject the sdk instance", async function () {
-    const sdk = createFeaturevisor({
-      datafile: {
-        schemaVersion: "2",
-        revision: "1.0",
-        features: {
-          test: {
-            key: "test",
-            bucketBy: "userId",
-            variations: [{ value: "control" }, { value: "treatment" }],
-            traffic: [
-              {
-                key: "1",
-                segments: "*",
-                percentage: 100000,
-                allocation: [
-                  { variation: "control", range: [0, 100000] },
-                  { variation: "treatment", range: [0, 0] },
-                ],
-              },
-            ],
-          },
-        },
-        segments: {},
-      },
-    });
+function createSdk(overrides: Partial<Featurevisor> = {}): Featurevisor {
+  return {
+    getRevision: jest.fn(() => "1.0"),
+    isEnabled: jest.fn(() => true),
+    getVariation: jest.fn(() => "treatment"),
+    getVariable: jest.fn(() => "blue"),
+    ...overrides,
+  } as Featurevisor;
+}
 
-    const TestComponent = {
-      inject: [PROVIDER_NAME],
-      data: function () {
-        const revision = this[PROVIDER_NAME].getRevision();
+function featurevisorPlugin(sdk: Featurevisor): Plugin {
+  return {
+    install(app: App) {
+      setupApp(app, sdk);
+    },
+  };
+}
 
-        return {
-          revision,
-        };
-      },
-      template: `<div>
-        <p data-test="p">TestComponent here</p>
-        <p data-test="revision">{{ revision }}</p>
-      </div>`,
-    };
+function mountSetup(setup: () => Record<string, unknown>, sdk?: Featurevisor) {
+  return mount(
+    defineComponent({
+      setup,
+      template: "<div />",
+    }),
+    {
+      global: sdk ? { plugins: [featurevisorPlugin(sdk)] } : undefined,
+    },
+  );
+}
 
-    const App = {
-      components: { TestComponent },
-      template: `<div><TestComponent /></div>`,
-      provide: {
-        [PROVIDER_NAME]: sdk,
-      },
-    };
+describe("vue: composables", () => {
+  it("provides the exact SDK instance through setupApp and useSdk", () => {
+    const sdk = createSdk();
+    let injected: Featurevisor | undefined;
 
-    const app = createApp(App);
-    setupApp(app, sdk);
+    mountSetup(() => {
+      injected = useSdk();
+      return {};
+    }, sdk);
 
-    const wrapper = mount(App);
-    expect(wrapper.exists()).toEqual(true);
-
-    const pText = await wrapper.get(`[data-test="p"]`).text();
-    expect(pText).toEqual("TestComponent here");
-
-    const revisionText = await wrapper.get(`[data-test="revision"]`).text();
-    expect(revisionText).toEqual("1.0");
+    expect(injected).toBe(sdk);
   });
 
-  // @NOTE: add more tests that utilizes Composition API
+  it("fails clearly when setupApp was not called", () => {
+    expect(() =>
+      mountSetup(() => {
+        useSdk();
+        return {};
+      }),
+    ).toThrow("Featurevisor SDK is not available. Call setupApp(app, featurevisor) first.");
+  });
+
+  it("evaluates a flag with the supplied context", () => {
+    const context: Context = { userId: "user-1", country: "nl" };
+    const isEnabled = jest.fn(() => true);
+    const sdk = createSdk({ isEnabled });
+    let result: boolean | undefined;
+
+    mountSetup(() => {
+      result = useFlag("checkout", context);
+      return {};
+    }, sdk);
+
+    expect(result).toBe(true);
+    expect(isEnabled).toHaveBeenCalledWith("checkout", context);
+  });
+
+  it.each([
+    ["an evaluated variation", "treatment"],
+    ["a missing variation", null],
+  ])("returns %s", (_, value) => {
+    const context: Context = { userId: "user-1" };
+    const getVariation = jest.fn(() => value);
+    const sdk = createSdk({ getVariation });
+    let result: string | null | undefined;
+
+    mountSetup(() => {
+      result = useVariation("checkout", context);
+      return {};
+    }, sdk);
+
+    expect(result).toBe(value);
+    expect(getVariation).toHaveBeenCalledWith("checkout", context);
+  });
+
+  it.each([
+    ["a string variable", "blue"],
+    ["an object variable", { theme: "dark" }],
+    ["a missing variable", null],
+  ])("returns %s", (_, value) => {
+    const context: Context = { userId: "user-1" };
+    const getVariable = jest.fn(() => value);
+    const sdk = createSdk({ getVariable });
+    let result: unknown;
+
+    mountSetup(() => {
+      result = useVariable("checkout", "configuration", context);
+      return {};
+    }, sdk);
+
+    expect(result).toEqual(value);
+    expect(getVariable).toHaveBeenCalledWith("checkout", "configuration", context);
+  });
+
+  it("uses an empty context by default", () => {
+    const isEnabled = jest.fn(() => false);
+    const getVariation = jest.fn(() => null);
+    const getVariable = jest.fn(() => null);
+    const sdk = createSdk({ isEnabled, getVariation, getVariable });
+
+    mountSetup(() => {
+      useFlag("checkout");
+      useVariation("checkout");
+      useVariable("checkout", "configuration");
+      return {};
+    }, sdk);
+
+    expect(isEnabled).toHaveBeenCalledWith("checkout", {});
+    expect(getVariation).toHaveBeenCalledWith("checkout", {});
+    expect(getVariable).toHaveBeenCalledWith("checkout", "configuration", {});
+  });
 });

@@ -281,11 +281,24 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
         operator: "before",
         value: "2025-12-31T23:59:59Z",
       });
+      expectConditionsSuccess({
+        attribute: "device",
+        operator: "after",
+        value: "2026-01-01T00:59:59+01:00",
+      });
     });
 
     it("rejects date operators with invalid strings", () => {
       expectConditionsFailure(
         { attribute: "device", operator: "after", value: "not-a-date" },
+        "ISO 8601",
+      );
+      expectConditionsFailure(
+        { attribute: "device", operator: "after", value: "2025-12-31T23:59:59" },
+        "ISO 8601",
+      );
+      expectConditionsFailure(
+        { attribute: "device", operator: "after", value: "2025-12-31" },
         "ISO 8601",
       );
     });
@@ -379,6 +392,27 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       });
     });
 
+    it("accepts all portable cross-SDK regex flags", () => {
+      expectConditionsSuccess({
+        attribute: "browser.version",
+        operator: "matches",
+        value: "^chrome$",
+        regexFlags: "gims",
+      });
+    });
+
+    it.each(["u", "y", "v", "d"])("rejects non-portable regex flag %s", (regexFlags) => {
+      expectConditionsFailure(
+        {
+          attribute: "browser.version",
+          operator: "matches",
+          value: "^chrome$",
+          regexFlags,
+        },
+        "cross-SDK",
+      );
+    });
+
     it("rejects invalid regexFlags", () => {
       expectConditionsFailure(
         {
@@ -401,6 +435,39 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
         },
         "unique",
       );
+    });
+
+    it.each([
+      ["lookahead", "foo(?=bar)"],
+      ["lookbehind", "(?<=foo)bar"],
+      ["noncapturing group", "(?:foo|bar)"],
+      ["named group", "(?<name>foo)"],
+      ["numeric backreference", "(foo)\\1"],
+      ["named backreference", "(?<name>foo)\\k<name>"],
+      ["possessive quantifier", "foo++"],
+    ])("rejects non-portable regex syntax: %s", (_name, pattern) => {
+      expectConditionsFailure(
+        {
+          attribute: "userId",
+          operator: "matches",
+          value: pattern,
+        },
+        "cross-SDK regex subset",
+      );
+    });
+
+    it.each([
+      "^chrome$",
+      "^(chrome|firefox)$",
+      "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$",
+      "line1.*line2",
+      "\\(literal\\)",
+    ])("accepts portable regex syntax: %s", (pattern) => {
+      expectConditionsSuccess({
+        attribute: "userId",
+        operator: "matches",
+        value: pattern,
+      });
     });
 
     it("rejects regexFlags when operator is not matches/notMatches", () => {

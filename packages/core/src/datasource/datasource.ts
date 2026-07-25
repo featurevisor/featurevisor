@@ -21,6 +21,7 @@ import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
+import { collectRequiredFeatureKeys } from "./requiredFeatures";
 
 export class Datasource {
   private adapter: Adapter;
@@ -118,33 +119,14 @@ export class Datasource {
     return this.adapter.deleteEntity("feature", featureKey);
   }
 
-  async getRequiredFeaturesChain(
-    featureKey: FeatureKey,
-    chain = new Set<FeatureKey>(),
-  ): Promise<Set<FeatureKey>> {
-    chain.add(featureKey);
-
-    if (!this.adapter.entityExists("feature", featureKey)) {
+  async getRequiredFeaturesChain(featureKey: FeatureKey): Promise<Set<FeatureKey>> {
+    if (!(await this.featureExists(featureKey))) {
       throw new Error(`Feature not found: ${featureKey}`);
     }
 
     const feature = await this.readFeature(featureKey);
 
-    if (!feature.required) {
-      return chain;
-    }
-
-    for (const r of feature.required) {
-      const requiredKey = typeof r === "string" ? r : r.key;
-
-      if (chain.has(requiredKey)) {
-        throw new Error(`Circular dependency detected: ${chain.toString()}`);
-      }
-
-      await this.getRequiredFeaturesChain(requiredKey, chain);
-    }
-
-    return chain;
+    return collectRequiredFeatureKeys(this, featureKey, feature.required);
   }
 
   // segments

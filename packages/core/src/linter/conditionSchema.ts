@@ -27,7 +27,7 @@ const arrayMembershipOperators = ["in", "notIn"];
 const arrayOperators = ["includes", "notIncludes"];
 const operatorsWithoutValue = ["exists", "notExists"];
 
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|([+\-]\d{2}:\d{2})))?$/;
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|([+\-]\d{2}:\d{2}))$/;
 
 type SchemaNode = Attribute | AttributeProperty | Schema;
 type ResolvedLeaf =
@@ -50,6 +50,26 @@ function isPrimitiveAttributeValue(value: unknown): boolean {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function getPortableRegexError(pattern: string): string | null {
+  try {
+    new RegExp(pattern);
+  } catch {
+    return "must be a valid regular expression";
+  }
+
+  if (/\(\?/.test(pattern)) {
+    return "must not use lookaround, named groups, noncapturing groups, atomic groups, or inline mode groups";
+  }
+  if (/\\(?:[1-9]|k<|k'|g<|g')/.test(pattern)) {
+    return "must not use backreferences";
+  }
+  if (/(?:[?*+]|\{\d+(?:,\d*)?\})\+/.test(pattern)) {
+    return "must not use possessive quantifiers";
+  }
+
+  return null;
 }
 
 function valueDeepEqual(a: unknown, b: unknown): boolean {
@@ -578,10 +598,10 @@ export function getConditionsZodSchema(
               return true;
             }
 
-            return /^[gimsuy]+$/.test(value) && new Set(value).size === value.length;
+            return /^[gims]+$/.test(value) && new Set(value).size === value.length;
           },
           {
-            message: `regexFlags must contain unique characters from: g, i, m, s, u, y`,
+            message: `regexFlags must contain unique characters from the cross-SDK set: g, i, m, s`,
           },
         )
         .optional(),
@@ -658,6 +678,15 @@ export function getConditionsZodSchema(
       if (regexFlagsRequired(data.operator)) {
         if (typeof data.value !== "string") {
           addIssue(context, `when operator is "${data.operator}", value must be a string`);
+        } else {
+          const portableRegexError = getPortableRegexError(data.value);
+          if (portableRegexError) {
+            addIssue(
+              context,
+              `when operator is "${data.operator}", value ${portableRegexError} in the cross-SDK regex subset`,
+              ["value"],
+            );
+          }
         }
       } else if (data.regexFlags) {
         addIssue(
