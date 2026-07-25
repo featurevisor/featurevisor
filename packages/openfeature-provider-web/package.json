@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/openfeature-provider-web",
-  "version": "0.1.0",
+  "version": "3.2.0",
   "description": "OpenFeature provider for Featurevisor in browsers",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -50,8 +50,8 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@featurevisor/openfeature-provider-core": "0.1.0",
-    "@featurevisor/sdk": "^3.0.1"
+    "@featurevisor/openfeature-provider-core": "3.2.0",
+    "@featurevisor/sdk": "3.2.0"
   },
   "peerDependencies": {
     "@openfeature/web-sdk": "^1.9.0"
