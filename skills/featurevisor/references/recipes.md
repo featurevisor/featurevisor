@@ -521,11 +521,13 @@ conditions:
   and:
     - attribute: date
       operator: after
-      value: 2026-11-27T00:00:00Z
+      value: "2026-11-27T00:00:00Z" # full ISO 8601 with timezone, quoted
     - attribute: date
       operator: before
-      value: 2026-11-30T00:00:00Z
+      value: "2026-11-30T00:00:00Z"
 ```
+
+Date values must be complete ISO 8601 timestamps **with an explicit timezone** — `2026-11-27` and `2026-11-27T00:00:00` both fail lint. Quote them so YAML keeps them as strings. See [operators.md](operators.md#dates-full-iso-8601-with-an-explicit-timezone).
 
 ```yaml
 # features/promoBanner.yml (rules excerpt)
@@ -547,6 +549,7 @@ f.isEnabled('promoBanner', { date: new Date() })
 
 Guidance:
 
+- **Pass a `Date` or a full ISO 8601 string with timezone.** A date-only string like `'2026-11-28'` never matches and fails *silently* — the rule is skipped and evaluation falls through to the catch-all. This is the single most common reason a scheduled feature "never turns on"; reproduce with `npx featurevisor evaluate --context='{"date":"…"}'`.
 - The window boundaries are only as sharp as the app's evaluation cadence — long-lived SPAs should re-evaluate on navigation or on an interval, not once at startup.
 - Merge and deploy the definitions **ahead of time**; the date condition does the launching. This is the calm way to ship a marketing moment.
 - Combine freely with other targeting (`and` a country segment for regional campaigns).

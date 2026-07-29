@@ -44,6 +44,8 @@ app.mount('#app')
 
 The context argument is optional — omit it to evaluate against the instance-level context.
 
+`useVariation` and `useVariable` return `null` (not `undefined`) when there's no value. `useSdk` throws a clear error if `setupApp(app, featurevisor)` hasn't run — if you see it, the provider wiring is missing, not the feature.
+
 ## Guidance
 
 - For activation tracking, register a [module](sdk-javascript.md#modules) on the SDK instance ([tracking.md](tracking.md)) rather than tracking in components.

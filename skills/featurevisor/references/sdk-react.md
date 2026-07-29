@@ -73,5 +73,5 @@ Evaluating on the server and again on the client can disagree (different context
 
 - Evaluations are cheap but not free; for hot components memoize derived values rather than calling hooks in tight loops.
 - Typed hooks (compile-time-checked feature/variable keys) can be generated from the project with `generate-code --react` — see [code-generation.md](code-generation.md).
-- **React Native** uses the same `@featurevisor/react` package and hooks; only datafile fetching/caching strategy differs (see the React Native docs link above).
+- **React Native** uses the same `@featurevisor/react` package and hooks; only the datafile fetching/caching strategy differs. The usual shape: create the instance at module scope with initial `context`, fetch the datafile in a root-component `useEffect`, call `setDatafile(datafile, true)`, and render the provider once loading settles (see the React Native docs link above).
 - Example app: <https://github.com/featurevisor/featurevisor-example-react>
