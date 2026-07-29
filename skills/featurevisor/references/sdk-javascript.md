@@ -6,7 +6,9 @@ Full docs: <https://featurevisor.com/docs/sdks/javascript>
 
 Framework wrappers: [sdk-react.md](sdk-react.md) (React / React Native), [sdk-vue.md](sdk-vue.md) (Vue).
 
-**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Swift, PHP, Roku, and a growing list of others live at <https://featurevisor.com/docs/sdks>. All SDKs consume the same datafiles, expose the same concepts (context, flag/variation/variable evaluation), and implement the same deterministic bucketing — the same user gets the same variation in every language, so one project can serve web, backend, and mobile consistently. Everything in this file transfers conceptually; only syntax differs.
+**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Swift, PHP, Roku, and more — see [sdk-other-languages.md](sdk-other-languages.md). All SDKs consume the same datafiles, expose the same concepts, and are verified against a shared conformance contract, so the same user gets the same variation in every language. Everything in this file transfers conceptually; only syntax differs.
+
+Prefer the standard [OpenFeature](openfeature.md) API instead of Featurevisor's own? Providers exist for Node.js, browsers, and most other languages.
 
 ## Install and initialize
 
@@ -56,6 +58,8 @@ f.isEnabled('checkout', { country: 'de' })
 
 Attribute names and value types must match the project's `attributes/` definitions — check with `npx featurevisor list --attributes --json` when in doubt; don't invent attribute names in application code.
 
+**Date attributes need a `Date` or a full ISO 8601 string with timezone** (`new Date()`, `'2026-11-28T10:00:00Z'`). A date-only string like `'2026-11-28'` makes date conditions silently not match, so the feature quietly falls through to the next rule. Numeric attribute values are stringified canonically for bucketing, so the same number buckets identically across SDKs.
+
 ## Evaluating
 
 Three evaluation types, mirroring what features define in YAML:
@@ -94,6 +98,8 @@ Namespaced features use the full key with the project's separator (default `.`):
 f.getVariation('checkout', context, { defaultVariationValue: 'control' })
 f.getVariable('checkout', 'paymentMethods', context, { defaultVariableValue: ['creditCard'] })
 ```
+
+Defaults are **presence-based**: what matters is whether the option was supplied, not whether its value is truthy. `""`, `0`, `false`, and `null` are therefore valid explicit defaults and are honored as written. Don't wrap them in `||` fallbacks — `getVariable(...) || 'x'` throws away a deliberate `false` or `0`.
 
 Prefer defining sane `defaultValue` (and `useDefaultWhenDisabled`) in the project's `variablesSchema` — per-call defaults are the app-side safety net, not the source of truth.
 
@@ -199,11 +205,33 @@ const f = createFeaturevisor({ datafile })
 app.get('/dashboard', (req, res) => {
   const childF = f.spawn({ userId: req.user.id, country: req.user.country })
 
-  if (childF.isEnabled('newDashboard')) { /* ... */ }
+  try {
+    if (childF.isEnabled('newDashboard')) { /* ... */ }
+  } finally {
+    childF.close() // release listeners delegated to the parent
+  }
 })
 ```
 
-Children support the same evaluation methods plus `setContext`, `setSticky`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { sticky })` also accepts child-scoped sticky values. Datafile updates on the parent are visible to children automatically.
+Children support the same evaluation methods — including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable` — plus `setContext`, `setSticky`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { sticky })` also accepts child-scoped sticky values. Datafile updates on the parent are visible to children automatically.
+
+**Context model** (identical in every SDK): a child *snapshots* the parent context keys that exist at spawn time, keeps inheriting parent keys introduced *later*, and its own keys always win. Per-evaluation context merges on top for that call only.
+
+```js
+// parent at spawn: { country: 'nl', plan: 'free' }
+const child = f.spawn({ country: 'de' })
+
+f.setContext({ country: 'us', plan: 'pro', region: 'eu' })
+
+// child evaluates with: { country: 'de', plan: 'free', region: 'eu' }
+//   country → child's own value wins
+//   plan    → snapshot from spawn time, unaffected by the later parent change
+//   region  → new parent key, inherited
+```
+
+That's what keeps a request's context stable while still letting genuinely new shared fields flow through.
+
+**Always `close()` a child** when the request finishes. It removes the child's own listeners *and* the subscriptions it delegated to the parent — skipping it leaks listeners on the long-lived parent instance.
 
 ### SSR handoff
 

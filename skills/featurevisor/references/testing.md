@@ -45,7 +45,7 @@ Additional inputs an assertion can set up (advanced, all optional):
 | Field                                             | Purpose                                                                                                                                                                                    |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `sticky`                                          | Sticky features for the test SDK instance — consulted before evaluation, exactly like `f.setSticky()` at runtime                                                                            |
-| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`                                                                                                                                      |
+| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                              |
 | `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
 
 ```yaml
@@ -147,3 +147,15 @@ After authoring, run:
 ```bash
 npx featurevisor test --keyPattern="<key>"
 ```
+
+## Running the same specs through another language's SDK
+
+Test specs aren't JavaScript-specific. Every non-JS SDK ships a CLI that runs **these same spec files** through its own implementation — proving the features behave identically in the language the application actually uses:
+
+```bash
+python -m featurevisor test
+go run cmd/main.go test --projectDirectoryPath="/absolute/path/to/project"
+bundle exec featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+```
+
+Definitions, spec discovery, and datafile generation still come from the Node.js CLI; the language CLI supplies only the evaluation engine. Details and the full per-language list: [sdk-other-languages.md](sdk-other-languages.md#verifying-your-project-against-a-specific-sdk).

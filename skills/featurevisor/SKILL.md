@@ -1,6 +1,6 @@
 ---
 name: featurevisor
-description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups (mutual exclusion), dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, the Catalog, and analytics tracking.
+description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups, dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, and the Catalog.
 ---
 
 # Featurevisor
@@ -89,6 +89,8 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | **Use the SDK in an app** — JS/TS/Node/browser/edge, context, refresh, server-side                                                           | [sdk-javascript.md](references/sdk-javascript.md)                 |
 | React or React Native integration (`useFlag` etc.)                                                                                           | [sdk-react.md](references/sdk-react.md)                           |
 | Vue integration                                                                                                                               | [sdk-vue.md](references/sdk-vue.md)                               |
+| Go, Python, Ruby, Java, Swift, PHP, Roku — and running your specs through them                                                               | [sdk-other-languages.md](references/sdk-other-languages.md)       |
+| **OpenFeature** providers (`@featurevisor/openfeature-provider-*`, other languages)                                                          | [openfeature.md](references/openfeature.md)                       |
 | Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
 | Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
 | **Common patterns** — A/B, multivariate, entitlements, kill switches, scheduled releases, staged rollouts, version gating, migrations, testing-in-prod, deprecation/cleanup, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
@@ -122,7 +124,17 @@ Before referencing `segments: foo` in a rule, confirm the segment exists (or cre
 
 And a feature in a group cannot use a rollout `percentage` higher than its slot's percentage.
 
-### 5. After any edit, lint
+### 5. Conditions must stay portable across SDKs
+
+Definitions are evaluated by SDKs in many languages, so lint enforces a portable subset — worth knowing before writing conditions:
+
+- **Dates** (`before`/`after`) need a full ISO 8601 timestamp **with timezone**, quoted: `"2026-11-27T00:00:00Z"`. Date-only or zone-less values fail lint.
+- **Regex** (`matches`/`notMatches`) allows only `g`, `i`, `m`, `s` flags and rejects every `(?…)` construct — including non-capturing `(?:…)`, which is the usual surprise — plus backreferences and possessive quantifiers.
+- Operators are checked against the attribute's declared type (numeric operators need `integer`/`double`, `includes` needs an `array`, etc.).
+
+Details and lint messages: [operators.md](references/operators.md#portable-conditions-cross-sdk-subset).
+
+### 6. After any edit, lint
 
 ```bash
 npx featurevisor lint
@@ -260,7 +272,8 @@ When the task is consuming features from application code:
 - **JavaScript / TypeScript / Node / browser / edge** → read [sdk-javascript.md](references/sdk-javascript.md) in full. It covers install, context, all evaluation methods, datafile refresh and on-demand loading, events, sticky, server-side child instances (`spawn`), diagnostics, and modules.
 - **React / React Native** → [sdk-react.md](references/sdk-react.md). **Vue** → [sdk-vue.md](references/sdk-vue.md).
 - **Type-safe bindings** (generated `isEnabled`/`getVariation` with compile-checked keys) → [code-generation.md](references/code-generation.md).
-- **Other languages** — SDKs are **cross-platform**: Python, Ruby, Go, Java, Swift, PHP, Roku, and more, with the up-to-date list at <https://featurevisor.com/docs/sdks>. Every SDK consumes the same datafiles, exposes the same concepts (context, `isEnabled`/`getVariation`/`getVariable`), and implements the same deterministic bucketing — so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too. One Featurevisor project can serve an entire polyglot stack. If the user's language isn't in this skill's references, apply the concepts from [sdk-javascript.md](references/sdk-javascript.md) and fetch the language page from the website for syntax.
+- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Swift, PHP, Roku, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
+- **OpenFeature** — if the team standardizes on the vendor-neutral [OpenFeature](https://openfeature.dev/) API, providers exist for Node.js, browsers, Go, Swift, Java, Ruby, Python, and PHP → [openfeature.md](references/openfeature.md). Optional: the native SDKs are unaffected and remain the simpler choice when Featurevisor is the only flag system.
 - **Framework guides** (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>.
 
 Key facts that prevent most integration mistakes: evaluations are local and synchronous (no network at evaluation time); the app must load a **datafile** (built and deployed from the project repo) and decide its own refresh strategy; feature keys, variable keys, and attribute names must match the project's definitions exactly — verify against the project (or its Catalog) rather than guessing.

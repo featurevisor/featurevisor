@@ -48,7 +48,9 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 
 | Term            | Meaning                                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Generated datafiles use schema version 2.   |
+| **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Carries a `schemaVersion` string (currently `"2"`) that is informational — SDKs don't branch on it. |
+| **OpenFeature** | Vendor-neutral flag API. Featurevisor ships optional providers per platform — see [openfeature.md](openfeature.md).    |
+| **Conformance** | Cross-SDK contract (`conformance/sdk-v3.json`) every v3 SDK is verified against: bucketing, portable conditions, child context model, presence-based defaults. |
 | **Tag**         | Feature metadata used by targets to select features.                                                                    |
 | **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
 | **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |

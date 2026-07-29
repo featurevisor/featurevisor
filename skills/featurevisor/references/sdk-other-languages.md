@@ -1,0 +1,73 @@
+# SDKs in other languages
+
+Full index: <https://featurevisor.com/docs/sdks>
+
+Featurevisor SDKs exist for many runtimes. They all consume the **same datafiles**, expose the same concepts, and are held to a shared cross-SDK contract — so a user bucketed into `treatment` on the web gets `treatment` on the backend and on mobile.
+
+For JavaScript/TypeScript specifics read [sdk-javascript.md](sdk-javascript.md) — the concepts there (context, evaluation types, sticky, child instances, datafile refresh, modules, diagnostics) transfer to every language; only syntax and packaging differ.
+
+| Platform                      | Docs                                                    |
+| ----------------------------- | ------------------------------------------------------- |
+| JavaScript / TypeScript       | <https://featurevisor.com/docs/sdks/javascript>         |
+| Node.js                       | <https://featurevisor.com/docs/sdks/nodejs>             |
+| Browser                       | <https://featurevisor.com/docs/sdks/browser>            |
+| React / React Native          | [sdk-react.md](sdk-react.md)                            |
+| Vue                           | [sdk-vue.md](sdk-vue.md)                                |
+| Go                            | <https://featurevisor.com/docs/sdks/go>                 |
+| Python                        | <https://featurevisor.com/docs/sdks/python>             |
+| Ruby                          | <https://featurevisor.com/docs/sdks/ruby>               |
+| Java                          | <https://featurevisor.com/docs/sdks/java>               |
+| Swift                         | <https://featurevisor.com/docs/sdks/swift>              |
+| PHP                           | <https://featurevisor.com/docs/sdks/php>                |
+| Roku                          | <https://featurevisor.com/docs/sdks/roku>               |
+| OpenFeature (multi-language)  | [openfeature.md](openfeature.md)                        |
+
+Framework guides (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>
+
+**Don't guess an API you can't see.** When helping with a language this skill doesn't detail, fetch its docs page rather than transliterating JavaScript — factory names and idioms differ (v3 uses `createFeaturevisor` in JS/Go/Swift/Java, `create_featurevisor` in Python/Ruby, `Featurevisor::createFeaturevisor` in PHP).
+
+## What every SDK guarantees
+
+The monorepo keeps a machine-readable contract at [`conformance/sdk-v3.json`](https://github.com/featurevisor/featurevisor/blob/main/conformance/sdk-v3.json) that all v3 SDKs are verified against. The practically important guarantees:
+
+- **Identical bucketing** — same feature key + same `bucketBy` value ⇒ same bucket, in every language.
+- **Portable conditions** — the regex subset and ISO 8601 date format described in [operators.md](operators.md) are exactly what every SDK supports. This is *why* those authoring restrictions exist: a pattern that only works in JavaScript would silently diverge elsewhere.
+- **Same child-instance context model** — snapshot the parent keys present at spawn, inherit parent keys added later, child keys win ([sdk-javascript.md](sdk-javascript.md#child-instances-server-side)).
+- **Presence-based defaults** — `""`, `0`, `false`, and `null` are valid explicit defaults everywhere, never treated as "missing".
+- **Same diagnostics shape** — level, code, message, object-shaped details.
+
+When a user reports "it evaluates differently in our Go service than in the browser", the cause is nearly always **different context** or a **different datafile revision** — not the SDKs. Compare those two first.
+
+## Verifying your project against a specific SDK
+
+Every non-JavaScript SDK ships a CLI that runs **your project's own test specs** through that language's implementation. This is the highest-value trick in this file: it proves the features you authored behave identically in the language your application actually uses.
+
+```bash
+# Python
+python -m featurevisor test
+
+# Go
+go run cmd/main.go test --projectDirectoryPath="/absolute/path/to/project"
+
+# Ruby
+bundle exec featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+
+# PHP
+vendor/bin/featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+
+# Swift
+swift run featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+
+# Java
+mvn exec:java -Dexec.mainClass="com.featurevisor.cli.CLI" \
+  -Dexec.args="test --projectDirectoryPath=/absolute/path/to/project"
+```
+
+All of them also support `benchmark` and `assess-distribution`, the familiar filters (`--keyPattern`, `--assertionPattern`, `--onlyFailures`, `--quiet`, `--showDatafile`), and repeatable `--target=<target>` selection with the same semantics as the Node.js CLI ([cli.md](cli.md)).
+
+Two things to remember before suggesting these:
+
+- They **rely on the Node.js CLI** (`npx featurevisor`) being available in the project: definitions, test specs, target discovery, and datafile generation always come from there. The language CLI supplies only the evaluation engine.
+- They run against the project directory, so point `--projectDirectoryPath` at the Featurevisor project repo, not the application repo.
+
+Suggest this when a team's production traffic is served by a non-JavaScript SDK, when someone suspects a cross-language discrepancy, or when a polyglot org wants CI proof that one project behaves the same everywhere.
