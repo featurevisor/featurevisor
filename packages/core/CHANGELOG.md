@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.3.0](https://github.com/featurevisor/featurevisor/compare/v3.2.0...v3.3.0) (2026-08-08)
+
+
+### Features
+
+* promotable test assertions ([#418](https://github.com/featurevisor/featurevisor/issues/418)) ([1a33731](https://github.com/featurevisor/featurevisor/commit/1a33731c5710422f8c1c31c71542ba87c6530343))
+
+
+
+
+
 # [3.2.0](https://github.com/featurevisor/featurevisor/compare/v3.1.0...v3.2.0) (2026-07-25)
 
 

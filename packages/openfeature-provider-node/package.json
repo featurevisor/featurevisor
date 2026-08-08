@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/openfeature-provider-node",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "OpenFeature provider for Featurevisor in Node.js",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -50,8 +50,8 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@featurevisor/openfeature-provider-core": "3.2.0",
-    "@featurevisor/sdk": "3.2.0"
+    "@featurevisor/openfeature-provider-core": "3.3.0",
+    "@featurevisor/sdk": "3.3.0"
   },
   "peerDependencies": {
     "@openfeature/server-sdk": "^1.22.0"
