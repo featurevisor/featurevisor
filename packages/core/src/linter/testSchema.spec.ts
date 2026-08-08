@@ -113,6 +113,97 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
     });
   });
 
+  it("accepts stable assertion keys and promotion protection", () => {
+    expectTestSuccess({
+      feature: "checkout",
+      assertions: [
+        {
+          key: "production-rollout",
+          promotable: false,
+          at: 50,
+          environment: "production",
+        },
+      ],
+    });
+
+    expectTestSuccess({
+      segment: "desktop",
+      assertions: [
+        {
+          key: "desktop-user",
+          promotable: false,
+          context: { device: "desktop" },
+          expectedToMatch: true,
+        },
+      ],
+    });
+  });
+
+  it("requires every assertion to have a unique key when keys are used", () => {
+    const missingKeyError = expectTestFailure(
+      {
+        feature: "checkout",
+        assertions: [
+          { key: "first", at: 10, environment: "staging" },
+          { at: 20, environment: "staging" },
+        ],
+      },
+      "All assertions in a test spec must have a key",
+    );
+    expect(
+      missingKeyError.issues.some((issue) => issue.path.join(".") === "assertions.1.key"),
+    ).toBe(true);
+
+    const duplicateKeyError = expectTestFailure(
+      {
+        segment: "desktop",
+        assertions: [
+          { key: "same", context: {}, expectedToMatch: true },
+          { key: "same", context: {}, expectedToMatch: false },
+        ],
+      },
+      'Duplicate assertion key "same"',
+    );
+    expect(
+      duplicateKeyError.issues.some((issue) => issue.path.join(".") === "assertions.1.key"),
+    ).toBe(true);
+  });
+
+  it("requires a key when promotable is set on an assertion", () => {
+    const error = expectTestFailure(
+      {
+        segment: "desktop",
+        assertions: [
+          {
+            promotable: false,
+            context: {},
+            expectedToMatch: true,
+          },
+        ],
+      },
+      "Assertion key is required when promotable is set",
+    );
+
+    expect(error.issues.some((issue) => issue.path.join(".") === "assertions.0.key")).toBe(true);
+  });
+
+  it("rejects non-boolean assertion promotable values", () => {
+    expectTestFailure(
+      {
+        segment: "desktop",
+        assertions: [
+          {
+            key: "desktop-user",
+            promotable: "no",
+            context: {},
+            expectedToMatch: true,
+          },
+        ],
+      },
+      "Invalid input",
+    );
+  });
+
   it("accepts matrix placeholders for environment values", () => {
     expectTestSuccess({
       feature: "checkout",

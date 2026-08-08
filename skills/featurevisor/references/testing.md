@@ -4,6 +4,10 @@ Full docs: <https://featurevisor.com/docs/testing>
 
 Featurevisor ships an in-process test runner. Specs live in `tests/features/<key>.spec.yml` and `tests/segments/<key>.spec.yml` by default. File names are conventional, not load-bearing.
 
+In a sets project, `promotable: false` can be set at the top level of either kind of test spec. If the matching destination spec exists, it is preserved when either the source or destination spec has this field. A missing destination spec is still created.
+
+Individual assertions can also set `promotable: false`. Give every assertion in that spec a unique stable `key`. A protected source assertion is omitted, while a protected destination assertion is preserved when the source contains the same key. Both source and destination specs must use assertion keys when protection is involved. Matrix cases and child assertions are protected together through their parent assertion.
+
 Run:
 
 ```bash
@@ -19,7 +23,8 @@ npx featurevisor test --onlyFailures
 ```yaml
 feature: foo
 assertions:
-  - description: Control in NL at 40th percentile
+  - key: control-in-nl
+    description: Control in NL at 40th percentile
     environment: production       # omit if project has no environments configured
     at: 40                        # bucketed percentile (0–100) the assertion runs at
     context:
@@ -42,10 +47,10 @@ Available expectations on a feature assertion:
 
 Additional inputs an assertion can set up (advanced, all optional):
 
-| Field                                             | Purpose                                                                                                                                                                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Field                                             | Purpose                                                                                                                                                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sticky`                                          | Sticky features for the test SDK instance — consulted before evaluation, exactly like `f.setSticky()` at runtime                                                                            |
-| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                              |
+| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                             |
 | `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
 
 ```yaml
@@ -69,7 +74,7 @@ assertions:
     expectedToBeEnabled: true
 ```
 
-`expectedEvaluations` asserts fields of the raw evaluation objects (`flag:`, `variation:`, `variables.<key>:`) such as `reason` or `ruleKey` — useful for pinning *why* a value was returned, not just what.
+`expectedEvaluations` asserts fields of the raw evaluation objects (`flag:`, `variation:`, `variables.<key>:`) such as `reason` or `ruleKey` — useful for pinning _why_ a value was returned, not just what.
 
 ## Segment spec
 

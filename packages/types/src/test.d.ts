@@ -42,6 +42,8 @@ export interface FeatureChildAssertion {
 }
 
 export interface FeatureAssertion {
+  key?: string;
+  promotable?: boolean;
   matrix?: AssertionMatrix;
   description?: string;
   environment: EnvironmentKey;
@@ -74,6 +76,8 @@ export interface TestFeature {
 }
 
 export interface SegmentAssertion {
+  key?: string;
+  promotable?: boolean;
   matrix?: AssertionMatrix;
   description?: string;
   context: Context;

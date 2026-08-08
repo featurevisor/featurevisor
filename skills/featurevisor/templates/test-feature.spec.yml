@@ -1,13 +1,15 @@
 feature: <featureKey>
 assertions:
-  - description: Catch-all is enabled in staging
+  - key: catch-all-staging
+    description: Catch-all is enabled in staging
     environment: staging
     at: 99
     context:
       userId: "test-user-1"
     expectedToBeEnabled: true
 
-  - description: Production is gated for everyone at 0% rollout
+  - key: production-gated
+    description: Production is gated for everyone at 0% rollout
     environment: production
     at: 99
     context:
@@ -16,7 +18,8 @@ assertions:
 
   # If the feature has variations, assert each by picking `at` in their weight band.
   # Variation weights of 50/50 → control covers ~[0,50), treatment ~[50,100).
-  # - description: Treatment variation in production
+  # - key: treatment-production
+  #   description: Treatment variation in production
   #   environment: production
   #   at: 75
   #   context:
@@ -27,7 +30,8 @@ assertions:
   #     bgColor: blue
 
   # Matrix example — same expectations across multiple contexts:
-  # - matrix:
+  # - key: country-matrix
+  #   matrix:
   #     country: [nl, de, us]
   #     at: [10, 50, 90]
   #   description: At ${{ at }}% in ${{ country }}

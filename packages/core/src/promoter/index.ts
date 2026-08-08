@@ -5,12 +5,14 @@ import type {
   Attribute,
   Condition,
   EntityType,
+  FeatureAssertion,
   GroupSegment,
   ParsedFeature,
   Rule,
   RulesByEnvironment,
   Schema,
   Segment,
+  SegmentAssertion,
   Group,
   Target,
   Test,
@@ -522,6 +524,121 @@ function mergeFeature(
   };
 }
 
+type TestAssertion = FeatureAssertion | SegmentAssertion;
+
+function assertionsAreKeyed(
+  assertions: TestAssertion[],
+): assertions is Array<TestAssertion & { key: string }> {
+  return (
+    assertions.length > 0 && assertions.every((assertion) => typeof assertion.key === "string")
+  );
+}
+
+function mergeAssertionArray(
+  testKey: string,
+  destination: TestAssertion[] | undefined,
+  source: TestAssertion[] | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+) {
+  if (typeof source === "undefined") return destination;
+  if (typeof destination === "undefined" || destination.length === 0) {
+    return source.filter((assertion) => isPromotable(assertion));
+  }
+
+  const sourceIsKeyed = assertionsAreKeyed(source);
+  const destinationIsKeyed = assertionsAreKeyed(destination);
+
+  if (sourceIsKeyed && destinationIsKeyed) {
+    const mergedAssertionKeys = new Set<string>();
+    const mergedAssertions: TestAssertion[] = [];
+
+    for (const sourceAssertion of source) {
+      if (!isPromotable(sourceAssertion)) {
+        continue;
+      }
+
+      const destinationAssertion = destination.find(
+        (assertion) => assertion.key === sourceAssertion.key,
+      );
+      mergedAssertionKeys.add(sourceAssertion.key);
+
+      if (destinationAssertion && !isPromotable(destinationAssertion)) {
+        mergedAssertions.push(destinationAssertion);
+        continue;
+      }
+
+      mergedAssertions.push(
+        deepMergeWithPolicy(destinationAssertion, sourceAssertion, policy, conflicts, [
+          "assertions",
+          sourceAssertion.key,
+        ]) as TestAssertion,
+      );
+    }
+
+    for (const destinationAssertion of destination) {
+      if (destinationAssertion.key && !mergedAssertionKeys.has(destinationAssertion.key)) {
+        mergedAssertions.push(destinationAssertion);
+      }
+    }
+
+    return mergedAssertions;
+  }
+
+  const hasAssertionProtection = [...source, ...destination].some(
+    (assertion) => assertion.promotable === false,
+  );
+  if (hasAssertionProtection && sourceIsKeyed !== destinationIsKeyed) {
+    throw new Error(
+      `Cannot merge protected assertions in test "${testKey}" because assertion keys are present in only one set. Add stable keys to every assertion in both source and destination test specs.`,
+    );
+  }
+
+  return deepMergeWithPolicy(destination, source, policy, conflicts, ["assertions"]);
+}
+
+function mergeTest(
+  testKey: string,
+  destination: Test | undefined,
+  source: Test,
+  policy: ConflictPolicy,
+  conflicts: PromotionConflict[],
+): Test {
+  const sourceWithoutAssertions = { ...source, assertions: undefined };
+  const destinationWithoutAssertions = destination
+    ? { ...destination, assertions: undefined }
+    : undefined;
+  const testConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+  const mergedTest = deepMergeWithPolicy(
+    destinationWithoutAssertions,
+    sourceWithoutAssertions,
+    policy,
+    testConflicts,
+  ) as Test;
+  const assertionConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+  const mergedAssertions = mergeAssertionArray(
+    testKey,
+    destination?.assertions,
+    source.assertions,
+    policy,
+    assertionConflicts,
+  );
+
+  conflicts.push(
+    ...testConflicts.map((conflict) => ({ type: "test" as const, key: testKey, ...conflict })),
+    ...assertionConflicts.map((conflict) => ({
+      type: "test" as const,
+      key: testKey,
+      ...conflict,
+    })),
+  );
+
+  return {
+    ...mergedTest,
+    assertions: mergedAssertions || [],
+  } as Test;
+}
+
 async function getPromotionPlan(
   sourceDatasource: Datasource,
   destinationDatasource: Datasource,
@@ -794,7 +911,14 @@ async function getPromotionPlan(
 
   for (const key of promotedTestKeys.sort()) {
     if (tests[key])
-      await plan("test", key, tests[key], (entryKey) => destinationDatasource.readTest(entryKey));
+      await plan(
+        "test",
+        key,
+        tests[key],
+        (entryKey) => destinationDatasource.readTest(entryKey),
+        (destination, source, conflicts) =>
+          mergeTest(key, destination, source, options.conflicts, conflicts),
+      );
   }
 
   return plans;

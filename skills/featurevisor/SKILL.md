@@ -241,7 +241,7 @@ Use `force:` on the feature (per-environment), not `rules`. No `key`/`percentage
 
 ### Promoting between sets ("move X to staging/production")
 
-Only in sets projects. Read [sets-promotions.md](references/sets-promotions.md), then: preview with `npx featurevisor promote --from=<a> --to=<b> --includeFeatures="<key>"`, show the user the created/updated/conflicts summary, apply with `--apply` on their go-ahead, and lint + test the destination set. Use `promotable: false` to protect lane-specific rules from being overwritten.
+Only in sets projects. Read [sets-promotions.md](references/sets-promotions.md), then: preview with `npx featurevisor promote --from=<a> --to=<b> --includeFeatures="<key>"`, show the user the created/updated/conflicts summary, apply with `--apply` on their go-ahead, and lint + test the destination set. Use `promotable: false` to protect lane-specific definitions, feature rules, and keyed test assertions from being overwritten.
 
 ### Debugging an evaluation
 
