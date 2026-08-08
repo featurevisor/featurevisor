@@ -152,6 +152,85 @@ describe("core: lintProject", function () {
     });
   });
 
+  it("accepts keyed promotable assertions in feature and segment test specs", async () => {
+    const featureTestPath = path.join(tempProjectPath, "tests", "features", "showHeader.spec.yml");
+    let assertionIndex = 0;
+    const featureTest = fs
+      .readFileSync(featureTestPath, "utf8")
+      .replace(/^  - description:/gm, () => {
+        assertionIndex++;
+        return `  - key: assertion-${assertionIndex}\n    description:`;
+      })
+      .replace("  - key: assertion-1", "  - key: assertion-1\n    promotable: false");
+    fs.writeFileSync(featureTestPath, featureTest, "utf8");
+
+    replaceInFile(
+      path.join(tempProjectPath, "tests", "segments", "everyone.spec.yml"),
+      "  - context:",
+      "  - key: matches-everyone\n    promotable: false\n    context:",
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result).toEqual({
+      hasError: false,
+      errors: [],
+    });
+  });
+
+  it("requires stable unique keys for assertion-level promotion", async () => {
+    const testPath = path.join(tempProjectPath, "tests", "features", "showHeader.spec.yml");
+    replaceInFile(
+      testPath,
+      '  - description: "should be disabled for desktop users below v5"',
+      '  - promotable: false\n    description: "should be disabled for desktop users below v5"',
+    );
+
+    const missingKeyResult = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(missingKeyResult.hasError).toEqual(true);
+    expect(
+      missingKeyResult.errors.some(
+        (error) =>
+          error.path.join(".") === "assertions.0.key" && error.message.includes("key is required"),
+      ),
+    ).toEqual(true);
+
+    replaceInFile(testPath, "  - promotable: false", "  - key: duplicate\n    promotable: false");
+    replaceInFile(
+      testPath,
+      '  - description: "should be enabled for desktop users above v5"',
+      '  - key: duplicate\n    description: "should be enabled for desktop users above v5"',
+    );
+
+    const duplicateKeyResult = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(duplicateKeyResult.hasError).toEqual(true);
+    expect(
+      duplicateKeyResult.errors.some(
+        (error) =>
+          error.path.join(".") === "assertions.1.key" &&
+          error.message.includes("Duplicate assertion key"),
+      ),
+    ).toEqual(true);
+    expect(
+      duplicateKeyResult.errors.some(
+        (error) =>
+          error.path.join(".") === "assertions.2.key" && error.message.includes("All assertions"),
+      ),
+    ).toEqual(true);
+  });
+
+  it("rejects non-boolean assertion promotable values", async () => {
+    replaceInFile(
+      path.join(tempProjectPath, "tests", "segments", "everyone.spec.yml"),
+      "  - context:",
+      "  - key: matches-everyone\n    promotable: nope\n    context:",
+    );
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+
+    expect(result.hasError).toEqual(true);
+  });
+
   it("rejects non-boolean promotable values", async () => {
     fs.appendFileSync(
       path.join(tempProjectPath, "attributes", "userId.yml"),

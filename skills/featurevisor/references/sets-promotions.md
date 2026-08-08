@@ -9,12 +9,12 @@ Sets split one Featurevisor project into **independent trees** that each own the
 
 ## When to use sets (and when not to)
 
-| Situation                                                                                                          | Use                                        |
-| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| Same features, different rollout state per env, one team owns everything                                           | Plain **environments** — no sets           |
-| Release lanes where changes **graduate** through review gates (dev → staging → production), possibly with different owners per lane | **Sets** (one per lane) + **promotions**   |
-| Distinct surfaces (`storefront`, `admin`) that share almost nothing — different attributes, different segments      | **Sets** (one per surface)                 |
-| One tree, several client bundles                                                                                    | **Tags + targets** — no sets               |
+| Situation                                                                                                                           | Use                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Same features, different rollout state per env, one team owns everything                                                            | Plain **environments** — no sets         |
+| Release lanes where changes **graduate** through review gates (dev → staging → production), possibly with different owners per lane | **Sets** (one per lane) + **promotions** |
+| Distinct surfaces (`storefront`, `admin`) that share almost nothing — different attributes, different segments                      | **Sets** (one per surface)               |
+| One tree, several client bundles                                                                                                    | **Tags + targets** — no sets             |
 
 The key property: the **same feature key can exist in multiple sets with entirely different definitions** — different rules, even different variables. With plain environments, one file holds all envs and any edit touches the single source of truth for every env. With sets-as-lanes, promoting to production is an explicit, reviewable file change in `sets/production/`, and `CODEOWNERS` can give each lane different approvers ([recipes.md](recipes.md#establishing-ownership)).
 
@@ -114,17 +114,17 @@ For a single feature, `--includeFeatures="<exactKey>"` is the precise tool.
 
 A definition existing in both sets with different values is a conflict. `--conflicts=` controls resolution:
 
-| Value         | Behavior                                          |
-| ------------- | -------------------------------------------------- |
-| `source`      | Source overwrites destination (**default**)        |
-| `destination` | Destination keeps its values                       |
-| `fail`        | Stop with an error instead of overwriting          |
+| Value         | Behavior                                    |
+| ------------- | ------------------------------------------- |
+| `source`      | Source overwrites destination (**default**) |
+| `destination` | Destination keeps its values                |
+| `fail`        | Stop with an error instead of overwriting   |
 
 Preview first specifically to see the conflict list. When lanes intentionally diverge (production at 10%, dev at 100%), plain `--conflicts=source` would stomp production's rollout state — that's what `promotable: false` is for.
 
 ### `promotable: false` — protecting lane-specific state
 
-Set it on a definition (feature, attribute, segment, group, schema, target, or test spec) to preserve the **destination** version during promotion. A missing destination is still created (and keeps the flag for later promotions).
+Set it at the top level of a feature, attribute, segment, group, reusable schema, target, or test spec to preserve the **destination** version during promotion. If either the source or existing destination definition has `promotable: false`, the destination stays unchanged. A missing destination is still created and keeps the flag for later promotions. This protection takes precedence over `--conflicts`.
 
 Rules are stricter and this is the powerful part:
 
@@ -142,7 +142,29 @@ rules:
     percentage: 50           # production's own rollout state
 ```
 
-A **source** rule with `promotable: false` is omitted from promotion; an **existing destination** rule with it is preserved. This lets each lane keep its own QA rules and rollout percentages while structure (variables, variations, new rules) flows through.
+A **source** rule with `promotable: false` is omitted from promotion; an **existing destination** rule with it is preserved when a source rule with the same key is promoted. This lets each lane keep its own QA rules and rollout percentages while structure (variables, variations, new rules) flows through.
+
+Individual feature and segment test assertions also support promotion protection. Every assertion in the spec must have a unique stable `key` when any assertion is keyed. An assertion with `promotable` must have a key.
+
+```yaml
+# sets/production/tests/features/checkoutFlow.spec.yml
+feature: checkoutFlow
+assertions:
+  - key: production-rollout
+    promotable: false
+    at: 50
+    context: { userId: production-user }
+    expectedToBeEnabled: false
+
+  - key: general-checkout
+    at: 80
+    context: { userId: general-user }
+    expectedToBeEnabled: true
+```
+
+A source assertion with `promotable: false` is omitted. A protected destination assertion is preserved when a source assertion with the same key is promoted. Both source and destination specs must use assertion keys when protection is involved. Existing unkeyed specs keep whole-array promotion behaviour.
+
+Do not put `promotable` on individual matrix cases, child assertions, group slots, segment conditions, force entries, variable overrides, or nested schema properties. Protecting a parent assertion protects all of its matrix cases and child assertions together.
 
 ### `promotionFlows` — allowed directions
 
@@ -166,7 +188,7 @@ Now `promote --from=dev --to=production` fails — no lane-skipping. Check this 
 - **`promote --apply` writes files** — the one CLI command in this skill that modifies definitions. Treat it like an edit: preview first, show the user the created/updated/conflict summary, apply only with their go-ahead, then `npx featurevisor lint` and `npx featurevisor test --set=<to>`.
 - The promoted files are ordinary working-tree changes — they still go through the project's normal Git/PR flow ([SKILL.md → Changes ship through Git](../SKILL.md#changes-ship-through-git)).
 - When the user says "promote X to staging" for a single feature, use `--includeFeatures="X"` and let dependency closure handle the rest.
-- When a promotion keeps overwriting something lane-specific, the fix is usually `promotable: false` on the destination rule/definition, not `--conflicts=destination` (which blocks *all* updates to existing definitions, not just the protected one).
+- When a promotion keeps overwriting something lane-specific, the fix is usually `promotable: false` on the destination rule/definition, not `--conflicts=destination` (which blocks _all_ updates to existing definitions, not just the protected one).
 
 ## Release-lane workflow (canonical shape)
 

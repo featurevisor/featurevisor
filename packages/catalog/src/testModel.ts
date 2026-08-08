@@ -96,12 +96,14 @@ function applyCombinationToAssertion(
 
 export function expandTestAssertions(test: Test): ExpandedTestAssertion[] {
   return test.assertions.flatMap((assertion, assertionIndex) => {
+    const assertionLabel = assertion.key || String(assertionIndex + 1);
+
     if (!assertion.matrix) {
       return [
         {
           assertion: { ...assertion },
           assertionIndex,
-          label: String(assertionIndex + 1),
+          label: assertionLabel,
         },
       ];
     }
@@ -112,7 +114,7 @@ export function expandTestAssertions(test: Test): ExpandedTestAssertion[] {
       assertionIndex,
       caseIndex,
       caseCount: combinations.length,
-      label: `${assertionIndex + 1}.${caseIndex + 1}`,
+      label: `${assertionLabel}.${caseIndex + 1}`,
       matrixValues: combination,
     }));
   });

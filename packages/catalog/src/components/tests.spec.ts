@@ -25,6 +25,39 @@ describe("catalog test presentation", () => {
     ]);
   });
 
+  it("uses assertion keys for stable labels and matrix permalinks", () => {
+    const test: TestFeature = {
+      key: "checkout-primary",
+      feature: "checkout",
+      assertions: [
+        {
+          key: "production-rollout",
+          promotable: false,
+          matrix: { at: [10, 20] },
+          environment: "staging",
+          at: "${{ at }}" as never,
+          context: {},
+          expectedToBeEnabled: true,
+        },
+      ],
+    };
+
+    const expanded = expandTestAssertions(test);
+
+    expect(expanded.map((item) => item.label)).toEqual([
+      "production-rollout.1",
+      "production-rollout.2",
+    ]);
+    expect(expanded[0].assertion).toMatchObject({
+      key: "production-rollout",
+      promotable: false,
+      at: 10,
+    });
+    expect(getTestAssertionPermalink(test.key!, expanded[0].label)).toBe(
+      "checkout-primary:production-rollout.1",
+    );
+  });
+
   it("expands feature matrices in deterministic order with dotted case numbers", () => {
     const test: TestFeature = {
       key: "checkout-matrix",

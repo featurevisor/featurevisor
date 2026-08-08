@@ -230,6 +230,7 @@ function TestSpec(props: { test: Test; index: number; selectedPermalink?: string
                   <div className="group flex min-w-0 items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <h3 className="font-semibold">Assertion {expanded.label}</h3>
+                      {assertion.promotable === false && <Badge>not promotable</Badge>}
                       {hasValue(expanded.caseIndex) && (
                         <Badge tone="primary">
                           Matrix case {(expanded.caseIndex as number) + 1} of {expanded.caseCount}

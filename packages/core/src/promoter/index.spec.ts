@@ -524,6 +524,243 @@ describe("promoteProjectSets", function () {
     expect(rules.find((rule) => rule.key === "protected").promotable).toEqual(false);
   });
 
+  it("skips source assertions and preserves destination assertions marked non-promotable", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/tests/features/checkoutFlow.spec.yml",
+      [
+        "feature: checkoutFlow",
+        "assertions:",
+        "  - key: shared",
+        "    at: 10",
+        "    context:",
+        '      userId: "user-1"',
+        "    expectedToBeEnabled: true",
+        "  - key: dev-only",
+        "    promotable: false",
+        "    at: 20",
+        "    context:",
+        '      userId: "user-2"',
+        "    expectedToBeEnabled: true",
+        "  - key: protected",
+        "    at: 30",
+        "    context:",
+        '      userId: "user-3"',
+        "    expectedToBeEnabled: true",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/tests/features/checkoutFlow.spec.yml",
+      [
+        "feature: checkoutFlow",
+        "assertions:",
+        "  - key: shared",
+        "    at: 10",
+        "    context:",
+        '      userId: "user-1"',
+        "    expectedToBeEnabled: false",
+        "  - key: protected",
+        "    promotable: false",
+        "    at: 30",
+        "    context:",
+        '      userId: "user-3"',
+        "    expectedToBeEnabled: false",
+        "  - key: staging-only",
+        "    at: 40",
+        "    context:",
+        '      userId: "user-4"',
+        "    expectedToBeEnabled: false",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkout*",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("features.checkoutFlow.spec");
+    expect(test.assertions.map((assertion) => assertion.key)).toEqual([
+      "shared",
+      "protected",
+      "staging-only",
+    ]);
+    expect(test.assertions.find((assertion) => assertion.key === "shared")).toMatchObject({
+      expectedToBeEnabled: true,
+    });
+    expect(test.assertions.find((assertion) => assertion.key === "protected")).toMatchObject({
+      promotable: false,
+      expectedToBeEnabled: false,
+    });
+  });
+
+  it("applies assertion protection to segment test specs", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/tests/segments/internal.spec.yml",
+      [
+        "segment: internal",
+        "assertions:",
+        "  - key: engineering",
+        "    context:",
+        "      team: engineering",
+        "    expectedToMatch: true",
+        "  - key: dev-only",
+        "    promotable: false",
+        "    context:",
+        "      team: development",
+        "    expectedToMatch: true",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/tests/segments/internal.spec.yml",
+      [
+        "segment: internal",
+        "assertions:",
+        "  - key: engineering",
+        "    context:",
+        "      team: engineering",
+        "    expectedToMatch: false",
+        "  - key: staging-only",
+        "    promotable: false",
+        "    context:",
+        "      team: support",
+        "    expectedToMatch: true",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkout*",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("segments.internal.spec");
+    expect(test.assertions.map((assertion) => assertion.key)).toEqual([
+      "engineering",
+      "staging-only",
+    ]);
+    expect(test.assertions.find((assertion) => assertion.key === "engineering")).toMatchObject({
+      expectedToMatch: true,
+    });
+    expect(test.assertions.find((assertion) => assertion.key === "staging-only")).toMatchObject({
+      promotable: false,
+      expectedToMatch: true,
+    });
+  });
+
+  it("omits non-promotable assertions when creating a missing test spec", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/mobileBanner.yml",
+      [
+        "description: Mobile banner",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/tests/features/mobileBanner.spec.yml",
+      [
+        "feature: mobileBanner",
+        "assertions:",
+        "  - key: portable",
+        "    at: 10",
+        "    context:",
+        '      userId: "user-1"',
+        "    expectedToBeEnabled: true",
+        "  - key: dev-only",
+        "    promotable: false",
+        "    at: 20",
+        "    context:",
+        '      userId: "user-2"',
+        "    expectedToBeEnabled: true",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "mobileBanner",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("features.mobileBanner.spec");
+    expect(test.assertions.map((assertion) => assertion.key)).toEqual(["portable"]);
+  });
+
+  it("keeps legacy unkeyed assertion replacement behaviour", async function () {
+    const root = await createProject();
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkout*",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("features.checkoutFlow.spec");
+    expect(test.assertions).toHaveLength(1);
+    expect(test.assertions[0]).toMatchObject({ expectedToBeEnabled: true });
+    expect(test.assertions[0].key).toBeUndefined();
+  });
+
+  it("rejects protected assertion merging when only one set uses assertion keys", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/staging/tests/features/checkoutFlow.spec.yml",
+      [
+        "feature: checkoutFlow",
+        "assertions:",
+        "  - key: protected",
+        "    promotable: false",
+        "    at: 10",
+        "    context:",
+        '      userId: "user-1"',
+        "    expectedToBeEnabled: false",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await expect(
+      promoteProjectSets(projectConfig, datasource, {
+        from: "dev",
+        to: "staging",
+        includeFeatures: "checkout*",
+      }),
+    ).rejects.toThrow("assertion keys are present in only one set");
+  });
+
   it("supports conflict policies", async function () {
     const root = await createProject();
     const projectConfig = getProjectConfig(root);

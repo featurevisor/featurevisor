@@ -67,6 +67,8 @@ Guidance:
 
 ## Rules
 
+Rule entries may use `promotable: false` in a sets project. A source rule with it is omitted from promotion. An existing destination rule with it is preserved when the source contains a rule with the same key. This protection applies only to rules, not to force entries, variable overrides, variations, or variables.
+
 ```yaml
 rules:
   staging:

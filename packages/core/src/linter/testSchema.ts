@@ -9,6 +9,47 @@ export function getTestsZodSchema(
   availableSegmentKeys: [string, ...string[]],
   availableTargetKeys: [string, ...string[]],
 ) {
+  function validateAssertionKeys(
+    assertions: Array<{ key?: string; promotable?: boolean }>,
+    ctx: z.RefinementCtx,
+  ) {
+    const keyedAssertions = assertions.filter((assertion) => typeof assertion.key === "string");
+
+    if (keyedAssertions.length > 0 && keyedAssertions.length !== assertions.length) {
+      assertions.forEach((assertion, index) => {
+        if (typeof assertion.key === "undefined") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "key"],
+            message: "All assertions in a test spec must have a key when any assertion has one.",
+          });
+        }
+      });
+    }
+
+    const seenKeys = new Set<string>();
+    assertions.forEach((assertion, index) => {
+      if (typeof assertion.promotable !== "undefined" && typeof assertion.key === "undefined") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "key"],
+          message: "Assertion key is required when promotable is set.",
+        });
+      }
+
+      if (typeof assertion.key === "string") {
+        if (seenKeys.has(assertion.key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "key"],
+            message: `Duplicate assertion key "${assertion.key}".`,
+          });
+        }
+        seenKeys.add(assertion.key);
+      }
+    });
+  }
+
   const matrixZodSchema = z.record(
     z.string(),
     z.array(
@@ -30,16 +71,20 @@ export function getTestsZodSchema(
         (value) => availableSegmentKeys.includes(value),
         (value) => `Unknown segment "${value}"`,
       ),
-      assertions: z.array(
-        z
-          .object({
-            matrix: matrixZodSchema.optional(),
-            description: z.string().optional(),
-            context: z.record(z.string(), z.unknown()),
-            expectedToMatch: z.boolean(),
-          })
-          .strict(),
-      ),
+      assertions: z
+        .array(
+          z
+            .object({
+              key: z.string().min(1).optional(),
+              promotable: z.boolean().optional(),
+              matrix: matrixZodSchema.optional(),
+              description: z.string().optional(),
+              context: z.record(z.string(), z.unknown()),
+              expectedToMatch: z.boolean(),
+            })
+            .strict(),
+        )
+        .superRefine(validateAssertionKeys),
     })
     .strict();
 
@@ -51,96 +96,100 @@ export function getTestsZodSchema(
         (value) => availableFeatureKeys.includes(value),
         (value) => `Unknown feature "${value}"`,
       ),
-      assertions: z.array(
-        z
-          .object({
-            matrix: matrixZodSchema.optional(),
-            description: z.string().optional(),
-            at: z.union([
-              z.number().min(0).max(100),
+      assertions: z
+        .array(
+          z
+            .object({
+              key: z.string().min(1).optional(),
+              promotable: z.boolean().optional(),
+              matrix: matrixZodSchema.optional(),
+              description: z.string().optional(),
+              at: z.union([
+                z.number().min(0).max(100),
 
-              // because of supporting matrix
-              z.string(),
-            ]),
-            environment: Array.isArray(projectConfig.environments)
-              ? refineWithMessage(
-                  z.string(),
-                  (value) => {
-                    if (value.indexOf("${{") === 0) {
-                      // allow unknown strings for matrix
-                      return true;
-                    }
+                // because of supporting matrix
+                z.string(),
+              ]),
+              environment: Array.isArray(projectConfig.environments)
+                ? refineWithMessage(
+                    z.string(),
+                    (value) => {
+                      if (value.indexOf("${{") === 0) {
+                        // allow unknown strings for matrix
+                        return true;
+                      }
 
-                    // otherwise only known environments should be passed
-                    if (
-                      Array.isArray(projectConfig.environments) &&
-                      projectConfig.environments.includes(value)
-                    ) {
-                      return true;
-                    }
+                      // otherwise only known environments should be passed
+                      if (
+                        Array.isArray(projectConfig.environments) &&
+                        projectConfig.environments.includes(value)
+                      ) {
+                        return true;
+                      }
 
-                    return false;
-                  },
-                  (value) => `Unknown environment "${value}"`,
+                      return false;
+                    },
+                    (value) => `Unknown environment "${value}"`,
+                  )
+                : z.never().optional(),
+              target: refineWithMessage(
+                z.string(),
+                (value) => {
+                  if (value.indexOf("${{") === 0) {
+                    return true;
+                  }
+
+                  return availableTargetKeys.includes(value);
+                },
+                (value) => `Unknown target "${value}"`,
+              ).optional(),
+
+              // parent
+              sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+              context: z.record(z.string(), z.unknown()).optional(),
+
+              defaultVariationValue: z.string().optional(),
+              defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
+
+              expectedToBeEnabled: z.boolean().optional(),
+              expectedVariation: z.string().nullable().optional(),
+              expectedVariables: z.record(z.string(), z.unknown()).optional(),
+              expectedEvaluations: z
+                .object({
+                  flag: z.record(z.string(), z.any()).optional(),
+                  variation: z.record(z.string(), z.any()).optional(),
+                  variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+                })
+                .optional(),
+
+              children: z
+                .array(
+                  z.object({
+                    // copied from parent
+                    sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+                    context: z.record(z.string(), z.unknown()).optional(),
+
+                    defaultVariationValue: z.string().optional(),
+                    defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
+
+                    expectedToBeEnabled: z.boolean().optional(),
+                    expectedVariation: z.string().nullable().optional(),
+                    expectedVariables: z.record(z.string(), z.unknown()).optional(),
+
+                    expectedEvaluations: z
+                      .object({
+                        flag: z.record(z.string(), z.any()).optional(),
+                        variation: z.record(z.string(), z.any()).optional(),
+                        variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
+                      })
+                      .optional(),
+                  }),
                 )
-              : z.never().optional(),
-            target: refineWithMessage(
-              z.string(),
-              (value) => {
-                if (value.indexOf("${{") === 0) {
-                  return true;
-                }
-
-                return availableTargetKeys.includes(value);
-              },
-              (value) => `Unknown target "${value}"`,
-            ).optional(),
-
-            // parent
-            sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-            context: z.record(z.string(), z.unknown()).optional(),
-
-            defaultVariationValue: z.string().optional(),
-            defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
-
-            expectedToBeEnabled: z.boolean().optional(),
-            expectedVariation: z.string().nullable().optional(),
-            expectedVariables: z.record(z.string(), z.unknown()).optional(),
-            expectedEvaluations: z
-              .object({
-                flag: z.record(z.string(), z.any()).optional(),
-                variation: z.record(z.string(), z.any()).optional(),
-                variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-              })
-              .optional(),
-
-            children: z
-              .array(
-                z.object({
-                  // copied from parent
-                  sticky: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-                  context: z.record(z.string(), z.unknown()).optional(),
-
-                  defaultVariationValue: z.string().optional(),
-                  defaultVariableValues: z.record(z.string(), z.unknown()).optional(),
-
-                  expectedToBeEnabled: z.boolean().optional(),
-                  expectedVariation: z.string().nullable().optional(),
-                  expectedVariables: z.record(z.string(), z.unknown()).optional(),
-
-                  expectedEvaluations: z
-                    .object({
-                      flag: z.record(z.string(), z.any()).optional(),
-                      variation: z.record(z.string(), z.any()).optional(),
-                      variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-                    })
-                    .optional(),
-                }),
-              )
-              .optional(),
-          })
-          .strict(),
-      ),
+                .optional(),
+            })
+            .strict(),
+        )
+        .superRefine(validateAssertionKeys),
     })
     .strict();
 
