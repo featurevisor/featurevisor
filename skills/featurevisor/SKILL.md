@@ -1,3 +1,5 @@
+(B[merror: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
+error: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
 ---
 name: featurevisor
 description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups, dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, and the Catalog.
@@ -168,6 +170,9 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 | `npx featurevisor list --datafiles --json`                                                                            | List generated datafile paths                         |
 | `npx featurevisor list --segments --json`                                                                             | List segments                                         |
 | `npx featurevisor list --attributes --json`                                                                           | List attributes                                       |
+| `npx featurevisor list --groups --json`                                                                               | List exclusion groups                                 |
+| `npx featurevisor list --schemas --json`                                                                              | List reusable schemas                                 |
+| `npx featurevisor list --targets --json`                                                                              | List targets                                          |
 | `npx featurevisor find-usage --segment=<key>`                                                                         | Where a segment is used                               |
 | `npx featurevisor find-usage --attribute=<key>`                                                                       | Where an attribute is used                            |
 | `npx featurevisor find-usage --feature=<key>`                                                                         | Feature usage details                                 |

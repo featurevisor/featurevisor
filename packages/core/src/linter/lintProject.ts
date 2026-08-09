@@ -20,6 +20,7 @@ import { getLintIssuesFromZodError, printZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
 import { Plugin } from "../cli";
+import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 
 export type LintEntityType =
@@ -404,7 +405,9 @@ export async function lintProject(
     }
   }
 
-  const keyPattern = options.keyPattern ? new RegExp(options.keyPattern) : null;
+  const keyPattern = options.keyPattern
+    ? parseRegexOption("--keyPattern", options.keyPattern)
+    : null;
 
   if (keyPattern) {
     log("");

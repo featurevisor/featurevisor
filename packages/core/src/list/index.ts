@@ -7,11 +7,15 @@ import type {
   FeatureAssertion,
   SegmentAssertion,
   Target,
+  Group,
+  Schema,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
+import { parseRegexOption } from "../cli/validation";
+import { FeaturevisorCLIError } from "../error";
 import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { getTargetFeatureKeys, resolveTargets } from "../targeting";
@@ -52,6 +56,24 @@ async function getEntitiesWithTests(
   };
 }
 
+function getBooleanOptionValue(value: unknown, fallback = false) {
+  if (typeof value === "undefined") {
+    return fallback;
+  }
+
+  if (typeof value === "string") {
+    return value !== "false";
+  }
+
+  return value === true;
+}
+
+function matchesBooleanOption(option: unknown, value: unknown, defaultOption?: boolean) {
+  return (
+    getBooleanOptionValue(value, defaultOption) === getBooleanOptionValue(option, defaultOption)
+  );
+}
+
 export async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
 
@@ -64,6 +86,10 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entityKeys = await datasource.listSegments();
   } else if (entityType === "attribute") {
     entityKeys = await datasource.listAttributes();
+  } else if (entityType === "group") {
+    entityKeys = await datasource.listGroups();
+  } else if (entityType === "schema") {
+    entityKeys = await datasource.listSchemas();
   } else if (entityType === "test") {
     entityKeys = await datasource.listTests();
   } else if (entityType === "target") {
@@ -80,6 +106,15 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
   };
   let entitiesWithTestsInitialized = false;
   let targetFeatureKeys: Set<string> | undefined;
+  const descriptionRegex = options.description
+    ? parseRegexOption("--description", options.description, "i")
+    : undefined;
+  const keyRegex = options.keyPattern
+    ? parseRegexOption("--keyPattern", options.keyPattern, "i")
+    : undefined;
+  const assertionRegex = options.assertionPattern
+    ? parseRegexOption("--assertionPattern", options.assertionPattern, "i")
+    : undefined;
 
   if (entityType === "feature" && options.target) {
     const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
@@ -104,10 +139,48 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       entity = (await datasource.readSegment(key)) as T;
     } else if (entityType === "attribute") {
       entity = (await datasource.readAttribute(key)) as T;
+    } else if (entityType === "group") {
+      entity = (await datasource.readGroup(key)) as T;
+    } else if (entityType === "schema") {
+      entity = (await datasource.readSchema(key)) as T;
     } else if (entityType === "test") {
       entity = (await datasource.readTest(key)) as T;
     } else if (entityType === "target") {
       entity = (await datasource.readTarget(key)) as T;
+    }
+
+    if (entityType !== "test") {
+      const definition = entity as {
+        archived?: boolean;
+        promotable?: boolean;
+        description?: string;
+      };
+
+      if (
+        ["feature", "segment", "attribute"].includes(entityType) &&
+        !matchesBooleanOption(options.archived, definition.archived, false)
+      ) {
+        continue;
+      }
+
+      if (
+        typeof options.promotable !== "undefined" &&
+        !matchesBooleanOption(options.promotable, definition.promotable, true)
+      ) {
+        continue;
+      }
+
+      if (descriptionRegex) {
+        if (!descriptionRegex.test(definition.description || "")) {
+          continue;
+        }
+      }
+
+      if (keyRegex) {
+        if (!keyRegex.test(key)) {
+          continue;
+        }
+      }
     }
 
     // filter
@@ -116,25 +189,6 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
 
       if (targetFeatureKeys && !targetFeatureKeys.has(key)) {
         continue;
-      }
-
-      // --archived=true|false
-      if (parsedFeature.archived) {
-        const archivedStatus = options.archived === "false";
-
-        if (parsedFeature.archived !== archivedStatus) {
-          continue;
-        }
-      }
-
-      // --description=<pattern>
-      if (options.description) {
-        const description = parsedFeature.description || "";
-
-        const regex = new RegExp(options.description, "i");
-        if (!regex.test(description)) {
-          continue;
-        }
       }
 
       // --disabledIn=<environment>
@@ -149,20 +203,15 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       }
 
       // --enabledIn=<environment>
-      if (options.enabledIn && parsedFeature.rules && parsedFeature.rules[options.enabledIn]) {
-        const enabledInEnvironment = parsedFeature.rules[options.enabledIn].some((rule) => {
-          return rule.percentage > 0;
-        });
+      if (options.enabledIn) {
+        const rules = parsedFeature.rules && parsedFeature.rules[options.enabledIn];
+        const enabledInEnvironment = Boolean(
+          rules?.some((rule) => {
+            return rule.percentage > 0;
+          }),
+        );
 
         if (!enabledInEnvironment) {
-          continue;
-        }
-      }
-
-      // --keyPattern=<pattern>
-      if (options.keyPattern) {
-        const regex = new RegExp(options.keyPattern, "i");
-        if (!regex.test(key)) {
           continue;
         }
       }
@@ -225,7 +274,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
 
       // --with-variables
       if (options.withVariables) {
-        const hasVariables = parsedFeature.variablesSchema;
+        const hasVariables = Object.keys(parsedFeature.variablesSchema || {}).length > 0;
 
         if (!hasVariables) {
           continue;
@@ -234,7 +283,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
 
       // --with-variations
       if (options.withVariations) {
-        const hasVariations = parsedFeature.variations;
+        const hasVariations = (parsedFeature.variations || []).length > 0;
 
         if (!hasVariations) {
           continue;
@@ -252,7 +301,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
 
       // --without-variables
       if (options.withoutVariables) {
-        const hasVariables = parsedFeature.variablesSchema;
+        const hasVariables = Object.keys(parsedFeature.variablesSchema || {}).length > 0;
 
         if (hasVariables) {
           continue;
@@ -261,42 +310,13 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
 
       // --without-variations
       if (options.withoutVariations) {
-        const hasVariations = parsedFeature.variations;
+        const hasVariations = (parsedFeature.variations || []).length > 0;
 
         if (hasVariations) {
           continue;
         }
       }
     } else if (entityType === "segment") {
-      const segment = entity as Segment;
-
-      // --archived=true|false
-      if (segment.archived) {
-        const archivedStatus = options.archived === "false";
-
-        if (segment.archived !== archivedStatus) {
-          continue;
-        }
-      }
-
-      // --description=<pattern>
-      if (options.description) {
-        const description = segment.description || "";
-
-        const regex = new RegExp(options.description, "i");
-        if (!regex.test(description)) {
-          continue;
-        }
-      }
-
-      // --keyPattern=<pattern>
-      if (options.keyPattern) {
-        const regex = new RegExp(options.keyPattern, "i");
-        if (!regex.test(key)) {
-          continue;
-        }
-      }
-
       // --with-tests
       if (options.withTests) {
         await initializeEntitiesWithTests();
@@ -314,40 +334,18 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           continue;
         }
       }
-    } else if (entityType === "attribute") {
-      const attribute = entity as Attribute;
-
-      // --archived=true|false
-      if (options.archived) {
-        const archivedStatus = options.archived === "false";
-
-        if (attribute.archived !== archivedStatus) {
-          continue;
-        }
-      }
-
-      // --description=<pattern>
-      if (options.description) {
-        const description = attribute.description || "";
-
-        const regex = new RegExp(options.description, "i");
-        if (!regex.test(description)) {
-          continue;
-        }
-      }
-
-      // --keyPattern=<pattern>
-      if (options.keyPattern) {
-        const regex = new RegExp(options.keyPattern, "i");
-        if (!regex.test(key)) {
-          continue;
-        }
-      }
     } else if (entityType === "test") {
       let test = entity as TestFeature | TestSegment;
       const testEntityKey = (test as TestFeature).feature || (test as TestSegment).segment;
       const testEntityType = (test as TestSegment).segment ? "segment" : "feature";
       let testAssertions = test.assertions;
+
+      if (
+        typeof options.promotable !== "undefined" &&
+        !matchesBooleanOption(options.promotable, test.promotable, true)
+      ) {
+        continue;
+      }
 
       // --entityType=<type>
       if (options.entityType && options.entityType !== testEntityType) {
@@ -384,22 +382,20 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       }
 
       // --keyPattern=<pattern>
-      if (options.keyPattern) {
-        const regex = new RegExp(options.keyPattern, "i");
-        if (!regex.test(testEntityKey)) {
+      if (keyRegex) {
+        if (!keyRegex.test(testEntityKey)) {
           continue;
         }
       }
 
       // --assertionPattern=<pattern>
-      if (options.assertionPattern) {
-        const regex = new RegExp(options.assertionPattern, "i");
+      if (assertionRegex) {
         testAssertions = testAssertions.filter((assertion) => {
           if (!assertion.description) {
             return false;
           }
 
-          return regex.test(assertion.description);
+          return assertionRegex.test(assertion.description);
         }) as FeatureAssertion[] | SegmentAssertion[];
 
         if (testAssertions.length === 0) {
@@ -560,8 +556,127 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
   console.log(CLI_FORMAT_GREEN, `Found ${sortedResult.length} datafiles.`);
 }
 
+const listSelectors = [
+  "datafiles",
+  "features",
+  "segments",
+  "groups",
+  "schemas",
+  "attributes",
+  "tests",
+  "targets",
+] as const;
+
+function assertListOptions(options: Record<string, any>) {
+  const selected = listSelectors.filter((selector) => options[selector]);
+
+  if (selected.length !== 1) {
+    throw new FeaturevisorCLIError(
+      selected.length === 0
+        ? "Select one entity type to list."
+        : `Select only one entity type to list. Received: ${selected.join(", ")}.`,
+      {
+        code: "invalid_list_selection",
+        details: { selected },
+      },
+    );
+  }
+
+  const opposingOptions = [
+    ["withTests", "withoutTests"],
+    ["withVariables", "withoutVariables"],
+    ["withVariations", "withoutVariations"],
+  ];
+  for (const [positive, negative] of opposingOptions) {
+    if (options[positive] && options[negative]) {
+      throw new FeaturevisorCLIError(
+        `Options --${positive} and --${negative} cannot be combined.`,
+        {
+          code: "conflicting_cli_options",
+          details: { options: [positive, negative] },
+        },
+      );
+    }
+  }
+
+  const selector = selected[0];
+  const featureOnly = [
+    "target",
+    "disabledIn",
+    "enabledIn",
+    "tag",
+    "variable",
+    "variation",
+    "withVariables",
+    "withoutVariables",
+    "withVariations",
+    "withoutVariations",
+  ];
+  const testOnly = ["entityType", "applyMatrix", "assertionPattern"];
+
+  if (selector !== "features") {
+    const unsupported = featureOnly.filter((option) => typeof options[option] !== "undefined");
+    if (unsupported.length > 0) {
+      throw new FeaturevisorCLIError(
+        `Option --${unsupported[0]} can only be used with --features.`,
+        { code: "incompatible_cli_options", details: { selector, option: unsupported[0] } },
+      );
+    }
+  }
+
+  if (selector !== "tests") {
+    const unsupported = testOnly.filter((option) => typeof options[option] !== "undefined");
+    if (unsupported.length > 0) {
+      throw new FeaturevisorCLIError(`Option --${unsupported[0]} can only be used with --tests.`, {
+        code: "incompatible_cli_options",
+        details: { selector, option: unsupported[0] },
+      });
+    }
+  }
+
+  if (!["features", "segments"].includes(selector) && (options.withTests || options.withoutTests)) {
+    throw new FeaturevisorCLIError(
+      "Options --withTests and --withoutTests can only be used with --features or --segments.",
+      { code: "incompatible_cli_options", details: { selector } },
+    );
+  }
+
+  if (
+    !["features", "segments", "attributes"].includes(selector) &&
+    typeof options.archived !== "undefined"
+  ) {
+    throw new FeaturevisorCLIError(
+      "Option --archived can only be used with --features, --segments, or --attributes.",
+      { code: "incompatible_cli_options", details: { selector, option: "archived" } },
+    );
+  }
+
+  if (selector === "datafiles") {
+    const entityFilters = ["keyPattern", "description", "promotable"];
+    const unsupported = entityFilters.find((option) => typeof options[option] !== "undefined");
+    if (unsupported) {
+      throw new FeaturevisorCLIError(`Option --${unsupported} cannot be used with --datafiles.`, {
+        code: "incompatible_cli_options",
+        details: { selector, option: unsupported },
+      });
+    }
+  }
+
+  if (selector === "tests" && typeof options.description !== "undefined") {
+    throw new FeaturevisorCLIError(
+      "Option --description cannot be used with --tests. Use --assertionPattern instead.",
+      {
+        code: "incompatible_cli_options",
+        details: { selector, option: "description" },
+      },
+    );
+  }
+}
+
 export async function listProject(deps: Dependencies) {
   const { options } = deps;
+
+  assertListOptions(options);
 
   // datafiles
   if (options.datafiles) {
@@ -590,6 +705,20 @@ export async function listProject(deps: Dependencies) {
       entityType: "segment",
       options,
     });
+  }
+
+  // groups
+  if (options.groups) {
+    const result = await listEntities<Group>(deps, "group");
+
+    return printResult({ result, entityType: "group", options });
+  }
+
+  // schemas
+  if (options.schemas) {
+    const result = await listEntities<Schema>(deps, "schema");
+
+    return printResult({ result, entityType: "schema", options });
   }
 
   // attributes
@@ -624,13 +753,6 @@ export async function listProject(deps: Dependencies) {
       options,
     });
   }
-
-  console.log("");
-  console.log(CLI_FORMAT_YELLOW, "Nothing to list.");
-  console.log("");
-  console.log(
-    "Please pass `--datafiles`, `--features`, `--segments`, `--attributes`, or `--targets`.",
-  );
 }
 
 export const listPlugin: Plugin = {

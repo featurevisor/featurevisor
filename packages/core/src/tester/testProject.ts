@@ -21,6 +21,8 @@ export interface TestProjectOptions {
   verbose?: boolean;
   showDatafile?: boolean;
   onlyFailures?: boolean;
+  quiet?: boolean;
+  entityType?: "feature" | "segment";
   inflate?: number;
   target?: string | string[];
 }

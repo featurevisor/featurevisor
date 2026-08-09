@@ -1346,7 +1346,7 @@ export const promotePlugin: Plugin = {
       conflicts: parsed.conflicts,
       allowEmpty: parsed.allowEmpty === true || parsed.allowEmpty === "true",
       apply: parsed.apply === true || parsed.apply === "true",
-      audit: parsed.audit,
+      audit: parsed.audit === "" || parsed.audit === true ? true : parsed.audit,
     });
 
     printPromoteResult(result, {

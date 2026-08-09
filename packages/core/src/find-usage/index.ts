@@ -2,6 +2,7 @@ import type { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevi
 
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
+import { FeaturevisorCLIError } from "../error";
 import {
   extractAttributeKeysFromConditions,
   extractSegmentKeysFromGroupSegments,
@@ -307,6 +308,24 @@ export interface FindUsageOptions {
   authors?: boolean;
 }
 
+export function assertFindUsageOptions(options: FindUsageOptions) {
+  const queries = ["feature", "segment", "attribute", "unusedSegments", "unusedAttributes"].filter(
+    (key) => Boolean(options[key]),
+  );
+
+  if (queries.length !== 1) {
+    throw new FeaturevisorCLIError(
+      queries.length === 0
+        ? "Specify one usage query."
+        : `Specify only one usage query. Received: ${queries.join(", ")}.`,
+      {
+        code: "invalid_find_usage_selection",
+        details: { queries },
+      },
+    );
+  }
+}
+
 export async function findUsageInProject(deps: Dependencies, options: FindUsageOptions) {
   const { datasource } = deps;
 
@@ -517,6 +536,8 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 export const findUsagePlugin: Plugin = {
   command: "find-usage",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    assertFindUsageOptions(parsed as FindUsageOptions);
+
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
 
     for (const execution of executions) {
@@ -556,10 +577,6 @@ export const findUsagePlugin: Plugin = {
     {
       command: "find-usage --unused-attributes",
       description: "Find unused attributes",
-    },
-    {
-      command: "find-usage --authors",
-      description: "List authors of the usage",
     },
   ],
 };

@@ -6,6 +6,8 @@ import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "../tester/prettyDuration";
 import { Plugin } from "../cli";
+import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
+import { FeaturevisorCLIError } from "../error";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
@@ -191,6 +193,16 @@ export async function benchmarkFeature(
 export const benchmarkPlugin: Plugin = {
   command: "benchmark",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
+    if (parsed.variation && parsed.variable) {
+      throw new FeaturevisorCLIError(
+        "Options --variation and --variable cannot be combined in one benchmark.",
+        {
+          code: "conflicting_cli_options",
+          details: { options: ["variation", "variable"] },
+        },
+      );
+    }
+
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
 
     for (const execution of executions) {
@@ -206,11 +218,14 @@ export const benchmarkPlugin: Plugin = {
         {
           environment: parsed.environment,
           feature: parsed.feature,
-          n: parseInt(parsed.n, 10) || 1,
-          context: parsed.context ? JSON.parse(parsed.context) : {},
+          n: parsePositiveIntegerOption("--n", parsed.n, 1),
+          context: parsed.context ? parseJsonObjectOption("--context", parsed.context) : {},
           variation: parsed.variation || undefined,
           variable: parsed.variable || undefined,
-          inflate: parseInt(parsed.inflate, 10) || undefined,
+          inflate:
+            typeof parsed.inflate !== "undefined"
+              ? parsePositiveIntegerOption("--inflate", parsed.inflate, 1)
+              : undefined,
           target: parsed.target,
         },
       );

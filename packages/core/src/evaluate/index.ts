@@ -5,6 +5,7 @@ import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 import { Dependencies } from "../dependencies";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Plugin } from "../cli";
+import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
   CLI_COLOR_CYAN,
@@ -223,12 +224,16 @@ export const evaluatePlugin: Plugin = {
         {
           environment: parsed.environment,
           feature: parsed.feature,
-          context: parsed.context ? JSON.parse(parsed.context) : {},
+          context: parsed.context ? parseJsonObjectOption("--context", parsed.context) : {},
           // @NOTE: introduce optional --at?
           json: parsed.json,
           pretty: parsed.pretty,
           verbose: parsed.verbose,
           target: parsed.target,
+          inflate:
+            typeof parsed.inflate !== "undefined"
+              ? parsePositiveIntegerOption("--inflate", parsed.inflate, 1)
+              : undefined,
         },
       );
     }

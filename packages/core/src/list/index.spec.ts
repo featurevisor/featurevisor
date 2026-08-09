@@ -63,6 +63,186 @@ describe("core: list", function () {
     expect(result.map((feature) => feature.key).sort()).toEqual(["mobile", "web"]);
   });
 
+  test("excludes archived definitions by default and filters either archived status", async function () {
+    const fixtures = {
+      active: createFeatureFixture({ key: "active" }),
+      archived: createFeatureFixture({ key: "archived", archived: true }),
+    };
+    const datasource = {
+      listFeatures: async () => Object.keys(fixtures),
+      readFeature: async (key: keyof typeof fixtures) => fixtures[key],
+    };
+    const deps = {
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: datasource as any,
+      options: {},
+    };
+
+    await expect(listEntities<ParsedFeature>(deps, "feature")).resolves.toEqual([
+      expect.objectContaining({ key: "active" }),
+    ]);
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { archived: true } }, "feature"),
+    ).resolves.toEqual([expect.objectContaining({ key: "archived" })]);
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { archived: false } }, "feature"),
+    ).resolves.toEqual([expect.objectContaining({ key: "active" })]);
+  });
+
+  test("filters definitions by promotable status", async function () {
+    const fixtures = {
+      shared: createFeatureFixture({ key: "shared", promotable: true }),
+      local: createFeatureFixture({ key: "local", promotable: false }),
+      defaultPromotable: createFeatureFixture({ key: "defaultPromotable" }),
+    };
+    const datasource = {
+      listFeatures: async () => Object.keys(fixtures),
+      readFeature: async (key: keyof typeof fixtures) => fixtures[key],
+    };
+
+    const result = await listEntities<ParsedFeature>(
+      {
+        rootDirectoryPath: "",
+        projectConfig: {} as any,
+        datasource: datasource as any,
+        options: { promotable: true },
+      },
+      "feature",
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({ key: "shared" }),
+      expect.objectContaining({ key: "defaultPromotable" }),
+    ]);
+
+    const protectedResult = await listEntities<ParsedFeature>(
+      {
+        rootDirectoryPath: "",
+        projectConfig: {} as any,
+        datasource: datasource as any,
+        options: { promotable: false },
+      },
+      "feature",
+    );
+    expect(protectedResult).toEqual([expect.objectContaining({ key: "local" })]);
+  });
+
+  test("only lists features enabled in the requested environment", async function () {
+    const fixtures = {
+      enabled: createFeatureFixture({ key: "enabled" }),
+      disabled: createFeatureFixture({
+        key: "disabled",
+        rules: { production: [{ key: "off", segments: "*", percentage: 0 }] },
+      }),
+      missing: createFeatureFixture({ key: "missing", rules: { staging: [] } }),
+    };
+    const datasource = {
+      listFeatures: async () => Object.keys(fixtures),
+      readFeature: async (key: keyof typeof fixtures) => fixtures[key],
+    };
+
+    const result = await listEntities<ParsedFeature>(
+      {
+        rootDirectoryPath: "",
+        projectConfig: {} as any,
+        datasource: datasource as any,
+        options: { enabledIn: "production" },
+      },
+      "feature",
+    );
+
+    expect(result).toEqual([expect.objectContaining({ key: "enabled" })]);
+  });
+
+  test("treats empty variation and variable collections as absent", async function () {
+    const datasource = {
+      listFeatures: async () => ["empty"],
+      readFeature: async () =>
+        createFeatureFixture({ key: "empty", variations: [], variablesSchema: {} }),
+    };
+    const deps = {
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: datasource as any,
+      options: {},
+    };
+
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { withVariations: true } }, "feature"),
+    ).resolves.toEqual([]);
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { withoutVariations: true } }, "feature"),
+    ).resolves.toHaveLength(1);
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { withVariables: true } }, "feature"),
+    ).resolves.toEqual([]);
+    await expect(
+      listEntities<ParsedFeature>({ ...deps, options: { withoutVariables: true } }, "feature"),
+    ).resolves.toHaveLength(1);
+  });
+
+  test("lists groups and schemas", async function () {
+    const datasource = {
+      listGroups: async () => ["checkout"],
+      readGroup: async () => ({ description: "Checkout group", slots: [] }),
+      listSchemas: async () => ["price"],
+      readSchema: async () => ({ description: "Price", type: "double" }),
+    };
+    const deps = {
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: datasource as any,
+      options: {},
+    };
+
+    await expect(listEntities({ ...deps, options: {} }, "group")).resolves.toEqual([
+      expect.objectContaining({ key: "checkout" }),
+    ]);
+    await expect(listEntities({ ...deps, options: {} }, "schema")).resolves.toEqual([
+      expect.objectContaining({ key: "price" }),
+    ]);
+  });
+
+  test("rejects missing, repeated, and conflicting list selections", async function () {
+    const deps = {
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: {} as any,
+      options: {},
+    };
+
+    await expect(listProject(deps)).rejects.toThrow("Select one entity type");
+    await expect(
+      listProject({ ...deps, options: { features: true, segments: true } }),
+    ).rejects.toThrow("Select only one entity type");
+    await expect(
+      listProject({
+        ...deps,
+        options: { features: true, withTests: true, withoutTests: true },
+      }),
+    ).rejects.toThrow("cannot be combined");
+  });
+
+  test("reports invalid regular expression filters", async function () {
+    const datasource = {
+      listFeatures: async () => ["checkout"],
+      readFeature: async () => createFeatureFixture({ key: "checkout" }),
+    };
+
+    await expect(
+      listEntities<ParsedFeature>(
+        {
+          rootDirectoryPath: "",
+          projectConfig: {} as any,
+          datasource: datasource as any,
+          options: { keyPattern: "[" },
+        },
+        "feature",
+      ),
+    ).rejects.toThrow("Invalid --keyPattern");
+  });
+
   test("lists generated datafiles", async function () {
     const log = jest.spyOn(console, "log").mockImplementation();
     const datasource = {

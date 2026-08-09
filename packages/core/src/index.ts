@@ -16,5 +16,6 @@ export * from "./list";
 export * from "./sets";
 export * from "./promoter";
 export * from "./cli";
+export * from "./error";
 
 export * from "@featurevisor/parsers";
