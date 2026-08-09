@@ -851,4 +851,29 @@ describe("promoteProjectSets", function () {
       consoleLogSpy.mockRestore();
     }
   });
+
+  it("accepts --audit without an explicit format", async function () {
+    const root = await createProject();
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+    const consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => undefined);
+
+    try {
+      await expect(
+        promotePlugin.handler({
+          rootDirectoryPath: root,
+          projectConfig,
+          datasource,
+          parsed: {
+            _: ["promote"],
+            from: "dev",
+            to: "staging",
+            audit: "",
+          },
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      consoleLogSpy.mockRestore();
+    }
+  });
 });

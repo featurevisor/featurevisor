@@ -1,4 +1,4 @@
-.PHONY: install build test typecheck bundle-sizes lint format check
+.PHONY: install build test test-cli-integration typecheck bundle-sizes lint format check
 
 ##
 # Packages
@@ -11,6 +11,12 @@ build:
 
 test:
 	npm test
+
+# Local end to end confidence check for the current CLI checkout.
+# This intentionally stays outside `check` and CI.
+test-cli-integration:
+	npx lerna run build --scope @featurevisor/cli --include-dependencies
+	node scripts/test-cli-integration.mjs
 
 typecheck:
 	npm run typecheck

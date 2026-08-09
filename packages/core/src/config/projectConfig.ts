@@ -269,11 +269,11 @@ export const configPlugin: Plugin = {
       description: "show the project configuration",
     },
     {
-      command: "config --print",
+      command: "config --json",
       description: "show the project configuration as JSON",
     },
     {
-      command: "config --print --pretty",
+      command: "config --json --pretty",
       description: "show the project configuration (as pretty JSON)",
     },
   ],

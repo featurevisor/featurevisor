@@ -1,6 +1,10 @@
+(B[merror: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
+error: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
 # Featurevisor CLI reference
 
-All commands assume you are inside a Featurevisor project (the directory containing `featurevisor.config.js`). Run them with `npx featurevisor <command>`.
+Run commands with `npx featurevisor <command>`. The CLI walks up from the current directory to find `featurevisor.config.js`, so commands also work inside nested project directories. Use `--rootDirectoryPath=<path>` or `--root-directory-path <path>` to select another project. Use either `<command> --help` or `help <command>` for command help.
+
+Built in commands reject unknown options and extra positional arguments. Treat these failures as likely spelling mistakes. Error output is structured when `--json` is active. Existing project plugins remain permissive unless they declare their `options` map.
 
 Source of truth: <https://featurevisor.com/docs/cli>
 
@@ -97,7 +101,9 @@ Non-zero exit on failure.
 
 ## List
 
-`list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output.
+`list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output. Select exactly one of `--datafiles`, `--features`, `--segments`, `--groups`, `--schemas`, `--attributes`, `--targets`, or `--tests`.
+
+Archived features, segments, and attributes are excluded by default. Use `--archived=true` for archived definitions and `--archived=false` to request active definitions explicitly. Definition selectors support `--promotable=true` and `--promotable=false` where relevant.
 
 ### Datafiles
 
@@ -122,6 +128,7 @@ Filter flags (combine as needed):
 | `--disabledIn=<env>`                         | feature disabled in env (no rule, or 0%) |
 | `--enabledIn=<env>`                          | feature has any rule >0% in env          |
 | `--keyPattern=<regex>`                       | feature key regex                        |
+| `--promotable=<true or false>`               | promotion eligibility                    |
 | `--tag=<tag>`                                | includes a tag                           |
 | `--target=<target>`                          | selected by target; repeatable union     |
 | `--variable=<key>`                           | has variable in its schema               |
@@ -136,7 +143,7 @@ Filter flags (combine as needed):
 npx featurevisor list --segments --json --pretty
 ```
 
-Flags: `--archived`, `--description`, `--keyPattern`, `--with-tests`, `--without-tests`.
+Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`, `--with-tests`, `--without-tests`.
 
 ### Attributes
 
@@ -144,7 +151,17 @@ Flags: `--archived`, `--description`, `--keyPattern`, `--with-tests`, `--without
 npx featurevisor list --attributes --json --pretty
 ```
 
-Flags: `--archived`, `--description`, `--keyPattern`.
+Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`.
+
+### Groups, schemas, and targets
+
+```bash
+npx featurevisor list --groups --json --pretty
+npx featurevisor list --schemas --json --pretty
+npx featurevisor list --targets --json --pretty
+```
+
+All three support `--description`, `--keyPattern`, and `--promotable`.
 
 ### Tests
 
@@ -153,7 +170,9 @@ npx featurevisor list --tests --json --pretty
 npx featurevisor list --tests --applyMatrix       # expand matrices into individual assertions
 ```
 
-Flags: `--applyMatrix`, `--assertionPattern`, `--keyPattern`.
+Flags: `--applyMatrix`, `--assertionPattern`, `--entityType=feature|segment`, `--keyPattern`, `--promotable`.
+
+Opposing filters such as `--with-tests` and `--without-tests` are rejected instead of silently producing confusing output. Invalid regular expressions are reported as option errors.
 
 ## find-usage
 
@@ -195,21 +214,7 @@ Returns the full evaluation chain (sticky → required → force → rules → b
 
 Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
 
-You can also debug variation/variable:
-
-```bash
-npx featurevisor evaluate \
-  --environment=production \
-  --feature=my_feature \
-  --variation \
-  --context='{"userId":"123"}'
-
-npx featurevisor evaluate \
-  --environment=production \
-  --feature=my_feature \
-  --variable=bgColor \
-  --context='{"userId":"123"}'
-```
+The command reports flag, variation, and variable evaluations together. There are no separate `--variation` or `--variable` selectors for `evaluate`.
 
 ## assess-distribution
 
@@ -230,6 +235,8 @@ npx featurevisor assess-distribution \
 - `--target=<target>` assesses one target datafile and can be repeated.
 
 Use this when the user asks "is my 25% rollout really going to hit 25%?" or "will my variation weights actually split traffic 50/50?".
+
+`--n` and `--inflate` must be positive integers. `--context` must contain a JSON object. The same validation applies to the corresponding benchmark and evaluate options.
 
 ## benchmark
 
@@ -312,4 +319,4 @@ npx featurevisor -v
 
 ## Custom commands (plugins)
 
-Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins — read their source before using. Docs: <https://featurevisor.com/docs/plugins>.
+Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins, so read their source before using. Plugins can declare typed `options` to receive built in style validation and can provide a top level `description` for help output. Docs: <https://featurevisor.com/docs/plugins>.

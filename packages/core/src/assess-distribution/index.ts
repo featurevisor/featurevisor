@@ -7,6 +7,7 @@ import { Dependencies } from "../dependencies";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { prettyPercentage, prettyNumber } from "../utils";
 import { Plugin } from "../cli";
+import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 
@@ -202,13 +203,19 @@ export const assessDistributionPlugin: Plugin = {
         {
           environment: parsed.environment,
           feature: parsed.feature,
-          n: parseInt(parsed.n, 10) || 1,
-          context: parsed.context ? JSON.parse(parsed.context) : {},
+          n: parsePositiveIntegerOption("--n", parsed.n, 1),
+          context: parsed.context
+            ? parseJsonObjectOption<Context>("--context", parsed.context)
+            : {},
           populateUuid: Array.isArray(parsed.populateUuid)
             ? parsed.populateUuid
             : [parsed.populateUuid as string].filter(Boolean),
           verbose: parsed.verbose,
           target: parsed.target,
+          inflate:
+            typeof parsed.inflate !== "undefined"
+              ? parsePositiveIntegerOption("--inflate", parsed.inflate, 1)
+              : undefined,
         },
       );
     }
