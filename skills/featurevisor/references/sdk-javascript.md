@@ -6,7 +6,7 @@ Full docs: <https://featurevisor.com/docs/sdks/javascript>
 
 Framework wrappers: [sdk-react.md](sdk-react.md) (React / React Native), [sdk-vue.md](sdk-vue.md) (Vue).
 
-**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Swift, PHP, Roku, and more — see [sdk-other-languages.md](sdk-other-languages.md). All SDKs consume the same datafiles, expose the same concepts, and are verified against a shared conformance contract, so the same user gets the same variation in every language. Everything in this file transfers conceptually; only syntax differs.
+**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Kotlin, Swift, PHP, and more, see [sdk-other-languages.md](sdk-other-languages.md). All SDKs consume the same datafiles, expose the same concepts, and are verified against a shared conformance contract, so the same user gets the same variation in every language. Everything in this file transfers conceptually; only syntax differs.
 
 Prefer the standard [OpenFeature](openfeature.md) API instead of Featurevisor's own? Providers exist for Node.js, browsers, and most other languages.
 
@@ -134,7 +134,7 @@ f.getVariableKeys('checkout')
 f.hasVariations('checkout')
 ```
 
-**`getRevision()` is the first thing to check** when an app and the project disagree about a feature: the app is usually holding a stale datafile, not evaluating incorrectly. Log it alongside flag-related bug reports. `getFeature('key') === undefined` likewise tells you the feature isn't in *this* target's datafile — a tag/target problem ([targets.md](targets.md)), not a rule problem.
+**`getRevision()` is the first thing to check** when an app and the project disagree about a feature: the app is usually holding a stale datafile, not evaluating incorrectly. Log it alongside flag-related bug reports. `getFeature('key') === undefined` likewise tells you the feature isn't in *this* target's datafile, which is a tag or target problem ([targets.md](targets.md)), not a rule problem.
 
 ## Setting and updating the datafile
 

@@ -20,7 +20,6 @@ For JavaScript/TypeScript specifics read [sdk-javascript.md](sdk-javascript.md) 
 | Kotlin / Android              | <https://featurevisor.com/docs/sdks/kotlin>             |
 | Swift                         | <https://featurevisor.com/docs/sdks/swift>              |
 | PHP                           | <https://featurevisor.com/docs/sdks/php>                |
-| Roku                          | <https://featurevisor.com/docs/sdks/roku>               |
 | OpenFeature (multi-language)  | [openfeature.md](openfeature.md)                        |
 
 Framework guides (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>
@@ -29,9 +28,9 @@ Framework guides (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor
 
 ## Kotlin and Android
 
-**There is no separate Kotlin SDK — the Java SDK is the Kotlin SDK**, used through normal JVM interop. Don't go looking for a `featurevisor-kotlin` package.
+**There is no separate Kotlin SDK. The Java SDK is the Kotlin SDK**, used through normal JVM interop. Don't go looking for a `featurevisor-kotlin` package.
 
-It ships via **GitHub Packages**, not Maven Central, so the repository has to be declared in `settings.gradle.kts` with credentials (a GitHub username plus a token carrying `read:packages`, kept in `~/.gradle/gradle.properties`, never in the repo). That authentication step is the usual reason a build fails to resolve `com.featurevisor:featurevisor-java` — check it before debugging anything else.
+It ships via **GitHub Packages**, not Maven Central, so the repository has to be declared in `settings.gradle.kts` with credentials (a GitHub username plus a token carrying `read:packages`, kept in `~/.gradle/gradle.properties`, never in the repo). That authentication step is the usual reason a build fails to resolve `com.featurevisor:featurevisor-java`, so check it before debugging anything else.
 
 ```kotlin
 implementation("com.featurevisor:featurevisor-java:3.0.0")
@@ -47,7 +46,7 @@ val enabled: Boolean = f.isEnabled("my_feature", mapOf("userId" to "123"))
 val variation: String? = f.getVariation("my_feature")   // instance context when omitted
 ```
 
-On Android: fetch and parse the datafile **off the main thread**, hold one instance for the owning lifecycle rather than per evaluation, and call `f.close()` when that lifecycle ends. The full API (typed variables, datafile updates, diagnostics, events, modules, sticky, child instances) is the Java SDK's — read <https://featurevisor.com/docs/sdks/java> for it. Example app: <https://github.com/featurevisor/featurevisor-example-android>.
+On Android: fetch and parse the datafile **off the main thread**, hold one instance for the owning lifecycle rather than per evaluation, and call `f.close()` when that lifecycle ends. The full API (typed variables, datafile updates, diagnostics, events, modules, sticky, child instances) is the Java SDK's, documented at <https://featurevisor.com/docs/sdks/java>. Example app: <https://github.com/featurevisor/featurevisor-example-android>.
 
 ## What every SDK guarantees
 

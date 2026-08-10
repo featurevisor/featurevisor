@@ -327,4 +327,4 @@ Prints the installed `@featurevisor/cli` and `@featurevisor/core` versions. Wort
 
 ## Custom commands (plugins)
 
-Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins — read their source before running them, since a plugin can write definition files. Writing one (and the `datasource` API it uses): [plugins-datasource.md](plugins-datasource.md).
+Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins, so read their source before running them, since a plugin can write definition files. Writing one (and the `datasource` API it uses): [plugins-datasource.md](plugins-datasource.md).

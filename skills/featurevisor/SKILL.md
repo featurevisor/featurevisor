@@ -60,7 +60,7 @@ Four config values change the **shape of everything you write** — get them wro
 
 Also note: `tags` (must include any tag you put on a feature), `defaultBucketBy` (default `userId`), and directory-path overrides (`featuresDirectoryPath`, etc.).
 
-**Still on v2?** `npm ls @featurevisor/cli` tells you. v2-only shapes — `scopes:` in the config, an `environments/` definition directory, `splitByEnvironment`, slash-separated namespaced keys, `createInstance` in app code — mean this skill's guidance won't match what lints. Point that out and offer the upgrade: [upgrading-to-v3.md](references/upgrading-to-v3.md).
+**Still on v2?** `npm ls @featurevisor/cli` tells you. v2-only shapes such as `scopes:` in the config, an `environments/` definition directory, `splitByEnvironment`, slash-separated namespaced keys, or `createInstance` in app code mean this skill's guidance won't match what lints. Point that out and offer the upgrade: [upgrading-to-v3.md](references/upgrading-to-v3.md).
 
 Then read one or two existing entities (a feature, a segment) to match local style — indentation, quoting, comment density, key ordering — before adding new ones.
 
@@ -91,7 +91,7 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | **Use the SDK in an app** — JS/TS/Node/browser/edge, context, refresh, server-side                                                           | [sdk-javascript.md](references/sdk-javascript.md)                 |
 | React or React Native integration (`useFlag` etc.)                                                                                           | [sdk-react.md](references/sdk-react.md)                           |
 | Vue integration                                                                                                                               | [sdk-vue.md](references/sdk-vue.md)                               |
-| Go, Python, Ruby, Java, Swift, PHP, Roku — and running your specs through them                                                               | [sdk-other-languages.md](references/sdk-other-languages.md)       |
+| Go, Python, Ruby, Java, Kotlin, Swift, PHP, and running your specs through them                                                               | [sdk-other-languages.md](references/sdk-other-languages.md)       |
 | **OpenFeature** providers (`@featurevisor/openfeature-provider-*`, other languages)                                                          | [openfeature.md](references/openfeature.md)                       |
 | Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
 | Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
@@ -270,7 +270,7 @@ Offer this proactively when a session involves several authoring changes or when
 
 ### Upgrading a v2 project or application to v3
 
-Read [upgrading-to-v3.md](references/upgrading-to-v3.md). Do the **project repo first, applications after** — the datafile schema is unchanged, so v2 SDKs keep reading v3-generated datafiles and each app can upgrade on its own schedule. The one thing to fix before publishing v3 datafiles is multi-child `not:` in rule segments, whose meaning changed. Lead with `npx featurevisor lint` after upgrading the CLI: its errors are the worklist.
+Read [upgrading-to-v3.md](references/upgrading-to-v3.md). Do the **project repo first, applications after**: the datafile schema is unchanged, so v2 SDKs keep reading v3-generated datafiles and each app can upgrade on its own schedule. The one thing to fix before publishing v3 datafiles is multi-child `not:` in rule segments, whose meaning changed. Lead with `npx featurevisor lint` after upgrading the CLI: its errors are the worklist.
 
 ### Recipes for higher-level use cases
 
@@ -283,7 +283,7 @@ When the task is consuming features from application code:
 - **JavaScript / TypeScript / Node / browser / edge** → read [sdk-javascript.md](references/sdk-javascript.md) in full. It covers install, context, all evaluation methods, datafile refresh and on-demand loading, events, sticky, server-side child instances (`spawn`), diagnostics, and modules.
 - **React / React Native** → [sdk-react.md](references/sdk-react.md). **Vue** → [sdk-vue.md](references/sdk-vue.md).
 - **Type-safe bindings** (generated `isEnabled`/`getVariation` with compile-checked keys) → [code-generation.md](references/code-generation.md).
-- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Kotlin/Android, Swift, PHP, Roku, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
+- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Kotlin/Android, Swift, PHP, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
 - **OpenFeature** — if the team standardizes on the vendor-neutral [OpenFeature](https://openfeature.dev/) API, providers exist for Node.js, browsers, Go, Swift, Java, Ruby, Python, and PHP → [openfeature.md](references/openfeature.md). Optional: the native SDKs are unaffected and remain the simpler choice when Featurevisor is the only flag system.
 - **Framework guides** (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>.
 
