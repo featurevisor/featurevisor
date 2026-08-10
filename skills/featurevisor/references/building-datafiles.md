@@ -44,6 +44,8 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 | `--target=<target>`    | Build only this target; repeat to build several                                                   |
 | `--pretty`             | Pretty-print the output                                                                          |
 | `--print`              | Print full datafile to stdout (no files written)                                                 |
+| `--datafilesDir=<dir>` | Write elsewhere than `datafilesDirectoryPath` for this run                                       |
+| `--set=<set>`          | Sets projects — build one set ([sets-promotions.md](sets-promotions.md))                          |
 
 When debugging the shape of a datafile entry, prefer `--feature=<key> --print` over reading the full file.
 

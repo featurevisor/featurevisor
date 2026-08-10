@@ -65,7 +65,8 @@ The same request ("add a feature at 10%") produces structurally different files 
 | `prettyState`, `prettyDatafile`                                                                                                          | pretty-printing toggles                                                         |
 | `stringify`                                                                                                                              | stringify conditions in datafiles for lazy client-side parsing (default `true`) |
 | `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps                                                          |
-| `plugins`                                                                                                                                | Featurevisor plugins to hook into build / lint                                  |
+| `plugins`                                                                                                                                | Custom CLI subcommands — see [plugins-datasource.md](plugins-datasource.md)     |
+| `adapter`                                                                                                                                | Custom datasource adapter class; defaults to the filesystem (Git) adapter        |
 
 ## Tags
 
