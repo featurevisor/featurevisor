@@ -1,5 +1,3 @@
-(B[merror: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
-error: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
 # Featurevisor CLI reference
 
 Run commands with `npx featurevisor <command>`. The CLI walks up from the current directory to find `featurevisor.config.js`, so commands also work inside nested project directories. Use `--rootDirectoryPath=<path>` or `--root-directory-path <path>` to select another project. Use either `<command> --help` or `help <command>` for command help.
@@ -26,9 +24,12 @@ npm install
 | `toml`              | Custom-parser (TOML) demo                                             |
 | `no-environments`   | No environments — rules are direct lists                              |
 | `sets`              | Sets as surfaces (`storefront` / `admin`), with environments          |
-| `test-environments` | Sets as release lanes (`dev` / `staging` / `production`) with `promotionFlows`, no environments |
+| `environments`      | Sets as release lanes (`dev` / `staging` / `production`), no `environments`, no promotion flows |
+| `test-environments` | Same release lanes, plus `promotionFlows` constraining dev → staging → production |
 | `targets`           | Many targets/tag-selector shapes demo                                 |
 | `namespace-slash`   | `namespaceCharacter: "/"` demo                                        |
+
+The two lane examples are the ones to reach for when someone says "we want dev/staging/production" but means *independently promoted copies* rather than per-environment rules on one definition — read [sets-promotions.md](sets-promotions.md) before picking either.
 
 `init` downloads the matching `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). Each scaffold is a working project out of the box — adjust `featurevisor.config.js` to the user's answers afterwards.
 
@@ -38,8 +39,9 @@ npm install
 npx featurevisor lint
 npx featurevisor lint --json --pretty                       # machine-readable
 npx featurevisor lint --keyPattern="myKey"                  # filter by key
-npx featurevisor lint --entityType=feature                  # feature | segment | attribute | group | test
+npx featurevisor lint --entityType=feature                  # feature | segment | attribute | group | schema | target | test
 npx featurevisor lint --keyPattern="my" --entityType=feature
+npx featurevisor lint --set=storefront                      # one set only (sets projects)
 ```
 
 The `--json` output has a stable shape:
@@ -306,17 +308,23 @@ npx featurevisor catalog export                   # build static output to catal
 npx featurevisor catalog export --outDir=./out    # write elsewhere
 npx featurevisor catalog export --hash-router     # for static hosts without an index.html fallback
 npx featurevisor catalog serve [-p 3000]          # serve an existing export (exports first if missing)
+npx featurevisor catalog export --no-assets       # project data only, without the Catalog UI assets
 ```
+
+`--outDir` overrides `catalogDirectoryPath` for one invocation. Use `--no-assets` only when something else manages the compiled Catalog interface.
 
 Full docs: <https://featurevisor.com/docs/catalog>
 
 ## version
 
 ```bash
+npx featurevisor version
 npx featurevisor --version
 npx featurevisor -v
 ```
 
+Prints the installed `@featurevisor/cli` and `@featurevisor/core` versions. Worth checking first when a documented flag isn't recognized, or when the project may still be on v2 ([upgrading-to-v3.md](upgrading-to-v3.md)).
+
 ## Custom commands (plugins)
 
-Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins, so read their source before using. Plugins can declare typed `options` to receive built in style validation and can provide a top level `description` for help output. Docs: <https://featurevisor.com/docs/plugins>.
+Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins — read their source before running them, since a plugin can write definition files. Writing one (and the `datasource` API it uses): [plugins-datasource.md](plugins-datasource.md).

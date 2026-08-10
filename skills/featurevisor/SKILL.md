@@ -1,8 +1,6 @@
-(B[merror: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
-error: could not lock config file /Users/fahad/.gitconfig: Operation not permitted
 ---
 name: featurevisor
-description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups, dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, and the Catalog.
+description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Kotlin/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups, dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, the Catalog, upgrading a project or app from Featurevisor v2 to v3, and extending the CLI with plugins.
 ---
 
 # Featurevisor
@@ -62,6 +60,8 @@ Four config values change the **shape of everything you write** — get them wro
 
 Also note: `tags` (must include any tag you put on a feature), `defaultBucketBy` (default `userId`), and directory-path overrides (`featuresDirectoryPath`, etc.).
 
+**Still on v2?** `npm ls @featurevisor/cli` tells you. v2-only shapes — `scopes:` in the config, an `environments/` definition directory, `splitByEnvironment`, slash-separated namespaced keys, `createInstance` in app code — mean this skill's guidance won't match what lints. Point that out and offer the upgrade: [upgrading-to-v3.md](references/upgrading-to-v3.md).
+
 Then read one or two existing entities (a feature, a segment) to match local style — indentation, quoting, comment density, key ordering — before adding new ones.
 
 ## When to load which reference
@@ -95,6 +95,8 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | **OpenFeature** providers (`@featurevisor/openfeature-provider-*`, other languages)                                                          | [openfeature.md](references/openfeature.md)                       |
 | Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
 | Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
+| **Upgrading v2 → v3** — project or application                                                                                               | [upgrading-to-v3.md](references/upgrading-to-v3.md)               |
+| Custom CLI commands (`plugins`), the datasource API, custom adapters                                                                          | [plugins-datasource.md](references/plugins-datasource.md)         |
 | **Common patterns** — A/B, multivariate, entitlements, kill switches, scheduled releases, staged rollouts, version gating, migrations, testing-in-prod, deprecation/cleanup, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
 | Terminology refresher                                                                                                                         | [glossary.md](references/glossary.md)                             |
 
@@ -266,6 +268,10 @@ See [querying.md](references/querying.md). It shows the right `list`/`find-usage
 
 Offer this proactively when a session involves several authoring changes or when the user is less comfortable reading YAML — prompting plus a live Catalog is the best way to experience Featurevisor. Details in [querying.md](references/querying.md).
 
+### Upgrading a v2 project or application to v3
+
+Read [upgrading-to-v3.md](references/upgrading-to-v3.md). Do the **project repo first, applications after** — the datafile schema is unchanged, so v2 SDKs keep reading v3-generated datafiles and each app can upgrade on its own schedule. The one thing to fix before publishing v3 datafiles is multi-child `not:` in rule segments, whose meaning changed. Lead with `npx featurevisor lint` after upgrading the CLI: its errors are the worklist.
+
 ### Recipes for higher-level use cases
 
 When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements/RBAC, kill switch, scheduled/time-window release, staged rollout ladder (employees → beta → everyone), app version gating, backend migration, stale-flag cleanup, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
@@ -277,7 +283,7 @@ When the task is consuming features from application code:
 - **JavaScript / TypeScript / Node / browser / edge** → read [sdk-javascript.md](references/sdk-javascript.md) in full. It covers install, context, all evaluation methods, datafile refresh and on-demand loading, events, sticky, server-side child instances (`spawn`), diagnostics, and modules.
 - **React / React Native** → [sdk-react.md](references/sdk-react.md). **Vue** → [sdk-vue.md](references/sdk-vue.md).
 - **Type-safe bindings** (generated `isEnabled`/`getVariation` with compile-checked keys) → [code-generation.md](references/code-generation.md).
-- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Swift, PHP, Roku, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
+- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Kotlin/Android, Swift, PHP, Roku, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
 - **OpenFeature** — if the team standardizes on the vendor-neutral [OpenFeature](https://openfeature.dev/) API, providers exist for Node.js, browsers, Go, Swift, Java, Ruby, Python, and PHP → [openfeature.md](references/openfeature.md). Optional: the native SDKs are unaffected and remain the simpler choice when Featurevisor is the only flag system.
 - **Framework guides** (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>.
 

@@ -17,6 +17,7 @@ For JavaScript/TypeScript specifics read [sdk-javascript.md](sdk-javascript.md) 
 | Python                        | <https://featurevisor.com/docs/sdks/python>             |
 | Ruby                          | <https://featurevisor.com/docs/sdks/ruby>               |
 | Java                          | <https://featurevisor.com/docs/sdks/java>               |
+| Kotlin / Android              | <https://featurevisor.com/docs/sdks/kotlin>             |
 | Swift                         | <https://featurevisor.com/docs/sdks/swift>              |
 | PHP                           | <https://featurevisor.com/docs/sdks/php>                |
 | Roku                          | <https://featurevisor.com/docs/sdks/roku>               |
@@ -24,7 +25,29 @@ For JavaScript/TypeScript specifics read [sdk-javascript.md](sdk-javascript.md) 
 
 Framework guides (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>
 
-**Don't guess an API you can't see.** When helping with a language this skill doesn't detail, fetch its docs page rather than transliterating JavaScript — factory names and idioms differ (v3 uses `createFeaturevisor` in JS/Go/Swift/Java, `create_featurevisor` in Python/Ruby, `Featurevisor::createFeaturevisor` in PHP).
+**Don't guess an API you can't see.** When helping with a language this skill doesn't detail, fetch its docs page rather than transliterating JavaScript — factory names and idioms differ (v3 uses `createFeaturevisor` in JS/Go/Swift/Java, `create_featurevisor` in Python/Ruby, `Featurevisor::createFeaturevisor` in PHP). Upgrading an app from v2 SDK names: [upgrading-to-v3.md](upgrading-to-v3.md#other-languages).
+
+## Kotlin and Android
+
+**There is no separate Kotlin SDK — the Java SDK is the Kotlin SDK**, used through normal JVM interop. Don't go looking for a `featurevisor-kotlin` package.
+
+It ships via **GitHub Packages**, not Maven Central, so the repository has to be declared in `settings.gradle.kts` with credentials (a GitHub username plus a token carrying `read:packages`, kept in `~/.gradle/gradle.properties`, never in the repo). That authentication step is the usual reason a build fails to resolve `com.featurevisor:featurevisor-java` — check it before debugging anything else.
+
+```kotlin
+implementation("com.featurevisor:featurevisor-java:3.0.0")
+```
+
+```kotlin
+val datafile = DatafileContent.fromJson(datafileJson)
+val f = Featurevisor.createFeaturevisor(
+    Featurevisor.FeaturevisorOptions().datafile(datafile),
+)
+
+val enabled: Boolean = f.isEnabled("my_feature", mapOf("userId" to "123"))
+val variation: String? = f.getVariation("my_feature")   // instance context when omitted
+```
+
+On Android: fetch and parse the datafile **off the main thread**, hold one instance for the owning lifecycle rather than per evaluation, and call `f.close()` when that lifecycle ends. The full API (typed variables, datafile updates, diagnostics, events, modules, sticky, child instances) is the Java SDK's — read <https://featurevisor.com/docs/sdks/java> for it. Example app: <https://github.com/featurevisor/featurevisor-example-android>.
 
 ## What every SDK guarantees
 

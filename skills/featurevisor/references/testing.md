@@ -8,6 +8,8 @@ In a sets project, `promotable: false` can be set at the top level of either kin
 
 Individual assertions can also set `promotable: false`. Give every assertion in that spec a unique stable `key`. A protected source assertion is omitted, while a protected destination assertion is preserved when the source contains the same key. Both source and destination specs must use assertion keys when protection is involved. Matrix cases and child assertions are protected together through their parent assertion.
 
+Assertion `key`s are useful beyond promotions: they become stable labels and permalinks in the [Catalog](querying.md), with expanded matrix cases labelled `<key>.1`, `<key>.2`, and so on — so a failing case can be linked to directly.
+
 Run:
 
 ```bash

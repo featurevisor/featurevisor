@@ -122,6 +122,20 @@ const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
 
 Every evaluation object has `featureKey`, `type`, and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
 
+### Inspecting the loaded datafile
+
+```js
+f.getRevision()               // which datafile revision this instance is running
+f.getSchemaVersion()          // "2"
+f.getFeatureKeys()            // every feature key present in the datafile
+f.getFeature('checkout')      // raw definition, or undefined
+f.getSegment('countries.netherlands')
+f.getVariableKeys('checkout')
+f.hasVariations('checkout')
+```
+
+**`getRevision()` is the first thing to check** when an app and the project disagree about a feature: the app is usually holding a stale datafile, not evaluating incorrectly. Log it alongside flag-related bug reports. `getFeature('key') === undefined` likewise tells you the feature isn't in *this* target's datafile — a tag/target problem ([targets.md](targets.md)), not a rule problem.
+
 ## Setting and updating the datafile
 
 ```js
