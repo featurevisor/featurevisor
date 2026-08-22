@@ -2,12 +2,13 @@ import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevi
 
 import { useSdk } from "./useSdk.js";
 
-export function useVariable(
+// Keep TValue unconstrained for interfaces without index signatures.
+export function useVariable<TValue = VariableValue>(
   featureKey: FeatureKey,
   variableKey: VariableKey,
   context: Context = {},
-): VariableValue | null {
+): TValue | null {
   const sdk = useSdk();
 
-  return sdk.getVariable(featureKey, variableKey, context);
+  return sdk.getVariable<TValue>(featureKey, variableKey, context);
 }

@@ -5,6 +5,7 @@ import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevi
 import { useSdk } from "./useSdk.js";
 import { onFeatureChange } from "./onFeatureChange.js";
 
+// Keep TValue unconstrained for interfaces without index signatures.
 export function useVariable<TValue = VariableValue>(
   featureKey: FeatureKey,
   variableKey: VariableKey,

@@ -1,5 +1,12 @@
 import { defineComponent, type App, type Plugin } from "vue";
-import type { Context, Featurevisor } from "@featurevisor/sdk";
+import type {
+  Context,
+  FeatureKey,
+  Featurevisor,
+  VariableKey,
+  VariableValue,
+  VariationValue,
+} from "@featurevisor/sdk";
 import { mount } from "@vue/test-utils";
 
 import { setupApp } from "./setupApp";
@@ -8,12 +15,54 @@ import { useSdk } from "./useSdk";
 import { useVariable } from "./useVariable";
 import { useVariation } from "./useVariation";
 
+type IsExact<TActual, TExpected> = [TActual] extends [TExpected]
+  ? [TExpected] extends [TActual]
+    ? true
+    : false
+  : false;
+
+function expectExactType<T extends true>(value: T): void {
+  expect(value).toBe(true);
+}
+
+function createVariationGetter(value: VariationValue | null) {
+  const spy = jest.fn();
+  const getVariation: Featurevisor["getVariation"] = <
+    TVariation extends VariationValue = VariationValue,
+  >(
+    featureKey: FeatureKey,
+    context: Context = {},
+  ): TVariation | null => {
+    spy(featureKey, context);
+    return value as TVariation | null;
+  };
+
+  return { getVariation, spy };
+}
+
+function createVariableGetter(value: VariableValue | null) {
+  const spy = jest.fn();
+  const getVariable: Featurevisor["getVariable"] = <TValue = VariableValue>(
+    featureKey: FeatureKey,
+    variableKey: VariableKey,
+    context: Context = {},
+  ): TValue | null => {
+    spy(featureKey, variableKey, context);
+    return value as TValue | null;
+  };
+
+  return { getVariable, spy };
+}
+
 function createSdk(overrides: Partial<Featurevisor> = {}): Featurevisor {
+  const { getVariation } = createVariationGetter("treatment");
+  const { getVariable } = createVariableGetter("blue");
+
   return {
     getRevision: jest.fn(() => "1.0"),
     isEnabled: jest.fn(() => true),
-    getVariation: jest.fn(() => "treatment"),
-    getVariable: jest.fn(() => "blue"),
+    getVariation,
+    getVariable,
     ...overrides,
   } as Featurevisor;
 }
@@ -80,10 +129,8 @@ describe("vue: composables", () => {
     ["a missing variation", null],
   ])("returns %s", (_, value) => {
     const context: Context = { userId: "user-1" };
-    const getVariation = jest.fn(() => value);
-    const sdk = createSdk({
-      getVariation: getVariation as unknown as Featurevisor["getVariation"],
-    });
+    const { getVariation, spy } = createVariationGetter(value);
+    const sdk = createSdk({ getVariation });
     let result: string | null | undefined;
 
     mountSetup(() => {
@@ -92,7 +139,7 @@ describe("vue: composables", () => {
     }, sdk);
 
     expect(result).toBe(value);
-    expect(getVariation).toHaveBeenCalledWith("checkout", context);
+    expect(spy).toHaveBeenCalledWith("checkout", context);
   });
 
   it.each([
@@ -101,10 +148,8 @@ describe("vue: composables", () => {
     ["a missing variable", null],
   ])("returns %s", (_, value) => {
     const context: Context = { userId: "user-1" };
-    const getVariable = jest.fn(() => value);
-    const sdk = createSdk({
-      getVariable: getVariable as unknown as Featurevisor["getVariable"],
-    });
+    const { getVariable, spy } = createVariableGetter(value);
+    const sdk = createSdk({ getVariable });
     let result: unknown;
 
     mountSetup(() => {
@@ -113,13 +158,42 @@ describe("vue: composables", () => {
     }, sdk);
 
     expect(result).toEqual(value);
-    expect(getVariable).toHaveBeenCalledWith("checkout", "configuration", context);
+    expect(spy).toHaveBeenCalledWith("checkout", "configuration", context);
+  });
+
+  it("supports optional generic variation and variable result types", () => {
+    interface CheckoutConfig {
+      theme: string;
+    }
+
+    const { getVariation } = createVariationGetter("treatment");
+    const { getVariable } = createVariableGetter({ theme: "dark" });
+    const sdk = createSdk({ getVariation, getVariable });
+
+    mountSetup(() => {
+      const variation = useVariation("checkout");
+      const typedVariation = useVariation<"control" | "treatment">("checkout");
+      const variable = useVariable("checkout", "configuration");
+      const typedVariable = useVariable<CheckoutConfig>("checkout", "configuration");
+
+      expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
+      expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);
+      expectExactType<IsExact<typeof variable, VariableValue | null>>(true);
+      expectExactType<IsExact<typeof typedVariable, CheckoutConfig | null>>(true);
+
+      expect(variation).toBe("treatment");
+      expect(typedVariation).toBe("treatment");
+      expect(variable).toEqual({ theme: "dark" });
+      expect(typedVariable).toEqual({ theme: "dark" });
+
+      return {};
+    }, sdk);
   });
 
   it("uses an empty context by default", () => {
     const isEnabled = jest.fn(() => false);
-    const getVariation = jest.fn(() => null);
-    const getVariable = jest.fn(() => null);
+    const { getVariation, spy: getVariationSpy } = createVariationGetter(null);
+    const { getVariable, spy: getVariableSpy } = createVariableGetter(null);
     const sdk = createSdk({ isEnabled, getVariation, getVariable });
 
     mountSetup(() => {
@@ -130,7 +204,7 @@ describe("vue: composables", () => {
     }, sdk);
 
     expect(isEnabled).toHaveBeenCalledWith("checkout", {});
-    expect(getVariation).toHaveBeenCalledWith("checkout", {});
-    expect(getVariable).toHaveBeenCalledWith("checkout", "configuration", {});
+    expect(getVariationSpy).toHaveBeenCalledWith("checkout", {});
+    expect(getVariableSpy).toHaveBeenCalledWith("checkout", "configuration", {});
   });
 });

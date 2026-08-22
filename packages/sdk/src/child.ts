@@ -5,6 +5,7 @@ import type {
   VariationValue,
   VariableValue,
   EvaluatedFeatures,
+  ObjectValue,
 } from "@featurevisor/types";
 
 import type { Featurevisor, OverrideOptions } from "./instance.js";
@@ -248,6 +249,7 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  // Keep TValue unconstrained for interfaces without index signatures.
   getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -332,7 +334,7 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariableObject<T>(
+  getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
@@ -346,7 +348,7 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariableJSON<T>(
+  getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},

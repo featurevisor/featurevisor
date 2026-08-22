@@ -14,6 +14,7 @@ import type {
   Traffic,
   Allocation,
   GroupSegment,
+  ObjectValue,
   Condition,
   VariableType,
 } from "@featurevisor/types";
@@ -862,6 +863,8 @@ export class Featurevisor {
     });
   }
 
+  // Keep TValue unconstrained. TypeScript interfaces with known properties do not
+  // implicitly satisfy ObjectValue because they do not declare an index signature.
   getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -952,7 +955,7 @@ export class Featurevisor {
     return getValueByType(variableValue, "array") as T[] | null;
   }
 
-  getVariableObject<T>(
+  getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
@@ -963,7 +966,7 @@ export class Featurevisor {
     return getValueByType(variableValue, "object") as T | null;
   }
 
-  getVariableJSON<T>(
+  getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},

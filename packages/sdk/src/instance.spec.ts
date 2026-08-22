@@ -1,4 +1,9 @@
-import type { DatafileContent, VariableValue, VariationValue } from "@featurevisor/types";
+import type {
+  DatafileContent,
+  ObjectValue,
+  VariableValue,
+  VariationValue,
+} from "@featurevisor/types";
 
 import { createFeaturevisor } from "./instance";
 import type { FeaturevisorModule } from "./modules";
@@ -104,11 +109,123 @@ describe("sdk: instance", function () {
         defaultVariableValue: { title: "Child checkout", maxItems: 3 },
       },
     );
+    const childObjectVariable = childF.getVariableObject(
+      "checkout",
+      "config",
+      {},
+      {
+        defaultVariableValue: { title: "Child checkout", maxItems: 3 },
+      },
+    );
+    const childJsonVariable = childF.getVariableJSON(
+      "checkout",
+      "config",
+      {},
+      {
+        defaultVariableValue: { title: "Child checkout", maxItems: 3 },
+      },
+    );
 
     expectExactType<IsExact<typeof childVariation, "control" | "treatment" | null>>(true);
     expectExactType<IsExact<typeof childVariable, CheckoutConfig | null>>(true);
+    expectExactType<IsExact<typeof childObjectVariable, ObjectValue | null>>(true);
+    expectExactType<IsExact<typeof childJsonVariable, VariableValue | null>>(true);
     expect(childVariation).toBe("treatment");
     expect(childVariable).toEqual({ title: "Child checkout", maxItems: 3 });
+    expect(childObjectVariable).toEqual({ title: "Child checkout", maxItems: 3 });
+    expect(childJsonVariable).toEqual({ title: "Child checkout", maxItems: 3 });
+  });
+
+  it("should provide sensible default and optional generic types for typed variable getters", function () {
+    interface CheckoutConfig {
+      title: string;
+      maxItems: number;
+    }
+
+    const f = createFeaturevisor({});
+    const options = {
+      defaultVariableValue: { title: "Checkout", maxItems: 5 },
+    };
+
+    const booleanVariable = f.getVariableBoolean(
+      "checkout",
+      "enabled",
+      {},
+      {
+        defaultVariableValue: true,
+      },
+    );
+    const stringVariable = f.getVariableString(
+      "checkout",
+      "title",
+      {},
+      {
+        defaultVariableValue: "Checkout",
+      },
+    );
+    const integerVariable = f.getVariableInteger(
+      "checkout",
+      "maxItems",
+      {},
+      {
+        defaultVariableValue: 5,
+      },
+    );
+    const doubleVariable = f.getVariableDouble(
+      "checkout",
+      "price",
+      {},
+      {
+        defaultVariableValue: 4.5,
+      },
+    );
+    const arrayVariable = f.getVariableArray(
+      "checkout",
+      "labels",
+      {},
+      {
+        defaultVariableValue: ["new"],
+      },
+    );
+    const typedArrayVariable = f.getVariableArray<number>(
+      "checkout",
+      "positions",
+      {},
+      {
+        defaultVariableValue: [1, 2],
+      },
+    );
+    const objectVariable = f.getVariableObject("checkout", "config", {}, options);
+    const typedObjectVariable = f.getVariableObject<CheckoutConfig>(
+      "checkout",
+      "config",
+      {},
+      options,
+    );
+    const jsonVariable = f.getVariableJSON("checkout", "config", {}, options);
+    const typedJsonVariable = f.getVariableJSON<CheckoutConfig>("checkout", "config", {}, options);
+
+    expectExactType<IsExact<typeof booleanVariable, boolean | null>>(true);
+    expectExactType<IsExact<typeof stringVariable, string | null>>(true);
+    expectExactType<IsExact<typeof integerVariable, number | null>>(true);
+    expectExactType<IsExact<typeof doubleVariable, number | null>>(true);
+    expectExactType<IsExact<typeof arrayVariable, string[] | null>>(true);
+    expectExactType<IsExact<typeof typedArrayVariable, number[] | null>>(true);
+    expectExactType<IsExact<typeof objectVariable, ObjectValue | null>>(true);
+    expectExactType<IsExact<typeof typedObjectVariable, CheckoutConfig | null>>(true);
+    expectExactType<IsExact<typeof jsonVariable, VariableValue | null>>(true);
+    expectExactType<IsExact<typeof typedJsonVariable, CheckoutConfig | null>>(true);
+
+    expect(booleanVariable).toBe(true);
+    expect(stringVariable).toBe("Checkout");
+    expect(integerVariable).toBe(5);
+    expect(doubleVariable).toBe(4.5);
+    expect(arrayVariable).toEqual(["new"]);
+    expect(typedArrayVariable).toEqual([1, 2]);
+    expect(objectVariable).toEqual(options.defaultVariableValue);
+    expect(typedObjectVariable).toEqual(options.defaultVariableValue);
+    expect(jsonVariable).toEqual(options.defaultVariableValue);
+    expect(typedJsonVariable).toEqual(options.defaultVariableValue);
   });
 
   it("should create instance with datafile content", function () {

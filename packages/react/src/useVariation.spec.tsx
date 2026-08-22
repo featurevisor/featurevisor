@@ -3,19 +3,10 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
 import { useVariation } from "./useVariation";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent, VariationValue } from "@featurevisor/types";
-
-type IsExact<TActual, TExpected> = [TActual] extends [TExpected]
-  ? [TExpected] extends [TActual]
-    ? true
-    : false
-  : false;
-
-function expectExactType<T extends true>(value: T): void {
-  expect(value).toBe(true);
-}
 
 function getNewDatafile(variationValue = "control") {
   return {

@@ -6,17 +6,8 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent, VariableValue } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
 import { useVariable } from "./useVariable";
-
-type IsExact<TActual, TExpected> = [TActual] extends [TExpected]
-  ? [TExpected] extends [TActual]
-    ? true
-    : false
-  : false;
-
-function expectExactType<T extends true>(value: T): void {
-  expect(value).toBe(true);
-}
 
 function getNewDatafile(colorValue = "red"): DatafileContent {
   return {
