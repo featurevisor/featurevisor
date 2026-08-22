@@ -110,9 +110,16 @@ describe("generate-code/typescript", () => {
     expect(indexContent).toContain('export * from "./features";');
     expect(indexContent).toContain('export * from "./functions";');
     expect(featuresContent).toContain("export type FeatureKey = keyof Features;");
+    expect(featuresContent).toContain("? Extract<V, string>");
     expect(functionsContent).toContain("export function isEnabled(");
     expect(functionsContent).toContain("export function getVariation<");
     expect(functionsContent).toContain("export function getVariable<");
+    expect(functionsContent).toContain("getVariation<Variation<F>>(featureKey, context)");
+    expect(functionsContent).toContain(
+      "getVariable<VariableType<F, V>>(featureKey, variableKey, context)",
+    );
+    expect(functionsContent).not.toContain("as Variation<F> | null");
+    expect(functionsContent).not.toContain("as VariableType<F, V> | null");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).not.toMatch(/Feature";/);
   });
@@ -133,6 +140,7 @@ describe("generate-code/typescript", () => {
     );
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const reactContent = fs.readFileSync(path.join(outputPath, "react.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
     const generatedFiles = fs.readdirSync(outputPath).sort();
 
@@ -143,6 +151,12 @@ describe("generate-code/typescript", () => {
     expect(generatedFiles).toContain("react.ts");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).toContain('export * from "./react";');
+    expect(reactContent).toContain("useVariationOriginal<Variation<F>>(featureKey, context)");
+    expect(reactContent).toContain(
+      "useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context)",
+    );
+    expect(reactContent).not.toContain("as Variation<F> | null");
+    expect(reactContent).not.toContain("as VariableType<F, V> | null");
   });
 
   it("generates the union of repeated targets using their full selectors", async () => {

@@ -5,7 +5,17 @@ import "@testing-library/jest-dom";
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariation } from "./useVariation";
 import { createFeaturevisor } from "@featurevisor/sdk";
-import type { DatafileContent } from "@featurevisor/types";
+import type { DatafileContent, VariationValue } from "@featurevisor/types";
+
+type IsExact<TActual, TExpected> = [TActual] extends [TExpected]
+  ? [TExpected] extends [TActual]
+    ? true
+    : false
+  : false;
+
+function expectExactType<T extends true>(value: T): void {
+  expect(value).toBe(true);
+}
 
 function getNewDatafile(variationValue = "control") {
   return {
@@ -70,6 +80,26 @@ describe("react: useVariation", function () {
     );
 
     expect(screen.getByText("True")).toBeInTheDocument();
+  });
+
+  test("should support an optional generic variation type", function () {
+    function TestComponent() {
+      const variation = useVariation("test", { userId: "1" });
+      const typedVariation = useVariation<"control" | "treatment">("test", { userId: "1" });
+
+      expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
+      expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);
+
+      return <p>{typedVariation ?? variation}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={getNewInstance()}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByText("control")).toBeInTheDocument();
   });
 
   test("should return the variation reactively", async function () {

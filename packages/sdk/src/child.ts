@@ -222,12 +222,12 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariation(
+  getVariation<TVariation extends VariationValue = VariationValue>(
     featureKey: FeatureKey,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariationValue | null {
-    return this.parent.getVariation(
+  ): TVariation | null {
+    return this.parent.getVariation<TVariation>(
       featureKey,
       this.getChildContext(context),
       this.getChildOptions(options),
@@ -248,13 +248,13 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariable(
+  getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariableValue | null {
-    return this.parent.getVariable(
+  ): TValue | null {
+    return this.parent.getVariable<TValue>(
       featureKey,
       variableKey,
       this.getChildContext(context),

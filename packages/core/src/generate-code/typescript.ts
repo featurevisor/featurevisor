@@ -519,7 +519,7 @@ export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Featu
   ? Features[F][V]
   : never;
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
-  ? V
+  ? Extract<V, string>
   : never;
 `.trimStart();
   const featuresFilePath = path.join(outputPath, "features.ts");
@@ -539,7 +539,7 @@ export function getVariation<F extends FeatureKey>(
   featureKey: F,
   context: Context = {},
 ): Variation<F> | null {
-  return getInstance().getVariation(featureKey, context) as Variation<F> | null;
+  return getInstance().getVariation<Variation<F>>(featureKey, context);
 }
 
 export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
@@ -547,7 +547,7 @@ export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
   variableKey: V,
   context: Context = {},
 ): VariableType<F, V> | null {
-  return getInstance().getVariable(featureKey, variableKey, context) as VariableType<F, V> | null;
+  return getInstance().getVariable<VariableType<F, V>>(featureKey, variableKey, context);
 }
 `.trimStart();
   const functionsFilePath = path.join(outputPath, "functions.ts");
@@ -575,7 +575,7 @@ export function useVariation<F extends FeatureKey>(
   featureKey: F,
   context: Context = {},
 ): Variation<F> | null {
-  return useVariationOriginal(featureKey, context) as Variation<F> | null;
+  return useVariationOriginal<Variation<F>>(featureKey, context);
 }
 
 export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
@@ -583,7 +583,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
   variableKey: V,
   context: Context = {},
 ): VariableType<F, V> | null {
-  return useVariableOriginal(featureKey, variableKey, context) as VariableType<F, V> | null;
+  return useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context);
 }
 `.trimStart();
     const reactFilePath = path.join(outputPath, "react.ts");

@@ -1,7 +1,17 @@
-import type { DatafileContent } from "@featurevisor/types";
+import type { DatafileContent, VariableValue, VariationValue } from "@featurevisor/types";
 
 import { createFeaturevisor } from "./instance";
 import type { FeaturevisorModule } from "./modules";
+
+type IsExact<TActual, TExpected> = [TActual] extends [TExpected]
+  ? [TExpected] extends [TActual]
+    ? true
+    : false
+  : false;
+
+function expectExactType<T extends true>(value: T): void {
+  expect(value).toBe(true);
+}
 
 function createTestFeature(hash: string) {
   return {
@@ -33,6 +43,72 @@ function createTestDatafile(overrides: Partial<DatafileContent> = {}): DatafileC
 describe("sdk: instance", function () {
   it("should be a function", function () {
     expect(typeof createFeaturevisor).toEqual("function");
+  });
+
+  it("should support optional generic variation and variable result types", function () {
+    interface CheckoutConfig {
+      title: string;
+      maxItems: number;
+    }
+
+    const f = createFeaturevisor({});
+
+    const variation = f.getVariation("checkout", {}, { defaultVariationValue: "control" });
+    const typedVariation = f.getVariation<"control" | "treatment">(
+      "checkout",
+      {},
+      {
+        defaultVariationValue: "control",
+      },
+    );
+    const variable = f.getVariable(
+      "checkout",
+      "config",
+      {},
+      {
+        defaultVariableValue: { title: "Checkout", maxItems: 5 },
+      },
+    );
+    const typedVariable = f.getVariable<CheckoutConfig>(
+      "checkout",
+      "config",
+      {},
+      {
+        defaultVariableValue: { title: "Checkout", maxItems: 5 },
+      },
+    );
+
+    expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
+    expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);
+    expectExactType<IsExact<typeof variable, VariableValue | null>>(true);
+    expectExactType<IsExact<typeof typedVariable, CheckoutConfig | null>>(true);
+
+    expect(variation).toBe("control");
+    expect(typedVariation).toBe("control");
+    expect(variable).toEqual({ title: "Checkout", maxItems: 5 });
+    expect(typedVariable).toEqual({ title: "Checkout", maxItems: 5 });
+
+    const childF = f.spawn();
+    const childVariation = childF.getVariation<"control" | "treatment">(
+      "checkout",
+      {},
+      {
+        defaultVariationValue: "treatment",
+      },
+    );
+    const childVariable = childF.getVariable<CheckoutConfig>(
+      "checkout",
+      "config",
+      {},
+      {
+        defaultVariableValue: { title: "Child checkout", maxItems: 3 },
+      },
+    );
+
+    expectExactType<IsExact<typeof childVariation, "control" | "treatment" | null>>(true);
+    expectExactType<IsExact<typeof childVariable, CheckoutConfig | null>>(true);
+    expect(childVariation).toBe("treatment");
+    expect(childVariable).toEqual({ title: "Child checkout", maxItems: 3 });
   });
 
   it("should create instance with datafile content", function () {

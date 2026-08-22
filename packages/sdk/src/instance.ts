@@ -815,20 +815,20 @@ export class Featurevisor {
     });
   }
 
-  getVariation(
+  getVariation<TVariation extends VariationValue = VariationValue>(
     featureKey: FeatureKey,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariationValue | null {
+  ): TVariation | null {
     try {
       const evaluation = this.evaluateVariation(featureKey, context, options);
 
       if (typeof evaluation.variationValue !== "undefined") {
-        return evaluation.variationValue;
+        return evaluation.variationValue as TVariation;
       }
 
       if (evaluation.variation) {
-        return evaluation.variation.value;
+        return evaluation.variation.value as TVariation;
       }
 
       return null;
@@ -862,12 +862,12 @@ export class Featurevisor {
     });
   }
 
-  getVariable(
+  getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariableValue | null {
+  ): TValue | null {
     try {
       const evaluation = this.evaluateVariable(featureKey, variableKey, context, options);
 
@@ -877,10 +877,10 @@ export class Featurevisor {
           evaluation.variableSchema.type === "json" &&
           typeof evaluation.variableValue === "string"
         ) {
-          return JSON.parse(evaluation.variableValue);
+          return JSON.parse(evaluation.variableValue) as TValue;
         }
 
-        return evaluation.variableValue;
+        return evaluation.variableValue as TValue;
       }
 
       return null;

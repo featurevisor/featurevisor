@@ -81,7 +81,9 @@ describe("vue: composables", () => {
   ])("returns %s", (_, value) => {
     const context: Context = { userId: "user-1" };
     const getVariation = jest.fn(() => value);
-    const sdk = createSdk({ getVariation });
+    const sdk = createSdk({
+      getVariation: getVariation as unknown as Featurevisor["getVariation"],
+    });
     let result: string | null | undefined;
 
     mountSetup(() => {
@@ -100,7 +102,9 @@ describe("vue: composables", () => {
   ])("returns %s", (_, value) => {
     const context: Context = { userId: "user-1" };
     const getVariable = jest.fn(() => value);
-    const sdk = createSdk({ getVariable });
+    const sdk = createSdk({
+      getVariable: getVariable as unknown as Featurevisor["getVariable"],
+    });
     let result: unknown;
 
     mountSetup(() => {
