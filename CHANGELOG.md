@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.6.0](https://github.com/featurevisor/featurevisor/compare/v3.5.0...v3.6.0) (2026-08-23)
+
+
+### Features
+
+* allow import path customizations in generated code ([#423](https://github.com/featurevisor/featurevisor/issues/423)) ([f5397d7](https://github.com/featurevisor/featurevisor/commit/f5397d7244f7a96a6355bb0b46f996abbbfa47b8))
+
+
+
+
+
 # [3.5.0](https://github.com/featurevisor/featurevisor/compare/v3.4.0...v3.5.0) (2026-08-23)
 
 
