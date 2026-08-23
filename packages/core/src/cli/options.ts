@@ -106,6 +106,8 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     tag: { type: "array", description: "include one or more feature tags" },
     target: { type: "array", description: "include one or more targets" },
     react: { type: "boolean", description: "generate React helpers" },
+    importSdkPath: { type: "string", hidden: true },
+    importReactPath: { type: "string", hidden: true },
   },
   info: {
     ...setOption,

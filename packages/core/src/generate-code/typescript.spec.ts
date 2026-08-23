@@ -7,7 +7,11 @@ import { getProjectConfig } from "../config/projectConfig";
 import { Datasource } from "../datasource";
 import { generateTypeScriptCodeForProject } from "./typescript";
 
-function getGeneratedTypeScriptDiagnostics(outputPath: string): string[] {
+function getGeneratedTypeScriptDiagnostics(
+  outputPath: string,
+  importSdkPath = "@featurevisor/sdk",
+  importReactPath = "@featurevisor/react",
+): string[] {
   const repositoryPath = path.resolve(__dirname, "../../../..");
   const rootNames = fs
     .readdirSync(outputPath)
@@ -21,8 +25,8 @@ function getGeneratedTypeScriptDiagnostics(outputPath: string): string[] {
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     noEmit: true,
     paths: {
-      "@featurevisor/react": [path.join(repositoryPath, "packages/react/src/index.ts")],
-      "@featurevisor/sdk": [path.join(repositoryPath, "packages/sdk/src/index.ts")],
+      [importReactPath]: [path.join(repositoryPath, "packages/react/src/index.ts")],
+      [importSdkPath]: [path.join(repositoryPath, "packages/sdk/src/index.ts")],
       "@featurevisor/types": [path.join(repositoryPath, "packages/types/src/index.d.ts")],
     },
     skipLibCheck: true,
@@ -111,6 +115,7 @@ describe("generate-code/typescript", () => {
     const contextContent = fs.readFileSync(path.join(outputPath, "context.ts"), "utf8");
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
     const functionsContent = fs.readFileSync(path.join(outputPath, "functions.ts"), "utf8");
+    const instanceContent = fs.readFileSync(path.join(outputPath, "instance.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
     const generatedFiles = fs.readdirSync(outputPath).sort();
 
@@ -126,6 +131,10 @@ describe("generate-code/typescript", () => {
     );
 
     expect(contextContent).toContain("import type {");
+    expect(contextContent).toContain(
+      'import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";',
+    );
+    expect(instanceContent).toContain('import type { Featurevisor } from "@featurevisor/sdk";');
     expect(contextContent).toContain("AccountAttribute,");
     expect(contextContent).toContain("PermissionsAttribute,");
     expect(contextContent).toContain("VersionAttribute,");
@@ -181,12 +190,71 @@ describe("generate-code/typescript", () => {
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).toContain('export * from "./react";');
     expect(reactContent).toContain("useVariationOriginal<Variation<F>>(featureKey, context)");
+    expect(reactContent).toContain('} from "@featurevisor/react";');
     expect(reactContent).toContain(
       "useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context)",
     );
     expect(reactContent).not.toContain("as Variation<F> | null");
     expect(reactContent).not.toContain("as VariableType<F, V> | null");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
+  it("uses custom import paths and treats the React path as opting into React helpers", async () => {
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+    const importSdkPath = "@company/featurevisor-sdk";
+    const importReactPath = "@company/featurevisor-react";
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { importSdkPath, importReactPath },
+    );
+
+    const instanceContent = fs.readFileSync(path.join(outputPath, "instance.ts"), "utf8");
+    const contextContent = fs.readFileSync(path.join(outputPath, "context.ts"), "utf8");
+    const reactContent = fs.readFileSync(path.join(outputPath, "react.ts"), "utf8");
+    const generatedContent = [instanceContent, contextContent, reactContent].join("\n");
+
+    expect(instanceContent).toContain(`from "${importSdkPath}";`);
+    expect(contextContent).toContain(`from "${importSdkPath}";`);
+    expect(reactContent).toContain(`from "${importReactPath}";`);
+    expect(generatedContent).not.toContain('from "@featurevisor/sdk";');
+    expect(generatedContent).not.toContain('from "@featurevisor/react";');
+    expect(getGeneratedTypeScriptDiagnostics(outputPath, importSdkPath, importReactPath)).toEqual(
+      [],
+    );
+  });
+
+  it("falls back to default import paths when empty overrides are provided", async () => {
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { react: true, importSdkPath: "", importReactPath: "" },
+    );
+
+    expect(fs.readFileSync(path.join(outputPath, "instance.ts"), "utf8")).toContain(
+      'from "@featurevisor/sdk";',
+    );
+    expect(fs.readFileSync(path.join(outputPath, "context.ts"), "utf8")).toContain(
+      'from "@featurevisor/sdk";',
+    );
+    expect(fs.readFileSync(path.join(outputPath, "react.ts"), "utf8")).toContain(
+      'from "@featurevisor/react";',
+    );
   });
 
   it("generates the union of repeated targets using their full selectors", async () => {

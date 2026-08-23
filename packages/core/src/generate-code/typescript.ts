@@ -15,7 +15,12 @@ export interface TypeScriptGenerationOptions {
   tag?: string | string[];
   target?: string | string[];
   react?: boolean;
+  importSdkPath?: string;
+  importReactPath?: string;
 }
+
+const DEFAULT_SDK_IMPORT_PATH = "@featurevisor/sdk";
+const DEFAULT_REACT_IMPORT_PATH = "@featurevisor/react";
 
 function shouldWrapArrayItemType(typeName: string): boolean {
   const trimmed = typeName.trim();
@@ -315,8 +320,9 @@ function generateAttributesFileContent(
 const INDENT_NS = "  ";
 const INDENT_NS_BODY = "    ";
 
-const instanceSnippet = `
-import type { Featurevisor } from "@featurevisor/sdk";
+function generateInstanceFileContent(importSdkPath: string): string {
+  return `
+import type { Featurevisor } from ${JSON.stringify(importSdkPath)};
 
 let _instance: Featurevisor;
 
@@ -328,6 +334,7 @@ export function getInstance(): Featurevisor {
   return _instance as Featurevisor;
 }
 `.trimStart();
+}
 
 export async function generateTypeScriptCodeForProject(
   deps: Dependencies,
@@ -336,7 +343,9 @@ export async function generateTypeScriptCodeForProject(
 ) {
   const { rootDirectoryPath, projectConfig, datasource } = deps;
   const selectedTags = normalizeOptionValues(options.tag);
-  const shouldGenerateReact = Boolean(options.react);
+  const shouldGenerateReact = Boolean(options.react || options.importReactPath);
+  const importSdkPath = options.importSdkPath || DEFAULT_SDK_IMPORT_PATH;
+  const importReactPath = options.importReactPath || DEFAULT_REACT_IMPORT_PATH;
 
   const unknownTag = selectedTags.find((tag) => !projectConfig.tags.includes(tag));
   if (unknownTag) {
@@ -380,7 +389,7 @@ export async function generateTypeScriptCodeForProject(
 
   // instance
   const instanceFilePath = path.join(outputPath, "instance.ts");
-  fs.writeFileSync(instanceFilePath, instanceSnippet);
+  fs.writeFileSync(instanceFilePath, generateInstanceFileContent(importSdkPath));
   console.log(`Instance file written at: ${getRelativePath(rootDirectoryPath, instanceFilePath)}`);
 
   // attributes
@@ -427,7 +436,7 @@ export async function generateTypeScriptCodeForProject(
     })
     .join("\n");
   const contextContent = `
-import type { AttributeKey, AttributeValue } from "@featurevisor/sdk";
+import type { AttributeKey, AttributeValue } from ${JSON.stringify(importSdkPath)};
 ${contextImport}export interface Context {
 ${attributeProperties}
   [key: AttributeKey]: AttributeValue;
@@ -562,7 +571,7 @@ import {
   useFlag as useFlagOriginal,
   useVariation as useVariationOriginal,
   useVariable as useVariableOriginal,
-} from "@featurevisor/react";
+} from ${JSON.stringify(importReactPath)};
 
 import type { FeatureKey, Variation, VariableKey, VariableType } from "./features";
 import type { Context } from "./context";

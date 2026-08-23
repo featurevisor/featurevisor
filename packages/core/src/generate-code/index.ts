@@ -15,6 +15,8 @@ export interface GenerateCodeCLIOptions {
   tag?: string | string[];
   target?: string | string[];
   react?: boolean;
+  importSdkPath?: string;
+  importReactPath?: string;
 }
 
 export async function generateCodeForProject(
@@ -54,6 +56,8 @@ export async function generateCodeForProject(
       tag: cliOptions.tag,
       target: cliOptions.target,
       react: cliOptions.react,
+      importSdkPath: cliOptions.importSdkPath,
+      importReactPath: cliOptions.importReactPath,
     });
   }
 
@@ -85,6 +89,8 @@ export const generateCodePlugin: Plugin = {
           tag: parsed.tag,
           target: parsed.target,
           react: parsed.react,
+          importSdkPath: parsed.importSdkPath,
+          importReactPath: parsed.importReactPath,
         },
       );
     }
