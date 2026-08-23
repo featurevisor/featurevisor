@@ -80,17 +80,20 @@ SDKs are used in your application(s) to evaluate three different types of values
 
 Supported SDKs include:
 
-- [JavaScript](https://featurevisor.com/docs/sdks/javascript) (both Node.js and browser environments)
+- [JavaScript](https://featurevisor.com/docs/sdks/javascript)
 - [React](https://featurevisor.com/docs/react/)
 - [React Native](https://featurevisor.com/docs/react-native/)
+- [Vue.js](https://featurevisor.com/docs/vue/)
+- [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Go](https://featurevisor.com/docs/sdks/go/)
 - [Python](https://featurevisor.com/docs/sdks/python/)
 - [PHP](https://featurevisor.com/docs/sdks/php/)
 - [Ruby](https://featurevisor.com/docs/sdks/ruby/)
 - [Java](https://featurevisor.com/docs/sdks/java/)
+- [Kotlin](https://featurevisor.com/docs/sdks/kotlin/)
 - [Swift](https://featurevisor.com/docs/sdks/swift/)
-- [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
-- [Vue.js](https://featurevisor.com/docs/vue/)
+- [Rust](https://featurevisor.com/docs/sdks/rust/)
+- [Elixir](https://featurevisor.com/docs/sdks/elixir/)
 - [OpenFeature providers](https://featurevisor.com/docs/sdks/openfeature/) for Node.js, browsers, and other supported SDK languages
 
 ## Using Featurevisor with AI agents
