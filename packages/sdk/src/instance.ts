@@ -14,6 +14,7 @@ import type {
   Traffic,
   Allocation,
   GroupSegment,
+  ObjectValue,
   Condition,
   VariableType,
 } from "@featurevisor/types";
@@ -815,20 +816,24 @@ export class Featurevisor {
     });
   }
 
-  getVariation(
+  /**
+   * Returns the evaluated variation. The optional type parameter narrows the
+   * compile time result and does not validate or transform the runtime value.
+   */
+  getVariation<TVariation extends VariationValue = VariationValue>(
     featureKey: FeatureKey,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariationValue | null {
+  ): TVariation | null {
     try {
       const evaluation = this.evaluateVariation(featureKey, context, options);
 
       if (typeof evaluation.variationValue !== "undefined") {
-        return evaluation.variationValue;
+        return evaluation.variationValue as TVariation;
       }
 
       if (evaluation.variation) {
-        return evaluation.variation.value;
+        return evaluation.variation.value as TVariation;
       }
 
       return null;
@@ -862,12 +867,21 @@ export class Featurevisor {
     });
   }
 
-  getVariable(
+  /**
+   * Returns the evaluated variable. The optional type parameter describes the
+   * expected compile time result and does not validate or transform the runtime
+   * value.
+   *
+   * TValue is intentionally unconstrained. TypeScript interfaces with known
+   * properties do not implicitly satisfy ObjectValue because they do not declare
+   * an index signature.
+   */
+  getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariableValue | null {
+  ): TValue | null {
     try {
       const evaluation = this.evaluateVariable(featureKey, variableKey, context, options);
 
@@ -877,10 +891,10 @@ export class Featurevisor {
           evaluation.variableSchema.type === "json" &&
           typeof evaluation.variableValue === "string"
         ) {
-          return JSON.parse(evaluation.variableValue);
+          return JSON.parse(evaluation.variableValue) as TValue;
         }
 
-        return evaluation.variableValue;
+        return evaluation.variableValue as TValue;
       }
 
       return null;
@@ -941,6 +955,10 @@ export class Featurevisor {
     return getValueByType(variableValue, "double") as number | null;
   }
 
+  /**
+   * Returns an array variable after runtime type checking. The item type defaults
+   * to string for compatibility. Pass it explicitly for other array item types.
+   */
   getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -952,7 +970,8 @@ export class Featurevisor {
     return getValueByType(variableValue, "array") as T[] | null;
   }
 
-  getVariableObject<T>(
+  /** Returns an object variable after runtime type checking. */
+  getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
@@ -963,7 +982,8 @@ export class Featurevisor {
     return getValueByType(variableValue, "object") as T | null;
   }
 
-  getVariableJSON<T>(
+  /** Returns and parses a JSON variable. */
+  getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},

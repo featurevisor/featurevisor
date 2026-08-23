@@ -3,9 +3,10 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { createFeaturevisor } from "@featurevisor/sdk";
-import { DatafileContent } from "@featurevisor/types";
+import type { DatafileContent, VariableValue } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
 import { useVariable } from "./useVariable";
 
 function getNewDatafile(colorValue = "red"): DatafileContent {
@@ -68,6 +69,32 @@ describe("react: useVariable", function () {
     );
 
     expect(screen.getByText("Red")).toBeInTheDocument();
+  });
+
+  test("should support an optional generic variable type", function () {
+    interface Hero {
+      title: string;
+      subtitle: string;
+      alignment: string;
+    }
+
+    function TestComponent() {
+      const variable = useVariable("test", "color", { userId: "1" });
+      const hero = useVariable<Hero>("test", "hero", { userId: "1" });
+
+      expectExactType<IsExact<typeof variable, VariableValue | null>>(true);
+      expectExactType<IsExact<typeof hero, Hero | null>>(true);
+
+      return <p>{hero?.title ?? String(variable)}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={getNewInstance()}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByText("Hero Title")).toBeInTheDocument();
   });
 
   test("should return the variable reactively", async function () {

@@ -5,6 +5,7 @@ import type {
   VariationValue,
   VariableValue,
   EvaluatedFeatures,
+  ObjectValue,
 } from "@featurevisor/types";
 
 import type { Featurevisor, OverrideOptions } from "./instance.js";
@@ -222,12 +223,16 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariation(
+  /**
+   * Returns the evaluated variation. The optional type parameter narrows the
+   * compile time result and does not validate or transform the runtime value.
+   */
+  getVariation<TVariation extends VariationValue = VariationValue>(
     featureKey: FeatureKey,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariationValue | null {
-    return this.parent.getVariation(
+  ): TVariation | null {
+    return this.parent.getVariation<TVariation>(
       featureKey,
       this.getChildContext(context),
       this.getChildOptions(options),
@@ -248,13 +253,19 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariable(
+  /**
+   * Returns the evaluated variable. The optional type parameter describes the
+   * expected compile time result and does not validate or transform the runtime
+   * value. TValue stays unconstrained so TypeScript interfaces without index
+   * signatures are accepted.
+   */
+  getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
     options: OverrideOptions = {},
-  ): VariableValue | null {
-    return this.parent.getVariable(
+  ): TValue | null {
+    return this.parent.getVariable<TValue>(
       featureKey,
       variableKey,
       this.getChildContext(context),
@@ -318,6 +329,10 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  /**
+   * Returns an array variable after runtime type checking. The item type defaults
+   * to string for compatibility. Pass it explicitly for other array item types.
+   */
   getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -332,7 +347,8 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariableObject<T>(
+  /** Returns an object variable after runtime type checking. */
+  getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},
@@ -346,7 +362,8 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  getVariableJSON<T>(
+  /** Returns and parses a JSON variable. */
+  getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
     context: Context = {},

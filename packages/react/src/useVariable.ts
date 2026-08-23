@@ -5,21 +5,26 @@ import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevi
 import { useSdk } from "./useSdk.js";
 import { onFeatureChange } from "./onFeatureChange.js";
 
-export function useVariable(
+/**
+ * Returns the evaluated variable and updates it when the feature changes. The
+ * optional type parameter only describes the expected compile time result.
+ * TValue stays unconstrained so interfaces without index signatures are accepted.
+ */
+export function useVariable<TValue = VariableValue>(
   featureKey: FeatureKey,
   variableKey: VariableKey,
   context: Context = {},
-): VariableValue | null {
+): TValue | null {
   const sdk = useSdk();
-  const [variableValue, setVariableValue] = useState<VariableValue | null>(() =>
-    sdk.getVariable(featureKey, variableKey, context),
+  const [variableValue, setVariableValue] = useState<TValue | null>(() =>
+    sdk.getVariable<TValue>(featureKey, variableKey, context),
   );
 
   useEffect(() => {
-    setVariableValue(sdk.getVariable(featureKey, variableKey, context));
+    setVariableValue(sdk.getVariable<TValue>(featureKey, variableKey, context));
 
     const unsubscribe = onFeatureChange(sdk, featureKey, () => {
-      const newValue = sdk.getVariable(featureKey, variableKey, context);
+      const newValue = sdk.getVariable<TValue>(featureKey, variableKey, context);
       setVariableValue((prev) => (newValue !== prev ? newValue : prev));
     });
 

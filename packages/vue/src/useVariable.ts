@@ -2,12 +2,17 @@ import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevi
 
 import { useSdk } from "./useSdk.js";
 
-export function useVariable(
+/**
+ * Returns the evaluated variable. The optional type parameter only describes the
+ * expected compile time result. TValue stays unconstrained so interfaces without
+ * index signatures are accepted.
+ */
+export function useVariable<TValue = VariableValue>(
   featureKey: FeatureKey,
   variableKey: VariableKey,
   context: Context = {},
-): VariableValue | null {
+): TValue | null {
   const sdk = useSdk();
 
-  return sdk.getVariable(featureKey, variableKey, context);
+  return sdk.getVariable<TValue>(featureKey, variableKey, context);
 }

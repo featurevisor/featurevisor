@@ -1,10 +1,39 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as ts from "typescript";
 
 import { getProjectConfig } from "../config/projectConfig";
 import { Datasource } from "../datasource";
 import { generateTypeScriptCodeForProject } from "./typescript";
+
+function getGeneratedTypeScriptDiagnostics(outputPath: string): string[] {
+  const repositoryPath = path.resolve(__dirname, "../../../..");
+  const rootNames = fs
+    .readdirSync(outputPath)
+    .filter((fileName) => fileName.endsWith(".ts"))
+    .map((fileName) => path.join(outputPath, fileName));
+  const program = ts.createProgram(rootNames, {
+    allowSyntheticDefaultImports: true,
+    esModuleInterop: true,
+    jsx: ts.JsxEmit.ReactJSX,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    noEmit: true,
+    paths: {
+      "@featurevisor/react": [path.join(repositoryPath, "packages/react/src/index.ts")],
+      "@featurevisor/sdk": [path.join(repositoryPath, "packages/sdk/src/index.ts")],
+      "@featurevisor/types": [path.join(repositoryPath, "packages/types/src/index.d.ts")],
+    },
+    skipLibCheck: true,
+    strict: true,
+    target: ts.ScriptTarget.ES2020,
+  });
+
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+}
 
 function createTempProjectFromExample1() {
   const fixturePath = path.resolve(__dirname, "../../../../examples/example-1");
@@ -110,9 +139,16 @@ describe("generate-code/typescript", () => {
     expect(indexContent).toContain('export * from "./features";');
     expect(indexContent).toContain('export * from "./functions";');
     expect(featuresContent).toContain("export type FeatureKey = keyof Features;");
+    expect(featuresContent).toContain("? Extract<V, string>");
     expect(functionsContent).toContain("export function isEnabled(");
     expect(functionsContent).toContain("export function getVariation<");
     expect(functionsContent).toContain("export function getVariable<");
+    expect(functionsContent).toContain("getVariation<Variation<F>>(featureKey, context)");
+    expect(functionsContent).toContain(
+      "getVariable<VariableType<F, V>>(featureKey, variableKey, context)",
+    );
+    expect(functionsContent).not.toContain("as Variation<F> | null");
+    expect(functionsContent).not.toContain("as VariableType<F, V> | null");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).not.toMatch(/Feature";/);
   });
@@ -133,6 +169,7 @@ describe("generate-code/typescript", () => {
     );
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const reactContent = fs.readFileSync(path.join(outputPath, "react.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
     const generatedFiles = fs.readdirSync(outputPath).sort();
 
@@ -143,6 +180,13 @@ describe("generate-code/typescript", () => {
     expect(generatedFiles).toContain("react.ts");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).toContain('export * from "./react";');
+    expect(reactContent).toContain("useVariationOriginal<Variation<F>>(featureKey, context)");
+    expect(reactContent).toContain(
+      "useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context)",
+    );
+    expect(reactContent).not.toContain("as Variation<F> | null");
+    expect(reactContent).not.toContain("as VariableType<F, V> | null");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 
   it("generates the union of repeated targets using their full selectors", async () => {
