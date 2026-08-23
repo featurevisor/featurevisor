@@ -223,6 +223,10 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  /**
+   * Returns the evaluated variation. The optional type parameter narrows the
+   * compile time result and does not validate or transform the runtime value.
+   */
   getVariation<TVariation extends VariationValue = VariationValue>(
     featureKey: FeatureKey,
     context: Context = {},
@@ -249,7 +253,12 @@ export class FeaturevisorChildInstance {
     );
   }
 
-  // Keep TValue unconstrained for interfaces without index signatures.
+  /**
+   * Returns the evaluated variable. The optional type parameter describes the
+   * expected compile time result and does not validate or transform the runtime
+   * value. TValue stays unconstrained so TypeScript interfaces without index
+   * signatures are accepted.
+   */
   getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -320,6 +329,10 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  /**
+   * Returns an array variable after runtime type checking. The item type defaults
+   * to string for compatibility. Pass it explicitly for other array item types.
+   */
   getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -334,6 +347,7 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  /** Returns an object variable after runtime type checking. */
   getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
@@ -348,6 +362,7 @@ export class FeaturevisorChildInstance {
     );
   }
 
+  /** Returns and parses a JSON variable. */
   getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
