@@ -8,6 +8,17 @@ describe("core: CLI options", function () {
     expect(getBuiltinCLIOptions("promote")?.target.type).toBe("array");
   });
 
+  test("declares hidden TypeScript import path overrides", function () {
+    expect(getBuiltinCLIOptions("generate-code")?.importSdkPath).toEqual({
+      type: "string",
+      hidden: true,
+    });
+    expect(getBuiltinCLIOptions("generate-code")?.importReactPath).toEqual({
+      type: "string",
+      hidden: true,
+    });
+  });
+
   test("keeps obsolete compatibility options hidden", function () {
     expect(getBuiltinCLIOptions("test")?.withScopes).toEqual(
       expect.objectContaining({ type: "boolean", hidden: true }),
