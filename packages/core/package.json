@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Core package of Featurevisor for Node.js usage",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -45,7 +45,7 @@
   "dependencies": {
     "@featurevisor/catalog": "3.3.0",
     "@featurevisor/parsers": "3.2.0",
-    "@featurevisor/sdk": "3.3.0",
+    "@featurevisor/sdk": "3.5.0",
     "@featurevisor/types": "3.3.0",
     "axios": "^1.18.0",
     "tar": "^7.5.22",

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.5.0](https://github.com/featurevisor/featurevisor/compare/v3.4.0...v3.5.0) (2026-08-23)
+
+**Note:** Version bump only for package @featurevisor/cli
+
+
+
+
+
 # [3.4.0](https://github.com/featurevisor/featurevisor/compare/v3.3.0...v3.4.0) (2026-08-09)
 
 

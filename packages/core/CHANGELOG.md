@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.5.0](https://github.com/featurevisor/featurevisor/compare/v3.4.0...v3.5.0) (2026-08-23)
+
+
+### Features
+
+* generics for evaluations ([#422](https://github.com/featurevisor/featurevisor/issues/422)) ([8718098](https://github.com/featurevisor/featurevisor/commit/8718098751abaa055ec451e805e4bc9688d4b8cd))
+
+
+
+
+
 # [3.4.0](https://github.com/featurevisor/featurevisor/compare/v3.3.0...v3.4.0) (2026-08-09)
 
 
