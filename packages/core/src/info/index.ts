@@ -5,6 +5,20 @@ import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 
+const INFO_LABEL_WIDTH = "Total variables (in features):".length;
+
+function printInfoLine(label: string, value: string | number | boolean) {
+  console.log(`  ${colorize(`${label}:`.padEnd(INFO_LABEL_WIDTH), CLI_COLOR_CYAN)} ${value}`);
+}
+
+function countFeatureVariables(features: Record<string, { variablesSchema?: unknown }>): number {
+  return Object.values(features).reduce((count, feature) => {
+    const schemas = feature.variablesSchema;
+    if (!schemas || typeof schemas !== "object") return count;
+    return count + Object.keys(schemas).length;
+  }, 0);
+}
+
 async function showTargetInfo(deps: Dependencies, target: string | string[]) {
   const { projectConfig } = deps;
   const environments = Array.isArray(projectConfig.environments)
@@ -19,28 +33,18 @@ async function showTargetInfo(deps: Dependencies, target: string | string[]) {
     });
 
     for (const entry of datafiles) {
-      const featureVariables = Object.values(entry.datafile.features).reduce((count, feature) => {
-        const schemas = feature.variablesSchema;
-        return (
-          count + (Array.isArray(schemas) ? schemas.length : Object.keys(schemas || {}).length)
-        );
-      }, 0);
+      const featureVariables = countFeatureVariables(entry.datafile.features);
 
       console.log("");
       console.log(CLI_FORMAT_BOLD, `Target "${entry.target}"`);
-      console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${environment}`);
-      console.log(
-        `  ${colorize("Features", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.features).length}`,
-      );
-      console.log(
-        `  ${colorize("Segments", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.segments).length}`,
-      );
-      console.log(`  ${colorize("Feature variables", CLI_COLOR_CYAN)}: ${featureVariables}`);
-      console.log(
-        `  ${colorize("Top-level variables", CLI_COLOR_CYAN)}: ${Object.keys(entry.datafile.variables || {}).length}`,
-      );
-      console.log(
-        `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
+      printInfoLine("Environment", environment);
+      printInfoLine("Features", Object.keys(entry.datafile.features).length);
+      printInfoLine("Segments", Object.keys(entry.datafile.segments).length);
+      printInfoLine("Total variables", Object.keys(entry.datafile.variables || {}).length);
+      printInfoLine("Total variables (in features)", featureVariables);
+      printInfoLine(
+        "Datafile size",
+        `${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
       );
     }
   }
@@ -59,7 +63,7 @@ export async function showProjectInfo(deps: Dependencies) {
   console.log("");
 
   const revision = await datasource.readRevision();
-  console.log(`  ${colorize("Revision", CLI_COLOR_CYAN)}:         ${revision}`);
+  printInfoLine("Revision", revision);
 
   console.log("");
 
@@ -80,19 +84,19 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log(`  ${colorize("Total attributes", CLI_COLOR_CYAN)}: ${attributes.length}`);
-  console.log(`  ${colorize("Total segments", CLI_COLOR_CYAN)}:   ${segments.length}`);
-  console.log(`  ${colorize("Total features", CLI_COLOR_CYAN)}:   ${features.length}`);
-  console.log(`  ${colorize("Feature variables", CLI_COLOR_CYAN)}: ${variablesCount}`);
-  console.log(`  ${colorize("Top-level variables", CLI_COLOR_CYAN)}: ${topLevelVariables.length}`);
-  console.log(`  ${colorize("Total groups", CLI_COLOR_CYAN)}:     ${groups.length}`);
-  console.log(`  ${colorize("Total schemas", CLI_COLOR_CYAN)}:    ${schemas.length}`);
-  console.log(`  ${colorize("Total targets", CLI_COLOR_CYAN)}:    ${targets.length}`);
+  printInfoLine("Total attributes", attributes.length);
+  printInfoLine("Total segments", segments.length);
+  printInfoLine("Total features", features.length);
+  printInfoLine("Total variables", topLevelVariables.length);
+  printInfoLine("Total variables (in features)", variablesCount);
+  printInfoLine("Total groups", groups.length);
+  printInfoLine("Total schemas", schemas.length);
+  printInfoLine("Total targets", targets.length);
 
   console.log("");
 
   const tests = await datasource.listTests();
-  console.log(`  ${colorize("Total test specs", CLI_COLOR_CYAN)}: ${tests.length}`);
+  printInfoLine("Total test specs", tests.length);
 
   let assertionsCount = 0;
   for (const test of tests) {
@@ -108,7 +112,7 @@ export async function showProjectInfo(deps: Dependencies) {
     }
   }
 
-  console.log(`  ${colorize("Total assertions", CLI_COLOR_CYAN)}: ${assertionsCount}`);
+  printInfoLine("Total assertions", assertionsCount);
 }
 
 export const infoPlugin: Plugin = {

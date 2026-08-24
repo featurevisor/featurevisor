@@ -23,12 +23,19 @@ describe("core: project info", function () {
       options: {},
     });
 
-    const output = log.mock.calls.map(([message]) => message).join("\n");
+    const ansiPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+    const output = log.mock.calls
+      .map(([message]) => message)
+      .join("\n")
+      .replace(ansiPattern, "");
     expect(output).toContain("Total attributes");
     expect(output).toContain("Total segments");
     expect(output).toContain("Total features");
-    expect(output).toContain("Feature variables");
-    expect(output).toContain("Top-level variables");
+    expect(output).toContain("Total variables:               1");
+    expect(output).toContain("Total variables (in features): 1");
+    expect(output.indexOf("Total variables:")).toBeLessThan(
+      output.indexOf("Total variables (in features):"),
+    );
     expect(output).toContain("Total groups");
     expect(output).toContain("Total schemas");
     expect(output).toContain("Total targets");
