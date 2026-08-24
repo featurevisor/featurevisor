@@ -288,7 +288,7 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 npx featurevisor generate-code --language typescript --out-dir ./src --tag=shared --target=web --target=mobile
 ```
 
-Generates typed accessors from feature definitions. Repeatable `--tag` and `--target` selectors form a union. Other languages: see <https://featurevisor.com/docs/code-generation>.
+Generates typed accessors from feature and top-level variable definitions. Repeatable `--tag` and `--target` selectors form a union across both entity types. Other languages: see <https://featurevisor.com/docs/code-generation>.
 
 ## promote (sets projects only)
 

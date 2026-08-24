@@ -102,11 +102,11 @@ export const generateCodePlugin: Plugin = {
     },
     {
       command: "generate-code --language typescript --out-dir src/generated --tag web --react",
-      description: "Generate TypeScript and React helper code for tagged features",
+      description: "Generate TypeScript and React helper code for tagged definitions",
     },
     {
       command: "generate-code --language typescript --out-dir src/generated --target web",
-      description: "Generate TypeScript code for features selected by a target",
+      description: "Generate TypeScript code for definitions selected by a target",
     },
   ],
 };

@@ -292,12 +292,16 @@ describe("generate-code/typescript", () => {
     );
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
 
     expect(featuresContent).toContain("discount: null;");
     expect(featuresContent).toContain("pricing: {");
     expect(featuresContent).toContain("withComplexSchema: {");
     expect(featuresContent).not.toContain("withMutations:");
     expect(featuresContent).not.toContain("accountTargeting:");
+    expect(variablesContent).toContain("checkoutSettings: {");
+    expect(variablesContent).not.toContain("headerMessage:");
+    expect(variablesContent).not.toContain("supportEmail:");
   });
 
   it("combines tags and targets as a union and rejects unknown selectors", async () => {
@@ -316,9 +320,13 @@ describe("generate-code/typescript", () => {
     });
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
     expect(featuresContent).toContain("foo: {");
     expect(featuresContent).toContain("discount: null;");
     expect(featuresContent).not.toContain("accountTargeting:");
+    expect(variablesContent).toContain("checkoutSettings: {");
+    expect(variablesContent).not.toContain("headerMessage:");
+    expect(variablesContent).not.toContain("supportEmail:");
 
     await expect(
       generateTypeScriptCodeForProject(deps, outputPath, { tag: "missing" }),
@@ -326,5 +334,60 @@ describe("generate-code/typescript", () => {
     await expect(
       generateTypeScriptCodeForProject(deps, outputPath, { target: "missing" }),
     ).rejects.toThrow('Unknown target "missing"');
+  });
+
+  it("unions repeated tags and targets for features and top-level variables", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "variables", "signInMessage.yml"),
+      [
+        "description: Sign-in message",
+        "tags:",
+        "  - sign-in",
+        "type: string",
+        "defaultValue: Welcome back",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "ecommerce-code.yml"),
+      [
+        "description: Ecommerce code",
+        "tags:",
+        "  and:",
+        "    - all",
+        "    - ecommerce",
+        "includeFeatures:",
+        "  - with*",
+      ].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      {
+        tag: ["sign-in", "ecommerce"],
+        target: ["checkout", "ecommerce-code"],
+      },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
+
+    expect(featuresContent).toContain("foo: {");
+    expect(featuresContent).toContain("discount: null;");
+    expect(featuresContent).toContain("withComplexSchema: {");
+    expect(featuresContent).not.toContain("accountTargeting:");
+    expect(variablesContent).toContain("signInMessage: string;");
+    expect(variablesContent).toContain("checkoutSettings: {");
+    expect(variablesContent).not.toContain("supportEmail:");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 });
