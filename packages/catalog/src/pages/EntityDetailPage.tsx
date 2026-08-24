@@ -44,7 +44,8 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "attributes" ||
     value === "targets" ||
     value === "groups" ||
-    value === "schemas"
+    value === "schemas" ||
+    value === "variables"
   );
 }
 
@@ -486,7 +487,9 @@ export function EntityDetailPage() {
           { to: "force", label: "Force" },
         ]
       : []),
-    ...(type === "feature" || type === "segment" ? [{ to: "tests", label: "Tests" }] : []),
+    ...(type === "feature" || type === "segment" || type === "variable"
+      ? [{ to: "tests", label: "Tests" }]
+      : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
     { to: "history", label: "History" },
   ];
@@ -513,7 +516,7 @@ export function OverviewTab() {
   const schema = entity as SchemaLike;
   const hasStructureTable =
     (detail.type === "schema" && usesSchemaStructureTable(schema) && hasSchemaTableRows(schema)) ||
-    (detail.type === "attribute" && hasSchemaTableRows(schema));
+    ((detail.type === "attribute" || detail.type === "variable") && hasSchemaTableRows(schema));
 
   return (
     <div className="space-y-6">
@@ -541,6 +544,31 @@ export function OverviewTab() {
         <OverviewSection title="Structure">
           <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
         </OverviewSection>
+      )}
+
+      {detail.type === "variable" && (
+        <>
+          {hasSchemaTableRows(entity as SchemaLike) && (
+            <OverviewSection title="Structure">
+              <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+            </OverviewSection>
+          )}
+          <OverviewSection title="Values">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-border bg-elevated p-4">
+                <div className="mb-2 text-xs font-semibold text-muted">Default</div>
+                <FormattedValue value={entity.defaultValue} />
+              </div>
+              <div className="rounded-xl border border-border bg-elevated p-4">
+                <div className="mb-2 text-xs font-semibold text-muted">Disabled</div>
+                <FormattedValue value={entity.disabledValue} />
+              </div>
+            </div>
+          </OverviewSection>
+          <OverviewSection title="Overrides">
+            <FormattedValue value={entity.overrides || []} />
+          </OverviewSection>
+        </>
       )}
 
       <DescriptionField value={entity.description} showTopDivider={!hasStructureTable} />
@@ -730,7 +758,7 @@ function EntityOverviewMeta(props: {
   }
 
   if (
-    (detail.type === "attribute" || detail.type === "schema") &&
+    (detail.type === "attribute" || detail.type === "schema" || detail.type === "variable") &&
     (entity.type || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0))
   ) {
     const typeLabel = entity.type ? String(entity.type) : "oneOf";
@@ -1010,6 +1038,9 @@ function getUsageEntityType(label: string): CatalogEntityType {
   if (label.includes("test")) {
     return "test";
   }
+  if (label.includes("variable")) {
+    return "variable";
+  }
 
   return "feature";
 }
@@ -1051,6 +1082,7 @@ export function UsageTab() {
       ? [
           ["targets", relationships.targets || []],
           ["features", relationships.requiredBy || []],
+          ["variables", relationships.variables || []],
         ]
       : Object.entries(relationships).filter(([label]) => label !== "tests");
   const visibleEntries = entries.filter(([, values]) => values.length > 0);
@@ -1077,7 +1109,7 @@ export function UsageTab() {
 export function TestsTab() {
   const { detail } = useEntityDetail();
 
-  if (detail.type !== "feature" && detail.type !== "segment") {
+  if (detail.type !== "feature" && detail.type !== "segment" && detail.type !== "variable") {
     return <Navigate to=".." replace />;
   }
 

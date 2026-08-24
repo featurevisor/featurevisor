@@ -8,6 +8,7 @@ export type EntityPath =
   | "targets"
   | "groups"
   | "schemas"
+  | "variables"
   | "tests";
 export type GitProvider = "github" | "gitlab" | "bitbucket";
 export type DevEditorId = "cursor" | "vscode";

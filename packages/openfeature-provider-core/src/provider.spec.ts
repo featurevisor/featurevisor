@@ -22,6 +22,23 @@ function datafile(): DatafileContent {
     revision: "revision-1",
     featurevisorVersion: "3.0.1",
     segments: {},
+    variables: {
+      supportEmail: {
+        type: "string",
+        defaultValue: "support@example.com",
+        overrides: [
+          {
+            key: "netherlands",
+            conditions: { attribute: "country", operator: "equals", value: "nl" },
+            value: "support-nl@example.com",
+          },
+        ],
+      },
+      limits: {
+        type: "object",
+        defaultValue: { requests: 10 },
+      },
+    },
     features: {
       checkout: feature({
         variations: [
@@ -133,6 +150,51 @@ describe("Featurevisor OpenFeature mapping", () => {
     expect(
       provider.resolve("checkout/title", "fallback", { targetingKey: "u" }, "string").value,
     ).toBe("Hello");
+  });
+
+  it("resolves top-level variables with default and custom selectors", () => {
+    const provider = new FeaturevisorProvider({ datafile: datafile() });
+    expect(
+      provider.resolve("supportEmail:variable", "fallback", { country: "nl" }, "string"),
+    ).toEqual(
+      expect.objectContaining({
+        value: "support-nl@example.com",
+        reason: StandardResolutionReasons.TARGETING_MATCH,
+        flagMetadata: expect.objectContaining({
+          source: "top_level",
+          variableKey: "supportEmail",
+          variableOverrideKey: "netherlands",
+        }),
+      }),
+    );
+    expect(provider.resolve("limits:variable", {}, {}, "object").value).toEqual({
+      requests: 10,
+    });
+
+    const custom = new FeaturevisorProvider({
+      datafile: datafile(),
+      keySeparator: "/",
+      topLevelVariableKey: "$variable",
+    });
+    expect(custom.resolve("supportEmail/$variable", "fallback", {}, "string").value).toBe(
+      "support@example.com",
+    );
+  });
+
+  it("returns a standard not found error for missing top-level variables", () => {
+    const result = new FeaturevisorProvider({ datafile: datafile() }).resolve(
+      "missing:variable",
+      "fallback",
+      {},
+      "string",
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        value: "fallback",
+        reason: StandardResolutionReasons.ERROR,
+        errorCode: ErrorCode.FLAG_NOT_FOUND,
+      }),
+    );
   });
 
   it("returns defaults with standard errors for missing flags, variables, variations, and malformed datafiles", () => {

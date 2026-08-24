@@ -6,10 +6,12 @@ import type {
   VariableValue,
   EvaluatedFeatures,
   ObjectValue,
+  StickyVariables,
+  TopLevelVariableKey,
 } from "@featurevisor/types";
 
 import type { Featurevisor, OverrideOptions } from "./instance.js";
-import type { Evaluation } from "./evaluate.js";
+import type { Evaluation, TopLevelVariableEvaluation } from "./evaluate.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 
 function getStickySetEventDetails(
@@ -21,6 +23,7 @@ function getStickySetEventDetails(
 
   return {
     features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    variables: [],
     replaced: replace,
   };
 }
@@ -35,13 +38,20 @@ export class FeaturevisorChildInstance {
   private parent: Featurevisor;
   private context: Context;
   private sticky: StickyFeatures;
+  private stickyVariables: StickyVariables;
   private listeners: ChildListeners = {};
   private parentUnsubscribers: (() => void)[] = [];
 
-  constructor(options: { parent: Featurevisor; context: Context; sticky?: StickyFeatures }) {
+  constructor(options: {
+    parent: Featurevisor;
+    context: Context;
+    sticky?: StickyFeatures;
+    stickyVariables?: StickyVariables;
+  }) {
     this.parent = options.parent;
     this.context = options.context;
     this.sticky = options.sticky || {};
+    this.stickyVariables = options.stickyVariables || {};
   }
 
   on<TEventName extends EventName>(
@@ -163,14 +173,16 @@ export class FeaturevisorChildInstance {
     };
   }
 
-  private getChildOptions(
-    options: OverrideOptions = {},
-  ): OverrideOptions & { __featurevisorChildSticky: StickyFeatures } {
+  private getChildOptions(options: OverrideOptions = {}): OverrideOptions & {
+    __featurevisorChildSticky: StickyFeatures;
+    __featurevisorChildStickyVariables: StickyVariables;
+  } {
     return {
       ...options,
       // This is an SDK-private transport field. Public evaluation options do
       // not accept sticky values; sticky belongs to the child instance.
       __featurevisorChildSticky: this.sticky,
+      __featurevisorChildStickyVariables: this.stickyVariables,
     };
   }
 
@@ -189,6 +201,20 @@ export class FeaturevisorChildInstance {
     const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
 
     this.trigger("sticky_set", params);
+  }
+
+  setStickyVariables(stickyVariables: StickyVariables, replace = false) {
+    const previousKeys = Object.keys(this.stickyVariables);
+    this.stickyVariables = replace
+      ? { ...stickyVariables }
+      : { ...this.stickyVariables, ...stickyVariables };
+    this.trigger("sticky_set", {
+      features: [],
+      variables: [...previousKeys, ...Object.keys(this.stickyVariables)].filter(
+        (key, index, keys) => keys.indexOf(key) === index,
+      ),
+      replaced: replace,
+    });
   }
 
   evaluateFlag(
@@ -242,15 +268,32 @@ export class FeaturevisorChildInstance {
   evaluateVariable(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): Evaluation;
+  evaluateVariable(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): TopLevelVariableEvaluation;
+  evaluateVariable(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
-  ): Evaluation {
-    return this.parent.evaluateVariable(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+  ): Evaluation | TopLevelVariableEvaluation {
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.evaluateVariable(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.evaluateVariable(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   /**
@@ -262,71 +305,156 @@ export class FeaturevisorChildInstance {
   getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): TValue | null;
+  getVariable<TValue = VariableValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): TValue | null;
+  getVariable<TValue = VariableValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): TValue | null {
-    return this.parent.getVariable<TValue>(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariable<TValue>(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariable<TValue>(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   getVariableBoolean(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): boolean | null;
+  getVariableBoolean(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): boolean | null;
+  getVariableBoolean(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): boolean | null {
-    return this.parent.getVariableBoolean(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableBoolean(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableBoolean(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   getVariableString(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): string | null;
+  getVariableString(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): string | null;
+  getVariableString(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): string | null {
-    return this.parent.getVariableString(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableString(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableString(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   getVariableInteger(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableInteger(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableInteger(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    return this.parent.getVariableInteger(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableInteger(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableInteger(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   getVariableDouble(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableDouble(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableDouble(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    return this.parent.getVariableDouble(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableDouble(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableDouble(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   /**
@@ -336,45 +464,96 @@ export class FeaturevisorChildInstance {
   getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T[] | null;
+  getVariableArray<T = string>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T[] | null;
+  getVariableArray<T = string>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T[] | null {
-    return this.parent.getVariableArray<T>(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableArray<T>(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableArray<T>(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   /** Returns an object variable after runtime type checking. */
   getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableObject<T = ObjectValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableObject<T = ObjectValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    return this.parent.getVariableObject<T>(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableObject<T>(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableObject<T>(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   /** Returns and parses a JSON variable. */
   getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableJSON<T = VariableValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableJSON<T = VariableValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    return this.parent.getVariableJSON<T>(
-      featureKey,
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
+    return typeof variableKeyOrContext === "string"
+      ? this.parent.getVariableJSON<T>(
+          featureKeyOrVariableKey,
+          variableKeyOrContext,
+          this.getChildContext(contextOrOptions as Context),
+          this.getChildOptions(options),
+        )
+      : this.parent.getVariableJSON<T>(
+          featureKeyOrVariableKey,
+          this.getChildContext(variableKeyOrContext),
+          this.getChildOptions(contextOrOptions),
+        );
   }
 
   getAllEvaluations(

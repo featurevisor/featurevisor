@@ -11,6 +11,7 @@ import type {
 } from "./feature";
 import type { SegmentKey } from "./segment";
 import type { TargetKey } from "./target";
+import type { StickyVariables, TopLevelVariableKey } from "./variable";
 
 export interface AssertionMatrix {
   [key: string]: AttributeValue[];
@@ -84,6 +85,27 @@ export interface SegmentAssertion {
   expectedToMatch: boolean;
 }
 
+export interface VariableAssertion {
+  key?: string;
+  promotable?: boolean;
+  matrix?: AssertionMatrix;
+  description?: string;
+  environment: EnvironmentKey;
+  target?: TargetKey;
+  stickyVariables?: StickyVariables;
+  context?: Context;
+  defaultVariableValue?: VariableValue;
+  expectedValue: VariableValue;
+  expectedEvaluation?: Record<string, any>;
+}
+
+export interface TestVariable {
+  key?: string;
+  promotable?: boolean;
+  variable: TopLevelVariableKey;
+  assertions: VariableAssertion[];
+}
+
 export interface TestSegment {
   key?: string; // file path
   promotable?: boolean;
@@ -91,7 +113,7 @@ export interface TestSegment {
   assertions: SegmentAssertion[];
 }
 
-export type Test = TestSegment | TestFeature;
+export type Test = TestSegment | TestFeature | TestVariable;
 
 /**
  * Used by test runner
@@ -117,7 +139,7 @@ export interface TestResultAssertion {
 }
 
 export interface TestResult {
-  type: "feature" | "segment";
+  type: "feature" | "segment" | "variable";
   key: string;
   notFound?: boolean;
   passed: boolean;

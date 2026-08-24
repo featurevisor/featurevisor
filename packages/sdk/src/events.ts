@@ -1,9 +1,10 @@
-import type { FeatureKey } from "@featurevisor/types";
+import type { FeatureKey, TopLevelVariableKey } from "@featurevisor/types";
 
 import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 
 export interface StickySetEventDetails {
   features: FeatureKey[];
+  variables: TopLevelVariableKey[];
   replaced: boolean;
 }
 
@@ -12,6 +13,7 @@ export interface DatafileSetEventDetails {
   previousRevision: string;
   revisionChanged: boolean;
   features: FeatureKey[];
+  variables: TopLevelVariableKey[];
   replaced: boolean;
 }
 

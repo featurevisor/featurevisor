@@ -114,6 +114,7 @@ describe("generate-code/typescript", () => {
     const attributesContent = fs.readFileSync(path.join(outputPath, "attributes.ts"), "utf8");
     const contextContent = fs.readFileSync(path.join(outputPath, "context.ts"), "utf8");
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
     const functionsContent = fs.readFileSync(path.join(outputPath, "functions.ts"), "utf8");
     const instanceContent = fs.readFileSync(path.join(outputPath, "instance.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
@@ -153,9 +154,10 @@ describe("generate-code/typescript", () => {
     expect(functionsContent).toContain("export function getVariation<");
     expect(functionsContent).toContain("export function getVariable<");
     expect(functionsContent).toContain("getVariation<Variation<F>>(featureKey, context)");
-    expect(functionsContent).toContain(
-      "getVariable<VariableType<F, V>>(featureKey, variableKey, context)",
-    );
+    expect(functionsContent).toContain("FeatureVariableType<F, V> | null");
+    expect(functionsContent).toContain("TopLevelVariableType<K> | null");
+    expect(variablesContent).toContain("checkoutSettings: {");
+    expect(variablesContent).toContain("supportEmail: string;");
     expect(functionsContent).not.toContain("as Variation<F> | null");
     expect(functionsContent).not.toContain("as VariableType<F, V> | null");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
@@ -178,6 +180,7 @@ describe("generate-code/typescript", () => {
     );
 
     const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
     const reactContent = fs.readFileSync(path.join(outputPath, "react.ts"), "utf8");
     const indexContent = fs.readFileSync(path.join(outputPath, "index.ts"), "utf8");
     const generatedFiles = fs.readdirSync(outputPath).sort();
@@ -186,14 +189,15 @@ describe("generate-code/typescript", () => {
     expect(featuresContent).toContain("pricing: {");
     expect(featuresContent).toContain("withComplexSchema: {");
     expect(featuresContent).not.toContain("accountTargeting:");
+    expect(variablesContent).toContain("checkoutSettings: {");
+    expect(variablesContent).not.toContain("supportEmail:");
     expect(generatedFiles).toContain("react.ts");
     expect(generatedFiles.some((fileName) => fileName.endsWith("Feature.ts"))).toEqual(false);
     expect(indexContent).toContain('export * from "./react";');
     expect(reactContent).toContain("useVariationOriginal<Variation<F>>(featureKey, context)");
     expect(reactContent).toContain('} from "@featurevisor/react";');
-    expect(reactContent).toContain(
-      "useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context)",
-    );
+    expect(reactContent).toContain("FeatureVariableType<F, V> | null");
+    expect(reactContent).toContain("TopLevelVariableType<K> | null");
     expect(reactContent).not.toContain("as Variation<F> | null");
     expect(reactContent).not.toContain("as VariableType<F, V> | null");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);

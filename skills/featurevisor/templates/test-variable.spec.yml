@@ -1,0 +1,11 @@
+variable: supportEmail
+assertions:
+  - key: netherlands
+    description: Uses the Netherlands override
+    environment: production
+    context:
+      country: nl
+    expectedValue: support-nl@example.com
+    expectedEvaluation:
+      reason: override_matched
+      overrideKey: netherlands

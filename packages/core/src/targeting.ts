@@ -1,4 +1,4 @@
-import type { ParsedFeature, Target } from "@featurevisor/types";
+import type { ParsedFeature, ParsedVariable, Target } from "@featurevisor/types";
 
 import type { Datasource } from "./datasource";
 
@@ -51,6 +51,13 @@ export function targetIncludesFeature(
   return true;
 }
 
+export function targetIncludesVariable(target: Target, variable: ParsedVariable): boolean {
+  if (variable.archived === true) return false;
+  const tags = variable.tags || [];
+  if (target.tag && !tags.includes(target.tag)) return false;
+  return !target.tags || matchesTargetTags(tags, target.tags);
+}
+
 export async function resolveTargets(
   datasource: Datasource,
   requestedTargets?: string | string[],
@@ -99,6 +106,23 @@ export async function getTargetFeatureKeys(
     const feature = await datasource.readFeature(featureKey);
     if (targets.some((target) => targetIncludesFeature(target, featureKey, feature))) {
       result.add(featureKey);
+    }
+  }
+
+  return result;
+}
+
+export async function getTargetVariableKeys(
+  datasource: Datasource,
+  targets: ResolvedTarget[],
+): Promise<Set<string>> {
+  const result = new Set<string>();
+  const variableKeys = await datasource.listVariables();
+
+  for (const variableKey of variableKeys) {
+    const variable = await datasource.readVariable(variableKey);
+    if (targets.some((target) => targetIncludesVariable(target, variable))) {
+      result.add(variableKey);
     }
   }
 

@@ -18,6 +18,7 @@ function createProjectConfig(root: string, sets = false) {
     targetsDirectoryPath: path.join(root, "targets"),
     groupsDirectoryPath: path.join(root, "groups"),
     schemasDirectoryPath: path.join(root, "schemas"),
+    variablesDirectoryPath: path.join(root, "variables"),
     testsDirectoryPath: path.join(root, "tests"),
     setsDirectoryPath: path.join(root, "sets"),
   };
@@ -85,8 +86,38 @@ function createDatasource(set = "") {
     readGroup: async () => undefined,
     listSchemas: async () => [],
     readSchema: async () => undefined,
-    listTests: async () => ["checkout-primary", "checkout-matrix", "premium-users"],
+    listVariables: async () => ["supportEmail"],
+    readVariable: async () => ({
+      key: "supportEmail",
+      description: "Support email",
+      tags: ["web", "premium"],
+      type: "string",
+      defaultValue: "support@example.com",
+      overrides: {
+        staging: [{ key: "premium", segments: segmentKey, value: "premium@example.com" }],
+        production: [],
+      },
+    }),
+    listTests: async () => [
+      "checkout-primary",
+      "checkout-matrix",
+      "premium-users",
+      "support-email",
+    ],
     readTest: async (key: string) => {
+      if (key === "support-email") {
+        return {
+          key,
+          variable: "supportEmail",
+          assertions: [
+            {
+              environment: "staging",
+              context: { plan: "premium" },
+              expectedValue: "premium@example.com",
+            },
+          ],
+        };
+      }
       if (key === "premium-users") {
         return {
           key,
@@ -150,6 +181,7 @@ function createRuntime(): CatalogRuntime {
           targetsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "targets"),
           groupsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "groups"),
           schemasDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "schemas"),
+          variablesDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "variables"),
           testsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "tests"),
         },
         datasource: datasource.forSet(set),
@@ -188,6 +220,7 @@ describe("catalog export", () => {
 
     expect(manifest.sets).toBe(false);
     expect(index.counts.feature).toBe(1);
+    expect(index.counts.variable).toBe(1);
     expect(index.entities.feature[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].usedInFeatureCount).toBe(1);
@@ -224,6 +257,21 @@ describe("catalog export", () => {
     );
     expect(segmentDetail.tests).toEqual([
       expect.objectContaining({ key: "premium-users", segment: "premiumUsers" }),
+    ]);
+
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
+    expect(variableDetail.relationships).toMatchObject({
+      segments: ["premiumUsers"],
+      targets: ["premiumWeb"],
+      tests: ["support-email"],
+    });
+    expect(variableDetail.tests).toEqual([
+      expect.objectContaining({ key: "support-email", variable: "supportEmail" }),
     ]);
   });
 

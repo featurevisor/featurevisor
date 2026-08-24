@@ -220,6 +220,27 @@ export function applyContextToDatafile(
     contextualDatafileContent.features[featureKey] = feature;
   }
 
+  // top-level variables
+  for (const variable of Object.values(contextualDatafileContent.variables || {})) {
+    for (const override of variable.overrides || []) {
+      if (override.segments) {
+        override.segments = applyContextToSegments(
+          originalFeaturevisor,
+          parseIfStringified(override.segments),
+          context,
+          removeSegments,
+        );
+      }
+      if (override.conditions) {
+        override.conditions = applyContextToConditions(
+          originalFeaturevisor,
+          parseIfStringified(override.conditions),
+          context,
+        );
+      }
+    }
+  }
+
   // remove segments
   for (const removeSegment of removeSegments) {
     delete contextualDatafileContent.segments[removeSegment];

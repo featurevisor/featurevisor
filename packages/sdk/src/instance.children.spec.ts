@@ -84,8 +84,8 @@ describe("Featurevisor public API: child instances", () => {
     child.setSticky({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
-      { features: ["a", "b"], replaced: false },
-      { features: ["a", "b", "c"], replaced: true },
+      { features: ["a", "b"], variables: [], replaced: false },
+      { features: ["a", "b", "c"], variables: [], replaced: true },
     ]);
   });
 

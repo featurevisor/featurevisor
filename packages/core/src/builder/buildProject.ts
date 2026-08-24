@@ -21,6 +21,7 @@ export interface BuildCLIOptions {
   // all three together
   environment?: string;
   feature?: string;
+  variable?: string;
   json?: boolean;
   pretty?: boolean;
   stateFiles?: boolean; // --no-state-files in CLI
@@ -174,6 +175,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
     let datafileContent = await getCustomDatafile({
       featureKey: cliOptions.feature,
+      variableKey: cliOptions.variable,
       environment,
       projectConfig,
       datasource,

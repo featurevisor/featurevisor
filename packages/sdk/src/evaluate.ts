@@ -16,6 +16,8 @@ import type {
   Feature,
   Condition,
   GroupSegment,
+  DatafileVariable,
+  TopLevelVariableKey,
 } from "@featurevisor/types";
 
 import type { FeaturevisorModule } from "./modules.js";
@@ -42,7 +44,7 @@ export type EvaluationReason =
   | "allocated"
   | "error";
 
-type EvaluationType = "flag" | "variation" | "variable";
+export type EvaluationType = "flag" | "variation" | "variable";
 
 export interface ForceResult {
   force?: Force;
@@ -93,6 +95,26 @@ export interface Evaluation {
   variableOverrideIndex?: number;
 }
 
+export type TopLevelVariableEvaluationReason =
+  | "variable_not_found"
+  | "sticky"
+  | "required_features_unmet"
+  | "override_matched"
+  | "default_value"
+  | "error";
+
+export interface TopLevelVariableEvaluation {
+  type: "top_level_variable";
+  source: "top_level";
+  variableKey: TopLevelVariableKey;
+  reason: TopLevelVariableEvaluationReason;
+  variable?: DatafileVariable;
+  variableValue?: VariableValue;
+  overrideIndex?: number;
+  overrideKey?: string;
+  error?: Error;
+}
+
 export interface EvaluateDependencies {
   context: Context;
 
@@ -114,6 +136,16 @@ export interface EvaluateParams {
 }
 
 export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
+
+export interface TopLevelVariableEvaluateOptions {
+  type: "top_level_variable";
+  variableKey: TopLevelVariableKey;
+  context: Context;
+  defaultVariableValue?: VariableValue;
+}
+
+export type EvaluationOptions = EvaluateOptions | TopLevelVariableEvaluateOptions;
+export type EvaluationResult = Evaluation | TopLevelVariableEvaluation;
 
 function reportEvaluationDiagnostic(
   reportDiagnostic: FeaturevisorDiagnosticReporter,
@@ -147,6 +179,11 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
         options = module.before(options);
       }
     }
+    for (const module of modules) {
+      if (module.beforeEvaluation) {
+        options = module.beforeEvaluation(options) as EvaluateOptions;
+      }
+    }
 
     // evaluate
     let evaluation = evaluate(options);
@@ -170,7 +207,14 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
       evaluation.variableValue = options.defaultVariableValue;
     }
 
-    // run after modules
+    // run unified after modules
+    for (const module of modules) {
+      if (module.afterEvaluation) {
+        evaluation = module.afterEvaluation(evaluation, options) as Evaluation;
+      }
+    }
+
+    // run deprecated feature-only after modules
     for (const module of modules) {
       if (module.after) {
         evaluation = module.after(evaluation, options);

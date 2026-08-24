@@ -12,6 +12,7 @@ export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const GROUPS_DIRECTORY_NAME = "groups";
 export const SCHEMAS_DIRECTORY_NAME = "schemas";
+export const VARIABLES_DIRECTORY_NAME = "variables";
 export const TARGETS_DIRECTORY_NAME = "targets";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
@@ -45,6 +46,7 @@ export interface ProjectConfig {
   attributesDirectoryPath: string;
   groupsDirectoryPath: string;
   schemasDirectoryPath: string;
+  variablesDirectoryPath: string;
   targetsDirectoryPath: string;
   testsDirectoryPath: string;
   stateDirectoryPath: string;
@@ -99,6 +101,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(rootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
+    variablesDirectoryPath: path.join(rootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(rootDirectoryPath, TARGETS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
@@ -211,6 +214,7 @@ export function getProjectConfigForSet(projectConfig: ProjectConfig, set: string
     attributesDirectoryPath: path.join(setRootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(setRootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(setRootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
+    variablesDirectoryPath: path.join(setRootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(setRootDirectoryPath, TARGETS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(setRootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(projectConfig.stateDirectoryPath, SETS_DIRECTORY_NAME, set),

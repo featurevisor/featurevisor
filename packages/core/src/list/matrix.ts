@@ -1,4 +1,9 @@
-import type { AssertionMatrix, FeatureAssertion, SegmentAssertion } from "@featurevisor/types";
+import type {
+  AssertionMatrix,
+  FeatureAssertion,
+  SegmentAssertion,
+  VariableAssertion,
+} from "@featurevisor/types";
 
 function generateCombinations(
   keys: string[],
@@ -209,4 +214,33 @@ export function getSegmentAssertionsFromMatrix(
   }
 
   return assertions;
+}
+
+export function getVariableAssertionsFromMatrix(
+  aIndex: number,
+  assertionWithMatrix: VariableAssertion,
+): VariableAssertion[] {
+  const combinations = assertionWithMatrix.matrix
+    ? getMatrixCombinations(assertionWithMatrix.matrix)
+    : [{}];
+
+  return combinations.map((combination) => {
+    const assertion = { ...assertionWithMatrix };
+    assertion.environment = applyCombinationToValue(assertion.environment, combination);
+    assertion.context = Object.keys(assertion.context || {}).reduce((acc, key) => {
+      acc[key] = applyCombinationToValue(assertion.context?.[key], combination);
+      return acc;
+    }, {});
+    if (assertion.target) {
+      assertion.target = applyCombinationToValue(assertion.target, combination);
+    }
+    if (assertion.description) {
+      assertion.description = applyCombinationToValue(assertion.description, combination);
+    }
+    assertion.expectedValue = applyCombinationToValue(assertion.expectedValue, combination);
+    assertion.description = `Assertion #${aIndex + 1}${
+      assertion.description ? `: ${assertion.description}` : ""
+    }`;
+    return assertion;
+  });
 }

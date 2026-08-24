@@ -162,6 +162,7 @@ describe("Featurevisor public API: datafiles", () => {
         previousRevision: "one",
         revisionChanged: true,
         features: ["changed", "added"],
+        variables: [],
         replaced: false,
       },
     ]);
@@ -174,6 +175,7 @@ describe("Featurevisor public API: datafiles", () => {
           previousRevision: "one",
           revisionChanged: true,
           features: ["changed", "added"],
+          variables: [],
           replaced: false,
         },
       }),

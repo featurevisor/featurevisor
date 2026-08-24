@@ -158,6 +158,46 @@ export interface UsageInSegments {
   };
 }
 
+export interface UsageInVariables {
+  [variableKey: string]: {
+    features: Set<FeatureKey>;
+    segments: Set<SegmentKey>;
+    attributes: Set<AttributeKey>;
+  };
+}
+
+export async function findAllUsageInVariables(deps: Dependencies): Promise<UsageInVariables> {
+  const result: UsageInVariables = {};
+  for (const variableKey of await deps.datasource.listVariables()) {
+    const variable = await deps.datasource.readVariable(variableKey);
+    const usage = {
+      features: new Set<FeatureKey>(),
+      segments: new Set<SegmentKey>(),
+      attributes: new Set<AttributeKey>(),
+    };
+    [
+      ...(variable.requiredFeatures || []),
+      ...Object.values(variable.overrides || {})
+        .flat()
+        .flatMap((override) => override.requiredFeatures || []),
+    ].forEach((required) =>
+      usage.features.add(typeof required === "string" ? required : required.key),
+    );
+    Object.values(variable.overrides || {})
+      .flat()
+      .forEach((override) => {
+        extractSegmentKeysFromGroupSegments(override.segments || []).forEach((key) =>
+          usage.segments.add(key),
+        );
+        extractAttributeKeysFromConditions(override.conditions || []).forEach((key) =>
+          usage.attributes.add(key),
+        );
+      });
+    result[variableKey] = usage;
+  }
+  return result;
+}
+
 export async function findAllUsageInSegments(deps: Dependencies): Promise<UsageInSegments> {
   const { datasource } = deps;
   const usageInSegments: UsageInSegments = {};
@@ -243,6 +283,7 @@ export async function findAttributeUsage(
 export async function findUnusedSegments(
   deps: Dependencies,
   usageInFeatures: UsageInFeatures,
+  usageInVariables: UsageInVariables = {},
 ): Promise<Set<SegmentKey>> {
   const { datasource } = deps;
   const unusedSegments = new Set<SegmentKey>();
@@ -255,6 +296,9 @@ export async function findUnusedSegments(
       usedSegmentKeys.add(segmentKey);
     });
   }
+  Object.values(usageInVariables).forEach((usage) =>
+    usage.segments.forEach((segmentKey) => usedSegmentKeys.add(segmentKey)),
+  );
 
   allSegmentKeys.forEach((segmentKey) => {
     if (!usedSegmentKeys.has(segmentKey)) {
@@ -269,6 +313,7 @@ export async function findUnusedAttributes(
   deps: Dependencies,
   usageInFeatures: UsageInFeatures,
   usageInSegments: UsageInSegments,
+  usageInVariables: UsageInVariables = {},
 ): Promise<Set<AttributeKey>> {
   const { datasource } = deps;
   const unusedAttributes = new Set<AttributeKey>();
@@ -287,6 +332,9 @@ export async function findUnusedAttributes(
       usedAttributeKeys.add(attributeKey);
     });
   }
+  Object.values(usageInVariables).forEach((usage) =>
+    usage.attributes.forEach((attributeKey) => usedAttributeKeys.add(attributeKey)),
+  );
 
   allAttributeKeys.forEach((attributeKey) => {
     if (!usedAttributeKeys.has(attributeKey)) {
@@ -335,14 +383,18 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   const usageInFeatures = await findAllUsageInFeatures(deps);
   const usageInSegments = await findAllUsageInSegments(deps);
+  const usageInVariables = await findAllUsageInVariables(deps);
 
   // feature
   if (options.feature) {
     const usedInFeatures = await findFeatureUsage(usageInFeatures, options.feature);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].features.has(options.feature as string),
+    );
 
-    if (usedInFeatures.size === 0) {
-      console.log(CLI_FORMAT_GREEN, `Feature "${options.feature}" is not used in any features.`);
-    } else {
+    if (usedInFeatures.size === 0 && usedInVariables.length === 0) {
+      console.log(CLI_FORMAT_GREEN, `Feature "${options.feature}" is not used by other entities.`);
+    } else if (usedInFeatures.size > 0) {
       console.log(CLI_FORMAT_BOLD, `Feature "${options.feature}" is used in these features`);
       console.log("");
 
@@ -360,16 +412,39 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       }
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Feature "${options.feature}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // segment
   if (options.segment) {
     const usedInFeatures = await findSegmentUsage(usageInFeatures, options.segment);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].segments.has(options.segment as string),
+    );
 
-    if (usedInFeatures.size === 0) {
-      console.log(CLI_FORMAT_GREEN, `Segment "${options.segment}" is not used in any features.`);
-    } else {
+    if (usedInFeatures.size === 0 && usedInVariables.length === 0) {
+      console.log(
+        CLI_FORMAT_GREEN,
+        `Segment "${options.segment}" is not used in any features or variables.`,
+      );
+    } else if (usedInFeatures.size > 0) {
       console.log(CLI_FORMAT_BOLD, `Segment "${options.segment}" is used in these features`);
       console.log("");
 
@@ -387,17 +462,37 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       }
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Segment "${options.segment}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // attribute
   if (options.attribute) {
     const usedIn = await findAttributeUsage(usageInFeatures, usageInSegments, options.attribute);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].attributes.has(options.attribute as string),
+    );
 
-    if (usedIn.features.size === 0 && usedIn.segments.size === 0) {
+    if (usedIn.features.size === 0 && usedIn.segments.size === 0 && usedInVariables.length === 0) {
       console.log(
         CLI_FORMAT_GREEN,
-        `Attribute "${options.attribute}" is not used in any features or segments.`,
+        `Attribute "${options.attribute}" is not used in any features, segments, or variables.`,
       );
 
       return;
@@ -473,12 +568,29 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       console.log("");
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Attribute "${options.attribute}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // unused segments
   if (options.unusedSegments) {
-    const unusedSegments = await findUnusedSegments(deps, usageInFeatures);
+    const unusedSegments = await findUnusedSegments(deps, usageInFeatures, usageInVariables);
 
     if (unusedSegments.size === 0) {
       console.log(CLI_FORMAT_GREEN, "No unused segments found.");
@@ -505,7 +617,12 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   // unused attributes
   if (options.unusedAttributes) {
-    const unusedAttributes = await findUnusedAttributes(deps, usageInFeatures, usageInSegments);
+    const unusedAttributes = await findUnusedAttributes(
+      deps,
+      usageInFeatures,
+      usageInSegments,
+      usageInVariables,
+    );
 
     if (unusedAttributes.size === 0) {
       console.log(CLI_FORMAT_GREEN, "No unused attributes found.");

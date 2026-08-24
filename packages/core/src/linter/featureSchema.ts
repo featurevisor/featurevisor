@@ -39,7 +39,7 @@ function getVariableLabel(variableSchema, variableKey, path) {
  * Resolve variable schema to the Schema used for value validation.
  * When variable has `schema` (reference), returns the parsed Schema from schemasByKey; otherwise returns the inline variable schema.
  */
-function resolveVariableSchema(
+export function resolveVariableSchema(
   variableSchema: {
     schema?: string;
     type?: string;
@@ -285,7 +285,7 @@ type SchemaLikeForRequired = {
  * When schemasByKey is provided, resolves schema references (schema: key) so that
  * referenced and nested schemas are validated too.
  */
-function refineRequiredKeysInSchema(
+export function refineRequiredKeysInSchema(
   schema: SchemaLikeForRequired,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
@@ -584,7 +584,7 @@ type VariableSchemaLike =
   | null
   | undefined;
 
-function superRefineVariableValue(
+export function superRefineVariableValue(
   projectConfig: ProjectConfig,
   variableSchema: VariableSchemaLike,
   variableValue: unknown,

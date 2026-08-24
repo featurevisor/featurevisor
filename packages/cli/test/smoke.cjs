@@ -124,11 +124,25 @@ test("validates declared custom plugin options", () => {
   assert.match(result.stderr, /Unknown argument: unknown/);
 });
 
-test("requires feature keys for evaluation commands", () => {
+test("requires a feature or top level variable for evaluation commands", () => {
   const result = run(["benchmark", "--context={}"], (root) => {
     writeFileSync(path.join(root, "featurevisor.config.js"), "module.exports = {};\n");
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Missing required argument: feature/);
+  assert.match(result.stderr, /Pass --feature or --variable/);
+});
+
+test("benchmarks a top level variable without a feature", () => {
+  const result = run(["benchmark", "--variable=supportEmail", "--n=1"], (root) => {
+    writeFileSync(path.join(root, "featurevisor.config.js"), "module.exports = {};\n");
+    mkdirSync(path.join(root, "variables"), { recursive: true });
+    writeFileSync(
+      path.join(root, "variables", "supportEmail.yml"),
+      "description: Support email\ntype: string\ndefaultValue: help@example.com\n",
+    );
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Evaluated value.*help@example.com/);
 });

@@ -1,4 +1,4 @@
-import type { ParsedFeature } from "@featurevisor/types";
+import type { ParsedFeature, ParsedVariable } from "@featurevisor/types";
 
 import { formatDatafileSize, listEntities, listProject } from "./index";
 
@@ -61,6 +61,50 @@ describe("core: list", function () {
     );
 
     expect(result.map((feature) => feature.key).sort()).toEqual(["mobile", "web"]);
+  });
+
+  test("filters top level variables by tags, targets, and test presence", async function () {
+    const variableFixtures: Record<string, ParsedVariable> = {
+      checkout: {
+        description: "Checkout settings",
+        type: "object",
+        defaultValue: {},
+        tags: ["web", "checkout"],
+      },
+      mobile: {
+        description: "Mobile settings",
+        type: "object",
+        defaultValue: {},
+        tags: ["mobile"],
+      },
+    };
+    const datasource = {
+      listVariables: async () => Object.keys(variableFixtures),
+      readVariable: async (key: string) => variableFixtures[key],
+      listTargets: async () => ["web"],
+      readTarget: async () => ({ description: "Web", tag: "web" }),
+      listTests: async () => ["checkout"],
+      readTest: async () => ({ variable: "checkout", assertions: [] }),
+    };
+    const deps = {
+      rootDirectoryPath: "",
+      projectConfig: {} as any,
+      datasource: datasource as any,
+      options: {},
+    };
+
+    await expect(
+      listEntities<ParsedVariable>({ ...deps, options: { tag: "checkout" } }, "variable"),
+    ).resolves.toEqual([expect.objectContaining({ key: "checkout" })]);
+    await expect(
+      listEntities<ParsedVariable>({ ...deps, options: { target: "web" } }, "variable"),
+    ).resolves.toEqual([expect.objectContaining({ key: "checkout" })]);
+    await expect(
+      listEntities<ParsedVariable>({ ...deps, options: { withTests: true } }, "variable"),
+    ).resolves.toEqual([expect.objectContaining({ key: "checkout" })]);
+    await expect(
+      listEntities<ParsedVariable>({ ...deps, options: { withoutTests: true } }, "variable"),
+    ).resolves.toEqual([expect.objectContaining({ key: "mobile" })]);
   });
 
   test("excludes archived definitions by default and filters either archived status", async function () {

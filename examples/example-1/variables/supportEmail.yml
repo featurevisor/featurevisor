@@ -1,0 +1,20 @@
+description: Support email address shown to users
+tags:
+  - all
+type: string
+defaultValue: support@example.com
+overrides:
+  staging:
+    - key: staging
+      segments: "*"
+      value: support-staging@example.com
+  production:
+    - key: netherlands
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      value: support-nl@example.com
+    - key: default
+      segments: "*"
+      value: support@example.com

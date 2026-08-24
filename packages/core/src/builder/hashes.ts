@@ -6,9 +6,11 @@ import type {
   SegmentKey,
   Segment,
   DatafileContent,
+  DatafileVariable,
+  TopLevelVariableKey,
 } from "@featurevisor/types";
 
-import { extractSegmentsFromFeature } from "../utils";
+import { extractSegmentKeysFromGroupSegments, extractSegmentsFromFeature } from "../utils";
 
 const base62chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -102,8 +104,34 @@ export function generateHashForDatafile(datafileContent: DatafileContent): strin
     JSON.stringify({
       schemaVersion: datafileContent.schemaVersion,
       featureHashes,
+      variables: datafileContent.variables,
     }),
   );
 
   return hash;
+}
+
+export function generateHashForVariable(
+  variableKey: TopLevelVariableKey,
+  variables: Record<TopLevelVariableKey, DatafileVariable>,
+  features: Record<FeatureKey, Feature>,
+  segmentHashes: Record<SegmentKey, string>,
+): string {
+  const variable = variables[variableKey];
+  if (!variable) return "";
+
+  const requiredFeatureKeys = [
+    ...(variable.requiredFeatures || []),
+    ...(variable.overrides || []).flatMap((override) => override.requiredFeatures || []),
+  ].map((required) => (typeof required === "string" ? required : required.key));
+  const requiredFeatureHashes = requiredFeatureKeys.map((featureKey) =>
+    generateHashForFeature(featureKey, features, segmentHashes),
+  );
+  const usedSegmentHashes = (variable.overrides || [])
+    .flatMap((override) => Array.from(extractSegmentKeysFromGroupSegments(override.segments || [])))
+    .map((segmentKey) => segmentHashes[segmentKey]);
+
+  return generateHashFromString(
+    JSON.stringify({ variableKey, variable, requiredFeatureHashes, usedSegmentHashes }),
+  );
 }

@@ -7,9 +7,15 @@ import type {
   Schema,
   VariableSchema,
   VariableSchemaWithInline,
+  ParsedVariable,
 } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
-import { normalizeOptionValues, resolveTargets, targetIncludesFeature } from "../targeting";
+import {
+  normalizeOptionValues,
+  resolveTargets,
+  targetIncludesFeature,
+  targetIncludesVariable,
+} from "../targeting";
 
 export interface TypeScriptGenerationOptions {
   tag?: string | string[];
@@ -521,10 +527,10 @@ ${featureTypeEntries}
 };
 
 export type FeatureKey = keyof Features;
-export type VariableKey<F extends FeatureKey> = Features[F] extends Record<string, unknown>
+export type FeatureVariableKey<F extends FeatureKey> = Features[F] extends Record<string, unknown>
   ? Extract<Exclude<keyof Features[F], "variation">, string>
   : never;
-export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = Features[F] extends Record<string, unknown>
+export type FeatureVariableType<F extends FeatureKey, V extends FeatureVariableKey<F>> = Features[F] extends Record<string, unknown>
   ? Features[F][V]
   : never;
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
@@ -535,8 +541,46 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   fs.writeFileSync(featuresFilePath, featuresFileContent);
   console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
 
+  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
+  for (const key of await datasource.listVariables()) {
+    const variable = await datasource.readVariable(key);
+    if (variable.archived) continue;
+    const matchesSelectedTag = selectedTags.some((tag) => (variable.tags || []).includes(tag));
+    const matchesSelectedTarget = selectedTargets.some((target) =>
+      targetIncludesVariable(target, variable),
+    );
+    if (
+      (selectedTags.length > 0 || selectedTargets.length > 0) &&
+      !matchesSelectedTag &&
+      !matchesSelectedTarget
+    ) {
+      continue;
+    }
+    parsedVariables.push({ key, value: variable });
+  }
+  const variableSchemaTypesUsed = new Set<string>();
+  const variableTypeEntries = parsedVariables.map(({ key, value }) => {
+    const { typeName, schemaTypesUsed } = getVariableTypeForFeaturesMap(
+      value as VariableSchema,
+      schemasByKey,
+      hasSchemasFile ? schemaTypeNames : undefined,
+    );
+    schemaTypesUsed.forEach((name) => variableSchemaTypesUsed.add(name));
+    return `  ${formatObjectKey(key)}: ${typeName};`;
+  });
+  const variablesFileContent = `${formatTypeImport(
+    [...variableSchemaTypesUsed].sort(),
+    "./schemas",
+  )}export type TopLevelVariables = {\n${variableTypeEntries.join("\n")}\n};\n\nexport type TopLevelVariableKey = keyof TopLevelVariables;\nexport type TopLevelVariableType<K extends TopLevelVariableKey> = TopLevelVariables[K];\n`;
+  const variablesFilePath = path.join(outputPath, "variables.ts");
+  fs.writeFileSync(variablesFilePath, variablesFileContent);
+  console.log(
+    `Variables file written at: ${getRelativePath(rootDirectoryPath, variablesFilePath)}`,
+  );
+
   const functionsFileContent = `
-import { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
+import { TopLevelVariableKey, TopLevelVariableType } from "./variables";
 import { Context } from "./context";
 import { getInstance } from "./instance";
 
@@ -551,12 +595,23 @@ export function getVariation<F extends FeatureKey>(
   return getInstance().getVariation<Variation<F>>(featureKey, context);
 }
 
-export function getVariable<F extends FeatureKey, V extends VariableKey<F>>(
+export function getVariable<F extends FeatureKey, V extends FeatureVariableKey<F>>(
   featureKey: F,
   variableKey: V,
+  context?: Context,
+): FeatureVariableType<F, V> | null;
+export function getVariable<K extends TopLevelVariableKey>(
+  variableKey: K,
+  context?: Context,
+): TopLevelVariableType<K> | null;
+export function getVariable(
+  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  variableKeyOrContext: string | Context = {},
   context: Context = {},
-): VariableType<F, V> | null {
-  return getInstance().getVariable<VariableType<F, V>>(featureKey, variableKey, context);
+): unknown {
+  return typeof variableKeyOrContext === "string"
+    ? getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext, context)
+    : getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext);
 }
 `.trimStart();
   const functionsFilePath = path.join(outputPath, "functions.ts");
@@ -573,7 +628,8 @@ import {
   useVariable as useVariableOriginal,
 } from ${JSON.stringify(importReactPath)};
 
-import type { FeatureKey, Variation, VariableKey, VariableType } from "./features";
+import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
+import type { TopLevelVariableKey, TopLevelVariableType } from "./variables";
 import type { Context } from "./context";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
@@ -587,12 +643,23 @@ export function useVariation<F extends FeatureKey>(
   return useVariationOriginal<Variation<F>>(featureKey, context);
 }
 
-export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
+export function useVariable<F extends FeatureKey, V extends FeatureVariableKey<F>>(
   featureKey: F,
   variableKey: V,
+  context?: Context,
+): FeatureVariableType<F, V> | null;
+export function useVariable<K extends TopLevelVariableKey>(
+  variableKey: K,
+  context?: Context,
+): TopLevelVariableType<K> | null;
+export function useVariable(
+  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  variableKeyOrContext: string | Context = {},
   context: Context = {},
-): VariableType<F, V> | null {
-  return useVariableOriginal<VariableType<F, V>>(featureKey, variableKey, context);
+): unknown {
+  return typeof variableKeyOrContext === "string"
+    ? useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext, context)
+    : useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext);
 }
 `.trimStart();
     const reactFilePath = path.join(outputPath, "react.ts");
@@ -608,6 +675,7 @@ export function useVariable<F extends FeatureKey, V extends VariableKey<F>>(
       `export * from "./instance";`,
       ...(hasSchemasFile ? [`export * from "./schemas";`] : []),
       `export * from "./features";`,
+      `export * from "./variables";`,
       `export * from "./functions";`,
       ...(shouldGenerateReact ? [`export * from "./react";`] : []),
     ].join("\n") + "\n";

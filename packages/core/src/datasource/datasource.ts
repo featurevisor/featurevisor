@@ -15,6 +15,8 @@ import type {
   Schema,
   Target,
   TargetKey,
+  ParsedVariable,
+  TopLevelVariableKey,
 } from "@featurevisor/types";
 
 import { getProjectConfigForSet, ProjectConfig } from "../config";
@@ -232,6 +234,56 @@ export class Datasource {
 
   deleteSchema(schemaKey: SchemaKey) {
     return this.adapter.deleteEntity("schema", schemaKey);
+  }
+
+  // top-level variables
+  listVariables() {
+    return this.adapter.listEntities("variable");
+  }
+
+  variableExists(variableKey: TopLevelVariableKey) {
+    return this.adapter.entityExists("variable", variableKey);
+  }
+
+  readVariable(variableKey: TopLevelVariableKey) {
+    return this.adapter.readEntity<ParsedVariable>("variable", variableKey);
+  }
+
+  writeVariable(variableKey: TopLevelVariableKey, variable: ParsedVariable) {
+    return this.adapter.writeEntity<ParsedVariable>("variable", variableKey, variable);
+  }
+
+  deleteVariable(variableKey: TopLevelVariableKey) {
+    return this.adapter.deleteEntity("variable", variableKey);
+  }
+
+  async getRequiredFeaturesChainForVariable(
+    variableKey: TopLevelVariableKey,
+  ): Promise<Set<FeatureKey>> {
+    if (!(await this.variableExists(variableKey))) {
+      throw new Error(`Variable not found: ${variableKey}`);
+    }
+
+    const variable = await this.readVariable(variableKey);
+    const result = new Set<FeatureKey>();
+    const requirements = [
+      ...(variable.requiredFeatures || []),
+      ...Object.values(variable.overrides || {})
+        .flat()
+        .flatMap((override) => override.requiredFeatures || []),
+    ];
+
+    for (const required of requirements) {
+      const featureKey = typeof required === "string" ? required : required.key;
+      const chain = await collectRequiredFeatureKeys(
+        this,
+        featureKey,
+        (await this.readFeature(featureKey)).required,
+      );
+      chain.forEach((key) => result.add(key));
+    }
+
+    return result;
   }
 
   // targets

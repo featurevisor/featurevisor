@@ -19,7 +19,7 @@ async function showTargetInfo(deps: Dependencies, target: string | string[]) {
     });
 
     for (const entry of datafiles) {
-      const variables = Object.values(entry.datafile.features).reduce((count, feature) => {
+      const featureVariables = Object.values(entry.datafile.features).reduce((count, feature) => {
         const schemas = feature.variablesSchema;
         return (
           count + (Array.isArray(schemas) ? schemas.length : Object.keys(schemas || {}).length)
@@ -35,7 +35,10 @@ async function showTargetInfo(deps: Dependencies, target: string | string[]) {
       console.log(
         `  ${colorize("Segments", CLI_COLOR_CYAN)}:    ${Object.keys(entry.datafile.segments).length}`,
       );
-      console.log(`  ${colorize("Variables", CLI_COLOR_CYAN)}:   ${variables}`);
+      console.log(`  ${colorize("Feature variables", CLI_COLOR_CYAN)}: ${featureVariables}`);
+      console.log(
+        `  ${colorize("Top-level variables", CLI_COLOR_CYAN)}: ${Object.keys(entry.datafile.variables || {}).length}`,
+      );
       console.log(
         `  ${colorize("Datafile size", CLI_COLOR_CYAN)}: ${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
       );
@@ -66,6 +69,7 @@ export async function showProjectInfo(deps: Dependencies) {
   const groups = await datasource.listGroups();
   const schemas = await datasource.listSchemas();
   const targets = await datasource.listTargets();
+  const topLevelVariables = await datasource.listVariables();
 
   let variablesCount = 0;
   for (const featureKey of features) {
@@ -79,7 +83,8 @@ export async function showProjectInfo(deps: Dependencies) {
   console.log(`  ${colorize("Total attributes", CLI_COLOR_CYAN)}: ${attributes.length}`);
   console.log(`  ${colorize("Total segments", CLI_COLOR_CYAN)}:   ${segments.length}`);
   console.log(`  ${colorize("Total features", CLI_COLOR_CYAN)}:   ${features.length}`);
-  console.log(`  ${colorize("Total variables", CLI_COLOR_CYAN)}:  ${variablesCount}`);
+  console.log(`  ${colorize("Feature variables", CLI_COLOR_CYAN)}: ${variablesCount}`);
+  console.log(`  ${colorize("Top-level variables", CLI_COLOR_CYAN)}: ${topLevelVariables.length}`);
   console.log(`  ${colorize("Total groups", CLI_COLOR_CYAN)}:     ${groups.length}`);
   console.log(`  ${colorize("Total schemas", CLI_COLOR_CYAN)}:    ${schemas.length}`);
   console.log(`  ${colorize("Total targets", CLI_COLOR_CYAN)}:    ${targets.length}`);

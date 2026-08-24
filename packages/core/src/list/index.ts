@@ -9,6 +9,9 @@ import type {
   Target,
   Group,
   Schema,
+  ParsedVariable,
+  TestVariable,
+  VariableAssertion,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
@@ -16,9 +19,13 @@ import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { FeaturevisorCLIError } from "../error";
-import { getFeatureAssertionsFromMatrix, getSegmentAssertionsFromMatrix } from "./matrix";
+import {
+  getFeatureAssertionsFromMatrix,
+  getSegmentAssertionsFromMatrix,
+  getVariableAssertionsFromMatrix,
+} from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
-import { getTargetFeatureKeys, resolveTargets } from "../targeting";
+import { getTargetFeatureKeys, getTargetVariableKeys, resolveTargets } from "../targeting";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_GREEN,
@@ -31,11 +38,12 @@ import {
 
 async function getEntitiesWithTests(
   deps: Dependencies,
-): Promise<{ features: string[]; segments: string[] }> {
+): Promise<{ features: string[]; segments: string[]; variables: string[] }> {
   const { datasource } = deps;
 
   const featuresWithTests = new Set<string>();
   const segmentsWithTests = new Set<string>();
+  const variablesWithTests = new Set<string>();
 
   const tests = await datasource.listTests();
   for (const testKey of tests) {
@@ -48,11 +56,16 @@ async function getEntitiesWithTests(
     if ((test as TestSegment).segment) {
       segmentsWithTests.add((test as TestSegment).segment);
     }
+
+    if ((test as TestVariable).variable) {
+      variablesWithTests.add((test as TestVariable).variable);
+    }
   }
 
   return {
     features: Array.from(featuresWithTests),
     segments: Array.from(segmentsWithTests),
+    variables: Array.from(variablesWithTests),
   };
 }
 
@@ -94,18 +107,22 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entityKeys = await datasource.listTests();
   } else if (entityType === "target") {
     entityKeys = await datasource.listTargets();
+  } else if (entityType === "variable") {
+    entityKeys = await datasource.listVariables();
   }
 
   if (entityKeys.length === 0) {
     return result;
   }
 
-  let entitiesWithTests: { features: string[]; segments: string[] } = {
+  let entitiesWithTests: { features: string[]; segments: string[]; variables: string[] } = {
     features: [],
     segments: [],
+    variables: [],
   };
   let entitiesWithTestsInitialized = false;
   let targetFeatureKeys: Set<string> | undefined;
+  let targetVariableKeys: Set<string> | undefined;
   const descriptionRegex = options.description
     ? parseRegexOption("--description", options.description, "i")
     : undefined;
@@ -119,6 +136,11 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
   if (entityType === "feature" && options.target) {
     const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
     targetFeatureKeys = await getTargetFeatureKeys(datasource, targets);
+  }
+
+  if (entityType === "variable" && options.target) {
+    const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
+    targetVariableKeys = await getTargetVariableKeys(datasource, targets);
   }
 
   async function initializeEntitiesWithTests() {
@@ -147,6 +169,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       entity = (await datasource.readTest(key)) as T;
     } else if (entityType === "target") {
       entity = (await datasource.readTarget(key)) as T;
+    } else if (entityType === "variable") {
+      entity = (await datasource.readVariable(key)) as T;
     }
 
     if (entityType !== "test") {
@@ -157,7 +181,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       };
 
       if (
-        ["feature", "segment", "attribute"].includes(entityType) &&
+        ["feature", "segment", "attribute", "variable"].includes(entityType) &&
         !matchesBooleanOption(options.archived, definition.archived, false)
       ) {
         continue;
@@ -316,6 +340,28 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           continue;
         }
       }
+    } else if (entityType === "variable") {
+      const parsedVariable = entity as ParsedVariable;
+
+      if (targetVariableKeys && !targetVariableKeys.has(key)) {
+        continue;
+      }
+
+      if (options.tag) {
+        const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
+        const variableTags = parsedVariable.tags || [];
+        if (!tags.every((tag) => variableTags.includes(tag))) {
+          continue;
+        }
+      }
+
+      if (options.withTests || options.withoutTests) {
+        await initializeEntitiesWithTests();
+        const hasTests = entitiesWithTests.variables.includes(key);
+        if ((options.withTests && !hasTests) || (options.withoutTests && hasTests)) {
+          continue;
+        }
+      }
     } else if (entityType === "segment") {
       // --with-tests
       if (options.withTests) {
@@ -335,9 +381,16 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         }
       }
     } else if (entityType === "test") {
-      let test = entity as TestFeature | TestSegment;
-      const testEntityKey = (test as TestFeature).feature || (test as TestSegment).segment;
-      const testEntityType = (test as TestSegment).segment ? "segment" : "feature";
+      let test = entity as TestFeature | TestSegment | TestVariable;
+      const testEntityKey =
+        (test as TestFeature).feature ||
+        (test as TestSegment).segment ||
+        (test as TestVariable).variable;
+      const testEntityType = (test as TestSegment).segment
+        ? "segment"
+        : (test as TestVariable).variable
+          ? "variable"
+          : "feature";
       let testAssertions = test.assertions;
 
       if (
@@ -377,6 +430,14 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
               assertionsAfterApplyingMatrix.concat(processedAssertions);
           }
 
+          testAssertions = assertionsAfterApplyingMatrix;
+        } else if (testEntityType === "variable") {
+          let assertionsAfterApplyingMatrix: VariableAssertion[] = [];
+          for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            assertionsAfterApplyingMatrix = assertionsAfterApplyingMatrix.concat(
+              getVariableAssertionsFromMatrix(aIndex, testAssertions[aIndex] as VariableAssertion),
+            );
+          }
           testAssertions = assertionsAfterApplyingMatrix;
         }
       }
@@ -565,6 +626,7 @@ const listSelectors = [
   "attributes",
   "tests",
   "targets",
+  "variables",
 ] as const;
 
 function assertListOptions(options: Record<string, any>) {
@@ -601,10 +663,8 @@ function assertListOptions(options: Record<string, any>) {
 
   const selector = selected[0];
   const featureOnly = [
-    "target",
     "disabledIn",
     "enabledIn",
-    "tag",
     "variable",
     "variation",
     "withVariables",
@@ -613,6 +673,15 @@ function assertListOptions(options: Record<string, any>) {
     "withoutVariations",
   ];
   const testOnly = ["entityType", "applyMatrix", "assertionPattern"];
+
+  for (const option of ["target", "tag"]) {
+    if (!["features", "variables"].includes(selector) && typeof options[option] !== "undefined") {
+      throw new FeaturevisorCLIError(
+        `Option --${option} can only be used with --features or --variables.`,
+        { code: "incompatible_cli_options", details: { selector, option } },
+      );
+    }
+  }
 
   if (selector !== "features") {
     const unsupported = featureOnly.filter((option) => typeof options[option] !== "undefined");
@@ -634,19 +703,22 @@ function assertListOptions(options: Record<string, any>) {
     }
   }
 
-  if (!["features", "segments"].includes(selector) && (options.withTests || options.withoutTests)) {
+  if (
+    !["features", "segments", "variables"].includes(selector) &&
+    (options.withTests || options.withoutTests)
+  ) {
     throw new FeaturevisorCLIError(
-      "Options --withTests and --withoutTests can only be used with --features or --segments.",
+      "Options --withTests and --withoutTests can only be used with --features, --segments, or --variables.",
       { code: "incompatible_cli_options", details: { selector } },
     );
   }
 
   if (
-    !["features", "segments", "attributes"].includes(selector) &&
+    !["features", "segments", "attributes", "variables"].includes(selector) &&
     typeof options.archived !== "undefined"
   ) {
     throw new FeaturevisorCLIError(
-      "Option --archived can only be used with --features, --segments, or --attributes.",
+      "Option --archived can only be used with --features, --segments, --attributes, or --variables.",
       { code: "incompatible_cli_options", details: { selector, option: "archived" } },
     );
   }
@@ -752,6 +824,11 @@ export async function listProject(deps: Dependencies) {
       entityType: "target",
       options,
     });
+  }
+
+  if (options.variables) {
+    const result = await listEntities<ParsedVariable>(deps, "variable");
+    return printResult({ result, entityType: "variable", options });
   }
 }
 

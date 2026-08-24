@@ -12,6 +12,7 @@ describe("core: project info", function () {
       listGroups: async () => ["experiments"],
       listSchemas: async () => ["colour"],
       listTargets: async () => ["web"],
+      listVariables: async () => ["supportEmail"],
       listTests: async () => [],
     };
 
@@ -26,7 +27,8 @@ describe("core: project info", function () {
     expect(output).toContain("Total attributes");
     expect(output).toContain("Total segments");
     expect(output).toContain("Total features");
-    expect(output).toContain("Total variables");
+    expect(output).toContain("Feature variables");
+    expect(output).toContain("Top-level variables");
     expect(output).toContain("Total groups");
     expect(output).toContain("Total schemas");
     expect(output).toContain("Total targets");

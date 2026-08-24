@@ -8,6 +8,7 @@ export function getTestsZodSchema(
   availableFeatureKeys: [string, ...string[]],
   availableSegmentKeys: [string, ...string[]],
   availableTargetKeys: [string, ...string[]],
+  availableVariableKeys: [string, ...string[]] = [] as unknown as [string, ...string[]],
 ) {
   function validateAssertionKeys(
     assertions: Array<{ key?: string; promotable?: boolean }>,
@@ -193,5 +194,59 @@ export function getTestsZodSchema(
     })
     .strict();
 
-  return z.union([segmentTestZodSchema, featureTestZodSchema]);
+  const variableTestZodSchema = z
+    .object({
+      promotable: z.boolean().optional(),
+      variable: refineWithMessage(
+        z.string(),
+        (value) => availableVariableKeys.includes(value),
+        (value) => `Unknown variable "${value}"`,
+      ),
+      assertions: z
+        .array(
+          z
+            .object({
+              key: z.string().min(1).optional(),
+              promotable: z.boolean().optional(),
+              matrix: matrixZodSchema.optional(),
+              description: z.string().optional(),
+              environment: Array.isArray(projectConfig.environments)
+                ? refineWithMessage(
+                    z.string(),
+                    (value) =>
+                      value.indexOf("${{") === 0 || projectConfig.environments.includes(value),
+                    (value) => `Unknown environment "${value}"`,
+                  )
+                : z.never().optional(),
+              target: refineWithMessage(
+                z.string(),
+                (value) => value.indexOf("${{") === 0 || availableTargetKeys.includes(value),
+                (value) => `Unknown target "${value}"`,
+              ).optional(),
+              stickyVariables: z.record(z.string(), z.unknown()).optional(),
+              context: z.record(z.string(), z.unknown()).optional(),
+              defaultVariableValue: z.unknown().optional(),
+              expectedValue: z.unknown(),
+              expectedEvaluation: z.record(z.string(), z.any()).optional(),
+            })
+            .strict(),
+        )
+        .superRefine(validateAssertionKeys),
+    })
+    .strict();
+
+  return z.unknown().superRefine((value, ctx) => {
+    const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    const schema = Object.prototype.hasOwnProperty.call(candidate, "feature")
+      ? featureTestZodSchema
+      : Object.prototype.hasOwnProperty.call(candidate, "segment")
+        ? segmentTestZodSchema
+        : Object.prototype.hasOwnProperty.call(candidate, "variable")
+          ? variableTestZodSchema
+          : z.never();
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      result.error.issues.forEach((issue) => ctx.addIssue({ ...issue }));
+    }
+  });
 }

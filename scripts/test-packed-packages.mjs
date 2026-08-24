@@ -173,6 +173,8 @@ const variation = featurevisor.getVariation("checkout");
 const typedVariation = featurevisor.getVariation<"control" | "treatment">("checkout");
 const variable = featurevisor.getVariable("checkout", "config");
 const typedVariable = featurevisor.getVariable<CheckoutConfig>("checkout", "config");
+const topLevelVariable = featurevisor.getVariable("supportEmail");
+const typedTopLevelVariable = featurevisor.getVariable<string>("supportEmail", { country: "nl" });
 const arrayVariable = featurevisor.getVariableArray("checkout", "items");
 const typedArrayVariable = featurevisor.getVariableArray<number>("checkout", "items");
 const objectVariable = featurevisor.getVariableObject("checkout", "config");
@@ -186,6 +188,8 @@ type _TypedVariation = Assert<
 >;
 type _Variable = Assert<IsExact<typeof variable, VariableValue | null>>;
 type _TypedVariable = Assert<IsExact<typeof typedVariable, CheckoutConfig | null>>;
+type _TopLevelVariable = Assert<IsExact<typeof topLevelVariable, VariableValue | null>>;
+type _TypedTopLevelVariable = Assert<IsExact<typeof typedTopLevelVariable, string | null>>;
 type _ArrayVariable = Assert<IsExact<typeof arrayVariable, string[] | null>>;
 type _TypedArrayVariable = Assert<IsExact<typeof typedArrayVariable, number[] | null>>;
 type _ObjectVariable = Assert<IsExact<typeof objectVariable, ObjectValue | null>>;
@@ -200,6 +204,7 @@ const childBroadVariation = child.getVariation("checkout");
 const childVariation = child.getVariation<"control" | "treatment">("checkout");
 const childBroadVariable = child.getVariable("checkout", "config");
 const childVariable = child.getVariable<CheckoutConfig>("checkout", "config");
+const childTopLevelVariable = child.getVariable<string>("supportEmail");
 type _ChildBroadVariation = Assert<
   IsExact<typeof childBroadVariation, VariationValue | null>
 >;
@@ -208,6 +213,7 @@ type _ChildVariation = Assert<
 >;
 type _ChildBroadVariable = Assert<IsExact<typeof childBroadVariable, VariableValue | null>>;
 type _ChildVariable = Assert<IsExact<typeof childVariable, CheckoutConfig | null>>;
+type _ChildTopLevelVariable = Assert<IsExact<typeof childTopLevelVariable, string | null>>;
 
 const oldVariationMethod: (featureKey: string) => VariationValue | null =
   featurevisor.getVariation.bind(featurevisor);
@@ -225,10 +231,12 @@ function checkFrameworkTypes() {
   const reactVariation = useReactVariation<"control" | "treatment">("checkout");
   const broadReactVariable = useReactVariable("checkout", "config");
   const reactVariable = useReactVariable<CheckoutConfig>("checkout", "config");
+  const reactTopLevelVariable = useReactVariable<string>("supportEmail");
   const broadVueVariation = useVueVariation("checkout");
   const vueVariation = useVueVariation<"control" | "treatment">("checkout");
   const broadVueVariable = useVueVariable("checkout", "config");
   const vueVariable = useVueVariable<CheckoutConfig>("checkout", "config");
+  const vueTopLevelVariable = useVueVariable<string>("supportEmail");
 
   type _BroadReactVariation = Assert<
     IsExact<typeof broadReactVariation, VariationValue | null>
@@ -240,6 +248,7 @@ function checkFrameworkTypes() {
     IsExact<typeof broadReactVariable, VariableValue | null>
   >;
   type _ReactVariable = Assert<IsExact<typeof reactVariable, CheckoutConfig | null>>;
+  type _ReactTopLevelVariable = Assert<IsExact<typeof reactTopLevelVariable, string | null>>;
   type _BroadVueVariation = Assert<
     IsExact<typeof broadVueVariation, VariationValue | null>
   >;
@@ -248,16 +257,19 @@ function checkFrameworkTypes() {
   >;
   type _BroadVueVariable = Assert<IsExact<typeof broadVueVariable, VariableValue | null>>;
   type _VueVariable = Assert<IsExact<typeof vueVariable, CheckoutConfig | null>>;
+  type _VueTopLevelVariable = Assert<IsExact<typeof vueTopLevelVariable, string | null>>;
 
   return [
     broadReactVariation,
     reactVariation,
     broadReactVariable,
     reactVariable,
+    reactTopLevelVariable,
     broadVueVariation,
     vueVariation,
     broadVueVariable,
     vueVariable,
+    vueTopLevelVariable,
   ];
 }
 
@@ -266,6 +278,7 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   const hookVariation = api.getVariation<"control" | "treatment">("checkout");
   const broadHookVariable = api.getVariable("checkout", "config");
   const hookVariable = api.getVariable<CheckoutConfig>("checkout", "config");
+  const hookTopLevelVariable = api.getVariable<string>("supportEmail");
 
   type _BroadHookVariation = Assert<
     IsExact<typeof broadHookVariation, VariationValue | null>
@@ -275,8 +288,15 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   >;
   type _BroadHookVariable = Assert<IsExact<typeof broadHookVariable, VariableValue | null>>;
   type _HookVariable = Assert<IsExact<typeof hookVariable, CheckoutConfig | null>>;
+  type _HookTopLevelVariable = Assert<IsExact<typeof hookTopLevelVariable, string | null>>;
 
-  return [broadHookVariation, hookVariation, broadHookVariable, hookVariable];
+  return [
+    broadHookVariation,
+    hookVariation,
+    broadHookVariable,
+    hookVariable,
+    hookTopLevelVariable,
+  ];
 }
 
 // @ts-expect-error Variation types must remain strings.

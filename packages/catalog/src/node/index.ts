@@ -13,6 +13,7 @@ import type {
   Segment,
   Target,
   Test,
+  ParsedVariable,
 } from "@featurevisor/types";
 
 import type {
@@ -119,6 +120,7 @@ type EntityMaps = {
   group: Record<string, Group>;
   schema: Record<string, Schema>;
   test: Record<string, Test>;
+  variable: Record<string, ParsedVariable>;
 };
 
 type RelationshipMaps = {
@@ -138,6 +140,16 @@ type RelationshipMaps = {
   schemasUsedInFeatures: Record<string, Set<string>>;
   segmentTests: Record<string, Set<string>>;
   targetFeatures: Record<string, Set<string>>;
+  variableFeatures: Record<string, Set<string>>;
+  variableSegments: Record<string, Set<string>>;
+  variableAttributes: Record<string, Set<string>>;
+  variableSchemas: Record<string, Set<string>>;
+  variableTargets: Record<string, Set<string>>;
+  variableTests: Record<string, Set<string>>;
+  featuresUsedInVariables: Record<string, Set<string>>;
+  segmentsUsedInVariables: Record<string, Set<string>>;
+  attributesUsedInVariables: Record<string, Set<string>>;
+  schemasUsedInVariables: Record<string, Set<string>>;
 };
 
 interface SourceFileInfo {
@@ -421,6 +433,13 @@ function targetIncludesFeature(target: Target, featureKey: string, feature: Pars
   return matchesTags && matchesIncludedFeatures && !matchesExcludedFeatures;
 }
 
+function matchesTargetTags(candidateTags: string[], tags: Target["tags"]): boolean {
+  if (!tags) return true;
+  if (Array.isArray(tags)) return tags.some((tag) => candidateTags.includes(tag));
+  if ("or" in tags) return tags.or.some((tag) => candidateTags.includes(tag));
+  return tags.and.every((tag) => candidateTags.includes(tag));
+}
+
 function getHistoryEntityKey(type: CatalogEntityType, key: string, set?: string) {
   return `${set || ""}\x1f${type}\x1f${key}`;
 }
@@ -687,6 +706,7 @@ function getEntityFilePath(
     segment: projectConfig.segmentsDirectoryPath,
     attribute: projectConfig.attributesDirectoryPath,
     target: projectConfig.targetsDirectoryPath,
+    variable: projectConfig.variablesDirectoryPath,
     group: projectConfig.groupsDirectoryPath,
     schema: projectConfig.schemasDirectoryPath,
     test: projectConfig.testsDirectoryPath,
@@ -935,6 +955,16 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     schemasUsedInFeatures: {},
     segmentTests: {},
     targetFeatures: {},
+    variableFeatures: {},
+    variableSegments: {},
+    variableAttributes: {},
+    variableSchemas: {},
+    variableTargets: {},
+    variableTests: {},
+    featuresUsedInVariables: {},
+    segmentsUsedInVariables: {},
+    attributesUsedInVariables: {},
+    schemasUsedInVariables: {},
   };
 
   for (const [featureKey, feature] of Object.entries(maps.feature)) {
@@ -1011,6 +1041,45 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
         addToSet(relationships.featureTargets, featureKey, targetKey);
       }
     }
+    for (const [variableKey, variable] of Object.entries(maps.variable)) {
+      const tags = variable.tags || [];
+      if (
+        variable.archived !== true &&
+        (!target.tag || tags.includes(target.tag)) &&
+        (!target.tags || matchesTargetTags(tags, target.tags))
+      ) {
+        addToSet(relationships.variableTargets, variableKey, targetKey);
+      }
+    }
+  }
+
+  for (const [variableKey, variable] of Object.entries(maps.variable)) {
+    const features = new Set<string>();
+    const segments = new Set<string>();
+    const attributes = new Set<string>();
+    collectFeatureKeysFromRequired(variable.requiredFeatures, features);
+    if (variable.schema) addToSet(relationships.variableSchemas, variableKey, variable.schema);
+    for (const overrides of Object.values(variable.overrides || {})) {
+      for (const override of Array.isArray(overrides) ? overrides : [overrides]) {
+        collectFeatureKeysFromRequired(override.requiredFeatures, features);
+        collectSegmentKeys(override.segments, segments);
+        collectAttributeKeysFromConditions(override.conditions, attributes);
+      }
+    }
+    features.forEach((key) => {
+      addToSet(relationships.variableFeatures, variableKey, key);
+      addToSet(relationships.featuresUsedInVariables, key, variableKey);
+    });
+    segments.forEach((key) => {
+      addToSet(relationships.variableSegments, variableKey, key);
+      addToSet(relationships.segmentsUsedInVariables, key, variableKey);
+    });
+    attributes.forEach((key) => {
+      addToSet(relationships.variableAttributes, variableKey, key);
+      addToSet(relationships.attributesUsedInVariables, key, variableKey);
+    });
+    if (variable.schema)
+      addToSet(relationships.schemasUsedInVariables, variable.schema, variableKey);
   }
 
   for (const [featureKey, targetKeys] of Object.entries(relationships.featureTargets)) {
@@ -1040,6 +1109,9 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     if ("segment" in test) {
       addToSet(relationships.segmentTests, test.segment, testKey);
     }
+    if ("variable" in test) {
+      addToSet(relationships.variableTests, test.variable, testKey);
+    }
   }
 
   return relationships;
@@ -1059,6 +1131,7 @@ function getEntityRelationships(
       attributes: sortSet(relationships.featureAttributes[key]),
       schemas: sortSet(relationships.featureSchemas[key]),
       groups: sortSet(relationships.featureGroups[key]),
+      variables: sortSet(relationships.featuresUsedInVariables[key]),
     };
   }
 
@@ -1068,6 +1141,7 @@ function getEntityRelationships(
       tests: sortSet(relationships.segmentTests[key]),
       attributes: sortSet(relationships.attributesUsedInSegments[key]),
       targets: sortSet(relationships.segmentTargets[key]),
+      variables: sortSet(relationships.segmentsUsedInVariables[key]),
     };
   }
 
@@ -1076,6 +1150,7 @@ function getEntityRelationships(
       features: sortSet(relationships.attributesUsedInFeatures[key]),
       segments: sortSet(relationships.attributesUsedInSegments[key]),
       targets: sortSet(relationships.attributeTargets[key]),
+      variables: sortSet(relationships.attributesUsedInVariables[key]),
     };
   }
 
@@ -1088,12 +1163,24 @@ function getEntityRelationships(
   if (type === "schema") {
     return {
       features: sortSet(relationships.schemasUsedInFeatures[key]),
+      variables: sortSet(relationships.schemasUsedInVariables[key]),
     };
   }
 
   if (type === "group") {
     return {
       features: sortSet(relationships.groupsUsedInFeatures[key]),
+    };
+  }
+
+  if (type === "variable") {
+    return {
+      features: sortSet(relationships.variableFeatures[key]),
+      segments: sortSet(relationships.variableSegments[key]),
+      attributes: sortSet(relationships.variableAttributes[key]),
+      schemas: sortSet(relationships.variableSchemas[key]),
+      targets: sortSet(relationships.variableTargets[key]),
+      tests: sortSet(relationships.variableTests[key]),
     };
   }
 
@@ -1110,16 +1197,25 @@ async function buildSetCatalog(
   const outputDirectoryPath = path.join(context.dataDirectoryPath, outputRelativeDirectory);
   const setStartedAt = context.progress.setStart(set || undefined);
   const entitiesStartedAt = context.progress.step("Processing entities");
-  const [featureKeys, segmentKeys, attributeKeys, targetKeys, groupKeys, schemaKeys, testKeys] =
-    await Promise.all([
-      datasource.listFeatures(),
-      datasource.listSegments(),
-      datasource.listAttributes(),
-      datasource.listTargets(),
-      datasource.listGroups(),
-      datasource.listSchemas(),
-      datasource.listTests(),
-    ]);
+  const [
+    featureKeys,
+    segmentKeys,
+    attributeKeys,
+    targetKeys,
+    groupKeys,
+    schemaKeys,
+    variableKeys,
+    testKeys,
+  ] = await Promise.all([
+    datasource.listFeatures(),
+    datasource.listSegments(),
+    datasource.listAttributes(),
+    datasource.listTargets(),
+    datasource.listGroups(),
+    datasource.listSchemas(),
+    datasource.listVariables(),
+    datasource.listTests(),
+  ]);
   const maps: EntityMaps = {
     feature: await readAll<ParsedFeature>(featureKeys, (key) => datasource.readFeature(key)),
     segment: await readAll<Segment>(segmentKeys, (key) => datasource.readSegment(key)),
@@ -1127,6 +1223,7 @@ async function buildSetCatalog(
     target: await readAll<Target>(targetKeys, (key) => datasource.readTarget(key)),
     group: await readAll<Group>(groupKeys, (key) => datasource.readGroup(key)),
     schema: await readAll<Schema>(schemaKeys, (key) => datasource.readSchema(key)),
+    variable: await readAll<ParsedVariable>(variableKeys, (key) => datasource.readVariable(key)),
     test: await readAll<Test>(testKeys, (key) => datasource.readTest(key)),
   };
   context.progress.done(
@@ -1138,6 +1235,7 @@ async function buildSetCatalog(
       pluralize(targetKeys.length, "target"),
       pluralize(groupKeys.length, "group"),
       pluralize(schemaKeys.length, "schema"),
+      pluralize(variableKeys.length, "variable"),
       pluralize(testKeys.length, "test"),
     ].join(", ")})`,
   );
@@ -1157,6 +1255,7 @@ async function buildSetCatalog(
       group: groupKeys.length,
       schema: schemaKeys.length,
       test: testKeys.length,
+      variable: variableKeys.length,
     },
     entities: {
       feature: [],
@@ -1166,6 +1265,7 @@ async function buildSetCatalog(
       group: [],
       schema: [],
       test: [],
+      variable: [],
     },
   };
 
@@ -1184,6 +1284,7 @@ async function buildSetCatalog(
     { type: "target", keys: targetKeys, entities: maps.target },
     { type: "group", keys: groupKeys, entities: maps.group },
     { type: "schema", keys: schemaKeys, entities: maps.schema },
+    { type: "variable", keys: variableKeys, entities: maps.variable },
     { type: "test", keys: testKeys, entities: maps.test },
   ];
 
@@ -1204,7 +1305,7 @@ async function buildSetCatalog(
       const lastModified = getLastModified(context.historyIndex, plan.type, key, set);
       const entityRelationships = getEntityRelationships(plan.type, key, relationships);
       const entityTests =
-        plan.type === "feature" || plan.type === "segment"
+        plan.type === "feature" || plan.type === "segment" || plan.type === "variable"
           ? (entityRelationships.tests || []).map((testKey) => ({
               ...maps.test[testKey],
               key: maps.test[testKey].key || testKey,

@@ -46,8 +46,8 @@ describe("Featurevisor public API: lifecycle and state", () => {
     sdk.setSticky({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
-      { features: ["a", "shared", "b"], replaced: false },
-      { features: ["a", "shared", "b", "c"], replaced: true },
+      { features: ["a", "shared", "b"], variables: [], replaced: false },
+      { features: ["a", "shared", "b", "c"], variables: [], replaced: true },
     ]);
   });
 

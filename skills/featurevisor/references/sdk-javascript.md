@@ -74,6 +74,9 @@ if (variation === 'treatment') { /* ... */ }
 
 // variable — typed value or null (remote config)
 const methods = f.getVariable('checkout', 'paymentMethods')
+
+// top-level variable — no feature key
+const supportEmail = f.getVariable('supportEmail', { country: 'nl' })
 ```
 
 Type-specific variable getters return `null` when the stored value doesn't match the requested type (no coercion — `"1"` is not an integer, `"true"` is not a boolean):
@@ -87,6 +90,8 @@ f.getVariableArray<T>(featureKey, variableKey, context?)
 f.getVariableObject<T>(featureKey, variableKey, context?)
 f.getVariableJSON<T>(featureKey, variableKey, context?)
 ```
+
+Every type-specific getter also accepts `(topLevelVariableKey, context?)`.
 
 Namespaced features use the full key with the project's separator (default `.`): `f.isEnabled('checkout.promo')`.
 
@@ -118,6 +123,7 @@ Useful for passing a server-evaluated snapshot to the frontend, which can then f
 const evaluation = f.evaluateFlag('checkout', context)
 const evaluation = f.evaluateVariation('checkout', context)
 const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
+const topLevelEvaluation = f.evaluateVariable('supportEmail', context)
 ```
 
 Every evaluation object has `featureKey`, `type`, and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
@@ -130,7 +136,8 @@ f.getSchemaVersion()          // "2"
 f.getFeatureKeys()            // every feature key present in the datafile
 f.getFeature('checkout')      // raw definition, or undefined
 f.getSegment('countries.netherlands')
-f.getVariableKeys('checkout')
+f.getVariableKeys('checkout')          // feature variables
+f.getTopLevelVariableKeys()            // top-level variables
 f.hasVariations('checkout')
 ```
 
@@ -143,7 +150,7 @@ f.setDatafile(datafile)        // merge (default)
 f.setDatafile(datafile, true)  // replace
 ```
 
-**Merging is the default**: incoming features/segments override matching keys, missing ones are kept, and `revision` comes from the incoming datafile. This enables loading multiple [target](targets.md) datafiles on demand into one instance:
+**Merging is the default**: incoming features, segments, and top-level variables override matching keys, missing ones are kept, and `revision` comes from the incoming datafile. This enables loading multiple [target](targets.md) datafiles on demand into one instance:
 
 ```js
 const f = createFeaturevisor({})
@@ -178,13 +185,13 @@ Or trigger refetch from a push signal (websocket / SSE) sent by the deploy pipel
 ## Events
 
 ```js
-const unsubscribe = f.on('datafile_set', ({ revision, previousRevision, revisionChanged, features, replaced }) => {
-  // `features` lists keys added/updated/removed vs the previous content —
+const unsubscribe = f.on('datafile_set', ({ revision, previousRevision, revisionChanged, features, variables, replaced }) => {
+  // `features` and `variables` list keys added/updated/removed vs the previous content —
   // re-evaluate and re-render just those parts of the UI
 })
 
 f.on('context_set', ({ context, replaced }) => {})
-f.on('sticky_set', ({ features, replaced }) => {})
+f.on('sticky_set', ({ features, variables, replaced }) => {})
 f.on('error', ({ diagnostic }) => {})
 
 unsubscribe() // every f.on() returns an unsubscribe function
@@ -203,6 +210,8 @@ f.setSticky({
   },
 })
 // second arg true replaces instead of merging
+
+f.setStickyVariables({ supportEmail: 'fixed@example.com' })
 ```
 
 For forcing specific users/QA from the **project side**, prefer a `force:` rule in YAML ([features.md](features.md#force)) — it's reviewed in PRs and visible to everyone. Sticky is application-side state.

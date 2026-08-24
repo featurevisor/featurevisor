@@ -249,6 +249,53 @@ describe("promoteProjectSets", function () {
     expect(Object.keys(datafile.segments)).toEqual(["internal"]);
   });
 
+  it("promotes tagged variables with their dependencies and item-level protection", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/variables/checkoutSettings.yml",
+      [
+        "description: Checkout settings",
+        "tags:",
+        "  - web",
+        "type: object",
+        "defaultValue:",
+        "  enabled: true",
+        "requiredFeatures:",
+        "  - checkoutFlow",
+        "overrides:",
+        "  - key: internal",
+        "    segments: internal",
+        "    value:",
+        "      enabled: false",
+        "  - key: protected",
+        "    promotable: false",
+        '    segments: "*"',
+        "    value:",
+        "      enabled: true",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    expect(result.dependencies.variable).toBe(1);
+    expect(result.dependencies.feature).toBe(1);
+    expect(result.dependencies.segment).toBe(1);
+    expect(result.dependencies.attribute).toBe(2);
+    const variable = await datasource.forSet("staging").readVariable("checkoutSettings");
+    expect(Array.isArray(variable.overrides) && variable.overrides.map((item) => item.key)).toEqual(
+      ["internal"],
+    );
+  });
+
   it("selects features by tag and includes exclusion group members", async function () {
     const root = await createProject();
     await writeFile(
@@ -336,7 +383,7 @@ describe("promoteProjectSets", function () {
         to: "staging",
         tag: "web",
       }),
-    ).rejects.toThrow("No source features matched the promotion filters.");
+    ).rejects.toThrow("No source features or variables matched the promotion filters.");
 
     const empty = await promoteProjectSets(projectConfig, datasource, {
       from: "dev",
@@ -817,6 +864,7 @@ describe("promoteProjectSets", function () {
       const audit = await fs.promises.readFile(path.resolve(root, applied.auditFilePath!), "utf8");
       expect(audit).toContain("# Featurevisor Promotion");
       expect(audit).toContain("- Mode: apply");
+      expect(audit).toContain("- Variables: 0");
       expect(audit).toContain("features/checkoutFlow.yml");
     } finally {
       jest.useRealTimers();

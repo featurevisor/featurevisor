@@ -17,6 +17,10 @@ import type {
   ObjectValue,
   Condition,
   VariableType,
+  DatafileVariable,
+  Required,
+  StickyVariables,
+  TopLevelVariableKey,
 } from "@featurevisor/types";
 
 import type {
@@ -25,7 +29,13 @@ import type {
   FeaturevisorModuleUnsubscribe,
 } from "./modules.js";
 import { evaluateWithModules } from "./evaluate.js";
-import type { Evaluation, EvaluateDependencies, ForceResult } from "./evaluate.js";
+import type {
+  Evaluation,
+  EvaluateDependencies,
+  ForceResult,
+  TopLevelVariableEvaluation,
+  TopLevelVariableEvaluateOptions,
+} from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 import {
@@ -52,6 +62,7 @@ const emptyDatafile: DatafileContent = {
   revision: "unknown",
   segments: {},
   features: {},
+  variables: {},
 };
 
 function assertDatafileContent(datafile: unknown): asserts datafile is DatafileContent {
@@ -85,6 +96,10 @@ function mergeStoredDatafile(
       ...(existing.features || {}),
       ...(incoming.features || {}),
     },
+    variables: {
+      ...(existing.variables || {}),
+      ...(incoming.variables || {}),
+    },
   };
 }
 
@@ -92,11 +107,16 @@ function getStickySetEventDetails(
   previousStickyFeatures: StickyFeatures = {},
   newStickyFeatures: StickyFeatures = {},
   replace: boolean,
+  previousStickyVariables: StickyVariables = {},
+  newStickyVariables: StickyVariables = {},
 ) {
   const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
 
   return {
     features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
+    variables: [...Object.keys(previousStickyVariables), ...Object.keys(newStickyVariables)].filter(
+      (element, index, keys) => keys.indexOf(element) === index,
+    ),
     replaced: replace,
   };
 }
@@ -111,6 +131,9 @@ function getDatafileSetEventDetails(
   const newRevision = newDatafile.revision;
   const newFeatureKeys = Object.keys(newDatafile.features);
   const features: FeatureKey[] = [];
+  const previousVariableKeys = Object.keys(previousDatafile.variables || {});
+  const newVariableKeys = Object.keys(newDatafile.variables || {});
+  const variables: TopLevelVariableKey[] = [];
 
   for (const previousFeatureKey of previousFeatureKeys) {
     if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
@@ -135,11 +158,24 @@ function getDatafileSetEventDetails(
     }
   }
 
+  for (const variableKey of previousVariableKeys) {
+    if (
+      !newDatafile.variables?.[variableKey] ||
+      previousDatafile.variables?.[variableKey]?.hash !== newDatafile.variables[variableKey].hash
+    ) {
+      variables.push(variableKey);
+    }
+  }
+  for (const variableKey of newVariableKeys) {
+    if (previousVariableKeys.indexOf(variableKey) === -1) variables.push(variableKey);
+  }
+
   return {
     revision: newRevision,
     previousRevision,
     revisionChanged: previousRevision !== newRevision,
     features,
+    variables,
     replaced: replace,
   };
 }
@@ -176,10 +212,12 @@ export interface OverrideOptions {
 
 export interface SpawnOptions {
   sticky?: StickyFeatures;
+  stickyVariables?: StickyVariables;
 }
 
 interface InternalOverrideOptions extends OverrideOptions {
   __featurevisorChildSticky?: StickyFeatures;
+  __featurevisorChildStickyVariables?: StickyVariables;
 }
 
 export interface FeaturevisorOptions {
@@ -188,6 +226,7 @@ export interface FeaturevisorOptions {
   logLevel?: FeaturevisorLogLevel;
   onDiagnostic?: FeaturevisorDiagnosticHandler;
   sticky?: StickyFeatures;
+  stickyVariables?: StickyVariables;
   modules?: FeaturevisorModule[];
 }
 
@@ -209,6 +248,7 @@ export class Featurevisor {
   private logLevel: FeaturevisorLogLevel = "info";
   private onDiagnostic?: FeaturevisorDiagnosticHandler;
   private sticky?: StickyFeatures;
+  private stickyVariables?: StickyVariables;
 
   // internally created
   private datafile: DatafileContent = emptyDatafile;
@@ -224,6 +264,7 @@ export class Featurevisor {
     this.logLevel = options.logLevel || "info";
     this.onDiagnostic = options.onDiagnostic;
     this.sticky = options.sticky;
+    this.stickyVariables = options.stickyVariables;
 
     (options.modules || []).forEach((module) => {
       this.addModule(module);
@@ -307,6 +348,30 @@ export class Featurevisor {
     this.trigger("sticky_set", params);
   }
 
+  setStickyVariables(stickyVariables: StickyVariables, replace = false) {
+    if (this.closed) return;
+
+    const previousStickyVariables = this.stickyVariables || {};
+    this.stickyVariables = replace
+      ? { ...stickyVariables }
+      : { ...this.stickyVariables, ...stickyVariables };
+    const details = getStickySetEventDetails(
+      this.sticky,
+      this.sticky,
+      replace,
+      previousStickyVariables,
+      this.stickyVariables,
+    );
+
+    this.reportDiagnostic({
+      level: "info",
+      code: "sticky_set",
+      message: "Sticky variables set",
+      details,
+    });
+    this.trigger("sticky_set", details);
+  }
+
   getRevision(): string {
     return this.datafile.revision;
   }
@@ -333,6 +398,14 @@ export class Featurevisor {
 
   getFeatureKeys(): string[] {
     return Object.keys(this.datafile.features);
+  }
+
+  getTopLevelVariable(variableKey: TopLevelVariableKey): DatafileVariable | undefined {
+    return this.datafile.variables?.[variableKey];
+  }
+
+  getTopLevelVariableKeys(): TopLevelVariableKey[] {
+    return Object.keys(this.datafile.variables || {});
   }
 
   getVariableKeys(featureKey: FeatureKey): string[] {
@@ -745,6 +818,7 @@ export class Featurevisor {
       parent: this,
       context: this.getContext(context),
       sticky: options.sticky,
+      stickyVariables: options.stickyVariables,
     });
   }
 
@@ -769,6 +843,176 @@ export class Featurevisor {
       defaultVariationValue: options.defaultVariationValue,
       defaultVariableValue: options.defaultVariableValue,
     };
+  }
+
+  private requiredFeaturesAreMatched(
+    requiredFeatures: Required[] | undefined,
+    context: Context,
+    options: InternalOverrideOptions,
+  ): boolean {
+    return (requiredFeatures || []).every((required) => {
+      const featureKey = typeof required === "string" ? required : required.key;
+      if (!this.isEnabled(featureKey, context, options)) return false;
+      return (
+        typeof required === "string" ||
+        this.getVariation(featureKey, context, options) === required.variation
+      );
+    });
+  }
+
+  private evaluateTopLevelVariable(
+    variableKey: TopLevelVariableKey,
+    context: Context = {},
+    options: InternalOverrideOptions = {},
+  ): TopLevelVariableEvaluation {
+    let evaluationOptions: TopLevelVariableEvaluateOptions = {
+      type: "top_level_variable",
+      variableKey,
+      context: this.getContext(context),
+      defaultVariableValue: options.defaultVariableValue,
+    };
+
+    try {
+      for (const module of this.modules) {
+        if (module.beforeEvaluation) {
+          evaluationOptions = module.beforeEvaluation(
+            evaluationOptions,
+          ) as TopLevelVariableEvaluateOptions;
+        }
+      }
+
+      const resolvedVariableKey = evaluationOptions.variableKey;
+      const variable = this.getTopLevelVariable(resolvedVariableKey);
+      let evaluation: TopLevelVariableEvaluation = {
+        type: "top_level_variable",
+        source: "top_level",
+        variableKey: resolvedVariableKey,
+        reason: "variable_not_found",
+      };
+
+      if (variable) {
+        const stickyVariables =
+          options.__featurevisorChildStickyVariables || this.stickyVariables || {};
+        if (Object.prototype.hasOwnProperty.call(stickyVariables, resolvedVariableKey)) {
+          evaluation = {
+            ...evaluation,
+            reason: "sticky",
+            variable,
+            variableValue: stickyVariables[resolvedVariableKey],
+          };
+        } else if (
+          !this.requiredFeaturesAreMatched(
+            variable.requiredFeatures,
+            evaluationOptions.context,
+            options,
+          )
+        ) {
+          evaluation = {
+            ...evaluation,
+            reason: "required_features_unmet",
+            variable,
+            variableValue: variable.useDefaultWhenDisabled
+              ? variable.defaultValue
+              : variable.disabledValue,
+          };
+        } else {
+          const overrides = variable.overrides || [];
+          for (let index = 0; index < overrides.length; index++) {
+            const override = overrides[index];
+            if (
+              !this.requiredFeaturesAreMatched(
+                override.requiredFeatures,
+                evaluationOptions.context,
+                options,
+              )
+            ) {
+              continue;
+            }
+            const segmentsMatch =
+              !override.segments ||
+              this.allSegmentsAreMatched(
+                parseSegmentsIfStringified(override.segments),
+                evaluationOptions.context,
+              );
+            const conditionsMatch =
+              !override.conditions ||
+              this.allConditionsAreMatched(
+                parseConditionsIfStringified(override.conditions, this.reportDiagnostic),
+                evaluationOptions.context,
+              );
+            if (!segmentsMatch || !conditionsMatch) continue;
+
+            evaluation = {
+              ...evaluation,
+              reason: "override_matched",
+              variable,
+              variableValue: override.value,
+              overrideIndex: index,
+              overrideKey: override.key,
+            };
+            break;
+          }
+
+          if (evaluation.reason === "variable_not_found") {
+            evaluation = {
+              ...evaluation,
+              reason: "default_value",
+              variable,
+              variableValue: variable.defaultValue,
+            };
+          }
+        }
+
+        if (variable.deprecated) {
+          this.reportDiagnostic({
+            level: "warn",
+            code: "variable_deprecated",
+            message: `Variable "${resolvedVariableKey}" is deprecated`,
+            details: { variableKey: resolvedVariableKey, evaluation },
+          });
+        }
+      }
+
+      if (
+        typeof evaluation.variableValue === "undefined" &&
+        typeof evaluationOptions.defaultVariableValue !== "undefined"
+      ) {
+        evaluation.variableValue = evaluationOptions.defaultVariableValue;
+      }
+
+      for (const module of this.modules) {
+        if (module.afterEvaluation) {
+          evaluation = module.afterEvaluation(
+            evaluation,
+            evaluationOptions,
+          ) as TopLevelVariableEvaluation;
+        }
+      }
+
+      this.reportDiagnostic({
+        level: "debug",
+        code: evaluation.reason,
+        message: "Top-level variable evaluated",
+        details: { ...evaluation },
+      });
+      return evaluation;
+    } catch (error) {
+      const evaluation: TopLevelVariableEvaluation = {
+        type: "top_level_variable",
+        source: "top_level",
+        variableKey: evaluationOptions.variableKey,
+        reason: "error",
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
+      this.reportDiagnostic({
+        level: "error",
+        code: "evaluation_error",
+        message: "Top-level variable evaluation failed",
+        originalError: error,
+        details: { ...evaluation },
+      });
+      return evaluation;
+    }
   }
 
   evaluateFlag(
@@ -856,14 +1100,33 @@ export class Featurevisor {
   evaluateVariable(
     featureKey: FeatureKey,
     variableKey: VariableKey,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): Evaluation;
+  evaluateVariable(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): TopLevelVariableEvaluation;
+  evaluateVariable(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: VariableKey | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
-  ): Evaluation {
+  ): Evaluation | TopLevelVariableEvaluation {
+    if (typeof variableKeyOrContext !== "string") {
+      return this.evaluateTopLevelVariable(
+        featureKeyOrVariableKey,
+        variableKeyOrContext,
+        contextOrOptions as InternalOverrideOptions,
+      );
+    }
+
     return evaluateWithModules({
-      ...this.getEvaluationDependencies(context, options),
+      ...this.getEvaluationDependencies(contextOrOptions as Context, options),
       type: "variable",
-      featureKey,
-      variableKey,
+      featureKey: featureKeyOrVariableKey,
+      variableKey: variableKeyOrContext,
     });
   }
 
@@ -879,16 +1142,36 @@ export class Featurevisor {
   getVariable<TValue = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): TValue | null;
+  getVariable<TValue = VariableValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): TValue | null;
+  getVariable<TValue = VariableValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): TValue | null {
     try {
-      const evaluation = this.evaluateVariable(featureKey, variableKey, context, options);
+      const evaluation =
+        typeof variableKeyOrContext === "string"
+          ? this.evaluateVariable(
+              featureKeyOrVariableKey,
+              variableKeyOrContext,
+              contextOrOptions as Context,
+              options,
+            )
+          : this.evaluateVariable(featureKeyOrVariableKey, variableKeyOrContext, contextOrOptions);
 
       if (typeof evaluation.variableValue !== "undefined") {
         if (
-          evaluation.variableSchema &&
-          evaluation.variableSchema.type === "json" &&
+          ((evaluation.type !== "top_level_variable" &&
+            evaluation.variableSchema?.type === "json") ||
+            (evaluation.type === "top_level_variable" && evaluation.variable?.type === "json")) &&
           typeof evaluation.variableValue === "string"
         ) {
           return JSON.parse(evaluation.variableValue) as TValue;
@@ -904,7 +1187,14 @@ export class Featurevisor {
         code: "evaluation_error",
         message: "getVariable failed",
         originalError: e,
-        details: { featureKey, variableKey },
+        details: {
+          featureKey:
+            typeof variableKeyOrContext === "string" ? featureKeyOrVariableKey : undefined,
+          variableKey:
+            typeof variableKeyOrContext === "string"
+              ? variableKeyOrContext
+              : featureKeyOrVariableKey,
+        },
       });
 
       return null;
@@ -914,10 +1204,33 @@ export class Featurevisor {
   getVariableBoolean(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): boolean | null;
+  getVariableBoolean(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): boolean | null;
+  getVariableBoolean(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): boolean | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "boolean") as boolean | null;
   }
@@ -925,10 +1238,33 @@ export class Featurevisor {
   getVariableString(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): string | null;
+  getVariableString(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): string | null;
+  getVariableString(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): string | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "string") as string | null;
   }
@@ -936,10 +1272,33 @@ export class Featurevisor {
   getVariableInteger(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableInteger(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableInteger(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "integer") as number | null;
   }
@@ -947,10 +1306,33 @@ export class Featurevisor {
   getVariableDouble(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableDouble(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): number | null;
+  getVariableDouble(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "double") as number | null;
   }
@@ -962,10 +1344,33 @@ export class Featurevisor {
   getVariableArray<T = string>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T[] | null;
+  getVariableArray<T = string>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T[] | null;
+  getVariableArray<T = string>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T[] | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "array") as T[] | null;
   }
@@ -974,10 +1379,33 @@ export class Featurevisor {
   getVariableObject<T = ObjectValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableObject<T = ObjectValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableObject<T = ObjectValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "object") as T | null;
   }
@@ -986,10 +1414,33 @@ export class Featurevisor {
   getVariableJSON<T = VariableValue>(
     featureKey: FeatureKey,
     variableKey: string,
-    context: Context = {},
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableJSON<T = VariableValue>(
+    variableKey: TopLevelVariableKey,
+    context?: Context,
+    options?: OverrideOptions,
+  ): T | null;
+  getVariableJSON<T = VariableValue>(
+    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    variableKeyOrContext: string | Context = {},
+    contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    const variableValue = this.getVariable(featureKey, variableKey, context, options);
+    const variableValue =
+      typeof variableKeyOrContext === "string"
+        ? this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as Context,
+            options,
+          )
+        : this.getVariable(
+            featureKeyOrVariableKey,
+            variableKeyOrContext,
+            contextOrOptions as OverrideOptions,
+          );
 
     return getValueByType(variableValue, "json") as T | null;
   }

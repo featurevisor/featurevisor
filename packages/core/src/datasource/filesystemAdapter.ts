@@ -103,6 +103,8 @@ export class FilesystemAdapter extends Adapter {
       return this.config.segmentsDirectoryPath;
     } else if (entityType === "schema") {
       return this.config.schemasDirectoryPath;
+    } else if (entityType === "variable") {
+      return this.config.variablesDirectoryPath;
     } else if (entityType === "target") {
       return this.config.targetsDirectoryPath;
     } else if (entityType === "test") {
@@ -367,6 +369,8 @@ export class FilesystemAdapter extends Adapter {
         pathPatterns = [this.config.groupsDirectoryPath];
       } else if (entityType === "schema") {
         pathPatterns = [this.config.schemasDirectoryPath];
+      } else if (entityType === "variable") {
+        pathPatterns = [this.config.variablesDirectoryPath];
       } else if (entityType === "target") {
         pathPatterns = [this.config.targetsDirectoryPath];
       } else if (entityType === "test") {
@@ -379,6 +383,7 @@ export class FilesystemAdapter extends Adapter {
         this.config.segmentsDirectoryPath,
         this.config.groupsDirectoryPath,
         this.config.schemasDirectoryPath,
+        this.config.variablesDirectoryPath,
         this.config.targetsDirectoryPath,
         this.config.testsDirectoryPath,
       ];
@@ -428,6 +433,8 @@ export class FilesystemAdapter extends Adapter {
           type = "group";
         } else if (isWithinDirectory(this.config.schemasDirectoryPath, relativeDir)) {
           type = "schema";
+        } else if (isWithinDirectory(this.config.variablesDirectoryPath, relativeDir)) {
+          type = "variable";
         } else if (isWithinDirectory(this.config.targetsDirectoryPath, relativeDir)) {
           type = "target";
         } else if (isWithinDirectory(this.config.testsDirectoryPath, relativeDir)) {
@@ -436,11 +443,13 @@ export class FilesystemAdapter extends Adapter {
           continue;
         }
 
-        if (type === "feature" || type === "target") {
+        if (type === "feature" || type === "target" || type === "variable") {
           const entityDirectoryPath =
             type === "feature"
               ? this.config.featuresDirectoryPath
-              : this.config.targetsDirectoryPath;
+              : type === "target"
+                ? this.config.targetsDirectoryPath
+                : this.config.variablesDirectoryPath;
           const baseRelativePath = absolutePath
             .replace(entityDirectoryPath + path.sep, "")
             .replace(extensionWithDot, "")

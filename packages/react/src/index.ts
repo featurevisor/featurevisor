@@ -13,3 +13,4 @@ export * from "./useFlag.js";
 
 // utils
 export * from "./onFeatureChange.js";
+export * from "./onVariableChange.js";

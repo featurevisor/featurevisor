@@ -11,3 +11,4 @@ export * from "./state";
 export * from "./target";
 export * from "./test";
 export * from "./schema";
+export * from "./variable";

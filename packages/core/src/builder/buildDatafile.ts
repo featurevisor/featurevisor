@@ -1,6 +1,14 @@
 import * as fs from "fs";
 
-import type { Schema, VariableType } from "@featurevisor/types";
+import type {
+  DatafileVariable,
+  DatafileVariableOverride,
+  ParsedVariable,
+  Schema,
+  TopLevelVariableKey,
+  VariableType,
+  VariableValue,
+} from "@featurevisor/types";
 import {
   Segment,
   Feature,
@@ -24,7 +32,12 @@ import {
 import { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
-import { generateHashForDatafile, generateHashForFeature, getSegmentHashes } from "./hashes";
+import {
+  generateHashForDatafile,
+  generateHashForFeature,
+  generateHashForVariable,
+  getSegmentHashes,
+} from "./hashes";
 
 import { getTraffic } from "./traffic";
 import { getFeatureRanges } from "./getFeatureRanges";
@@ -32,9 +45,11 @@ import {
   resolveMutationsForMultipleVariables,
   resolveMutationsForSingleVariable,
 } from "./mutateVariables";
+import { mutate } from "./mutator";
 
 export interface CustomDatafileOptions {
   featureKey?: string;
+  variableKey?: string;
   environment: string | false;
   projectConfig: ProjectConfig;
   datasource: Datasource;
@@ -48,11 +63,17 @@ export interface CustomDatafileOptions {
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
-  let featuresToInclude;
+  let featuresToInclude: FeatureKey[] | undefined;
 
   if (options.featureKey) {
     const requiredChain = await options.datasource.getRequiredFeaturesChain(options.featureKey);
     featuresToInclude = Array.from(requiredChain);
+  }
+  if (options.variableKey) {
+    const requiredChain = await options.datasource.getRequiredFeaturesChainForVariable(
+      options.variableKey,
+    );
+    featuresToInclude = Array.from(new Set([...(featuresToInclude || []), ...requiredChain]));
   }
 
   const existingState = await options.datasource.readState(options.environment);
@@ -63,6 +84,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       revision: options.revision || "tester",
       environment: options.environment,
       features: featuresToInclude,
+      variables: options.variableKey ? [options.variableKey] : options.featureKey ? [] : undefined,
       inflate: options.inflate,
       tag: options.tag,
       tags: options.tags,
@@ -129,6 +151,7 @@ export interface BuildOptions {
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
   features?: FeatureKey[];
+  variables?: TopLevelVariableKey[];
   inflate?: number;
 }
 
@@ -141,6 +164,23 @@ export async function buildDatafile(
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
   const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
+
+  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
+  const featureKeysRequiredByVariables = new Set<FeatureKey>();
+  const variableFiles = await datasource.listVariables();
+  for (const variableKey of variableFiles) {
+    const parsedVariable = await datasource.readVariable(variableKey);
+    const variableTags = parsedVariable.tags || [];
+
+    if (parsedVariable.archived === true) continue;
+    if (options.variables && options.variables.indexOf(variableKey) === -1) continue;
+    if (options.tag && variableTags.indexOf(options.tag) === -1) continue;
+    if (options.tags && matchesBuildTags(variableTags, options.tags) === false) continue;
+
+    parsedVariables.push({ key: variableKey, value: parsedVariable });
+    const requiredChain = await datasource.getRequiredFeaturesChainForVariable(variableKey);
+    requiredChain.forEach((featureKey) => featureKeysRequiredByVariables.add(featureKey));
+  }
 
   // Load schemas for resolving variable schema references in features
   const schemaKeys = await datasource.listSchemas();
@@ -169,26 +209,41 @@ export async function buildDatafile(
 
       const featureTags = parsedFeature.tags || [];
 
-      if (options.tag && featureTags.indexOf(options.tag) === -1) {
-        continue;
-      }
+      const isRequiredByVariable = featureKeysRequiredByVariables.has(featureKey);
 
-      if (options.tags && matchesBuildTags(featureTags, options.tags) === false) {
+      if (!isRequiredByVariable && options.tag && featureTags.indexOf(options.tag) === -1) {
         continue;
       }
 
       if (
+        !isRequiredByVariable &&
+        options.tags &&
+        matchesBuildTags(featureTags, options.tags) === false
+      ) {
+        continue;
+      }
+
+      if (
+        !isRequiredByVariable &&
         options.includeFeatures &&
         matchesFeaturePatterns(featureKey, options.includeFeatures) === false
       ) {
         continue;
       }
 
-      if (options.excludeFeatures && matchesFeaturePatterns(featureKey, options.excludeFeatures)) {
+      if (
+        !isRequiredByVariable &&
+        options.excludeFeatures &&
+        matchesFeaturePatterns(featureKey, options.excludeFeatures)
+      ) {
         continue;
       }
 
-      if (options.features && options.features.indexOf(featureKey) === -1) {
+      if (
+        !isRequiredByVariable &&
+        options.features &&
+        options.features.indexOf(featureKey) === -1
+      ) {
         continue;
       }
 
@@ -491,6 +546,73 @@ export async function buildDatafile(
     }
   }
 
+  // top-level variables
+  const variables: Array<{ key: string; value: DatafileVariable }> = [];
+  for (const { key, value: parsedVariable } of parsedVariables) {
+    const resolvedSchema = parsedVariable.schema
+      ? schemasByKey[parsedVariable.schema]
+      : parsedVariable;
+    const sourceOverrides = options.environment
+      ? (parsedVariable.overrides as Record<string, DatafileVariableOverride[]> | undefined)?.[
+          options.environment
+        ]
+      : (parsedVariable.overrides as DatafileVariableOverride[] | undefined);
+    const overrides: DatafileVariableOverride[] = [];
+
+    for (const parsedOverride of sourceOverrides || []) {
+      if (parsedOverride.segments) {
+        extractSegmentKeysFromGroupSegments(parsedOverride.segments).forEach((segmentKey) =>
+          segmentKeysUsedByTag.add(segmentKey),
+        );
+      }
+      if (parsedOverride.conditions) {
+        extractAttributeKeysFromConditions(parsedOverride.conditions).forEach((attributeKey) =>
+          attributeKeysUsedByTag.add(attributeKey),
+        );
+      }
+
+      let resolvedValue = parsedOverride.value;
+      const parsedMutation = (
+        parsedOverride as unknown as { mutate?: Record<string, VariableValue> }
+      ).mutate;
+      if (parsedMutation) {
+        resolvedValue = JSON.parse(JSON.stringify(parsedVariable.defaultValue)) as VariableValue;
+        for (const [mutationKey, mutationValue] of Object.entries(parsedMutation)) {
+          resolvedValue = mutate(parsedVariable, resolvedValue, mutationKey, mutationValue);
+        }
+      }
+
+      overrides.push({
+        key: parsedOverride.key,
+        segments:
+          projectConfig.stringify &&
+          parsedOverride.segments !== "*" &&
+          typeof parsedOverride.segments !== "string"
+            ? (JSON.stringify(parsedOverride.segments) as unknown as GroupSegment)
+            : parsedOverride.segments,
+        conditions:
+          projectConfig.stringify && typeof parsedOverride.conditions !== "string"
+            ? (JSON.stringify(parsedOverride.conditions) as unknown as Condition)
+            : parsedOverride.conditions,
+        requiredFeatures: parsedOverride.requiredFeatures,
+        value: resolvedValue as VariableValue,
+      });
+    }
+
+    variables.push({
+      key,
+      value: {
+        deprecated: parsedVariable.deprecated === true ? true : undefined,
+        type: (resolvedSchema?.type || "json") as VariableType,
+        defaultValue: parsedVariable.defaultValue,
+        disabledValue: parsedVariable.disabledValue,
+        useDefaultWhenDisabled: parsedVariable.useDefaultWhenDisabled === true ? true : undefined,
+        requiredFeatures: parsedVariable.requiredFeatures,
+        overrides: overrides.length > 0 ? overrides : undefined,
+      },
+    });
+  }
+
   // segments
   const segments: Segment[] = [];
   const segmentsDirectory = projectConfig.segmentsDirectoryPath;
@@ -598,6 +720,7 @@ export async function buildDatafile(
     revision: options.revision,
     segments: {},
     features: {},
+    variables: {},
   };
 
   datafileContent.segments = segments.reduce((acc, segment) => {
@@ -634,6 +757,14 @@ export async function buildDatafile(
     return acc;
   }, {});
 
+  datafileContent.variables = variables.reduce(
+    (acc, variable) => {
+      acc[variable.key] = variable.value;
+      return acc;
+    },
+    {} as Record<TopLevelVariableKey, DatafileVariable>,
+  );
+
   // add feature hashes for change detection
   const segmentHashes = getSegmentHashes(datafileContent.segments);
   Object.keys(datafileContent.features).forEach((featureKey) => {
@@ -645,6 +776,14 @@ export async function buildDatafile(
     if (existingState.features[featureKey]) {
       existingState.features[featureKey].hash = hash;
     }
+  });
+  Object.keys(datafileContent.variables).forEach((variableKey) => {
+    datafileContent.variables![variableKey].hash = generateHashForVariable(
+      variableKey,
+      datafileContent.variables!,
+      datafileContent.features,
+      segmentHashes,
+    );
   });
 
   if (options.revisionFromHash) {

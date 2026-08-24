@@ -2,11 +2,12 @@ import type {
   AssertionMatrix,
   FeatureAssertion,
   SegmentAssertion,
+  VariableAssertion,
   Test,
 } from "@featurevisor/types";
 
 export interface ExpandedTestAssertion {
-  assertion: FeatureAssertion | SegmentAssertion;
+  assertion: FeatureAssertion | SegmentAssertion | VariableAssertion;
   assertionIndex: number;
   caseIndex?: number;
   caseCount?: number;
@@ -62,7 +63,7 @@ function applyCombinationToContext(
 
 function applyCombinationToAssertion(
   test: Test,
-  assertion: FeatureAssertion | SegmentAssertion,
+  assertion: FeatureAssertion | SegmentAssertion | VariableAssertion,
   combination: Record<string, unknown>,
 ) {
   const result = {
@@ -89,6 +90,21 @@ function applyCombinationToAssertion(
     featureResult.at = (
       typeof at === "string" ? (at.includes(".") ? parseFloat(at) : parseInt(at, 10)) : at
     ) as FeatureAssertion["at"];
+  }
+  if ("variable" in test) {
+    const variableResult = result as VariableAssertion;
+    variableResult.environment = applyCombinationToValue(
+      variableResult.environment,
+      combination,
+    ) as VariableAssertion["environment"];
+    variableResult.target = applyCombinationToValue(
+      variableResult.target,
+      combination,
+    ) as VariableAssertion["target"];
+    variableResult.expectedValue = applyCombinationToValue(
+      variableResult.expectedValue,
+      combination,
+    ) as VariableAssertion["expectedValue"];
   }
 
   return result;

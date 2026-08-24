@@ -5,7 +5,7 @@ Full docs:
 - Sets: <https://featurevisor.com/docs/sets>
 - Promotions: <https://featurevisor.com/docs/promotions>
 
-Sets split one Featurevisor project into **independent trees** that each own their own attributes, segments, features, targets, and tests. Promotions copy definitions between sets. Most projects don't need either — reach for them only when the situations below apply.
+Sets split one Featurevisor project into **independent trees** that each own their own attributes, segments, features, top-level variables, targets, and tests. Promotions copy definitions between sets. Most projects don't need either — reach for them only when the situations below apply.
 
 ## When to use sets (and when not to)
 
@@ -95,7 +95,7 @@ The preview reports the dependency counts and every destination file it would cr
 
 ### Dependency closure
 
-Promoting a feature automatically brings everything it needs: referenced segments (and their nested segments), attributes, reusable schemas, `required` features, exclusion-group members, the group files, matching test specs — and with `--target`, the target definition itself. You never hand-copy a segment to make a promoted feature lint.
+Promoting a feature or top-level variable automatically brings everything it needs: referenced segments, attributes, reusable schemas, required features, exclusion-group members, group files, matching test specs, and with `--target`, the target definition itself.
 
 ### Filtering
 
@@ -124,7 +124,7 @@ Preview first specifically to see the conflict list. When lanes intentionally di
 
 ### `promotable: false` — protecting lane-specific state
 
-Set it at the top level of a feature, attribute, segment, group, reusable schema, target, or test spec to preserve the **destination** version during promotion. If either the source or existing destination definition has `promotable: false`, the destination stays unchanged. A missing destination is still created and keeps the flag for later promotions. This protection takes precedence over `--conflicts`.
+Set it at the top level of a feature, top-level variable, attribute, segment, group, reusable schema, target, or test spec to preserve the **destination** version during promotion. If either the source or existing destination definition has `promotable: false`, the destination stays unchanged. A missing destination is still created and keeps the flag for later promotions. This protection takes precedence over `--conflicts`.
 
 Rules are stricter and this is the powerful part:
 
@@ -164,7 +164,7 @@ assertions:
 
 A source assertion with `promotable: false` is omitted. A protected destination assertion is preserved when a source assertion with the same key is promoted. Both source and destination specs must use assertion keys when protection is involved. Existing unkeyed specs keep whole-array promotion behaviour.
 
-Do not put `promotable` on individual matrix cases, child assertions, group slots, segment conditions, force entries, variable overrides, or nested schema properties. Protecting a parent assertion protects all of its matrix cases and child assertions together.
+Top-level variable overrides support item-level protection through their stable `key`. Do not put `promotable` on individual matrix cases, child assertions, group slots, segment conditions, force entries, feature variable overrides, or nested schema properties. Protecting a parent assertion protects all of its matrix cases and child assertions together.
 
 ### `promotionFlows` — allowed directions
 

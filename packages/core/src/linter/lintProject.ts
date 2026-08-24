@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, Schema } from "@featurevisor/types";
+import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
 import type { ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
@@ -13,6 +13,7 @@ import { getFeatureZodSchema } from "./featureSchema";
 import { getSchemaZodSchema } from "./schema";
 import { getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
+import { getVariableZodSchema } from "./variableSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
@@ -30,6 +31,7 @@ export type LintEntityType =
   | "group"
   | "schema"
   | "target"
+  | "variable"
   | "test";
 
 export interface LintProjectOptions {
@@ -178,6 +180,8 @@ export async function lintProject(
       fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
     } else if (type === "target") {
       fullPath = path.join(projectConfig.targetsDirectoryPath, fileName);
+    } else if (type === "variable") {
+      fullPath = path.join(projectConfig.variablesDirectoryPath, fileName);
     } else {
       fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
     }
@@ -207,6 +211,9 @@ export async function lintProject(
     }
     if (type === "target") {
       return projectConfig.targetsDirectoryPath;
+    }
+    if (type === "variable") {
+      return projectConfig.variablesDirectoryPath;
     }
 
     return projectConfig.testsDirectoryPath;
@@ -531,6 +538,14 @@ export async function lintProject(
 
   // lint features
   const features = await datasource.listFeatures();
+  const featuresByKey: Record<string, ParsedFeature> = {};
+  for (const key of features) {
+    try {
+      featuresByKey[key] = await datasource.readFeature(key);
+    } catch {
+      // Feature read failures are reported during feature linting below.
+    }
+  }
   const featureZodSchema = getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
@@ -567,7 +582,7 @@ export async function lintProject(
       let parsed;
 
       try {
-        parsed = await datasource.readFeature(key);
+        parsed = featuresByKey[key] ?? (await datasource.readFeature(key));
 
         const result = featureZodSchema.safeParse(parsed);
 
@@ -590,6 +605,52 @@ export async function lintProject(
             code: error instanceof Error ? error.name : "error",
           });
         }
+      }
+    }
+  }
+
+  // lint top-level variables
+  const variables = await datasource.listVariables();
+  const variableZodSchema = getVariableZodSchema(
+    projectConfig,
+    attributesByKey,
+    segments,
+    featuresByKey,
+    schemasByKey,
+  );
+
+  if (!options.entityType || options.entityType === "variable") {
+    await lintReservedNamespaceCharacterInEntityPaths("variable");
+
+    const filteredKeys = !keyPattern ? variables : variables.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      log(`Linting ${filteredKeys.length} variables...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("variable", key);
+
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Invalid name: "${key}"`,
+          detail: ENTITY_NAME_REGEX_ERROR,
+          code: "invalid_name",
+        });
+      }
+
+      try {
+        const parsed = await datasource.readVariable(key);
+        const result = variableZodSchema.safeParse(parsed);
+
+        if (!result.success && "error" in result) {
+          await reportZodValidationError("variable", key, fullPath, result.error);
+        }
+      } catch (error) {
+        await reportThrownError("variable", key, fullPath, error);
       }
     }
   }
@@ -742,6 +803,7 @@ export async function lintProject(
     features as [string, ...string[]],
     segments as [string, ...string[]],
     targets as [string, ...string[]],
+    variables as [string, ...string[]],
   );
 
   if (!options.entityType || options.entityType === "test") {

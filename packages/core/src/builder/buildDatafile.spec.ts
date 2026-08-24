@@ -17,6 +17,7 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
     groupsDirectoryPath: path.join(root, "groups-missing"),
     schemasDirectoryPath: path.join(root, "schemas-missing"),
     targetsDirectoryPath: path.join(root, "targets-missing"),
+    variablesDirectoryPath: path.join(root, "variables-missing"),
     testsDirectoryPath: path.join(root, "tests-missing"),
     stateDirectoryPath: path.join(root, ".featurevisor"),
     datafilesDirectoryPath: path.join(root, "datafiles"),
@@ -70,6 +71,8 @@ function createMockDatasource(
     readAttribute: async () => {
       throw new Error("readAttribute should not be called");
     },
+    listVariables: async () => [],
+    getRequiredFeaturesChainForVariable: async () => new Set<string>(),
   } as any;
 }
 
@@ -441,5 +444,75 @@ describe("core: buildDatafile", function () {
     expect(webChromeDatafile.features.targeted.traffic[1].segments).toEqual({
       not: ["*"],
     });
+  });
+
+  test("builds tagged top-level variables with dependencies and resolved mutations", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      checkout: {
+        key: "checkout",
+        description: "Checkout",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      } as ParsedFeature,
+    });
+    Object.assign(datasource, {
+      listVariables: async () => ["banner", "serverOnly"],
+      readVariable: async (key: string) =>
+        key === "banner"
+          ? {
+              description: "Banner",
+              tags: ["web"],
+              type: "object",
+              properties: { title: { type: "string" } },
+              defaultValue: { title: "Hello" },
+              requiredFeatures: ["checkout"],
+              overrides: {
+                staging: [
+                  {
+                    key: "eu",
+                    segments: "europe",
+                    conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                    mutate: { title: "Hallo" },
+                  },
+                ],
+              },
+            }
+          : {
+              description: "Server only",
+              tags: ["server"],
+              type: "string",
+              defaultValue: "hidden",
+            },
+      getRequiredFeaturesChainForVariable: async (key: string) =>
+        new Set(key === "banner" ? ["checkout"] : []),
+      listSegments: async () => ["europe"],
+      readSegment: async () => ({
+        conditions: [{ attribute: "continent", operator: "equals", value: "eu" }],
+      }),
+      listAttributes: async () => ["continent", "country"],
+      readAttribute: async () => ({ description: "Attribute", type: "string" }),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging", tag: "web" },
+      existingState,
+    );
+
+    expect(Object.keys(result.variables || {})).toEqual(["banner"]);
+    expect(Object.keys(result.features)).toEqual(["checkout"]);
+    expect(result.variables?.banner.overrides?.[0]).toEqual(
+      expect.objectContaining({
+        key: "eu",
+        segments: "europe",
+        conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
+        value: { title: "Hallo" },
+      }),
+    );
+    expect(result.variables?.banner.hash).toEqual(expect.any(String));
+    expect(Object.keys(result.segments)).toEqual(["europe"]);
   });
 });

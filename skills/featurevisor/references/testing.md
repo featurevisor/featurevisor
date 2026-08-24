@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/testing>
 
-Featurevisor ships an in-process test runner. Specs live in `tests/features/<key>.spec.yml` and `tests/segments/<key>.spec.yml` by default. File names are conventional, not load-bearing.
+Featurevisor ships an in-process test runner. Specs live in `tests/features/`, `tests/segments/`, and `tests/variables/` by default. File names are conventional, not load-bearing.
 
 In a sets project, `promotable: false` can be set at the top level of either kind of test spec. If the matching destination spec exists, it is preserved when either the source or destination spec has this field. A missing destination spec is still created.
 
@@ -93,6 +93,21 @@ assertions:
       country: de
     expectedToMatch: false
 ```
+
+## Top-level variable spec
+
+```yaml
+variable: supportEmail
+assertions:
+  - environment: production
+    context: { country: nl }
+    expectedValue: support-nl@example.com
+    expectedEvaluation:
+      reason: override_matched
+      overrideKey: netherlands
+```
+
+Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.
 
 ## Matrix expansion
 

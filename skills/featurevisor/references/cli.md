@@ -39,7 +39,7 @@ The two lane examples are the ones to reach for when someone says "we want dev/s
 npx featurevisor lint
 npx featurevisor lint --json --pretty                       # machine-readable
 npx featurevisor lint --keyPattern="myKey"                  # filter by key
-npx featurevisor lint --entityType=feature                  # feature | segment | attribute | group | schema | target | test
+npx featurevisor lint --entityType=feature                  # feature | variable | segment | attribute | group | schema | target | test
 npx featurevisor lint --keyPattern="my" --entityType=feature
 npx featurevisor lint --set=storefront                      # one set only (sets projects)
 ```
@@ -90,7 +90,7 @@ Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by s
 npx featurevisor test
 npx featurevisor test --keyPattern="myFeature"
 npx featurevisor test --keyPattern="myFeature" --assertionPattern="in NL"
-npx featurevisor test --entityType=feature       # or segment
+npx featurevisor test --entityType=feature       # or variable | segment
 npx featurevisor test --verbose                   # SDK trace per assertion
 npx featurevisor test --quiet                     # suppress SDK warnings
 npx featurevisor test --onlyFailures
@@ -155,6 +155,15 @@ npx featurevisor list --attributes --json --pretty
 
 Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`.
 
+### Top level variables
+
+```bash
+npx featurevisor list --variables --json --pretty
+npx featurevisor list --variables --target=checkout --with-tests
+```
+
+Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`, repeatable `--tag`, repeatable `--target`, `--with-tests`, `--without-tests`.
+
 ### Groups, schemas, and targets
 
 ```bash
@@ -172,7 +181,7 @@ npx featurevisor list --tests --json --pretty
 npx featurevisor list --tests --applyMatrix       # expand matrices into individual assertions
 ```
 
-Flags: `--applyMatrix`, `--assertionPattern`, `--entityType=feature|segment`, `--keyPattern`, `--promotable`.
+Flags: `--applyMatrix`, `--assertionPattern`, `--entityType=feature|variable|segment`, `--keyPattern`, `--promotable`.
 
 Opposing filters such as `--with-tests` and `--without-tests` are rejected instead of silently producing confusing output. Invalid regular expressions are reported as option errors.
 
@@ -216,7 +225,7 @@ Returns the full evaluation chain (sticky → required → force → rules → b
 
 Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
 
-The command reports flag, variation, and variable evaluations together. There are no separate `--variation` or `--variable` selectors for `evaluate`.
+With `--feature`, the command reports flag, variation, and feature variable evaluations together. Use `--variable=<key>` without `--feature` to evaluate a top-level variable.
 
 ## assess-distribution
 
@@ -248,6 +257,7 @@ Measure SDK evaluation latency.
 npx featurevisor benchmark --environment=production --feature=my_feature --context='{"userId":"123"}' --n=1000
 npx featurevisor benchmark --environment=production --feature=my_feature --variation --context='{}' --n=1000
 npx featurevisor benchmark --environment=production --feature=my_feature --variable=bgColor --context='{}' --n=1000
+npx featurevisor benchmark --environment=production --variable=supportEmail --context='{}' --n=1000
 ```
 
 Use repeatable `--target=<target>` options to benchmark each selected target datafile independently.
