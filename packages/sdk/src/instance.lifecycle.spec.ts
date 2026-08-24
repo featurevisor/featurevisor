@@ -34,20 +34,62 @@ describe("Featurevisor public API: lifecycle and state", () => {
     expect(sdk.getContext()).toEqual({ country: "nl", nested: { source: "base" } });
   });
 
-  it("merges and replaces sticky values and reports affected keys", () => {
+  it("merges and replaces sticky features and reports affected keys", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({
       logLevel: "fatal",
-      sticky: { a: { enabled: true }, shared: { enabled: true, variation: "control" } },
+      stickyFeatures: { a: { enabled: true }, shared: { enabled: true, variation: "control" } },
     });
-    sdk.on("sticky_set", (event) => events.push(event));
+    sdk.on("sticky_features_set", (event) => events.push(event));
 
-    sdk.setSticky({ b: { enabled: false }, shared: { enabled: true, variation: "treatment" } });
-    sdk.setSticky({ c: { enabled: true } }, true);
+    sdk.setStickyFeatures({
+      b: { enabled: false },
+      shared: { enabled: true, variation: "treatment" },
+    });
+    sdk.setStickyFeatures({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
-      { features: ["a", "shared", "b"], variables: [], replaced: false },
-      { features: ["a", "shared", "b", "c"], variables: [], replaced: true },
+      { features: ["a", "shared", "b"], replaced: false },
+      { features: ["a", "shared", "b", "c"], replaced: true },
+    ]);
+  });
+
+  it("keeps deprecated sticky feature options, methods, and events working", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({ sticky: { flag: { enabled: false } } });
+    sdk.on("sticky_set", (event) => events.push(event));
+
+    expect(sdk.isEnabled("flag")).toBe(false);
+    sdk.setSticky({ flag: { enabled: true } }, true);
+    expect(sdk.isEnabled("flag")).toBe(true);
+    sdk.setStickyVariables({ variable: "value" });
+    expect(events).toEqual([
+      { features: ["flag"], variables: [], replaced: true },
+      { features: [], variables: ["variable"], replaced: false },
+    ]);
+  });
+
+  it("prefers stickyFeatures when both option names are supplied", () => {
+    const sdk = createFeaturevisor({
+      stickyFeatures: { flag: { enabled: true } },
+      sticky: { flag: { enabled: false } },
+    });
+
+    expect(sdk.isEnabled("flag")).toBe(true);
+  });
+
+  it("reports distinct sticky feature and variable diagnostics", () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const sdk = createFeaturevisor({
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    sdk.setStickyFeatures({ feature: { enabled: true } });
+    sdk.setStickyVariables({ variable: "value" });
+
+    expect(diagnostics.slice(-2).map((diagnostic) => diagnostic.code)).toEqual([
+      "sticky_features_set",
+      "sticky_variables_set",
     ]);
   });
 
@@ -193,7 +235,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     await sdk.close();
     await sdk.close();
     sdk.setContext({ late: true });
-    sdk.setSticky({ late: { enabled: true } });
+    sdk.setStickyFeatures({ late: { enabled: true } });
     sdk.setDatafile(createDatafile({ revision: "after" }));
     sdk.addModule({ name: "late", setup: () => calls.push("setup") });
     await sdk.removeModule("module");

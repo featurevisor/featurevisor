@@ -10,13 +10,17 @@ export function onVariableChange(
     if (variables.indexOf(variableKey) !== -1 || features.length > 0) fn();
   });
   const unsubscribeContextSet = sdk.on("context_set", fn);
-  const unsubscribeStickySet = sdk.on("sticky_set", ({ features, variables }) => {
-    if (variables.indexOf(variableKey) !== -1 || features.length > 0) fn();
+  const unsubscribeStickyVariablesSet = sdk.on("sticky_variables_set", ({ variables }) => {
+    if (variables.indexOf(variableKey) !== -1) fn();
+  });
+  const unsubscribeStickyFeaturesSet = sdk.on("sticky_features_set", ({ features }) => {
+    if (features.length > 0) fn();
   });
 
   return () => {
     unsubscribeDatafileSet();
     unsubscribeContextSet();
-    unsubscribeStickySet();
+    unsubscribeStickyVariablesSet();
+    unsubscribeStickyFeaturesSet();
   };
 }

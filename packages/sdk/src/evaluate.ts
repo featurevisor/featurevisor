@@ -82,6 +82,8 @@ export interface Evaluation {
   forceIndex?: number;
   force?: Force;
   required?: Required[];
+  stickyFeature?: EvaluatedFeature;
+  /** @deprecated Use `stickyFeature`. */
   sticky?: EvaluatedFeature;
 
   // variation
@@ -123,7 +125,7 @@ export interface EvaluateDependencies {
   datafile: EvaluationDataProvider;
 
   // OverrideOptions
-  sticky?: StickyFeatures;
+  stickyFeatures?: StickyFeatures;
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
@@ -246,8 +248,16 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
 }
 
 function evaluate(options: EvaluateOptions): Evaluation {
-  const { type, featureKey, variableKey, context, reportDiagnostic, datafile, sticky, modules } =
-    options;
+  const {
+    type,
+    featureKey,
+    variableKey,
+    context,
+    reportDiagnostic,
+    datafile,
+    stickyFeatures,
+    modules,
+  } = options;
 
   let evaluation: Evaluation;
 
@@ -328,15 +338,16 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Sticky
      */
-    if (sticky && sticky[featureKey]) {
+    if (stickyFeatures && stickyFeatures[featureKey]) {
       // flag
-      if (type === "flag" && typeof sticky[featureKey].enabled !== "undefined") {
+      if (type === "flag" && typeof stickyFeatures[featureKey].enabled !== "undefined") {
         evaluation = {
           type,
           featureKey,
           reason: "sticky",
-          sticky: sticky[featureKey],
-          enabled: sticky[featureKey].enabled,
+          stickyFeature: stickyFeatures[featureKey],
+          sticky: stickyFeatures[featureKey],
+          enabled: stickyFeatures[featureKey].enabled,
         };
 
         reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky enabled");
@@ -346,7 +357,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variation
       if (type === "variation") {
-        const variationValue = sticky[featureKey].variation;
+        const variationValue = stickyFeatures[featureKey].variation;
 
         if (typeof variationValue !== "undefined") {
           evaluation = {
@@ -364,7 +375,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variable
       if (variableKey) {
-        const variables = sticky[featureKey].variables;
+        const variables = stickyFeatures[featureKey].variables;
 
         if (variables) {
           const result = variables[variableKey];

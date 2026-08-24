@@ -77,7 +77,7 @@ export async function testFeature(
 
     const sdk: Featurevisor = createFeaturevisor({
       datafile: datafileContent as DatafileContent,
-      sticky: assertion.sticky ? assertion.sticky : {},
+      stickyFeatures: assertion.sticky ? assertion.sticky : {},
       modules: [
         {
           name: "tester",
@@ -335,7 +335,7 @@ export async function testFeature(
 
       for (const child of assertion.children) {
         const childSdk = sdk.spawn(child.context || {}, {
-          sticky: assertion.sticky || {},
+          stickyFeatures: assertion.sticky || {},
         });
 
         // expectedToBeEnabled

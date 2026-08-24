@@ -53,7 +53,7 @@ All three accept optional component-level context as the last argument: `useFlag
 import { useFeaturevisor, useSdk } from '@featurevisor/react'
 
 function MyComponent() {
-  // bound methods (isEnabled, getVariation, getVariable*, setContext, setSticky, …)
+  // bound methods (isEnabled, getVariation, getVariable*, setContext, setStickyFeatures, …)
   const { isEnabled, setContext } = useFeaturevisor()
 
   // or the raw instance

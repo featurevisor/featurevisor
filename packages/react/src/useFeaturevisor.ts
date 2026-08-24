@@ -19,6 +19,8 @@ export const BOUND_METHODS = [
   "setContext",
   "getContext",
 
+  "setStickyFeatures",
+  "setStickyVariables",
   "setSticky",
 ] as const satisfies readonly (keyof Featurevisor)[];
 

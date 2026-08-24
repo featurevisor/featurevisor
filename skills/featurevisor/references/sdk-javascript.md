@@ -31,7 +31,8 @@ const f = createFeaturevisor({ datafile })
 | -------------- | --------------------------------------------------------------------------- |
 | `datafile`     | Datafile content (object or JSON string). Can also be set later.            |
 | `context`      | Initial [context](#context) values                                          |
-| `sticky`       | Per-feature overrides consulted before evaluation (see [Sticky](#sticky))   |
+| `stickyFeatures` | Per-feature overrides consulted before evaluation (see [Sticky](#sticky)) |
+| `stickyVariables` | Top-level variable overrides consulted before evaluation                  |
 | `logLevel`     | `fatal` \| `error` \| `warn` \| `info` (default) \| `debug`                 |
 | `onDiagnostic` | Custom handler instead of console output (see [Diagnostics](#diagnostics))  |
 | `modules`      | Evaluation interceptors (see [Modules](#modules) and [tracking.md](tracking.md)) |
@@ -191,7 +192,8 @@ const unsubscribe = f.on('datafile_set', ({ revision, previousRevision, revision
 })
 
 f.on('context_set', ({ context, replaced }) => {})
-f.on('sticky_set', ({ features, variables, replaced }) => {})
+f.on('sticky_features_set', ({ features, replaced }) => {})
+f.on('sticky_variables_set', ({ variables, replaced }) => {})
 f.on('error', ({ diagnostic }) => {})
 
 unsubscribe() // every f.on() returns an unsubscribe function
@@ -202,7 +204,7 @@ unsubscribe() // every f.on() returns an unsubscribe function
 Sticky values are per-feature overrides consulted **before** any datafile evaluation. Use them when the application already knows the answer (an entitlements service returned the user's plan, or a server passed down pre-computed evaluations) or to freeze experiences mid-session:
 
 ```js
-f.setSticky({
+f.setStickyFeatures({
   checkout: {
     enabled: true,
     variation: 'treatment',                  // optional
@@ -213,6 +215,8 @@ f.setSticky({
 
 f.setStickyVariables({ supportEmail: 'fixed@example.com' })
 ```
+
+Both maps can supply values before a datafile is available, which is useful during startup and in application unit tests.
 
 For forcing specific users/QA from the **project side**, prefer a `force:` rule in YAML ([features.md](features.md#force)) — it's reviewed in PRs and visible to everyone. Sticky is application-side state.
 
@@ -236,7 +240,7 @@ app.get('/dashboard', (req, res) => {
 })
 ```
 
-Children support the same evaluation methods — including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable` — plus `setContext`, `setSticky`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { sticky })` also accepts child-scoped sticky values. Datafile updates on the parent are visible to children automatically.
+Children support the same evaluation methods, including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable`, plus `setContext`, `setStickyFeatures`, `setStickyVariables`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { stickyFeatures, stickyVariables })` also accepts child scoped sticky values. Datafile updates on the parent are visible to children automatically.
 
 **Context model** (identical in every SDK): a child *snapshots* the parent context keys that exist at spawn time, keeps inheriting parent keys introduced *later*, and its own keys always win. Per-evaluation context merges on top for that call only.
 
@@ -267,9 +271,9 @@ const evaluations = childF.getAllEvaluations()
 // serialize `evaluations` into the rendered page
 
 // client (at startup)
-const f = createFeaturevisor({ sticky: window.__FEATURES__ })
+const f = createFeaturevisor({ stickyFeatures: window.__FEATURES__ })
 // render matches the server exactly; later, once a datafile is loaded,
-// f.setSticky({}, true) releases evaluation back to live rules
+// f.setStickyFeatures({}, true) releases evaluation back to live rules
 ```
 
 ## Resilience
@@ -286,7 +290,7 @@ To unit-test code that consumes flags, you don't need datafile fixtures — an i
 
 ```js
 const f = createFeaturevisor({
-  sticky: {
+  stickyFeatures: {
     checkout: { enabled: true, variation: 'treatment', variables: { paymentMethods: ['ideal'] } },
     newDashboard: { enabled: false },
   },
@@ -295,6 +299,8 @@ const f = createFeaturevisor({
 ```
 
 Sticky is consulted before the datafile, so this works for every evaluation method. For closer-to-production tests, generate a real datafile from the project (`npx featurevisor build --environment=<env> --print`) and pass it as `datafile`. Note this tests *your app's branching*; the project's own rules are tested with spec files in the project repo ([testing.md](testing.md)).
+
+The older `sticky` option, `setSticky` method, and `sticky_set` event are deprecated compatibility aliases. Prefer the feature and variable specific names.
 
 ## Diagnostics
 

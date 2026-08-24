@@ -207,7 +207,7 @@ describe("react: useVariation", function () {
     });
   });
 
-  test("should update when setSticky pins a variation", async function () {
+  test("should update when setStickyFeatures pins a variation", async function () {
     const datafileContent: DatafileContent = {
       schemaVersion: "2",
       revision: "1.0",
@@ -253,7 +253,7 @@ describe("react: useVariation", function () {
     expect(screen.getByTestId("sticky-var")).toHaveTextContent("treatment");
 
     await act(async () => {
-      sdk.setSticky({
+      sdk.setStickyFeatures({
         test: {
           enabled: true,
           variation: "control",

@@ -166,12 +166,12 @@ describe("react: useVariable", function () {
     );
     expect(screen.getByTestId("dependent-theme")).toHaveTextContent("red");
 
-    await act(async () => f.setSticky({ test: { enabled: false } }));
+    await act(async () => f.setStickyFeatures({ test: { enabled: false } }));
     await waitFor(() =>
       expect(screen.getByTestId("dependent-theme")).toHaveTextContent("disabled"),
     );
 
-    await act(async () => f.setSticky({ test: { enabled: true } }, true));
+    await act(async () => f.setStickyFeatures({ test: { enabled: true } }, true));
     await waitFor(() => expect(screen.getByTestId("dependent-theme")).toHaveTextContent("red"));
   });
 
@@ -245,7 +245,7 @@ describe("react: useVariable", function () {
     expect(screen.getByTestId("hero")).toHaveTextContent("Hero Title");
   });
 
-  test("should update when setSticky provides a variable override", async function () {
+  test("should update when setStickyFeatures provides a variable override", async function () {
     const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
@@ -286,7 +286,7 @@ describe("react: useVariable", function () {
     expect(screen.getByTestId("c")).toHaveTextContent("red");
 
     await act(async () => {
-      sdk.setSticky({
+      sdk.setStickyFeatures({
         test: {
           enabled: true,
           variables: { color: "green" },

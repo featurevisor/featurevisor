@@ -155,9 +155,16 @@ describe("Featurevisor public API: complex evaluation", () => {
       },
     };
 
-    sdk.setSticky(sticky);
+    sdk.setStickyFeatures(sticky);
 
     expect(sdk.isEnabled("experiment", context)).toBe(true);
+    expect(sdk.evaluateFlag("experiment", context)).toEqual(
+      expect.objectContaining({
+        reason: "sticky",
+        stickyFeature: sticky.experiment,
+        sticky: sticky.experiment,
+      }),
+    );
     expect(sdk.getVariation("experiment", context)).toBe("treatment");
     expect(sdk.getVariableString("experiment", "greeting", context)).toBe("Sticky");
   });

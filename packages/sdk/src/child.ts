@@ -14,7 +14,7 @@ import type { Featurevisor, OverrideOptions } from "./instance.js";
 import type { Evaluation, TopLevelVariableEvaluation } from "./evaluate.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 
-function getStickySetEventDetails(
+function getStickyFeaturesChangeDetails(
   previousStickyFeatures: StickyFeatures = {},
   newStickyFeatures: StickyFeatures = {},
   replace: boolean,
@@ -28,7 +28,7 @@ function getStickySetEventDetails(
   };
 }
 
-type ChildEventName = "context_set" | "sticky_set";
+type ChildEventName = "context_set" | "sticky_features_set" | "sticky_variables_set" | "sticky_set";
 
 type ChildListeners = {
   [TEventName in ChildEventName]?: EventCallback<TEventName>[];
@@ -37,7 +37,7 @@ type ChildListeners = {
 export class FeaturevisorChildInstance {
   private parent: Featurevisor;
   private context: Context;
-  private sticky: StickyFeatures;
+  private stickyFeatures: StickyFeatures;
   private stickyVariables: StickyVariables;
   private listeners: ChildListeners = {};
   private parentUnsubscribers: (() => void)[] = [];
@@ -45,12 +45,14 @@ export class FeaturevisorChildInstance {
   constructor(options: {
     parent: Featurevisor;
     context: Context;
+    stickyFeatures?: StickyFeatures;
+    /** @deprecated Use `stickyFeatures`. */
     sticky?: StickyFeatures;
     stickyVariables?: StickyVariables;
   }) {
     this.parent = options.parent;
     this.context = options.context;
-    this.sticky = options.sticky || {};
+    this.stickyFeatures = options.stickyFeatures || options.sticky || {};
     this.stickyVariables = options.stickyVariables || {};
   }
 
@@ -68,6 +70,20 @@ export class FeaturevisorChildInstance {
 
     if (eventName === "sticky_set") {
       return this.onChildEvent("sticky_set", callback as EventCallback<"sticky_set">);
+    }
+
+    if (eventName === "sticky_features_set") {
+      return this.onChildEvent(
+        "sticky_features_set",
+        callback as EventCallback<"sticky_features_set">,
+      );
+    }
+
+    if (eventName === "sticky_variables_set") {
+      return this.onChildEvent(
+        "sticky_variables_set",
+        callback as EventCallback<"sticky_variables_set">,
+      );
     }
 
     const unsubscribeFromParent = this.parent.on(eventName as never, callback as never);
@@ -174,33 +190,46 @@ export class FeaturevisorChildInstance {
   }
 
   private getChildOptions(options: OverrideOptions = {}): OverrideOptions & {
-    __featurevisorChildSticky: StickyFeatures;
+    __featurevisorChildStickyFeatures: StickyFeatures;
     __featurevisorChildStickyVariables: StickyVariables;
   } {
     return {
       ...options,
       // This is an SDK-private transport field. Public evaluation options do
       // not accept sticky values; sticky belongs to the child instance.
-      __featurevisorChildSticky: this.sticky,
+      __featurevisorChildStickyFeatures: this.stickyFeatures,
       __featurevisorChildStickyVariables: this.stickyVariables,
     };
   }
 
-  setSticky(sticky: StickyFeatures, replace = false) {
-    const previousStickyFeatures = this.sticky || {};
+  setStickyFeatures(stickyFeatures: StickyFeatures, replace = false) {
+    const previousStickyFeatures = this.stickyFeatures || {};
 
     if (replace) {
-      this.sticky = { ...sticky };
+      this.stickyFeatures = { ...stickyFeatures };
     } else {
-      this.sticky = {
-        ...this.sticky,
-        ...sticky,
+      this.stickyFeatures = {
+        ...this.stickyFeatures,
+        ...stickyFeatures,
       };
     }
 
-    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
+    const details = getStickyFeaturesChangeDetails(
+      previousStickyFeatures,
+      this.stickyFeatures,
+      replace,
+    );
 
-    this.trigger("sticky_set", params);
+    this.trigger("sticky_features_set", {
+      features: details.features,
+      replaced: replace,
+    });
+    this.trigger("sticky_set", details);
+  }
+
+  /** @deprecated Use `setStickyFeatures`. */
+  setSticky(stickyFeatures: StickyFeatures, replace = false) {
+    this.setStickyFeatures(stickyFeatures, replace);
   }
 
   setStickyVariables(stickyVariables: StickyVariables, replace = false) {
@@ -208,13 +237,18 @@ export class FeaturevisorChildInstance {
     this.stickyVariables = replace
       ? { ...stickyVariables }
       : { ...this.stickyVariables, ...stickyVariables };
-    this.trigger("sticky_set", {
+    const details = {
       features: [],
       variables: [...previousKeys, ...Object.keys(this.stickyVariables)].filter(
         (key, index, keys) => keys.indexOf(key) === index,
       ),
       replaced: replace,
+    };
+    this.trigger("sticky_variables_set", {
+      variables: details.variables,
+      replaced: replace,
     });
+    this.trigger("sticky_set", details);
   }
 
   evaluateFlag(

@@ -48,7 +48,9 @@ export type {
   EventDetails,
   EventDetailsByName,
   EventName,
+  StickyFeaturesSetEventDetails,
   StickySetEventDetails,
+  StickyVariablesSetEventDetails,
 } from "./events.js";
 
 export type * from "@featurevisor/types";

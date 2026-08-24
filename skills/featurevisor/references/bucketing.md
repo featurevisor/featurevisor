@@ -73,7 +73,7 @@ npx featurevisor build --revision-from-hash    # per-datafile hash; unchanged co
 Independent of bucketing, the SDK supports **sticky** values — application-supplied per-feature overrides (variation/variables/enabled) consulted **before** evaluation. Sticky is set from application code, not in YAML (details in [sdk-javascript.md](sdk-javascript.md#sticky)):
 
 ```js
-f.setSticky({
+f.setStickyFeatures({
   plan: { enabled: true, variation: 'premium' },
 })
 ```

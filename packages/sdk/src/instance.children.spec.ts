@@ -56,9 +56,9 @@ describe("Featurevisor public API: child instances", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({ features: { flag: createFeature() } }),
-      sticky: { flag: { enabled: true } },
+      stickyFeatures: { flag: { enabled: true } },
     });
-    const offChild = parent.spawn({}, { sticky: { flag: { enabled: false } } });
+    const offChild = parent.spawn({}, { stickyFeatures: { flag: { enabled: false } } });
     const inheritedChild = parent.spawn();
 
     expect(parent.isEnabled("flag")).toBe(true);
@@ -70,22 +70,34 @@ describe("Featurevisor public API: child instances", () => {
     expect(offChild.isEnabled("flag")).toBe(false);
   });
 
-  it("emits child sticky events with merge and replacement semantics", () => {
+  it("prefers child stickyFeatures over the deprecated sticky option", () => {
+    const child = createFeaturevisor({ logLevel: "fatal" }).spawn(
+      {},
+      {
+        stickyFeatures: { flag: { enabled: true } },
+        sticky: { flag: { enabled: false } },
+      },
+    );
+
+    expect(child.isEnabled("flag")).toBe(true);
+  });
+
+  it("emits child sticky feature events with merge and replacement semantics", () => {
     const events: any[] = [];
     const child = createFeaturevisor({ logLevel: "fatal" }).spawn(
       {},
       {
-        sticky: { a: { enabled: true } },
+        stickyFeatures: { a: { enabled: true } },
       },
     );
-    child.on("sticky_set", (event) => events.push(event));
+    child.on("sticky_features_set", (event) => events.push(event));
 
-    child.setSticky({ b: { enabled: false } });
-    child.setSticky({ c: { enabled: true } }, true);
+    child.setStickyFeatures({ b: { enabled: false } });
+    child.setStickyFeatures({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
-      { features: ["a", "b"], variables: [], replaced: false },
-      { features: ["a", "b", "c"], variables: [], replaced: true },
+      { features: ["a", "b"], replaced: false },
+      { features: ["a", "b", "c"], replaced: true },
     ]);
   });
 

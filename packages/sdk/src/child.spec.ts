@@ -270,7 +270,7 @@ describe("sdk: child", function () {
     unsubscribeContext();
 
     expect(childF.isEnabled("newFeature")).toEqual(false);
-    childF.setSticky({
+    childF.setStickyFeatures({
       newFeature: {
         enabled: true,
       },

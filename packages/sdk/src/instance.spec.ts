@@ -872,7 +872,7 @@ describe("sdk: instance", function () {
     };
 
     const sdk = createFeaturevisor({
-      sticky: {
+      stickyFeatures: {
         test: {
           enabled: true,
           variation: "control",
@@ -906,7 +906,7 @@ describe("sdk: instance", function () {
       ).toEqual("control");
 
       // unsetting sticky features will make it treatment
-      sdk.setSticky({}, true);
+      sdk.setStickyFeatures({}, true);
       expect(
         sdk.getVariation("test", {
           userId: "123",

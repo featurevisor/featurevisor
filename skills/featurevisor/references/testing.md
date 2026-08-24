@@ -51,7 +51,7 @@ Additional inputs an assertion can set up (advanced, all optional):
 
 | Field                                             | Purpose                                                                                                                                                                                     |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sticky`                                          | Sticky features for the test SDK instance — consulted before evaluation, exactly like `f.setSticky()` at runtime                                                                            |
+| `sticky`                                          | Sticky features for the test SDK instance, consulted before evaluation exactly like `f.setStickyFeatures()` at runtime                                                                      |
 | `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                             |
 | `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
 

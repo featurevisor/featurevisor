@@ -123,10 +123,28 @@ describe("top-level variables", () => {
     expect(f.getVariable("gated", { access: true })).toBeNull();
   });
 
+  it("uses sticky variables before a datafile is available", () => {
+    const f = createFeaturevisor({
+      stickyVariables: { supportEmail: "sticky@example.com", config: { colour: "blue" } },
+      logLevel: "fatal",
+    });
+
+    expect(f.getVariable("supportEmail")).toBe("sticky@example.com");
+    expect(f.getVariable<{ colour: string }>("config")).toEqual({ colour: "blue" });
+    expect(f.evaluateVariable("supportEmail")).toEqual(
+      expect.objectContaining({
+        type: "top_level_variable",
+        reason: "sticky",
+        variableKey: "supportEmail",
+        variableValue: "sticky@example.com",
+      }),
+    );
+  });
+
   it("updates parent sticky variables and exposes top-level keys", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const listener = jest.fn();
-    f.on("sticky_set", listener);
+    f.on("sticky_variables_set", listener);
 
     expect(f.getTopLevelVariableKeys()).toContain("supportEmail");
     f.setStickyVariables({ supportEmail: "first@example.com" });
@@ -135,7 +153,6 @@ describe("top-level variables", () => {
     expect(f.getVariable("supportEmail")).toBe("help@example.com");
     expect(f.getVariable("gated")).toBe("replacement");
     expect(listener).toHaveBeenLastCalledWith({
-      features: [],
       variables: ["supportEmail", "gated"],
       replaced: true,
     });
@@ -216,7 +233,7 @@ describe("top-level variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const child = f.spawn({}, { stickyVariables: { supportEmail: "child@example.com" } });
     const listener = jest.fn();
-    child.on("sticky_set", listener);
+    child.on("sticky_variables_set", listener);
 
     expect(child.getVariable("supportEmail")).toBe("child@example.com");
     child.setStickyVariables({ supportEmail: "changed@example.com" });
@@ -224,7 +241,6 @@ describe("top-level variables", () => {
     expect(child.getVariableString("supportEmail")).toBe("changed@example.com");
     expect(child.getVariableBoolean("enabled")).toBe(true);
     expect(listener).toHaveBeenCalledWith({
-      features: [],
       variables: ["supportEmail"],
       replaced: false,
     });

@@ -14,8 +14,8 @@ export function onFeatureChange(sdk: Featurevisor, featureKey: FeatureKey, fn: (
     fn();
   });
 
-  // sticky_set
-  const unsubscribeStickySet = sdk.on("sticky_set", ({ features }) => {
+  // sticky_features_set
+  const unsubscribeStickyFeaturesSet = sdk.on("sticky_features_set", ({ features }) => {
     if (Array.isArray(features) && features.indexOf(featureKey) > -1) {
       fn();
     }
@@ -24,6 +24,6 @@ export function onFeatureChange(sdk: Featurevisor, featureKey: FeatureKey, fn: (
   return function () {
     unsubscribeDatafileSet();
     unsubscribeContextSet();
-    unsubscribeStickySet();
+    unsubscribeStickyFeaturesSet();
   };
 }

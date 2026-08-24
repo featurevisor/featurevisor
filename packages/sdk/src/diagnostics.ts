@@ -4,6 +4,9 @@ export type FeaturevisorDiagnosticCode =
   | "sdk_initialized"
   | "datafile_set"
   | "context_set"
+  | "sticky_features_set"
+  | "sticky_variables_set"
+  /** @deprecated Use `sticky_features_set` or `sticky_variables_set`. */
   | "sticky_set"
   | "invalid_datafile"
   | "duplicate_module"

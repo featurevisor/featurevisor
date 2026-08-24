@@ -103,7 +103,7 @@ function mergeStoredDatafile(
   };
 }
 
-function getStickySetEventDetails(
+function getStickyChangeDetails(
   previousStickyFeatures: StickyFeatures = {},
   newStickyFeatures: StickyFeatures = {},
   replace: boolean,
@@ -211,12 +211,14 @@ export interface OverrideOptions {
 }
 
 export interface SpawnOptions {
+  stickyFeatures?: StickyFeatures;
+  /** @deprecated Use `stickyFeatures`. */
   sticky?: StickyFeatures;
   stickyVariables?: StickyVariables;
 }
 
 interface InternalOverrideOptions extends OverrideOptions {
-  __featurevisorChildSticky?: StickyFeatures;
+  __featurevisorChildStickyFeatures?: StickyFeatures;
   __featurevisorChildStickyVariables?: StickyVariables;
 }
 
@@ -225,6 +227,8 @@ export interface FeaturevisorOptions {
   context?: Context;
   logLevel?: FeaturevisorLogLevel;
   onDiagnostic?: FeaturevisorDiagnosticHandler;
+  stickyFeatures?: StickyFeatures;
+  /** @deprecated Use `stickyFeatures`. */
   sticky?: StickyFeatures;
   stickyVariables?: StickyVariables;
   modules?: FeaturevisorModule[];
@@ -247,7 +251,7 @@ export class Featurevisor {
   private context: Context = {};
   private logLevel: FeaturevisorLogLevel = "info";
   private onDiagnostic?: FeaturevisorDiagnosticHandler;
-  private sticky?: StickyFeatures;
+  private stickyFeatures?: StickyFeatures;
   private stickyVariables?: StickyVariables;
 
   // internally created
@@ -263,7 +267,7 @@ export class Featurevisor {
     this.context = options.context || {};
     this.logLevel = options.logLevel || "info";
     this.onDiagnostic = options.onDiagnostic;
-    this.sticky = options.sticky;
+    this.stickyFeatures = options.stickyFeatures || options.sticky;
     this.stickyVariables = options.stickyVariables;
 
     (options.modules || []).forEach((module) => {
@@ -321,31 +325,40 @@ export class Featurevisor {
     }
   }
 
-  setSticky(sticky: StickyFeatures, replace = false) {
+  setStickyFeatures(stickyFeatures: StickyFeatures, replace = false) {
     if (this.closed) {
       return;
     }
 
-    const previousStickyFeatures = this.sticky || {};
+    const previousStickyFeatures = this.stickyFeatures || {};
 
     if (replace) {
-      this.sticky = { ...sticky };
+      this.stickyFeatures = { ...stickyFeatures };
     } else {
-      this.sticky = {
-        ...this.sticky,
-        ...sticky,
+      this.stickyFeatures = {
+        ...this.stickyFeatures,
+        ...stickyFeatures,
       };
     }
 
-    const params = getStickySetEventDetails(previousStickyFeatures, this.sticky, replace);
+    const details = getStickyChangeDetails(previousStickyFeatures, this.stickyFeatures, replace);
 
     this.reportDiagnostic({
       level: "info",
-      code: "sticky_set",
+      code: "sticky_features_set",
       message: "Sticky features set",
-      details: params,
+      details,
     });
-    this.trigger("sticky_set", params);
+    this.trigger("sticky_features_set", {
+      features: details.features,
+      replaced: replace,
+    });
+    this.trigger("sticky_set", details);
+  }
+
+  /** @deprecated Use `setStickyFeatures`. */
+  setSticky(stickyFeatures: StickyFeatures, replace = false) {
+    this.setStickyFeatures(stickyFeatures, replace);
   }
 
   setStickyVariables(stickyVariables: StickyVariables, replace = false) {
@@ -355,9 +368,9 @@ export class Featurevisor {
     this.stickyVariables = replace
       ? { ...stickyVariables }
       : { ...this.stickyVariables, ...stickyVariables };
-    const details = getStickySetEventDetails(
-      this.sticky,
-      this.sticky,
+    const details = getStickyChangeDetails(
+      {},
+      {},
       replace,
       previousStickyVariables,
       this.stickyVariables,
@@ -365,9 +378,13 @@ export class Featurevisor {
 
     this.reportDiagnostic({
       level: "info",
-      code: "sticky_set",
+      code: "sticky_variables_set",
       message: "Sticky variables set",
       details,
+    });
+    this.trigger("sticky_variables_set", {
+      variables: details.variables,
+      replaced: replace,
     });
     this.trigger("sticky_set", details);
   }
@@ -817,7 +834,7 @@ export class Featurevisor {
     return new FeaturevisorChildInstance({
       parent: this,
       context: this.getContext(context),
-      sticky: options.sticky,
+      stickyFeatures: options.stickyFeatures || options.sticky,
       stickyVariables: options.stickyVariables,
     });
   }
@@ -839,7 +856,7 @@ export class Featurevisor {
       // internal cast; avoid widening these helpers into public instance APIs.
       datafile: this as unknown as InstanceEvaluationDataProvider,
 
-      sticky: options.__featurevisorChildSticky || this.sticky,
+      stickyFeatures: options.__featurevisorChildStickyFeatures || this.stickyFeatures,
       defaultVariationValue: options.defaultVariationValue,
       defaultVariableValue: options.defaultVariableValue,
     };
@@ -889,18 +906,18 @@ export class Featurevisor {
         variableKey: resolvedVariableKey,
         reason: "variable_not_found",
       };
+      const stickyVariables =
+        options.__featurevisorChildStickyVariables || this.stickyVariables || {};
 
-      if (variable) {
-        const stickyVariables =
-          options.__featurevisorChildStickyVariables || this.stickyVariables || {};
-        if (Object.prototype.hasOwnProperty.call(stickyVariables, resolvedVariableKey)) {
-          evaluation = {
-            ...evaluation,
-            reason: "sticky",
-            variable,
-            variableValue: stickyVariables[resolvedVariableKey],
-          };
-        } else if (
+      if (Object.prototype.hasOwnProperty.call(stickyVariables, resolvedVariableKey)) {
+        evaluation = {
+          ...evaluation,
+          reason: "sticky",
+          variable,
+          variableValue: stickyVariables[resolvedVariableKey],
+        };
+      } else if (variable) {
+        if (
           !this.requiredFeaturesAreMatched(
             variable.requiredFeatures,
             evaluationOptions.context,

@@ -285,7 +285,7 @@ rules:
 App side (sketch, for context only):
 
 ```js
-f.setSticky({
+f.setStickyFeatures({
   plan: { enabled: true, variation: userProfile.plan }
 })
 const ents = f.getVariable('plan', 'entitlements', ctx)
