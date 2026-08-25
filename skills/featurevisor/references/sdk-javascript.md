@@ -241,6 +241,8 @@ app.get('/dashboard', (req, res) => {
 
 Children support the same evaluation methods, including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable`, plus `setContext`, `setStickyFeatures`, `setStickyVariables`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { stickyFeatures, stickyVariables })` also accepts child scoped sticky values. Datafile updates on the parent are visible to children automatically.
 
+Child sticky state does not inherit from the parent. A child spawned without `stickyFeatures` or `stickyVariables` starts with empty sticky maps. Pass either map in the spawn options when the child needs those values.
+
 **Context model** (identical in every SDK): a child *snapshots* the parent context keys that exist at spawn time, keeps inheriting parent keys introduced *later*, and its own keys always win. Per-evaluation context merges on top for that call only.
 
 ```js

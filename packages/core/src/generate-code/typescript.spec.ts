@@ -338,7 +338,7 @@ describe("generate-code/typescript", () => {
     ).rejects.toThrow('Unknown target "missing"');
   });
 
-  it("unions repeated tags and targets for features and top-level variables", async () => {
+  it("unions repeated tags and targets for features and global variables", async () => {
     fs.writeFileSync(
       path.join(tempProjectPath, "variables", "signInMessage.yml"),
       [

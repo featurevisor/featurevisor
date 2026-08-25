@@ -17,7 +17,6 @@ import type {
   ObjectValue,
   Condition,
   VariableType,
-  DatafileVariable,
   Required,
   StickyVariables,
   GlobalVariableKey,

@@ -63,7 +63,7 @@ describe("core: list", function () {
     expect(result.map((feature) => feature.key).sort()).toEqual(["mobile", "web"]);
   });
 
-  test("filters top level variables by tags, targets, and test presence", async function () {
+  test("filters global variables by tags, targets, and test presence", async function () {
     const variableFixtures: Record<string, ParsedVariable> = {
       checkout: {
         description: "Checkout settings",

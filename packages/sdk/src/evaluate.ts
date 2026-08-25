@@ -68,8 +68,9 @@ export interface EvaluationDataProvider {
 }
 
 export interface Evaluation {
-  // required
+  // identity
   type: EvaluationType;
+  /** Present for feature evaluations and omitted for global variable evaluations. */
   featureKey?: FeatureKey;
   reason: EvaluationReason;
 

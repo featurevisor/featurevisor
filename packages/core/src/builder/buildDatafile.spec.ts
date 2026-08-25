@@ -446,7 +446,7 @@ describe("core: buildDatafile", function () {
     });
   });
 
-  test("builds tagged top-level variables with dependencies and resolved mutations", async () => {
+  test("builds tagged global variables with dependencies and resolved mutations", async () => {
     const config = createProjectConfig(root, true);
     const datasource = createMockDatasource({
       checkout: {

@@ -124,7 +124,7 @@ test("validates declared custom plugin options", () => {
   assert.match(result.stderr, /Unknown argument: unknown/);
 });
 
-test("requires a feature or top level variable for evaluation commands", () => {
+test("requires a feature or global variable for evaluation commands", () => {
   const result = run(["benchmark", "--context={}"], (root) => {
     writeFileSync(path.join(root, "featurevisor.config.js"), "module.exports = {};\n");
   });
@@ -133,7 +133,7 @@ test("requires a feature or top level variable for evaluation commands", () => {
   assert.match(result.stderr, /Pass --feature or --variable/);
 });
 
-test("benchmarks a top level variable without a feature", () => {
+test("benchmarks a global variable without a feature", () => {
   const result = run(["benchmark", "--variable=supportEmail", "--n=1"], (root) => {
     writeFileSync(path.join(root, "featurevisor.config.js"), "module.exports = {};\n");
     mkdirSync(path.join(root, "variables"), { recursive: true });

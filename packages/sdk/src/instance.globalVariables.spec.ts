@@ -1,4 +1,4 @@
-import type { DatafileContent } from "@featurevisor/types";
+import type { Context, DatafileContent, StickyVariables, VariableValue } from "@featurevisor/types";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -71,7 +71,7 @@ function datafile(): DatafileContent {
       },
       same: {
         type: "string",
-        defaultValue: "top-level value",
+        defaultValue: "global value",
       },
       enabled: { type: "boolean", defaultValue: true },
       count: { type: "integer", defaultValue: 3 },
@@ -86,12 +86,26 @@ const conformance = JSON.parse(
   readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
 );
 
+interface GlobalVariableConformanceCase {
+  name: string;
+  key: string;
+  context?: Context;
+  stickyVariables?: StickyVariables;
+  defaultVariableValue?: VariableValue;
+  expectedValue?: unknown;
+  expectedReason: string;
+  expectedOverrideKey?: string;
+}
+
+const globalVariableConformanceCases = conformance.globalVariables
+  .cases as GlobalVariableConformanceCase[];
+
 describe("global variables", () => {
   it("preserves feature-scoped calls and disambiguates by argument shape", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
 
     expect(f.getVariable("same", "nested")).toBe("feature value");
-    expect(f.getVariable("same")).toBe("top-level value");
+    expect(f.getVariable("same")).toBe("global value");
   });
 
   it("evaluates overrides in order and combines segments with conditions using AND", () => {
@@ -248,21 +262,19 @@ describe("global variables", () => {
     expect(evaluation).not.toHaveProperty("featureKey");
   });
 
-  it("executes the global variable conformance contract", () => {
+  it.each(globalVariableConformanceCases)("conformance: $name", (testCase) => {
     expect(conformance.version).toBe(3);
-    for (const testCase of conformance.globalVariables.cases) {
-      const f = createFeaturevisor({
-        datafile: conformance.globalVariables.datafile,
-        stickyVariables: testCase.stickyVariables,
-        logLevel: "fatal",
-      });
-      const evaluation = f.evaluateVariable(testCase.key, testCase.context || {}, {
-        defaultVariableValue: testCase.defaultVariableValue,
-      });
-      expect(evaluation.variableValue).toEqual(testCase.expectedValue);
-      expect(evaluation.reason).toBe(testCase.expectedReason);
-      expect(evaluation.overrideKey).toBe(testCase.expectedOverrideKey);
-    }
+    const f = createFeaturevisor({
+      datafile: conformance.globalVariables.datafile,
+      stickyVariables: testCase.stickyVariables,
+      logLevel: "fatal",
+    });
+    const evaluation = f.evaluateVariable(testCase.key, testCase.context || {}, {
+      defaultVariableValue: testCase.defaultVariableValue,
+    });
+    expect(evaluation.variableValue).toEqual(testCase.expectedValue);
+    expect(evaluation.reason).toBe(testCase.expectedReason);
+    expect(evaluation.overrideKey).toBe(testCase.expectedOverrideKey);
   });
 
   it("supports child sticky values and change events for variables", () => {
