@@ -61,6 +61,29 @@ describe("core: lintProject", function () {
     });
   });
 
+  it("rejects feature and global variable key collisions unless explicitly allowed", async () => {
+    const variablePath = path.join(tempProjectPath, "variables", "showHeader.yml");
+    fs.writeFileSync(variablePath, "type: boolean\ndefaultValue: true\n", "utf8");
+
+    const rejected = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(rejected.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "variable",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+
+    const allowedDeps = getDeps(tempProjectPath);
+    allowedDeps.projectConfig.allowFeatureAndVariableKeyCollisions = true;
+    const allowed = await lintProject(allowedDeps as any, { json: true });
+    expect(allowed.errors.some((error) => error.code === "feature_variable_key_collision")).toBe(
+      false,
+    );
+  });
+
   it("rejects entity file names containing the namespace character", async () => {
     const root = createTempProject();
     tempProjectPath = root;

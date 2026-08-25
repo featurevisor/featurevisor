@@ -7,7 +7,7 @@ import type { DatafileContent, VariableValue } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
-import { useVariable } from "./useVariable";
+import { useGlobalVariable, useVariable } from "./useVariable";
 
 function getNewDatafile(colorValue = "red"): DatafileContent {
   return {
@@ -134,9 +134,9 @@ describe("react: useVariable", function () {
     });
   });
 
-  test("should evaluate top-level variables with optional generics and update reactively", async () => {
+  test("should evaluate global variables with optional generics and update reactively", async () => {
     function TestComponent() {
-      const theme = useVariable<"red" | "blue">("theme");
+      const theme = useGlobalVariable<"red" | "blue">("theme");
       return <p data-testid="theme">{theme}</p>;
     }
     const f = getNewInstance();
@@ -154,7 +154,7 @@ describe("react: useVariable", function () {
     await waitFor(() => expect(screen.getByTestId("theme")).toHaveTextContent("red"));
   });
 
-  test("should update a top-level variable when a required feature changes", async () => {
+  test("should update a global variable when a required feature changes", async () => {
     function TestComponent() {
       return <p data-testid="dependent-theme">{useVariable("dependentTheme")}</p>;
     }

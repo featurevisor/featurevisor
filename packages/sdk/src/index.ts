@@ -15,14 +15,7 @@ export type {
   SpawnOptions,
 } from "./instance.js";
 export type { FeaturevisorChildInstance } from "./child.js";
-export type {
-  Evaluation,
-  EvaluationOptions,
-  EvaluationReason,
-  EvaluationResult,
-  TopLevelVariableEvaluation,
-  TopLevelVariableEvaluationReason,
-} from "./evaluate.js";
+export type { Evaluation, EvaluationOptions, EvaluationReason } from "./evaluate.js";
 export type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,

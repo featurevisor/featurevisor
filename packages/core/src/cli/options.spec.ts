@@ -8,7 +8,7 @@ describe("core: CLI options", function () {
     expect(getBuiltinCLIOptions("promote")?.target.type).toBe("array");
   });
 
-  test("allows top-level variables without requiring feature selectors", function () {
+  test("allows global variables without requiring feature selectors", function () {
     expect(getBuiltinCLIOptions("benchmark")?.feature.demandOption).toBeUndefined();
     expect(getBuiltinCLIOptions("benchmark")?.variable.type).toBe("string");
     expect(getBuiltinCLIOptions("evaluate")?.variable.type).toBe("string");

@@ -1,8 +1,10 @@
-# Top-level variables
+# Global variables
 
 Full docs: <https://featurevisor.com/docs/defining-variables>
 
-Top-level variables live under `variables/` and are evaluated independently from features. Do not confuse them with feature variables under `variablesSchema`.
+Global variables live under `variables/` and are evaluated independently from features. Do not confuse them with feature variables under `variablesSchema`.
+
+Use a global variable for configuration with its own lifecycle and targeting that does not need percentage rollout. Use a feature variable when the value belongs to one feature, follows a variation, or needs bucketing and gradual rollout. Global variables are deterministic for the same context and datafile.
 
 ```yaml
 description: Support email
@@ -28,15 +30,15 @@ Every override requires a stable `key`, targeting through `segments`, `condition
 
 `mutate` paths are relative to the variable root and are resolved while building the datafile.
 
-Use `requiredFeatures` at the variable or override level. Requirements can be feature keys or `{ key, variation }` objects. Unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
+Use `requiredFeatures` at the variable or override level. Requirements can be feature keys or `{ key, variation }` objects. For a global variable, disabled means its required features were not satisfied. Unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
 
-Targets select top-level variables by `tag` or `tags`. Their `includeFeatures` and `excludeFeatures` selectors remain feature specific.
+Targets select global variables by `tag` or `tags`. Their `includeFeatures` and `excludeFeatures` selectors remain feature specific.
 
 JavaScript evaluation:
 
 ```js
-f.getVariable('supportEmail', context)
-f.evaluateVariable('supportEmail', context)
+f.getGlobalVariable('supportEmail', context)
+f.evaluateGlobalVariable('supportEmail', context)
 f.setStickyVariables({ supportEmail: 'fixed@example.com' })
 ```
 
@@ -51,7 +53,7 @@ assertions:
     context: { country: nl }
     expectedValue: support-nl@example.com
     expectedEvaluation:
-      reason: override_matched
+      reason: variable_override_rule
       overrideKey: netherlands
 ```
 

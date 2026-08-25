@@ -17,7 +17,7 @@ import type {
   Condition,
   GroupSegment,
   DatafileVariable,
-  TopLevelVariableKey,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import type { FeaturevisorModule } from "./modules.js";
@@ -37,6 +37,7 @@ export type EvaluationReason =
   | "variable_disabled"
   | "variable_override_variation"
   | "variable_override_rule"
+  | "required_features_unmet"
   | "no_match"
   | "forced"
   | "sticky"
@@ -69,7 +70,7 @@ export interface EvaluationDataProvider {
 export interface Evaluation {
   // required
   type: EvaluationType;
-  featureKey: FeatureKey;
+  featureKey?: FeatureKey;
   reason: EvaluationReason;
 
   // common
@@ -91,30 +92,16 @@ export interface Evaluation {
   variationValue?: VariationValue;
 
   // variable
-  variableKey?: VariableKey;
+  variableKey?: VariableKey | GlobalVariableKey;
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
-}
-
-export type TopLevelVariableEvaluationReason =
-  | "variable_not_found"
-  | "sticky"
-  | "required_features_unmet"
-  | "override_matched"
-  | "default_value"
-  | "error";
-
-export interface TopLevelVariableEvaluation {
-  type: "top_level_variable";
-  source: "top_level";
-  variableKey: TopLevelVariableKey;
-  reason: TopLevelVariableEvaluationReason;
+  /** Present when evaluating a global variable. */
   variable?: DatafileVariable;
-  variableValue?: VariableValue;
+  /** Present when a global variable override matched. */
   overrideIndex?: number;
+  /** Present when a global variable override matched. */
   overrideKey?: string;
-  error?: Error;
 }
 
 export interface EvaluateDependencies {
@@ -139,15 +126,14 @@ export interface EvaluateParams {
 
 export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
 
-export interface TopLevelVariableEvaluateOptions {
-  type: "top_level_variable";
-  variableKey: TopLevelVariableKey;
+export interface GlobalVariableEvaluateOptions {
+  type: "variable";
+  variableKey: GlobalVariableKey;
   context: Context;
   defaultVariableValue?: VariableValue;
 }
 
-export type EvaluationOptions = EvaluateOptions | TopLevelVariableEvaluateOptions;
-export type EvaluationResult = Evaluation | TopLevelVariableEvaluation;
+export type EvaluationOptions = EvaluateOptions | GlobalVariableEvaluateOptions;
 
 function reportEvaluationDiagnostic(
   reportDiagnostic: FeaturevisorDiagnosticReporter,

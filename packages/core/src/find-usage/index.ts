@@ -1,4 +1,10 @@
-import type { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevisor/types";
+import type {
+  Condition,
+  FeatureKey,
+  SegmentKey,
+  AttributeKey,
+  SchemaKey,
+} from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
@@ -163,6 +169,7 @@ export interface UsageInVariables {
     features: Set<FeatureKey>;
     segments: Set<SegmentKey>;
     attributes: Set<AttributeKey>;
+    schemas: Set<SchemaKey>;
   };
 }
 
@@ -174,7 +181,9 @@ export async function findAllUsageInVariables(deps: Dependencies): Promise<Usage
       features: new Set<FeatureKey>(),
       segments: new Set<SegmentKey>(),
       attributes: new Set<AttributeKey>(),
+      schemas: new Set<SchemaKey>(),
     };
+    if (variable.schema) usage.schemas.add(variable.schema);
     [
       ...(variable.requiredFeatures || []),
       ...Object.values(variable.overrides || {})
@@ -349,6 +358,7 @@ export interface FindUsageOptions {
   feature?: string;
   segment?: string;
   attribute?: string;
+  variable?: string;
 
   unusedSegments?: boolean;
   unusedAttributes?: boolean;
@@ -357,9 +367,14 @@ export interface FindUsageOptions {
 }
 
 export function assertFindUsageOptions(options: FindUsageOptions) {
-  const queries = ["feature", "segment", "attribute", "unusedSegments", "unusedAttributes"].filter(
-    (key) => Boolean(options[key]),
-  );
+  const queries = [
+    "feature",
+    "segment",
+    "attribute",
+    "variable",
+    "unusedSegments",
+    "unusedAttributes",
+  ].filter((key) => Boolean(options[key]));
 
   if (queries.length !== 1) {
     throw new FeaturevisorCLIError(
@@ -384,6 +399,34 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
   const usageInFeatures = await findAllUsageInFeatures(deps);
   const usageInSegments = await findAllUsageInSegments(deps);
   const usageInVariables = await findAllUsageInVariables(deps);
+
+  if (options.variable) {
+    const usage = usageInVariables[options.variable];
+    if (!usage) {
+      throw new FeaturevisorCLIError(`Variable "${options.variable}" was not found.`, {
+        code: "variable_not_found",
+        details: { variable: options.variable },
+      });
+    }
+
+    console.log(CLI_FORMAT_BOLD, `Dependencies of global variable "${options.variable}"`);
+    console.log("");
+    const groups: Array<[string, Set<string>]> = [
+      ["Features", usage.features],
+      ["Segments", usage.segments],
+      ["Attributes", usage.attributes],
+      ["Schemas", usage.schemas],
+    ];
+    let found = false;
+    for (const [label, keys] of groups) {
+      if (keys.size === 0) continue;
+      found = true;
+      console.log(`  ${colorize(label, CLI_COLOR_CYAN)}: ${Array.from(keys).sort().join(", ")}`);
+    }
+    if (!found) console.log(CLI_FORMAT_GREEN, "  No dependencies.");
+    console.log("");
+    return;
+  }
 
   // feature
   if (options.feature) {
@@ -671,6 +714,7 @@ export const findUsagePlugin: Plugin = {
           feature: parsed.feature,
           segment: parsed.segment,
           attribute: parsed.attribute,
+          variable: parsed.variable,
           unusedSegments: parsed.unusedSegments,
           unusedAttributes: parsed.unusedAttributes,
           authors: parsed.authors,
@@ -679,6 +723,10 @@ export const findUsagePlugin: Plugin = {
     }
   },
   examples: [
+    {
+      command: "find-usage --variable=<variableKey>",
+      description: "Show dependencies of a global variable",
+    },
     {
       command: "find-usage --segment=<segmentKey>",
       description: "Find usage of a segment",

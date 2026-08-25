@@ -11,7 +11,7 @@ import type {
 } from "./feature";
 import type { SegmentKey } from "./segment";
 import type { TargetKey } from "./target";
-import type { StickyVariables, TopLevelVariableKey } from "./variable";
+import type { StickyVariables, GlobalVariableKey } from "./variable";
 
 export interface AssertionMatrix {
   [key: string]: AttributeValue[];
@@ -95,14 +95,14 @@ export interface VariableAssertion {
   stickyVariables?: StickyVariables;
   context?: Context;
   defaultVariableValue?: VariableValue;
-  expectedValue: VariableValue;
+  expectedValue?: VariableValue;
   expectedEvaluation?: Record<string, any>;
 }
 
 export interface TestVariable {
   key?: string;
   promotable?: boolean;
-  variable: TopLevelVariableKey;
+  variable: GlobalVariableKey;
   assertions: VariableAssertion[];
 }
 

@@ -82,7 +82,7 @@ export function benchmarkFeatureVariable(
   return benchmarkEvaluation(n, () => f.getVariable(featureKey, variableKey, context as Context));
 }
 
-export function benchmarkTopLevelVariable(
+export function benchmarkGlobalVariable(
   f: Featurevisor,
   variableKey: string,
   context: Record<string, unknown>,
@@ -148,7 +148,7 @@ async function benchmarkFeatureWithDatafile(
     console.log(`Evaluating variable "${options.variable}" ${options.n} times...`);
     output = options.feature
       ? benchmarkFeatureVariable(f, options.feature, options.variable, options.context, options.n)
-      : benchmarkTopLevelVariable(f, options.variable, options.context, options.n);
+      : benchmarkGlobalVariable(f, options.variable, options.context, options.n);
   } else if (options.variation) {
     // variation
     console.log(`Evaluating variation ${options.n} times...`);
@@ -268,7 +268,7 @@ export const benchmarkPlugin: Plugin = {
     {
       command:
         'benchmark --environment=production -n=1000 --context=\'{"country": "nl"}\' --variable=supportEmail',
-      description: "Benchmark a top-level variable",
+      description: "Benchmark a global variable",
     },
   ],
 };

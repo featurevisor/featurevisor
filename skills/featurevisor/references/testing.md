@@ -94,7 +94,7 @@ assertions:
     expectedToMatch: false
 ```
 
-## Top-level variable spec
+## Global variable spec
 
 ```yaml
 variable: supportEmail
@@ -103,7 +103,7 @@ assertions:
     context: { country: nl }
     expectedValue: support-nl@example.com
     expectedEvaluation:
-      reason: override_matched
+      reason: variable_override_rule
       overrideKey: netherlands
 ```
 

@@ -5,7 +5,7 @@ import type {
   DatafileVariableOverride,
   ParsedVariable,
   Schema,
-  TopLevelVariableKey,
+  GlobalVariableKey,
   VariableType,
   VariableValue,
 } from "@featurevisor/types";
@@ -151,7 +151,7 @@ export interface BuildOptions {
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
   features?: FeatureKey[];
-  variables?: TopLevelVariableKey[];
+  variables?: GlobalVariableKey[];
   inflate?: number;
 }
 
@@ -546,7 +546,7 @@ export async function buildDatafile(
     }
   }
 
-  // top-level variables
+  // global variables
   const variables: Array<{ key: string; value: DatafileVariable }> = [];
   for (const { key, value: parsedVariable } of parsedVariables) {
     const resolvedSchema = parsedVariable.schema
@@ -762,7 +762,7 @@ export async function buildDatafile(
       acc[variable.key] = variable.value;
       return acc;
     },
-    {} as Record<TopLevelVariableKey, DatafileVariable>,
+    {} as Record<GlobalVariableKey, DatafileVariable>,
   );
 
   // add feature hashes for change detection

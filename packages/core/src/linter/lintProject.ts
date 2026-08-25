@@ -609,7 +609,7 @@ export async function lintProject(
     }
   }
 
-  // lint top-level variables
+  // lint global variables
   const variables = await datasource.listVariables();
   const variableZodSchema = getVariableZodSchema(
     projectConfig,
@@ -630,6 +630,18 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("variable", key);
+
+      if (!projectConfig.allowFeatureAndVariableKeyCollisions && features.includes(key)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Variable "${key}" conflicts with a feature using the same key`,
+          detail:
+            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
+          code: "feature_variable_key_collision",
+        });
+      }
 
       if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({

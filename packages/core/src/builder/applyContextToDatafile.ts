@@ -220,7 +220,7 @@ export function applyContextToDatafile(
     contextualDatafileContent.features[featureKey] = feature;
   }
 
-  // top-level variables
+  // global variables
   for (const variable of Object.values(contextualDatafileContent.variables || {})) {
     for (const override of variable.overrides || []) {
       if (override.segments) {

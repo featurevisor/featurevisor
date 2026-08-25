@@ -1,6 +1,6 @@
 import type { Context, DatafileContent } from "@featurevisor/types";
 import { createFeaturevisor } from "@featurevisor/sdk";
-import type { Evaluation, EvaluationResult, FeaturevisorDiagnostic } from "@featurevisor/sdk";
+import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 
 import { Dependencies } from "../dependencies";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
@@ -16,7 +16,7 @@ import {
   colorize,
 } from "../tester/cliFormat";
 
-function printEvaluationDetails(evaluation: EvaluationResult) {
+function printEvaluationDetails(evaluation: Evaluation) {
   const ignoreKeys = ["featureKey", "variableKey", "traffic", "force"];
 
   for (const [key, value] of Object.entries(evaluation)) {
@@ -275,7 +275,7 @@ export const evaluatePlugin: Plugin = {
     {
       command:
         'evaluate --environment=production --variable=supportEmail --context=\'{"country": "nl"}\'',
-      description: "evaluate a top-level variable against provided context",
+      description: "evaluate a global variable against provided context",
     },
   ],
 };

@@ -7,7 +7,7 @@ import type {
   Segment,
   DatafileContent,
   DatafileVariable,
-  TopLevelVariableKey,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import { extractSegmentKeysFromGroupSegments, extractSegmentsFromFeature } from "../utils";
@@ -112,8 +112,8 @@ export function generateHashForDatafile(datafileContent: DatafileContent): strin
 }
 
 export function generateHashForVariable(
-  variableKey: TopLevelVariableKey,
-  variables: Record<TopLevelVariableKey, DatafileVariable>,
+  variableKey: GlobalVariableKey,
+  variables: Record<GlobalVariableKey, DatafileVariable>,
   features: Record<FeatureKey, Feature>,
   segmentHashes: Record<SegmentKey, string>,
 ): string {

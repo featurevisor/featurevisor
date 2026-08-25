@@ -17,7 +17,25 @@ function datafile(value: unknown): DatafileContent {
   };
 }
 
-describe("core: test top-level variable", () => {
+describe("core: test global variable", () => {
+  it("can assert evaluation details without pinning the value", async () => {
+    const result = await testVariable(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            expectedEvaluation: { reason: "variable_default" },
+          },
+        ],
+      },
+      { quiet: true } as any,
+      new Map([["production", datafile({ changing: "value" })]]),
+    );
+
+    expect(result.passed).toBe(true);
+  });
+
   it("compares nested values, evaluation fields, sticky values, and target datafiles", async () => {
     const test: TestVariable = {
       variable: "settings",
@@ -26,7 +44,7 @@ describe("core: test top-level variable", () => {
           description: "base",
           environment: "production",
           expectedValue: { items: ["one", { enabled: true }] },
-          expectedEvaluation: { reason: "default_value" },
+          expectedEvaluation: { reason: "variable_default" },
         },
         {
           description: "sticky",
@@ -65,7 +83,7 @@ describe("core: test top-level variable", () => {
           {
             environment: "production",
             expectedValue: { expected: true },
-            expectedEvaluation: { reason: "override_matched" },
+            expectedEvaluation: { reason: "variable_override_rule" },
           },
         ],
       },

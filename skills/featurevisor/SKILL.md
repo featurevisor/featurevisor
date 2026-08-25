@@ -75,7 +75,7 @@ This file is loaded eagerly. The files below are loaded only when relevant — r
 | Look up a condition operator                                                                                                                  | [operators.md](references/operators.md)                           |
 | Define or change an attribute                                                                                                                 | [attributes.md](references/attributes.md)                         |
 | Variables, JSON-Schema-ish types, reusable `schemas/`                                                                                         | [variables-schemas.md](references/variables-schemas.md)           |
-| Define or evaluate independent top-level variables under `variables/`                                                                         | [defining-variables.md](references/defining-variables.md)          |
+| Define or evaluate independent global variables under `variables/`                                                                            | [defining-variables.md](references/defining-variables.md)          |
 | Variable overrides with deep merge (`mutations`)                                                                                              | [variables-schemas.md](references/variables-schemas.md#mutations) |
 | Mutually-exclusive experiments via `groups/`                                                                                                  | [groups.md](references/groups.md)                                 |
 | Bucketing, `bucketBy`, state files, sticky                                                                                                    | [bucketing.md](references/bucketing.md)                           |
@@ -173,7 +173,7 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 | `npx featurevisor list --datafiles --json`                                                                            | List generated datafile paths                         |
 | `npx featurevisor list --segments --json`                                                                             | List segments                                         |
 | `npx featurevisor list --attributes --json`                                                                           | List attributes                                       |
-| `npx featurevisor list --variables --json`                                                                            | List top-level variables                              |
+| `npx featurevisor list --variables --json`                                                                            | List global variables                                 |
 | `npx featurevisor list --groups --json`                                                                               | List exclusion groups                                 |
 | `npx featurevisor list --schemas --json`                                                                              | List reusable schemas                                 |
 | `npx featurevisor list --targets --json`                                                                              | List targets                                          |
@@ -184,7 +184,7 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 | `npx featurevisor find-usage --unusedAttributes`                                                                      | Dead attributes                                       |
 | `npx featurevisor find-duplicate-segments`                                                                            | Segments with identical conditions                    |
 | `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'`                                           | Why a feature evaluates the way it does (debug)       |
-| `npx featurevisor evaluate --environment=<e> --variable=<k> --context='{…}'`                                          | Why a top-level variable has its value                |
+| `npx featurevisor evaluate --environment=<e> --variable=<k> --context='{…}'`                                          | Why a global variable has its value                   |
 | `npx featurevisor assess-distribution --environment=<e> --feature=<k> --context='{…}' --populateUuid=userId --n=1000` | Simulate rollout distribution                         |
 | `npx featurevisor test [--keyPattern=…] [--assertionPattern=…]`                                                       | Run test specs                                        |
 | `npx featurevisor build --no-state-files`                                                                             | Build datafiles without touching local revision/state |

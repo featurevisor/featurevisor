@@ -155,7 +155,7 @@ npx featurevisor list --attributes --json --pretty
 
 Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`.
 
-### Top level variables
+### Global variables
 
 ```bash
 npx featurevisor list --variables --json --pretty
@@ -193,6 +193,7 @@ Find where entities are referenced. Append `--authors` to also list the `git log
 npx featurevisor find-usage --segment=<key>
 npx featurevisor find-usage --attribute=<key>
 npx featurevisor find-usage --feature=<key>
+npx featurevisor find-usage --variable=<key> # global variable dependencies
 npx featurevisor find-usage --unusedSegments
 npx featurevisor find-usage --unusedAttributes
 ```
@@ -225,7 +226,7 @@ Returns the full evaluation chain (sticky → required → force → rules → b
 
 Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
 
-With `--feature`, the command reports flag, variation, and feature variable evaluations together. Use `--variable=<key>` without `--feature` to evaluate a top-level variable.
+With `--feature`, the command reports flag, variation, and feature variable evaluations together. Use `--variable=<key>` without `--feature` to evaluate a global variable.
 
 ## assess-distribution
 
@@ -288,7 +289,7 @@ npx featurevisor generate-code --language typescript --out-dir ./src
 npx featurevisor generate-code --language typescript --out-dir ./src --tag=shared --target=web --target=mobile
 ```
 
-Generates typed accessors from feature and top-level variable definitions. Repeatable `--tag` and `--target` selectors form a union across both entity types. Other languages: see <https://featurevisor.com/docs/code-generation>.
+Generates typed accessors from feature and global variable definitions. Repeatable `--tag` and `--target` selectors form a union across both entity types. Other languages: see <https://featurevisor.com/docs/code-generation>.
 
 ## promote (sets projects only)
 

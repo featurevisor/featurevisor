@@ -1,11 +1,6 @@
 import type { BucketBy, Context, FeatureKey } from "@featurevisor/types";
 
-import type {
-  EvaluateOptions,
-  Evaluation,
-  EvaluationOptions,
-  EvaluationResult,
-} from "./evaluate.js";
+import type { EvaluateOptions, Evaluation, EvaluationOptions } from "./evaluate.js";
 import type { BucketKey, BucketValue } from "./bucketer.js";
 import type {
   FeaturevisorDiagnosticHandler,
@@ -69,7 +64,7 @@ export interface FeaturevisorModule {
   /** @deprecated Use afterEvaluation for all evaluation types. */
   after?: (evaluation: Evaluation, options: EvaluateOptions) => Evaluation;
 
-  afterEvaluation?: (evaluation: EvaluationResult, options: EvaluationOptions) => EvaluationResult;
+  afterEvaluation?: (evaluation: Evaluation, options: EvaluationOptions) => Evaluation;
 
   close?: () => void | Promise<void>;
 }

@@ -4,7 +4,7 @@ assertions:
     environment: staging
     expectedValue: support-staging@example.com
     expectedEvaluation:
-      reason: override_matched
+      reason: variable_override_rule
       overrideKey: staging
 
   - matrix:

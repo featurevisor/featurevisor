@@ -24,10 +24,25 @@ describe("core: projectConfig", () => {
     expect(config.namespaceCharacter).toBe(".");
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
+    expect(config.allowFeatureAndVariableKeyCollisions).toBe(false);
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
     expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
     expect("scopes" in config).toBe(false);
     expect("siteExportDirectoryPath" in config).toBe(false);
+  });
+
+  it("validates allowFeatureAndVariableKeyCollisions", () => {
+    const allowedRoot = createTempProject(
+      "module.exports = { allowFeatureAndVariableKeyCollisions: true };",
+    );
+    expect(getProjectConfig(allowedRoot).allowFeatureAndVariableKeyCollisions).toBe(true);
+
+    const invalidRoot = createTempProject(
+      'module.exports = { allowFeatureAndVariableKeyCollisions: "yes" };',
+    );
+    expect(() => getProjectConfig(invalidRoot)).toThrow(
+      "Invalid allowFeatureAndVariableKeyCollisions: yes. It must be a boolean.",
+    );
   });
 
   it("silently ignores obsolete scopes configuration", () => {

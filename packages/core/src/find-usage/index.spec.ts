@@ -7,5 +7,6 @@ describe("core: find usage CLI options", function () {
       "Specify only one usage query",
     );
     expect(() => assertFindUsageOptions({ segment: "mobile", authors: true })).not.toThrow();
+    expect(() => assertFindUsageOptions({ variable: "settings" })).not.toThrow();
   });
 });

@@ -13,7 +13,7 @@ import type {
   VariableOverride,
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
-import type { DatafileVariable, TopLevelVariableKey } from "./variable";
+import type { DatafileVariable, GlobalVariableKey } from "./variable";
 
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
@@ -68,8 +68,8 @@ export interface DatafileContent {
   features: {
     [key: FeatureKey]: Feature;
   };
-  /** Optional for compatibility with datafiles generated before top-level variables. */
+  /** Optional for compatibility with datafiles generated before global variables. */
   variables?: {
-    [key: TopLevelVariableKey]: DatafileVariable;
+    [key: GlobalVariableKey]: DatafileVariable;
   };
 }

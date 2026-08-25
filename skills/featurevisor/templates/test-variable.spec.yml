@@ -7,5 +7,5 @@ assertions:
       country: nl
     expectedValue: support-nl@example.com
     expectedEvaluation:
-      reason: override_matched
+      reason: variable_override_rule
       overrideKey: netherlands

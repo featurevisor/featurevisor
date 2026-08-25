@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "description": "Featurevisor v3 cross SDK compatibility contracts",
   "bucketing": {
     "minimum": 0,
@@ -80,6 +80,98 @@
   "datafile": {
     "schemaVersionIsInformational": true,
     "schemaVersionType": "string"
+  },
+  "globalVariables": {
+    "datafile": {
+      "schemaVersion": "2",
+      "revision": "global-variables",
+      "segments": {
+        "netherlands": {
+          "conditions": {
+            "attribute": "country",
+            "operator": "equals",
+            "value": "nl"
+          }
+        }
+      },
+      "features": {
+        "enabledFeature": {
+          "bucketBy": "userId",
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "disabledFeature": {
+          "bucketBy": "userId",
+          "traffic": []
+        }
+      },
+      "variables": {
+        "stringValue": { "type": "string", "defaultValue": "hello" },
+        "integerValue": { "type": "integer", "defaultValue": 1 },
+        "doubleValue": { "type": "double", "defaultValue": 1.5 },
+        "booleanValue": { "type": "boolean", "defaultValue": true },
+        "arrayValue": { "type": "array", "defaultValue": ["one", "two"] },
+        "objectValue": { "type": "object", "defaultValue": { "enabled": true } },
+        "jsonValue": { "type": "json", "defaultValue": "{\"enabled\":true}" },
+        "requiredDisabled": {
+          "type": "string",
+          "defaultValue": "default",
+          "disabledValue": "disabled",
+          "requiredFeatures": ["disabledFeature"]
+        },
+        "requiredMissingValue": {
+          "type": "string",
+          "defaultValue": "default",
+          "requiredFeatures": ["disabledFeature"]
+        },
+        "requiredUsesDefault": {
+          "type": "string",
+          "defaultValue": "default",
+          "disabledValue": "disabled",
+          "useDefaultWhenDisabled": true,
+          "requiredFeatures": ["disabledFeature"]
+        },
+        "orderedOverrides": {
+          "type": "string",
+          "defaultValue": "default",
+          "overrides": [
+            {
+              "key": "blocked",
+              "segments": "*",
+              "requiredFeatures": ["disabledFeature"],
+              "value": "blocked"
+            },
+            {
+              "key": "nl-pro",
+              "segments": ["netherlands"],
+              "conditions": {
+                "attribute": "plan",
+                "operator": "equals",
+                "value": "pro"
+              },
+              "requiredFeatures": ["enabledFeature"],
+              "value": "matched"
+            },
+            { "key": "catch-all", "segments": "*", "value": "fallback" }
+          ]
+        }
+      }
+    },
+    "cases": [
+      { "key": "stringValue", "expectedValue": "hello", "expectedReason": "variable_default" },
+      { "key": "integerValue", "expectedValue": 1, "expectedReason": "variable_default" },
+      { "key": "doubleValue", "expectedValue": 1.5, "expectedReason": "variable_default" },
+      { "key": "booleanValue", "expectedValue": true, "expectedReason": "variable_default" },
+      { "key": "arrayValue", "expectedValue": ["one", "two"], "expectedReason": "variable_default" },
+      { "key": "objectValue", "expectedValue": { "enabled": true }, "expectedReason": "variable_default" },
+      { "key": "jsonValue", "expectedValue": "{\"enabled\":true}", "expectedReason": "variable_default" },
+      { "key": "requiredDisabled", "expectedValue": "disabled", "expectedReason": "required_features_unmet" },
+      { "key": "requiredMissingValue", "expectedReason": "required_features_unmet" },
+      { "key": "requiredMissingValue", "defaultVariableValue": "caller", "expectedValue": "caller", "expectedReason": "required_features_unmet" },
+      { "key": "requiredUsesDefault", "expectedValue": "default", "expectedReason": "required_features_unmet" },
+      { "key": "orderedOverrides", "context": { "userId": "1", "country": "nl", "plan": "pro" }, "expectedValue": "matched", "expectedReason": "variable_override_rule", "expectedOverrideKey": "nl-pro" },
+      { "key": "orderedOverrides", "context": { "userId": "1", "country": "de", "plan": "pro" }, "expectedValue": "fallback", "expectedReason": "variable_override_rule", "expectedOverrideKey": "catch-all" },
+      { "key": "absent", "stickyVariables": { "absent": "sticky" }, "expectedValue": "sticky", "expectedReason": "sticky" }
+    ]
   },
   "diagnostics": {
     "requiredFields": ["level", "code", "message", "details"],

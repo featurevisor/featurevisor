@@ -1,4 +1,6 @@
 import type { DatafileContent } from "@featurevisor/types";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { createFeaturevisor } from "./instance";
 import type { FeaturevisorModule } from "./modules";
@@ -80,7 +82,11 @@ function datafile(): DatafileContent {
   };
 }
 
-describe("top-level variables", () => {
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
+
+describe("global variables", () => {
   it("preserves feature-scoped calls and disambiguates by argument shape", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
 
@@ -93,7 +99,7 @@ describe("top-level variables", () => {
 
     const nl = f.evaluateVariable("supportEmail", { continent: "eu", country: "nl" });
     expect(nl.variableValue).toBe("help-nl@example.com");
-    expect(nl.reason).toBe("override_matched");
+    expect(nl.reason).toBe("variable_override_rule");
     expect(nl.overrideIndex).toBe(0);
     expect(nl.overrideKey).toBe("eu-nl");
     expect(f.getVariable("supportEmail", { continent: "eu", country: "be" })).toBe(
@@ -133,7 +139,7 @@ describe("top-level variables", () => {
     expect(f.getVariable<{ colour: string }>("config")).toEqual({ colour: "blue" });
     expect(f.evaluateVariable("supportEmail")).toEqual(
       expect.objectContaining({
-        type: "top_level_variable",
+        type: "variable",
         reason: "sticky",
         variableKey: "supportEmail",
         variableValue: "sticky@example.com",
@@ -141,12 +147,12 @@ describe("top-level variables", () => {
     );
   });
 
-  it("updates parent sticky variables and exposes top-level keys", () => {
+  it("updates parent sticky variables and exposes global keys", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const listener = jest.fn();
     f.on("sticky_variables_set", listener);
 
-    expect(f.getTopLevelVariableKeys()).toContain("supportEmail");
+    expect(f.getGlobalVariableKeys()).toContain("supportEmail");
     f.setStickyVariables({ supportEmail: "first@example.com" });
     f.setStickyVariables({ gated: "replacement" }, true);
 
@@ -164,7 +170,7 @@ describe("top-level variables", () => {
     expect(config).toEqual({ colour: "blue" });
   });
 
-  it("supports every typed convenience method for top-level variables", () => {
+  it("supports every typed convenience method for global variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
 
     expect(f.getVariableBoolean("enabled")).toBe(true);
@@ -184,11 +190,11 @@ describe("top-level variables", () => {
       before,
       after,
       beforeEvaluation: (options) =>
-        options.type === "top_level_variable"
+        !("featureKey" in options)
           ? { ...options, context: { ...options.context, continent: "eu" } }
           : options,
       afterEvaluation: (evaluation) =>
-        evaluation.type === "top_level_variable"
+        !evaluation.featureKey
           ? { ...evaluation, variableValue: `${evaluation.variableValue}!` }
           : evaluation,
     };
@@ -216,7 +222,7 @@ describe("top-level variables", () => {
     });
 
     expect(f.evaluateVariable("supportEmail")).toEqual(
-      expect.objectContaining({ reason: "error", source: "top_level" }),
+      expect.objectContaining({ type: "variable", reason: "error", variableKey: "supportEmail" }),
     );
     expect(
       createFeaturevisor({ logLevel: "fatal" }).getVariable(
@@ -229,6 +235,37 @@ describe("top-level variables", () => {
     ).toBe("fallback");
   });
 
+  it("supports the explicit global variable accessor", () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    expect(f.getGlobalVariable<string>("supportEmail")).toBe("help@example.com");
+    const evaluation = f.evaluateGlobalVariable("supportEmail");
+    expect(evaluation).toEqual(
+      expect.objectContaining({
+        type: "variable",
+        variableKey: "supportEmail",
+        reason: "variable_default",
+      }),
+    );
+    expect(evaluation).not.toHaveProperty("featureKey");
+  });
+
+  it("executes the global variable conformance contract", () => {
+    expect(conformance.version).toBe(3);
+    for (const testCase of conformance.globalVariables.cases) {
+      const f = createFeaturevisor({
+        datafile: conformance.globalVariables.datafile,
+        stickyVariables: testCase.stickyVariables,
+        logLevel: "fatal",
+      });
+      const evaluation = f.evaluateGlobalVariable(testCase.key, testCase.context || {}, {
+        defaultVariableValue: testCase.defaultVariableValue,
+      });
+      expect(evaluation.variableValue).toEqual(testCase.expectedValue);
+      expect(evaluation.reason).toBe(testCase.expectedReason);
+      expect(evaluation.overrideKey).toBe(testCase.expectedOverrideKey);
+    }
+  });
+
   it("supports child sticky values and change events for variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const child = f.spawn({}, { stickyVariables: { supportEmail: "child@example.com" } });
@@ -236,6 +273,7 @@ describe("top-level variables", () => {
     child.on("sticky_variables_set", listener);
 
     expect(child.getVariable("supportEmail")).toBe("child@example.com");
+    expect(child.getGlobalVariable<string>("supportEmail")).toBe("child@example.com");
     child.setStickyVariables({ supportEmail: "changed@example.com" });
     expect(child.getVariable("supportEmail")).toBe("changed@example.com");
     expect(child.getVariableString("supportEmail")).toBe("changed@example.com");

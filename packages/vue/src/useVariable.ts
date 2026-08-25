@@ -1,7 +1,7 @@
 import type {
   Context,
   FeatureKey,
-  TopLevelVariableKey,
+  GlobalVariableKey,
   VariableKey,
   VariableValue,
 } from "@featurevisor/types";
@@ -19,11 +19,11 @@ export function useVariable<TValue = VariableValue>(
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  variableKey: TopLevelVariableKey,
+  variableKey: GlobalVariableKey,
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
   variableKeyOrContext: VariableKey | Context = {},
   context: Context = {},
 ): TValue | null {
@@ -32,4 +32,12 @@ export function useVariable<TValue = VariableValue>(
   return typeof variableKeyOrContext === "string"
     ? sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, context)
     : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext);
+}
+
+/** Explicit form of the global variable overload. */
+export function useGlobalVariable<TValue = VariableValue>(
+  variableKey: GlobalVariableKey,
+  context: Context = {},
+): TValue | null {
+  return useVariable<TValue>(variableKey, context);
 }

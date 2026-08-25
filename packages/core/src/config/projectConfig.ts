@@ -69,6 +69,7 @@ export interface ProjectConfig {
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
+  allowFeatureAndVariableKeyCollisions?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -92,6 +93,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
     stringify: true,
+    allowFeatureAndVariableKeyCollisions: false,
 
     adapter: FilesystemAdapter,
 
@@ -146,6 +148,12 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
+  }
+
+  if (typeof finalConfig.allowFeatureAndVariableKeyCollisions !== "boolean") {
+    throw new Error(
+      `Invalid allowFeatureAndVariableKeyCollisions: ${finalConfig.allowFeatureAndVariableKeyCollisions}. It must be a boolean.`,
+    );
   }
 
   if (typeof finalConfig.environments !== "undefined") {

@@ -770,7 +770,7 @@ describe("sdk: instance", function () {
             const { featureKey, variableKey } = options;
 
             intercepted = true;
-            interceptedFeatureKey = featureKey;
+            interceptedFeatureKey = featureKey || "";
             interceptedVariableKey = variableKey;
 
             return options;
@@ -825,7 +825,7 @@ describe("sdk: instance", function () {
             const { featureKey, variableKey } = options;
 
             intercepted = true;
-            interceptedFeatureKey = featureKey;
+            interceptedFeatureKey = featureKey || "";
             interceptedVariableKey = variableKey;
 
             options.variationValue = "control_intercepted"; // manipulating value here

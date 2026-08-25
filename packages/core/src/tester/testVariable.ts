@@ -55,7 +55,10 @@ export async function testVariable(
       defaultVariableValue: assertion.defaultVariableValue,
     });
 
-    if (!valuesAreEqual(assertion.expectedValue, evaluation.variableValue)) {
+    if (
+      typeof assertion.expectedValue !== "undefined" &&
+      !valuesAreEqual(assertion.expectedValue, evaluation.variableValue)
+    ) {
       assertionResult.passed = false;
       result.passed = false;
       assertionResult.errors!.push({

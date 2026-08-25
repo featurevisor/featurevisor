@@ -30,7 +30,7 @@ function parse(value: unknown) {
   return getVariableZodSchema(config, attributes, ["europe"], features, schemas).safeParse(value);
 }
 
-describe("top-level variable schema", () => {
+describe("global variable schema", () => {
   it("accepts inline and referenced schemas with environment overrides", () => {
     expect(
       parse({

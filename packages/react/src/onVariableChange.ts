@@ -1,9 +1,9 @@
 import { Featurevisor } from "@featurevisor/sdk";
-import type { TopLevelVariableKey } from "@featurevisor/types";
+import type { GlobalVariableKey } from "@featurevisor/types";
 
 export function onVariableChange(
   sdk: Featurevisor,
-  variableKey: TopLevelVariableKey,
+  variableKey: GlobalVariableKey,
   fn: () => void,
 ) {
   const unsubscribeDatafileSet = sdk.on("datafile_set", ({ features, variables }) => {

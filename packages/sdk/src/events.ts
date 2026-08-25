@@ -1,11 +1,11 @@
-import type { FeatureKey, TopLevelVariableKey } from "@featurevisor/types";
+import type { FeatureKey, GlobalVariableKey } from "@featurevisor/types";
 
 import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 
 /** @deprecated Use `StickyFeaturesSetEventDetails` or `StickyVariablesSetEventDetails`. */
 export interface StickySetEventDetails {
   features: FeatureKey[];
-  variables: TopLevelVariableKey[];
+  variables: GlobalVariableKey[];
   replaced: boolean;
 }
 
@@ -15,7 +15,7 @@ export interface StickyFeaturesSetEventDetails {
 }
 
 export interface StickyVariablesSetEventDetails {
-  variables: TopLevelVariableKey[];
+  variables: GlobalVariableKey[];
   replaced: boolean;
 }
 
@@ -24,7 +24,7 @@ export interface DatafileSetEventDetails {
   previousRevision: string;
   revisionChanged: boolean;
   features: FeatureKey[];
-  variables: TopLevelVariableKey[];
+  variables: GlobalVariableKey[];
   replaced: boolean;
 }
 
@@ -42,7 +42,11 @@ export interface EventDetailsByName {
   context_set: ContextSetEventDetails;
   sticky_features_set: StickyFeaturesSetEventDetails;
   sticky_variables_set: StickyVariablesSetEventDetails;
-  /** @deprecated Use `sticky_features_set` or `sticky_variables_set`. */
+  /**
+   * @deprecated Use `sticky_features_set` or `sticky_variables_set`.
+   * Variable updates emit this event with an empty `features` array. That does
+   * not mean sticky features were cleared.
+   */
   sticky_set: StickySetEventDetails;
   error: ErrorEventDetails;
 }

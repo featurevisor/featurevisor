@@ -20,7 +20,7 @@ import type {
   DatafileVariable,
   Required,
   StickyVariables,
-  TopLevelVariableKey,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import type {
@@ -33,8 +33,7 @@ import type {
   Evaluation,
   EvaluateDependencies,
   ForceResult,
-  TopLevelVariableEvaluation,
-  TopLevelVariableEvaluateOptions,
+  GlobalVariableEvaluateOptions,
 } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
@@ -133,7 +132,7 @@ function getDatafileSetEventDetails(
   const features: FeatureKey[] = [];
   const previousVariableKeys = Object.keys(previousDatafile.variables || {});
   const newVariableKeys = Object.keys(newDatafile.variables || {});
-  const variables: TopLevelVariableKey[] = [];
+  const variables: GlobalVariableKey[] = [];
 
   for (const previousFeatureKey of previousFeatureKeys) {
     if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
@@ -417,11 +416,11 @@ export class Featurevisor {
     return Object.keys(this.datafile.features);
   }
 
-  getTopLevelVariable(variableKey: TopLevelVariableKey): DatafileVariable | undefined {
+  getGlobalVariableDefinition(variableKey: GlobalVariableKey): DatafileVariable | undefined {
     return this.datafile.variables?.[variableKey];
   }
 
-  getTopLevelVariableKeys(): TopLevelVariableKey[] {
+  getGlobalVariableKeys(): GlobalVariableKey[] {
     return Object.keys(this.datafile.variables || {});
   }
 
@@ -877,13 +876,13 @@ export class Featurevisor {
     });
   }
 
-  private evaluateTopLevelVariable(
-    variableKey: TopLevelVariableKey,
+  evaluateGlobalVariable(
+    variableKey: GlobalVariableKey,
     context: Context = {},
     options: InternalOverrideOptions = {},
-  ): TopLevelVariableEvaluation {
-    let evaluationOptions: TopLevelVariableEvaluateOptions = {
-      type: "top_level_variable",
+  ): Evaluation {
+    let evaluationOptions: GlobalVariableEvaluateOptions = {
+      type: "variable",
       variableKey,
       context: this.getContext(context),
       defaultVariableValue: options.defaultVariableValue,
@@ -894,15 +893,14 @@ export class Featurevisor {
         if (module.beforeEvaluation) {
           evaluationOptions = module.beforeEvaluation(
             evaluationOptions,
-          ) as TopLevelVariableEvaluateOptions;
+          ) as GlobalVariableEvaluateOptions;
         }
       }
 
       const resolvedVariableKey = evaluationOptions.variableKey;
-      const variable = this.getTopLevelVariable(resolvedVariableKey);
-      let evaluation: TopLevelVariableEvaluation = {
-        type: "top_level_variable",
-        source: "top_level",
+      const variable = this.getGlobalVariableDefinition(resolvedVariableKey);
+      let evaluation: Evaluation = {
+        type: "variable",
         variableKey: resolvedVariableKey,
         reason: "variable_not_found",
       };
@@ -961,7 +959,7 @@ export class Featurevisor {
 
             evaluation = {
               ...evaluation,
-              reason: "override_matched",
+              reason: "variable_override_rule",
               variable,
               variableValue: override.value,
               overrideIndex: index,
@@ -973,7 +971,7 @@ export class Featurevisor {
           if (evaluation.reason === "variable_not_found") {
             evaluation = {
               ...evaluation,
-              reason: "default_value",
+              reason: "variable_default",
               variable,
               variableValue: variable.defaultValue,
             };
@@ -999,24 +997,20 @@ export class Featurevisor {
 
       for (const module of this.modules) {
         if (module.afterEvaluation) {
-          evaluation = module.afterEvaluation(
-            evaluation,
-            evaluationOptions,
-          ) as TopLevelVariableEvaluation;
+          evaluation = module.afterEvaluation(evaluation, evaluationOptions) as Evaluation;
         }
       }
 
       this.reportDiagnostic({
         level: "debug",
         code: evaluation.reason,
-        message: "Top-level variable evaluated",
+        message: "Global variable evaluated",
         details: { ...evaluation },
       });
       return evaluation;
     } catch (error) {
-      const evaluation: TopLevelVariableEvaluation = {
-        type: "top_level_variable",
-        source: "top_level",
+      const evaluation: Evaluation = {
+        type: "variable",
         variableKey: evaluationOptions.variableKey,
         reason: "error",
         error: error instanceof Error ? error : new Error(String(error)),
@@ -1024,7 +1018,7 @@ export class Featurevisor {
       this.reportDiagnostic({
         level: "error",
         code: "evaluation_error",
-        message: "Top-level variable evaluation failed",
+        message: "Global variable evaluation failed",
         originalError: error,
         details: { ...evaluation },
       });
@@ -1121,18 +1115,18 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): Evaluation;
   evaluateVariable(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
-  ): TopLevelVariableEvaluation;
+  ): Evaluation;
   evaluateVariable(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: VariableKey | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
-  ): Evaluation | TopLevelVariableEvaluation {
+  ): Evaluation {
     if (typeof variableKeyOrContext !== "string") {
-      return this.evaluateTopLevelVariable(
+      return this.evaluateGlobalVariable(
         featureKeyOrVariableKey,
         variableKeyOrContext,
         contextOrOptions as InternalOverrideOptions,
@@ -1163,12 +1157,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): TValue | null;
   getVariable<TValue = VariableValue>(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): TValue | null;
   getVariable<TValue = VariableValue>(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1186,9 +1180,7 @@ export class Featurevisor {
 
       if (typeof evaluation.variableValue !== "undefined") {
         if (
-          ((evaluation.type !== "top_level_variable" &&
-            evaluation.variableSchema?.type === "json") ||
-            (evaluation.type === "top_level_variable" && evaluation.variable?.type === "json")) &&
+          (evaluation.variableSchema?.type === "json" || evaluation.variable?.type === "json") &&
           typeof evaluation.variableValue === "string"
         ) {
           return JSON.parse(evaluation.variableValue) as TValue;
@@ -1218,6 +1210,20 @@ export class Featurevisor {
     }
   }
 
+  /**
+   * Explicitly evaluates a global variable.
+   *
+   * This is equivalent to the two argument `getVariable(variableKey, context)`
+   * overload and gives SDK ports without method overloading a shared API name.
+   */
+  getGlobalVariable<TValue = VariableValue>(
+    variableKey: GlobalVariableKey,
+    context: Context = {},
+    options: OverrideOptions = {},
+  ): TValue | null {
+    return this.getVariable<TValue>(variableKey, context, options);
+  }
+
   getVariableBoolean(
     featureKey: FeatureKey,
     variableKey: string,
@@ -1225,12 +1231,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): boolean | null;
   getVariableBoolean(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): boolean | null;
   getVariableBoolean(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1259,12 +1265,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): string | null;
   getVariableString(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): string | null;
   getVariableString(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1293,12 +1299,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): number | null;
   getVariableInteger(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): number | null;
   getVariableInteger(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1327,12 +1333,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): number | null;
   getVariableDouble(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): number | null;
   getVariableDouble(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1365,12 +1371,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): T[] | null;
   getVariableArray<T = string>(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T[] | null;
   getVariableArray<T = string>(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1400,12 +1406,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): T | null;
   getVariableObject<T = ObjectValue>(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T | null;
   getVariableObject<T = ObjectValue>(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1435,12 +1441,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): T | null;
   getVariableJSON<T = VariableValue>(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T | null;
   getVariableJSON<T = VariableValue>(
-    featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},

@@ -3,7 +3,7 @@ import type { EnvironmentKey, Required, Tag, VariableType, VariableValue } from 
 import type { Schema, SchemaKey } from "./schema";
 import type { GroupSegment } from "./segment";
 
-export type TopLevelVariableKey = string;
+export type GlobalVariableKey = string;
 
 export interface ParsedVariableOverride {
   key: string;
@@ -53,4 +53,4 @@ export interface DatafileVariable {
   overrides?: DatafileVariableOverride[];
 }
 
-export type StickyVariables = Record<TopLevelVariableKey, VariableValue>;
+export type StickyVariables = Record<GlobalVariableKey, VariableValue>;

@@ -32,7 +32,7 @@ const f = createFeaturevisor({ datafile })
 | `datafile`     | Datafile content (object or JSON string). Can also be set later.            |
 | `context`      | Initial [context](#context) values                                          |
 | `stickyFeatures` | Per-feature overrides consulted before evaluation (see [Sticky](#sticky)) |
-| `stickyVariables` | Top-level variable overrides consulted before evaluation                  |
+| `stickyVariables` | Global variable overrides consulted before evaluation                     |
 | `logLevel`     | `fatal` \| `error` \| `warn` \| `info` (default) \| `debug`                 |
 | `onDiagnostic` | Custom handler instead of console output (see [Diagnostics](#diagnostics))  |
 | `modules`      | Evaluation interceptors (see [Modules](#modules) and [tracking.md](tracking.md)) |
@@ -76,8 +76,8 @@ if (variation === 'treatment') { /* ... */ }
 // variable — typed value or null (remote config)
 const methods = f.getVariable('checkout', 'paymentMethods')
 
-// top-level variable — no feature key
-const supportEmail = f.getVariable('supportEmail', { country: 'nl' })
+// global variable, with no feature key
+const supportEmail = f.getGlobalVariable('supportEmail', { country: 'nl' })
 ```
 
 Type-specific variable getters return `null` when the stored value doesn't match the requested type (no coercion — `"1"` is not an integer, `"true"` is not a boolean):
@@ -92,7 +92,7 @@ f.getVariableObject<T>(featureKey, variableKey, context?)
 f.getVariableJSON<T>(featureKey, variableKey, context?)
 ```
 
-Every type-specific getter also accepts `(topLevelVariableKey, context?)`.
+Every type-specific getter also accepts `(globalVariableKey, context?)`. The shorter `getVariable(globalVariableKey, context?)` overload is also available.
 
 Namespaced features use the full key with the project's separator (default `.`): `f.isEnabled('checkout.promo')`.
 
@@ -124,10 +124,10 @@ Useful for passing a server-evaluated snapshot to the frontend, which can then f
 const evaluation = f.evaluateFlag('checkout', context)
 const evaluation = f.evaluateVariation('checkout', context)
 const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
-const topLevelEvaluation = f.evaluateVariable('supportEmail', context)
+const globalEvaluation = f.evaluateGlobalVariable('supportEmail', context)
 ```
 
-Every evaluation object has `featureKey`, `type`, and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
+Every evaluation object has `type` and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. Feature evaluations have `featureKey`; global variable evaluations use `type: "variable"` without it. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
 
 ### Inspecting the loaded datafile
 
@@ -138,7 +138,7 @@ f.getFeatureKeys()            // every feature key present in the datafile
 f.getFeature('checkout')      // raw definition, or undefined
 f.getSegment('countries.netherlands')
 f.getVariableKeys('checkout')          // feature variables
-f.getTopLevelVariableKeys()            // top-level variables
+f.getGlobalVariableKeys()              // global variables
 f.hasVariations('checkout')
 ```
 
@@ -151,7 +151,7 @@ f.setDatafile(datafile)        // merge (default)
 f.setDatafile(datafile, true)  // replace
 ```
 
-**Merging is the default**: incoming features, segments, and top-level variables override matching keys, missing ones are kept, and `revision` comes from the incoming datafile. This enables loading multiple [target](targets.md) datafiles on demand into one instance:
+**Merging is the default**: incoming features, segments, and global variables override matching keys, missing ones are kept, and `revision` comes from the incoming datafile. This enables loading multiple [target](targets.md) datafiles on demand into one instance:
 
 ```js
 const f = createFeaturevisor({})
@@ -300,7 +300,7 @@ const f = createFeaturevisor({
 
 Sticky is consulted before the datafile, so this works for every evaluation method. For closer-to-production tests, generate a real datafile from the project (`npx featurevisor build --environment=<env> --print`) and pass it as `datafile`. Note this tests *your app's branching*; the project's own rules are tested with spec files in the project repo ([testing.md](testing.md)).
 
-The older `sticky` option, `setSticky` method, and `sticky_set` event are deprecated compatibility aliases. Prefer the feature and variable specific names.
+The older `sticky` option, `setSticky` method, and `sticky_set` event are deprecated compatibility aliases. Prefer the feature and variable specific names. A `sticky_set` event caused by `setStickyVariables` has `features: []`; it does not mean sticky features were cleared.
 
 ## Diagnostics
 

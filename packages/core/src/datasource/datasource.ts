@@ -16,7 +16,7 @@ import type {
   Target,
   TargetKey,
   ParsedVariable,
-  TopLevelVariableKey,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import { getProjectConfigForSet, ProjectConfig } from "../config";
@@ -236,29 +236,29 @@ export class Datasource {
     return this.adapter.deleteEntity("schema", schemaKey);
   }
 
-  // top-level variables
+  // global variables
   listVariables() {
     return this.adapter.listEntities("variable");
   }
 
-  variableExists(variableKey: TopLevelVariableKey) {
+  variableExists(variableKey: GlobalVariableKey) {
     return this.adapter.entityExists("variable", variableKey);
   }
 
-  readVariable(variableKey: TopLevelVariableKey) {
+  readVariable(variableKey: GlobalVariableKey) {
     return this.adapter.readEntity<ParsedVariable>("variable", variableKey);
   }
 
-  writeVariable(variableKey: TopLevelVariableKey, variable: ParsedVariable) {
+  writeVariable(variableKey: GlobalVariableKey, variable: ParsedVariable) {
     return this.adapter.writeEntity<ParsedVariable>("variable", variableKey, variable);
   }
 
-  deleteVariable(variableKey: TopLevelVariableKey) {
+  deleteVariable(variableKey: GlobalVariableKey) {
     return this.adapter.deleteEntity("variable", variableKey);
   }
 
   async getRequiredFeaturesChainForVariable(
-    variableKey: TopLevelVariableKey,
+    variableKey: GlobalVariableKey,
   ): Promise<Set<FeatureKey>> {
     if (!(await this.variableExists(variableKey))) {
       throw new Error(`Variable not found: ${variableKey}`);

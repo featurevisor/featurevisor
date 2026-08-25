@@ -36,7 +36,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
 }
 
 function getSchema(projectConfig = minimalProjectConfig()) {
-  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"]);
+  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"], ["settings"]);
 }
 
 function parseTest(input: unknown): z.ZodSafeParseResult<unknown> {
@@ -66,6 +66,25 @@ function expectTestFailure(input: unknown, messageSubstring: string): z.ZodError
 }
 
 describe("testSchema.ts :: getTestsZodSchema", () => {
+  it("requires at least one global variable expectation", () => {
+    expectTestSuccess({
+      variable: "settings",
+      assertions: [
+        {
+          environment: "production",
+          expectedEvaluation: { reason: "variable_default" },
+        },
+      ],
+    });
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production" }],
+      },
+      "Expected at least one of expectedValue or expectedEvaluation",
+    );
+  });
+
   it("accepts a valid feature test with matrix, context, sticky, and expected evaluations", () => {
     expectTestSuccess({
       feature: "checkout",

@@ -1,8 +1,7 @@
 import {
   createFeaturevisor,
   type Context,
-  type EvaluationResult,
-  type TopLevelVariableEvaluation,
+  type Evaluation,
   type Featurevisor,
   type FeaturevisorOptions,
   type VariableValue,
@@ -32,7 +31,7 @@ export interface FeaturevisorProviderOptions extends FeaturevisorOptions {
   targetingKeyField?: string;
   keySeparator?: string;
   variationKey?: string;
-  topLevelVariableKey?: string;
+  globalVariableKey?: string;
   onTrack?: FeaturevisorProviderTrackingHandler;
 }
 
@@ -77,11 +76,10 @@ function asContext(context: EvaluationContext, targetingKeyField: string): Conte
   return result;
 }
 
-function reasonFor(evaluation: EvaluationResult): string {
+function reasonFor(evaluation: Evaluation): string {
   if (errorReasons.has(evaluation.reason)) return StandardResolutionReasons.ERROR;
   if (targetingReasons.has(evaluation.reason)) return StandardResolutionReasons.TARGETING_MATCH;
   if (evaluation.reason === "allocated") return StandardResolutionReasons.SPLIT;
-  if (evaluation.reason === "override_matched") return StandardResolutionReasons.TARGETING_MATCH;
   if (evaluation.reason === "required_features_unmet") return StandardResolutionReasons.DISABLED;
   if (
     evaluation.reason === "disabled" ||
@@ -93,33 +91,28 @@ function reasonFor(evaluation: EvaluationResult): string {
   return StandardResolutionReasons.DEFAULT;
 }
 
-function metadataFor(evaluation: EvaluationResult, featurevisor: Featurevisor): FlagMetadata {
+function metadataFor(evaluation: Evaluation, featurevisor: Featurevisor): FlagMetadata {
   const metadata: FlagMetadata = {
     featurevisorReason: evaluation.reason,
     schemaVersion: featurevisor.getSchemaVersion(),
   };
-  if ("featureKey" in evaluation) metadata.featureKey = evaluation.featureKey;
-  if (evaluation.type === "top_level_variable") metadata.source = evaluation.source;
+  if (evaluation.featureKey) metadata.featureKey = evaluation.featureKey;
   const revision = featurevisor.getRevision();
   if (revision) metadata.revision = revision;
   if (evaluation.variableKey) metadata.variableKey = evaluation.variableKey;
-  if ("ruleKey" in evaluation && evaluation.ruleKey) metadata.ruleKey = evaluation.ruleKey;
-  if ("bucketKey" in evaluation && evaluation.bucketKey) metadata.bucketKey = evaluation.bucketKey;
-  if ("bucketValue" in evaluation && typeof evaluation.bucketValue === "number")
-    metadata.bucketValue = evaluation.bucketValue;
-  if ("forceIndex" in evaluation && typeof evaluation.forceIndex === "number")
-    metadata.forceIndex = evaluation.forceIndex;
-  if ("variableOverrideIndex" in evaluation && typeof evaluation.variableOverrideIndex === "number")
+  if (evaluation.ruleKey) metadata.ruleKey = evaluation.ruleKey;
+  if (evaluation.bucketKey) metadata.bucketKey = evaluation.bucketKey;
+  if (typeof evaluation.bucketValue === "number") metadata.bucketValue = evaluation.bucketValue;
+  if (typeof evaluation.forceIndex === "number") metadata.forceIndex = evaluation.forceIndex;
+  if (typeof evaluation.variableOverrideIndex === "number")
     metadata.variableOverrideIndex = evaluation.variableOverrideIndex;
-  if (evaluation.type === "top_level_variable") {
-    if (typeof evaluation.overrideIndex === "number")
-      metadata.variableOverrideIndex = evaluation.overrideIndex;
-    if (evaluation.overrideKey) metadata.variableOverrideKey = evaluation.overrideKey;
-  }
+  if (typeof evaluation.overrideIndex === "number")
+    metadata.variableOverrideIndex = evaluation.overrideIndex;
+  if (evaluation.overrideKey) metadata.variableOverrideKey = evaluation.overrideKey;
   return metadata;
 }
 
-function errorCodeFor(evaluation: EvaluationResult): ErrorCode | undefined {
+function errorCodeFor(evaluation: Evaluation): ErrorCode | undefined {
   if (evaluation.reason === "feature_not_found") return ErrorCode.FLAG_NOT_FOUND;
   if (evaluation.reason === "error") return ErrorCode.GENERAL;
   if (evaluation.reason === "variable_not_found" || evaluation.reason === "no_variations") {
@@ -128,16 +121,16 @@ function errorCodeFor(evaluation: EvaluationResult): ErrorCode | undefined {
   return undefined;
 }
 
-function errorMessageFor(evaluation: EvaluationResult): string | undefined {
+function errorMessageFor(evaluation: Evaluation): string | undefined {
   if (evaluation.error) return evaluation.error.message;
   if (evaluation.reason === "feature_not_found")
-    return `Feature \"${"featureKey" in evaluation ? evaluation.featureKey : ""}\" was not found`;
+    return `Feature \"${evaluation.featureKey || ""}\" was not found`;
   if (evaluation.reason === "variable_not_found")
-    return evaluation.type === "top_level_variable"
-      ? `Top-level variable \"${evaluation.variableKey}\" was not found`
-      : `Variable \"${evaluation.variableKey}\" was not found for feature \"${evaluation.featureKey}\"`;
+    return evaluation.featureKey
+      ? `Variable \"${evaluation.variableKey}\" was not found for feature \"${evaluation.featureKey}\"`
+      : `Global variable \"${evaluation.variableKey}\" was not found`;
   if (evaluation.reason === "no_variations")
-    return `Feature \"${"featureKey" in evaluation ? evaluation.featureKey : ""}\" has no variations`;
+    return `Feature \"${evaluation.featureKey || ""}\" has no variations`;
   return undefined;
 }
 
@@ -153,7 +146,7 @@ export class FeaturevisorProvider {
   readonly targetingKeyField: string;
   readonly keySeparator: string;
   readonly variationKey: string;
-  readonly topLevelVariableKey: string;
+  readonly globalVariableKey: string;
   private readonly onTrack?: FeaturevisorProviderTrackingHandler;
   private readonly ownsFeaturevisor: boolean;
   private datafileError?: string;
@@ -164,7 +157,7 @@ export class FeaturevisorProvider {
       targetingKeyField,
       keySeparator,
       variationKey,
-      topLevelVariableKey,
+      globalVariableKey,
       onTrack,
       ...featurevisorOptions
     } = options;
@@ -185,7 +178,7 @@ export class FeaturevisorProvider {
     this.targetingKeyField = targetingKeyField || "userId";
     this.keySeparator = keySeparator || ":";
     this.variationKey = variationKey || "variation";
-    this.topLevelVariableKey = topLevelVariableKey || "variable";
+    this.globalVariableKey = globalVariableKey || "variable";
     this.onTrack = onTrack;
   }
 
@@ -209,7 +202,7 @@ export class FeaturevisorProvider {
       separatorIndex === -1 ? undefined : flagKey.slice(separatorIndex + this.keySeparator.length);
     const featurevisorContext = asContext(context, this.targetingKeyField);
 
-    let evaluation: EvaluationResult;
+    let evaluation: Evaluation;
     let value: unknown;
 
     if (!selector) {
@@ -219,9 +212,9 @@ export class FeaturevisorProvider {
     } else if (selector === this.variationKey) {
       evaluation = this.featurevisor.evaluateVariation(featureKey, featurevisorContext);
       value = evaluation.variationValue ?? evaluation.variation?.value;
-    } else if (selector === this.topLevelVariableKey) {
-      evaluation = this.featurevisor.evaluateVariable(featureKey, featurevisorContext);
-      value = this.normalizeTopLevelVariable(evaluation);
+    } else if (selector === this.globalVariableKey) {
+      evaluation = this.featurevisor.evaluateGlobalVariable(featureKey, featurevisorContext);
+      value = this.normalizeGlobalVariable(evaluation);
     } else {
       evaluation = this.featurevisor.evaluateVariable(featureKey, selector, featurevisorContext);
       value = this.normalizeVariable(evaluation.variableValue, evaluation.variableSchema?.type);
@@ -233,7 +226,7 @@ export class FeaturevisorProvider {
       flagMetadata: metadataFor(evaluation, this.featurevisor),
     };
     if (
-      evaluation.type !== "top_level_variable" &&
+      evaluation.featureKey &&
       (typeof evaluation.variationValue !== "undefined" || evaluation.variation)
     ) {
       result.variant = String(evaluation.variationValue ?? evaluation.variation?.value);
@@ -272,7 +265,7 @@ export class FeaturevisorProvider {
     return value;
   }
 
-  private normalizeTopLevelVariable(evaluation: TopLevelVariableEvaluation): unknown {
+  private normalizeGlobalVariable(evaluation: Evaluation): unknown {
     return this.normalizeVariable(evaluation.variableValue, evaluation.variable?.type);
   }
 

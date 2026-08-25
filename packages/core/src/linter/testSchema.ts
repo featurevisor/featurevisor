@@ -226,10 +226,21 @@ export function getTestsZodSchema(
               stickyVariables: z.record(z.string(), z.unknown()).optional(),
               context: z.record(z.string(), z.unknown()).optional(),
               defaultVariableValue: z.unknown().optional(),
-              expectedValue: z.unknown(),
+              expectedValue: z.unknown().optional(),
               expectedEvaluation: z.record(z.string(), z.any()).optional(),
             })
-            .strict(),
+            .strict()
+            .superRefine((assertion, ctx) => {
+              if (
+                typeof assertion.expectedValue === "undefined" &&
+                typeof assertion.expectedEvaluation === "undefined"
+              ) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "Expected at least one of expectedValue or expectedEvaluation",
+                });
+              }
+            }),
         )
         .superRefine(validateAssertionKeys),
     })

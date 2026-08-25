@@ -152,7 +152,7 @@ describe("Featurevisor OpenFeature mapping", () => {
     ).toBe("Hello");
   });
 
-  it("resolves top-level variables with default and custom selectors", () => {
+  it("resolves global variables with default and custom selectors", () => {
     const provider = new FeaturevisorProvider({ datafile: datafile() });
     expect(
       provider.resolve("supportEmail:variable", "fallback", { country: "nl" }, "string"),
@@ -161,7 +161,6 @@ describe("Featurevisor OpenFeature mapping", () => {
         value: "support-nl@example.com",
         reason: StandardResolutionReasons.TARGETING_MATCH,
         flagMetadata: expect.objectContaining({
-          source: "top_level",
           variableKey: "supportEmail",
           variableOverrideKey: "netherlands",
         }),
@@ -174,14 +173,14 @@ describe("Featurevisor OpenFeature mapping", () => {
     const custom = new FeaturevisorProvider({
       datafile: datafile(),
       keySeparator: "/",
-      topLevelVariableKey: "$variable",
+      globalVariableKey: "$variable",
     });
     expect(custom.resolve("supportEmail/$variable", "fallback", {}, "string").value).toBe(
       "support@example.com",
     );
   });
 
-  it("returns a standard not found error for missing top-level variables", () => {
+  it("returns a standard not found error for missing global variables", () => {
     const result = new FeaturevisorProvider({ datafile: datafile() }).resolve(
       "missing:variable",
       "fallback",

@@ -6,7 +6,7 @@ Full docs:
 - Deployment: <https://featurevisor.com/docs/deployment>
 - State files: <https://featurevisor.com/docs/state-files>
 
-Datafiles are the static JSON artifacts the SDKs consume. They contain selected features and top-level variables with their dependencies. They are produced per environment × target and generated with `schemaVersion: "2"`.
+Datafiles are the static JSON artifacts the SDKs consume. They contain selected features and global variables with their dependencies. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
 ## Two kinds of build
 
@@ -40,7 +40,7 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 | `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
 | `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
 | `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
-| `--variable=<key>`     | Print one top-level variable and its dependencies to stdout                                      |
+| `--variable=<key>`     | Print one global variable and its dependencies to stdout                                         |
 | `--environment=<env>`  | Limit to one environment                                                                         |
 | `--target=<target>`    | Build only this target; repeat to build several                                                   |
 | `--pretty`             | Pretty-print the output                                                                          |

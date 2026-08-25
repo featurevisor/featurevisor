@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type {
   Context,
   FeatureKey,
-  TopLevelVariableKey,
+  GlobalVariableKey,
   VariableKey,
   VariableValue,
 } from "@featurevisor/types";
@@ -25,19 +25,19 @@ export function useVariable<TValue = VariableValue>(
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  variableKey: TopLevelVariableKey,
+  variableKey: GlobalVariableKey,
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
   variableKeyOrContext: VariableKey | Context = EMPTY_CONTEXT,
   context: Context = EMPTY_CONTEXT,
 ): TValue | null {
   const sdk = useSdk();
-  const isTopLevel = typeof variableKeyOrContext !== "string";
-  const resolvedContext = isTopLevel ? variableKeyOrContext : context;
+  const isGlobal = typeof variableKeyOrContext !== "string";
+  const resolvedContext = isGlobal ? variableKeyOrContext : context;
   const evaluate = () =>
-    isTopLevel
+    isGlobal
       ? sdk.getVariable<TValue>(featureKeyOrVariableKey, resolvedContext)
       : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, resolvedContext);
   const [variableValue, setVariableValue] = useState<TValue | null>(() => evaluate());
@@ -49,7 +49,7 @@ export function useVariable<TValue = VariableValue>(
       const newValue = evaluate();
       setVariableValue((prev) => (newValue !== prev ? newValue : prev));
     };
-    const unsubscribe = isTopLevel
+    const unsubscribe = isGlobal
       ? onVariableChange(sdk, featureKeyOrVariableKey, onChange)
       : onFeatureChange(sdk, featureKeyOrVariableKey, onChange);
 
@@ -57,4 +57,12 @@ export function useVariable<TValue = VariableValue>(
   }, [sdk, featureKeyOrVariableKey, variableKeyOrContext, context]);
 
   return variableValue;
+}
+
+/** Explicit form of the global variable overload. */
+export function useGlobalVariable<TValue = VariableValue>(
+  variableKey: GlobalVariableKey,
+  context: Context = EMPTY_CONTEXT,
+): TValue | null {
+  return useVariable<TValue>(variableKey, context);
 }

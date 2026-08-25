@@ -571,7 +571,7 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   const variablesFileContent = `${formatTypeImport(
     [...variableSchemaTypesUsed].sort(),
     "./schemas",
-  )}export type TopLevelVariables = {\n${variableTypeEntries.join("\n")}\n};\n\nexport type TopLevelVariableKey = keyof TopLevelVariables;\nexport type TopLevelVariableType<K extends TopLevelVariableKey> = TopLevelVariables[K];\n`;
+  )}export type GlobalVariables = {\n${variableTypeEntries.join("\n")}\n};\n\nexport type GlobalVariableKey = keyof GlobalVariables;\nexport type GlobalVariableType<K extends GlobalVariableKey> = GlobalVariables[K];\n`;
   const variablesFilePath = path.join(outputPath, "variables.ts");
   fs.writeFileSync(variablesFilePath, variablesFileContent);
   console.log(
@@ -580,7 +580,7 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
 
   const functionsFileContent = `
 import { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
-import { TopLevelVariableKey, TopLevelVariableType } from "./variables";
+import { GlobalVariableKey, GlobalVariableType } from "./variables";
 import { Context } from "./context";
 import { getInstance } from "./instance";
 
@@ -600,18 +600,25 @@ export function getVariable<F extends FeatureKey, V extends FeatureVariableKey<F
   variableKey: V,
   context?: Context,
 ): FeatureVariableType<F, V> | null;
-export function getVariable<K extends TopLevelVariableKey>(
+export function getVariable<K extends GlobalVariableKey>(
   variableKey: K,
   context?: Context,
-): TopLevelVariableType<K> | null;
+): GlobalVariableType<K> | null;
 export function getVariable(
-  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
   variableKeyOrContext: string | Context = {},
   context: Context = {},
 ): unknown {
   return typeof variableKeyOrContext === "string"
     ? getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext, context)
     : getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext);
+}
+
+export function getGlobalVariable<K extends GlobalVariableKey>(
+  variableKey: K,
+  context: Context = {},
+): GlobalVariableType<K> | null {
+  return getInstance().getGlobalVariable<GlobalVariableType<K>>(variableKey, context);
 }
 `.trimStart();
   const functionsFilePath = path.join(outputPath, "functions.ts");
@@ -629,7 +636,7 @@ import {
 } from ${JSON.stringify(importReactPath)};
 
 import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
-import type { TopLevelVariableKey, TopLevelVariableType } from "./variables";
+import type { GlobalVariableKey, GlobalVariableType } from "./variables";
 import type { Context } from "./context";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
@@ -648,18 +655,25 @@ export function useVariable<F extends FeatureKey, V extends FeatureVariableKey<F
   variableKey: V,
   context?: Context,
 ): FeatureVariableType<F, V> | null;
-export function useVariable<K extends TopLevelVariableKey>(
+export function useVariable<K extends GlobalVariableKey>(
   variableKey: K,
   context?: Context,
-): TopLevelVariableType<K> | null;
+): GlobalVariableType<K> | null;
 export function useVariable(
-  featureKeyOrVariableKey: FeatureKey | TopLevelVariableKey,
+  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
   variableKeyOrContext: string | Context = {},
   context: Context = {},
 ): unknown {
   return typeof variableKeyOrContext === "string"
     ? useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext, context)
     : useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext);
+}
+
+export function useGlobalVariable<K extends GlobalVariableKey>(
+  variableKey: K,
+  context: Context = {},
+): GlobalVariableType<K> | null {
+  return useVariableOriginal<GlobalVariableType<K>>(variableKey, context);
 }
 `.trimStart();
     const reactFilePath = path.join(outputPath, "react.ts");
