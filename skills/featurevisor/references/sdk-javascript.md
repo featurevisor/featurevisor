@@ -109,14 +109,17 @@ Defaults are **presence-based**: what matters is whether the option was supplied
 
 Prefer defining sane `defaultValue` (and `useDefaultWhenDisabled`) in the project's `variablesSchema` — per-call defaults are the app-side safety net, not the source of truth.
 
-### All evaluations at once
+### Multiple evaluations at once
 
 ```js
-const all = f.getAllEvaluations(context)
+const features = f.getFeatureEvaluations(context)
 // { checkout: { enabled: true, variation: 'control', variables: {…} }, … }
+
+const variables = f.getVariableEvaluations(context)
+// { supportEmail: 'support@example.com', … }
 ```
 
-Useful for passing a server-evaluated snapshot to the frontend, which can then feed it into a client instance as [sticky](#sticky) values — see [SSR handoff](#ssr-handoff) below.
+The optional second argument filters either method to selected keys. Both maps can be passed directly to a client instance as `stickyFeatures` and `stickyVariables`. `getAllEvaluations()` is a deprecated alias of `getFeatureEvaluations()`.
 
 ### Why did it evaluate that way?
 
@@ -137,7 +140,8 @@ f.getSchemaVersion()          // "2"
 f.getFeatureKeys()            // every feature key present in the datafile
 f.getFeature('checkout')      // raw definition, or undefined
 f.getSegment('countries.netherlands')
-f.getVariableKeys('checkout')          // feature variables
+f.getVariableKeys()                    // global variables
+f.getVariableKeys('checkout')          // variables owned by checkout
 f.hasVariations('checkout')
 ```
 
@@ -239,7 +243,7 @@ app.get('/dashboard', (req, res) => {
 })
 ```
 
-Children support the same evaluation methods, including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable`, plus `setContext`, `setStickyFeatures`, `setStickyVariables`, `getAllEvaluations`, `on`, and `close`. `spawn(context, { stickyFeatures, stickyVariables })` also accepts child scoped sticky values. Datafile updates on the parent are visible to children automatically.
+Children support the same evaluation methods, including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable`, plus `setContext`, `setStickyFeatures`, `setStickyVariables`, `getFeatureEvaluations`, `getVariableEvaluations`, `on`, and `close`. `spawn(context, { stickyFeatures, stickyVariables })` also accepts child scoped sticky values. Datafile updates on the parent are visible to children automatically.
 
 Child sticky state does not inherit from the parent. A child spawned without `stickyFeatures` or `stickyVariables` starts with empty sticky maps. Pass either map in the spawn options when the child needs those values.
 
@@ -268,13 +272,17 @@ For server-rendered apps, avoid client/server mismatch (and flag "flicker" on lo
 ```js
 // server (per request)
 const childF = f.spawn({ userId: req.user.id })
-const evaluations = childF.getAllEvaluations()
-// serialize `evaluations` into the rendered page
+const stickyFeatures = childF.getFeatureEvaluations()
+const stickyVariables = childF.getVariableEvaluations()
+// serialize both maps into the rendered page
 
 // client (at startup)
-const f = createFeaturevisor({ stickyFeatures: window.__FEATURES__ })
+const f = createFeaturevisor({
+  stickyFeatures: window.__FEATURES__,
+  stickyVariables: window.__VARIABLES__,
+})
 // render matches the server exactly; later, once a datafile is loaded,
-// f.setStickyFeatures({}, true) releases evaluation back to live rules
+// clear either sticky map to release it back to live rules
 ```
 
 ## Resilience

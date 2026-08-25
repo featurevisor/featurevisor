@@ -80,7 +80,7 @@ describe("Featurevisor public API: datafiles", () => {
     }
 
     expect(sdk.getRevision()).toBe("server");
-    expect(Object.keys(sdk.getAllEvaluations()).sort()).toEqual(["mobile", "server", "web"]);
+    expect(Object.keys(sdk.getFeatureEvaluations()).sort()).toEqual(["mobile", "server", "web"]);
   });
 
   it("fully replaces existing entities only when replace is true", () => {

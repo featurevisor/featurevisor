@@ -53,4 +53,6 @@ export interface DatafileVariable {
   overrides?: DatafileVariableOverride[];
 }
 
-export type StickyVariables = Record<GlobalVariableKey, VariableValue>;
+export type EvaluatedVariables = Record<GlobalVariableKey, VariableValue>;
+
+export type StickyVariables = EvaluatedVariables;

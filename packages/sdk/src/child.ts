@@ -8,6 +8,7 @@ import type {
   ObjectValue,
   StickyVariables,
   GlobalVariableKey,
+  EvaluatedVariables,
 } from "@featurevisor/types";
 
 import type { Featurevisor, OverrideOptions } from "./instance.js";
@@ -590,15 +591,38 @@ export class FeaturevisorChildInstance {
         );
   }
 
+  /** Returns evaluated feature snapshots using this child's context and sticky state. */
+  getFeatureEvaluations(
+    context: Context = {},
+    featureKeys: string[] = [],
+    options: OverrideOptions = {},
+  ): EvaluatedFeatures {
+    return this.parent.getFeatureEvaluations(
+      this.getChildContext(context),
+      featureKeys,
+      this.getChildOptions(options),
+    );
+  }
+
+  /** Returns evaluated global variable values using this child's context and sticky state. */
+  getVariableEvaluations(
+    context: Context = {},
+    variableKeys: GlobalVariableKey[] = [],
+    options: OverrideOptions = {},
+  ): EvaluatedVariables {
+    return this.parent.getVariableEvaluations(
+      this.getChildContext(context),
+      variableKeys,
+      this.getChildOptions(options),
+    );
+  }
+
+  /** @deprecated Use `getFeatureEvaluations`. */
   getAllEvaluations(
     context: Context = {},
     featureKeys: string[] = [],
     options: OverrideOptions = {},
   ): EvaluatedFeatures {
-    return this.parent.getAllEvaluations(
-      this.getChildContext(context),
-      featureKeys,
-      this.getChildOptions(options),
-    );
+    return this.getFeatureEvaluations(context, featureKeys, options);
   }
 }

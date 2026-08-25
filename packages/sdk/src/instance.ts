@@ -20,6 +20,7 @@ import type {
   Required,
   StickyVariables,
   GlobalVariableKey,
+  EvaluatedVariables,
 } from "@featurevisor/types";
 
 import type {
@@ -415,7 +416,15 @@ export class Featurevisor {
     return Object.keys(this.datafile.features);
   }
 
-  getVariableKeys(featureKey: FeatureKey): string[] {
+  /** Returns global variable keys when called without a feature key. */
+  getVariableKeys(): GlobalVariableKey[];
+  /** Returns the variable keys owned by a feature. */
+  getVariableKeys(featureKey: FeatureKey): VariableKey[];
+  getVariableKeys(featureKey?: FeatureKey): string[] {
+    if (typeof featureKey === "undefined") {
+      return Object.keys(this.datafile.variables || {});
+    }
+
     const feature = this.getFeature(featureKey);
 
     if (!feature) {
@@ -1445,7 +1454,8 @@ export class Featurevisor {
     return getValueByType(variableValue, "json") as T | null;
   }
 
-  getAllEvaluations(
+  /** Returns evaluated feature snapshots for all or selected feature keys. */
+  getFeatureEvaluations(
     context: Context = {},
     featureKeys: string[] = [],
     options: OverrideOptions = {},
@@ -1487,6 +1497,31 @@ export class Featurevisor {
     }
 
     return result;
+  }
+
+  /** Returns evaluated global variable values for all or selected variable keys. */
+  getVariableEvaluations(
+    context: Context = {},
+    variableKeys: GlobalVariableKey[] = [],
+    options: OverrideOptions = {},
+  ): EvaluatedVariables {
+    const result: EvaluatedVariables = {};
+    const keys = variableKeys.length > 0 ? variableKeys : this.getVariableKeys();
+
+    for (const variableKey of keys) {
+      result[variableKey] = this.getVariable(variableKey, context, options);
+    }
+
+    return result;
+  }
+
+  /** @deprecated Use `getFeatureEvaluations`. */
+  getAllEvaluations(
+    context: Context = {},
+    featureKeys: string[] = [],
+    options: OverrideOptions = {},
+  ): EvaluatedFeatures {
+    return this.getFeatureEvaluations(context, featureKeys, options);
   }
 }
 

@@ -175,7 +175,7 @@ describe("Featurevisor public API: child instances", () => {
     expect(forwarded).toEqual([]);
   });
 
-  it("delegates every typed getter and getAllEvaluations with child context", () => {
+  it("delegates typed getters and aggregate evaluations with child context", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",
       datafile: createComplexDatafile(),
@@ -193,8 +193,11 @@ describe("Featurevisor public API: child instances", () => {
     expect(child.getVariableArray("experiment", "items")).toEqual(["default"]);
     expect(child.getVariableObject("experiment", "config")).toEqual({ source: "default" });
     expect(child.getVariableJSON("experiment", "jsonConfig")).toEqual({ source: "json" });
-    expect(child.getAllEvaluations({}, ["experiment"]).experiment).toEqual(
+    expect(child.getFeatureEvaluations({}, ["experiment"]).experiment).toEqual(
       expect.objectContaining({ enabled: true, variation: "treatment" }),
+    );
+    expect(child.getAllEvaluations({}, ["experiment"])).toEqual(
+      child.getFeatureEvaluations({}, ["experiment"]),
     );
   });
 

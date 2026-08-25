@@ -280,7 +280,7 @@ describe("sdk: child", function () {
       expect.objectContaining({ enabled: true, reason: "sticky" }),
     );
 
-    const allEvaluations = childF.getAllEvaluations();
+    const allEvaluations = childF.getFeatureEvaluations();
     expect(Object.keys(allEvaluations)).toEqual(["test", "anotherTest"]);
 
     childF.close();

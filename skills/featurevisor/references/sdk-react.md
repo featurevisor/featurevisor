@@ -67,7 +67,7 @@ These do **not** trigger re-renders on datafile/context changes — use them for
 
 ## SSR and hydration (Next.js etc.)
 
-Evaluating on the server and again on the client can disagree (different context timing, datafile revisions) — causing hydration mismatches or visible flag "flicker". The fix is the [SSR handoff](sdk-javascript.md#ssr-handoff) pattern: evaluate once per request on the server (`spawn` + `getAllEvaluations`), serialize the result into the page, and initialize the client instance with it as `sticky` so first render matches the server exactly. Framework-specific guides (Next.js, Astro, Nuxt, Express, Fastify): <https://featurevisor.com/docs/frameworks>.
+Evaluating on the server and again on the client can disagree (different context timing, datafile revisions) — causing hydration mismatches or visible flag "flicker". The fix is the [SSR handoff](sdk-javascript.md#ssr-handoff) pattern: evaluate once per request on the server with `spawn`, `getFeatureEvaluations`, and `getVariableEvaluations`. Serialize both maps into the page, then initialize the client instance with `stickyFeatures` and `stickyVariables` so the first render matches the server. Framework-specific guides (Next.js, Astro, Nuxt, Express, Fastify): <https://featurevisor.com/docs/frameworks>.
 
 ## Guidance
 

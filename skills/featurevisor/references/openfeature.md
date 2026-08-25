@@ -15,7 +15,7 @@ Use a provider when:
 
 Stay on the native SDK when:
 
-- Featurevisor is the only flag system in play. The native API is simpler, synchronous, and exposes everything (events, sticky, `spawn`, `getAllEvaluations`, modules) — OpenFeature's surface is deliberately smaller.
+- Featurevisor is the only flag system in play. The native API is simpler, synchronous, and exposes everything (events, sticky, `spawn`, aggregate feature and variable evaluations, modules) — OpenFeature's surface is deliberately smaller.
 - You need Featurevisor-specific features at call sites. They're still reachable through `provider.featurevisor`, but at that point you're using both APIs.
 
 The two mix cleanly: an application can hand an existing Featurevisor instance to the provider and keep using both.

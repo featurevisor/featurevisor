@@ -1517,7 +1517,7 @@ describe("sdk: instance", function () {
       userId: "123",
     };
 
-    const evaluatedFeatures = sdk.getAllEvaluations(context);
+    const evaluatedFeatures = sdk.getFeatureEvaluations(context);
     expect(evaluatedFeatures).toEqual({
       test: {
         enabled: true,
@@ -2122,10 +2122,10 @@ describe("sdk: instance", function () {
       expect(sdk.getVariableObject("nonExistingFeature", "themeConfig", context)).toBeNull();
     });
 
-    it("should include array and object variables in getAllEvaluations", function () {
+    it("should include array and object variables in getFeatureEvaluations", function () {
       const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
-      const all = sdk.getAllEvaluations(context);
+      const all = sdk.getFeatureEvaluations(context);
 
       expect(all.withArray).toBeDefined();
       expect(all.withArray?.enabled).toBe(true);

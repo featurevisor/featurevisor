@@ -106,6 +106,49 @@ describe("global variables", () => {
 
     expect(f.getVariable("same", "nested")).toBe("feature value");
     expect(f.getVariable("same")).toBe("global value");
+    expect(f.getVariableString("same", "nested")).toBe("feature value");
+    expect(f.getVariableString("same")).toBe("global value");
+    expect(f.evaluateVariable("same", "nested")).toEqual(
+      expect.objectContaining({ featureKey: "same", variableKey: "nested" }),
+    );
+    expect(f.evaluateVariable("same")).toEqual(
+      expect.not.objectContaining({ featureKey: expect.anything() }),
+    );
+  });
+
+  it("enumerates feature and global variable keys through one overloaded method", () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+
+    expect(f.getVariableKeys("same")).toEqual(["nested"]);
+    expect(f.getVariableKeys("missing")).toEqual([]);
+    expect(f.getVariableKeys()).toEqual([
+      "supportEmail",
+      "gated",
+      "gatedDefault",
+      "config",
+      "same",
+      "enabled",
+      "count",
+      "ratio",
+      "items",
+      "object",
+    ]);
+  });
+
+  it("gets all or selected global variable evaluations as sticky-compatible values", () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+
+    const all = f.getVariableEvaluations({ continent: "eu", country: "nl" });
+    expect(Object.keys(all)).toEqual(f.getVariableKeys());
+    expect(all.supportEmail).toBe("help-nl@example.com");
+    expect(all.config).toEqual({ colour: "blue" });
+    expect(all.enabled).toBe(true);
+
+    expect(
+      f.getVariableEvaluations({}, ["count", "missing"], {
+        defaultVariableValue: false,
+      }),
+    ).toEqual({ count: 3, missing: false });
   });
 
   it("evaluates overrides in order and combines segments with conditions using AND", () => {
@@ -284,6 +327,10 @@ describe("global variables", () => {
     child.on("sticky_variables_set", listener);
 
     expect(child.getVariable("supportEmail")).toBe("child@example.com");
+    expect(child.getVariableEvaluations({}, ["supportEmail", "enabled"])).toEqual({
+      supportEmail: "child@example.com",
+      enabled: true,
+    });
     child.setStickyVariables({ supportEmail: "changed@example.com" });
     expect(child.getVariable("supportEmail")).toBe("changed@example.com");
     expect(child.getVariableString("supportEmail")).toBe("changed@example.com");
