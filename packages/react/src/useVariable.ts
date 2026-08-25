@@ -58,11 +58,3 @@ export function useVariable<TValue = VariableValue>(
 
   return variableValue;
 }
-
-/** Explicit form of the global variable overload. */
-export function useGlobalVariable<TValue = VariableValue>(
-  variableKey: GlobalVariableKey,
-  context: Context = EMPTY_CONTEXT,
-): TValue | null {
-  return useVariable<TValue>(variableKey, context);
-}

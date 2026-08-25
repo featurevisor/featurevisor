@@ -5,7 +5,7 @@ import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 
-const INFO_LABEL_WIDTH = "Total variables (in features):".length;
+const INFO_LABEL_WIDTH = "Total feature variables:".length;
 
 function printInfoLine(label: string, value: string | number | boolean) {
   console.log(`  ${colorize(`${label}:`.padEnd(INFO_LABEL_WIDTH), CLI_COLOR_CYAN)} ${value}`);
@@ -40,8 +40,8 @@ async function showTargetInfo(deps: Dependencies, target: string | string[]) {
       printInfoLine("Environment", environment);
       printInfoLine("Features", Object.keys(entry.datafile.features).length);
       printInfoLine("Segments", Object.keys(entry.datafile.segments).length);
-      printInfoLine("Total variables", Object.keys(entry.datafile.variables || {}).length);
-      printInfoLine("Total variables (in features)", featureVariables);
+      printInfoLine("Total global variables", Object.keys(entry.datafile.variables || {}).length);
+      printInfoLine("Total feature variables", featureVariables);
       printInfoLine(
         "Datafile size",
         `${(JSON.stringify(entry.datafile).length / 1024).toFixed(2)} kB`,
@@ -73,7 +73,7 @@ export async function showProjectInfo(deps: Dependencies) {
   const groups = await datasource.listGroups();
   const schemas = await datasource.listSchemas();
   const targets = await datasource.listTargets();
-  const topLevelVariables = await datasource.listVariables();
+  const globalVariables = await datasource.listVariables();
 
   let variablesCount = 0;
   for (const featureKey of features) {
@@ -87,8 +87,8 @@ export async function showProjectInfo(deps: Dependencies) {
   printInfoLine("Total attributes", attributes.length);
   printInfoLine("Total segments", segments.length);
   printInfoLine("Total features", features.length);
-  printInfoLine("Total variables", topLevelVariables.length);
-  printInfoLine("Total variables (in features)", variablesCount);
+  printInfoLine("Total global variables", globalVariables.length);
+  printInfoLine("Total feature variables", variablesCount);
   printInfoLine("Total groups", groups.length);
   printInfoLine("Total schemas", schemas.length);
   printInfoLine("Total targets", targets.length);

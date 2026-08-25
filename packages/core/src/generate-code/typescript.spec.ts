@@ -156,7 +156,7 @@ describe("generate-code/typescript", () => {
     expect(functionsContent).toContain("getVariation<Variation<F>>(featureKey, context)");
     expect(functionsContent).toContain("FeatureVariableType<F, V> | null");
     expect(functionsContent).toContain("GlobalVariableType<K> | null");
-    expect(functionsContent).toContain("export function getGlobalVariable");
+    expect(functionsContent).not.toContain("export function getGlobalVariable");
     expect(variablesContent).toContain("checkoutSettings: {");
     expect(variablesContent).toContain("supportEmail: string;");
     expect(functionsContent).not.toContain("as Variation<F> | null");
@@ -199,7 +199,7 @@ describe("generate-code/typescript", () => {
     expect(reactContent).toContain('} from "@featurevisor/react";');
     expect(reactContent).toContain("FeatureVariableType<F, V> | null");
     expect(reactContent).toContain("GlobalVariableType<K> | null");
-    expect(reactContent).toContain("export function useGlobalVariable");
+    expect(reactContent).not.toContain("export function useGlobalVariable");
     expect(reactContent).not.toContain("as Variation<F> | null");
     expect(reactContent).not.toContain("as VariableType<F, V> | null");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);

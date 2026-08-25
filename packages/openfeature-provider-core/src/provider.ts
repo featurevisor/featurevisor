@@ -213,7 +213,7 @@ export class FeaturevisorProvider {
       evaluation = this.featurevisor.evaluateVariation(featureKey, featurevisorContext);
       value = evaluation.variationValue ?? evaluation.variation?.value;
     } else if (selector === this.globalVariableKey) {
-      evaluation = this.featurevisor.evaluateGlobalVariable(featureKey, featurevisorContext);
+      evaluation = this.featurevisor.evaluateVariable(featureKey, featurevisorContext);
       value = this.normalizeGlobalVariable(evaluation);
     } else {
       evaluation = this.featurevisor.evaluateVariable(featureKey, selector, featurevisorContext);

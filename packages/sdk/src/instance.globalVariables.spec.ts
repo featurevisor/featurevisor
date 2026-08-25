@@ -147,12 +147,11 @@ describe("global variables", () => {
     );
   });
 
-  it("updates parent sticky variables and exposes global keys", () => {
+  it("updates parent sticky variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const listener = jest.fn();
     f.on("sticky_variables_set", listener);
 
-    expect(f.getGlobalVariableKeys()).toContain("supportEmail");
     f.setStickyVariables({ supportEmail: "first@example.com" });
     f.setStickyVariables({ gated: "replacement" }, true);
 
@@ -235,10 +234,10 @@ describe("global variables", () => {
     ).toBe("fallback");
   });
 
-  it("supports the explicit global variable accessor", () => {
+  it("uses the variable overload for global evaluations", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
-    expect(f.getGlobalVariable<string>("supportEmail")).toBe("help@example.com");
-    const evaluation = f.evaluateGlobalVariable("supportEmail");
+    expect(f.getVariable<string>("supportEmail")).toBe("help@example.com");
+    const evaluation = f.evaluateVariable("supportEmail");
     expect(evaluation).toEqual(
       expect.objectContaining({
         type: "variable",
@@ -257,7 +256,7 @@ describe("global variables", () => {
         stickyVariables: testCase.stickyVariables,
         logLevel: "fatal",
       });
-      const evaluation = f.evaluateGlobalVariable(testCase.key, testCase.context || {}, {
+      const evaluation = f.evaluateVariable(testCase.key, testCase.context || {}, {
         defaultVariableValue: testCase.defaultVariableValue,
       });
       expect(evaluation.variableValue).toEqual(testCase.expectedValue);
@@ -273,7 +272,6 @@ describe("global variables", () => {
     child.on("sticky_variables_set", listener);
 
     expect(child.getVariable("supportEmail")).toBe("child@example.com");
-    expect(child.getGlobalVariable<string>("supportEmail")).toBe("child@example.com");
     child.setStickyVariables({ supportEmail: "changed@example.com" });
     expect(child.getVariable("supportEmail")).toBe("changed@example.com");
     expect(child.getVariableString("supportEmail")).toBe("changed@example.com");

@@ -416,14 +416,6 @@ export class Featurevisor {
     return Object.keys(this.datafile.features);
   }
 
-  getGlobalVariableDefinition(variableKey: GlobalVariableKey): DatafileVariable | undefined {
-    return this.datafile.variables?.[variableKey];
-  }
-
-  getGlobalVariableKeys(): GlobalVariableKey[] {
-    return Object.keys(this.datafile.variables || {});
-  }
-
   getVariableKeys(featureKey: FeatureKey): string[] {
     const feature = this.getFeature(featureKey);
 
@@ -876,7 +868,7 @@ export class Featurevisor {
     });
   }
 
-  evaluateGlobalVariable(
+  private evaluateVariableWithoutFeature(
     variableKey: GlobalVariableKey,
     context: Context = {},
     options: InternalOverrideOptions = {},
@@ -898,7 +890,7 @@ export class Featurevisor {
       }
 
       const resolvedVariableKey = evaluationOptions.variableKey;
-      const variable = this.getGlobalVariableDefinition(resolvedVariableKey);
+      const variable = this.datafile.variables?.[resolvedVariableKey];
       let evaluation: Evaluation = {
         type: "variable",
         variableKey: resolvedVariableKey,
@@ -1126,7 +1118,7 @@ export class Featurevisor {
     options: OverrideOptions = {},
   ): Evaluation {
     if (typeof variableKeyOrContext !== "string") {
-      return this.evaluateGlobalVariable(
+      return this.evaluateVariableWithoutFeature(
         featureKeyOrVariableKey,
         variableKeyOrContext,
         contextOrOptions as InternalOverrideOptions,
@@ -1208,20 +1200,6 @@ export class Featurevisor {
 
       return null;
     }
-  }
-
-  /**
-   * Explicitly evaluates a global variable.
-   *
-   * This is equivalent to the two argument `getVariable(variableKey, context)`
-   * overload and gives SDK ports without method overloading a shared API name.
-   */
-  getGlobalVariable<TValue = VariableValue>(
-    variableKey: GlobalVariableKey,
-    context: Context = {},
-    options: OverrideOptions = {},
-  ): TValue | null {
-    return this.getVariable<TValue>(variableKey, context, options);
   }
 
   getVariableBoolean(

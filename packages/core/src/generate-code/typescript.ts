@@ -613,13 +613,6 @@ export function getVariable(
     ? getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext, context)
     : getInstance().getVariable(featureKeyOrVariableKey, variableKeyOrContext);
 }
-
-export function getGlobalVariable<K extends GlobalVariableKey>(
-  variableKey: K,
-  context: Context = {},
-): GlobalVariableType<K> | null {
-  return getInstance().getGlobalVariable<GlobalVariableType<K>>(variableKey, context);
-}
 `.trimStart();
   const functionsFilePath = path.join(outputPath, "functions.ts");
   fs.writeFileSync(functionsFilePath, functionsFileContent);
@@ -667,13 +660,6 @@ export function useVariable(
   return typeof variableKeyOrContext === "string"
     ? useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext, context)
     : useVariableOriginal(featureKeyOrVariableKey, variableKeyOrContext);
-}
-
-export function useGlobalVariable<K extends GlobalVariableKey>(
-  variableKey: K,
-  context: Context = {},
-): GlobalVariableType<K> | null {
-  return useVariableOriginal<GlobalVariableType<K>>(variableKey, context);
 }
 `.trimStart();
     const reactFilePath = path.join(outputPath, "react.ts");

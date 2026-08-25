@@ -11,7 +11,7 @@ import { mount } from "@vue/test-utils";
 import { setupApp } from "./setupApp";
 import { useFlag } from "./useFlag";
 import { useSdk } from "./useSdk";
-import { useGlobalVariable, useVariable } from "./useVariable";
+import { useVariable } from "./useVariable";
 import { useVariation } from "./useVariation";
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
@@ -176,7 +176,7 @@ describe("vue: composables", () => {
       const typedVariation = useVariation<"control" | "treatment">("checkout");
       const variable = useVariable("checkout", "configuration");
       const typedVariable = useVariable<CheckoutConfig>("checkout", "configuration");
-      const globalVariable = useGlobalVariable<CheckoutConfig>("configuration", { userId: "u" });
+      const globalVariable = useVariable<CheckoutConfig>("configuration", { userId: "u" });
 
       expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
       expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);

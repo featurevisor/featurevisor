@@ -31,10 +31,10 @@ describe("core: project info", function () {
     expect(output).toContain("Total attributes");
     expect(output).toContain("Total segments");
     expect(output).toContain("Total features");
-    expect(output).toContain("Total variables:               1");
-    expect(output).toContain("Total variables (in features): 1");
-    expect(output.indexOf("Total variables:")).toBeLessThan(
-      output.indexOf("Total variables (in features):"),
+    expect(output).toContain("Total global variables:  1");
+    expect(output).toContain("Total feature variables: 1");
+    expect(output.indexOf("Total global variables:")).toBeLessThan(
+      output.indexOf("Total feature variables:"),
     );
     expect(output).toContain("Total groups");
     expect(output).toContain("Total schemas");

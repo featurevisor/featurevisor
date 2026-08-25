@@ -1,6 +1,6 @@
 # Global variables
 
-Full docs: <https://featurevisor.com/docs/defining-variables>
+Full docs: <https://featurevisor.com/docs/global-variables>
 
 Global variables live under `variables/` and are evaluated independently from features. Do not confuse them with feature variables under `variablesSchema`.
 
@@ -37,8 +37,8 @@ Targets select global variables by `tag` or `tags`. Their `includeFeatures` and 
 JavaScript evaluation:
 
 ```js
-f.getGlobalVariable('supportEmail', context)
-f.evaluateGlobalVariable('supportEmail', context)
+f.getVariable('supportEmail', context)
+f.evaluateVariable('supportEmail', context)
 f.setStickyVariables({ supportEmail: 'fixed@example.com' })
 ```
 

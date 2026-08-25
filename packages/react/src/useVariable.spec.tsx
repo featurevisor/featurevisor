@@ -7,7 +7,7 @@ import type { DatafileContent, VariableValue } from "@featurevisor/types";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
-import { useGlobalVariable, useVariable } from "./useVariable";
+import { useVariable } from "./useVariable";
 
 function getNewDatafile(colorValue = "red"): DatafileContent {
   return {
@@ -136,7 +136,7 @@ describe("react: useVariable", function () {
 
   test("should evaluate global variables with optional generics and update reactively", async () => {
     function TestComponent() {
-      const theme = useGlobalVariable<"red" | "blue">("theme");
+      const theme = useVariable<"red" | "blue">("theme");
       return <p data-testid="theme">{theme}</p>;
     }
     const f = getNewInstance();

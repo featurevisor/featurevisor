@@ -367,18 +367,6 @@ export class FeaturevisorChildInstance {
         );
   }
 
-  getGlobalVariable<TValue = VariableValue>(
-    variableKey: GlobalVariableKey,
-    context: Context = {},
-    options: OverrideOptions = {},
-  ): TValue | null {
-    return this.parent.getGlobalVariable<TValue>(
-      variableKey,
-      this.getChildContext(context),
-      this.getChildOptions(options),
-    );
-  }
-
   getVariableBoolean(
     featureKey: FeatureKey,
     variableKey: string,

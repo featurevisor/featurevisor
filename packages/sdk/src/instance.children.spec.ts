@@ -1,10 +1,16 @@
 import { createFeaturevisor } from "./index";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   createComplexDatafile,
   createDatafile,
   createFeature,
   deterministicBucketModule,
 } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: child instances", () => {
   it("layers parent, child, and call context without mutating any layer", () => {
@@ -59,15 +65,35 @@ describe("Featurevisor public API: child instances", () => {
       stickyFeatures: { flag: { enabled: true } },
     });
     const offChild = parent.spawn({}, { stickyFeatures: { flag: { enabled: false } } });
-    const inheritedChild = parent.spawn();
+    const childWithoutSticky = parent.spawn();
 
     expect(parent.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag")).toBe(false);
-    expect(inheritedChild.isEnabled("flag")).toBe(true);
+    expect(childWithoutSticky.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(
       false,
     );
     expect(offChild.isEnabled("flag")).toBe(false);
+  });
+
+  it("does not inherit parent sticky state when child sticky options are omitted", () => {
+    const testCase = conformance.childInstances.stickyCase;
+    const parent = createFeaturevisor({
+      datafile: testCase.datafile,
+      stickyFeatures: testCase.parentStickyFeatures,
+      stickyVariables: testCase.parentStickyVariables,
+      logLevel: "fatal",
+    });
+    const child = parent.spawn();
+
+    expect({
+      flag: parent.isEnabled("flag"),
+      setting: parent.getVariable("setting"),
+    }).toEqual(testCase.expectedParent);
+    expect({
+      flag: child.isEnabled("flag"),
+      setting: child.getVariable("setting"),
+    }).toEqual(testCase.expectedChildWithoutStickyOptions);
   });
 
   it("prefers child stickyFeatures over the deprecated sticky option", () => {

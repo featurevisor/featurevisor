@@ -7,7 +7,6 @@ export const BOUND_METHODS = [
   "isEnabled",
   "getVariation",
   "getVariable",
-  "getGlobalVariable",
 
   "getVariableBoolean",
   "getVariableString",

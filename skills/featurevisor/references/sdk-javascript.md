@@ -77,7 +77,7 @@ if (variation === 'treatment') { /* ... */ }
 const methods = f.getVariable('checkout', 'paymentMethods')
 
 // global variable, with no feature key
-const supportEmail = f.getGlobalVariable('supportEmail', { country: 'nl' })
+const supportEmail = f.getVariable('supportEmail', { country: 'nl' })
 ```
 
 Type-specific variable getters return `null` when the stored value doesn't match the requested type (no coercion — `"1"` is not an integer, `"true"` is not a boolean):
@@ -124,7 +124,7 @@ Useful for passing a server-evaluated snapshot to the frontend, which can then f
 const evaluation = f.evaluateFlag('checkout', context)
 const evaluation = f.evaluateVariation('checkout', context)
 const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
-const globalEvaluation = f.evaluateGlobalVariable('supportEmail', context)
+const globalEvaluation = f.evaluateVariable('supportEmail', context)
 ```
 
 Every evaluation object has `type` and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. Feature evaluations have `featureKey`; global variable evaluations use `type: "variable"` without it. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
@@ -138,7 +138,6 @@ f.getFeatureKeys()            // every feature key present in the datafile
 f.getFeature('checkout')      // raw definition, or undefined
 f.getSegment('countries.netherlands')
 f.getVariableKeys('checkout')          // feature variables
-f.getGlobalVariableKeys()              // global variables
 f.hasVariations('checkout')
 ```
 

@@ -33,11 +33,3 @@ export function useVariable<TValue = VariableValue>(
     ? sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, context)
     : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext);
 }
-
-/** Explicit form of the global variable overload. */
-export function useGlobalVariable<TValue = VariableValue>(
-  variableKey: GlobalVariableKey,
-  context: Context = {},
-): TValue | null {
-  return useVariable<TValue>(variableKey, context);
-}
