@@ -40,8 +40,9 @@ export async function buildRuntimeDatafiles(
     return [{ datafile }];
   }
 
-  return Promise.all(
-    targets.map(async (target) => ({
+  const datafiles: RuntimeDatafile[] = [];
+  for (const target of targets) {
+    datafiles.push({
       target: target.key,
       datafile: await buildTargetDatafile({
         projectConfig,
@@ -52,6 +53,11 @@ export async function buildRuntimeDatafiles(
         revision: options.revision,
         inflate: options.inflate,
       }),
-    })),
-  );
+    });
+  }
+
+  // Runtime commands only mutate this in-memory allocation state. They never
+  // call datasource.writeState(), so evaluate and benchmark cannot change the
+  // state files on disk.
+  return datafiles;
 }

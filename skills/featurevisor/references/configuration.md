@@ -72,16 +72,16 @@ The same request ("add a feature at 10%") produces structurally different files 
 
 ## Tags
 
-Each feature lists tags it belongs to. Targets use tags to decide which features are included in each generated datafile.
+Features and global variables can list tags. Targets use tags to decide which definitions are included in each generated datafile.
 
 Tag a feature with `all` (or your project's chosen catch-all) only if every consumer should load it. Otherwise tag by surface (`web`, `ios`, `android`, `internal-tools`, etc.).
 
 ## Targets
 
-Targets define generated datafiles under `targets/`. They can include optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context. See <https://featurevisor.com/docs/targets>.
+Targets define generated datafiles under `targets/`. They can include optional tag filters, feature key filters (`includeFeatures` / `excludeFeatures`), global variable key filters (`includeVariables` / `excludeVariables`), and build-time context. See <https://featurevisor.com/docs/targets>.
 
 ## Sets and promotions
 
-When `sets: true`, the project is split into independent trees under `sets/<set>/` — each with its own `attributes/`, `segments/`, `features/`, `targets/`, and `tests/`. The same feature key can exist in several sets with different definitions. `npx featurevisor promote --from=<set> --to=<set>` copies definitions (plus their full dependency closure) between sets, previewing by default and writing only with `--apply`; `promotionFlows` restricts allowed directions.
+When `sets: true`, the project is split into independent trees under `sets/<set>/` with its own `attributes/`, `segments/`, `features/`, `variables/`, `targets/`, and `tests/`. The same entity key can exist in several sets with different definitions. `npx featurevisor promote --from=<set> --to=<set>` copies definitions plus their full dependency closure, previewing by default and writing only with `--apply`; `promotionFlows` restricts allowed directions.
 
 **Read [sets-promotions.md](sets-promotions.md) in full before working in a sets project** — it covers when sets are (and aren't) the right tool, layout, per-set builds and state, `--set` scoping, promotion filters, conflicts, and `promotable: false` semantics.

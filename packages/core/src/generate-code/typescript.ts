@@ -455,6 +455,29 @@ ${attributeProperties}
     `Context type file written at: ${getRelativePath(rootDirectoryPath, contextTypeFilePath)}`,
   );
 
+  // Resolve global variables before features so required feature chains are
+  // represented in generated types just as they are in target datafiles.
+  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
+  const featureKeysRequiredByVariables = new Set<string>();
+  for (const key of await datasource.listVariables()) {
+    const variable = await datasource.readVariable(key);
+    if (variable.archived) continue;
+    const matchesSelectedTag = selectedTags.some((tag) => (variable.tags || []).includes(tag));
+    const matchesSelectedTarget = selectedTargets.some((target) =>
+      targetIncludesVariable(target, key, variable),
+    );
+    if (
+      (selectedTags.length > 0 || selectedTargets.length > 0) &&
+      !matchesSelectedTag &&
+      !matchesSelectedTarget
+    ) {
+      continue;
+    }
+    parsedVariables.push({ key, value: variable });
+    const requiredChain = await datasource.getRequiredFeaturesChainForVariable(key);
+    requiredChain.forEach((featureKey) => featureKeysRequiredByVariables.add(featureKey));
+  }
+
   // features
   const featureFiles = await datasource.listFeatures();
 
@@ -478,7 +501,8 @@ ${attributeProperties}
     if (
       (selectedTags.length > 0 || selectedTargets.length > 0) &&
       !matchesSelectedTag &&
-      !matchesSelectedTarget
+      !matchesSelectedTarget &&
+      !featureKeysRequiredByVariables.has(featureKey)
     ) {
       continue;
     }
@@ -541,23 +565,6 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   fs.writeFileSync(featuresFilePath, featuresFileContent);
   console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
 
-  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
-  for (const key of await datasource.listVariables()) {
-    const variable = await datasource.readVariable(key);
-    if (variable.archived) continue;
-    const matchesSelectedTag = selectedTags.some((tag) => (variable.tags || []).includes(tag));
-    const matchesSelectedTarget = selectedTargets.some((target) =>
-      targetIncludesVariable(target, key, variable),
-    );
-    if (
-      (selectedTags.length > 0 || selectedTargets.length > 0) &&
-      !matchesSelectedTag &&
-      !matchesSelectedTarget
-    ) {
-      continue;
-    }
-    parsedVariables.push({ key, value: variable });
-  }
   const variableSchemaTypesUsed = new Set<string>();
   const variableTypeEntries = parsedVariables.map(({ key, value }) => {
     const { typeName, schemaTypesUsed } = getVariableTypeForFeaturesMap(
@@ -579,9 +586,9 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   );
 
   const functionsFileContent = `
-import { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
-import { GlobalVariableKey, GlobalVariableType } from "./variables";
-import { Context } from "./context";
+import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
+import type { GlobalVariableKey, GlobalVariableType } from "./variables";
+import type { Context } from "./context";
 import { getInstance } from "./instance";
 
 export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {

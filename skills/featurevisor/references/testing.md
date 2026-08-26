@@ -130,7 +130,7 @@ assertions:
     expectedToBeEnabled: true
 ```
 
-Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix-driven fields is fine — only interpolate where it changes.
+Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix driven fields is fine. Placeholders are replaced recursively inside nested objects and arrays, including context, sticky values, defaults, expected values, detailed expected evaluations, and child assertions. A placeholder used as the complete value preserves its original type.
 
 ## Testing against target datafiles
 

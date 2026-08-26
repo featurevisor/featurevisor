@@ -59,6 +59,17 @@ export function applyCombinationToValue(value: any, combination: any) {
     return value.replace(/\${{(.+?)}}/g, (_, key) => combination[key.trim()]);
   }
 
+  if (Array.isArray(value)) {
+    return value.map((item) => applyCombinationToValue(item, combination));
+  }
+
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.keys(value).reduce((result, key) => {
+      result[key] = applyCombinationToValue(value[key], combination);
+      return result;
+    }, {});
+  }
+
   return value;
 }
 
@@ -105,6 +116,33 @@ export function applyCombinationToFeatureAssertion(
   if (flattenedAssertion.target) {
     flattenedAssertion.target = applyCombinationToValue(flattenedAssertion.target, combination);
   }
+
+  flattenedAssertion.sticky = applyCombinationToValue(flattenedAssertion.sticky, combination);
+  flattenedAssertion.defaultVariationValue = applyCombinationToValue(
+    flattenedAssertion.defaultVariationValue,
+    combination,
+  );
+  flattenedAssertion.defaultVariableValues = applyCombinationToValue(
+    flattenedAssertion.defaultVariableValues,
+    combination,
+  );
+  flattenedAssertion.expectedToBeEnabled = applyCombinationToValue(
+    flattenedAssertion.expectedToBeEnabled,
+    combination,
+  );
+  flattenedAssertion.expectedVariation = applyCombinationToValue(
+    flattenedAssertion.expectedVariation,
+    combination,
+  );
+  flattenedAssertion.expectedVariables = applyCombinationToValue(
+    flattenedAssertion.expectedVariables,
+    combination,
+  );
+  flattenedAssertion.expectedEvaluations = applyCombinationToValue(
+    flattenedAssertion.expectedEvaluations,
+    combination,
+  );
+  flattenedAssertion.children = applyCombinationToValue(flattenedAssertion.children, combination);
 
   return flattenedAssertion;
 }
@@ -184,6 +222,11 @@ export function applyCombinationToSegmentAssertion(
     );
   }
 
+  flattenedAssertion.expectedToMatch = applyCombinationToValue(
+    flattenedAssertion.expectedToMatch,
+    combination,
+  );
+
   return flattenedAssertion;
 }
 
@@ -238,6 +281,15 @@ export function getVariableAssertionsFromMatrix(
       assertion.description = applyCombinationToValue(assertion.description, combination);
     }
     assertion.expectedValue = applyCombinationToValue(assertion.expectedValue, combination);
+    assertion.stickyVariables = applyCombinationToValue(assertion.stickyVariables, combination);
+    assertion.defaultVariableValue = applyCombinationToValue(
+      assertion.defaultVariableValue,
+      combination,
+    );
+    assertion.expectedEvaluation = applyCombinationToValue(
+      assertion.expectedEvaluation,
+      combination,
+    );
     assertion.description = `Assertion #${aIndex + 1}${
       assertion.description ? `: ${assertion.description}` : ""
     }`;

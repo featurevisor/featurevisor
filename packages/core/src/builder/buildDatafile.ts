@@ -62,6 +62,7 @@ export interface CustomDatafileOptions {
   includeVariables?: "*" | GlobalVariableKey[];
   excludeVariables?: "*" | GlobalVariableKey[];
   featurevisorVersion?: string;
+  revisionFromHash?: boolean;
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
@@ -95,6 +96,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       includeVariables: options.includeVariables,
       excludeVariables: options.excludeVariables,
       featurevisorVersion: options.featurevisorVersion,
+      revisionFromHash: options.revisionFromHash,
     },
     existingState,
   );

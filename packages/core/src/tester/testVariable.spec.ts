@@ -44,7 +44,13 @@ describe("core: test global variable", () => {
           description: "base",
           environment: "production",
           expectedValue: { items: ["one", { enabled: true }] },
-          expectedEvaluation: { reason: "variable_default" },
+          expectedEvaluation: {
+            reason: "variable_default",
+            variable: {
+              type: "object",
+              defaultValue: { items: ["one", { enabled: true }] },
+            },
+          },
         },
         {
           description: "sticky",

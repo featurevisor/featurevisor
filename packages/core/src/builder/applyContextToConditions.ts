@@ -58,15 +58,14 @@ export function removeRedundantConditions(
 
     if ("or" in conditions) {
       const processed = conditions.or.map((c) => removeRedundantConditions(c)) as Condition[];
-      const filtered = processed.filter((c) => c !== "*");
 
-      // If all were "*", return "*"
-      if (filtered.length === 0) {
+      // `or` is true as soon as any child is true.
+      if (processed.indexOf("*") !== -1) {
         return "*";
       }
 
       return {
-        or: filtered,
+        or: processed,
       } as OrCondition;
     }
 

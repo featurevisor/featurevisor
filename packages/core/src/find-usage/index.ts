@@ -196,14 +196,8 @@ export async function findAllUsageInVariables(deps: Dependencies): Promise<Usage
         }
       }
     }
-    [
-      ...(variable.requiredFeatures || []),
-      ...Object.values(variable.overrides || {})
-        .flat()
-        .flatMap((override) => override.requiredFeatures || []),
-    ].forEach((required) =>
-      usage.features.add(typeof required === "string" ? required : required.key),
-    );
+    const requiredFeatures = await deps.datasource.getRequiredFeaturesChainForVariable(variableKey);
+    requiredFeatures.forEach((featureKey) => usage.features.add(featureKey));
     Object.values(variable.overrides || {})
       .flat()
       .forEach((override) => {

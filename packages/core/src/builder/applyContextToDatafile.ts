@@ -40,7 +40,7 @@ export function applyContextToDatafile(
   // segments
   for (const segmentKey in contextualDatafileContent.segments) {
     const segment = contextualDatafileContent.segments[segmentKey];
-    const originalConditions = segment.conditions;
+    const originalConditions = parseIfStringified(segment.conditions);
     const contextualConditions = applyContextToConditions(
       originalFeaturevisor,
       originalConditions,
@@ -64,9 +64,10 @@ export function applyContextToDatafile(
 
         // segments
         if (force.segments) {
+          const segments = parseIfStringified(force.segments);
           feature.force[forceI].segments = applyContextToSegments(
             originalFeaturevisor,
-            force.segments,
+            segments,
             context,
             removeSegments,
           );
@@ -74,9 +75,10 @@ export function applyContextToDatafile(
 
         // conditions
         if (force.conditions) {
+          const conditions = parseIfStringified(force.conditions);
           feature.force[forceI].conditions = applyContextToConditions(
             originalFeaturevisor,
-            force.conditions,
+            conditions,
             context,
           );
         }
@@ -164,9 +166,10 @@ export function applyContextToDatafile(
 
               // segments
               if (variableOverride.segments) {
+                const segments = parseIfStringified(variableOverride.segments);
                 variableOverride.segments = applyContextToSegments(
                   originalFeaturevisor,
-                  variableOverride.segments,
+                  segments,
                   context,
                   removeSegments,
                 );
@@ -174,9 +177,10 @@ export function applyContextToDatafile(
 
               // conditions
               if (variableOverride.conditions) {
+                const conditions = parseIfStringified(variableOverride.conditions);
                 variableOverride.conditions = applyContextToConditions(
                   originalFeaturevisor,
-                  variableOverride.conditions,
+                  conditions,
                   context,
                 );
               }

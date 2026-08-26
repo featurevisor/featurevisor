@@ -64,6 +64,41 @@ export function getTestsZodSchema(
     ),
   );
 
+  const expectedEvaluationZodSchema = z
+    .object({
+      type: z.enum(["flag", "variation", "variable"]).optional(),
+      featureKey: z.string().optional(),
+      reason: z.string().optional(),
+      bucketKey: z.string().optional(),
+      bucketValue: z.number().optional(),
+      ruleKey: z.string().optional(),
+      error: z.unknown().optional(),
+      enabled: z.boolean().optional(),
+      traffic: z.unknown().optional(),
+      forceIndex: z.number().int().nonnegative().optional(),
+      force: z.unknown().optional(),
+      required: z.unknown().optional(),
+      stickyFeature: z.unknown().optional(),
+      sticky: z.unknown().optional(),
+      variation: z.unknown().optional(),
+      variationValue: z.string().optional(),
+      variableKey: z.string().optional(),
+      variableValue: z.unknown().optional(),
+      variableSchema: z.unknown().optional(),
+      variableOverrideIndex: z.number().int().nonnegative().optional(),
+      variableOverrideKey: z.string().optional(),
+      variable: z.unknown().optional(),
+    })
+    .strict();
+
+  const expectedEvaluationsZodSchema = z
+    .object({
+      flag: expectedEvaluationZodSchema.optional(),
+      variation: expectedEvaluationZodSchema.optional(),
+      variables: z.record(z.string(), expectedEvaluationZodSchema).optional(),
+    })
+    .strict();
+
   const segmentTestZodSchema = z
     .object({
       promotable: z.boolean().optional(),
@@ -155,13 +190,7 @@ export function getTestsZodSchema(
               expectedToBeEnabled: z.boolean().optional(),
               expectedVariation: z.string().nullable().optional(),
               expectedVariables: z.record(z.string(), z.unknown()).optional(),
-              expectedEvaluations: z
-                .object({
-                  flag: z.record(z.string(), z.any()).optional(),
-                  variation: z.record(z.string(), z.any()).optional(),
-                  variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-                })
-                .optional(),
+              expectedEvaluations: expectedEvaluationsZodSchema.optional(),
 
               children: z
                 .array(
@@ -177,13 +206,7 @@ export function getTestsZodSchema(
                     expectedVariation: z.string().nullable().optional(),
                     expectedVariables: z.record(z.string(), z.unknown()).optional(),
 
-                    expectedEvaluations: z
-                      .object({
-                        flag: z.record(z.string(), z.any()).optional(),
-                        variation: z.record(z.string(), z.any()).optional(),
-                        variables: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-                      })
-                      .optional(),
+                    expectedEvaluations: expectedEvaluationsZodSchema.optional(),
                   }),
                 )
                 .optional(),
@@ -227,7 +250,7 @@ export function getTestsZodSchema(
               context: z.record(z.string(), z.unknown()).optional(),
               defaultVariableValue: z.unknown().optional(),
               expectedValue: z.unknown().optional(),
-              expectedEvaluation: z.record(z.string(), z.any()).optional(),
+              expectedEvaluation: expectedEvaluationZodSchema.optional(),
             })
             .strict()
             .superRefine((assertion, ctx) => {

@@ -27,7 +27,7 @@ tags:
 # ...
 ```
 
-A feature may carry multiple tags. Targets decide which tagged features become part of a datafile.
+Features and global variables may carry multiple tags. Targets decide which tagged definitions become part of a datafile.
 
 ## Build output with targets
 
@@ -68,8 +68,8 @@ npx featurevisor test
 
 ## Tags vs targets vs namespaces
 
-- **Tags**: feature metadata used by targets.
-- **[Targets](targets.md)**: generated datafile definitions with optional tag filters, feature-key filters (`includeFeatures` / `excludeFeatures`), and build-time context.
+- **Tags**: feature and global variable metadata used by targets.
+- **[Targets](targets.md)**: generated datafile definitions with optional tag filters, feature key filters (`includeFeatures` / `excludeFeatures`), global variable key filters (`includeVariables` / `excludeVariables`), and build time context.
 - **[Namespaces](namespaces.md)**: organize feature/segment keys via directories. Pure organization, no runtime effect.
 
 You typically tag features by consumer surface, namespace freely, and create targets for the actual datafiles consumers load.

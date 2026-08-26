@@ -70,7 +70,7 @@ export async function testVariable(
     }
 
     for (const [key, expected] of Object.entries(assertion.expectedEvaluation || {})) {
-      if (evaluation[key] !== expected) {
+      if (!valuesAreEqual(expected, evaluation[key])) {
         assertionResult.passed = false;
         result.passed = false;
         assertionResult.errors!.push({

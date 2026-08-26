@@ -83,6 +83,19 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
       },
       "Expected at least one of expectedValue or expectedEvaluation",
     );
+
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            expectedEvaluation: { unknownField: true },
+          },
+        ],
+      },
+      "Unrecognized key",
+    );
   });
 
   it("accepts a valid feature test with matrix, context, sticky, and expected evaluations", () => {

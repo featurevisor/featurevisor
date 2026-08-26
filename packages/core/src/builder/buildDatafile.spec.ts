@@ -446,6 +446,83 @@ describe("core: buildDatafile", function () {
     });
   });
 
+  test("specializes stringified force and variation override expressions", async function () {
+    const config = createProjectConfig(root, true);
+    const feature: ParsedFeature = {
+      key: "targeted",
+      description: "Targeted feature",
+      tags: ["all"],
+      bucketBy: "userId",
+      variablesSchema: {
+        colour: { type: "string", defaultValue: "black" },
+      },
+      variations: [
+        {
+          value: "control",
+          weight: 100,
+          variableOverrides: {
+            colour: [
+              { segments: { or: ["web", "mobile"] }, value: "red" },
+              {
+                conditions: {
+                  or: [
+                    { attribute: "platform", operator: "equals", value: "web" },
+                    { attribute: "platform", operator: "equals", value: "mobile" },
+                  ],
+                },
+                value: "blue",
+              },
+            ],
+          },
+        },
+      ],
+      force: {
+        staging: [
+          { segments: { or: ["web", "mobile"] }, variation: "control" },
+          {
+            conditions: {
+              or: [
+                { attribute: "platform", operator: "equals", value: "web" },
+                { attribute: "platform", operator: "equals", value: "mobile" },
+              ],
+            },
+            variation: "control",
+          },
+        ],
+      },
+      rules: {
+        staging: [{ key: "all", segments: "*", percentage: 100, variation: "control" }],
+      },
+    } as ParsedFeature;
+    const datasource = createMockDatasource(feature, {
+      web: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+      },
+      mobile: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "mobile" }],
+      },
+    });
+
+    const result = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "Web", context: { platform: "web" } },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(result.features.targeted.force?.[0].segments).toBe("*");
+    expect(result.features.targeted.force?.[1].conditions).toBe("*");
+    expect(result.segments.web).toBeUndefined();
+    expect(result.features.targeted.variations?.[0].variableOverrides?.colour[0].segments).toBe(
+      "*",
+    );
+    expect(result.features.targeted.variations?.[0].variableOverrides?.colour[1].conditions).toBe(
+      "*",
+    );
+  });
+
   test("derives revision hashes from the final target-specialized datafile", async () => {
     const config = createProjectConfig(root, true);
     const datasource = createMockDatasource(

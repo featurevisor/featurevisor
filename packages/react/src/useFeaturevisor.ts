@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Featurevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 import { useSdk } from "./useSdk.js";
 

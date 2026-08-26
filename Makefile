@@ -1,4 +1,4 @@
-.PHONY: install build test test-cli-integration test-global-variables-performance typecheck bundle-sizes lint format check
+.PHONY: install build test test-cli-integration test-global-variables-performance audit-production typecheck bundle-sizes lint format check
 
 ##
 # Packages
@@ -23,6 +23,11 @@ test-cli-integration:
 test-global-variables-performance:
 	npx lerna run build --scope @featurevisor/sdk --include-dependencies
 	node scripts/test-global-variables-performance.mjs
+
+# Network enabled release check for dependencies shipped to consumers.
+# Development-only advisories are reviewed separately from release blockers.
+audit-production:
+	npm run audit:production
 
 typecheck:
 	npm run typecheck

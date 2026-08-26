@@ -32,6 +32,7 @@ function getGeneratedTypeScriptDiagnostics(
     skipLibCheck: true,
     strict: true,
     target: ts.ScriptTarget.ES2020,
+    verbatimModuleSyntax: true,
   });
 
   return ts
@@ -153,6 +154,7 @@ describe("generate-code/typescript", () => {
     expect(functionsContent).toContain("export function isEnabled(");
     expect(functionsContent).toContain("export function getVariation<");
     expect(functionsContent).toContain("export function getVariable<");
+    expect(functionsContent).toContain("import type { FeatureKey, Variation,");
     expect(functionsContent).toContain("getVariation<Variation<F>>(featureKey, context)");
     expect(functionsContent).toContain("FeatureVariableType<F, V> | null");
     expect(functionsContent).toContain("GlobalVariableType<K> | null");
@@ -434,5 +436,39 @@ describe("generate-code/typescript", () => {
     expect(featuresContent).not.toContain("discount:");
     expect(variablesContent).toContain("supportEmail: string;");
     expect(variablesContent).not.toContain("supportInternalNote:");
+  });
+
+  it("includes feature dependency chains required by selected global variables", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "header-variable-only.yml"),
+      [
+        "description: Header variable only",
+        "includeFeatures:",
+        "  - does-not-match-*",
+        "includeVariables:",
+        "  - headerMessage",
+      ].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { target: "header-variable-only" },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
+    expect(variablesContent).toContain("headerMessage: string;");
+    expect(featuresContent).toContain("showHeader: null;");
+    expect(featuresContent).not.toContain("discount:");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 });

@@ -148,6 +148,42 @@ describe("global variable schema", () => {
         },
       }).success,
     ).toBe(false);
+    for (const segments of [["*"], { or: ["europe", "*"] }, { not: [{ not: ["*"] }] }]) {
+      expect(
+        parse({
+          ...base,
+          overrides: {
+            staging: [
+              { key: "all", segments, value: "a" },
+              { key: "later", segments: "europe", value: "b" },
+            ],
+          },
+        }).success,
+      ).toBe(false);
+    }
+    for (const conditions of [
+      ["*"],
+      {
+        or: [{ attribute: "country", operator: "equals", value: "de" }, "*"],
+      },
+      { not: [{ not: ["*"] }] },
+    ]) {
+      expect(
+        parse({
+          ...base,
+          overrides: {
+            staging: [
+              { key: "all", conditions, value: "a" },
+              {
+                key: "later",
+                conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                value: "b",
+              },
+            ],
+          },
+        }).success,
+      ).toBe(false);
+    }
     expect(
       parse({
         ...base,

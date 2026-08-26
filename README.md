@@ -62,17 +62,19 @@ Featurevisor [SDKs](https://featurevisor.com/docs/sdks/javascript) will take car
 
 ## Understanding the building blocks
 
-Three core building blocks of a Featurevisor [project](https://featurevisor.com/docs/projects) are:
+The core building blocks of a Featurevisor [project](https://featurevisor.com/docs/projects) are:
 
 - [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
 - [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
+- [Global variables](https://featurevisor.com/docs/global-variables/): independently evaluated configuration values
 
-SDKs are used in your application(s) to evaluate three different types of values belonging to your defined [features](https://featurevisor.com/docs/features/) against your provided [context](https://featurevisor.com/docs/sdks/javascript/#context) in the runtime:
+SDKs evaluate feature values and independent global variables against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application:
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
-- [Variables](https://featurevisor.com/docs/variables/): key/value pairs for remote configuration
+- [Feature variables](https://featurevisor.com/docs/variables/): typed values owned by a feature
+- [Global variables](https://featurevisor.com/docs/global-variables/): typed values with their own targeting and lifecycle
 
 ## Where can I use Featurevisor?
 
@@ -129,7 +131,7 @@ Several use cases include:
 - [Establishing feature ownership and governance](https://featurevisor.com/docs/use-cases/establishing-ownership/)
 - [Trunk based development](https://featurevisor.com/docs/use-cases/trunk-based-development/)
 - [Aligning multiple teams in a microfrontends architecture](https://featurevisor.com/docs/use-cases/microfrontends/)
-- [Feature depdendencies management](https://featurevisor.com/docs/use-cases/dependencies/)
+- [Feature dependencies management](https://featurevisor.com/docs/use-cases/dependencies/)
 - [Deprecating features safely](https://featurevisor.com/docs/use-cases/deprecation/)
 
 # License

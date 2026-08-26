@@ -70,7 +70,7 @@ npx featurevisor build --revision-from-hash    # per-datafile hash; unchanged co
 
 ## Sticky values (SDK-side override)
 
-Independent of bucketing, the SDK supports **sticky** values — application-supplied per-feature overrides (variation/variables/enabled) consulted **before** evaluation. Sticky is set from application code, not in YAML (details in [sdk-javascript.md](sdk-javascript.md#sticky)):
+Independent of bucketing, the SDK supports **sticky** values. Applications can supply per-feature evaluations and independent global variable values that are consulted before normal datafile evaluation. Sticky state is set from application code, not YAML. See [sdk-javascript.md](sdk-javascript.md#sticky).
 
 ```js
 f.setStickyFeatures({

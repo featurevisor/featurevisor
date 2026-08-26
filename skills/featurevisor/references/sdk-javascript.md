@@ -204,7 +204,7 @@ unsubscribe() // every f.on() returns an unsubscribe function
 
 ## Sticky
 
-Sticky values are per-feature overrides consulted **before** any datafile evaluation. Use them when the application already knows the answer (an entitlements service returned the user's plan, or a server passed down pre-computed evaluations) or to freeze experiences mid-session:
+Sticky values are application supplied feature evaluations or global variable values consulted **before** normal datafile evaluation. Use them when the application already knows the answer, or to freeze experiences during a session:
 
 ```js
 f.setStickyFeatures({

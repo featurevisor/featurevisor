@@ -103,7 +103,7 @@ Non-zero exit on failure.
 
 ## List
 
-`list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output. Select exactly one of `--datafiles`, `--features`, `--segments`, `--groups`, `--schemas`, `--attributes`, `--targets`, or `--tests`.
+`list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output. Select exactly one of `--datafiles`, `--features`, `--variables`, `--segments`, `--groups`, `--schemas`, `--attributes`, `--targets`, or `--tests`.
 
 Archived features, segments, and attributes are excluded by default. Use `--archived=true` for archived definitions and `--archived=false` to request active definitions explicitly. Definition selectors support `--promotable=true` and `--promotable=false` where relevant.
 
@@ -310,7 +310,7 @@ Copies definitions and their dependencies between sets. `--target` applies the t
 
 ## catalog
 
-Read-only web UI for browsing the whole project — features, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. Ideal for sharing with non-engineers, and for live visual review during authoring sessions: the no-subcommand form watches the project and reloads the browser on every file change, so run it in the background (and open it in your browser tool if you have one) while making changes.
+Read-only web UI for browsing the whole project, including features, global variables, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. It is useful for sharing with non-engineers and for live visual review during authoring sessions. The no-subcommand form watches the project and reloads the browser after file changes.
 
 ```bash
 npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch (live reload)

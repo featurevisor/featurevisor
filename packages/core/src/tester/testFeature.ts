@@ -15,6 +15,16 @@ import { ProjectConfig } from "../config";
 import { checkIfArraysAreEqual, checkIfObjectsAreEqual } from "./helpers";
 import type { DatafileContentByKey } from "./testProject";
 
+function evaluationValuesAreEqual(expected: unknown, actual: unknown): boolean {
+  if (Array.isArray(expected) && Array.isArray(actual)) {
+    return checkIfArraysAreEqual(expected, actual);
+  }
+  if (expected && actual && typeof expected === "object" && typeof actual === "object") {
+    return checkIfObjectsAreEqual(expected, actual);
+  }
+  return expected === actual;
+}
+
 export interface TestFeatureOptions {
   verbose?: boolean;
   quiet?: boolean;
@@ -279,13 +289,13 @@ export async function testFeature(
     ) {
       function testEvaluation(type, evaluation, expected, details = {}) {
         for (const [key, value] of Object.entries(expected)) {
-          if (evaluation[key] !== value) {
+          if (!evaluationValuesAreEqual(value, evaluation[key])) {
             testResult.passed = false;
             testResultAssertion.passed = false;
 
             (testResultAssertion.errors as TestResultAssertionError[]).push({
               type: "evaluation",
-              expected: value as string | number | boolean | null | undefined,
+              expected: value,
               actual: evaluation[key],
               details: {
                 ...rootDetails,

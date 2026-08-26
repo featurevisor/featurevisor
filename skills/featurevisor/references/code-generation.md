@@ -22,6 +22,8 @@ Optional flags:
 
 `--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. `includeFeatures` and `excludeFeatures` filter features. `includeVariables` and `excludeVariables` filter global variables. Target context does not specialize generated types.
 
+When a selected global variable requires features, generated feature types include the complete required feature chain even when those features do not match the selectors directly. This mirrors the corresponding datafile payload.
+
 ## Output
 
 Inside `--out-dir`:

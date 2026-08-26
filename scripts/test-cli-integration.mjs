@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
@@ -108,8 +118,31 @@ function assertFile(path, description) {
   assert.equal(existsSync(path), true, `${description} was not generated at ${path}`);
 }
 
+function snapshotStateFiles(projectDirectoryPath) {
+  const stateDirectoryPath = join(projectDirectoryPath, ".featurevisor");
+  return readdirSync(stateDirectoryPath)
+    .sort()
+    .map((name) => {
+      const path = join(stateDirectoryPath, name);
+      const stat = statSync(path);
+      return { name, size: stat.size, modified: stat.mtimeMs, content: readFileSync(path, "utf8") };
+    });
+}
+
 function testStandardProject(projectDirectoryPath) {
   console.log("\nTesting examples/example-1");
+
+  writeFileSync(
+    join(projectDirectoryPath, "targets", "context-hash.yml"),
+    [
+      "description: Context revision integration target",
+      "tag: all",
+      "context:",
+      "  country: nl",
+      "  device: mobile",
+      "",
+    ].join("\n"),
+  );
 
   runJson(projectDirectoryPath, ["config", "--json"], (config) => {
     assert.deepEqual(config.environments, ["staging", "production"]);
@@ -175,7 +208,39 @@ function testStandardProject(projectDirectoryPath) {
     },
   );
 
+  let contentRevision;
+  runJson(
+    projectDirectoryPath,
+    [
+      "build",
+      "--print",
+      "--environment=staging",
+      "--feature=foo",
+      "--target=context-hash",
+      "--revision=source-a",
+      "--revision-from-hash",
+    ],
+    (datafile) => {
+      assert.notEqual(datafile.revision, "source-a");
+      contentRevision = datafile.revision;
+    },
+  );
+  runJson(
+    projectDirectoryPath,
+    [
+      "build",
+      "--print",
+      "--environment=staging",
+      "--feature=foo",
+      "--target=context-hash",
+      "--revision=source-b",
+      "--revision-from-hash",
+    ],
+    (datafile) => assert.equal(datafile.revision, contentRevision),
+  );
+
   const context = '{"userId":"123","device":"mobile","country":"nl"}';
+  const stateBeforeRuntimeCommands = snapshotStateFiles(projectDirectoryPath);
   runJson(
     projectDirectoryPath,
     ["evaluate", "--feature=foo", "--environment=staging", `--context=${context}`, "--json"],
@@ -237,6 +302,8 @@ function testStandardProject(projectDirectoryPath) {
     "--target=all",
     "-n=20",
   ]);
+  assert.deepEqual(snapshotStateFiles(projectDirectoryPath), stateBeforeRuntimeCommands);
+  pass("runtime evaluation commands leave state files untouched");
 
   for (const selector of [
     "features",
@@ -437,7 +504,7 @@ function testSetProject(projectDirectoryPath) {
   fail(
     projectDirectoryPath,
     ["promote", "--from=dev", "--to=staging", "--include-features=missing*"],
-    /No promotable changes|No source features matched/i,
+    /No promotable changes|No source features or variables matched/i,
   );
 }
 

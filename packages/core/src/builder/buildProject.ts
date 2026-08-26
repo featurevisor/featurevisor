@@ -198,10 +198,14 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       includeVariables: target?.includeVariables,
       excludeVariables: target?.excludeVariables,
       featurevisorVersion: getFeaturevisorVersion(),
+      revisionFromHash: target?.context ? false : cliOptions.revisionFromHash,
     });
 
     if (target?.context) {
       datafileContent = applyContextToDatafile(datafileContent as DatafileContent, target.context);
+      if (cliOptions.revisionFromHash) {
+        datafileContent.revision = generateHashForDatafile(datafileContent);
+      }
     }
 
     if (cliOptions.pretty) {

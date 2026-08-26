@@ -1,4 +1,4 @@
-import { Featurevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 import type { GlobalVariableKey } from "@featurevisor/types";
 
 export function onVariableChange(

@@ -59,7 +59,16 @@ describe("core: feature tester behavior", () => {
               expectedVariation: "control",
               expectedVariables: { count: 2 },
               expectedEvaluations: {
-                flag: { enabled: true, reason: "forced" },
+                flag: {
+                  enabled: true,
+                  reason: "forced",
+                  force: {
+                    conditions: [{ attribute: "country", operator: "equals", value: "child" }],
+                    enabled: true,
+                    variation: "control",
+                    variables: { count: 2 },
+                  },
+                },
                 variation: { reason: "forced" },
                 variables: {
                   count: { variableValue: 2, reason: "forced" },

@@ -501,4 +501,75 @@ describe("catalog export", () => {
     expect(detail.sourcePath).toBe("features/checkout.yml");
     expect(detail.editLinks.cursor).toMatch(/^cursor:\/\/file\/.+features\/checkout\.yml$/);
   });
+
+  it("projects global variable dependency chains into target relationships", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-variable-target-"));
+    const baseDatasource = createDatasource();
+    const datasource = {
+      ...baseDatasource,
+      listFeatures: async () => ["checkout", "account", "authenticated"],
+      readFeature: async (key: string) => {
+        if (key === "account") {
+          return {
+            key,
+            description: "Account",
+            tags: ["mobile"],
+            required: ["authenticated"],
+            bucketBy: "userId",
+            rules: { staging: [], production: [] },
+          };
+        }
+        if (key === "authenticated") {
+          return {
+            key,
+            description: "Authenticated",
+            tags: ["mobile"],
+            bucketBy: "userId",
+            rules: { staging: [], production: [] },
+          };
+        }
+        return baseDatasource.readFeature();
+      },
+      readVariable: async () => ({
+        key: "supportEmail",
+        description: "Support email",
+        tags: ["web", "premium"],
+        type: "string",
+        defaultValue: "support@example.com",
+        requiredFeatures: ["account"],
+        overrides: {
+          staging: [
+            {
+              key: "premium",
+              segments: "premiumUsers",
+              conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+              value: "premium@example.com",
+            },
+          ],
+          production: [],
+        },
+      }),
+    };
+
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), datasource, {
+      copyAssets: false,
+    });
+
+    const targetDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "target", "premiumWeb.json"),
+        "utf8",
+      ),
+    );
+    const accountDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "account.json"),
+        "utf8",
+      ),
+    );
+
+    expect(targetDetail.relationships.features).toEqual(["account", "authenticated", "checkout"]);
+    expect(targetDetail.relationships.variables).toEqual(["supportEmail"]);
+    expect(accountDetail.relationships.targets).toEqual(["mobile", "premiumWeb"]);
+  });
 });

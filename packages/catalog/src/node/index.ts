@@ -366,6 +366,20 @@ function collectFeatureKeysFromRequired(required: ParsedFeature["required"], res
   }
 }
 
+function expandFeatureKeys(featureKeys: Set<string>, features: Record<string, ParsedFeature>) {
+  const pending = Array.from(featureKeys);
+  for (let index = 0; index < pending.length; index++) {
+    const nested = new Set<string>();
+    collectFeatureKeysFromRequired(features[pending[index]]?.required, nested);
+    for (const key of nested) {
+      if (!featureKeys.has(key)) {
+        featureKeys.add(key);
+        pending.push(key);
+      }
+    }
+  }
+}
+
 function collectSchemaKeys(schema: unknown, result: Set<string>) {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
   const current = schema as Schema;
@@ -1096,6 +1110,7 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
         collectAttributeKeysFromConditions(override.conditions, attributes);
       }
     }
+    expandFeatureKeys(features, maps.feature);
     features.forEach((key) => {
       addToSet(relationships.variableFeatures, variableKey, key);
       addToSet(relationships.featuresUsedInVariables, key, variableKey);
@@ -1112,6 +1127,28 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
       addToSet(relationships.variableSchemas, variableKey, schemaKey);
       addToSet(relationships.schemasUsedInVariables, schemaKey, variableKey);
     });
+  }
+
+  // Targets include the complete runtime dependency closure of their selected
+  // global variables. Reflect that same closure in Catalog relationships.
+  for (const [targetKey, variableKeys] of Object.entries(relationships.targetVariables)) {
+    for (const variableKey of variableKeys) {
+      for (const featureKey of relationships.variableFeatures[variableKey] || []) {
+        addToSet(relationships.targetFeatures, targetKey, featureKey);
+        addToSet(relationships.featureTargets, featureKey, targetKey);
+      }
+      for (const segmentKey of relationships.variableSegments[variableKey] || []) {
+        addToSet(relationships.segmentTargets, segmentKey, targetKey);
+        const segmentAttributes = new Set<string>();
+        collectAttributeKeysFromConditions(maps.segment[segmentKey]?.conditions, segmentAttributes);
+        segmentAttributes.forEach((attributeKey) =>
+          addToSet(relationships.attributeTargets, attributeKey, targetKey),
+        );
+      }
+      for (const attributeKey of relationships.variableAttributes[variableKey] || []) {
+        addToSet(relationships.attributeTargets, attributeKey, targetKey);
+      }
+    }
   }
 
   for (const [featureKey, targetKeys] of Object.entries(relationships.featureTargets)) {

@@ -8,20 +8,51 @@ import type {
   VariableValue,
   EnvironmentKey,
   Weight,
+  Required,
+  Variation,
+  Force,
+  ResolvedVariableSchema,
+  EvaluatedFeature,
 } from "./feature";
+import type { Traffic } from "./datafile";
 import type { SegmentKey } from "./segment";
 import type { TargetKey } from "./target";
-import type { StickyVariables, GlobalVariableKey } from "./variable";
+import type { StickyVariables, GlobalVariableKey, DatafileVariable } from "./variable";
 
 export interface AssertionMatrix {
   [key: string]: AttributeValue[];
 }
 
+export interface ExpectedEvaluation {
+  type?: "flag" | "variation" | "variable";
+  featureKey?: FeatureKey;
+  reason?: string;
+  bucketKey?: string;
+  bucketValue?: number;
+  ruleKey?: string;
+  error?: unknown;
+  enabled?: boolean;
+  traffic?: Traffic;
+  forceIndex?: number;
+  force?: Force;
+  required?: Required[];
+  stickyFeature?: EvaluatedFeature;
+  sticky?: EvaluatedFeature;
+  variation?: Variation;
+  variationValue?: VariationValue;
+  variableKey?: VariableKey | GlobalVariableKey;
+  variableValue?: VariableValue;
+  variableSchema?: ResolvedVariableSchema;
+  variableOverrideIndex?: number;
+  variableOverrideKey?: string;
+  variable?: DatafileVariable;
+}
+
 export interface ExpectedEvaluations {
-  flag?: Record<string, any>;
-  variation?: Record<string, any>;
+  flag?: ExpectedEvaluation;
+  variation?: ExpectedEvaluation;
   variables?: {
-    [key: VariableKey]: Record<string, any>;
+    [key: VariableKey]: ExpectedEvaluation;
   };
 }
 
@@ -96,7 +127,7 @@ export interface VariableAssertion {
   context?: Context;
   defaultVariableValue?: VariableValue;
   expectedValue?: VariableValue;
-  expectedEvaluation?: Record<string, any>;
+  expectedEvaluation?: ExpectedEvaluation;
 }
 
 export interface TestVariable {
@@ -120,8 +151,8 @@ export type Test = TestSegment | TestFeature | TestVariable;
  */
 export interface TestResultAssertionError {
   type: "flag" | "variation" | "variable" | "segment" | "evaluation";
-  expected: string | number | boolean | Date | null | undefined;
-  actual: string | number | boolean | Date | null | undefined;
+  expected: unknown;
+  actual: unknown;
   message?: string;
   details?: {
     evaluationType?: string; // e.g., "flag", "variation", "variable"

@@ -64,6 +64,29 @@ function mutationKeyForRoot(key: string): string {
   return key.startsWith("[") || key.startsWith(":") ? `value${key}` : `value.${key}`;
 }
 
+function getStaticExpressionValue(value: unknown): boolean | undefined {
+  if (value === "*") return true;
+  if (Array.isArray(value)) {
+    const values = value.map(getStaticExpressionValue);
+    if (values.indexOf(false) !== -1) return false;
+    return values.every((item) => item === true) ? true : undefined;
+  }
+  if (!value || typeof value !== "object") return undefined;
+
+  const expression = value as Record<string, unknown>;
+  if (Array.isArray(expression.and)) return getStaticExpressionValue(expression.and);
+  if (Array.isArray(expression.or)) {
+    const values = expression.or.map(getStaticExpressionValue);
+    if (values.indexOf(true) !== -1) return true;
+    return values.every((item) => item === false) ? false : undefined;
+  }
+  if (Array.isArray(expression.not)) {
+    const child = getStaticExpressionValue(expression.not);
+    return typeof child === "boolean" ? !child : undefined;
+  }
+  return undefined;
+}
+
 export function getVariableZodSchema(
   projectConfig: ProjectConfig,
   attributesByKey: Record<string, Attribute>,
@@ -136,7 +159,18 @@ export function getVariableZodSchema(
     }
 
     overrides.forEach((override, index) => {
-      const isCatchAll = override.segments === "*" && !override.conditions;
+      const segmentsValue = override.segments
+        ? getStaticExpressionValue(override.segments)
+        : undefined;
+      const conditionsValue = override.conditions
+        ? getStaticExpressionValue(override.conditions)
+        : undefined;
+      const isCatchAll =
+        (segmentsValue === true || conditionsValue === true) &&
+        segmentsValue !== false &&
+        conditionsValue !== false &&
+        (typeof override.segments === "undefined" || segmentsValue === true) &&
+        (typeof override.conditions === "undefined" || conditionsValue === true);
       if (isCatchAll && index !== overrides.length - 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

@@ -32,6 +32,8 @@ Every override requires a stable `key`, targeting through `segments`, `condition
 
 Use `requiredFeatures` at the variable or override level. Requirements can be feature keys or `{ key, variation }` objects. For a global variable, disabled means its required features were not satisfied. Unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
 
+Feature `expose` configuration remains authoritative. If a required feature is excluded from a particular datafile by its expose policy, the requirement is not satisfied in that datafile.
+
 Targets select global variables by `tag` or `tags`, plus optional glob-like `includeVariables` and `excludeVariables` selectors. Tag and include or exclude selectors use AND semantics. A Target without selectors includes every active feature and global variable.
 
 JavaScript evaluation:
@@ -59,3 +61,4 @@ assertions:
 ```
 
 Variable assertions also support `target`, `matrix`, `stickyVariables`, and `defaultVariableValue`.
+Matrix placeholders are substituted recursively in nested sticky values, defaults, expected values, and detailed evaluation expectations. Detailed expectations accept only documented evaluation fields and compare nested arrays and objects by value.

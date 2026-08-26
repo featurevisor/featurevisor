@@ -8,14 +8,15 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 
 | Term          | Meaning                                                                                                                                          |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Project**   | A Git repository containing `featurevisor.config.js` + `attributes/`, `segments/`, `features/` (and optionally `groups/`, `schemas/`, `tests/`). |
+| **Project**   | A Git repository containing `featurevisor.config.js`, `attributes/`, `segments/`, `features/`, and optionally `variables/`, `groups/`, `schemas/`, `targets/`, and `tests/`. |
 | **Attribute** | A named, typed key the SDK receives at evaluation (e.g. `userId`, `country`). Defined in `attributes/<key>.yml`.                                 |
 | **Segment**   | A reusable named condition over attributes. Defined in `segments/<key>.yml`. References attributes by name.                                      |
 | **Feature**   | A flag/variation/variable bundle with rollout rules. Defined in `features/<key>.yml`. References segments by name.                               |
+| **Global variable** | An independently evaluated typed value under `variables/<key>.yml`, with optional requirements and ordered overrides.                    |
 | **Group**     | Mutual-exclusion container that constrains percentage caps for member features. `groups/<name>.yml`.                                             |
 | **Schema**    | Reusable variable shape, referenced by name from `variablesSchema` entries. `schemas/<name>.yml`.                                                |
-| **Test spec** | Declarative `.spec.yml` asserting expected evaluation outcomes. `tests/features/...` or `tests/segments/...`.                                    |
-| **Set**       | Independent project tree under `sets/<set>/` with its own attributes/segments/features/targets/tests. See [sets-promotions.md](sets-promotions.md). |
+| **Test spec** | Declarative `.spec.yml` asserting expected outcomes under `tests/features/`, `tests/segments/`, or `tests/variables/`.                         |
+| **Set**       | Independent project tree under `sets/<set>/` with its own attributes, segments, features, global variables, targets, and tests. See [sets-promotions.md](sets-promotions.md). |
 | **Promotion** | Copying definitions (plus dependency closure) from one set to another via `promote`. Preview by default; `--apply` writes.                       |
 
 ## Evaluations
@@ -24,10 +25,10 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Flag**              | The boolean enabled/disabled outcome for a feature.                                                                                              |
 | **Variation**         | The string outcome for a feature with `variations:` — e.g. `control`, `treatment`.                                                               |
-| **Variable**          | A typed value (string/boolean/integer/double/array/object/json) attached to a feature.                                                           |
+| **Feature variable**  | A typed value attached to a feature through `variablesSchema`.                                                                                  |
 | **Context**           | The object of attribute values supplied at evaluation time.                                                                                      |
-| **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` → number in [0,100].                                                             |
-| **Sticky**            | SDK-side override for a feature (variation/variables/enabled) consulted before rules.                                                            |
+| **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` into the inclusive internal range 0 to 100,000, representing 0% to 100%.        |
+| **Sticky**            | SDK instance state that can override feature evaluations or global variable values before normal datafile evaluation.                           |
 | **Activation**        | The event of a user being assigned a variation; commonly piped to analytics.                                                                     |
 | **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
 
@@ -51,8 +52,8 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Carries a `schemaVersion` string (currently `"2"`) that is informational — SDKs don't branch on it. |
 | **OpenFeature** | Vendor-neutral flag API. Featurevisor ships optional providers per platform — see [openfeature.md](openfeature.md).    |
 | **Conformance** | Cross-SDK contract (`conformance/sdk-v3.json`) every v3 SDK is verified against: bucketing, portable conditions, child context model, presence-based defaults. |
-| **Tag**         | Feature metadata used by targets to select features.                                                                    |
-| **Target**      | A generated datafile definition with optional tag filters, feature-key filters, and build-time context.                 |
+| **Tag**         | Feature and global variable metadata used by targets and other CLI filters.                                              |
+| **Target**      | A generated datafile definition with optional tag filters, feature and variable key filters, and build-time context.    |
 | **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |
 | **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
 | **State files** | `.featurevisor/existing-state-*.json` snapshots used to preserve bucketing across builds.                               |

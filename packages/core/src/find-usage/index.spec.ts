@@ -22,9 +22,16 @@ describe("core: find usage CLI options", function () {
           key === "outer"
             ? { type: "object", properties: { value: { schema: "inner" } } }
             : { type: "string" },
+        getRequiredFeaturesChainForVariable: async () =>
+          new Set(["checkout", "account", "authenticated"]),
       },
     } as any);
 
     expect(Array.from(usage.settings.schemas).sort()).toEqual(["inner", "outer"]);
+    expect(Array.from(usage.settings.features).sort()).toEqual([
+      "account",
+      "authenticated",
+      "checkout",
+    ]);
   });
 });

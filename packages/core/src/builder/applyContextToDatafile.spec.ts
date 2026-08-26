@@ -210,20 +210,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { browser: "chrome" });
 
-      expect(result.segments).toEqual({
-        browser: {
-          conditions: {
-            // @TODO: this OR (with only one child) can become a single (AND) condition
-            or: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "firefox",
-              },
-            ],
-          },
-        },
-      });
+      expect(result.segments).toEqual({});
     });
 
     test("segment with array of conditions - all match", function () {
@@ -498,7 +485,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual({ or: ["mobile"] });
+      expect(result.features.feature1.force?.[0].segments).toEqual("*");
     });
 
     test("force with AND conditions", function () {
@@ -556,9 +543,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].conditions).toEqual({
-        or: [{ attribute: "platform", operator: "equals", value: "mobile" }],
-      });
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("multiple force entries", function () {
@@ -776,7 +761,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual({ or: ["mobile"] });
+      expect(result.features.feature1.traffic[0].segments).toEqual("*");
     });
 
     test("multiple traffic entries", function () {
@@ -1543,7 +1528,7 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
       expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        { or: ["mobile"] },
+        "*",
       );
     });
 
@@ -1620,9 +1605,7 @@ describe("core: applyContextToDatafile", function () {
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
-      ).toEqual({
-        or: [{ attribute: "platform", operator: "equals", value: "mobile" }],
-      });
+      ).toEqual("*");
     });
 
     test("multiple variableOverrides for same variable", function () {
@@ -1964,7 +1947,7 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].segments).toEqual({ or: ["mobile"] });
+      expect(result.features.feature1.force?.[0].segments).toEqual("*");
     });
 
     test("nested AND/OR conditions in force and variableOverrides", function () {
@@ -2014,9 +1997,7 @@ describe("core: applyContextToDatafile", function () {
       expect(result.features.feature1.force?.[0].conditions).toEqual("*");
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
-      ).toEqual({
-        or: [{ attribute: "platform", operator: "equals", value: "mobile" }],
-      });
+      ).toEqual("*");
     });
   });
 
@@ -2519,19 +2500,7 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
       expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].conditions).toEqual({
-        and: [
-          {
-            or: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "firefox",
-              },
-            ],
-          },
-        ],
-      });
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("datafile specialization preserves NOT rules as non-broadening expressions", function () {

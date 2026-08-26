@@ -21,7 +21,8 @@ import type {
 } from "@featurevisor/types";
 
 import type { FeaturevisorModule } from "./modules.js";
-import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer.js";
+import { getBucketKey, getBucketedNumber } from "./bucketer.js";
+import type { BucketKey, BucketValue } from "./bucketer.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 import { parseSegmentsIfStringified } from "./conditions.js";
 
