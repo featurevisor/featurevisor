@@ -110,6 +110,34 @@ function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, fe
       addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
     }
   }
+
+  for (const traffic of feature.traffic) {
+    const variableOverrides = traffic.variableOverrides || {};
+    for (const variableKey of Object.keys(variableOverrides)) {
+      const overrides = variableOverrides[variableKey];
+      for (const override of overrides) {
+        const requirements = override.requiredFeatures;
+        if (!requirements) continue;
+        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
+          addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+        }
+      }
+    }
+  }
+
+  for (const variation of feature.variations || []) {
+    const variableOverrides = variation.variableOverrides || {};
+    for (const variableKey of Object.keys(variableOverrides)) {
+      const overrides = variableOverrides[variableKey];
+      for (const override of overrides) {
+        const requirements = override.requiredFeatures;
+        if (!requirements) continue;
+        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
+          addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+        }
+      }
+    }
+  }
 }
 
 function indexVariable(

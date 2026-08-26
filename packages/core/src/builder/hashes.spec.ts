@@ -52,6 +52,38 @@ describe("builder: dependency-aware hashes", () => {
     );
   });
 
+  test("handles cyclic feature variable override requirements", () => {
+    const features = {
+      first: feature({
+        variations: [
+          {
+            value: "control",
+            variableOverrides: {
+              copy: [{ requiredFeatures: ["second"], value: "first" }],
+            },
+          },
+        ],
+      }),
+      second: feature({
+        variations: [
+          {
+            value: "control",
+            variableOverrides: {
+              copy: [{ requiredFeatures: ["first"], value: "second" }],
+            },
+          },
+        ],
+      }),
+    };
+
+    const before = generateHashForFeature("first", features, {});
+    expect(before).toEqual(expect.any(String));
+    expect(generateHashForFeature("second", features, {})).toEqual(expect.any(String));
+
+    features.second.variations![0].variableOverrides!.copy[0].value = "changed";
+    expect(generateHashForFeature("first", features, {})).not.toBe(before);
+  });
+
   test("includes segments referenced by stringified global variable expressions", () => {
     const variables: Record<string, DatafileVariable> = {
       message: {

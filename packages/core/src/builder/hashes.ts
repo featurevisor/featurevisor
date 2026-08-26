@@ -53,6 +53,7 @@ export function generateHashForFeature(
   featureKey: FeatureKey,
   features: Record<FeatureKey, Feature>,
   segmentHashes: Record<SegmentKey, string>,
+  visiting: Set<FeatureKey> = new Set(),
 ): string {
   const feature = features[featureKey];
 
@@ -67,16 +68,49 @@ export function generateHashForFeature(
   for (const required of feature.required || []) {
     requiredFeatureKeys.push(typeof required === "string" ? required : required.key);
   }
-
-  const requiredFeatureHashes = requiredFeatureKeys.map((key) =>
-    generateHashForFeature(key, features, segmentHashes),
-  );
+  for (const traffic of feature.traffic) {
+    for (const overrides of Object.values(traffic.variableOverrides || {})) {
+      for (const override of overrides) {
+        const requirements = override.requiredFeatures;
+        if (!requirements) continue;
+        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
+          requiredFeatureKeys.push(getRequiredFeatureKey(required));
+        }
+      }
+    }
+  }
+  for (const variation of feature.variations || []) {
+    for (const overrides of Object.values(variation.variableOverrides || {})) {
+      for (const override of overrides) {
+        const requirements = override.requiredFeatures;
+        if (!requirements) continue;
+        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
+          requiredFeatureKeys.push(getRequiredFeatureKey(required));
+        }
+      }
+    }
+  }
 
   const usedSegments = extractSegmentsFromFeature(feature);
   const usedSegmentHashes = Array.from(usedSegments).map((segmentKey) => segmentHashes[segmentKey]);
 
   const featureWithoutHash = { ...feature };
   delete featureWithoutHash.hash;
+
+  // Override requirements may form a safe runtime cycle because checking a
+  // required flag does not evaluate that feature's variable overrides. Stop
+  // hash recursion at the cycle while retaining the complete local content.
+  if (visiting.has(featureKey)) {
+    return generateHashFromString(
+      JSON.stringify({ featureKey, feature: featureWithoutHash, usedSegmentHashes }),
+    );
+  }
+
+  const nextVisiting = new Set(visiting);
+  nextVisiting.add(featureKey);
+  const requiredFeatureHashes = Array.from(new Set(requiredFeatureKeys)).map((key) =>
+    generateHashForFeature(key, features, segmentHashes, nextVisiting),
+  );
 
   return generateHashFromString(
     JSON.stringify({

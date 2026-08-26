@@ -25,6 +25,7 @@ import type { CustomParser } from "@featurevisor/parsers";
 import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 import {
   collectRequiredFeatureKeys,
+  getFeatureVariableOverrideRequirements,
   getRequiredFeatureKey,
   normalizeFeatureRequirements,
   normalizeRequiredFeatures,
@@ -132,8 +133,53 @@ export class Datasource {
     }
 
     const feature = await this.readFeature(featureKey);
+    const featureCache = new Map<FeatureKey, ParsedFeature>([[featureKey, feature]]);
+    const cachedDatasource = {
+      featureExists: (key: FeatureKey) => this.featureExists(key),
+      readFeature: async (key: FeatureKey) => {
+        const cached = featureCache.get(key);
+        if (cached) return cached;
+        const value = await this.readFeature(key);
+        featureCache.set(key, value);
+        return value;
+      },
+    };
 
-    return collectRequiredFeatureKeys(this, featureKey, normalizeFeatureRequirements(feature));
+    const result = await collectRequiredFeatureKeys(
+      cachedDatasource,
+      featureKey,
+      normalizeFeatureRequirements(feature),
+    );
+    const processed = new Set<FeatureKey>();
+    const queue = Array.from(result);
+
+    while (queue.length > 0) {
+      const currentKey = queue.shift()!;
+      if (processed.has(currentKey)) continue;
+      processed.add(currentKey);
+
+      const current = await cachedDatasource.readFeature(currentKey);
+      for (const required of getFeatureVariableOverrideRequirements(current)) {
+        const requiredKey = getRequiredFeatureKey(required);
+        if (!(await this.featureExists(requiredKey))) {
+          throw new Error(`required feature "${requiredKey}" not found`);
+        }
+        const requiredFeature = await cachedDatasource.readFeature(requiredKey);
+        const chain = await collectRequiredFeatureKeys(
+          cachedDatasource,
+          requiredKey,
+          normalizeFeatureRequirements(requiredFeature),
+        );
+        for (const key of chain) {
+          if (!result.has(key)) {
+            result.add(key);
+            queue.push(key);
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   // segments
@@ -280,11 +326,7 @@ export class Datasource {
 
     for (const required of requirements) {
       const featureKey = getRequiredFeatureKey(required);
-      const chain = await collectRequiredFeatureKeys(
-        this,
-        featureKey,
-        normalizeFeatureRequirements(await this.readFeature(featureKey)),
-      );
+      const chain = await this.getRequiredFeaturesChain(featureKey);
       chain.forEach((key) => result.add(key));
     }
 

@@ -105,7 +105,7 @@ export interface Evaluation {
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
-  /** Present when a keyed global variable override matched. */
+  /** Present when a keyed feature or global variable override matched. */
   variableOverrideKey?: string;
   /** Present when evaluating a global variable. */
   variable?: DatafileVariable;
@@ -160,6 +160,42 @@ function reportEvaluationDiagnostic(
       evaluation,
     },
     originalError: evaluation.error,
+  });
+}
+
+function requiredFeaturesAreMatched(
+  requirements: RequiredFeature[] | RequiredFeature | Required[] | undefined,
+  datafile: EvaluationDataProvider,
+  options: EvaluateOptions,
+): boolean {
+  if (typeof requirements === "undefined") return true;
+  const items = Array.isArray(requirements) ? requirements : [requirements];
+
+  return items.every((required) => {
+    let requiredKey: FeatureKey;
+    let requiredEnabled = true;
+    let requiredVariation: VariationValue | undefined;
+
+    if (typeof required === "string") {
+      requiredKey = required;
+    } else if ("feature" in required) {
+      requiredKey = required.feature;
+      requiredEnabled = required.enabled ?? true;
+      requiredVariation = required.variation;
+    } else {
+      requiredKey = required.key;
+      requiredVariation = required.variation;
+    }
+
+    const requiredEvaluation = datafile.evaluateRequiredFeature("flag", requiredKey, options);
+    if ((requiredEvaluation.enabled === true) !== requiredEnabled) return false;
+    if (typeof requiredVariation === "undefined") return true;
+
+    const variationEvaluation = datafile.evaluateRequiredFeature("variation", requiredKey, options);
+    return (
+      (variationEvaluation.variationValue || variationEvaluation.variation?.value) ===
+      requiredVariation
+    );
   });
 }
 
@@ -547,47 +583,11 @@ function evaluate(options: EvaluateOptions): Evaluation {
      */
     const requiredFeatures = feature.requiredFeatures || feature.required;
     if (type === "flag" && requiredFeatures && requiredFeatures.length > 0) {
-      const requiredFeaturesAreEnabled = requiredFeatures.every((required) => {
-        let requiredKey: FeatureKey;
-        let requiredEnabled = true;
-        let requiredVariation: VariationValue | undefined;
-
-        if (typeof required === "string") {
-          requiredKey = required;
-        } else if ("feature" in required) {
-          requiredKey = required.feature;
-          requiredEnabled = required.enabled ?? true;
-          requiredVariation = required.variation;
-        } else {
-          requiredKey = required.key;
-          requiredVariation = required.variation;
-        }
-
-        const requiredEvaluation = datafile.evaluateRequiredFeature("flag", requiredKey, options);
-        if ((requiredEvaluation.enabled === true) !== requiredEnabled) {
-          return false;
-        }
-
-        if (typeof requiredVariation !== "undefined") {
-          const requiredVariationEvaluation = datafile.evaluateRequiredFeature(
-            "variation",
-            requiredKey,
-            options,
-          );
-
-          let requiredVariationValue;
-
-          if (requiredVariationEvaluation.variationValue) {
-            requiredVariationValue = requiredVariationEvaluation.variationValue;
-          } else if (requiredVariationEvaluation.variation) {
-            requiredVariationValue = requiredVariationEvaluation.variation.value;
-          }
-
-          return requiredVariationValue === requiredVariation;
-        }
-
-        return true;
-      });
+      const requiredFeaturesAreEnabled = requiredFeaturesAreMatched(
+        requiredFeatures,
+        datafile,
+        options,
+      );
 
       if (!requiredFeaturesAreEnabled) {
         evaluation = {
@@ -809,6 +809,12 @@ function evaluate(options: EvaluateOptions): Evaluation {
           const overrides = matchedTraffic.variableOverrides[variableKey];
 
           const overrideIndex = overrides.findIndex((o) => {
+            if (
+              o.requiredFeatures &&
+              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
+            ) {
+              return false;
+            }
             if (o.conditions) {
               return datafile.allConditionsAreMatched(
                 typeof o.conditions === "string" && o.conditions !== "*"
@@ -825,7 +831,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               );
             }
 
-            return false;
+            return typeof o.requiredFeatures !== "undefined";
           });
 
           if (overrideIndex !== -1) {
@@ -843,6 +849,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               variableSchema,
               variableValue: override.value,
               variableOverrideIndex: overrideIndex,
+              variableOverrideKey: override.key,
             };
 
             reportEvaluationDiagnostic(reportDiagnostic, evaluation, "variable override from rule");
@@ -893,6 +900,12 @@ function evaluate(options: EvaluateOptions): Evaluation {
           const overrides = variation.variableOverrides[variableKey];
 
           const overrideIndex = overrides.findIndex((o) => {
+            if (
+              o.requiredFeatures &&
+              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
+            ) {
+              return false;
+            }
             if (o.conditions) {
               return datafile.allConditionsAreMatched(
                 typeof o.conditions === "string" && o.conditions !== "*"
@@ -909,7 +922,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               );
             }
 
-            return false;
+            return typeof o.requiredFeatures !== "undefined";
           });
 
           if (overrideIndex !== -1) {
@@ -927,6 +940,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               variableSchema,
               variableValue: override.value,
               variableOverrideIndex: overrideIndex,
+              variableOverrideKey: override.key,
             };
 
             reportEvaluationDiagnostic(

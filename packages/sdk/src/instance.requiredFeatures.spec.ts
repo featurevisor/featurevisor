@@ -44,6 +44,60 @@ function requiredFeaturesDatafile(): DatafileContent {
         ],
       }),
       legacyRequirement: createFeature({ required: ["enabled"] }),
+      featureOverrides: createFeature({
+        variablesSchema: {
+          message: { type: "string", defaultValue: "default" },
+        },
+        traffic: [
+          {
+            key: "all",
+            segments: "*",
+            percentage: 100000,
+            variableOverrides: {
+              message: [
+                {
+                  key: "conditions-and-required",
+                  conditions: { attribute: "country", operator: "equals", value: "nl" },
+                  requiredFeatures: [{ feature: "disabled", enabled: false }],
+                  value: "conditions",
+                },
+                {
+                  key: "segments-and-required",
+                  segments: "europe",
+                  requiredFeatures: ["enabled"],
+                  value: "segments",
+                },
+                {
+                  key: "required-only",
+                  requiredFeatures: [{ feature: "disabled", enabled: false }],
+                  value: "required",
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      variationOverrides: createFeature({
+        variablesSchema: {
+          message: { type: "string", defaultValue: "default" },
+        },
+        variations: [
+          {
+            value: "treatment",
+            variableOverrides: {
+              message: [
+                {
+                  key: "variation-required",
+                  conditions: { attribute: "country", operator: "equals", value: "nl" },
+                  requiredFeatures: [{ feature: "disabled", enabled: false, variation: "control" }],
+                  value: "variation",
+                },
+              ],
+            },
+          },
+        ],
+        force: [{ segments: "*", enabled: true, variation: "treatment" }],
+      }),
     },
     variables: {
       enabledVariable: {
@@ -139,6 +193,49 @@ describe("requiredFeatures", () => {
     expect(f.getVariable("overrides", { country: "nl" })).toBe("conditions");
     expect(f.getVariable("overrides", { continent: "eu" })).toBe("segments");
     expect(f.getVariable("overrides")).toBe("required");
+  });
+
+  it("uses the same selector combinations for feature variable overrides", () => {
+    expect(f.getVariable("featureOverrides", "message", { country: "nl" })).toBe("conditions");
+    expect(f.getVariable("featureOverrides", "message", { continent: "eu" })).toBe("segments");
+    expect(f.getVariable("featureOverrides", "message")).toBe("required");
+  });
+
+  it("reports stable keys for keyed rule and variation overrides", () => {
+    expect(f.evaluateVariable("featureOverrides", "message", { country: "nl" })).toEqual(
+      expect.objectContaining({
+        reason: "variable_override_rule",
+        variableOverrideIndex: 0,
+        variableOverrideKey: "conditions-and-required",
+      }),
+    );
+    expect(f.evaluateVariable("variationOverrides", "message", { country: "nl" })).toEqual(
+      expect.objectContaining({
+        reason: "variable_override_variation",
+        variableOverrideIndex: 0,
+        variableOverrideKey: "variation-required",
+      }),
+    );
+  });
+
+  it("skips a feature variable override when its required features do not match", () => {
+    const withModule = createFeaturevisor({
+      datafile: requiredFeaturesDatafile(),
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "enable-disabled-feature",
+          afterEvaluation: (evaluation) =>
+            evaluation.type === "flag" && evaluation.featureKey === "disabled"
+              ? { ...evaluation, enabled: true }
+              : evaluation,
+        },
+      ],
+    });
+
+    expect(withModule.getVariable("featureOverrides", "message", { country: "nl" })).toBe(
+      "default",
+    );
   });
 
   it("honours the enabled result produced by the normal module pipeline", () => {

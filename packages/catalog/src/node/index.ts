@@ -373,6 +373,26 @@ function collectFeatureKeysFromRequired(required: unknown, result: Set<string>) 
 
 function collectFeatureRequirements(feature: ParsedFeature, result: Set<string>) {
   collectFeatureKeysFromRequired(feature.requiredFeatures ?? feature.required, result);
+  const collectOverrides = (variableOverrides: Record<string, unknown> | undefined) => {
+    for (const overrides of Object.values(variableOverrides || {})) {
+      if (!Array.isArray(overrides)) continue;
+      for (const override of overrides) {
+        if (override && typeof override === "object") {
+          collectFeatureKeysFromRequired(
+            (override as { requiredFeatures?: unknown }).requiredFeatures,
+            result,
+          );
+        }
+      }
+    }
+  };
+  const ruleGroups = Array.isArray(feature.rules)
+    ? [feature.rules]
+    : Object.values(feature.rules || {});
+  for (const rules of ruleGroups) {
+    for (const rule of rules || []) collectOverrides(rule.variableOverrides);
+  }
+  for (const variation of feature.variations || []) collectOverrides(variation.variableOverrides);
 }
 
 function expandFeatureKeys(featureKeys: Set<string>, features: Record<string, ParsedFeature>) {
@@ -1032,6 +1052,12 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
         (rule as { conditions?: Condition | Condition[] | "*" }).conditions,
         attributes,
       );
+      for (const overrides of Object.values(rule.variableOverrides || {})) {
+        for (const override of overrides) {
+          collectSegmentKeys(override.segments, segments);
+          collectAttributeKeysFromConditions(override.conditions, attributes);
+        }
+      }
     }
 
     for (const force of getFeatureForce(feature)) {

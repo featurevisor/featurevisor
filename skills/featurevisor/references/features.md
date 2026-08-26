@@ -169,12 +169,15 @@ rules:
         treatment: 30
       variableOverrides:            # further conditional overrides
         bgColor:
-          - segments: amsterdam
+          - key: amsterdam
+            segments: amsterdam
             value: red
-          - conditions:
+          - key: rotterdam
+            conditions:
               - attribute: city
                 operator: equals
                 value: rotterdam
+            requiredFeatures: checkout
             value: blue
 ```
 
@@ -192,9 +195,12 @@ variations:
       bgColor: blue
     variableOverrides:               # conditional overrides per variation
       bgColor:
-        - segments: netherlands
+        - key: netherlands
+          segments: netherlands
           value: orange
 ```
+
+Feature variable overrides are checked in order. Each entry needs at least one selector from `conditions`, `segments`, or `requiredFeatures`, and exactly one of `value` or `mutate`. Conditions and segments are mutually exclusive. Requirements may be used alone or with either selector, using AND semantics. Stable keys are recommended and are required when `promotable` is set. Existing unkeyed entries and legacy mutation maps under `value` remain supported. Prefer explicit `mutate` for new partial updates.
 
 - Weights must sum to **100** (up to 2 decimals each).
 - `control`/`treatment` is convention only; any unique string is fine.

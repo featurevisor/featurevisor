@@ -9,24 +9,26 @@ export type VariableKey = string;
 export type VariableType = SchemaType | "json";
 export type VariableValue = Value | null;
 
-export interface VariableOverrideSegments {
-  segments: GroupSegment | GroupSegment[] | "*";
-}
-
-export interface VariableOverrideConditions {
-  conditions: Condition | Condition[];
-}
-
-export type VariableOverrideSegmentsOrConditions =
-  | VariableOverrideSegments
-  | VariableOverrideConditions;
-
+/**
+ * Variable override used inside a feature rule or variation.
+ *
+ * `key` remains optional for compatibility with existing definitions. New
+ * definitions should provide one so evaluations and promotion can use a stable
+ * identity. `mutate` is the explicit partial update form. Legacy mutation maps
+ * supplied through `value` remain supported until the next major release.
+ */
 export interface VariableOverride {
-  value: VariableValue;
+  key?: string;
+  description?: string;
+  promotable?: boolean;
 
-  // one of the below must be present in YAML files
+  value?: VariableValue;
+  mutate?: Record<string, VariableValue>;
+
+  // conditions and segments are mutually exclusive
   conditions?: Condition | Condition[];
   segments?: GroupSegment | GroupSegment[] | "*";
+  requiredFeatures?: RequiredFeatures;
 }
 
 export interface Variation {

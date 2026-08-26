@@ -4,6 +4,7 @@ import type {
   SegmentKey,
   AttributeKey,
   SchemaKey,
+  VariableOverride,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
@@ -16,6 +17,7 @@ import {
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { extractSchemaReferences } from "../utils/schemaReferences";
 import {
+  getFeatureVariableOverrideRequirements,
   getRequiredFeatureKey,
   normalizeFeatureRequirements,
 } from "../datasource/requiredFeatures";
@@ -51,6 +53,9 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
     };
 
     normalizeFeatureRequirements(feature).forEach((required) =>
+      usageInFeatures[featureKey].features.add(getRequiredFeatureKey(required)),
+    );
+    getFeatureVariableOverrideRequirements(feature).forEach((required) =>
       usageInFeatures[featureKey].features.add(getRequiredFeatureKey(required)),
     );
 
@@ -118,6 +123,22 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
             extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
               usageInFeatures[featureKey].segments.add(segmentKey),
             );
+            (Object.values(rule.variableOverrides || {}) as VariableOverride[][]).forEach(
+              (overrides) => {
+                overrides.forEach((override) => {
+                  if (override.segments) {
+                    extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                      usageInFeatures[featureKey].segments.add(segmentKey),
+                    );
+                  }
+                  if (override.conditions) {
+                    extractAttributeKeysFromConditions(override.conditions).forEach(
+                      (attributeKey) => usageInFeatures[featureKey].attributes.add(attributeKey),
+                    );
+                  }
+                });
+              },
+            );
           });
         }
       });
@@ -148,6 +169,20 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
             usageInFeatures[featureKey].segments.add(segmentKey),
           );
+          Object.values(rule.variableOverrides || {}).forEach((overrides) => {
+            overrides.forEach((override) => {
+              if (override.segments) {
+                extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                  usageInFeatures[featureKey].segments.add(segmentKey),
+                );
+              }
+              if (override.conditions) {
+                extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
+                  usageInFeatures[featureKey].attributes.add(attributeKey),
+                );
+              }
+            });
+          });
         });
       }
     }

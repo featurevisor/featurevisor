@@ -72,6 +72,7 @@ function createMockDatasource(
       throw new Error("readAttribute should not be called");
     },
     listVariables: async () => [],
+    getRequiredFeaturesChain: async (key: string) => new Set([key]),
     getRequiredFeaturesChainForVariable: async () => new Set<string>(),
   } as any;
 }
@@ -260,6 +261,69 @@ describe("core: buildDatafile", function () {
     expect(trafficRule?.variableOverrides?.config[1].conditions).toEqual(
       JSON.stringify([{ attribute: "country", operator: "equals", value: "de" }]),
     );
+  });
+
+  test("builds aligned feature variable overrides while preserving legacy output", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    const rule = (feature.rules as Record<string, any[]>).staging[0];
+    rule.variableOverrides.config.push({
+      key: "required-mutation",
+      description: "Authoring metadata is removed",
+      promotable: true,
+      requiredFeatures: [
+        {
+          feature: "prerequisite",
+          enabled: false,
+          variation: "control",
+        },
+      ],
+      mutate: {
+        "nested.value": 40,
+        "list:append": "required",
+      },
+    });
+    const datasource = createMockDatasource({
+      withRuleOverrides: feature,
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        bucketBy: "userId",
+        disabledVariationValue: "control",
+        variations: [{ value: "control", weight: 100 }],
+        rules: { staging: [{ key: "off", segments: "*", percentage: 0 }] },
+      } as ParsedFeature,
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+    const overrides = result.features.withRuleOverrides.traffic[0].variableOverrides!.config;
+
+    expect(overrides[0].key).toBeUndefined();
+    expect(overrides[0].value).toEqual(
+      expect.objectContaining({ source: "rule", nested: { value: 20 } }),
+    );
+    expect(overrides[3]).toEqual({
+      key: "required-mutation",
+      requiredFeatures: [{ feature: "prerequisite", enabled: false, variation: "control" }],
+      value: {
+        source: "rule",
+        nested: { value: 40 },
+        list: ["base", "required"],
+        rows: [
+          { id: 1, label: "one" },
+          { id: 2, label: "two" },
+        ],
+        flag: true,
+      },
+    });
+    expect((overrides[3] as any).description).toBeUndefined();
+    expect((overrides[3] as any).promotable).toBeUndefined();
+    expect((overrides[3] as any).mutate).toBeUndefined();
   });
 
   test("keeps segments and conditions non-stringified when projectConfig.stringify is false", async function () {
@@ -648,6 +712,49 @@ describe("core: buildDatafile", function () {
     );
     expect(result.variables?.banner.hash).toEqual(expect.any(String));
     expect(Object.keys(result.segments)).toEqual(["europe"]);
+  });
+
+  test("includes feature variable override dependencies when feature filters are used", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      selected: {
+        key: "selected",
+        description: "Selected",
+        tags: ["all"],
+        bucketBy: "userId",
+        variablesSchema: { message: { type: "string", defaultValue: "default" } },
+        rules: {
+          staging: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                message: [{ requiredFeatures: "prerequisite", value: "matched" }],
+              },
+            },
+          ],
+        },
+      } as ParsedFeature,
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      } as ParsedFeature,
+    });
+    datasource.getRequiredFeaturesChain = async (key: string) =>
+      new Set(key === "selected" ? ["selected", "prerequisite"] : [key]);
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging", tag: "all" },
+      existingState,
+    );
+
+    expect(Object.keys(result.features)).toEqual(["selected", "prerequisite"]);
   });
 
   test("normalizes canonical requirements and preserves legacy datafile compatibility", async () => {

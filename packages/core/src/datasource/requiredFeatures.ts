@@ -4,6 +4,7 @@ import type {
   Required,
   RequiredFeature,
   RequiredFeatures,
+  VariableOverride,
 } from "@featurevisor/types";
 
 interface RequiredFeatureDatasource {
@@ -35,6 +36,27 @@ export function normalizeFeatureRequirements(feature: {
 
 export function getRequiredFeatureKey(required: RequiredFeature): FeatureKey {
   return typeof required === "string" ? required : required.feature;
+}
+
+export function getFeatureVariableOverrideRequirements(feature: ParsedFeature): RequiredFeature[] {
+  const result: RequiredFeature[] = [];
+  const collect = (variableOverrides: Record<string, VariableOverride[]> | undefined) => {
+    for (const overrides of Object.values(variableOverrides || {})) {
+      for (const override of overrides || []) {
+        result.push(...normalizeRequiredFeatures(override.requiredFeatures));
+      }
+    }
+  };
+
+  const ruleGroups = Array.isArray(feature.rules)
+    ? [feature.rules]
+    : Object.values(feature.rules || {});
+  for (const rules of ruleGroups) {
+    for (const rule of rules || []) collect(rule.variableOverrides);
+  }
+  for (const variation of feature.variations || []) collect(variation.variableOverrides);
+
+  return result;
 }
 
 export async function collectRequiredFeatureKeys(

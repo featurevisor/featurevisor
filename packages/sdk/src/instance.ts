@@ -903,10 +903,16 @@ export class Featurevisor {
     featureKey: FeatureKey,
     dependencies: EvaluateDependencies,
   ): Evaluation {
+    const { context, reportDiagnostic, modules, datafile, stickyFeatures } = dependencies;
+
     return evaluateWithModules({
-      ...dependencies,
       type,
       featureKey,
+      context,
+      reportDiagnostic,
+      modules,
+      datafile,
+      stickyFeatures,
     });
   }
 

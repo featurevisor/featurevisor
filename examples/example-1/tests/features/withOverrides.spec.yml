@@ -141,6 +141,11 @@ assertions:
             label: one
           - id: 2
             label: two-v
+    expectedEvaluations:
+      variables:
+        variationOverrideOnly:
+          reason: variable_override_variation
+          variableOverrideKey: netherlands-treatment
 
   # Rule variables + rule variableOverrides (conditions branch), control variation.
   - at: 25
@@ -236,6 +241,11 @@ assertions:
             label: one-rule
           - id: 2
             label: two
+    expectedEvaluations:
+      variables:
+        ruleOverrideOnly:
+          reason: variable_override_rule
+          variableOverrideKey: mobile
 
   # Rule variableOverrides only.
   - at: 75

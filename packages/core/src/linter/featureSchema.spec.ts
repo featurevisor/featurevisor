@@ -1002,6 +1002,151 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("accepts the aligned keyed, mutation, and required feature forms", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" }, compact: { type: "boolean" } },
+              defaultValue: { title: "Default", compact: false },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [
+                    {
+                      key: "german-treatment",
+                      description: "German treatment configuration",
+                      promotable: true,
+                      conditions: { attribute: "country", operator: "equals", value: "de" },
+                      requiredFeatures: [
+                        {
+                          feature: "dependency",
+                          enabled: true,
+                          variation: "treatment",
+                        },
+                      ],
+                      mutate: { title: "Behandlung" },
+                    },
+                    {
+                      key: "dependency-only",
+                      requiredFeatures: "dependency",
+                      value: { title: "Dependency", compact: true },
+                    },
+                  ],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("keeps legacy unkeyed value mutation maps valid", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" }, compact: { type: "boolean" } },
+              defaultValue: { title: "Default", compact: false },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [{ segments: "*", value: { title: "Legacy" } }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it.each([
+      {
+        name: "missing selector",
+        override: { key: "invalid", value: "x" },
+        message: "must define `conditions`, `segments`, or `requiredFeatures`",
+      },
+      {
+        name: "conditions and segments together",
+        override: { key: "invalid", conditions: [], segments: "*", value: "x" },
+        message: "cannot define both `conditions` and `segments`",
+      },
+      {
+        name: "value and mutate together",
+        override: { key: "invalid", segments: "*", value: "x", mutate: { title: "x" } },
+        message: "exactly one of `value` or `mutate`",
+      },
+      {
+        name: "neither value nor mutate",
+        override: { key: "invalid", segments: "*" },
+        message: "exactly one of `value` or `mutate`",
+      },
+      {
+        name: "promotable without key",
+        override: { promotable: false, segments: "*", value: "x" },
+        message: "key is required when `promotable` is set",
+      },
+    ])("rejects $name", ({ override, message }) => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: { label: { type: "string", defaultValue: "default" } },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: { label: [override] },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        message,
+      );
+    });
+
+    it("rejects duplicate provided keys and mixed keyed promotion lists", () => {
+      const feature = baseFeature({
+        variablesSchema: { label: { type: "string", defaultValue: "default" } },
+        rules: {
+          staging: [
+            {
+              key: "r1",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                label: [
+                  { key: "same", promotable: false, segments: "*", value: "first" },
+                  { key: "same", conditions: [], value: "second" },
+                  { segments: "*", value: "legacy" },
+                ],
+              },
+            },
+          ],
+          production: [{ key: "r1", segments: "*", percentage: 100 }],
+        },
+      });
+      expectParseFailure(feature, "Duplicate variable override keys");
+      expectParseFailure(feature, "Every variable override in the list must have a key");
+    });
+
     it("rejects rule variableOverrides for unknown variable key", () => {
       expectParseFailure(
         baseFeature({

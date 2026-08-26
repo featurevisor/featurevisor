@@ -82,4 +82,67 @@ describe("core: datasource required features", () => {
 
     expect(Array.from(result)).toEqual(["checkout", "pricing", "currency"]);
   });
+
+  it("includes requirements from rule and variation variable overrides", async () => {
+    const datasource = createDatasource({
+      checkout: {
+        rules: {
+          production: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                message: [{ requiredFeatures: "pricing", value: "rule" }],
+              },
+            },
+          ],
+        },
+        variations: [
+          {
+            value: "treatment",
+            variableOverrides: {
+              message: [
+                {
+                  requiredFeatures: [{ feature: "shipping", enabled: false }],
+                  value: "variation",
+                },
+              ],
+            },
+          },
+        ],
+      },
+      pricing: { requiredFeatures: "currency" },
+      currency: {},
+      shipping: {},
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
+
+    expect(Array.from(result)).toEqual(["checkout", "pricing", "currency", "shipping"]);
+  });
+
+  it("allows non-recursive override requirement cycles", async () => {
+    const datasource = createDatasource({
+      first: {
+        variations: [
+          {
+            value: "control",
+            variableOverrides: { value: [{ requiredFeatures: "second", value: "first" }] },
+          },
+        ],
+      },
+      second: {
+        variations: [
+          {
+            value: "control",
+            variableOverrides: { value: [{ requiredFeatures: "first", value: "second" }] },
+          },
+        ],
+      },
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "first");
+    expect(Array.from(result)).toEqual(["first", "second"]);
+  });
 });

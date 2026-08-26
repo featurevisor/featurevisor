@@ -360,6 +360,85 @@ describe("promoteProjectSets", function () {
     );
   });
 
+  it("promotes keyed feature variable overrides with item-level protection", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutDependency.yml",
+      [
+        "description: Checkout dependency",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/segments/protectedUsers.yml",
+      [
+        "description: Protected users",
+        "conditions:",
+        "  - attribute: team",
+        "    operator: equals",
+        "    value: protected",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutFlow.yml",
+      [
+        "description: Checkout flow in dev",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "variablesSchema:",
+        "  payload:",
+        "    schema: payload",
+        "    defaultValue: {}",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "    variableOverrides:",
+        "      payload:",
+        "        - key: internal",
+        "          segments: internal",
+        "          requiredFeatures: checkoutDependency",
+        "          value: {}",
+        "        - key: protected",
+        "          promotable: false",
+        "          segments: protectedUsers",
+        "          value: {}",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkoutFlow",
+      apply: true,
+    });
+
+    const feature = await datasource.forSet("staging").readFeature("checkoutFlow");
+    const rules = Array.isArray(feature.rules) ? feature.rules : [];
+    expect(rules[0].variableOverrides?.payload.map((override) => override.key)).toEqual([
+      "internal",
+    ]);
+    expect(result.files.created).toEqual(
+      expect.arrayContaining([expect.stringContaining("features/checkoutDependency.yml")]),
+    );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("segments/protectedUsers.yml")]),
+    );
+  });
+
   it("promotes nested reusable schemas without treating runtime schema keys as references", async function () {
     const root = await createProject();
     await writeFile(root, "sets/dev/schemas/inner.yml", "description: Inner value\ntype: string\n");

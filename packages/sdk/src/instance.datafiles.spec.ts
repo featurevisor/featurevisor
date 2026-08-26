@@ -330,6 +330,51 @@ describe("Featurevisor public API: datafiles", () => {
     expect(events[0].features).toEqual(["trafficOverride", "variationOverride"]);
   });
 
+  it("indexes required features in traffic and variation variable overrides", () => {
+    const events: any[] = [];
+    const requiredOverride = { requiredFeatures: ["prerequisite"], value: "matched" };
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        features: {
+          prerequisite: createFeature({ hash: "old" }),
+          trafficOverride: createFeature({
+            hash: "traffic",
+            variablesSchema: { copy: { type: "string", defaultValue: "default" } },
+            traffic: [
+              {
+                key: "all",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+                variableOverrides: { copy: [requiredOverride] },
+              },
+            ],
+          }),
+          variationOverride: createFeature({
+            hash: "variation",
+            variations: [
+              {
+                value: "control",
+                variableOverrides: { copy: [requiredOverride] },
+              },
+            ],
+          }),
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createDatafile({
+        revision: "changed",
+        features: { prerequisite: createFeature({ hash: "new" }) },
+      }),
+    );
+
+    expect(events[0].features).toEqual(["prerequisite", "trafficOverride", "variationOverride"]);
+  });
+
   it("propagates a partial feature change through required features and variables", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({

@@ -171,7 +171,7 @@ export async function testFeature(
       }
     }
 
-    if ("expectedVariation" in assertion) {
+    if (typeof assertion.expectedVariation !== "undefined") {
       testExpectedVariation(sdk, assertion);
     }
 

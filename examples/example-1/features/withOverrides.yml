@@ -201,8 +201,14 @@ variations:
             label: variation-base
     variableOverrides:
       variationOverrideOnly:
-        - segments: countries.netherlands
-          value:
+        - key: netherlands-treatment
+          description: Netherlands values when pricing is in treatment
+          segments: countries.netherlands
+          requiredFeatures:
+            - feature: pricing
+              enabled: true
+              variation: treatment
+          mutate:
             "deep.count": 10
             "deep.tags:append": nl
         - conditions:
@@ -265,8 +271,9 @@ rules:
               score: 1
       variableOverrides:
         ruleOverrideOnly:
-          - segments: mobile
-            value:
+          - key: mobile
+            segments: mobile
+            mutate:
               "options.threshold": 75
               "entries:append":
                 code: mobile

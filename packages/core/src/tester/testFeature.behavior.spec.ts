@@ -129,4 +129,30 @@ describe("core: feature tester behavior", () => {
     expect(result.passed).toBe(true);
     expect(result.assertions[0].errors).toEqual([]);
   });
+
+  it("does not evaluate a variation when an optional parsed field is undefined", async () => {
+    const test = {
+      key: featureKey,
+      feature: featureKey,
+      assertions: [
+        {
+          description: "flag only",
+          context: {},
+          expectedToBeEnabled: false,
+          expectedVariation: undefined,
+        },
+      ],
+    } as unknown as TestFeature;
+
+    const result = await testFeature(
+      createDatasource(),
+      {} as any,
+      test,
+      { quiet: true },
+      new Map([[false, createDatafile()]]),
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.assertions[0].errors).toEqual([]);
+  });
 });

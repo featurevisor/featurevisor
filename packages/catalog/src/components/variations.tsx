@@ -7,9 +7,13 @@ import { slugifyFragment, VariablePermalink, VariableValueView } from "./variabl
 
 type VariationRecord = Record<string, unknown>;
 type VariableOverrideRecord = {
+  key?: string;
+  description?: string;
   value?: unknown;
+  mutate?: unknown;
   segments?: unknown;
   conditions?: unknown;
+  requiredFeatures?: unknown;
 };
 
 const VARIABLES_PARAM = "variables";
@@ -246,9 +250,22 @@ function VariableAssignment(props: { id: string; name: string; value: unknown })
 function VariableOverrideEntry(props: { override: VariableOverrideRecord; setKey?: string }) {
   const hasSegments = props.override.segments !== undefined;
   const hasConditions = props.override.conditions !== undefined;
+  const hasRequirements = props.override.requiredFeatures !== undefined;
+  const usesMutation = props.override.mutate !== undefined;
 
   return (
     <div className="rounded-md bg-elevated/60 px-3 py-3">
+      {props.override.key && (
+        <div className="mb-3">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
+            Key
+          </div>
+          <EntityKey value={props.override.key} className="font-semibold" />
+          {props.override.description && (
+            <p className="mt-1 text-xs text-muted">{props.override.description}</p>
+          )}
+        </div>
+      )}
       {hasSegments && (
         <div className="mb-3">
           <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
@@ -265,11 +282,22 @@ function VariableOverrideEntry(props: { override: VariableOverrideRecord; setKey
           <ConditionTree conditions={props.override.conditions as any} setKey={props.setKey} />
         </div>
       )}
+      {hasRequirements && (
+        <div className="mb-3">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
+            Required features
+          </div>
+          <VariableValueView value={props.override.requiredFeatures} nested />
+        </div>
+      )}
       <div>
         <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
-          Value
+          {usesMutation ? "Mutation" : "Value"}
         </div>
-        <VariableValueView value={props.override.value} nested />
+        <VariableValueView
+          value={usesMutation ? props.override.mutate : props.override.value}
+          nested
+        />
       </div>
     </div>
   );
@@ -296,7 +324,11 @@ function VariableOverrideGroup(props: {
       </div>
       <div className="space-y-2">
         {props.overrides.map((override, index) => (
-          <VariableOverrideEntry key={index} override={override} setKey={props.setKey} />
+          <VariableOverrideEntry
+            key={override.key || index}
+            override={override}
+            setKey={props.setKey}
+          />
         ))}
       </div>
     </div>

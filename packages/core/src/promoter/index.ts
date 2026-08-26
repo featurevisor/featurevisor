@@ -18,6 +18,8 @@ import type {
   Test,
   ParsedVariable,
   ParsedVariableOverride,
+  VariableOverride,
+  Variation,
 } from "@featurevisor/types";
 
 import type { ProjectConfig } from "../config";
@@ -476,11 +478,56 @@ function collectFeatureDependencies(
       collectGroupSegmentKeys(rule?.segments, segmentKeys);
       Object.values(rule?.variableOverrides || {}).forEach((overrides: any) => {
         (overrides || []).forEach((override: any) => {
+          if (!isPromotable(override)) return;
           collectGroupSegmentKeys(override.segments, segmentKeys);
           collectConditionDependencies(override.conditions, segmentKeys, attributeKeys);
+          normalizeRequiredFeatures(override.requiredFeatures).forEach((required) => {
+            const requiredKey = getRequiredFeatureKey(required);
+            if (!featureKeys.has(requiredKey)) {
+              featureKeys.add(requiredKey);
+              const requiredFeature = features[requiredKey];
+              if (requiredFeature) {
+                collectFeatureDependencies(
+                  requiredFeature,
+                  features,
+                  featureKeys,
+                  segmentKeys,
+                  attributeKeys,
+                  schemaKeys,
+                );
+              }
+            }
+          });
         });
       });
     }
+  }
+
+  for (const variation of feature.variations || []) {
+    Object.values(variation.variableOverrides || {}).forEach((overrides) => {
+      overrides.forEach((override) => {
+        if (!isPromotable(override)) return;
+        collectGroupSegmentKeys(override.segments, segmentKeys);
+        collectConditionDependencies(override.conditions, segmentKeys, attributeKeys);
+        normalizeRequiredFeatures(override.requiredFeatures).forEach((required) => {
+          const requiredKey = getRequiredFeatureKey(required);
+          if (!featureKeys.has(requiredKey)) {
+            featureKeys.add(requiredKey);
+            const requiredFeature = features[requiredKey];
+            if (requiredFeature) {
+              collectFeatureDependencies(
+                requiredFeature,
+                features,
+                featureKeys,
+                segmentKeys,
+                attributeKeys,
+                schemaKeys,
+              );
+            }
+          }
+        });
+      });
+    });
   }
 
   for (const force of Object.values((feature.force || {}) as any)) {
@@ -492,6 +539,110 @@ function collectFeatureDependencies(
   }
 }
 
+function hasOverridePromotion(overrides: Record<string, VariableOverride[]> | undefined): boolean {
+  return Object.values(overrides || {}).some((entries) =>
+    entries.some((entry) => typeof entry.promotable !== "undefined"),
+  );
+}
+
+function mergeFeatureVariableOverrideArray(
+  destination: VariableOverride[] | undefined,
+  source: VariableOverride[] | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+  pathSegments: string[],
+): VariableOverride[] | undefined {
+  if (typeof source === "undefined") return destination;
+  const usesPromotion = [...(destination || []), ...source].some(
+    (override) => typeof override.promotable !== "undefined",
+  );
+  if (!usesPromotion) {
+    return deepMergeWithPolicy(destination, source, policy, conflicts, pathSegments) as
+      | VariableOverride[]
+      | undefined;
+  }
+
+  const allKeyed = [...(destination || []), ...source].every(
+    (override) => typeof override.key === "string",
+  );
+  if (!allKeyed) {
+    throw new Error(
+      "Cannot merge protected feature variable overrides when keys are missing. Add stable keys to every override in the list.",
+    );
+  }
+
+  const result = [...(destination || [])];
+  for (const sourceOverride of source) {
+    if (!isPromotable(sourceOverride)) continue;
+    const index = result.findIndex((entry) => entry.key === sourceOverride.key);
+    if (index !== -1 && !isPromotable(result[index])) continue;
+    const merged = deepMergeWithPolicy(
+      index === -1 ? undefined : result[index],
+      sourceOverride,
+      policy,
+      conflicts,
+      [...pathSegments, sourceOverride.key!],
+    ) as VariableOverride;
+    if (index === -1) result.push(merged);
+    else result[index] = merged;
+  }
+  return result;
+}
+
+function mergeFeatureVariableOverrideRecord(
+  destination: Record<string, VariableOverride[]> | undefined,
+  source: Record<string, VariableOverride[]> | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+  pathSegments: string[],
+): Record<string, VariableOverride[]> | undefined {
+  if (!source) return destination;
+  const variableKeys = new Set([...Object.keys(destination || {}), ...Object.keys(source)]);
+  const result: Record<string, VariableOverride[]> = {};
+  for (const variableKey of variableKeys) {
+    const merged = mergeFeatureVariableOverrideArray(
+      destination?.[variableKey],
+      source[variableKey],
+      policy,
+      conflicts,
+      [...pathSegments, variableKey],
+    );
+    if (merged) result[variableKey] = merged;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function mergeRule(
+  destination: Rule | undefined,
+  source: Rule,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+  pathSegments: string[],
+): Rule {
+  if (
+    !hasOverridePromotion(source.variableOverrides) &&
+    !hasOverridePromotion(destination?.variableOverrides)
+  ) {
+    return deepMergeWithPolicy(destination, source, policy, conflicts, pathSegments) as Rule;
+  }
+
+  const merged = deepMergeWithPolicy(
+    destination ? { ...destination, variableOverrides: undefined } : undefined,
+    { ...source, variableOverrides: undefined },
+    policy,
+    conflicts,
+    pathSegments,
+  ) as Rule;
+  merged.variableOverrides = mergeFeatureVariableOverrideRecord(
+    destination?.variableOverrides,
+    source.variableOverrides,
+    policy,
+    conflicts,
+    [...pathSegments, "variableOverrides"],
+  );
+  return merged;
+}
+
 function mergeRuleArray(
   destination: Rule[] | undefined,
   source: Rule[] | undefined,
@@ -500,7 +651,11 @@ function mergeRuleArray(
   pathSegments: string[],
 ) {
   if (typeof source === "undefined") return destination;
-  if (typeof destination === "undefined") return source.filter((rule) => isPromotable(rule));
+  if (typeof destination === "undefined") {
+    return source
+      .filter((rule) => isPromotable(rule))
+      .map((rule) => mergeRule(undefined, rule, policy, conflicts, [...pathSegments, rule.key]));
+  }
 
   const mergedRuleKeys = new Set<string>();
   const mergedRules: Rule[] = [];
@@ -519,10 +674,7 @@ function mergeRuleArray(
     }
 
     mergedRules.push(
-      deepMergeWithPolicy(destinationRule, sourceRule, policy, conflicts, [
-        ...pathSegments,
-        sourceRule.key,
-      ]) as Rule,
+      mergeRule(destinationRule, sourceRule, policy, conflicts, [...pathSegments, sourceRule.key]),
     );
   }
 
@@ -582,6 +734,52 @@ function mergeRules(
   return source;
 }
 
+function mergeVariations(
+  destination: Variation[] | undefined,
+  source: Variation[] | undefined,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+): Variation[] | undefined {
+  if (typeof source === "undefined") return destination;
+  const usesPromotion = [...(destination || []), ...source].some((variation) =>
+    hasOverridePromotion(variation.variableOverrides),
+  );
+  if (!usesPromotion) {
+    return deepMergeWithPolicy(destination, source, policy, conflicts, ["variations"]) as
+      | Variation[]
+      | undefined;
+  }
+
+  const mergedValues = new Set<string>();
+  const result: Variation[] = [];
+  for (const sourceVariation of source) {
+    const destinationVariation = destination?.find(
+      (variation) => variation.value === sourceVariation.value,
+    );
+    const pathSegments = ["variations", sourceVariation.value];
+    const merged = deepMergeWithPolicy(
+      destinationVariation ? { ...destinationVariation, variableOverrides: undefined } : undefined,
+      { ...sourceVariation, variableOverrides: undefined },
+      policy,
+      conflicts,
+      pathSegments,
+    ) as Variation;
+    merged.variableOverrides = mergeFeatureVariableOverrideRecord(
+      destinationVariation?.variableOverrides,
+      sourceVariation.variableOverrides,
+      policy,
+      conflicts,
+      [...pathSegments, "variableOverrides"],
+    );
+    result.push(merged);
+    mergedValues.add(sourceVariation.value);
+  }
+  for (const destinationVariation of destination || []) {
+    if (!mergedValues.has(destinationVariation.value)) result.push(destinationVariation);
+  }
+  return result;
+}
+
 function mergeFeature(
   featureKey: string,
   destination: ParsedFeature | undefined,
@@ -589,8 +787,10 @@ function mergeFeature(
   policy: ConflictPolicy,
   conflicts: PromotionConflict[],
 ): ParsedFeature {
-  const sourceWithoutRules = { ...source, rules: undefined };
-  const destinationWithoutRules = destination ? { ...destination, rules: undefined } : undefined;
+  const sourceWithoutRules = { ...source, rules: undefined, variations: undefined };
+  const destinationWithoutRules = destination
+    ? { ...destination, rules: undefined, variations: undefined }
+    : undefined;
   const featureConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
   const mergedFeature = deepMergeWithPolicy(
     destinationWithoutRules,
@@ -600,6 +800,13 @@ function mergeFeature(
   ) as ParsedFeature;
   const ruleConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
   const mergedRules = mergeRules(destination?.rules, source.rules, policy, ruleConflicts);
+  const variationConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
+  const mergedVariations = mergeVariations(
+    destination?.variations,
+    source.variations,
+    policy,
+    variationConflicts,
+  );
 
   conflicts.push(
     ...featureConflicts.map((conflict) => ({
@@ -612,11 +819,17 @@ function mergeFeature(
       key: featureKey,
       ...conflict,
     })),
+    ...variationConflicts.map((conflict) => ({
+      type: "feature" as const,
+      key: featureKey,
+      ...conflict,
+    })),
   );
 
   return {
     ...mergedFeature,
     rules: mergedRules,
+    variations: mergedVariations,
   };
 }
 
