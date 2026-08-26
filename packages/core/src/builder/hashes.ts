@@ -77,9 +77,7 @@ export function generateHashForFeature(
   );
 
   const usedSegments = extractSegmentsFromFeature(feature);
-  const usedSegmentHashes = Object.keys(usedSegments).map(
-    (segmentKey) => segmentHashes[segmentKey],
-  );
+  const usedSegmentHashes = Array.from(usedSegments).map((segmentKey) => segmentHashes[segmentKey]);
 
   const featureWithoutHash = { ...feature };
   delete featureWithoutHash.hash;

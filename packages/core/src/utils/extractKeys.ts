@@ -16,6 +16,16 @@ export function extractSegmentsFromFeature(feature: Feature): Set<SegmentKey> {
         result.add(segmentKey);
       });
     }
+
+    for (const overrides of Object.values(traffic.variableOverrides || {})) {
+      for (const override of overrides) {
+        if (override.segments) {
+          extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) => {
+            result.add(segmentKey);
+          });
+        }
+      }
+    }
   }
 
   // force
@@ -57,6 +67,14 @@ export function extractSegmentKeysFromGroupSegments(
   segments: GroupSegment | GroupSegment[],
 ): Set<SegmentKey> {
   const result = new Set<SegmentKey>();
+
+  if (typeof segments === "string" && (segments.startsWith("{") || segments.startsWith("["))) {
+    try {
+      return extractSegmentKeysFromGroupSegments(JSON.parse(segments));
+    } catch {
+      return result;
+    }
+  }
 
   if (Array.isArray(segments)) {
     segments.forEach((segment) => {

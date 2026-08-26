@@ -102,6 +102,28 @@ describe("react: onFeatureChange", function () {
     expect(calls).toBe(0);
   });
 
+  test("should invoke callback when a segment dependency changes in a partial datafile", function () {
+    const datafile = datafileForTestFeature();
+    datafile.segments = { audience: { conditions: "*" } };
+    datafile.features.test.traffic[0].segments = "audience" as never;
+    const sdk = createFeaturevisor({ datafile });
+    let calls = 0;
+    onFeatureChange(sdk, "test", () => {
+      calls += 1;
+    });
+
+    sdk.setDatafile({
+      schemaVersion: "2",
+      revision: "2.0",
+      segments: {
+        audience: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+      },
+      features: {},
+    });
+
+    expect(calls).toBe(1);
+  });
+
   test("should invoke callback on sticky_features_set when that feature is listed", function () {
     const sdk = createFeaturevisor({ datafile: datafileForTestFeature() });
     let calls = 0;

@@ -55,6 +55,11 @@ import {
   getConsoleMethodForDiagnostic,
   shouldLog,
 } from "./diagnostics.js";
+import {
+  addDatafileDependencyChanges,
+  createDatafileDependencyIndex,
+  type DatafileDependencyIndex,
+} from "./dependencies.js";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -259,6 +264,7 @@ export class Featurevisor {
 
   // internally created
   private datafile: DatafileContent = emptyDatafile;
+  private dependencyIndex?: DatafileDependencyIndex;
   private regexCache: Record<string, RegExp> = {};
   private modules: FeaturevisorModule[] = [];
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
@@ -306,6 +312,32 @@ export class Featurevisor {
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
       const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
+
+      if (!replace) {
+        const changedSegments = Object.keys(resolvedDatafile.segments).filter(
+          (segmentKey) =>
+            JSON.stringify(this.datafile.segments[segmentKey]) !==
+            JSON.stringify(storedDatafile.segments[segmentKey]),
+        );
+        const hasFeatureDefinitions = Object.keys(resolvedDatafile.features).length > 0;
+        const hasVariableDefinitions = Object.keys(resolvedDatafile.variables || {}).length > 0;
+
+        if (details.features.length > 0 || changedSegments.length > 0) {
+          if (!this.dependencyIndex || hasFeatureDefinitions || hasVariableDefinitions) {
+            this.dependencyIndex = createDatafileDependencyIndex(storedDatafile);
+          }
+          addDatafileDependencyChanges(
+            details.features,
+            details.variables,
+            changedSegments,
+            this.dependencyIndex,
+          );
+        } else if (hasFeatureDefinitions || hasVariableDefinitions) {
+          this.dependencyIndex = undefined;
+        }
+      } else {
+        this.dependencyIndex = undefined;
+      }
 
       this.datafile = storedDatafile;
       this.regexCache = {};
@@ -691,6 +723,7 @@ export class Featurevisor {
 
     this.moduleDiagnosticSubscriptions = [];
     this.listeners = {};
+    this.dependencyIndex = undefined;
   }
 
   private reportDiagnostic = (

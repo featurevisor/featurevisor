@@ -208,4 +208,296 @@ describe("Featurevisor public API: datafiles", () => {
     expect(events[1].features).toEqual(["b"]);
     expect(events[1].replaced).toBe(true);
   });
+
+  it("reports transitive feature and global variable dependencies after a partial segment merge", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        segments: {
+          audience: {
+            conditions: { attribute: "country", operator: "equals", value: "nl" },
+          },
+          unrelated: { conditions: "*" },
+        },
+        features: {
+          direct: createFeature({
+            hash: "direct",
+            traffic: [
+              {
+                key: "direct",
+                segments: JSON.stringify({ and: ["audience"] }) as never,
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          }),
+          indirect: createFeature({ hash: "indirect", required: ["direct"] }),
+          transitive: createFeature({ hash: "transitive", required: ["indirect"] }),
+          unrelated: createFeature({ hash: "unrelated" }),
+        },
+        variables: {
+          bySegment: {
+            hash: "by-segment",
+            type: "string",
+            defaultValue: "default",
+            overrides: [
+              {
+                key: "audience",
+                segments: JSON.stringify({ or: ["audience"] }),
+                value: "matched",
+              },
+            ],
+          },
+          byFeature: {
+            hash: "by-feature",
+            type: "string",
+            defaultValue: "default",
+            requiredFeatures: ["transitive"],
+          },
+          unrelated: { hash: "unrelated", type: "string", defaultValue: "default" },
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createDatafile({
+        revision: "segment-update",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        },
+      }),
+    );
+
+    expect(events[0]).toEqual({
+      revision: "segment-update",
+      previousRevision: "revision-1",
+      revisionChanged: true,
+      features: ["direct", "indirect", "transitive"],
+      variables: ["bySegment", "byFeature"],
+      replaced: false,
+    });
+  });
+
+  it("indexes segment dependencies in traffic and variation variable overrides", () => {
+    const events: any[] = [];
+    const segmentOverride = { segments: "audience", value: "matched" };
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        segments: { audience: { conditions: "*" } },
+        features: {
+          trafficOverride: createFeature({
+            hash: "traffic",
+            variablesSchema: { copy: { type: "string", defaultValue: "default" } },
+            traffic: [
+              {
+                key: "all",
+                segments: "*",
+                percentage: 100000,
+                allocation: [],
+                variableOverrides: { copy: [segmentOverride] },
+              },
+            ],
+          }),
+          variationOverride: createFeature({
+            hash: "variation",
+            variations: [
+              {
+                value: "control",
+                variableOverrides: { copy: [segmentOverride] },
+              },
+            ],
+          }),
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createDatafile({
+        revision: "changed",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+        },
+      }),
+    );
+
+    expect(events[0].features).toEqual(["trafficOverride", "variationOverride"]);
+  });
+
+  it("propagates a partial feature change through required features and variables", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        features: {
+          prerequisite: createFeature({ hash: "old" }),
+          dependent: createFeature({ hash: "dependent", required: ["prerequisite"] }),
+          transitive: createFeature({ hash: "transitive", required: ["dependent"] }),
+        },
+        variables: {
+          message: {
+            hash: "message",
+            type: "string",
+            defaultValue: "default",
+            overrides: [
+              {
+                key: "required",
+                requiredFeatures: ["transitive"],
+                value: "matched",
+              },
+            ],
+          },
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createDatafile({
+        revision: "feature-update",
+        features: { prerequisite: createFeature({ hash: "new" }) },
+      }),
+    );
+
+    expect(events[0].features).toEqual(["prerequisite", "dependent", "transitive"]);
+    expect(events[0].variables).toEqual(["message"]);
+  });
+
+  it("terminates dependency propagation defensively when datafile requirements are cyclic", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        features: {
+          a: createFeature({ hash: "a", required: ["b"] }),
+          b: createFeature({ hash: "b", required: ["a"] }),
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(
+      createDatafile({ revision: "changed", features: { a: createFeature({ hash: "new" }) } }),
+    );
+
+    expect(events[0].features).toEqual(["a", "b"]);
+  });
+
+  it("rebuilds a cached index after a variable dependency definition changes", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        segments: { audience: { conditions: "*" } },
+        features: {
+          checkout: createFeature({
+            hash: "checkout",
+            traffic: [
+              {
+                key: "audience",
+                segments: "audience",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          }),
+        },
+        variables: {
+          message: { hash: "message-1", type: "string", defaultValue: "default" },
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    // Populate the lazy index.
+    sdk.setDatafile(
+      createDatafile({
+        revision: "segment-1",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+        },
+      }),
+    );
+    // Change only the variable dependency definition, which invalidates the index.
+    sdk.setDatafile(
+      createDatafile({
+        revision: "variable",
+        variables: {
+          message: {
+            hash: "message-2",
+            type: "string",
+            defaultValue: "default",
+            overrides: [{ key: "audience", segments: "audience", value: "matched" }],
+          },
+        },
+      }),
+    );
+    sdk.setDatafile(
+      createDatafile({
+        revision: "segment-2",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        },
+      }),
+    );
+
+    expect(events[2].features).toEqual(["checkout"]);
+    expect(events[2].variables).toEqual(["message"]);
+  });
+
+  it("does not retain dependency entries across a complete replacement", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        segments: { audience: { conditions: "*" } },
+        features: {
+          old: createFeature({
+            hash: "old",
+            traffic: [
+              {
+                key: "audience",
+                segments: "audience",
+                percentage: 100000,
+                allocation: [],
+              },
+            ],
+          }),
+        },
+      }),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    // Populate the lazy index, then replace the complete datafile.
+    sdk.setDatafile(
+      createDatafile({
+        revision: "segment",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+        },
+      }),
+    );
+    sdk.setDatafile(
+      createDatafile({
+        revision: "replacement",
+        segments: { audience: { conditions: "*" } },
+        features: { next: createFeature({ hash: "next" }) },
+      }),
+      true,
+    );
+    sdk.setDatafile(
+      createDatafile({
+        revision: "after-replacement",
+        segments: {
+          audience: { conditions: { attribute: "country", operator: "equals", value: "de" } },
+        },
+      }),
+    );
+
+    expect(events[2].features).toEqual([]);
+    expect(events[2].variables).toEqual([]);
+  });
 });

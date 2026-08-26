@@ -6,8 +6,8 @@ export function onVariableChange(
   variableKey: GlobalVariableKey,
   fn: () => void,
 ) {
-  const unsubscribeDatafileSet = sdk.on("datafile_set", ({ features, variables }) => {
-    if (variables.indexOf(variableKey) !== -1 || features.length > 0) fn();
+  const unsubscribeDatafileSet = sdk.on("datafile_set", ({ variables }) => {
+    if (variables.indexOf(variableKey) !== -1) fn();
   });
   const unsubscribeContextSet = sdk.on("context_set", fn);
   const unsubscribeStickyVariablesSet = sdk.on("sticky_variables_set", ({ variables }) => {
