@@ -63,7 +63,7 @@ export interface VariableSchemaWithInline {
   additionalProperties?: Schema["additionalProperties"]; // if type is object
   required?: Schema["required"]; // if type is object
   items?: Schema["items"]; // if type is array
-  oneOf?: Schema[]; // value must match exactly one of these (mutually exclusive with type at top level when used)
+  oneOf?: Schema[]; // value must match exactly one branch (mutually exclusive with type at the definition root)
   enum?: Value[];
   const?: VariableValue;
 

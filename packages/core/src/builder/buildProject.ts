@@ -6,6 +6,7 @@ import { Datasource } from "../datasource";
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { applyContextToDatafile } from "./applyContextToDatafile";
+import { generateHashForDatafile } from "./hashes";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
 
@@ -125,12 +126,14 @@ export async function buildTargetDatafile({
     datasource,
     {
       revision,
-      revisionFromHash,
+      revisionFromHash: target.context ? false : revisionFromHash,
       environment,
       tag: target.tag,
       tags: target.tags,
       includeFeatures: target.includeFeatures,
       excludeFeatures: target.excludeFeatures,
+      includeVariables: target.includeVariables,
+      excludeVariables: target.excludeVariables,
       inflate,
       featurevisorVersion,
     },
@@ -138,7 +141,14 @@ export async function buildTargetDatafile({
   );
 
   if (target.context) {
-    return applyContextToDatafile(datafileContent as DatafileContent, target.context);
+    const contextualDatafile = applyContextToDatafile(
+      datafileContent as DatafileContent,
+      target.context,
+    );
+    if (revisionFromHash) {
+      contextualDatafile.revision = generateHashForDatafile(contextualDatafile);
+    }
+    return contextualDatafile;
   }
 
   return datafileContent as DatafileContent;
@@ -185,6 +195,8 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       tags: target?.tags,
       includeFeatures: target?.includeFeatures,
       excludeFeatures: target?.excludeFeatures,
+      includeVariables: target?.includeVariables,
+      excludeVariables: target?.excludeVariables,
       featurevisorVersion: getFeaturevisorVersion(),
     });
 

@@ -28,6 +28,7 @@ export type {
   ConfigureBucketKeyOptions,
   ConfigureBucketValue,
   ConfigureBucketValueOptions,
+  BeforeEvaluation,
   FeaturevisorModule,
   FeaturevisorModuleApi,
   FeaturevisorModuleUnsubscribe,

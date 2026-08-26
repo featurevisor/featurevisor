@@ -134,7 +134,9 @@ export function getCommit(
       const entityDirectoryPath =
         type === "feature"
           ? projectConfig.featuresDirectoryPath
-          : projectConfig.targetsDirectoryPath;
+          : type === "target"
+            ? projectConfig.targetsDirectoryPath
+            : projectConfig.variablesDirectoryPath;
       key = absolutePath
         .replace(entityDirectoryPath + path.sep, "")
         .replace(extensionWithDot, "")

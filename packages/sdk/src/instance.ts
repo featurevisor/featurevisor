@@ -141,8 +141,10 @@ function getDatafileSetEventDetails(
     }
 
     if (
-      previousDatafile.features[previousFeatureKey]?.hash !==
-      newDatafile.features[previousFeatureKey]?.hash
+      !previousDatafile.features[previousFeatureKey]?.hash ||
+      !newDatafile.features[previousFeatureKey]?.hash ||
+      previousDatafile.features[previousFeatureKey].hash !==
+        newDatafile.features[previousFeatureKey].hash
     ) {
       features.push(previousFeatureKey);
     }
@@ -160,6 +162,8 @@ function getDatafileSetEventDetails(
   for (const variableKey of previousVariableKeys) {
     if (
       !newDatafile.variables?.[variableKey] ||
+      !previousDatafile.variables?.[variableKey]?.hash ||
+      !newDatafile.variables[variableKey].hash ||
       previousDatafile.variables?.[variableKey]?.hash !== newDatafile.variables[variableKey].hash
     ) {
       variables.push(variableKey);
@@ -891,9 +895,7 @@ export class Featurevisor {
     try {
       for (const module of this.modules) {
         if (module.beforeEvaluation) {
-          evaluationOptions = module.beforeEvaluation(
-            evaluationOptions,
-          ) as GlobalVariableEvaluateOptions;
+          evaluationOptions = module.beforeEvaluation(evaluationOptions);
         }
       }
 
@@ -962,8 +964,8 @@ export class Featurevisor {
               reason: "variable_override_rule",
               variable,
               variableValue: override.value,
-              overrideIndex: index,
-              overrideKey: override.key,
+              variableOverrideIndex: index,
+              variableOverrideKey: override.key,
             };
             break;
           }

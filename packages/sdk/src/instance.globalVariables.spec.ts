@@ -78,6 +78,22 @@ function datafile(): DatafileContent {
       ratio: { type: "double", defaultValue: 1.5 },
       items: { type: "array", defaultValue: ["one"] },
       object: { type: "object", defaultValue: { colour: "blue" } },
+      union: {
+        type: "string",
+        defaultValue: "plain-string",
+        overrides: [
+          {
+            key: "numeric",
+            conditions: [{ attribute: "kind", operator: "equals", value: "number" }],
+            value: 42,
+          },
+          {
+            key: "object",
+            conditions: [{ attribute: "kind", operator: "equals", value: "object" }],
+            value: { colour: "green" },
+          },
+        ],
+      },
     },
   };
 }
@@ -94,6 +110,7 @@ interface GlobalVariableConformanceCase {
   defaultVariableValue?: VariableValue;
   expectedValue?: unknown;
   expectedReason: string;
+  expectedOverrideIndex?: number;
   expectedOverrideKey?: string;
 }
 
@@ -132,6 +149,7 @@ describe("global variables", () => {
       "ratio",
       "items",
       "object",
+      "union",
     ]);
   });
 
@@ -157,8 +175,8 @@ describe("global variables", () => {
     const nl = f.evaluateVariable("supportEmail", { continent: "eu", country: "nl" });
     expect(nl.variableValue).toBe("help-nl@example.com");
     expect(nl.reason).toBe("variable_override_rule");
-    expect(nl.overrideIndex).toBe(0);
-    expect(nl.overrideKey).toBe("eu-nl");
+    expect(nl.variableOverrideIndex).toBe(0);
+    expect(nl.variableOverrideKey).toBe("eu-nl");
     expect(f.getVariable("supportEmail", { continent: "eu", country: "be" })).toBe(
       "help-eu@example.com",
     );
@@ -224,6 +242,14 @@ describe("global variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
     const config = f.getVariable<{ colour: string }>("config");
     expect(config).toEqual({ colour: "blue" });
+  });
+
+  it("returns every branch of a union variable without treating strings as JSON", () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+
+    expect(f.getVariable("union")).toBe("plain-string");
+    expect(f.getVariable("union", { kind: "number" })).toBe(42);
+    expect(f.getVariable("union", { kind: "object" })).toEqual({ colour: "green" });
   });
 
   it("supports every typed convenience method for global variables", () => {
@@ -317,7 +343,50 @@ describe("global variables", () => {
     });
     expect(evaluation.variableValue).toEqual(testCase.expectedValue);
     expect(evaluation.reason).toBe(testCase.expectedReason);
-    expect(evaluation.overrideKey).toBe(testCase.expectedOverrideKey);
+    expect(evaluation.variableOverrideIndex).toBe(testCase.expectedOverrideIndex);
+    expect(evaluation.variableOverrideKey).toBe(testCase.expectedOverrideKey);
+  });
+
+  it("conformance: keeps global and feature variable overloads distinct", () => {
+    const testCase = conformance.globalVariables.overloadCase;
+    const f = createFeaturevisor({
+      datafile: conformance.globalVariables.datafile,
+      logLevel: "fatal",
+    });
+
+    expect(f.getVariable(testCase.sharedKey)).toBe(testCase.expectedGlobalValue);
+    expect(f.getVariable(testCase.sharedKey, testCase.featureVariableKey)).toBe(
+      testCase.expectedFeatureValue,
+    );
+  });
+
+  it("conformance: merges and replaces global variables with exact change events", () => {
+    const testCase = conformance.globalVariables.datafileUpdateCase;
+    const f = createFeaturevisor({ datafile: testCase.initial, logLevel: "fatal" });
+    const events: any[] = [];
+    f.on("datafile_set", (event) => events.push(event));
+
+    f.setDatafile(testCase.merge);
+    expect(f.getFeatureKeys().sort()).toEqual(testCase.expectedAfterMerge.features);
+    expect(f.getVariableKeys().sort()).toEqual(testCase.expectedAfterMerge.variables);
+    expect(events[0]).toEqual(
+      expect.objectContaining({
+        replaced: false,
+        features: testCase.expectedAfterMerge.changedFeatures,
+        variables: testCase.expectedAfterMerge.changedVariables,
+      }),
+    );
+
+    f.setDatafile(testCase.replacement, true);
+    expect(f.getFeatureKeys().sort()).toEqual(testCase.expectedAfterReplacement.features);
+    expect(f.getVariableKeys().sort()).toEqual(testCase.expectedAfterReplacement.variables);
+    expect(events[1]).toEqual(
+      expect.objectContaining({
+        replaced: true,
+        features: testCase.expectedAfterReplacement.changedFeatures,
+        variables: testCase.expectedAfterReplacement.changedVariables,
+      }),
+    );
   });
 
   it("supports child sticky values and change events for variables", () => {
@@ -355,6 +424,50 @@ describe("global variables", () => {
 
     expect(f.getVariable("supportEmail")).toBe("help@example.com");
     expect(f.getVariable("added")).toBe(true);
-    expect(listener.mock.calls[0][0].variables).toEqual(["added"]);
+    expect(listener.mock.calls[0][0].variables).toEqual([
+      "supportEmail",
+      "gated",
+      "gatedDefault",
+      "config",
+      "same",
+      "enabled",
+      "count",
+      "ratio",
+      "items",
+      "object",
+      "union",
+      "added",
+    ]);
+  });
+
+  it("reports hashless variables and features as changed conservatively", () => {
+    const f = createFeaturevisor({
+      datafile: {
+        schemaVersion: "2",
+        revision: "same",
+        segments: {},
+        features: { flag: { bucketBy: "userId", traffic: [] } },
+        variables: { message: { type: "string", defaultValue: "before" } },
+      },
+      logLevel: "fatal",
+    });
+    const listener = jest.fn();
+    f.on("datafile_set", listener);
+
+    f.setDatafile(
+      {
+        schemaVersion: "2",
+        revision: "same",
+        segments: {},
+        features: { flag: { bucketBy: "userId", traffic: [] } },
+        variables: { message: { type: "string", defaultValue: "after" } },
+      },
+      true,
+    );
+
+    expect(f.getVariable("message")).toBe("after");
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ features: ["flag"], variables: ["message"] }),
+    );
   });
 });

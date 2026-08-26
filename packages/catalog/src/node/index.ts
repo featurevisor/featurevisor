@@ -140,6 +140,7 @@ type RelationshipMaps = {
   schemasUsedInFeatures: Record<string, Set<string>>;
   segmentTests: Record<string, Set<string>>;
   targetFeatures: Record<string, Set<string>>;
+  targetVariables: Record<string, Set<string>>;
   variableFeatures: Record<string, Set<string>>;
   variableSegments: Record<string, Set<string>>;
   variableAttributes: Record<string, Set<string>>;
@@ -365,13 +366,33 @@ function collectFeatureKeysFromRequired(required: ParsedFeature["required"], res
   }
 }
 
+function collectSchemaKeys(schema: unknown, result: Set<string>) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
+  const current = schema as Schema;
+  if (typeof current.schema === "string") result.add(current.schema);
+  if (current.items) collectSchemaKeys(current.items, result);
+  if (current.additionalProperties) collectSchemaKeys(current.additionalProperties, result);
+  Object.values(current.properties || {}).forEach((entry) => collectSchemaKeys(entry, result));
+  (current.oneOf || []).forEach((entry) => collectSchemaKeys(entry, result));
+}
+
 function collectSchemaKeysFromVariables(
   variablesSchema: ParsedFeature["variablesSchema"],
   result: Set<string>,
 ) {
-  for (const schema of Object.values(variablesSchema || {})) {
-    if ("schema" in schema && typeof schema.schema === "string") {
-      result.add(schema.schema);
+  Object.values(variablesSchema || {}).forEach((schema) => collectSchemaKeys(schema, result));
+}
+
+function expandSchemaKeys(schemaKeys: Set<string>, schemas: Record<string, Schema>) {
+  const pending = Array.from(schemaKeys);
+  for (let index = 0; index < pending.length; index++) {
+    const nested = new Set<string>();
+    collectSchemaKeys(schemas[pending[index]], nested);
+    for (const key of nested) {
+      if (!schemaKeys.has(key)) {
+        schemaKeys.add(key);
+        pending.push(key);
+      }
     }
   }
 }
@@ -412,6 +433,7 @@ function matchesFeaturePatterns(featureKey: string, patterns?: "*" | string[]) {
 }
 
 function targetIncludesFeature(target: Target, featureKey: string, feature: ParsedFeature) {
+  if (feature.archived === true) return false;
   const featureTags = feature.tags || [];
   let matchesTags = true;
 
@@ -955,6 +977,7 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     schemasUsedInFeatures: {},
     segmentTests: {},
     targetFeatures: {},
+    targetVariables: {},
     variableFeatures: {},
     variableSegments: {},
     variableAttributes: {},
@@ -976,6 +999,7 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
 
     collectFeatureKeysFromRequired(feature.required, required);
     collectSchemaKeysFromVariables(feature.variablesSchema, schemas);
+    expandSchemaKeys(schemas, maps.schema);
     collectGroupKeysFromRules(feature.rules, groups);
 
     for (const rule of getFeatureRules(feature)) {
@@ -1046,8 +1070,12 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
       if (
         variable.archived !== true &&
         (!target.tag || tags.includes(target.tag)) &&
-        (!target.tags || matchesTargetTags(tags, target.tags))
+        (!target.tags || matchesTargetTags(tags, target.tags)) &&
+        (!target.includeVariables ||
+          matchesFeaturePatterns(variableKey, target.includeVariables)) &&
+        !matchesFeaturePatterns(variableKey, target.excludeVariables)
       ) {
+        addToSet(relationships.targetVariables, targetKey, variableKey);
         addToSet(relationships.variableTargets, variableKey, targetKey);
       }
     }
@@ -1057,8 +1085,10 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     const features = new Set<string>();
     const segments = new Set<string>();
     const attributes = new Set<string>();
+    const schemas = new Set<string>();
     collectFeatureKeysFromRequired(variable.requiredFeatures, features);
-    if (variable.schema) addToSet(relationships.variableSchemas, variableKey, variable.schema);
+    collectSchemaKeys(variable, schemas);
+    expandSchemaKeys(schemas, maps.schema);
     for (const overrides of Object.values(variable.overrides || {})) {
       for (const override of Array.isArray(overrides) ? overrides : [overrides]) {
         collectFeatureKeysFromRequired(override.requiredFeatures, features);
@@ -1078,8 +1108,10 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
       addToSet(relationships.variableAttributes, variableKey, key);
       addToSet(relationships.attributesUsedInVariables, key, variableKey);
     });
-    if (variable.schema)
-      addToSet(relationships.schemasUsedInVariables, variable.schema, variableKey);
+    schemas.forEach((schemaKey) => {
+      addToSet(relationships.variableSchemas, variableKey, schemaKey);
+      addToSet(relationships.schemasUsedInVariables, schemaKey, variableKey);
+    });
   }
 
   for (const [featureKey, targetKeys] of Object.entries(relationships.featureTargets)) {
@@ -1157,6 +1189,7 @@ function getEntityRelationships(
   if (type === "target") {
     return {
       features: sortSet(relationships.targetFeatures[key]),
+      variables: sortSet(relationships.targetVariables[key]),
     };
   }
 

@@ -360,6 +360,8 @@ describe("generate-code/typescript", () => {
         "    - ecommerce",
         "includeFeatures:",
         "  - with*",
+        "includeVariables:",
+        "  - checkout*",
       ].join("\n"),
       "utf8",
     );
@@ -391,5 +393,46 @@ describe("generate-code/typescript", () => {
     expect(variablesContent).toContain("checkoutSettings: {");
     expect(variablesContent).not.toContain("supportEmail:");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
+  it("uses variable patterns from a target without requiring tags", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "support-code.yml"),
+      [
+        "description: Support code",
+        "includeFeatures:",
+        "  - account*",
+        "includeVariables:",
+        "  - support*",
+        "excludeVariables:",
+        "  - supportInternal*",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "variables", "supportInternalNote.yml"),
+      ["description: Internal note", "type: string", "defaultValue: Internal"].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { target: "support-code" },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    const variablesContent = fs.readFileSync(path.join(outputPath, "variables.ts"), "utf8");
+    expect(featuresContent).toContain("accountTargeting:");
+    expect(featuresContent).not.toContain("discount:");
+    expect(variablesContent).toContain("supportEmail: string;");
+    expect(variablesContent).not.toContain("supportInternalNote:");
   });
 });

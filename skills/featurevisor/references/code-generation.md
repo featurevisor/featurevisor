@@ -20,7 +20,7 @@ Optional flags:
 | `--target=<target>` | Generate for features and global variables selected by the target      |
 | `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
 
-`--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. Its `includeFeatures` and `excludeFeatures` selectors apply only to features. Target context does not specialize generated types.
+`--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. `includeFeatures` and `excludeFeatures` filter features. `includeVariables` and `excludeVariables` filter global variables. Target context does not specialize generated types.
 
 ## Output
 

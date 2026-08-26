@@ -8,4 +8,4 @@ assertions:
     expectedValue: support-nl@example.com
     expectedEvaluation:
       reason: variable_override_rule
-      overrideKey: netherlands
+      variableOverrideKey: netherlands

@@ -536,6 +536,10 @@ export async function lintProject(
     }
   }
 
+  // Load both key spaces before linting either one so a focused feature or
+  // variable lint can report collisions independently.
+  const variables = await datasource.listVariables();
+
   // lint features
   const features = await datasource.listFeatures();
   const featuresByKey: Record<string, ParsedFeature> = {};
@@ -567,6 +571,22 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
+
+      if (
+        options.entityType === "feature" &&
+        !projectConfig.allowFeatureAndVariableKeyCollisions &&
+        variables.includes(key)
+      ) {
+        await reportSimpleError({
+          entityType: "feature",
+          key,
+          fullPath,
+          message: `Feature "${key}" conflicts with a global variable using the same key`,
+          detail:
+            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
+          code: "feature_variable_key_collision",
+        });
+      }
 
       if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
@@ -610,7 +630,6 @@ export async function lintProject(
   }
 
   // lint global variables
-  const variables = await datasource.listVariables();
   const variableZodSchema = getVariableZodSchema(
     projectConfig,
     attributesByKey,

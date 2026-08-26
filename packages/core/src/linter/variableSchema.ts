@@ -182,7 +182,7 @@ export function getVariableZodSchema(
       required: z.array(z.string()).optional(),
       enum: z.array(valueSchema).optional(),
       const: valueSchema.optional(),
-      oneOf: z.array(nestedSchema).min(1).optional(),
+      oneOf: z.array(nestedSchema).min(2).optional(),
       minimum: z.number().optional(),
       maximum: z.number().optional(),
       minLength: z.number().optional(),
@@ -233,6 +233,12 @@ export function getVariableZodSchema(
           code: z.ZodIssueCode.custom,
           message: "A variable must define `type`, `oneOf`, or a reusable `schema` reference.",
           path: ["type"],
+        });
+      } else if (!hasReference && variable.type && variable.oneOf) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A variable cannot define both `type` and `oneOf`. Use one or the other.",
+          path: ["oneOf"],
         });
       }
 

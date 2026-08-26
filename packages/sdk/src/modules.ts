@@ -35,6 +35,8 @@ export type ConfigureBucketValue = (options: ConfigureBucketValueOptions) => Buc
 export type FeaturevisorUnsubscribe = () => void;
 export type FeaturevisorModuleUnsubscribe = () => Promise<void>;
 
+export type BeforeEvaluation = <TOptions extends EvaluationOptions>(options: TOptions) => TOptions;
+
 export interface FeaturevisorModuleApi {
   getRevision: () => string;
   onDiagnostic: (
@@ -55,7 +57,7 @@ export interface FeaturevisorModule {
   /** @deprecated Use beforeEvaluation for all evaluation types. */
   before?: (options: EvaluateOptions) => EvaluateOptions;
 
-  beforeEvaluation?: (options: EvaluationOptions) => EvaluationOptions;
+  beforeEvaluation?: BeforeEvaluation;
 
   bucketKey?: ConfigureBucketKey;
 

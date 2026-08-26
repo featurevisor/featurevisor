@@ -34,6 +34,7 @@ import {
 } from "../tester/cliFormat";
 import { prettyDuration } from "../tester/prettyDuration";
 import type { Plugin } from "../cli";
+import { extractSchemaReferences } from "../utils/schemaReferences";
 
 type ConflictPolicy = "source" | "destination" | "fail";
 type PromotionAuditFormat = "json" | "markdown";
@@ -199,11 +200,22 @@ function matchesTarget(featureKey: string, feature: ParsedFeature, target: Targe
   return included && !excluded;
 }
 
-function variableMatchesTarget(variable: ParsedVariable, target: Target): boolean {
+function variableMatchesTarget(
+  variableKey: string,
+  variable: ParsedVariable,
+  target: Target,
+): boolean {
   const tags = variable.tags || [];
   if (variable.archived === true) return false;
   if (target.tag && !tags.includes(target.tag)) return false;
-  return !target.tags || matchesTags(tags, target.tags);
+  if (target.tags && !matchesTags(tags, target.tags)) return false;
+  if (target.includeVariables && !matchesPattern(variableKey, toArray(target.includeVariables))) {
+    return false;
+  }
+  if (target.excludeVariables && matchesPattern(variableKey, toArray(target.excludeVariables))) {
+    return false;
+  }
+  return true;
 }
 
 function mergeVariableOverrideArray(
@@ -270,7 +282,7 @@ function mergeVariable(
       conflicts,
       key,
     );
-  } else {
+  } else if (source.overrides || destination?.overrides) {
     const environments = new Set([
       ...Object.keys(destination?.overrides || {}),
       ...Object.keys(source.overrides || {}),
@@ -286,7 +298,7 @@ function mergeVariable(
           key,
         ) || [];
     }
-    merged.overrides = overrides;
+    merged.overrides = Object.keys(overrides).length > 0 ? overrides : undefined;
   }
 
   return merged;
@@ -411,25 +423,6 @@ function collectConditionDependencies(
     value.not.forEach((entry) => collectConditionDependencies(entry, segments, attributes));
 }
 
-function collectSchemaReferences(value: unknown, schemas: Set<string>) {
-  if (!value || typeof value !== "object") {
-    return;
-  }
-
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectSchemaReferences(entry, schemas));
-    return;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  if (typeof record.schema === "string") {
-    schemas.add(record.schema);
-  }
-
-  Object.values(record).forEach((entry) => collectSchemaReferences(entry, schemas));
-}
-
 function collectFeatureDependencies(
   feature: ParsedFeature,
   features: Record<string, ParsedFeature>,
@@ -446,7 +439,9 @@ function collectFeatureDependencies(
     feature.bucketBy.or.forEach((attributeKey) => attributeKeys.add(attributeKey));
   }
 
-  collectSchemaReferences(feature.variablesSchema, schemaKeys);
+  Object.values(feature.variablesSchema || {}).forEach((schema) => {
+    extractSchemaReferences(schema).forEach((key) => schemaKeys.add(key));
+  });
 
   for (const required of feature.required || []) {
     const requiredKey = typeof required === "string" ? required : required.key;
@@ -846,13 +841,8 @@ async function getPromotionPlan(
         tagSelectors.some((tag) => (variable.tags || []).includes(tag));
       const matchesSelectedTargets =
         selectedTargets.length === 0 ||
-        selectedTargets.some((target) => variableMatchesTarget(variable, target));
-      if (
-        hasVariableSelectors &&
-        isPromotable(variable) &&
-        matchesSelectedTags &&
-        matchesSelectedTargets
-      ) {
+        selectedTargets.some((target) => variableMatchesTarget(key, variable, target));
+      if (hasVariableSelectors && matchesSelectedTags && matchesSelectedTargets) {
         promotedVariableKeys.add(key);
       }
     }
@@ -863,12 +853,13 @@ async function getPromotionPlan(
         ...(variable.requiredFeatures || []),
         ...Object.values(variable.overrides || {})
           .flat()
+          .filter(isPromotable)
           .flatMap((override) => override.requiredFeatures || []),
       ];
       required.forEach((entry) =>
         promotedFeatureKeys.add(typeof entry === "string" ? entry : entry.key),
       );
-      if (variable.schema) promotedSchemaKeys.add(variable.schema);
+      extractSchemaReferences(variable).forEach((schemaKey) => promotedSchemaKeys.add(schemaKey));
       Object.values(variable.overrides || {})
         .flat()
         .filter(isPromotable)
@@ -943,7 +934,7 @@ async function getPromotionPlan(
     if (!schema) continue;
 
     const beforeSize = promotedSchemaKeys.size;
-    collectSchemaReferences(schema, promotedSchemaKeys);
+    extractSchemaReferences(schema).forEach((key) => promotedSchemaKeys.add(key));
 
     if (promotedSchemaKeys.size > beforeSize) {
       pendingSchemas.push(

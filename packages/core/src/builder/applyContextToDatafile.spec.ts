@@ -2622,5 +2622,51 @@ describe("core: applyContextToDatafile", function () {
       expect(JSON.stringify(datafile.segments)).toEqual(originalSegments);
       expect(JSON.stringify(datafile.features.feature1.traffic)).toEqual(originalTraffic);
     });
+
+    test("refreshes feature and global variable hashes after specialization", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {},
+        features: {
+          feature1: {
+            bucketBy: "userId",
+            hash: "source-feature",
+            force: [
+              {
+                conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                enabled: true,
+              },
+            ],
+            traffic: [],
+          },
+        },
+        variables: {
+          message: {
+            type: "string",
+            defaultValue: "default",
+            hash: "source-variable",
+            overrides: [
+              {
+                key: "nl",
+                conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                value: "Hallo",
+              },
+            ],
+          },
+        },
+      };
+
+      const nl = applyContextToDatafile(datafile, { country: "nl" });
+      const nlAgain = applyContextToDatafile(nl, { country: "nl" });
+      const de = applyContextToDatafile(datafile, { country: "de" });
+
+      expect(nl.features.feature1.hash).not.toBe("source-feature");
+      expect(nl.variables?.message.hash).not.toBe("source-variable");
+      expect(nl.features.feature1.hash).not.toBe(de.features.feature1.hash);
+      expect(nl.variables?.message.hash).not.toBe(de.variables?.message.hash);
+      expect(nlAgain.features.feature1.hash).toBe(nl.features.feature1.hash);
+      expect(nlAgain.variables?.message.hash).toBe(nl.variables?.message.hash);
+    });
   });
 });

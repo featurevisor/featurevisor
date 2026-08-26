@@ -62,6 +62,44 @@ describe("global variable schema", () => {
     ).toBe(true);
   });
 
+  it("accepts oneOf when the value matches exactly one branch", () => {
+    expect(
+      parse({
+        description: "External identifier",
+        oneOf: [{ type: "string" }, { type: "integer" }],
+        defaultValue: "anonymous",
+        overrides: {
+          production: [{ key: "numeric", segments: "europe", value: 42 }],
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects mixed, unmatched, and ambiguous oneOf roots", () => {
+    expect(
+      parse({
+        description: "Mixed",
+        type: "string",
+        oneOf: [{ type: "string" }],
+        defaultValue: "value",
+      }).success,
+    ).toBe(false);
+    expect(
+      parse({
+        description: "Unmatched",
+        oneOf: [{ type: "string" }, { type: "integer" }],
+        defaultValue: false,
+      }).success,
+    ).toBe(false);
+    expect(
+      parse({
+        description: "Ambiguous",
+        oneOf: [{ type: "integer" }, { type: "double" }],
+        defaultValue: 1,
+      }).success,
+    ).toBe(false);
+  });
+
   it.each([
     ["unknown tag", { tags: ["unknown"] }],
     ["missing type", { type: undefined }],

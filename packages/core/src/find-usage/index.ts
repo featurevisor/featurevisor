@@ -14,6 +14,7 @@ import {
   extractSegmentKeysFromGroupSegments,
 } from "../utils/extractKeys";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { extractSchemaReferences } from "../utils/schemaReferences";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_DIM,
@@ -183,7 +184,18 @@ export async function findAllUsageInVariables(deps: Dependencies): Promise<Usage
       attributes: new Set<AttributeKey>(),
       schemas: new Set<SchemaKey>(),
     };
-    if (variable.schema) usage.schemas.add(variable.schema);
+    extractSchemaReferences(variable).forEach((key) => usage.schemas.add(key));
+    const pendingSchemas = Array.from(usage.schemas);
+    for (let index = 0; index < pendingSchemas.length; index++) {
+      const schemaKey = pendingSchemas[index];
+      const schema = await deps.datasource.readSchema(schemaKey);
+      for (const dependency of extractSchemaReferences(schema)) {
+        if (!usage.schemas.has(dependency)) {
+          usage.schemas.add(dependency);
+          pendingSchemas.push(dependency);
+        }
+      }
+    }
     [
       ...(variable.requiredFeatures || []),
       ...Object.values(variable.overrides || {})

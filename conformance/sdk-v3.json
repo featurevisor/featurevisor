@@ -108,9 +108,18 @@
           "variations": [{ "value": "control" }, { "value": "treatment" }],
           "force": [{ "segments": "*", "enabled": true, "variation": "treatment" }],
           "traffic": []
+        },
+        "shared": {
+          "bucketBy": "userId",
+          "variablesSchema": {
+            "owned": { "type": "string", "defaultValue": "feature-value" }
+          },
+          "force": [{ "segments": "*", "enabled": true }],
+          "traffic": []
         }
       },
       "variables": {
+        "shared": { "type": "string", "defaultValue": "global-value" },
         "stringValue": { "type": "string", "defaultValue": "hello" },
         "integerValue": { "type": "integer", "defaultValue": 1 },
         "doubleValue": { "type": "double", "defaultValue": 1.5 },
@@ -181,23 +190,167 @@
       }
     },
     "cases": [
-      { "name": "string default", "key": "stringValue", "expectedValue": "hello", "expectedReason": "variable_default" },
-      { "name": "integer default", "key": "integerValue", "expectedValue": 1, "expectedReason": "variable_default" },
-      { "name": "double default", "key": "doubleValue", "expectedValue": 1.5, "expectedReason": "variable_default" },
-      { "name": "boolean default", "key": "booleanValue", "expectedValue": true, "expectedReason": "variable_default" },
-      { "name": "array default", "key": "arrayValue", "expectedValue": ["one", "two"], "expectedReason": "variable_default" },
-      { "name": "object default", "key": "objectValue", "expectedValue": { "enabled": true }, "expectedReason": "variable_default" },
-      { "name": "json default", "key": "jsonValue", "expectedValue": "{\"enabled\":true}", "expectedReason": "variable_default" },
-      { "name": "required unmet with disabled value", "key": "requiredDisabled", "expectedValue": "disabled", "expectedReason": "required_features_unmet" },
-      { "name": "required unmet without value", "key": "requiredMissingValue", "expectedReason": "required_features_unmet" },
-      { "name": "required unmet with caller default", "key": "requiredMissingValue", "defaultVariableValue": "caller", "expectedValue": "caller", "expectedReason": "required_features_unmet" },
-      { "name": "required unmet using variable default", "key": "requiredUsesDefault", "expectedValue": "default", "expectedReason": "required_features_unmet" },
-      { "name": "required variation matched", "key": "requiredVariation", "expectedValue": "matched", "expectedReason": "variable_default" },
-      { "name": "unmet override requirement falls through", "key": "overrideRequirement", "expectedValue": "default", "expectedReason": "variable_default" },
-      { "name": "segment and condition override", "key": "orderedOverrides", "context": { "userId": "1", "country": "nl", "plan": "pro" }, "expectedValue": "matched", "expectedReason": "variable_override_rule", "expectedOverrideKey": "nl-pro" },
-      { "name": "catch all override", "key": "orderedOverrides", "context": { "userId": "1", "country": "de", "plan": "pro" }, "expectedValue": "fallback", "expectedReason": "variable_override_rule", "expectedOverrideKey": "catch-all" },
-      { "name": "sticky precedence without definition", "key": "absent", "stickyVariables": { "absent": "sticky" }, "expectedValue": "sticky", "expectedReason": "sticky" }
-    ]
+      {
+        "name": "string default",
+        "key": "stringValue",
+        "expectedValue": "hello",
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "integer default",
+        "key": "integerValue",
+        "expectedValue": 1,
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "double default",
+        "key": "doubleValue",
+        "expectedValue": 1.5,
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "boolean default",
+        "key": "booleanValue",
+        "expectedValue": true,
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "array default",
+        "key": "arrayValue",
+        "expectedValue": ["one", "two"],
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "object default",
+        "key": "objectValue",
+        "expectedValue": { "enabled": true },
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "json default",
+        "key": "jsonValue",
+        "expectedValue": "{\"enabled\":true}",
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "required unmet with disabled value",
+        "key": "requiredDisabled",
+        "expectedValue": "disabled",
+        "expectedReason": "required_features_unmet"
+      },
+      {
+        "name": "required unmet without value",
+        "key": "requiredMissingValue",
+        "expectedReason": "required_features_unmet"
+      },
+      {
+        "name": "required unmet with caller default",
+        "key": "requiredMissingValue",
+        "defaultVariableValue": "caller",
+        "expectedValue": "caller",
+        "expectedReason": "required_features_unmet"
+      },
+      {
+        "name": "required unmet using variable default",
+        "key": "requiredUsesDefault",
+        "expectedValue": "default",
+        "expectedReason": "required_features_unmet"
+      },
+      {
+        "name": "required variation matched",
+        "key": "requiredVariation",
+        "expectedValue": "matched",
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "unmet override requirement falls through",
+        "key": "overrideRequirement",
+        "expectedValue": "default",
+        "expectedReason": "variable_default"
+      },
+      {
+        "name": "segment and condition override",
+        "key": "orderedOverrides",
+        "context": { "userId": "1", "country": "nl", "plan": "pro" },
+        "expectedValue": "matched",
+        "expectedReason": "variable_override_rule",
+        "expectedOverrideIndex": 1,
+        "expectedOverrideKey": "nl-pro"
+      },
+      {
+        "name": "catch all override",
+        "key": "orderedOverrides",
+        "context": { "userId": "1", "country": "de", "plan": "pro" },
+        "expectedValue": "fallback",
+        "expectedReason": "variable_override_rule",
+        "expectedOverrideIndex": 2,
+        "expectedOverrideKey": "catch-all"
+      },
+      {
+        "name": "sticky precedence without definition",
+        "key": "absent",
+        "stickyVariables": { "absent": "sticky" },
+        "expectedValue": "sticky",
+        "expectedReason": "sticky"
+      }
+    ],
+    "overloadCase": {
+      "sharedKey": "shared",
+      "featureVariableKey": "owned",
+      "expectedGlobalValue": "global-value",
+      "expectedFeatureValue": "feature-value"
+    },
+    "datafileUpdateCase": {
+      "initial": {
+        "schemaVersion": "2",
+        "revision": "initial",
+        "segments": {},
+        "features": {
+          "retained": { "hash": "feature-retained", "bucketBy": "userId", "traffic": [] },
+          "changed": { "hash": "feature-old", "bucketBy": "userId", "traffic": [] }
+        },
+        "variables": {
+          "retained": { "hash": "variable-retained", "type": "string", "defaultValue": "retained" },
+          "changed": { "hash": "variable-old", "type": "string", "defaultValue": "old" }
+        }
+      },
+      "merge": {
+        "schemaVersion": "2",
+        "revision": "merged",
+        "segments": {},
+        "features": {
+          "changed": { "hash": "feature-new", "bucketBy": "userId", "traffic": [] },
+          "added": { "hash": "feature-added", "bucketBy": "userId", "traffic": [] }
+        },
+        "variables": {
+          "changed": { "hash": "variable-new", "type": "string", "defaultValue": "new" },
+          "added": { "hash": "variable-added", "type": "string", "defaultValue": "added" }
+        }
+      },
+      "expectedAfterMerge": {
+        "features": ["added", "changed", "retained"],
+        "variables": ["added", "changed", "retained"],
+        "changedFeatures": ["changed", "added"],
+        "changedVariables": ["changed", "added"]
+      },
+      "replacement": {
+        "schemaVersion": "2",
+        "revision": "replaced",
+        "segments": {},
+        "features": {
+          "added": { "hash": "feature-added", "bucketBy": "userId", "traffic": [] }
+        },
+        "variables": {
+          "added": { "hash": "variable-added", "type": "string", "defaultValue": "added" }
+        }
+      },
+      "expectedAfterReplacement": {
+        "features": ["added"],
+        "variables": ["added"],
+        "changedFeatures": ["retained", "changed"],
+        "changedVariables": ["retained", "changed"]
+      }
+    }
   },
   "diagnostics": {
     "requiredFields": ["level", "code", "message", "details"],
@@ -225,11 +378,7 @@
       "2024-01-01T00:00:00.250Z",
       "2024-01-01T01:00:00.250+01:00"
     ],
-    "semanticVersions": [
-      "1.2.3",
-      "1.2.3-beta.1",
-      "1.2.3+build.5"
-    ],
+    "semanticVersions": ["1.2.3", "1.2.3-beta.1", "1.2.3+build.5"],
     "invalidSemanticVersion": "invalid",
     "invalidSemanticVersionDiagnosticCode": "condition_match_error"
   },

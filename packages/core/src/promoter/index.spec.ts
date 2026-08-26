@@ -184,6 +184,10 @@ describe("promoteProjectSets", function () {
         "  - web*",
         "excludeFeatures:",
         "  - webInternal*",
+        "includeVariables:",
+        "  - web*",
+        "excludeVariables:",
+        "  - webInternal*",
         "",
       ].join("\n"),
     );
@@ -208,6 +212,21 @@ describe("promoteProjectSets", function () {
         ].join("\n"),
       );
     }
+    for (const key of ["webSettings", "webInternalSettings"]) {
+      await writeFile(
+        root,
+        `sets/dev/variables/${key}.yml`,
+        [
+          `description: ${key}`,
+          "tags:",
+          "  - web",
+          "  - all",
+          "type: string",
+          `defaultValue: ${key}`,
+          "",
+        ].join("\n"),
+      );
+    }
     const projectConfig = getProjectConfig(root);
     const datasource = new Datasource(projectConfig, root);
 
@@ -221,20 +240,29 @@ describe("promoteProjectSets", function () {
     expect(result.filters.targets).toEqual(["web"]);
     expect(result.dependencies.target).toEqual(1);
     expect(result.dependencies.feature).toEqual(1);
+    expect(result.dependencies.variable).toEqual(1);
     expect(result.dependencies.segment).toEqual(1);
     expect(result.dependencies.attribute).toEqual(2);
     expect(result.files.created).toEqual(
       expect.arrayContaining([
         expect.stringContaining("targets/web.yml"),
         expect.stringContaining("features/webCheckout.yml"),
+        expect.stringContaining("variables/webSettings.yml"),
       ]),
     );
     expect(result.files.created).not.toEqual(
       expect.arrayContaining([expect.stringContaining("features/webInternalTools.yml")]),
     );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("variables/webInternalSettings.yml")]),
+    );
 
     const destinationDatasource = datasource.forSet("staging");
     const target = await destinationDatasource.readTarget("web");
+    expect(await destinationDatasource.listVariables()).toEqual(["webSettings"]);
+    const promotedVariable = await destinationDatasource.readVariable("webSettings");
+    expect(promotedVariable).toEqual(expect.objectContaining({ defaultValue: "webSettings" }));
+    expect(promotedVariable.overrides).toBeUndefined();
     const datafile = await getCustomDatafile({
       environment: false,
       projectConfig: destinationDatasource.getConfig(),
@@ -244,13 +272,41 @@ describe("promoteProjectSets", function () {
       tags: target.tags,
       includeFeatures: target.includeFeatures,
       excludeFeatures: target.excludeFeatures,
+      includeVariables: target.includeVariables,
+      excludeVariables: target.excludeVariables,
     });
     expect(Object.keys(datafile.features)).toEqual(["webCheckout"]);
+    expect(Object.keys(datafile.variables || {})).toEqual(["webSettings"]);
     expect(Object.keys(datafile.segments)).toEqual(["internal"]);
   });
 
   it("promotes tagged variables with their dependencies and item-level protection", async function () {
     const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/protectedDependency.yml",
+      [
+        "description: Protected dependency",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/segments/protectedUsers.yml",
+      [
+        "description: Protected users",
+        "conditions:",
+        "  - attribute: team",
+        "    operator: equals",
+        "    value: protected",
+        "",
+      ].join("\n"),
+    );
     await writeFile(
       root,
       "sets/dev/variables/checkoutSettings.yml",
@@ -270,7 +326,9 @@ describe("promoteProjectSets", function () {
         "      enabled: false",
         "  - key: protected",
         "    promotable: false",
-        '    segments: "*"',
+        "    segments: protectedUsers",
+        "    requiredFeatures:",
+        "      - protectedDependency",
         "    value:",
         "      enabled: true",
         "",
@@ -293,6 +351,64 @@ describe("promoteProjectSets", function () {
     const variable = await datasource.forSet("staging").readVariable("checkoutSettings");
     expect(Array.isArray(variable.overrides) && variable.overrides.map((item) => item.key)).toEqual(
       ["internal"],
+    );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("features/protectedDependency.yml"),
+        expect.stringContaining("segments/protectedUsers.yml"),
+      ]),
+    );
+  });
+
+  it("promotes nested reusable schemas without treating runtime schema keys as references", async function () {
+    const root = await createProject();
+    await writeFile(root, "sets/dev/schemas/inner.yml", "description: Inner value\ntype: string\n");
+    await writeFile(
+      root,
+      "sets/dev/schemas/outer.yml",
+      [
+        "description: Outer value",
+        "type: object",
+        "properties:",
+        "  value:",
+        "    schema: inner",
+        "  schema:",
+        "    type: string",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/variables/schemaSettings.yml",
+      [
+        "description: Schema settings",
+        "tags:",
+        "  - web",
+        "schema: outer",
+        "defaultValue:",
+        "  value: configured",
+        "  schema: not-a-project-reference",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    expect(result.dependencies.variable).toBe(1);
+    expect(result.dependencies.schema).toBe(2);
+    expect(result.files.created).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("schemas/inner.yml"),
+        expect.stringContaining("schemas/outer.yml"),
+        expect.stringContaining("variables/schemaSettings.yml"),
+      ]),
     );
   });
 

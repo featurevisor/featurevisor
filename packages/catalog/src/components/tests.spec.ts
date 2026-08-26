@@ -1,4 +1,4 @@
-import type { TestFeature, TestSegment } from "@featurevisor/types";
+import type { TestFeature, TestSegment, TestVariable } from "@featurevisor/types";
 
 import { expandTestAssertions, getTestAssertionPermalink } from "../testModel";
 
@@ -148,6 +148,39 @@ describe("catalog test presentation", () => {
     expect(getTestAssertionPermalink("features/checkout/redesign.spec", "2.3")).toBe(
       "features/checkout/redesign.spec:2.3",
     );
+  });
+
+  it("preserves global variable defaults and detailed expectations in matrix cases", () => {
+    const test: TestVariable = {
+      key: "support-email",
+      variable: "supportEmail",
+      assertions: [
+        {
+          matrix: { country: ["nl", "de"] },
+          environment: "production",
+          context: { country: "${{ country }}" },
+          defaultVariableValue: "fallback@example.com",
+          expectedValue: "${{ country }}@example.com",
+          expectedEvaluation: {
+            reason: "variable_override_rule",
+            variableOverrideIndex: 0,
+          },
+        },
+      ],
+    };
+
+    expect(expandTestAssertions(test)[0]).toMatchObject({
+      label: "1.1",
+      assertion: {
+        context: { country: "nl" },
+        defaultVariableValue: "fallback@example.com",
+        expectedValue: "nl@example.com",
+        expectedEvaluation: {
+          reason: "variable_override_rule",
+          variableOverrideIndex: 0,
+        },
+      },
+    });
   });
 
   it("matches the tester by producing no cases for an empty matrix", () => {

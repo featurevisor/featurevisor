@@ -106,9 +106,7 @@ function metadataFor(evaluation: Evaluation, featurevisor: Featurevisor): FlagMe
   if (typeof evaluation.forceIndex === "number") metadata.forceIndex = evaluation.forceIndex;
   if (typeof evaluation.variableOverrideIndex === "number")
     metadata.variableOverrideIndex = evaluation.variableOverrideIndex;
-  if (typeof evaluation.overrideIndex === "number")
-    metadata.variableOverrideIndex = evaluation.overrideIndex;
-  if (evaluation.overrideKey) metadata.variableOverrideKey = evaluation.overrideKey;
+  if (evaluation.variableOverrideKey) metadata.variableOverrideKey = evaluation.variableOverrideKey;
   return metadata;
 }
 

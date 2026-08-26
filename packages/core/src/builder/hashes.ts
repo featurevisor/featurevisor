@@ -81,10 +81,13 @@ export function generateHashForFeature(
     (segmentKey) => segmentHashes[segmentKey],
   );
 
+  const featureWithoutHash = { ...feature };
+  delete featureWithoutHash.hash;
+
   return generateHashFromString(
     JSON.stringify({
       featureKey,
-      feature,
+      feature: featureWithoutHash,
       requiredFeatureHashes,
       usedSegmentHashes,
     }),
@@ -131,7 +134,39 @@ export function generateHashForVariable(
     .flatMap((override) => Array.from(extractSegmentKeysFromGroupSegments(override.segments || [])))
     .map((segmentKey) => segmentHashes[segmentKey]);
 
+  const variableWithoutHash = { ...variable };
+  delete variableWithoutHash.hash;
+
   return generateHashFromString(
-    JSON.stringify({ variableKey, variable, requiredFeatureHashes, usedSegmentHashes }),
+    JSON.stringify({
+      variableKey,
+      variable: variableWithoutHash,
+      requiredFeatureHashes,
+      usedSegmentHashes,
+    }),
   );
+}
+
+/** Rebuild every content hash after a datafile has been specialized. */
+export function refreshDatafileHashes(datafileContent: DatafileContent): DatafileContent {
+  const segmentHashes = getSegmentHashes(datafileContent.segments);
+
+  for (const featureKey of Object.keys(datafileContent.features)) {
+    datafileContent.features[featureKey].hash = generateHashForFeature(
+      featureKey,
+      datafileContent.features,
+      segmentHashes,
+    );
+  }
+
+  for (const variableKey of Object.keys(datafileContent.variables || {})) {
+    datafileContent.variables![variableKey].hash = generateHashForVariable(
+      variableKey,
+      datafileContent.variables || {},
+      datafileContent.features,
+      segmentHashes,
+    );
+  }
+
+  return datafileContent;
 }

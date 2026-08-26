@@ -5,7 +5,7 @@ assertions:
     expectedValue: support-staging@example.com
     expectedEvaluation:
       reason: variable_override_rule
-      overrideKey: staging
+      variableOverrideKey: staging
 
   - matrix:
       country:

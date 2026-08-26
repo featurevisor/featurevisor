@@ -186,6 +186,16 @@ function SegmentAssertionContent(props: { assertion: SegmentAssertion }) {
 }
 
 function VariableAssertionContent(props: { assertion: VariableAssertion }) {
+  const defaults = hasValue(props.assertion.defaultVariableValue)
+    ? { value: props.assertion.defaultVariableValue }
+    : undefined;
+  const expectations = {
+    ...(hasValue(props.assertion.expectedValue) ? { value: props.assertion.expectedValue } : {}),
+    ...(props.assertion.expectedEvaluation
+      ? { evaluation: props.assertion.expectedEvaluation }
+      : {}),
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
@@ -199,7 +209,8 @@ function VariableAssertionContent(props: { assertion: VariableAssertion }) {
         )}
       </div>
       <TestDataPanel title="Context" value={props.assertion.context || {}} />
-      <TestDataPanel title="Expected" value={props.assertion.expectedValue} />
+      <TestDataPanel title="Expected" value={expectations} />
+      <TestDataPanel title="Defaults" value={defaults} />
       {props.assertion.stickyVariables && (
         <TestDataPanel title="Sticky variables" value={props.assertion.stickyVariables} />
       )}

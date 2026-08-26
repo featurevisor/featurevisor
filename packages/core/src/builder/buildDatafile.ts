@@ -59,6 +59,8 @@ export interface CustomDatafileOptions {
   tags?: BuildTags;
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
+  includeVariables?: "*" | GlobalVariableKey[];
+  excludeVariables?: "*" | GlobalVariableKey[];
   featurevisorVersion?: string;
 }
 
@@ -90,6 +92,8 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       tags: options.tags,
       includeFeatures: options.includeFeatures,
       excludeFeatures: options.excludeFeatures,
+      includeVariables: options.includeVariables,
+      excludeVariables: options.excludeVariables,
       featurevisorVersion: options.featurevisorVersion,
     },
     existingState,
@@ -150,6 +154,8 @@ export interface BuildOptions {
   tags?: BuildTags;
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
+  includeVariables?: "*" | GlobalVariableKey[];
+  excludeVariables?: "*" | GlobalVariableKey[];
   features?: FeatureKey[];
   variables?: GlobalVariableKey[];
   inflate?: number;
@@ -176,6 +182,13 @@ export async function buildDatafile(
     if (options.variables && options.variables.indexOf(variableKey) === -1) continue;
     if (options.tag && variableTags.indexOf(options.tag) === -1) continue;
     if (options.tags && matchesBuildTags(variableTags, options.tags) === false) continue;
+    if (
+      options.includeVariables &&
+      !matchesFeaturePatterns(variableKey, options.includeVariables)
+    ) {
+      continue;
+    }
+    if (matchesFeaturePatterns(variableKey, options.excludeVariables)) continue;
 
     parsedVariables.push({ key: variableKey, value: parsedVariable });
     const requiredChain = await datasource.getRequiredFeaturesChainForVariable(variableKey);
@@ -603,7 +616,10 @@ export async function buildDatafile(
       key,
       value: {
         deprecated: parsedVariable.deprecated === true ? true : undefined,
-        type: (resolvedSchema?.type || "json") as VariableType,
+        // `oneOf` schemas intentionally have no root type. Use a neutral
+        // non-JSON fallback so plain string branches are not parsed as JSON by
+        // SDKs. Runtime type-specific getters still inspect the selected value.
+        type: (resolvedSchema?.type || "string") as VariableType,
         defaultValue: parsedVariable.defaultValue,
         disabledValue: parsedVariable.disabledValue,
         useDefaultWhenDisabled: parsedVariable.useDefaultWhenDisabled === true ? true : undefined,

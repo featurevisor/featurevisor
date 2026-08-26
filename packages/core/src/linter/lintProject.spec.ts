@@ -84,6 +84,39 @@ describe("core: lintProject", function () {
     );
   });
 
+  it("reports key collisions from focused feature and variable lint runs", async () => {
+    const variablePath = path.join(tempProjectPath, "variables", "showHeader.yml");
+    fs.writeFileSync(variablePath, "type: boolean\ndefaultValue: true\n", "utf8");
+
+    const featureResult = await lintProject(getDeps(tempProjectPath) as any, {
+      entityType: "feature",
+      json: true,
+    });
+    expect(featureResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "feature",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+
+    const variableResult = await lintProject(getDeps(tempProjectPath) as any, {
+      entityType: "variable",
+      json: true,
+    });
+    expect(variableResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "variable",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+  });
+
   it("rejects entity file names containing the namespace character", async () => {
     const root = createTempProject();
     tempProjectPath = root;

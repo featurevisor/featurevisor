@@ -547,7 +547,7 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
     if (variable.archived) continue;
     const matchesSelectedTag = selectedTags.some((tag) => (variable.tags || []).includes(tag));
     const matchesSelectedTarget = selectedTargets.some((target) =>
-      targetIncludesVariable(target, variable),
+      targetIncludesVariable(target, key, variable),
     );
     if (
       (selectedTags.length > 0 || selectedTargets.length > 0) &&

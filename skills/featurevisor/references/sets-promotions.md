@@ -108,6 +108,8 @@ npx featurevisor promote --from=dev --to=staging --excludeFeatures="experimental
 
 Positive selectors (`--target`, `--tag`, `--includeFeatures`) combine with **AND**; `--excludeFeatures` applies last and wins. Dependency closure may still pull in features the filters didn't name (required features, group members). An empty selection fails loudly (override with `--allowEmpty`); unknown `--target`/`--tag` values fail and list what exists.
 
+A selected Target applies its tag selector to features and global variables. Its `includeFeatures` and `excludeFeatures` patterns filter features, while `includeVariables` and `excludeVariables` filter global variables. The Target definition itself is included in the promotion.
+
 For a single feature, `--includeFeatures="<exactKey>"` is the precise tool.
 
 ### Conflicts

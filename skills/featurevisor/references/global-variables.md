@@ -24,7 +24,7 @@ overrides:
       value: support@example.com
 ```
 
-Schema fields match feature `variablesSchema`. Define `type` and related fields inline, or use `schema` to reference a reusable schema. Never combine the two forms.
+Schema fields match feature `variablesSchema`. Define `type` and related fields inline, use `oneOf` for several valid schema branches, or use `schema` to reference a reusable schema. Never combine these root forms.
 
 Every override requires a stable `key`, targeting through `segments`, `conditions`, or both, and exactly one of `value` or `mutate`. Segments and conditions use AND semantics when both are present. A plain `segments: "*"` catch-all must be last.
 
@@ -32,7 +32,7 @@ Every override requires a stable `key`, targeting through `segments`, `condition
 
 Use `requiredFeatures` at the variable or override level. Requirements can be feature keys or `{ key, variation }` objects. For a global variable, disabled means its required features were not satisfied. Unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
 
-Targets select global variables by `tag` or `tags`. Their `includeFeatures` and `excludeFeatures` selectors remain feature specific.
+Targets select global variables by `tag` or `tags`, plus optional glob-like `includeVariables` and `excludeVariables` selectors. Tag and include or exclude selectors use AND semantics. A Target without selectors includes every active feature and global variable.
 
 JavaScript evaluation:
 
@@ -54,7 +54,8 @@ assertions:
     expectedValue: support-nl@example.com
     expectedEvaluation:
       reason: variable_override_rule
-      overrideKey: netherlands
+      variableOverrideKey: netherlands
+      variableOverrideIndex: 0
 ```
 
 Variable assertions also support `target`, `matrix`, `stickyVariables`, and `defaultVariableValue`.

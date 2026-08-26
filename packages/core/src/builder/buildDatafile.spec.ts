@@ -446,6 +446,50 @@ describe("core: buildDatafile", function () {
     });
   });
 
+  test("derives revision hashes from the final target-specialized datafile", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource(
+      {
+        targeted: {
+          key: "targeted",
+          description: "Targeted",
+          bucketBy: "userId",
+          rules: {
+            staging: [{ key: "country", segments: "nl", percentage: 100, enabled: true }],
+          },
+        } as ParsedFeature,
+      },
+      {
+        nl: {
+          conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+        },
+      },
+    );
+
+    const nl = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "NL", context: { country: "nl" } },
+      environment: "staging",
+      existingState,
+      revision: "source",
+      revisionFromHash: true,
+    });
+    const de = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "DE", context: { country: "de" } },
+      environment: "staging",
+      existingState,
+      revision: "source",
+      revisionFromHash: true,
+    });
+
+    expect(nl.revision).not.toBe("source");
+    expect(de.revision).not.toBe("source");
+    expect(nl.revision).not.toBe(de.revision);
+  });
+
   test("builds tagged global variables with dependencies and resolved mutations", async () => {
     const config = createProjectConfig(root, true);
     const datasource = createMockDatasource({
@@ -514,5 +558,61 @@ describe("core: buildDatafile", function () {
     );
     expect(result.variables?.banner.hash).toEqual(expect.any(String));
     expect(Object.keys(result.segments)).toEqual(["europe"]);
+  });
+
+  test("filters global variables with independent include and exclude patterns", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({});
+    Object.assign(datasource, {
+      listVariables: async () => ["checkoutMessage", "checkoutInternal", "supportEmail"],
+      readVariable: async (key: string) => ({
+        description: key,
+        tags: key === "supportEmail" ? ["support"] : ["checkout"],
+        type: "string",
+        defaultValue: key,
+      }),
+      getRequiredFeaturesChainForVariable: async () => new Set(),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      {
+        revision: "1",
+        environment: "staging",
+        tag: "checkout",
+        includeVariables: ["checkout*"],
+        excludeVariables: ["*Internal"],
+      },
+      existingState,
+    );
+
+    expect(Object.keys(result.variables || {})).toEqual(["checkoutMessage"]);
+  });
+
+  test("emits a non-JSON runtime type for oneOf global variables", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-global-one-of-"));
+    fs.mkdirSync(path.join(root, "variables"), { recursive: true });
+    const config = createProjectConfig(root);
+    const datasource = createMockDatasource({});
+    Object.assign(datasource, {
+      listVariables: async () => ["union"],
+      readVariable: async () => ({
+        description: "Union",
+        oneOf: [{ type: "string" }, { type: "integer" }],
+        defaultValue: "plain-string",
+      }),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+
+    expect(result.variables?.union).toEqual(
+      expect.objectContaining({ type: "string", defaultValue: "plain-string" }),
+    );
   });
 });

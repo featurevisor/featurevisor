@@ -104,7 +104,7 @@ assertions:
     expectedValue: support-nl@example.com
     expectedEvaluation:
       reason: variable_override_rule
-      overrideKey: netherlands
+      variableOverrideKey: netherlands
 ```
 
 Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.

@@ -3,6 +3,7 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { applyContextToConditions } from "./applyContextToConditions";
 import { applyContextToSegments } from "./applyContextToSegments";
+import { refreshDatafileHashes } from "./hashes";
 
 function parseIfStringified<T>(value: T): T {
   if (typeof value !== "string" || value === "*") {
@@ -246,5 +247,5 @@ export function applyContextToDatafile(
     delete contextualDatafileContent.segments[removeSegment];
   }
 
-  return contextualDatafileContent;
+  return refreshDatafileHashes(contextualDatafileContent);
 }

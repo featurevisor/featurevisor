@@ -186,13 +186,20 @@ describe("Featurevisor public API: datafiles", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({
       logLevel: "fatal",
-      datafile: createDatafile({ features: { a: createFeature(), b: createFeature() } }),
+      datafile: createDatafile({
+        features: {
+          a: createFeature({ hash: "a" }),
+          b: createFeature({ hash: "b" }),
+        },
+      }),
     });
     sdk.on("datafile_set", (event) => events.push(event));
 
-    sdk.setDatafile(createDatafile({ revision: "merged", features: { a: createFeature() } }));
     sdk.setDatafile(
-      createDatafile({ revision: "replaced", features: { a: createFeature() } }),
+      createDatafile({ revision: "merged", features: { a: createFeature({ hash: "a" }) } }),
+    );
+    sdk.setDatafile(
+      createDatafile({ revision: "replaced", features: { a: createFeature({ hash: "a" }) } }),
       true,
     );
 

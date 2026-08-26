@@ -1,4 +1,4 @@
-.PHONY: install build test test-cli-integration typecheck bundle-sizes lint format check
+.PHONY: install build test test-cli-integration test-global-variables-performance typecheck bundle-sizes lint format check
 
 ##
 # Packages
@@ -17,6 +17,12 @@ test:
 test-cli-integration:
 	npx lerna run build --scope @featurevisor/cli --include-dependencies
 	node scripts/test-cli-integration.mjs
+
+# Local large-datafile confidence check for aggregate feature and global variable evaluation.
+# This intentionally stays outside `check` and CI.
+test-global-variables-performance:
+	npx lerna run build --scope @featurevisor/sdk --include-dependencies
+	node scripts/test-global-variables-performance.mjs
 
 typecheck:
 	npm run typecheck

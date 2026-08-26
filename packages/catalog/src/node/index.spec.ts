@@ -273,6 +273,17 @@ describe("catalog export", () => {
     expect(variableDetail.tests).toEqual([
       expect.objectContaining({ key: "support-email", variable: "supportEmail" }),
     ]);
+
+    const targetDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "target", "premiumWeb.json"),
+        "utf8",
+      ),
+    );
+    expect(targetDetail.relationships).toMatchObject({
+      features: ["checkout"],
+      variables: ["supportEmail"],
+    });
   });
 
   it("writes per-set catalog files for sets-enabled projects", async () => {
@@ -390,6 +401,71 @@ describe("catalog export", () => {
     expect(index.entities.feature[0].href).toBe("entities/feature/checkout/redesign.json");
     expect(detail.sourcePath).toBe("features/checkout/redesign.yml");
     expect(detail.historyPath).toBe("data/root/entities/feature/checkout/redesign/history");
+  });
+
+  it("exports precise transitive schema and target relationships", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+    const baseDatasource = createDatasource();
+    const datasource = {
+      ...baseDatasource,
+      listFeatures: async () => ["checkout", "archivedCheckout"],
+      readFeature: async (key: string) =>
+        key === "archivedCheckout"
+          ? {
+              key,
+              description: "Archived checkout",
+              archived: true,
+              tags: ["web", "premium"],
+              bucketBy: "userId",
+              rules: [],
+            }
+          : {
+              ...(await baseDatasource.readFeature()),
+              variablesSchema: {
+                payload: { schema: "outer", defaultValue: {} },
+              },
+            },
+      listSchemas: async () => ["outer", "inner", "unused"],
+      readSchema: async (key: string) =>
+        key === "outer"
+          ? { description: "Outer", type: "object", properties: { value: { schema: "inner" } } }
+          : { description: key, type: "string" },
+      readVariable: async () => ({
+        key: "supportEmail",
+        description: "Support email",
+        tags: ["web", "premium"],
+        schema: "outer",
+        defaultValue: { schema: "unused" },
+      }),
+    };
+
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), datasource, {
+      copyAssets: false,
+    });
+
+    const featureDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "checkout.json"),
+        "utf8",
+      ),
+    );
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
+    const archivedDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "archivedCheckout.json"),
+        "utf8",
+      ),
+    );
+
+    expect(featureDetail.relationships.schemas).toEqual(["inner", "outer"]);
+    expect(variableDetail.relationships.schemas).toEqual(["inner", "outer"]);
+    expect(variableDetail.relationships.schemas).not.toContain("unused");
+    expect(archivedDetail.relationships.targets).toEqual([]);
   });
 
   it("exports repository source links and dev editor links", async () => {

@@ -97,12 +97,10 @@ export interface Evaluation {
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
+  /** Present when a keyed global variable override matched. */
+  variableOverrideKey?: string;
   /** Present when evaluating a global variable. */
   variable?: DatafileVariable;
-  /** Present when a global variable override matched. */
-  overrideIndex?: number;
-  /** Present when a global variable override matched. */
-  overrideKey?: string;
 }
 
 export interface EvaluateDependencies {
@@ -170,7 +168,7 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
     }
     for (const module of modules) {
       if (module.beforeEvaluation) {
-        options = module.beforeEvaluation(options) as EvaluateOptions;
+        options = module.beforeEvaluation(options);
       }
     }
 
