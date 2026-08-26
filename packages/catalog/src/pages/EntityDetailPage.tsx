@@ -699,6 +699,33 @@ function asStringArray(value: unknown) {
   return undefined;
 }
 
+function asRequiredFeatures(
+  value: unknown,
+): Array<{ feature: string; enabled?: boolean; variation?: string }> {
+  const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
+  return items.flatMap((item) => {
+    if (typeof item === "string") return [{ feature: item }];
+    if (!item || typeof item !== "object") return [];
+    const requirement = item as {
+      feature?: unknown;
+      key?: unknown;
+      enabled?: unknown;
+      variation?: unknown;
+    };
+    const feature = requirement.feature || requirement.key;
+    return typeof feature === "string"
+      ? [
+          {
+            feature,
+            enabled: typeof requirement.enabled === "boolean" ? requirement.enabled : undefined,
+            variation:
+              typeof requirement.variation === "string" ? requirement.variation : undefined,
+          },
+        ]
+      : [];
+  });
+}
+
 function EntityOverviewMeta(props: {
   detail: EntityDetail;
   entity: Record<string, unknown>;
@@ -707,7 +734,7 @@ function EntityOverviewMeta(props: {
   const { detail, entity, setKey } = props;
   const tags = asStringArray(entity.tags);
   const targets = detail.relationships?.targets;
-  const required = asStringArray(entity.required);
+  const required = asRequiredFeatures(entity.requiredFeatures ?? entity.required);
   const hasStatus =
     entity.archived === true || entity.deprecated === true || entity.promotable === false;
 
@@ -734,9 +761,14 @@ function EntityOverviewMeta(props: {
         )}
         {required?.length ? (
           <OverviewMetaRow label="Required">
-            {required.map((key) => (
-              <OverviewChipLink key={key} to={getEntityRoute("feature", key, setKey)}>
-                {key}
+            {required.map((requirement) => (
+              <OverviewChipLink
+                key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
+                to={getEntityRoute("feature", requirement.feature, setKey)}
+              >
+                {requirement.feature}
+                {requirement.enabled === false ? " (disabled)" : ""}
+                {requirement.variation ? ` (${requirement.variation})` : ""}
               </OverviewChipLink>
             ))}
           </OverviewMetaRow>

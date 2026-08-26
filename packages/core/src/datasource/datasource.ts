@@ -23,7 +23,12 @@ import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
-import { collectRequiredFeatureKeys } from "./requiredFeatures";
+import {
+  collectRequiredFeatureKeys,
+  getRequiredFeatureKey,
+  normalizeFeatureRequirements,
+  normalizeRequiredFeatures,
+} from "./requiredFeatures";
 
 export class Datasource {
   private adapter: Adapter;
@@ -128,7 +133,7 @@ export class Datasource {
 
     const feature = await this.readFeature(featureKey);
 
-    return collectRequiredFeatureKeys(this, featureKey, feature.required);
+    return collectRequiredFeatureKeys(this, featureKey, normalizeFeatureRequirements(feature));
   }
 
   // segments
@@ -267,18 +272,18 @@ export class Datasource {
     const variable = await this.readVariable(variableKey);
     const result = new Set<FeatureKey>();
     const requirements = [
-      ...(variable.requiredFeatures || []),
+      ...normalizeRequiredFeatures(variable.requiredFeatures),
       ...Object.values(variable.overrides || {})
         .flat()
-        .flatMap((override) => override.requiredFeatures || []),
+        .flatMap((override) => normalizeRequiredFeatures(override.requiredFeatures)),
     ];
 
     for (const required of requirements) {
-      const featureKey = typeof required === "string" ? required : required.key;
+      const featureKey = getRequiredFeatureKey(required);
       const chain = await collectRequiredFeatureKeys(
         this,
         featureKey,
-        (await this.readFeature(featureKey)).required,
+        normalizeFeatureRequirements(await this.readFeature(featureKey)),
       );
       chain.forEach((key) => result.add(key));
     }

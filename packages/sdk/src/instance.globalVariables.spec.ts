@@ -41,8 +41,10 @@ function datafile(): DatafileContent {
         overrides: [
           {
             key: "eu-nl",
-            segments: "europe",
-            conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+            conditions: [
+              { attribute: "continent", operator: "equals", value: "eu" },
+              { attribute: "country", operator: "equals", value: "nl" },
+            ],
             value: "help-nl@example.com",
           },
           {
@@ -56,7 +58,7 @@ function datafile(): DatafileContent {
         type: "string",
         defaultValue: "enabled",
         disabledValue: "disabled",
-        requiredFeatures: [{ key: "access", variation: "treatment" }],
+        requiredFeatures: [{ feature: "access", variation: "treatment" }],
       },
       gatedDefault: {
         type: "integer",

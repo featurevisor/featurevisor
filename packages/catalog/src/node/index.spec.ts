@@ -514,7 +514,7 @@ describe("catalog export", () => {
             key,
             description: "Account",
             tags: ["mobile"],
-            required: ["authenticated"],
+            requiredFeatures: "authenticated",
             bucketBy: "userId",
             rules: { staging: [], production: [] },
           };
@@ -542,8 +542,13 @@ describe("catalog export", () => {
             {
               key: "premium",
               segments: "premiumUsers",
-              conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
               value: "premium@example.com",
+            },
+            {
+              key: "netherlands",
+              conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+              requiredFeatures: "account",
+              value: "nl@example.com",
             },
           ],
           production: [],

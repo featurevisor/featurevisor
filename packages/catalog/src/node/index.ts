@@ -360,17 +360,27 @@ function collectSegmentKeys(
   if ("not" in segments) collectSegmentKeys(segments.not, result);
 }
 
-function collectFeatureKeysFromRequired(required: ParsedFeature["required"], result: Set<string>) {
-  for (const item of required || []) {
-    result.add(typeof item === "string" ? item : item.key);
+function collectFeatureKeysFromRequired(required: unknown, result: Set<string>) {
+  const items = typeof required === "string" ? [required] : Array.isArray(required) ? required : [];
+  for (const item of items) {
+    if (typeof item === "string") result.add(item);
+    else if (item && typeof item === "object") {
+      const value = item as { feature?: string; key?: string };
+      if (value.feature || value.key) result.add(value.feature || value.key!);
+    }
   }
+}
+
+function collectFeatureRequirements(feature: ParsedFeature, result: Set<string>) {
+  collectFeatureKeysFromRequired(feature.requiredFeatures ?? feature.required, result);
 }
 
 function expandFeatureKeys(featureKeys: Set<string>, features: Record<string, ParsedFeature>) {
   const pending = Array.from(featureKeys);
   for (let index = 0; index < pending.length; index++) {
     const nested = new Set<string>();
-    collectFeatureKeysFromRequired(features[pending[index]]?.required, nested);
+    const feature = features[pending[index]];
+    if (feature) collectFeatureRequirements(feature, nested);
     for (const key of nested) {
       if (!featureKeys.has(key)) {
         featureKeys.add(key);
@@ -1011,7 +1021,7 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     const schemas = new Set<string>();
     const groups = new Set<string>();
 
-    collectFeatureKeysFromRequired(feature.required, required);
+    collectFeatureRequirements(feature, required);
     collectSchemaKeysFromVariables(feature.variablesSchema, schemas);
     expandSchemaKeys(schemas, maps.schema);
     collectGroupKeysFromRules(feature.rules, groups);

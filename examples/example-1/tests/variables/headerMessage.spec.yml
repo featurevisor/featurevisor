@@ -1,0 +1,26 @@
+variable: headerMessage
+assertions:
+  - description: evaluates normally when its required feature is enabled
+    environment: staging
+    expectedValue: Welcome to staging
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: staging
+
+  - description: returns the disabled value when its required feature is disabled
+    environment: production
+    context:
+      device: tablet
+    expectedValue: Header unavailable
+    expectedEvaluation:
+      reason: required_features_unmet
+
+  - description: evaluates normally in production when its requirement matches
+    environment: production
+    context:
+      device: mobile
+      version: 1.2.3
+    expectedValue: Welcome
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: default

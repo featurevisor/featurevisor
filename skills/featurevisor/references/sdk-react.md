@@ -30,7 +30,7 @@ root.render(
 
 ## Reactive hooks
 
-These re-render the component when the evaluated **value changes** (new datafile, context update, or sticky update — no re-render if the value is unchanged):
+These render the component again when the evaluated **value changes**. Datafile subscriptions include direct changes and changes caused by segment or required feature dependencies. Unrelated datafile updates are ignored, and an unchanged evaluated value does not render the component again.
 
 ```jsx
 import { useFlag, useVariation, useVariable } from '@featurevisor/react'

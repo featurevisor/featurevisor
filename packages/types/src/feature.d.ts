@@ -112,7 +112,21 @@ export interface RequiredWithVariation {
   variation: VariationValue;
 }
 
+/** @deprecated Use `RequiredFeature` and `requiredFeatures` instead. */
 export type Required = FeatureKey | RequiredWithVariation;
+
+export interface RequiredFeatureOptions {
+  feature: FeatureKey;
+  /** Expected result from `isEnabled()`. Defaults to `true`. */
+  enabled?: boolean;
+  /** Expected result from `getVariation()`. */
+  variation?: VariationValue;
+}
+
+export type RequiredFeature = FeatureKey | RequiredFeatureOptions;
+
+/** Authoring form. A single feature key is shorthand for a one-item array. */
+export type RequiredFeatures = FeatureKey | RequiredFeature[];
 
 export type Weight = number; // 0 to 100
 
@@ -178,7 +192,9 @@ export interface ParsedFeature {
   description: string;
   tags?: Tag[];
 
+  /** @deprecated Use `requiredFeatures`. */
   required?: Required[];
+  requiredFeatures?: RequiredFeatures;
 
   bucketBy: BucketBy;
 

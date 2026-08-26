@@ -1,20 +1,47 @@
 import type { Condition } from "./condition";
-import type { EnvironmentKey, Required, Tag, VariableType, VariableValue } from "./feature";
+import type {
+  EnvironmentKey,
+  RequiredFeature,
+  RequiredFeatures,
+  Tag,
+  VariableType,
+  VariableValue,
+} from "./feature";
 import type { Schema, SchemaKey } from "./schema";
 import type { GroupSegment } from "./segment";
 
 export type GlobalVariableKey = string;
 
-export interface ParsedVariableOverride {
+interface ParsedVariableOverrideBase {
   key: string;
   description?: string;
   promotable?: boolean;
-  segments?: GroupSegment | GroupSegment[] | "*";
-  conditions?: Condition | Condition[];
-  requiredFeatures?: Required[];
-  value?: VariableValue;
-  mutate?: Record<string, VariableValue>;
 }
+
+type ParsedVariableOverrideSelector =
+  | {
+      conditions: Condition | Condition[];
+      segments?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      segments: GroupSegment | GroupSegment[] | "*";
+      conditions?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      requiredFeatures: RequiredFeatures;
+      conditions?: never;
+      segments?: never;
+    };
+
+type ParsedVariableOverrideValue =
+  | { value: VariableValue; mutate?: never }
+  | { mutate: Record<string, VariableValue>; value?: never };
+
+export type ParsedVariableOverride = ParsedVariableOverrideBase &
+  ParsedVariableOverrideSelector &
+  ParsedVariableOverrideValue;
 
 export type ParsedVariableOverrides =
   | ParsedVariableOverride[]
@@ -30,17 +57,34 @@ export type ParsedVariable = Omit<Schema, "type" | "schema"> & {
   archived?: boolean;
   promotable?: boolean;
   tags?: Tag[];
-  requiredFeatures?: Required[];
+  requiredFeatures?: RequiredFeatures;
   overrides?: ParsedVariableOverrides;
 };
 
-export interface DatafileVariableOverride {
+interface DatafileVariableOverrideBase {
   key: string;
-  segments?: GroupSegment | GroupSegment[] | string;
-  conditions?: Condition | Condition[] | string;
-  requiredFeatures?: Required[];
   value: VariableValue;
 }
+
+type DatafileVariableOverrideSelector =
+  | {
+      segments: GroupSegment | GroupSegment[] | string;
+      conditions?: never;
+      requiredFeatures?: RequiredFeature[];
+    }
+  | {
+      conditions: Condition | Condition[] | string;
+      segments?: never;
+      requiredFeatures?: RequiredFeature[];
+    }
+  | {
+      requiredFeatures: RequiredFeature[];
+      segments?: never;
+      conditions?: never;
+    };
+
+export type DatafileVariableOverride = DatafileVariableOverrideBase &
+  DatafileVariableOverrideSelector;
 
 export interface DatafileVariable {
   hash?: string;
@@ -49,7 +93,7 @@ export interface DatafileVariable {
   defaultValue: VariableValue;
   disabledValue?: VariableValue;
   useDefaultWhenDisabled?: boolean;
-  requiredFeatures?: Required[];
+  requiredFeatures?: RequiredFeature[];
   overrides?: DatafileVariableOverride[];
 }
 

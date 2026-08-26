@@ -232,8 +232,11 @@ describe("Featurevisor public API: datafiles", () => {
               },
             ],
           }),
-          indirect: createFeature({ hash: "indirect", required: ["direct"] }),
-          transitive: createFeature({ hash: "transitive", required: ["indirect"] }),
+          indirect: createFeature({ hash: "indirect", requiredFeatures: ["direct"] }),
+          transitive: createFeature({
+            hash: "transitive",
+            requiredFeatures: [{ feature: "indirect", enabled: true }],
+          }),
           unrelated: createFeature({ hash: "unrelated" }),
         },
         variables: {
@@ -334,8 +337,11 @@ describe("Featurevisor public API: datafiles", () => {
       datafile: createDatafile({
         features: {
           prerequisite: createFeature({ hash: "old" }),
-          dependent: createFeature({ hash: "dependent", required: ["prerequisite"] }),
-          transitive: createFeature({ hash: "transitive", required: ["dependent"] }),
+          dependent: createFeature({
+            hash: "dependent",
+            requiredFeatures: [{ feature: "prerequisite", enabled: false }],
+          }),
+          transitive: createFeature({ hash: "transitive", requiredFeatures: ["dependent"] }),
         },
         variables: {
           message: {

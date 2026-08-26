@@ -9,6 +9,7 @@ import type {
   EnvironmentKey,
   Weight,
   Required,
+  RequiredFeature,
   Variation,
   Force,
   ResolvedVariableSchema,
@@ -36,6 +37,7 @@ export interface ExpectedEvaluation {
   forceIndex?: number;
   force?: Force;
   required?: Required[];
+  requiredFeatures?: RequiredFeature[];
   stickyFeature?: EvaluatedFeature;
   sticky?: EvaluatedFeature;
   variation?: Variation;

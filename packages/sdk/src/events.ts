@@ -23,7 +23,9 @@ export interface DatafileSetEventDetails {
   revision: string;
   previousRevision: string;
   revisionChanged: boolean;
+  /** Feature keys changed directly or affected through segment and required feature dependencies. */
   features: FeatureKey[];
+  /** Global variable keys changed directly or affected through segment and feature dependencies. */
   variables: GlobalVariableKey[];
   replaced: boolean;
 }

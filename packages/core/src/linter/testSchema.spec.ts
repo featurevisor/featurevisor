@@ -128,7 +128,10 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
             title: "Checkout",
           },
           expectedEvaluations: {
-            flag: { reason: "rule" },
+            flag: {
+              reason: "required",
+              requiredFeatures: [{ feature: "checkout", enabled: true }],
+            },
             variation: { reason: "bucketed" },
             variables: { title: { reason: "default" } },
           },

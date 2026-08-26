@@ -17,7 +17,7 @@ import type {
   ObjectValue,
   Condition,
   VariableType,
-  Required,
+  RequiredFeature,
   StickyVariables,
   GlobalVariableKey,
   EvaluatedVariables,
@@ -898,18 +898,30 @@ export class Featurevisor {
     };
   }
 
+  private evaluateRequiredFeature(
+    type: "flag" | "variation",
+    featureKey: FeatureKey,
+    dependencies: EvaluateDependencies,
+  ): Evaluation {
+    return evaluateWithModules({
+      ...dependencies,
+      type,
+      featureKey,
+    });
+  }
+
   private requiredFeaturesAreMatched(
-    requiredFeatures: Required[] | undefined,
+    requiredFeatures: RequiredFeature[] | undefined,
     context: Context,
     options: InternalOverrideOptions,
   ): boolean {
     return (requiredFeatures || []).every((required) => {
-      const featureKey = typeof required === "string" ? required : required.key;
-      if (!this.isEnabled(featureKey, context, options)) return false;
-      return (
-        typeof required === "string" ||
-        this.getVariation(featureKey, context, options) === required.variation
-      );
+      const featureKey = typeof required === "string" ? required : required.feature;
+      const expectedEnabled = typeof required === "string" ? true : (required.enabled ?? true);
+      if (this.isEnabled(featureKey, context, options) !== expectedEnabled) return false;
+      return typeof required === "string" || typeof required.variation === "undefined"
+        ? true
+        : this.getVariation(featureKey, context, options) === required.variation;
     });
   }
 

@@ -26,13 +26,13 @@ overrides:
 
 Schema fields match feature `variablesSchema`. Define `type` and related fields inline, use `oneOf` for several valid schema branches, or use `schema` to reference a reusable schema. Never combine these root forms.
 
-Every override requires a stable `key`, targeting through `segments`, `conditions`, or both, and exactly one of `value` or `mutate`. Segments and conditions use AND semantics when both are present. A plain `segments: "*"` catch-all must be last.
+Every override requires a stable `key`, at least one selector from `segments`, `conditions`, or `requiredFeatures`, and exactly one of `value` or `mutate`. Conditions and segments cannot appear together. Required features may appear alone or with either other selector, using AND semantics. A plain `segments: "*"` catch-all without requirements must be last.
 
 `mutate` paths are relative to the variable root and are resolved while building the datafile.
 
-Use `requiredFeatures` at the variable or override level. Requirements can be feature keys or `{ key, variation }` objects. For a global variable, disabled means its required features were not satisfied. Unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
+Use `requiredFeatures` at the variable or override level. A direct feature key is accepted for one enabled requirement. Arrays accept feature keys or `{ feature, enabled?, variation? }` objects. `enabled` defaults to `true` and honours `isEnabled()`. `variation` honours `getVariation()`, including `disabledVariationValue`. For a global variable, unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
 
-Feature `expose` configuration remains authoritative. If a required feature is excluded from a particular datafile by its expose policy, the requirement is not satisfied in that datafile.
+Feature `expose` configuration controls datafile presence. Requirement checks use SDK results directly, so an omitted feature normally fails the default enabled check and can satisfy an explicit `enabled: false` check.
 
 Targets select global variables by `tag` or `tags`, plus optional glob-like `includeVariables` and `excludeVariables` selectors. Tag and include or exclude selectors use AND semantics. A Target without selectors includes every active feature and global variable.
 

@@ -1,4 +1,4 @@
-import type { Schema, SchemaType } from "@featurevisor/types";
+import type { ParsedFeature, Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
 import { ProjectConfig } from "../config";
@@ -13,6 +13,7 @@ import {
   refineArrayItems,
 } from "./schema";
 import { refineWithMessage } from "./zodHelpers";
+import { getRequiredFeaturesZodSchema } from "./requiredFeaturesSchema";
 
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
@@ -1301,6 +1302,7 @@ export function getFeatureZodSchema(
   availableFeatureKeys: [string, ...string[]],
   availableSchemaKeys: string[] = [],
   schemasByKey: Record<string, Schema> = {},
+  featuresByKey: Record<string, ParsedFeature> = {},
 ) {
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
@@ -1498,6 +1500,11 @@ export function getFeatureZodSchema(
         )
         .optional(),
 
+      requiredFeatures: getRequiredFeaturesZodSchema(
+        featuresByKey,
+        availableFeatureKeys,
+      ).optional(),
+
       bucketBy: z.union([
         attributeKeyZodSchema,
         z.array(attributeKeyZodSchema),
@@ -1693,6 +1700,14 @@ export function getFeatureZodSchema(
     })
     .strict()
     .superRefine((value, ctx) => {
+      if (value.required && value.requiredFeatures) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A feature cannot define both `required` and `requiredFeatures`.",
+          path: ["requiredFeatures"],
+        });
+      }
+
       // disabledVariationValue
       if (value.disabledVariationValue) {
         if (!value.variations) {

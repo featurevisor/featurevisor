@@ -6,6 +6,7 @@ import type {
   GlobalVariableKey,
   GroupSegment,
   Required,
+  RequiredFeature,
   SegmentKey,
 } from "@featurevisor/types";
 
@@ -27,6 +28,10 @@ function addDependent<TValue extends string>(
 
 function getRequiredFeatureKey(required: Required): FeatureKey {
   return typeof required === "string" ? required : required.key;
+}
+
+function getRequiredFeatureKeyV2(required: RequiredFeature): FeatureKey {
+  return typeof required === "string" ? required : required.feature;
 }
 
 function addSegmentKeys(segments: GroupSegment | GroupSegment[] | string, result: Set<SegmentKey>) {
@@ -96,8 +101,14 @@ function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, fe
     addDependent(index.segmentFeatures, segmentKey, featureKey);
   }
 
-  for (const required of feature.required || []) {
-    addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
+  if (feature.requiredFeatures) {
+    for (const required of feature.requiredFeatures) {
+      addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+    }
+  } else {
+    for (const required of feature.required || []) {
+      addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
+    }
   }
 }
 
@@ -107,7 +118,7 @@ function indexVariable(
   variable: DatafileVariable,
 ) {
   for (const required of variable.requiredFeatures || []) {
-    addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
+    addDependent(index.featureVariables, getRequiredFeatureKeyV2(required), variableKey);
   }
 
   for (const override of variable.overrides || []) {
@@ -120,7 +131,7 @@ function indexVariable(
     }
 
     for (const required of override.requiredFeatures || []) {
-      addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
+      addDependent(index.featureVariables, getRequiredFeatureKeyV2(required), variableKey);
     }
   }
 }

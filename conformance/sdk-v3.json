@@ -149,7 +149,7 @@
           "type": "string",
           "defaultValue": "matched",
           "disabledValue": "disabled",
-          "requiredFeatures": [{ "key": "variationFeature", "variation": "treatment" }]
+          "requiredFeatures": [{ "feature": "variationFeature", "variation": "treatment" }]
         },
         "overrideRequirement": {
           "type": "string",
@@ -175,11 +175,11 @@
             },
             {
               "key": "nl-pro",
-              "segments": ["netherlands"],
               "conditions": {
-                "attribute": "plan",
-                "operator": "equals",
-                "value": "pro"
+                "and": [
+                  { "attribute": "country", "operator": "equals", "value": "nl" },
+                  { "attribute": "plan", "operator": "equals", "value": "pro" }
+                ]
               },
               "requiredFeatures": ["enabledFeature"],
               "value": "matched"

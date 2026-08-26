@@ -38,7 +38,7 @@ describe("global variable schema", () => {
         tags: ["shared"],
         type: "string",
         defaultValue: "help@example.com",
-        requiredFeatures: [{ key: "checkout", variation: "treatment" }],
+        requiredFeatures: [{ feature: "checkout", variation: "treatment" }],
         overrides: {
           production: [
             { key: "europe", segments: "europe", value: "eu@example.com" },
@@ -106,7 +106,7 @@ describe("global variable schema", () => {
     ["mixed schema forms", { type: "object", schema: "banner" }],
     ["invalid default", { type: "integer", defaultValue: "five" }],
     ["archived required feature", { requiredFeatures: ["archived"] }],
-    ["unknown required variation", { requiredFeatures: [{ key: "checkout", variation: "x" }] }],
+    ["unknown required variation", { requiredFeatures: [{ feature: "checkout", variation: "x" }] }],
   ])("rejects %s", (_label, changes) => {
     const value = {
       description: "Variable",
@@ -131,6 +131,51 @@ describe("global variable schema", () => {
         overrides: {
           staging: [{ key: "x", segments: "*", value: "x", mutate: { value: "y" } }],
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("supports requiredFeatures as a direct selector and alongside one other selector", () => {
+    const base = { description: "Variable", type: "string", defaultValue: "value" };
+    const validOverrides = [
+      { key: "required", requiredFeatures: "checkout", value: "x" },
+      {
+        key: "conditions",
+        conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+        requiredFeatures: [{ feature: "checkout", enabled: false, variation: "control" }],
+        value: "x",
+      },
+      {
+        key: "segments",
+        segments: "europe",
+        requiredFeatures: ["checkout"],
+        value: "x",
+      },
+    ];
+
+    for (const override of validOverrides) {
+      expect(parse({ ...base, overrides: { production: [override] } }).success).toBe(true);
+    }
+
+    expect(
+      parse({
+        ...base,
+        overrides: {
+          production: [
+            {
+              key: "invalid",
+              segments: "europe",
+              conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+              value: "x",
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      parse({
+        ...base,
+        overrides: { production: [{ key: "empty", requiredFeatures: [], value: "x" }] },
       }).success,
     ).toBe(false);
   });

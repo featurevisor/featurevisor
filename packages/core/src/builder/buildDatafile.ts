@@ -4,6 +4,7 @@ import type {
   DatafileVariable,
   DatafileVariableOverride,
   ParsedVariable,
+  ParsedVariableOverride,
   Schema,
   GlobalVariableKey,
   VariableType,
@@ -46,6 +47,7 @@ import {
   resolveMutationsForSingleVariable,
 } from "./mutateVariables";
 import { mutate } from "./mutator";
+import { normalizeRequiredFeatures } from "../datasource/requiredFeatures";
 
 export interface CustomDatafileOptions {
   featureKey?: string;
@@ -326,6 +328,9 @@ export async function buildDatafile(
         deprecated: parsedFeature.deprecated === true ? true : undefined,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
         required: parsedFeature.required,
+        requiredFeatures: parsedFeature.requiredFeatures
+          ? normalizeRequiredFeatures(parsedFeature.requiredFeatures)
+          : undefined,
         disabledVariationValue: parsedFeature.disabledVariationValue,
         variations: Array.isArray(parsedFeature.variations)
           ? parsedFeature.variations.map((variation: Variation) => {
@@ -568,10 +573,10 @@ export async function buildDatafile(
       ? schemasByKey[parsedVariable.schema]
       : parsedVariable;
     const sourceOverrides = options.environment
-      ? (parsedVariable.overrides as Record<string, DatafileVariableOverride[]> | undefined)?.[
+      ? (parsedVariable.overrides as Record<string, ParsedVariableOverride[]> | undefined)?.[
           options.environment
         ]
-      : (parsedVariable.overrides as DatafileVariableOverride[] | undefined);
+      : (parsedVariable.overrides as ParsedVariableOverride[] | undefined);
     const overrides: DatafileVariableOverride[] = [];
 
     for (const parsedOverride of sourceOverrides || []) {
@@ -597,21 +602,40 @@ export async function buildDatafile(
         }
       }
 
-      overrides.push({
+      const requirementItems = parsedOverride.requiredFeatures
+        ? normalizeRequiredFeatures(parsedOverride.requiredFeatures)
+        : undefined;
+      const baseOverride = {
         key: parsedOverride.key,
-        segments:
-          projectConfig.stringify &&
-          parsedOverride.segments !== "*" &&
-          typeof parsedOverride.segments !== "string"
-            ? (JSON.stringify(parsedOverride.segments) as unknown as GroupSegment)
-            : parsedOverride.segments,
-        conditions:
-          projectConfig.stringify && typeof parsedOverride.conditions !== "string"
-            ? (JSON.stringify(parsedOverride.conditions) as unknown as Condition)
-            : parsedOverride.conditions,
-        requiredFeatures: parsedOverride.requiredFeatures,
         value: resolvedValue as VariableValue,
-      });
+      };
+
+      if (parsedOverride.segments) {
+        overrides.push({
+          ...baseOverride,
+          segments:
+            projectConfig.stringify &&
+            parsedOverride.segments !== "*" &&
+            typeof parsedOverride.segments !== "string"
+              ? (JSON.stringify(parsedOverride.segments) as unknown as GroupSegment)
+              : parsedOverride.segments,
+          requiredFeatures: requirementItems,
+        });
+      } else if (parsedOverride.conditions) {
+        overrides.push({
+          ...baseOverride,
+          conditions:
+            projectConfig.stringify && typeof parsedOverride.conditions !== "string"
+              ? (JSON.stringify(parsedOverride.conditions) as unknown as Condition)
+              : parsedOverride.conditions,
+          requiredFeatures: requirementItems,
+        });
+      } else {
+        overrides.push({
+          ...baseOverride,
+          requiredFeatures: requirementItems || [],
+        });
+      }
     }
 
     variables.push({
@@ -625,7 +649,9 @@ export async function buildDatafile(
         defaultValue: parsedVariable.defaultValue,
         disabledValue: parsedVariable.disabledValue,
         useDefaultWhenDisabled: parsedVariable.useDefaultWhenDisabled === true ? true : undefined,
-        requiredFeatures: parsedVariable.requiredFeatures,
+        requiredFeatures: parsedVariable.requiredFeatures
+          ? normalizeRequiredFeatures(parsedVariable.requiredFeatures)
+          : undefined,
         overrides: overrides.length > 0 ? overrides : undefined,
       },
     });

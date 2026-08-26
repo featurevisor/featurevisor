@@ -26,39 +26,7 @@ import {
   valueZodSchema,
 } from "./schema";
 import { refineWithMessage } from "./zodHelpers";
-
-function getRequiredFeatureSchema(featuresByKey: Record<string, ParsedFeature>) {
-  const featureKeys = Object.keys(featuresByKey);
-  const featureKeySchema = refineWithMessage(
-    z.string(),
-    (key) => Boolean(featuresByKey[key]) && featuresByKey[key].archived !== true,
-    (key) =>
-      featureKeys.includes(key)
-        ? `Required feature "${key}" is archived`
-        : `Unknown required feature "${key}"`,
-  );
-
-  return z.union([
-    featureKeySchema,
-    z
-      .object({
-        key: featureKeySchema,
-        variation: z.string().min(1).optional(),
-      })
-      .strict()
-      .superRefine((required, ctx) => {
-        if (!required.variation) return;
-        const values = (featuresByKey[required.key]?.variations || []).map((item) => item.value);
-        if (values.indexOf(required.variation) === -1) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Unknown variation "${required.variation}" for required feature "${required.key}"`,
-            path: ["variation"],
-          });
-        }
-      }),
-  ]);
-}
+import { getRequiredFeaturesZodSchema } from "./requiredFeaturesSchema";
 
 function mutationKeyForRoot(key: string): string {
   return key.startsWith("[") || key.startsWith(":") ? `value${key}` : `value.${key}`;
@@ -98,8 +66,7 @@ export function getVariableZodSchema(
   const nestedSchema = getSchemaZodSchema(schemaKeys);
   const conditionsSchema = getConditionsZodSchema(projectConfig, attributesByKey, schemasByKey);
   const valueSchema = z.union([valueZodSchema, z.null()]);
-  const requiredFeatureSchema = getRequiredFeatureSchema(featuresByKey);
-  const requiredFeaturesSchema = z.array(requiredFeatureSchema).optional();
+  const requiredFeaturesSchema = getRequiredFeaturesZodSchema(featuresByKey).optional();
 
   const plainSegmentSchema = refineWithMessage(
     z.string(),
@@ -129,11 +96,18 @@ export function getVariableZodSchema(
     })
     .strict()
     .superRefine((override, ctx) => {
-      if (!override.segments && !override.conditions) {
+      if (!override.segments && !override.conditions && !override.requiredFeatures) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message:
-            'An override must define `segments`, `conditions`, or both. Use `segments: "*"` for a catch-all override.',
+          message: "An override must define `conditions`, `segments`, or `requiredFeatures`.",
+          path: ["segments"],
+        });
+      }
+
+      if (override.segments && override.conditions) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "An override cannot define both `conditions` and `segments`.",
           path: ["segments"],
         });
       }
@@ -166,6 +140,7 @@ export function getVariableZodSchema(
         ? getStaticExpressionValue(override.conditions)
         : undefined;
       const isCatchAll =
+        typeof override.requiredFeatures === "undefined" &&
         (segmentsValue === true || conditionsValue === true) &&
         segmentsValue !== false &&
         conditionsValue !== false &&

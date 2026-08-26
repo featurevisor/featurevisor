@@ -6,6 +6,7 @@ import type {
   Weight,
   FeatureKey,
   Required,
+  RequiredFeature,
   VariableKey,
   ResolvedVariableSchema,
   Variation,
@@ -48,7 +49,9 @@ export interface Feature {
   key?: FeatureKey; // available while building, omitted from generated datafiles
   hash?: string;
   deprecated?: boolean;
+  /** @deprecated Read for compatibility with older datafiles. */
   required?: Required[];
+  requiredFeatures?: RequiredFeature[];
   variablesSchema?: Record<VariableKey, ResolvedVariableSchema>;
   disabledVariationValue?: VariationValue;
   variations?: Variation[];

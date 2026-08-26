@@ -4,7 +4,7 @@
  * rules, force). Ensures every place a variable value can be set is validated against
  * the variable's schema.
  */
-import type { Attribute, Schema } from "@featurevisor/types";
+import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
@@ -84,7 +84,14 @@ const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
   "traits",
 ];
 const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries.germany", "countries.france"];
-const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
+const TEST_FEATURES: [string, ...string[]] = ["testFeature", "dependency"];
+const TEST_FEATURES_BY_KEY: Record<string, ParsedFeature> = {
+  testFeature: { description: "Test feature" } as ParsedFeature,
+  dependency: {
+    description: "Dependency",
+    variations: [{ value: "control" }, { value: "treatment" }],
+  } as ParsedFeature,
+};
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
 
 /** Resolved schema for "slugSchema": string with pattern and length. */
@@ -121,6 +128,7 @@ function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
     TEST_FEATURES,
     TEST_SCHEMA_KEYS,
     TEST_SCHEMAS_BY_KEY,
+    TEST_FEATURES_BY_KEY,
   );
 }
 
@@ -137,6 +145,35 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("requiredFeatures", () => {
+  it.each([
+    "dependency",
+    ["dependency"],
+    [{ feature: "dependency" }],
+    [{ feature: "dependency", enabled: false }],
+    [{ feature: "dependency", enabled: false, variation: "control" }],
+  ])("accepts canonical requirement %j", (requiredFeatures) => {
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures })).success).toBe(true);
+  });
+
+  it("rejects empty, unknown, invalid variation, and mixed legacy definitions", () => {
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: [] })).success).toBe(false);
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: "missing" })).success).toBe(
+      false,
+    );
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ requiredFeatures: [{ feature: "dependency", variation: "missing" }] }),
+      ).success,
+    ).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ required: ["dependency"], requiredFeatures: "dependency" }),
+      ).success,
+    ).toBe(false);
+  });
+});
 
 function parseFeature(
   feature: unknown,

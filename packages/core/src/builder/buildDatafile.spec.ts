@@ -588,14 +588,19 @@ describe("core: buildDatafile", function () {
               type: "object",
               properties: { title: { type: "string" } },
               defaultValue: { title: "Hello" },
-              requiredFeatures: ["checkout"],
+              requiredFeatures: "checkout",
               overrides: {
                 staging: [
                   {
                     key: "eu",
                     segments: "europe",
-                    conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
                     mutate: { title: "Hallo" },
+                  },
+                  {
+                    key: "nl",
+                    conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                    requiredFeatures: "checkout",
+                    value: { title: "Hoi" },
                   },
                 ],
               },
@@ -625,16 +630,64 @@ describe("core: buildDatafile", function () {
 
     expect(Object.keys(result.variables || {})).toEqual(["banner"]);
     expect(Object.keys(result.features)).toEqual(["checkout"]);
+    expect(result.variables?.banner.requiredFeatures).toEqual(["checkout"]);
     expect(result.variables?.banner.overrides?.[0]).toEqual(
       expect.objectContaining({
         key: "eu",
         segments: "europe",
-        conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
         value: { title: "Hallo" },
+      }),
+    );
+    expect(result.variables?.banner.overrides?.[1]).toEqual(
+      expect.objectContaining({
+        key: "nl",
+        conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
+        requiredFeatures: ["checkout"],
+        value: { title: "Hoi" },
       }),
     );
     expect(result.variables?.banner.hash).toEqual(expect.any(String));
     expect(Object.keys(result.segments)).toEqual(["europe"]);
+  });
+
+  test("normalizes canonical requirements and preserves legacy datafile compatibility", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+      canonical: {
+        key: "canonical",
+        description: "Canonical",
+        bucketBy: "userId",
+        requiredFeatures: "prerequisite",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+      legacy: {
+        key: "legacy",
+        description: "Legacy",
+        bucketBy: "userId",
+        required: [{ key: "prerequisite", variation: "control" }],
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+
+    expect(result.features.canonical.requiredFeatures).toEqual(["prerequisite"]);
+    expect(result.features.legacy.requiredFeatures).toBeUndefined();
+    expect(result.features.canonical.required).toBeUndefined();
+    expect(result.features.legacy.required).toEqual([
+      { key: "prerequisite", variation: "control" },
+    ]);
   });
 
   test("filters global variables with independent include and exclude patterns", async () => {

@@ -33,8 +33,7 @@ Wherever a feature or segment key appears, use the full namespaced form:
 
 ```yaml
 # features/checkout/express.yml
-required:
-  - checkout.oneClick           # depend on another checkout feature
+requiredFeatures: checkout.oneClick  # depend on another checkout feature
 
 rules:
   production:

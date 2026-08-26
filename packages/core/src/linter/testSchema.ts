@@ -78,6 +78,7 @@ export function getTestsZodSchema(
       forceIndex: z.number().int().nonnegative().optional(),
       force: z.unknown().optional(),
       required: z.unknown().optional(),
+      requiredFeatures: z.unknown().optional(),
       stickyFeature: z.unknown().optional(),
       sticky: z.unknown().optional(),
       variation: z.unknown().optional(),

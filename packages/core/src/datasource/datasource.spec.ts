@@ -1,8 +1,8 @@
-import type { Required } from "@featurevisor/types";
+import type { ParsedFeature } from "@featurevisor/types";
 
 import { Datasource } from "./datasource";
 
-function createDatasource(features: Record<string, { required?: Required[] }>) {
+function createDatasource(features: Record<string, Partial<ParsedFeature>>) {
   return {
     featureExists: jest.fn(async (key: string) =>
       Object.prototype.hasOwnProperty.call(features, key),
@@ -69,5 +69,17 @@ describe("core: datasource required features", () => {
     const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
 
     expect(Array.from(result)).toEqual(["checkout", "pricing"]);
+  });
+
+  it("follows canonical requiredFeatures including the direct string shorthand", async () => {
+    const datasource = createDatasource({
+      checkout: { requiredFeatures: "pricing" },
+      pricing: { requiredFeatures: [{ feature: "currency", enabled: false }] },
+      currency: {},
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
+
+    expect(Array.from(result)).toEqual(["checkout", "pricing", "currency"]);
   });
 });

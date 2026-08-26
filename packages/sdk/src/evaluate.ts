@@ -5,6 +5,7 @@ import type {
   Traffic,
   Force,
   Required,
+  RequiredFeature,
   Variation,
   VariationValue,
   VariableKey,
@@ -66,6 +67,11 @@ export interface EvaluationDataProvider {
   getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined;
   getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined;
   getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult;
+  evaluateRequiredFeature(
+    type: "flag" | "variation",
+    featureKey: FeatureKey,
+    dependencies: EvaluateDependencies,
+  ): Evaluation;
 }
 
 export interface Evaluation {
@@ -85,6 +91,7 @@ export interface Evaluation {
   forceIndex?: number;
   force?: Force;
   required?: Required[];
+  requiredFeatures?: RequiredFeature[];
   stickyFeature?: EvaluatedFeature;
   /** @deprecated Use `stickyFeature`. */
   sticky?: EvaluatedFeature;
@@ -538,35 +545,35 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Required
      */
-    if (type === "flag" && feature.required && feature.required.length > 0) {
-      const requiredFeaturesAreEnabled = feature.required.every((required) => {
-        let requiredKey;
-        let requiredVariation;
+    const requiredFeatures = feature.requiredFeatures || feature.required;
+    if (type === "flag" && requiredFeatures && requiredFeatures.length > 0) {
+      const requiredFeaturesAreEnabled = requiredFeatures.every((required) => {
+        let requiredKey: FeatureKey;
+        let requiredEnabled = true;
+        let requiredVariation: VariationValue | undefined;
 
         if (typeof required === "string") {
           requiredKey = required;
+        } else if ("feature" in required) {
+          requiredKey = required.feature;
+          requiredEnabled = required.enabled ?? true;
+          requiredVariation = required.variation;
         } else {
           requiredKey = required.key;
           requiredVariation = required.variation;
         }
 
-        const requiredEvaluation = evaluate({
-          ...options,
-          type: "flag",
-          featureKey: requiredKey,
-        });
-        const requiredIsEnabled = requiredEvaluation.enabled;
-
-        if (!requiredIsEnabled) {
+        const requiredEvaluation = datafile.evaluateRequiredFeature("flag", requiredKey, options);
+        if ((requiredEvaluation.enabled === true) !== requiredEnabled) {
           return false;
         }
 
         if (typeof requiredVariation !== "undefined") {
-          const requiredVariationEvaluation = evaluate({
-            ...options,
-            type: "variation",
-            featureKey: requiredKey,
-          });
+          const requiredVariationEvaluation = datafile.evaluateRequiredFeature(
+            "variation",
+            requiredKey,
+            options,
+          );
 
           let requiredVariationValue;
 
@@ -588,6 +595,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
           featureKey,
           reason: "required",
           required: feature.required,
+          requiredFeatures: feature.requiredFeatures,
           enabled: requiredFeaturesAreEnabled,
         };
 

@@ -1,24 +1,52 @@
-import type { FeatureKey, ParsedFeature, Required } from "@featurevisor/types";
+import type {
+  FeatureKey,
+  ParsedFeature,
+  Required,
+  RequiredFeature,
+  RequiredFeatures,
+} from "@featurevisor/types";
 
 interface RequiredFeatureDatasource {
   featureExists(featureKey: FeatureKey): Promise<boolean>;
   readFeature(featureKey: FeatureKey): Promise<ParsedFeature>;
 }
 
-function getRequiredKey(required: Required): FeatureKey {
-  return typeof required === "string" ? required : required.key;
+export function normalizeRequiredFeatures(
+  requiredFeatures: RequiredFeatures | undefined,
+): RequiredFeature[] {
+  if (typeof requiredFeatures === "undefined") return [];
+  return Array.isArray(requiredFeatures) ? requiredFeatures : [requiredFeatures];
+}
+
+export function normalizeFeatureRequirements(feature: {
+  requiredFeatures?: RequiredFeatures;
+  required?: Required[];
+}): RequiredFeature[] {
+  if (typeof feature.requiredFeatures !== "undefined") {
+    return normalizeRequiredFeatures(feature.requiredFeatures);
+  }
+
+  return (feature.required || []).map((required) =>
+    typeof required === "string"
+      ? required
+      : { feature: required.key, variation: required.variation },
+  );
+}
+
+export function getRequiredFeatureKey(required: RequiredFeature): FeatureKey {
+  return typeof required === "string" ? required : required.feature;
 }
 
 export async function collectRequiredFeatureKeys(
   datasource: RequiredFeatureDatasource,
   featureKey: FeatureKey,
-  required?: Required[],
+  requiredFeatures: RequiredFeature[] = [],
 ): Promise<Set<FeatureKey>> {
   const result = new Set<FeatureKey>();
   const visited = new Set<FeatureKey>();
   const visiting: FeatureKey[] = [];
 
-  async function visit(key: FeatureKey, knownRequired?: Required[]) {
+  async function visit(key: FeatureKey, knownRequired?: RequiredFeature[]) {
     const cycleStart = visiting.indexOf(key);
 
     if (cycleStart !== -1) {
@@ -37,21 +65,21 @@ export async function collectRequiredFeatureKeys(
         throw new Error(`required feature "${key}" not found`);
       }
 
-      dependencies = (await datasource.readFeature(key)).required;
+      dependencies = normalizeFeatureRequirements(await datasource.readFeature(key));
     }
 
     result.add(key);
     visiting.push(key);
 
     for (const dependency of dependencies || []) {
-      await visit(getRequiredKey(dependency));
+      await visit(getRequiredFeatureKey(dependency));
     }
 
     visiting.pop();
     visited.add(key);
   }
 
-  await visit(featureKey, required);
+  await visit(featureKey, requiredFeatures);
 
   return result;
 }

@@ -35,6 +35,11 @@ import {
 import { prettyDuration } from "../tester/prettyDuration";
 import type { Plugin } from "../cli";
 import { extractSchemaReferences } from "../utils/schemaReferences";
+import {
+  getRequiredFeatureKey,
+  normalizeFeatureRequirements,
+  normalizeRequiredFeatures,
+} from "../datasource/requiredFeatures";
 
 type ConflictPolicy = "source" | "destination" | "fail";
 type PromotionAuditFormat = "json" | "markdown";
@@ -443,8 +448,8 @@ function collectFeatureDependencies(
     extractSchemaReferences(schema).forEach((key) => schemaKeys.add(key));
   });
 
-  for (const required of feature.required || []) {
-    const requiredKey = typeof required === "string" ? required : required.key;
+  for (const required of normalizeFeatureRequirements(feature)) {
+    const requiredKey = getRequiredFeatureKey(required);
     if (!featureKeys.has(requiredKey)) {
       featureKeys.add(requiredKey);
       const requiredFeature = features[requiredKey];
@@ -850,15 +855,13 @@ async function getPromotionPlan(
     for (const key of promotedVariableKeys) {
       const variable = variables[key];
       const required = [
-        ...(variable.requiredFeatures || []),
+        ...normalizeRequiredFeatures(variable.requiredFeatures),
         ...Object.values(variable.overrides || {})
           .flat()
           .filter(isPromotable)
-          .flatMap((override) => override.requiredFeatures || []),
+          .flatMap((override) => normalizeRequiredFeatures(override.requiredFeatures)),
       ];
-      required.forEach((entry) =>
-        promotedFeatureKeys.add(typeof entry === "string" ? entry : entry.key),
-      );
+      required.forEach((entry) => promotedFeatureKeys.add(getRequiredFeatureKey(entry)));
       extractSchemaReferences(variable).forEach((schemaKey) => promotedSchemaKeys.add(schemaKey));
       Object.values(variable.overrides || {})
         .flat()

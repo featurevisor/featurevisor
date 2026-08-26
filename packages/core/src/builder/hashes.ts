@@ -11,6 +11,7 @@ import type {
 } from "@featurevisor/types";
 
 import { extractSegmentKeysFromGroupSegments, extractSegmentsFromFeature } from "../utils";
+import { getRequiredFeatureKey } from "../datasource/requiredFeatures";
 
 const base62chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -60,16 +61,11 @@ export function generateHashForFeature(
   }
 
   const requiredFeatureKeys: string[] = [];
-  if (feature.required) {
-    for (const r of feature.required) {
-      if (typeof r === "string") {
-        requiredFeatureKeys.push(r);
-      }
-
-      if (typeof r === "object" && r.key) {
-        requiredFeatureKeys.push(r.key);
-      }
-    }
+  for (const required of feature.requiredFeatures || []) {
+    requiredFeatureKeys.push(getRequiredFeatureKey(required));
+  }
+  for (const required of feature.required || []) {
+    requiredFeatureKeys.push(typeof required === "string" ? required : required.key);
   }
 
   const requiredFeatureHashes = requiredFeatureKeys.map((key) =>
@@ -124,7 +120,7 @@ export function generateHashForVariable(
   const requiredFeatureKeys = [
     ...(variable.requiredFeatures || []),
     ...(variable.overrides || []).flatMap((override) => override.requiredFeatures || []),
-  ].map((required) => (typeof required === "string" ? required : required.key));
+  ].map(getRequiredFeatureKey);
   const requiredFeatureHashes = requiredFeatureKeys.map((featureKey) =>
     generateHashForFeature(featureKey, features, segmentHashes),
   );

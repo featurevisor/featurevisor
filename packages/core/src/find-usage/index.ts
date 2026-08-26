@@ -16,6 +16,10 @@ import {
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { extractSchemaReferences } from "../utils/schemaReferences";
 import {
+  getRequiredFeatureKey,
+  normalizeFeatureRequirements,
+} from "../datasource/requiredFeatures";
+import {
   CLI_COLOR_CYAN,
   CLI_COLOR_DIM,
   CLI_FORMAT_BOLD,
@@ -46,16 +50,9 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
       attributes: new Set<AttributeKey>(),
     };
 
-    // required
-    if (feature.required) {
-      feature.required.forEach((required) => {
-        if (typeof required === "string") {
-          usageInFeatures[featureKey].features.add(required);
-        } else if (typeof required === "object" && required.key) {
-          usageInFeatures[featureKey].features.add(required.key);
-        }
-      });
-    }
+    normalizeFeatureRequirements(feature).forEach((required) =>
+      usageInFeatures[featureKey].features.add(getRequiredFeatureKey(required)),
+    );
 
     // bucketBy
     if (feature.bucketBy) {

@@ -23,6 +23,7 @@ import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { normalizeFeatureRequirements } from "../datasource/requiredFeatures";
 
 export type LintEntityType =
   | "attribute"
@@ -558,6 +559,7 @@ export async function lintProject(
     features as [string, ...string[]],
     schemas,
     schemasByKey,
+    featuresByKey,
   );
 
   if (!options.entityType || options.entityType === "feature") {
@@ -613,9 +615,13 @@ export async function lintProject(
         await reportThrownError("feature", key, fullPath, error);
       }
 
-      if (parsed && parsed.required) {
+      if (parsed && (parsed.required || parsed.requiredFeatures)) {
         try {
-          await checkForCircularDependencyInRequired(datasource, key, parsed.required);
+          await checkForCircularDependencyInRequired(
+            datasource,
+            key,
+            normalizeFeatureRequirements(parsed),
+          );
         } catch (error) {
           await reportSimpleError({
             entityType: "feature",

@@ -4,8 +4,7 @@ tags:
 type: string
 defaultValue: Welcome
 disabledValue: Header unavailable
-requiredFeatures:
-  - showHeader
+requiredFeatures: showHeader
 overrides:
   staging:
     - key: staging
