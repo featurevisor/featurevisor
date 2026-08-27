@@ -641,6 +641,13 @@ describe("core: buildDatafile", function () {
         bucketBy: "userId",
         rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
       } as ParsedFeature,
+      account: {
+        key: "account",
+        description: "Account",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      } as ParsedFeature,
     });
     Object.assign(datasource, {
       listVariables: async () => ["banner", "serverOnly"],
@@ -650,21 +657,33 @@ describe("core: buildDatafile", function () {
               description: "Banner",
               tags: ["web"],
               type: "object",
-              properties: { title: { type: "string" } },
-              defaultValue: { title: "Hello" },
+              properties: {
+                title: { type: "string" },
+                subtitle: { type: "string" },
+              },
+              defaultValue: { title: "Hello", subtitle: "Default" },
               requiredFeatures: "checkout",
               overrides: {
                 staging: [
                   {
                     key: "eu",
                     segments: "europe",
+                    requiredFeatures: "account",
                     mutate: { title: "Hallo" },
+                    overrides: [
+                      {
+                        key: "nl",
+                        conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                        requiredFeatures: "checkout",
+                        mutate: { subtitle: "Hoi" },
+                      },
+                    ],
                   },
                   {
-                    key: "nl",
+                    key: "checkout-only",
                     conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
                     requiredFeatures: "checkout",
-                    value: { title: "Hoi" },
+                    value: { title: "Checkout", subtitle: "Selected" },
                   },
                 ],
               },
@@ -676,7 +695,7 @@ describe("core: buildDatafile", function () {
               defaultValue: "hidden",
             },
       getRequiredFeaturesChainForVariable: async (key: string) =>
-        new Set(key === "banner" ? ["checkout"] : []),
+        new Set(key === "banner" ? ["checkout", "account"] : []),
       listSegments: async () => ["europe"],
       readSegment: async () => ({
         conditions: [{ attribute: "continent", operator: "equals", value: "eu" }],
@@ -693,21 +712,32 @@ describe("core: buildDatafile", function () {
     );
 
     expect(Object.keys(result.variables || {})).toEqual(["banner"]);
-    expect(Object.keys(result.features)).toEqual(["checkout"]);
+    expect(Object.keys(result.features)).toEqual(["checkout", "account"]);
     expect(result.variables?.banner.requiredFeatures).toEqual(["checkout"]);
     expect(result.variables?.banner.overrides?.[0]).toEqual(
       expect.objectContaining({
-        key: "eu",
+        key: "nl",
+        keyPath: ["eu", "nl"],
         segments: "europe",
-        value: { title: "Hallo" },
+        conditions: JSON.stringify({ attribute: "country", operator: "equals", value: "nl" }),
+        requiredFeatures: ["account", "checkout"],
+        value: { title: "Hallo", subtitle: "Hoi" },
       }),
     );
     expect(result.variables?.banner.overrides?.[1]).toEqual(
       expect.objectContaining({
-        key: "nl",
-        conditions: JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]),
+        key: "eu",
+        segments: "europe",
+        requiredFeatures: ["account"],
+        value: { title: "Hallo", subtitle: "Default" },
+      }),
+    );
+    expect(result.variables?.banner.overrides?.[2]).toEqual(
+      expect.objectContaining({
+        key: "checkout-only",
+        conditions: JSON.stringify({ attribute: "country", operator: "equals", value: "nl" }),
         requiredFeatures: ["checkout"],
-        value: { title: "Hoi" },
+        value: { title: "Checkout", subtitle: "Selected" },
       }),
     );
     expect(result.variables?.banner.hash).toEqual(expect.any(String));

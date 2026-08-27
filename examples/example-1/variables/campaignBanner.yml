@@ -21,7 +21,19 @@ overrides:
         value: nl
       mutate:
         message: Welkom
-        cta.title: Meer informatie
+      overrides:
+        - key: amsterdam
+          conditions:
+            attribute: city
+            operator: equals
+            value: amsterdam
+          mutate:
+            cta.title: Meer informatie
+          overrides:
+            - key: mobile
+              segments: mobile
+              mutate:
+                cta.url: https://featurevisor.com/mobile
     - key: default
       segments: "*"
       value:

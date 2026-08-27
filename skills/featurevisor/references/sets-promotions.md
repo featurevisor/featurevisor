@@ -166,7 +166,7 @@ assertions:
 
 A source assertion with `promotable: false` is omitted. A protected destination assertion is preserved when a source assertion with the same key is promoted. Both source and destination specs must use assertion keys when protection is involved. Existing unkeyed specs keep whole-array promotion behaviour.
 
-Global variable overrides support item-level protection through their stable `key`. Do not put `promotable` on individual matrix cases, child assertions, group slots, segment conditions, force entries, feature variable overrides, or nested schema properties. Protecting a parent assertion protects all of its matrix cases and child assertions together.
+Global variable overrides support item-level protection through their stable `key`, including nested overrides. A protected override also protects or omits its descendants, while a protected child affects only that child and its own descendants. Keys are unique across the complete override tree for one environment. Do not put `promotable` on individual matrix cases, child assertions, group slots, segment conditions, force entries, or nested schema properties. Protecting a parent assertion protects all of its matrix cases and child assertions together.
 
 ### `promotionFlows` — allowed directions
 

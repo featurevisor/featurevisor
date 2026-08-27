@@ -75,6 +75,39 @@ describe("global variable schema", () => {
     ).toBe(true);
   });
 
+  it("accepts nested overrides with independently targeted refinements", () => {
+    expect(
+      parse({
+        description: "Banner",
+        schema: "banner",
+        defaultValue: { title: "Default" },
+        overrides: {
+          production: [
+            {
+              key: "europe",
+              segments: "europe",
+              mutate: { title: "Europe" },
+              overrides: [
+                {
+                  key: "netherlands",
+                  conditions: { attribute: "country", operator: "equals", value: "nl" },
+                  mutate: { title: "Netherlands" },
+                  overrides: [
+                    {
+                      key: "checkout",
+                      requiredFeatures: "checkout",
+                      mutate: { title: "Dutch checkout" },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(true);
+  });
+
   it.each([
     ["boolean", { type: "boolean", defaultValue: true }],
     ["integer", { type: "integer", minimum: 1, maximum: 5, defaultValue: 3 }],
@@ -359,5 +392,91 @@ describe("global variable schema", () => {
         },
       }).success,
     ).toBe(true);
+  });
+
+  it("validates nested override keys, values, mutations, and sibling reachability", () => {
+    const objectVariable = {
+      description: "Settings",
+      type: "object",
+      properties: { title: { type: "string" }, count: { type: "integer" } },
+      required: ["title", "count"],
+      defaultValue: { title: "Default", count: 1 },
+    };
+
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          production: [
+            {
+              key: "parent",
+              segments: "europe",
+              value: { title: "Parent", count: 2 },
+              overrides: [
+                {
+                  key: "parent",
+                  conditions: { attribute: "country", operator: "equals", value: "nl" },
+                  mutate: { count: 3 },
+                },
+              ],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          production: [
+            {
+              key: "parent",
+              segments: "europe",
+              value: { title: "Parent", count: 2 },
+              overrides: [
+                {
+                  key: "invalid-value",
+                  segments: "europe",
+                  value: { title: "Missing count" },
+                },
+                {
+                  key: "invalid-mutation",
+                  segments: "europe",
+                  mutate: { count: "three" },
+                },
+              ],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          production: [
+            {
+              key: "parent",
+              segments: "europe",
+              value: { title: "Parent", count: 2 },
+              overrides: [
+                {
+                  key: "all",
+                  segments: "*",
+                  mutate: { count: 3 },
+                },
+                {
+                  key: "unreachable",
+                  segments: "europe",
+                  mutate: { count: 4 },
+                },
+              ],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
   });
 });

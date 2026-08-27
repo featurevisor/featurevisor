@@ -225,12 +225,32 @@ function variableMatchesTarget(
   return true;
 }
 
+function getPromotableVariableOverrides(
+  overrides: ParsedVariableOverride[] | undefined,
+): ParsedVariableOverride[] {
+  const result: ParsedVariableOverride[] = [];
+  for (const override of overrides || []) {
+    if (!isPromotable(override)) continue;
+    result.push(override);
+    result.push(...getPromotableVariableOverrides(override.overrides));
+  }
+  return result;
+}
+
+function getAllPromotableVariableOverrides(variable: ParsedVariable): ParsedVariableOverride[] {
+  const groups = Array.isArray(variable.overrides)
+    ? [variable.overrides]
+    : Object.values(variable.overrides || {});
+  return groups.flatMap(getPromotableVariableOverrides);
+}
+
 function mergeVariableOverrideArray(
   destination: ParsedVariableOverride[] | undefined,
   source: ParsedVariableOverride[] | undefined,
   policy: ConflictPolicy,
   conflicts: PromotionConflict[],
   variableKey: string,
+  pathSegments: string[] = ["overrides"],
 ): ParsedVariableOverride[] | undefined {
   if (!source) return destination;
   const result = [...(destination || [])];
@@ -238,14 +258,25 @@ function mergeVariableOverrideArray(
     if (!isPromotable(sourceOverride)) continue;
     const index = result.findIndex((entry) => entry.key === sourceOverride.key);
     if (index !== -1 && !isPromotable(result[index])) continue;
+    const sourceWithoutOverrides = { ...sourceOverride, overrides: undefined };
+    const destinationWithoutOverrides =
+      index === -1 ? undefined : { ...result[index], overrides: undefined };
     const localConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
     const merged = deepMergeWithPolicy(
-      index === -1 ? undefined : result[index],
-      sourceOverride,
+      destinationWithoutOverrides,
+      sourceWithoutOverrides,
       policy,
       localConflicts,
-      ["overrides", sourceOverride.key],
+      [...pathSegments, sourceOverride.key],
     ) as ParsedVariableOverride;
+    merged.overrides = mergeVariableOverrideArray(
+      index === -1 ? undefined : result[index].overrides,
+      sourceOverride.overrides,
+      policy,
+      conflicts,
+      variableKey,
+      [...pathSegments, sourceOverride.key, "overrides"],
+    );
     conflicts.push(
       ...localConflicts.map((conflict) => ({
         type: "variable" as const,
@@ -1067,26 +1098,23 @@ async function getPromotionPlan(
 
     for (const key of promotedVariableKeys) {
       const variable = variables[key];
+      const promotableOverrides = getAllPromotableVariableOverrides(variable);
       const required = [
         ...normalizeRequiredFeatures(variable.requiredFeatures),
-        ...Object.values(variable.overrides || {})
-          .flat()
-          .filter(isPromotable)
-          .flatMap((override) => normalizeRequiredFeatures(override.requiredFeatures)),
+        ...promotableOverrides.flatMap((override) =>
+          normalizeRequiredFeatures(override.requiredFeatures),
+        ),
       ];
       required.forEach((entry) => promotedFeatureKeys.add(getRequiredFeatureKey(entry)));
       extractSchemaReferences(variable).forEach((schemaKey) => promotedSchemaKeys.add(schemaKey));
-      Object.values(variable.overrides || {})
-        .flat()
-        .filter(isPromotable)
-        .forEach((override) => {
-          collectGroupSegmentKeys(override.segments, promotedSegmentKeys);
-          collectConditionDependencies(
-            override.conditions,
-            promotedSegmentKeys,
-            promotedAttributeKeys,
-          );
-        });
+      promotableOverrides.forEach((override) => {
+        collectGroupSegmentKeys(override.segments, promotedSegmentKeys);
+        collectConditionDependencies(
+          override.conditions,
+          promotedSegmentKeys,
+          promotedAttributeKeys,
+        );
+      });
     }
 
     if (promotedFeatureKeys.size === 0 && promotedVariableKeys.size === 0 && !options.allowEmpty) {

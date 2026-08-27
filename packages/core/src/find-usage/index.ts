@@ -16,6 +16,7 @@ import {
 } from "../utils/extractKeys";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { extractSchemaReferences } from "../utils/schemaReferences";
+import { flattenVariableOverrides } from "../datasource/variableOverrides";
 import {
   getFeatureVariableOverrideRequirements,
   getRequiredFeatureKey,
@@ -230,16 +231,14 @@ export async function findAllUsageInVariables(deps: Dependencies): Promise<Usage
     }
     const requiredFeatures = await deps.datasource.getRequiredFeaturesChainForVariable(variableKey);
     requiredFeatures.forEach((featureKey) => usage.features.add(featureKey));
-    Object.values(variable.overrides || {})
-      .flat()
-      .forEach((override) => {
-        extractSegmentKeysFromGroupSegments(override.segments || []).forEach((key) =>
-          usage.segments.add(key),
-        );
-        extractAttributeKeysFromConditions(override.conditions || []).forEach((key) =>
-          usage.attributes.add(key),
-        );
-      });
+    flattenVariableOverrides(variable.overrides).forEach((override) => {
+      extractSegmentKeysFromGroupSegments(override.segments || []).forEach((key) =>
+        usage.segments.add(key),
+      );
+      extractAttributeKeysFromConditions(override.conditions || []).forEach((key) =>
+        usage.attributes.add(key),
+      );
+    });
     result[variableKey] = usage;
   }
   return result;

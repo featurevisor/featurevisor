@@ -41,10 +41,9 @@ function datafile(): DatafileContent {
         overrides: [
           {
             key: "eu-nl",
-            conditions: [
-              { attribute: "continent", operator: "equals", value: "eu" },
-              { attribute: "country", operator: "equals", value: "nl" },
-            ],
+            keyPath: ["europe", "netherlands"],
+            segments: "europe",
+            conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
             value: "help-nl@example.com",
           },
           {
@@ -114,6 +113,7 @@ interface GlobalVariableConformanceCase {
   expectedReason: string;
   expectedOverrideIndex?: number;
   expectedOverrideKey?: string;
+  expectedOverridePath?: string[];
 }
 
 const globalVariableConformanceCases = conformance.globalVariables
@@ -179,10 +179,14 @@ describe("global variables", () => {
     expect(nl.reason).toBe("variable_override_rule");
     expect(nl.variableOverrideIndex).toBe(0);
     expect(nl.variableOverrideKey).toBe("eu-nl");
+    expect(nl.variableOverridePath).toEqual(["europe", "netherlands"]);
     expect(f.getVariable("supportEmail", { continent: "eu", country: "be" })).toBe(
       "help-eu@example.com",
     );
     expect(f.getVariable("supportEmail", { country: "nl" })).toBe("help@example.com");
+
+    const eu = f.evaluateVariable("supportEmail", { continent: "eu", country: "be" });
+    expect(eu.variableOverridePath).toBeUndefined();
   });
 
   it("handles required features, disabled values, defaults, and variation requirements", () => {
@@ -366,7 +370,7 @@ describe("global variables", () => {
   });
 
   it.each(globalVariableConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(3);
+    expect(conformance.version).toBe(4);
     const f = createFeaturevisor({
       datafile: conformance.globalVariables.datafile,
       stickyVariables: testCase.stickyVariables,
@@ -379,6 +383,7 @@ describe("global variables", () => {
     expect(evaluation.reason).toBe(testCase.expectedReason);
     expect(evaluation.variableOverrideIndex).toBe(testCase.expectedOverrideIndex);
     expect(evaluation.variableOverrideKey).toBe(testCase.expectedOverrideKey);
+    expect(evaluation.variableOverridePath).toEqual(testCase.expectedOverridePath);
   });
 
   it("conformance: keeps global and feature variable overloads distinct", () => {

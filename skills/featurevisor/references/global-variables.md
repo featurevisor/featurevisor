@@ -30,6 +30,10 @@ Every override requires a stable `key`, at least one selector from `segments`, `
 
 `mutate` paths are relative to the variable root and are resolved while building the datafile.
 
+Global variable overrides may contain nested `overrides`. The first matching sibling wins at every level. Child selectors are combined with their ancestors using AND semantics, and child mutations start from the parent’s resolved value. The builder flattens the tree into complete values, so SDKs do not mutate values at runtime. Keep every override key unique across the complete tree for one environment. Detailed evaluations expose the final `variableOverrideKey`; flattened descendants also expose the complete `variableOverridePath`.
+
+Nested overrides are only available for global variables. Feature variable overrides inside rules and variations remain flat.
+
 Use `requiredFeatures` at the variable or override level. A direct feature key is accepted for one enabled requirement. Arrays accept feature keys or `{ feature, enabled?, variation? }` objects. `enabled` defaults to `true` and honours `isEnabled()`. `variation` honours `getVariation()`, including `disabledVariationValue`. For a global variable, unmet requirements return `disabledValue`, or `defaultValue` when `useDefaultWhenDisabled: true`.
 
 Feature `expose` configuration controls datafile presence. Requirement checks use SDK results directly, so an omitted feature normally fails the default enabled check and can satisfy an explicit `enabled: false` check.

@@ -2,6 +2,7 @@ import type {
   Attribute,
   ParsedFeature,
   ParsedVariable,
+  ParsedVariableOverride,
   Schema,
   VariableValue,
 } from "@featurevisor/types";
@@ -83,47 +84,52 @@ export function getVariableZodSchema(
   );
   const segmentsSchema = z.union([groupSegmentSchema, z.array(groupSegmentSchema).min(1)]);
 
-  const overrideSchema = z
-    .object({
-      key: z.string().min(1),
-      description: z.string().optional(),
-      promotable: z.boolean().optional(),
-      segments: segmentsSchema.optional(),
-      conditions: conditionsSchema.optional(),
-      requiredFeatures: requiredFeaturesSchema,
-      value: valueSchema.optional(),
-      mutate: z.record(z.string(), valueSchema).optional(),
-    })
-    .strict()
-    .superRefine((override, ctx) => {
-      if (!override.segments && !override.conditions && !override.requiredFeatures) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "An override must define `conditions`, `segments`, or `requiredFeatures`.",
-          path: ["segments"],
-        });
-      }
+  let overridesArraySchema: z.ZodType<ParsedVariableOverride[]>;
+  const overrideSchema: z.ZodType<ParsedVariableOverride> = z.lazy(
+    () =>
+      z
+        .object({
+          key: z.string().min(1),
+          description: z.string().optional(),
+          promotable: z.boolean().optional(),
+          segments: segmentsSchema.optional(),
+          conditions: conditionsSchema.optional(),
+          requiredFeatures: requiredFeaturesSchema,
+          value: valueSchema.optional(),
+          mutate: z.record(z.string(), valueSchema).optional(),
+          overrides: overridesArraySchema.optional(),
+        })
+        .strict()
+        .superRefine((override, ctx) => {
+          if (!override.segments && !override.conditions && !override.requiredFeatures) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "An override must define `conditions`, `segments`, or `requiredFeatures`.",
+              path: ["segments"],
+            });
+          }
 
-      if (override.segments && override.conditions) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "An override cannot define both `conditions` and `segments`.",
-          path: ["segments"],
-        });
-      }
+          if (override.segments && override.conditions) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "An override cannot define both `conditions` and `segments`.",
+              path: ["segments"],
+            });
+          }
 
-      const hasValue = Object.prototype.hasOwnProperty.call(override, "value");
-      const hasMutate = Object.prototype.hasOwnProperty.call(override, "mutate");
-      if (hasValue === hasMutate) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "An override must define exactly one of `value` or `mutate`.",
-          path: hasValue ? ["mutate"] : ["value"],
-        });
-      }
-    });
+          const hasValue = Object.prototype.hasOwnProperty.call(override, "value");
+          const hasMutate = Object.prototype.hasOwnProperty.call(override, "mutate");
+          if (hasValue === hasMutate) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "An override must define exactly one of `value` or `mutate`.",
+              path: hasValue ? ["mutate"] : ["value"],
+            });
+          }
+        }) as unknown as z.ZodType<ParsedVariableOverride>,
+  );
 
-  const overridesArraySchema = z.array(overrideSchema).superRefine((overrides, ctx) => {
+  overridesArraySchema = z.array(overrideSchema).superRefine((overrides, ctx) => {
     const keys = overrides.map((override) => override.key);
     if (keys.length !== new Set(keys).size) {
       ctx.addIssue({
@@ -286,51 +292,78 @@ export function getVariableZodSchema(
           ? [[undefined, variable.overrides]]
           : Object.entries(variable.overrides || {});
       overrideGroups.forEach(([environment, overrides]) => {
-        overrides.forEach((override, overrideIndex) => {
-          const pathPrefix: (string | number)[] = ["overrides"];
-          if (environment) pathPrefix.push(environment);
-          pathPrefix.push(overrideIndex);
-          if (Object.prototype.hasOwnProperty.call(override, "value")) {
-            superRefineVariableValue(
-              projectConfig,
-              parsedVariable,
-              override.value,
-              [...pathPrefix, "value"],
-              ctx,
-              "value",
-              schemasByKey,
-            );
-          }
+        const rootPath: (string | number)[] = ["overrides"];
+        if (environment) rootPath.push(environment);
 
-          if (override.mutate) {
-            let resolved = JSON.parse(JSON.stringify(variable.defaultValue)) as VariableValue;
-            for (const [key, mutationValue] of Object.entries(override.mutate)) {
-              const validation = validateMutationKey(
-                mutationKeyForRoot(key),
-                { value: parsedVariable as Schema },
+        const seenKeys = new Map<string, (string | number)[]>();
+        const validateOverrides = (
+          entries: ParsedVariableOverride[],
+          baseValue: VariableValue,
+          parentPath: (string | number)[],
+        ) => {
+          entries.forEach((override, overrideIndex) => {
+            const pathPrefix = [...parentPath, overrideIndex];
+            const existingPath = seenKeys.get(override.key);
+            if (existingPath) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Duplicate override key found in tree: ${override.key}`,
+                path: [...pathPrefix, "key"],
+              });
+            } else {
+              seenKeys.set(override.key, pathPrefix);
+            }
+
+            let resolvedValue = override.value as VariableValue;
+            if (Object.prototype.hasOwnProperty.call(override, "value")) {
+              superRefineVariableValue(
+                projectConfig,
+                parsedVariable,
+                override.value,
+                [...pathPrefix, "value"],
+                ctx,
+                "value",
                 schemasByKey,
               );
-              if (!validation.valid) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: validation.error || `Invalid mutation path "${key}"`,
-                  path: [...pathPrefix, "mutate", key],
-                });
-                continue;
-              }
-              resolved = mutate(parsedVariable, resolved, key, mutationValue);
             }
-            superRefineVariableValue(
-              projectConfig,
-              parsedVariable,
-              resolved,
-              [...pathPrefix, "mutate"],
-              ctx,
-              "value",
-              schemasByKey,
-            );
-          }
-        });
+
+            if (override.mutate) {
+              resolvedValue = JSON.parse(JSON.stringify(baseValue)) as VariableValue;
+              for (const [key, mutationValue] of Object.entries(override.mutate)) {
+                const validation = validateMutationKey(
+                  mutationKeyForRoot(key),
+                  { value: parsedVariable as Schema },
+                  schemasByKey,
+                );
+                if (!validation.valid) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: validation.error || `Invalid mutation path "${key}"`,
+                    path: [...pathPrefix, "mutate", key],
+                  });
+                  continue;
+                }
+                resolvedValue = mutate(parsedVariable, resolvedValue, key, mutationValue);
+              }
+              superRefineVariableValue(
+                projectConfig,
+                parsedVariable,
+                resolvedValue,
+                [...pathPrefix, "mutate"],
+                ctx,
+                "value",
+                schemasByKey,
+              );
+            }
+
+            validateOverrides(override.overrides || [], resolvedValue, [
+              ...pathPrefix,
+              "overrides",
+            ]);
+          });
+        };
+
+        validateOverrides(overrides, variable.defaultValue, rootPath);
       });
 
       if (variable.schema && !resolveVariableSchema(variable, schemasByKey)) {

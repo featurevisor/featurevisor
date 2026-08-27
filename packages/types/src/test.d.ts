@@ -47,6 +47,7 @@ export interface ExpectedEvaluation {
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
   variableOverrideKey?: string;
+  variableOverridePath?: string[];
   variable?: DatafileVariable;
 }
 

@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "description": "Featurevisor v3 cross SDK compatibility contracts",
   "bucketing": {
     "minimum": 0,
@@ -175,11 +175,12 @@
             },
             {
               "key": "nl-pro",
+              "keyPath": ["europe", "netherlands", "pro"],
+              "segments": "netherlands",
               "conditions": {
-                "and": [
-                  { "attribute": "country", "operator": "equals", "value": "nl" },
-                  { "attribute": "plan", "operator": "equals", "value": "pro" }
-                ]
+                "attribute": "plan",
+                "operator": "equals",
+                "value": "pro"
               },
               "requiredFeatures": ["enabledFeature"],
               "value": "matched"
@@ -275,7 +276,8 @@
         "expectedValue": "matched",
         "expectedReason": "variable_override_rule",
         "expectedOverrideIndex": 1,
-        "expectedOverrideKey": "nl-pro"
+        "expectedOverrideKey": "nl-pro",
+        "expectedOverridePath": ["europe", "netherlands", "pro"]
       },
       {
         "name": "catch all override",

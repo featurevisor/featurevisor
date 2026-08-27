@@ -543,6 +543,14 @@ describe("catalog export", () => {
               key: "premium",
               segments: "premiumUsers",
               value: "premium@example.com",
+              overrides: [
+                {
+                  key: "enterprise",
+                  conditions: [{ attribute: "plan", operator: "equals", value: "enterprise" }],
+                  requiredFeatures: "authenticated",
+                  value: "enterprise@example.com",
+                },
+              ],
             },
             {
               key: "netherlands",
@@ -572,9 +580,18 @@ describe("catalog export", () => {
         "utf8",
       ),
     );
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
 
     expect(targetDetail.relationships.features).toEqual(["account", "authenticated", "checkout"]);
     expect(targetDetail.relationships.variables).toEqual(["supportEmail"]);
     expect(accountDetail.relationships.targets).toEqual(["mobile", "premiumWeb"]);
+    expect(variableDetail.relationships.features).toEqual(["account", "authenticated"]);
+    expect(variableDetail.relationships.segments).toEqual(["premiumUsers"]);
+    expect(variableDetail.relationships.attributes).toEqual(["country", "plan"]);
   });
 });

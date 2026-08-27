@@ -11,22 +11,55 @@ assertions:
       reason: variable_override_rule
       variableOverrideKey: staging
 
-  - matrix:
-      country:
-        - nl
-      message:
-        - Welkom
-      title:
-        - Meer informatie
-    description: resolves the campaign banner for ${{ country }}
+  - description: applies a nested city mutation on top of its country value
     environment: production
     context:
-      country: ${{ country }}
+      country: nl
+      city: amsterdam
+      device: desktop
     expectedValue:
-      message: ${{ message }}
+      message: Welkom
       cta:
-        title: ${{ title }}
+        title: Meer informatie
         url: https://featurevisor.com
+    expectedEvaluation:
+      variableOverrideKey: amsterdam
+      variableOverridePath:
+        - netherlands
+        - amsterdam
+
+  - description: combines inherited conditions with a nested segment
+    environment: production
+    context:
+      country: nl
+      city: amsterdam
+      device: mobile
+    expectedValue:
+      message: Welkom
+      cta:
+        title: Meer informatie
+        url: https://featurevisor.com/mobile
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: mobile
+      variableOverridePath:
+        - netherlands
+        - amsterdam
+        - mobile
+
+  - description: falls back to the matched parent when no child matches
+    environment: production
+    context:
+      country: nl
+      city: rotterdam
+      device: mobile
+    expectedValue:
+      message: Welkom
+      cta:
+        title: Learn more
+        url: https://featurevisor.com
+    expectedEvaluation:
+      variableOverrideKey: netherlands
 
   - description: uses the complete catch-all value
     environment: production

@@ -41,7 +41,10 @@ type ParsedVariableOverrideValue =
 
 export type ParsedVariableOverride = ParsedVariableOverrideBase &
   ParsedVariableOverrideSelector &
-  ParsedVariableOverrideValue;
+  ParsedVariableOverrideValue & {
+    /** Ordered refinements evaluated after this override matches. */
+    overrides?: ParsedVariableOverride[];
+  };
 
 export type ParsedVariableOverrides =
   | ParsedVariableOverride[]
@@ -61,30 +64,16 @@ export type ParsedVariable = Omit<Schema, "type" | "schema"> & {
   overrides?: ParsedVariableOverrides;
 };
 
-interface DatafileVariableOverrideBase {
+export interface DatafileVariableOverride {
   key: string;
+  /** Authored key route for a flattened nested override. */
+  keyPath?: string[];
   value: VariableValue;
+  /** Both selectors may be present after nested authoring selectors are flattened. */
+  segments?: GroupSegment | GroupSegment[] | string;
+  conditions?: Condition | Condition[] | string;
+  requiredFeatures?: RequiredFeature[];
 }
-
-type DatafileVariableOverrideSelector =
-  | {
-      segments: GroupSegment | GroupSegment[] | string;
-      conditions?: never;
-      requiredFeatures?: RequiredFeature[];
-    }
-  | {
-      conditions: Condition | Condition[] | string;
-      segments?: never;
-      requiredFeatures?: RequiredFeature[];
-    }
-  | {
-      requiredFeatures: RequiredFeature[];
-      segments?: never;
-      conditions?: never;
-    };
-
-export type DatafileVariableOverride = DatafileVariableOverrideBase &
-  DatafileVariableOverrideSelector;
 
 export interface DatafileVariable {
   hash?: string;

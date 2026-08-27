@@ -30,6 +30,7 @@ import {
   normalizeFeatureRequirements,
   normalizeRequiredFeatures,
 } from "./requiredFeatures";
+import { flattenVariableOverrides } from "./variableOverrides";
 
 export class Datasource {
   private adapter: Adapter;
@@ -319,9 +320,9 @@ export class Datasource {
     const result = new Set<FeatureKey>();
     const requirements = [
       ...normalizeRequiredFeatures(variable.requiredFeatures),
-      ...Object.values(variable.overrides || {})
-        .flat()
-        .flatMap((override) => normalizeRequiredFeatures(override.requiredFeatures)),
+      ...flattenVariableOverrides(variable.overrides).flatMap((override) =>
+        normalizeRequiredFeatures(override.requiredFeatures),
+      ),
     ];
 
     for (const required of requirements) {

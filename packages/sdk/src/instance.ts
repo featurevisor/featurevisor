@@ -1017,6 +1017,7 @@ export class Featurevisor {
               variableValue: override.value,
               variableOverrideIndex: index,
               variableOverrideKey: override.key,
+              variableOverridePath: override.keyPath,
             };
             break;
           }

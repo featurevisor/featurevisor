@@ -9,6 +9,7 @@ import type {
   GroupSegment,
   HistoryEntry,
   ParsedFeature,
+  ParsedVariableOverride,
   Schema,
   Segment,
   Target,
@@ -1139,12 +1140,18 @@ function buildRelationships(maps: EntityMaps): RelationshipMaps {
     collectFeatureKeysFromRequired(variable.requiredFeatures, features);
     collectSchemaKeys(variable, schemas);
     expandSchemaKeys(schemas, maps.schema);
-    for (const overrides of Object.values(variable.overrides || {})) {
-      for (const override of Array.isArray(overrides) ? overrides : [overrides]) {
+    const collectOverrideRelationships = (overrides: ParsedVariableOverride[] | undefined) => {
+      for (const override of overrides || []) {
         collectFeatureKeysFromRequired(override.requiredFeatures, features);
         collectSegmentKeys(override.segments, segments);
         collectAttributeKeysFromConditions(override.conditions, attributes);
+        collectOverrideRelationships(override.overrides);
       }
+    };
+    for (const overrides of Array.isArray(variable.overrides)
+      ? [variable.overrides]
+      : Object.values(variable.overrides || {})) {
+      collectOverrideRelationships(overrides);
     }
     expandFeatureKeys(features, maps.feature);
     features.forEach((key) => {

@@ -107,6 +107,8 @@ export interface Evaluation {
   variableOverrideIndex?: number;
   /** Present when a keyed feature or global variable override matched. */
   variableOverrideKey?: string;
+  /** Authored key route when a global variable override matched. */
+  variableOverridePath?: string[];
   /** Present when evaluating a global variable. */
   variable?: DatafileVariable;
 }

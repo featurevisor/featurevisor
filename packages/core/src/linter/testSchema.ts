@@ -88,6 +88,7 @@ export function getTestsZodSchema(
       variableSchema: z.unknown().optional(),
       variableOverrideIndex: z.number().int().nonnegative().optional(),
       variableOverrideKey: z.string().optional(),
+      variableOverridePath: z.array(z.string()).optional(),
       variable: z.unknown().optional(),
     })
     .strict();

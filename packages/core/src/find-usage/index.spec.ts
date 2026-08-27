@@ -29,6 +29,15 @@ describe("core: find usage CLI options", function () {
               segments: { and: ["mobile", { not: ["internal"] }] },
               conditions: { attribute: "country", operator: "equals", value: "nl" },
               value: { schema: "also-not-a-reference" },
+              overrides: [
+                {
+                  key: "nested",
+                  segments: "premium",
+                  conditions: { attribute: "city", operator: "equals", value: "amsterdam" },
+                  requiredFeatures: "nested-feature",
+                  value: { schema: "still-not-a-reference" },
+                },
+              ],
             },
           ],
         }),
@@ -37,7 +46,7 @@ describe("core: find usage CLI options", function () {
             ? { type: "object", properties: { value: { schema: "inner" } } }
             : { type: "string" },
         getRequiredFeaturesChainForVariable: async () =>
-          new Set(["checkout", "account", "authenticated"]),
+          new Set(["checkout", "account", "authenticated", "nested-feature"]),
       },
     } as any);
 
@@ -46,9 +55,10 @@ describe("core: find usage CLI options", function () {
       "account",
       "authenticated",
       "checkout",
+      "nested-feature",
     ]);
-    expect(Array.from(usage.settings.segments).sort()).toEqual(["internal", "mobile"]);
-    expect(Array.from(usage.settings.attributes)).toEqual(["country"]);
+    expect(Array.from(usage.settings.segments).sort()).toEqual(["internal", "mobile", "premium"]);
+    expect(Array.from(usage.settings.attributes).sort()).toEqual(["city", "country"]);
   });
 
   test("finds dependencies in every environment-aware feature location", async function () {

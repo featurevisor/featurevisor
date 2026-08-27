@@ -96,6 +96,108 @@ function buildFeatureVariableOverride(
   return result;
 }
 
+function toArray<T>(value: T | T[] | undefined): T[] {
+  if (typeof value === "undefined") return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function combineConditions(
+  inherited: Condition | Condition[] | undefined,
+  own: Condition | Condition[] | undefined,
+): Condition | Condition[] | undefined {
+  const conditions = [...toArray(inherited), ...toArray(own)];
+  if (conditions.length === 0) return undefined;
+  return conditions.length === 1 ? conditions[0] : conditions;
+}
+
+function combineSegments(
+  inherited: GroupSegment | GroupSegment[] | "*" | undefined,
+  own: GroupSegment | GroupSegment[] | "*" | undefined,
+): GroupSegment | GroupSegment[] | "*" | undefined {
+  if (typeof inherited === "undefined" && typeof own === "undefined") return undefined;
+  const segments = [...toArray(inherited), ...toArray(own)].filter((segment) => segment !== "*");
+  if (segments.length === 0) return "*";
+  return segments.length === 1 ? segments[0] : segments;
+}
+
+function resolveGlobalVariableOverrideValue(
+  variable: ParsedVariable,
+  override: ParsedVariableOverride,
+  baseValue: VariableValue,
+): VariableValue {
+  if (typeof override.mutate === "undefined") return override.value;
+
+  let value = JSON.parse(JSON.stringify(baseValue)) as VariableValue;
+  for (const [mutationKey, mutationValue] of Object.entries(override.mutate)) {
+    value = mutate(variable, value, mutationKey, mutationValue);
+  }
+  return value;
+}
+
+function buildGlobalVariableOverrides(
+  parsedVariable: ParsedVariable,
+  sourceOverrides: ParsedVariableOverride[] | undefined,
+  projectConfig: ProjectConfig,
+  segmentKeysUsedByTag: Set<SegmentKey>,
+  attributeKeysUsedByTag: Set<AttributeKey>,
+): DatafileVariableOverride[] {
+  const result: DatafileVariableOverride[] = [];
+
+  const visit = (
+    overrides: ParsedVariableOverride[] | undefined,
+    baseValue: VariableValue,
+    inheritedConditions: Condition | Condition[] | undefined,
+    inheritedSegments: GroupSegment | GroupSegment[] | "*" | undefined,
+    inheritedRequirements: ReturnType<typeof normalizeRequiredFeatures>,
+    inheritedPath: string[],
+  ) => {
+    for (const override of overrides || []) {
+      if (override.segments) {
+        extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+          segmentKeysUsedByTag.add(segmentKey),
+        );
+      }
+      if (override.conditions) {
+        extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
+          attributeKeysUsedByTag.add(attributeKey),
+        );
+      }
+
+      const value = resolveGlobalVariableOverrideValue(parsedVariable, override, baseValue);
+      const conditions = combineConditions(inheritedConditions, override.conditions);
+      const segments = combineSegments(inheritedSegments, override.segments);
+      const requiredFeatures = [
+        ...inheritedRequirements,
+        ...normalizeRequiredFeatures(override.requiredFeatures),
+      ];
+      const keyPath = [...inheritedPath, override.key];
+
+      // Descendants are more specific than their parent fallback.
+      visit(override.overrides, value, conditions, segments, requiredFeatures, keyPath);
+
+      const built: DatafileVariableOverride = {
+        key: override.key,
+        value,
+      };
+      if (keyPath.length > 1) built.keyPath = keyPath;
+      if (requiredFeatures.length > 0) built.requiredFeatures = requiredFeatures;
+      if (typeof conditions !== "undefined") {
+        built.conditions = projectConfig.stringify ? JSON.stringify(conditions) : conditions;
+      }
+      if (typeof segments !== "undefined") {
+        built.segments =
+          projectConfig.stringify && typeof segments !== "string"
+            ? JSON.stringify(segments)
+            : segments;
+      }
+      result.push(built);
+    }
+  };
+
+  visit(sourceOverrides, parsedVariable.defaultValue, undefined, undefined, [], []);
+  return result;
+}
+
 export interface CustomDatafileOptions {
   featureKey?: string;
   variableKey?: string;
@@ -605,66 +707,13 @@ export async function buildDatafile(
           options.environment
         ]
       : (parsedVariable.overrides as ParsedVariableOverride[] | undefined);
-    const overrides: DatafileVariableOverride[] = [];
-
-    for (const parsedOverride of sourceOverrides || []) {
-      if (parsedOverride.segments) {
-        extractSegmentKeysFromGroupSegments(parsedOverride.segments).forEach((segmentKey) =>
-          segmentKeysUsedByTag.add(segmentKey),
-        );
-      }
-      if (parsedOverride.conditions) {
-        extractAttributeKeysFromConditions(parsedOverride.conditions).forEach((attributeKey) =>
-          attributeKeysUsedByTag.add(attributeKey),
-        );
-      }
-
-      let resolvedValue = parsedOverride.value;
-      const parsedMutation = (
-        parsedOverride as unknown as { mutate?: Record<string, VariableValue> }
-      ).mutate;
-      if (parsedMutation) {
-        resolvedValue = JSON.parse(JSON.stringify(parsedVariable.defaultValue)) as VariableValue;
-        for (const [mutationKey, mutationValue] of Object.entries(parsedMutation)) {
-          resolvedValue = mutate(parsedVariable, resolvedValue, mutationKey, mutationValue);
-        }
-      }
-
-      const requirementItems = parsedOverride.requiredFeatures
-        ? normalizeRequiredFeatures(parsedOverride.requiredFeatures)
-        : undefined;
-      const baseOverride = {
-        key: parsedOverride.key,
-        value: resolvedValue as VariableValue,
-      };
-
-      if (parsedOverride.segments) {
-        overrides.push({
-          ...baseOverride,
-          segments:
-            projectConfig.stringify &&
-            parsedOverride.segments !== "*" &&
-            typeof parsedOverride.segments !== "string"
-              ? (JSON.stringify(parsedOverride.segments) as unknown as GroupSegment)
-              : parsedOverride.segments,
-          requiredFeatures: requirementItems,
-        });
-      } else if (parsedOverride.conditions) {
-        overrides.push({
-          ...baseOverride,
-          conditions:
-            projectConfig.stringify && typeof parsedOverride.conditions !== "string"
-              ? (JSON.stringify(parsedOverride.conditions) as unknown as Condition)
-              : parsedOverride.conditions,
-          requiredFeatures: requirementItems,
-        });
-      } else {
-        overrides.push({
-          ...baseOverride,
-          requiredFeatures: requirementItems || [],
-        });
-      }
-    }
+    const overrides = buildGlobalVariableOverrides(
+      parsedVariable,
+      sourceOverrides,
+      projectConfig,
+      segmentKeysUsedByTag,
+      attributeKeysUsedByTag,
+    );
 
     variables.push({
       key,

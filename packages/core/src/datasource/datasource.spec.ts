@@ -145,4 +145,47 @@ describe("core: datasource required features", () => {
     const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "first");
     expect(Array.from(result)).toEqual(["first", "second"]);
   });
+
+  it("includes requirements from every level of a global variable override tree", async () => {
+    const datasource = {
+      variableExists: jest.fn(async () => true),
+      readVariable: jest.fn(async () => ({
+        defaultValue: "default",
+        requiredFeatures: "root",
+        overrides: {
+          production: [
+            {
+              key: "country",
+              segments: "*",
+              requiredFeatures: "country-feature",
+              value: "country",
+              overrides: [
+                {
+                  key: "city",
+                  segments: "*",
+                  requiredFeatures: "city-feature",
+                  value: "city",
+                },
+              ],
+            },
+          ],
+        },
+      })),
+      getRequiredFeaturesChain: jest.fn(async (key: string) => new Set([key, `${key}-child`])),
+    };
+
+    const result = await Datasource.prototype.getRequiredFeaturesChainForVariable.call(
+      datasource,
+      "settings",
+    );
+
+    expect(Array.from(result)).toEqual([
+      "root",
+      "root-child",
+      "country-feature",
+      "country-feature-child",
+      "city-feature",
+      "city-feature-child",
+    ]);
+  });
 });

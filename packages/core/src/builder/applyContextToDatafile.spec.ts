@@ -2637,5 +2637,43 @@ describe("core: applyContextToDatafile", function () {
       expect(nlAgain.features.feature1.hash).toBe(nl.features.feature1.hash);
       expect(nlAgain.variables?.message.hash).toBe(nl.variables?.message.hash);
     });
+
+    test("specializes both selectors on a flattened nested global variable override", function () {
+      const datafile: DatafileContent = {
+        schemaVersion: "2",
+        revision: "unknown",
+        segments: {
+          mobile: {
+            conditions: [{ attribute: "device", operator: "equals", value: "mobile" }],
+          },
+        },
+        features: {},
+        variables: {
+          banner: {
+            type: "string",
+            defaultValue: "default",
+            overrides: [
+              {
+                key: "mobile",
+                keyPath: ["netherlands", "mobile"],
+                conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                segments: "mobile",
+                value: "Welkom",
+              },
+            ],
+          },
+        },
+      };
+
+      const result = applyContextToDatafile(datafile, {
+        country: "nl",
+        device: "mobile",
+      });
+      const override = result.variables?.banner.overrides?.[0];
+
+      expect(override?.conditions).toBe("*");
+      expect(override?.segments).toBe("*");
+      expect(override?.keyPath).toEqual(["netherlands", "mobile"]);
+    });
   });
 });

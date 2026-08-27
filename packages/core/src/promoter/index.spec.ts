@@ -324,6 +324,18 @@ describe("promoteProjectSets", function () {
         "    segments: internal",
         "    value:",
         "      enabled: false",
+        "    overrides:",
+        "      - key: nested",
+        "        segments: internal",
+        "        value:",
+        "          enabled: true",
+        "      - key: nested-protected",
+        "        promotable: false",
+        "        segments: protectedUsers",
+        "        requiredFeatures:",
+        "          - protectedDependency",
+        "        value:",
+        "          enabled: true",
         "  - key: protected",
         "    promotable: false",
         "    segments: protectedUsers",
@@ -352,6 +364,9 @@ describe("promoteProjectSets", function () {
     expect(Array.isArray(variable.overrides) && variable.overrides.map((item) => item.key)).toEqual(
       ["internal"],
     );
+    expect(
+      Array.isArray(variable.overrides) && variable.overrides[0].overrides?.map((item) => item.key),
+    ).toEqual(["nested"]);
     expect(result.files.created).not.toEqual(
       expect.arrayContaining([
         expect.stringContaining("features/protectedDependency.yml"),
@@ -437,6 +452,66 @@ describe("promoteProjectSets", function () {
     expect(result.files.created).not.toEqual(
       expect.arrayContaining([expect.stringContaining("segments/protectedUsers.yml")]),
     );
+  });
+
+  it("merges nested global variable overrides by key and preserves protected children", async () => {
+    const root = await createProject();
+    const variable = (parent: string, open: string, protectedValue: string, protect = false) =>
+      [
+        "description: Nested settings",
+        "tags:",
+        "  - web",
+        "type: string",
+        "defaultValue: default",
+        "overrides:",
+        "  - key: country",
+        '    segments: "*"',
+        `    value: ${parent}`,
+        "    overrides:",
+        "      - key: open",
+        "        conditions:",
+        "          attribute: team",
+        "          operator: equals",
+        "          value: open",
+        `        value: ${open}`,
+        "      - key: protected",
+        ...(protect ? ["        promotable: false"] : []),
+        "        conditions:",
+        "          attribute: team",
+        "          operator: equals",
+        "          value: protected",
+        `        value: ${protectedValue}`,
+        "",
+      ].join("\n");
+
+    await writeFile(
+      root,
+      "sets/dev/variables/nestedSettings.yml",
+      variable("source-parent", "source-open", "source-protected"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/variables/nestedSettings.yml",
+      variable("destination-parent", "destination-open", "destination-protected", true),
+    );
+
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    const promoted = await datasource.forSet("staging").readVariable("nestedSettings");
+    expect(Array.isArray(promoted.overrides)).toBe(true);
+    const country = Array.isArray(promoted.overrides) ? promoted.overrides[0] : undefined;
+    expect(country?.value).toBe("source-parent");
+    expect(country?.overrides?.map((entry) => [entry.key, entry.value])).toEqual([
+      ["open", "source-open"],
+      ["protected", "destination-protected"],
+    ]);
   });
 
   it("promotes nested reusable schemas without treating runtime schema keys as references", async function () {

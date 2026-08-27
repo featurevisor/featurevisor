@@ -284,6 +284,23 @@ function testStandardProject(projectDirectoryPath) {
     projectDirectoryPath,
     [
       "evaluate",
+      "--variable=campaignBanner",
+      "--environment=production",
+      '--context={"country":"nl","city":"amsterdam","device":"mobile"}',
+      "--json",
+    ],
+    (evaluation) => {
+      assert.equal(evaluation.variableValue.message, "Welkom");
+      assert.equal(evaluation.variableValue.cta.title, "Meer informatie");
+      assert.equal(evaluation.variableValue.cta.url, "https://featurevisor.com/mobile");
+      assert.equal(evaluation.variableOverrideKey, "mobile");
+      assert.deepEqual(evaluation.variableOverridePath, ["netherlands", "amsterdam", "mobile"]);
+    },
+  );
+  runJson(
+    projectDirectoryPath,
+    [
+      "evaluate",
       "--feature=foo",
       "--environment=production",
       "--target=all",
