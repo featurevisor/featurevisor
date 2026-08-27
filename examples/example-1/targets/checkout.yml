@@ -1,2 +1,4 @@
 description: Checkout features
 tag: checkout
+includeVariables:
+  - checkout*

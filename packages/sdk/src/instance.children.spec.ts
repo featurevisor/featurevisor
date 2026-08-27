@@ -201,6 +201,54 @@ describe("Featurevisor public API: child instances", () => {
     );
   });
 
+  it("delegates every global variable getter and child sticky variable operation", () => {
+    const parent = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        variables: {
+          message: {
+            type: "string",
+            defaultValue: "default",
+            overrides: [
+              {
+                key: "germany",
+                conditions: { attribute: "country", operator: "equals", value: "de" },
+                value: "Hallo",
+              },
+            ],
+          },
+          enabled: { type: "boolean", defaultValue: true },
+          count: { type: "integer", defaultValue: 2 },
+          ratio: { type: "double", defaultValue: 2.5 },
+          items: { type: "array", defaultValue: ["one", "two"] },
+          config: { type: "object", defaultValue: { colour: "blue" } },
+          json: { type: "json", defaultValue: '{"colour":"green"}' },
+        },
+      }),
+    });
+    const child = parent.spawn({ country: "de" }, { stickyVariables: { message: "sticky" } });
+    const stickyEvents: unknown[] = [];
+    child.on("sticky_variables_set", (event) => stickyEvents.push(event));
+
+    expect(child.evaluateVariable("message")).toEqual(
+      expect.objectContaining({ reason: "sticky", variableValue: "sticky" }),
+    );
+    child.setStickyVariables({}, true);
+
+    expect(child.getVariableString("message")).toBe("Hallo");
+    expect(child.getVariableBoolean("enabled")).toBe(true);
+    expect(child.getVariableInteger("count")).toBe(2);
+    expect(child.getVariableDouble("ratio")).toBe(2.5);
+    expect(child.getVariableArray("items")).toEqual(["one", "two"]);
+    expect(child.getVariableObject("config")).toEqual({ colour: "blue" });
+    expect(child.getVariableJSON("json")).toEqual({ colour: "green" });
+    expect(child.getVariableEvaluations({}, ["message", "count"])).toEqual({
+      message: "Hallo",
+      count: 2,
+    });
+    expect(stickyEvents).toEqual([{ variables: ["message"], replaced: true }]);
+  });
+
   it("uses parent datafile updates immediately", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",

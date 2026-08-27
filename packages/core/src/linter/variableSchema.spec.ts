@@ -75,6 +75,35 @@ describe("global variable schema", () => {
     ).toBe(true);
   });
 
+  it.each([
+    ["boolean", { type: "boolean", defaultValue: true }],
+    ["integer", { type: "integer", minimum: 1, maximum: 5, defaultValue: 3 }],
+    ["double", { type: "double", defaultValue: 1.5 }],
+    ["string", { type: "string", minLength: 2, maxLength: 5, defaultValue: "okay" }],
+    [
+      "array",
+      {
+        type: "array",
+        items: { type: "string" },
+        minItems: 1,
+        uniqueItems: true,
+        defaultValue: ["one"],
+      },
+    ],
+    [
+      "object",
+      {
+        type: "object",
+        properties: { title: { type: "string" } },
+        required: ["title"],
+        defaultValue: { title: "Hello" },
+      },
+    ],
+    ["json", { type: "json", defaultValue: '{"arbitrary":[true,1,"value"]}' }],
+  ])("accepts a valid %s definition", (_type, definition) => {
+    expect(parse({ description: "Typed variable", ...definition }).success).toBe(true);
+  });
+
   it("rejects mixed, unmatched, and ambiguous oneOf roots", () => {
     expect(
       parse({
@@ -133,6 +162,73 @@ describe("global variable schema", () => {
         },
       }).success,
     ).toBe(false);
+  });
+
+  it("validates disabled values, override values, environments, and mutation results", () => {
+    const objectVariable = {
+      description: "Settings",
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        count: { type: "integer" },
+      },
+      required: ["title", "count"],
+      defaultValue: { title: "Default", count: 1 },
+    };
+
+    expect(parse({ ...objectVariable, disabledValue: { title: "Missing count" } }).success).toBe(
+      false,
+    );
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          production: [{ key: "wrong", segments: "*", value: { title: "Missing count" } }],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          production: [{ key: "wrong", segments: "*", mutate: { count: "not-an-integer" } }],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      parse({
+        ...objectVariable,
+        overrides: {
+          unknown: [
+            { key: "wrong-environment", segments: "*", value: objectVariable.defaultValue },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts direct override arrays when the project has no environments", () => {
+    const environmentlessConfig = {
+      ...config,
+      environments: false,
+    } as unknown as ProjectConfig;
+    const result = getVariableZodSchema(
+      environmentlessConfig,
+      attributes,
+      ["europe"],
+      features,
+      schemas,
+    ).safeParse({
+      description: "Environmentless",
+      type: "string",
+      defaultValue: "default",
+      overrides: [
+        { key: "europe", segments: "europe", value: "Europe" },
+        { key: "fallback", segments: "*", value: "Fallback" },
+      ],
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("supports requiredFeatures as a direct selector and alongside one other selector", () => {
@@ -251,5 +347,17 @@ describe("global variable schema", () => {
         },
       }).success,
     ).toBe(false);
+
+    expect(
+      parse({
+        ...base,
+        overrides: {
+          staging: [
+            { key: "never", segments: { not: ["*"] }, value: "never" },
+            { key: "later", segments: "europe", value: "later" },
+          ],
+        },
+      }).success,
+    ).toBe(true);
   });
 });

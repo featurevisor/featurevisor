@@ -267,6 +267,38 @@ describe("global variables", () => {
     expect(f.getVariableBoolean("supportEmail")).toBeNull();
   });
 
+  it("reports deprecated global variables and malformed JSON through diagnostics", () => {
+    const diagnostics: any[] = [];
+    const customDatafile = datafile();
+    customDatafile.variables = {
+      ...customDatafile.variables,
+      retired: { type: "string", defaultValue: "old", deprecated: true },
+      malformedJson: { type: "json", defaultValue: "{" },
+    };
+    const f = createFeaturevisor({
+      datafile: customDatafile,
+      logLevel: "debug",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    expect(f.getVariable("retired")).toBe("old");
+    expect(f.getVariableJSON("malformedJson")).toBeNull();
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "warn",
+          code: "variable_deprecated",
+          details: expect.objectContaining({ variableKey: "retired" }),
+        }),
+        expect.objectContaining({
+          level: "error",
+          code: "evaluation_error",
+          details: { featureKey: undefined, variableKey: "malformedJson" },
+        }),
+      ]),
+    );
+  });
+
   it("uses unified module callbacks and keeps deprecated feature callbacks feature-only", () => {
     const before = jest.fn((options) => options);
     const after = jest.fn((evaluation) => evaluation);

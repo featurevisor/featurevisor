@@ -21,3 +21,13 @@ assertions:
     context:
       country: de
     expectedValue: support@example.com
+
+  - description: sticky values take precedence over matching overrides
+    environment: production
+    stickyVariables:
+      supportEmail: sticky-support@example.com
+    context:
+      country: nl
+    expectedValue: sticky-support@example.com
+    expectedEvaluation:
+      reason: sticky

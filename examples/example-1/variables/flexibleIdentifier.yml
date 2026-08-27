@@ -1,0 +1,22 @@
+description: Identifier that can be a string or an integer
+tags:
+  - all
+oneOf:
+  - type: string
+  - type: integer
+defaultValue: anonymous
+overrides:
+  staging:
+    - key: staging
+      segments: "*"
+      value: preview
+  production:
+    - key: numeric
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      value: 42
+    - key: default
+      segments: "*"
+      value: anonymous

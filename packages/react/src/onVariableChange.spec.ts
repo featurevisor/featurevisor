@@ -85,4 +85,54 @@ describe("react: onVariableChange", () => {
     });
     expect(calls).toBe(1);
   });
+
+  test("filters direct updates, follows shared state, and unsubscribes from every event", () => {
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: {
+        schemaVersion: "2",
+        revision: "1",
+        segments: {},
+        features: {},
+        variables: {
+          message: { hash: "message-1", type: "string", defaultValue: "message" },
+          unrelated: { hash: "unrelated-1", type: "string", defaultValue: "unrelated" },
+        },
+      },
+    });
+    const callback = jest.fn();
+    const unsubscribe = onVariableChange(sdk, "message", callback);
+
+    sdk.setStickyVariables({ unrelated: "changed" });
+    sdk.setDatafile({
+      schemaVersion: "2",
+      revision: "2",
+      segments: {},
+      features: {},
+      variables: {
+        unrelated: { hash: "unrelated-2", type: "string", defaultValue: "changed" },
+      },
+    });
+    expect(callback).not.toHaveBeenCalled();
+
+    sdk.setContext({ country: "nl" });
+    sdk.setStickyVariables({ message: "sticky" });
+    sdk.setStickyFeatures({});
+    sdk.setStickyFeatures({ checkout: { enabled: true } });
+    sdk.setDatafile({
+      schemaVersion: "2",
+      revision: "3",
+      segments: {},
+      features: {},
+      variables: {
+        message: { hash: "message-2", type: "string", defaultValue: "changed" },
+      },
+    });
+    expect(callback).toHaveBeenCalledTimes(4);
+
+    unsubscribe();
+    sdk.setContext({ country: "de" });
+    sdk.setStickyVariables({ message: "after-unsubscribe" });
+    expect(callback).toHaveBeenCalledTimes(4);
+  });
 });

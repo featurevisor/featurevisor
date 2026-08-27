@@ -1,0 +1,12 @@
+description: Checkout message in production
+tags:
+  - all
+type: string
+defaultValue: Production checkout
+overrides:
+  - key: internal
+    segments: internal
+    value: Production checkout for engineers
+  - key: default
+    segments: "*"
+    value: Production checkout

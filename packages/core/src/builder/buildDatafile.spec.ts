@@ -6,7 +6,7 @@ import type { DatafileContent, ExistingState, ParsedFeature, Segment } from "@fe
 import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
-import { buildDatafile } from "./buildDatafile";
+import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { buildTargetDatafile } from "./buildProject";
 
 function createProjectConfig(root: string, stringify = true): ProjectConfig {
@@ -712,6 +712,54 @@ describe("core: buildDatafile", function () {
     );
     expect(result.variables?.banner.hash).toEqual(expect.any(String));
     expect(Object.keys(result.segments)).toEqual(["europe"]);
+  });
+
+  test("builds a custom variable datafile with the union of requested dependencies", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      requested: {
+        key: "requested",
+        description: "Requested feature",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+      prerequisite: {
+        key: "prerequisite",
+        description: "Variable prerequisite",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+      unrelated: {
+        key: "unrelated",
+        description: "Unrelated feature",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+    });
+    Object.assign(datasource, {
+      readState: async () => existingState,
+      listVariables: async () => ["settings", "unrelatedVariable"],
+      readVariable: async (key: string) => ({
+        description: key,
+        type: "string",
+        defaultValue: key,
+        requiredFeatures: key === "settings" ? "prerequisite" : undefined,
+      }),
+      getRequiredFeaturesChain: async (key: string) => new Set([key]),
+      getRequiredFeaturesChainForVariable: async (key: string) =>
+        new Set(key === "settings" ? ["prerequisite"] : []),
+    });
+
+    const result = await getCustomDatafile({
+      featureKey: "requested",
+      variableKey: "settings",
+      environment: "staging",
+      projectConfig: config,
+      datasource,
+    });
+
+    expect(Object.keys(result.features)).toEqual(["requested", "prerequisite"]);
+    expect(Object.keys(result.variables || {})).toEqual(["settings"]);
   });
 
   test("includes feature variable override dependencies when feature filters are used", async () => {

@@ -175,6 +175,7 @@ function testStandardProject(projectDirectoryPath) {
     "attribute",
     "target",
     "test",
+    "variable",
   ]) {
     run(projectDirectoryPath, ["lint", `--entity-type=${entityType}`]);
   }
@@ -183,6 +184,11 @@ function testStandardProject(projectDirectoryPath) {
   run(projectDirectoryPath, ["test", "--only-failures"]);
   run(projectDirectoryPath, ["test", "--entity-type=feature", "--key-pattern=^foo$"]);
   run(projectDirectoryPath, ["test", "--entity-type=segment", "--key-pattern=^mobile$"]);
+  run(projectDirectoryPath, [
+    "test",
+    "--entity-type=variable",
+    "--key-pattern=^(campaignBanner|flexibleIdentifier)$",
+  ]);
   run(projectDirectoryPath, ["test", "--target=all", "--target=checkout", "--only-failures"]);
   run(projectDirectoryPath, ["test", "--assertion-pattern=.*", "--only-failures"]);
 
@@ -205,6 +211,16 @@ function testStandardProject(projectDirectoryPath) {
     (datafile) => {
       assert.equal(datafile.schemaVersion, "2");
       assert.ok(datafile.features.foo);
+    },
+  );
+  runJson(
+    projectDirectoryPath,
+    ["build", "--print", "--environment=production", "--target=checkout"],
+    (datafile) => {
+      assert.deepEqual(Object.keys(datafile.variables), ["checkoutSettings"]);
+      assert.ok(datafile.features.pricing);
+      assert.ok(datafile.features.sidebar);
+      assert.equal(datafile.variables.supportEmail, undefined);
     },
   );
 
@@ -254,6 +270,20 @@ function testStandardProject(projectDirectoryPath) {
     projectDirectoryPath,
     [
       "evaluate",
+      "--variable=supportEmail",
+      "--environment=production",
+      '--context={"country":"nl"}',
+      "--json",
+    ],
+    (evaluation) => {
+      assert.equal(evaluation.variableValue, "support-nl@example.com");
+      assert.equal(evaluation.variableOverrideKey, "netherlands");
+    },
+  );
+  runJson(
+    projectDirectoryPath,
+    [
+      "evaluate",
       "--feature=foo",
       "--environment=production",
       "--target=all",
@@ -274,6 +304,13 @@ function testStandardProject(projectDirectoryPath) {
     "--feature=foo",
     "--environment=staging",
     `--context=${context}`,
+    "-n=10",
+  ]);
+  run(projectDirectoryPath, [
+    "benchmark",
+    "--variable=flexibleIdentifier",
+    "--environment=production",
+    '--context={"country":"nl"}',
     "-n=10",
   ]);
   run(projectDirectoryPath, [
@@ -313,6 +350,7 @@ function testStandardProject(projectDirectoryPath) {
     "attributes",
     "targets",
     "tests",
+    "variables",
   ]) {
     runJson(projectDirectoryPath, ["list", `--${selector}`, "--json"], (entities) => {
       assert.ok(Array.isArray(entities));
@@ -323,6 +361,15 @@ function testStandardProject(projectDirectoryPath) {
     projectDirectoryPath,
     ["list", "--features", "--tag=all", "--target=checkout", "--json"],
     (features) => assert.ok(features.length > 0),
+  );
+  runJson(
+    projectDirectoryPath,
+    ["list", "--variables", "--target=checkout", "--json"],
+    (variables) =>
+      assert.deepEqual(
+        variables.map((variable) => variable.key),
+        ["checkoutSettings"],
+      ),
   );
   runJson(
     projectDirectoryPath,
@@ -337,9 +384,13 @@ function testStandardProject(projectDirectoryPath) {
   run(projectDirectoryPath, ["find-usage", "--segment=mobile"]);
   run(projectDirectoryPath, ["find-usage", "--attribute=country"]);
   run(projectDirectoryPath, ["find-usage", "--feature=foo"]);
+  run(projectDirectoryPath, ["find-usage", "--variable=campaignBanner"]);
   run(projectDirectoryPath, ["find-usage", "--unused-segments"]);
   run(projectDirectoryPath, ["find-usage", "--unused-attributes"]);
-  run(projectDirectoryPath, ["info", "--target=all", "--target=checkout"]);
+  run(projectDirectoryPath, ["info", "--target=all", "--target=checkout"], (result) => {
+    assert.match(result.stdout, /Total Variables:/);
+    assert.match(result.stdout, /Total Variables \(in features\):/);
+  });
 
   const generatedCodeDirectoryPath = join(projectDirectoryPath, "generated-code");
   run(projectDirectoryPath, [
@@ -350,6 +401,11 @@ function testStandardProject(projectDirectoryPath) {
     "--target=checkout",
   ]);
   assertFile(join(generatedCodeDirectoryPath, "features.ts"), "generated feature types");
+  assertFile(join(generatedCodeDirectoryPath, "variables.ts"), "generated global variable types");
+  assert.match(
+    readFileSync(join(generatedCodeDirectoryPath, "variables.ts"), "utf8"),
+    /checkoutSettings/,
+  );
   pass("generate-code wrote TypeScript output");
 
   const catalogDirectoryPath = join(projectDirectoryPath, "generated-catalog");
@@ -395,6 +451,12 @@ function testSetProject(projectDirectoryPath) {
   });
   run(projectDirectoryPath, ["test", "--only-failures"]);
   run(projectDirectoryPath, ["test", "--set=staging", "--target=all", "--only-failures"]);
+  run(projectDirectoryPath, [
+    "test",
+    "--set=production",
+    "--entity-type=variable",
+    "--only-failures",
+  ]);
 
   const datafilesDirectoryPath = join(projectDirectoryPath, "generated-datafiles");
   run(projectDirectoryPath, [
@@ -411,6 +473,12 @@ function testSetProject(projectDirectoryPath) {
     assert.deepEqual(
       features.map((feature) => feature.key),
       ["checkoutFlow"],
+    ),
+  );
+  runJson(projectDirectoryPath, ["list", "--set=dev", "--variables", "--json"], (variables) =>
+    assert.deepEqual(
+      variables.map((variable) => variable.key),
+      ["checkoutMessage"],
     ),
   );
   runJson(
@@ -431,6 +499,21 @@ function testSetProject(projectDirectoryPath) {
       "--json",
     ],
     (evaluations) => assert.equal(evaluations.flag.enabled, true),
+  );
+  runJson(
+    projectDirectoryPath,
+    [
+      "evaluate",
+      "--set=staging",
+      "--variable=checkoutMessage",
+      "--target=all",
+      `--context=${context}`,
+      "--json",
+    ],
+    (evaluation) => {
+      assert.equal(evaluation.variableValue, "Staging checkout for engineers");
+      assert.equal(evaluation.variableOverrideKey, "internal");
+    },
   );
   run(projectDirectoryPath, [
     "benchmark",

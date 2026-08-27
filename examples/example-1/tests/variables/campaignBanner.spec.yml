@@ -1,0 +1,39 @@
+variable: campaignBanner
+assertions:
+  - description: resolves a reusable schema and applies a mutation
+    environment: staging
+    expectedValue:
+      message: Welcome to staging
+      cta:
+        title: Learn more
+        url: https://featurevisor.com
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: staging
+
+  - matrix:
+      country:
+        - nl
+      message:
+        - Welkom
+      title:
+        - Meer informatie
+    description: resolves the campaign banner for ${{ country }}
+    environment: production
+    context:
+      country: ${{ country }}
+    expectedValue:
+      message: ${{ message }}
+      cta:
+        title: ${{ title }}
+        url: https://featurevisor.com
+
+  - description: uses the complete catch-all value
+    environment: production
+    context:
+      country: de
+    expectedValue:
+      message: Welcome
+      cta:
+        title: Learn more
+        url: https://featurevisor.com

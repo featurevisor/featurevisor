@@ -1,0 +1,15 @@
+variable: headerFallback
+assertions:
+  - description: returns the default while the required feature is enabled
+    environment: staging
+    expectedValue: Header fallback
+    expectedEvaluation:
+      reason: variable_default
+
+  - description: also returns the default when useDefaultWhenDisabled is enabled
+    environment: production
+    context:
+      device: tablet
+    expectedValue: Header fallback
+    expectedEvaluation:
+      reason: required_features_unmet

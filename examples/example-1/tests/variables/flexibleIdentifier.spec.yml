@@ -1,0 +1,26 @@
+variable: flexibleIdentifier
+assertions:
+  - description: returns the string branch of oneOf
+    environment: staging
+    expectedValue: preview
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: staging
+
+  - description: returns the integer branch of oneOf
+    environment: production
+    context:
+      country: nl
+    expectedValue: 42
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: numeric
+
+  - description: returns the default branch when no targeted override matches
+    environment: production
+    context:
+      country: de
+    expectedValue: anonymous
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: default

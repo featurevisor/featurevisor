@@ -204,11 +204,13 @@ describe("vue: composables", () => {
       useFlag("checkout");
       useVariation("checkout");
       useVariable("checkout", "configuration");
+      useVariable("globalConfiguration");
       return {};
     }, sdk);
 
     expect(isEnabled).toHaveBeenCalledWith("checkout", {});
     expect(getVariationSpy).toHaveBeenCalledWith("checkout", {});
     expect(getVariableSpy).toHaveBeenCalledWith("checkout", "configuration", {});
+    expect(getVariableSpy).toHaveBeenCalledWith("globalConfiguration", {});
   });
 });
