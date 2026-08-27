@@ -1,7 +1,7 @@
 import type { ParsedFeature, Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
-import { ProjectConfig } from "../config";
+import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
 import { isMutationKey, validateMutationKey } from "./mutationNotation";
 import {
   valueZodSchema,
@@ -1849,7 +1849,7 @@ export function getFeatureZodSchema(
             );
           }
 
-          if (variableKey === "variation") {
+          if ((projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS).includes(variableKey)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `Variable key "${variableKey}" is reserved and cannot be used.`,

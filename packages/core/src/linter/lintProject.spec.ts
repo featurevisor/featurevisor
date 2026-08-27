@@ -84,6 +84,99 @@ describe("core: lintProject", function () {
     );
   });
 
+  it("rejects default reserved feature and global variable keys", async () => {
+    for (const key of ["feature", "variation", "variable"]) {
+      fs.copyFileSync(
+        path.join(tempProjectPath, "features", "showHeader.yml"),
+        path.join(tempProjectPath, "features", `${key}.yml`),
+      );
+      fs.copyFileSync(
+        path.join(tempProjectPath, "variables", "supportEmail.yml"),
+        path.join(tempProjectPath, "variables", `${key}.yml`),
+      );
+    }
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    for (const entityType of ["feature", "variable"]) {
+      for (const key of ["feature", "variation", "variable"]) {
+        expect(result.errors).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ entityType, key, code: "reserved_key" }),
+          ]),
+        );
+      }
+    }
+  });
+
+  it("uses custom reserved keys and allows disabling the rule", async () => {
+    fs.copyFileSync(
+      path.join(tempProjectPath, "features", "showHeader.yml"),
+      path.join(tempProjectPath, "features", "custom.yml"),
+    );
+    fs.copyFileSync(
+      path.join(tempProjectPath, "variables", "supportEmail.yml"),
+      path.join(tempProjectPath, "variables", "custom.yml"),
+    );
+
+    const customDeps = getDeps(tempProjectPath);
+    customDeps.projectConfig.reservedKeys = ["custom"];
+    const rejected = await lintProject(customDeps as any, { json: true });
+    expect(rejected.errors.filter((error) => error.code === "reserved_key")).toHaveLength(2);
+
+    const disabledDeps = getDeps(tempProjectPath);
+    disabledDeps.projectConfig.reservedKeys = [];
+    const allowed = await lintProject(disabledDeps as any, { json: true });
+    expect(allowed.errors.some((error) => error.code === "reserved_key")).toBe(false);
+  });
+
+  it("applies reservedKeys to variables declared inside features", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "reservedVariableKey.yml"),
+      [
+        "description: Reserved variable key fixture",
+        "bucketBy: userId",
+        "variablesSchema:",
+        "  variable:",
+        "    type: string",
+        "    defaultValue: value",
+        "rules:",
+        "  staging:",
+        "    - key: all",
+        '      segments: "*"',
+        "      percentage: 100",
+        "  production:",
+        "    - key: all",
+        '      segments: "*"',
+        "      percentage: 100",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const rejected = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(rejected.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "feature",
+          key: "reservedVariableKey",
+          path: ["variablesSchema", "variable"],
+          message: expect.stringContaining("reserved"),
+        }),
+      ]),
+    );
+
+    const customizedDeps = getDeps(tempProjectPath);
+    customizedDeps.projectConfig.reservedKeys = ["variation"];
+    const allowed = await lintProject(customizedDeps as any, { json: true });
+    expect(
+      allowed.errors.some(
+        (error) =>
+          error.key === "reservedVariableKey" &&
+          error.path.join(".") === "variablesSchema.variable",
+      ),
+    ).toBe(false);
+  });
+
   it("reports key collisions from focused feature and variable lint runs", async () => {
     const variablePath = path.join(tempProjectPath, "variables", "showHeader.yml");
     fs.writeFileSync(variablePath, "type: boolean\ndefaultValue: true\n", "utf8");

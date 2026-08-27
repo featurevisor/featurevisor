@@ -24,6 +24,7 @@ import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { normalizeFeatureRequirements } from "../datasource/requiredFeatures";
+import { DEFAULT_RESERVED_KEYS } from "../config";
 
 export type LintEntityType =
   | "attribute"
@@ -76,6 +77,10 @@ function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
   );
 
   return ENTITY_NAME_REGEX.test(keyWithoutNamespaceCharacter);
+}
+
+function isReservedKey(key: string, reservedKeys: string[]): boolean {
+  return reservedKeys.includes(key);
 }
 
 function getPathSegmentsFromKey(
@@ -574,6 +579,17 @@ export async function lintProject(
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
 
+      if (isReservedKey(key, projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS)) {
+        await reportSimpleError({
+          entityType: "feature",
+          key,
+          fullPath,
+          message: `Feature key "${key}" is reserved and cannot be used`,
+          detail: "Choose another key, or customize reservedKeys in featurevisor.config.js.",
+          code: "reserved_key",
+        });
+      }
+
       if (
         options.entityType === "feature" &&
         !projectConfig.allowFeatureAndVariableKeyCollisions &&
@@ -655,6 +671,17 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("variable", key);
+
+      if (isReservedKey(key, projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Variable key "${key}" is reserved and cannot be used`,
+          detail: "Choose another key, or customize reservedKeys in featurevisor.config.js.",
+          code: "reserved_key",
+        });
+      }
 
       if (!projectConfig.allowFeatureAndVariableKeyCollisions && features.includes(key)) {
         await reportSimpleError({

@@ -27,6 +27,7 @@ export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 
 export const DEFAULT_NAMESPACE_CHARACTER = ".";
 export const DEFAULT_TAGS = ["all"];
+export const DEFAULT_RESERVED_KEYS = ["feature", "variation", "variable"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 export const DEFAULT_SETS = false;
 
@@ -59,6 +60,7 @@ export interface ProjectConfig {
   environments?: string[];
   sets: boolean;
   tags: string[];
+  reservedKeys?: string[];
 
   adapter: any; // @NOTE: type this properly later
   plugins: Plugin[];
@@ -86,6 +88,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
     tags: DEFAULT_TAGS,
+    reservedKeys: [...DEFAULT_RESERVED_KEYS],
     defaultBucketBy: "userId",
 
     parser: DEFAULT_PARSER,
@@ -155,6 +158,29 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
       `Invalid allowFeatureAndVariableKeyCollisions: ${finalConfig.allowFeatureAndVariableKeyCollisions}. It must be a boolean.`,
     );
   }
+
+  if (!Array.isArray(finalConfig.reservedKeys)) {
+    throw new Error(
+      `Invalid reservedKeys: ${finalConfig.reservedKeys}. It must be an array of unique, non-empty strings.`,
+    );
+  }
+
+  const seenReservedKeys = new Set<string>();
+  finalConfig.reservedKeys.forEach((reservedKey: unknown, index: number) => {
+    if (
+      typeof reservedKey !== "string" ||
+      reservedKey.length === 0 ||
+      reservedKey.trim() !== reservedKey
+    ) {
+      throw new Error(
+        `Invalid reservedKeys[${index}]: ${reservedKey}. It must be a non-empty string without surrounding whitespace.`,
+      );
+    }
+    if (seenReservedKeys.has(reservedKey)) {
+      throw new Error(`Invalid reservedKeys: duplicate key "${reservedKey}".`);
+    }
+    seenReservedKeys.add(reservedKey);
+  });
 
   if (typeof finalConfig.environments !== "undefined") {
     if (!Array.isArray(finalConfig.environments)) {

@@ -53,6 +53,7 @@ function datafile(): DatafileContent {
               config: { color: "blue" },
               json: '{"nested":true}',
               invalidJson: "not-json",
+              variable: "Feature variable",
             },
           },
         ],
@@ -65,6 +66,7 @@ function datafile(): DatafileContent {
           config: { type: "object", defaultValue: {} },
           json: { type: "json", defaultValue: "{}" },
           invalidJson: { type: "json", defaultValue: "{}" },
+          variable: { type: "string", defaultValue: "Default variable" },
         },
       }),
       disabled: feature({
@@ -95,6 +97,9 @@ describe("Featurevisor OpenFeature mapping", () => {
       }),
     );
     expect(provider.resolve("checkout:title", "fallback", context, "string").value).toBe("Hello");
+    expect(provider.resolve("checkout:variable", "fallback", context, "string").value).toBe(
+      "Feature variable",
+    );
     expect(provider.resolve("checkout:count", 0, context, "number").value).toBe(3);
     expect(provider.resolve("checkout:ratio", 0, context, "number").value).toBe(1.5);
     expect(provider.resolve("checkout:visible", false, context, "boolean").value).toBe(true);
@@ -152,10 +157,10 @@ describe("Featurevisor OpenFeature mapping", () => {
     ).toBe("Hello");
   });
 
-  it("resolves global variables with default and custom selectors", () => {
+  it("resolves global variables with default and custom prefixes", () => {
     const provider = new FeaturevisorProvider({ datafile: datafile() });
     expect(
-      provider.resolve("supportEmail:variable", "fallback", { country: "nl" }, "string"),
+      provider.resolve("variable:supportEmail", "fallback", { country: "nl" }, "string"),
     ).toEqual(
       expect.objectContaining({
         value: "support-nl@example.com",
@@ -166,23 +171,33 @@ describe("Featurevisor OpenFeature mapping", () => {
         }),
       }),
     );
-    expect(provider.resolve("limits:variable", {}, {}, "object").value).toEqual({
+    expect(provider.resolve("variable:limits", {}, {}, "object").value).toEqual({
       requests: 10,
     });
 
     const custom = new FeaturevisorProvider({
       datafile: datafile(),
       keySeparator: "/",
-      globalVariableKey: "$variable",
+      globalVariablePrefix: "$variable",
     });
-    expect(custom.resolve("supportEmail/$variable", "fallback", {}, "string").value).toBe(
+    expect(custom.resolve("$variable/supportEmail", "fallback", {}, "string").value).toBe(
       "support@example.com",
     );
   });
 
+  it("rejects a global variable prefix containing the key separator", () => {
+    expect(
+      () =>
+        new FeaturevisorProvider({
+          datafile: datafile(),
+          globalVariablePrefix: "global:variable",
+        }),
+    ).toThrow("globalVariablePrefix cannot contain keySeparator");
+  });
+
   it("returns a standard not found error for missing global variables", () => {
     const result = new FeaturevisorProvider({ datafile: datafile() }).resolve(
-      "missing:variable",
+      "variable:missing",
       "fallback",
       {},
       "string",

@@ -31,11 +31,11 @@ OpenFeature keys map to Featurevisor evaluations:
 | `checkout`              | flag                                 |
 | `checkout:variation`    | variation                            |
 | `checkout:title`        | variable named `title`               |
-| `supportEmail:variable` | global variable named `supportEmail` |
+| `variable:supportEmail` | global variable named `supportEmail` |
 
 Use the resolver matching the Featurevisor value type. Boolean variables use the boolean resolver with a suffixed key. Arrays, objects, and JSON variables use the object resolver.
 
-The provider maps OpenFeature `targetingKey` to Featurevisor `userId` by default. Configure `targetingKeyField`, `keySeparator`, `variationKey`, or `globalVariableKey` when your project needs different names.
+The provider maps OpenFeature `targetingKey` to Featurevisor `userId` by default. Configure `targetingKeyField`, `keySeparator`, `variationKey`, or `globalVariablePrefix` when your project needs different names. The global variable prefix defaults to `variable`.
 
 ## Featurevisor instance
 
@@ -74,7 +74,7 @@ The same instance is available as `provider.featurevisor`. Evaluations, datafile
 
 An instance passed this way remains owned by your application. Closing the OpenFeature provider does not close it, so other consumers can continue using it. Call `featurevisor.close()` when every consumer is finished.
 
-If `featurevisor` and Featurevisor construction options such as `datafile` or `modules` are supplied together, the existing instance takes precedence and the construction options are ignored. Provider options such as `targetingKeyField`, `keySeparator`, `variationKey`, `globalVariableKey`, and `onTrack` still apply.
+If `featurevisor` and Featurevisor construction options such as `datafile` or `modules` are supplied together, the existing instance takes precedence and the construction options are ignored. Provider options such as `targetingKeyField`, `keySeparator`, `variationKey`, `globalVariablePrefix`, and `onTrack` still apply.
 
 See [Featurevisor OpenFeature documentation](https://featurevisor.com/docs/sdks/openfeature/) for reasons, errors, metadata, tracking, lifecycle, and other language providers.
 

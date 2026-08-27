@@ -31,7 +31,7 @@ export interface FeaturevisorProviderOptions extends FeaturevisorOptions {
   targetingKeyField?: string;
   keySeparator?: string;
   variationKey?: string;
-  globalVariableKey?: string;
+  globalVariablePrefix?: string;
   onTrack?: FeaturevisorProviderTrackingHandler;
 }
 
@@ -144,7 +144,7 @@ export class FeaturevisorProvider {
   readonly targetingKeyField: string;
   readonly keySeparator: string;
   readonly variationKey: string;
-  readonly globalVariableKey: string;
+  readonly globalVariablePrefix: string;
   private readonly onTrack?: FeaturevisorProviderTrackingHandler;
   private readonly ownsFeaturevisor: boolean;
   private datafileError?: string;
@@ -155,7 +155,7 @@ export class FeaturevisorProvider {
       targetingKeyField,
       keySeparator,
       variationKey,
-      globalVariableKey,
+      globalVariablePrefix,
       onTrack,
       ...featurevisorOptions
     } = options;
@@ -176,7 +176,10 @@ export class FeaturevisorProvider {
     this.targetingKeyField = targetingKeyField || "userId";
     this.keySeparator = keySeparator || ":";
     this.variationKey = variationKey || "variation";
-    this.globalVariableKey = globalVariableKey || "variable";
+    this.globalVariablePrefix = globalVariablePrefix || "variable";
+    if (this.globalVariablePrefix.indexOf(this.keySeparator) !== -1) {
+      throw new Error("globalVariablePrefix cannot contain keySeparator");
+    }
     this.onTrack = onTrack;
   }
 
@@ -203,16 +206,16 @@ export class FeaturevisorProvider {
     let evaluation: Evaluation;
     let value: unknown;
 
-    if (!selector) {
+    if (featureKey === this.globalVariablePrefix && selector) {
+      evaluation = this.featurevisor.evaluateVariable(selector, featurevisorContext);
+      value = this.normalizeGlobalVariable(evaluation);
+    } else if (!selector) {
       if (expectedType !== "boolean") return this.typeMismatch(flagKey, defaultValue, expectedType);
       evaluation = this.featurevisor.evaluateFlag(featureKey, featurevisorContext);
       value = evaluation.enabled;
     } else if (selector === this.variationKey) {
       evaluation = this.featurevisor.evaluateVariation(featureKey, featurevisorContext);
       value = evaluation.variationValue ?? evaluation.variation?.value;
-    } else if (selector === this.globalVariableKey) {
-      evaluation = this.featurevisor.evaluateVariable(featureKey, featurevisorContext);
-      value = this.normalizeGlobalVariable(evaluation);
     } else {
       evaluation = this.featurevisor.evaluateVariable(featureKey, selector, featurevisorContext);
       value = this.normalizeVariable(evaluation.variableValue, evaluation.variableSchema?.type);

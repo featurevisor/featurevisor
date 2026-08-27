@@ -655,14 +655,38 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
-    it("rejects reserved variable key 'variation'", () => {
+    it.each(["feature", "variation", "variable"])(
+      "rejects reserved variable key '%s'",
+      (variableKey) => {
+        expectParseFailure(
+          baseFeature({
+            variablesSchema: {
+              [variableKey]: { type: "string", defaultValue: "control" },
+            },
+          }),
+          "reserved",
+        );
+      },
+    );
+
+    it("uses custom reserved variable keys as an exact, case-sensitive list", () => {
       expectParseFailure(
         baseFeature({
           variablesSchema: {
-            variation: { type: "string", defaultValue: "control" },
+            custom: { type: "string", defaultValue: "value" },
           },
         }),
         "reserved",
+        { reservedKeys: ["custom"] },
+      );
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            variation: { type: "string", defaultValue: "control" },
+            Custom: { type: "string", defaultValue: "value" },
+          },
+        }),
+        { reservedKeys: ["custom"] },
       );
     });
   });
