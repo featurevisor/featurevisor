@@ -1,4 +1,4 @@
-.PHONY: install build test test-cli-integration test-global-variables-performance benchmark-sdk-dependencies audit-production typecheck bundle-sizes lint format check
+.PHONY: install build test test-cli-integration test-global-variables-performance test-datafile-build-performance benchmark-sdk-dependencies audit-production typecheck bundle-sizes lint format check
 
 ##
 # Packages
@@ -23,6 +23,12 @@ test-cli-integration:
 test-global-variables-performance:
 	npx lerna run build --scope @featurevisor/sdk --include-dependencies
 	node scripts/test-global-variables-performance.mjs
+
+# Local large-project confidence check for complete, tag-filtered, and Target-filtered builds.
+# This intentionally stays outside `check` and CI.
+test-datafile-build-performance:
+	npx lerna run build --scope @featurevisor/core --include-dependencies
+	node scripts/test-datafile-build-performance.mjs
 
 # Repeatable large-datafile benchmark for SDK datafile updates and evaluations.
 # This intentionally stays outside `check` and CI.

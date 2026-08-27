@@ -70,7 +70,7 @@ function buildFeatureVariableOverride(
     typeof override.requiredFeatures !== "undefined"
       ? normalizeRequiredFeatures(override.requiredFeatures)
       : undefined;
-  const result: VariableOverride = { value };
+  const result = { value } as VariableOverride;
 
   if (typeof override.key !== "undefined") result.key = override.key;
   if (typeof requiredFeatures !== "undefined") result.requiredFeatures = requiredFeatures;

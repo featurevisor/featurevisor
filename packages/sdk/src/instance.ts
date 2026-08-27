@@ -965,13 +965,27 @@ export class Featurevisor {
     context: Context,
     options: InternalOverrideOptions,
   ): boolean {
+    const dependencies = this.getEvaluationDependencies(context, options);
+
     return (requiredFeatures || []).every((required) => {
       const featureKey = typeof required === "string" ? required : required.feature;
       const expectedEnabled = typeof required === "string" ? true : (required.enabled ?? true);
-      if (this.isEnabled(featureKey, context, options) !== expectedEnabled) return false;
-      return typeof required === "string" || typeof required.variation === "undefined"
-        ? true
-        : this.getVariation(featureKey, context, options) === required.variation;
+
+      const flagEvaluation = this.evaluateRequiredFeature("flag", featureKey, dependencies);
+      if ((flagEvaluation.enabled === true) !== expectedEnabled) return false;
+
+      if (typeof required === "string" || typeof required.variation === "undefined") return true;
+
+      const variationEvaluation = this.evaluateRequiredFeature(
+        "variation",
+        featureKey,
+        dependencies,
+      );
+      const variationValue =
+        typeof variationEvaluation.variationValue !== "undefined"
+          ? variationEvaluation.variationValue
+          : variationEvaluation.variation?.value;
+      return variationValue === required.variation;
     });
   }
 

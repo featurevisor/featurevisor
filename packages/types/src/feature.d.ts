@@ -17,19 +17,36 @@ export type VariableValue = Value | null;
  * identity. `mutate` is the explicit partial update form. Legacy mutation maps
  * supplied through `value` remain supported until the next major release.
  */
-export interface VariableOverride {
+interface VariableOverrideBase {
   key?: string;
   description?: string;
   promotable?: boolean;
-
-  value?: VariableValue;
-  mutate?: Record<string, VariableValue>;
-
-  // conditions and segments are mutually exclusive
-  conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[] | "*";
-  requiredFeatures?: RequiredFeatures;
 }
+
+type VariableOverrideSelector =
+  | {
+      conditions: Condition | Condition[];
+      segments?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      segments: GroupSegment | GroupSegment[] | "*";
+      conditions?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      requiredFeatures: RequiredFeatures;
+      conditions?: never;
+      segments?: never;
+    };
+
+type VariableOverrideValue =
+  | { value: VariableValue; mutate?: never }
+  | { mutate: Record<string, VariableValue>; value?: never };
+
+export type VariableOverride = VariableOverrideBase &
+  VariableOverrideSelector &
+  VariableOverrideValue;
 
 export interface Variation {
   description?: string; // only available in YAML files

@@ -124,7 +124,7 @@ export interface VariableAssertion {
   promotable?: boolean;
   matrix?: AssertionMatrix;
   description?: string;
-  environment: EnvironmentKey;
+  environment?: EnvironmentKey;
   target?: TargetKey;
   stickyVariables?: StickyVariables;
   context?: Context;

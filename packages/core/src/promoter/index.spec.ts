@@ -980,6 +980,71 @@ describe("promoteProjectSets", function () {
     });
   });
 
+  it("applies assertion protection to global variable test specs", async function () {
+    const root = await createProject();
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/variables/supportEmail.yml`,
+        [
+          "description: Support email",
+          "tags:",
+          "  - web",
+          "type: string",
+          `defaultValue: ${set}@example.com`,
+          "",
+        ].join("\n"),
+      );
+    }
+    await writeFile(
+      root,
+      "sets/dev/tests/variables/supportEmail.spec.yml",
+      [
+        "variable: supportEmail",
+        "assertions:",
+        "  - key: shared",
+        "    expectedValue: source@example.com",
+        "  - key: dev-only",
+        "    promotable: false",
+        "    expectedValue: dev@example.com",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/tests/variables/supportEmail.spec.yml",
+      [
+        "variable: supportEmail",
+        "assertions:",
+        "  - key: shared",
+        "    expectedValue: destination@example.com",
+        "  - key: protected",
+        "    promotable: false",
+        "    expectedValue: protected@example.com",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("variables.supportEmail.spec");
+    expect(test.assertions.map((assertion) => assertion.key)).toEqual(["shared", "protected"]);
+    expect(test.assertions.find((assertion) => assertion.key === "shared")).toMatchObject({
+      expectedValue: "source@example.com",
+    });
+    expect(test.assertions.find((assertion) => assertion.key === "protected")).toMatchObject({
+      promotable: false,
+      expectedValue: "protected@example.com",
+    });
+  });
+
   it("omits non-promotable assertions when creating a missing test spec", async function () {
     const root = await createProject();
     await writeFile(

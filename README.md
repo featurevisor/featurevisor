@@ -69,7 +69,7 @@ The core building blocks of a Featurevisor [project](https://featurevisor.com/do
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
 - [Global variables](https://featurevisor.com/docs/global-variables/): independently evaluated configuration values
 
-SDKs evaluate feature values and independent global variables against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application:
+SDKs evaluate feature values against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application. Independent global variables are currently supported by the JavaScript, React, Vue.js, Node.js, Browser, and JavaScript OpenFeature packages:
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests

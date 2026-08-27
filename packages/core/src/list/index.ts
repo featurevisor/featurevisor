@@ -457,14 +457,14 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           }
 
           return assertionRegex.test(assertion.description);
-        }) as FeatureAssertion[] | SegmentAssertion[];
+        }) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[];
 
         if (testAssertions.length === 0) {
           continue;
         }
       }
 
-      (entity as TestFeature | TestSegment).assertions = testAssertions;
+      (entity as TestFeature | TestSegment | TestVariable).assertions = testAssertions;
     }
 
     result.push({

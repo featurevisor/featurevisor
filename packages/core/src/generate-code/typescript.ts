@@ -481,10 +481,13 @@ ${attributeProperties}
   // features
   const featureFiles = await datasource.listFeatures();
 
-  const parsedFeatures: {
+  const featureCandidates: {
     featureKey: string;
     parsedFeature: ParsedFeature;
   }[] = [];
+  const directlySelectedFeatureKeys = new Set<string>();
+  const selectedFeatureKeys = new Set(featureKeysRequiredByVariables);
+  const hasSelection = selectedTags.length > 0 || selectedTargets.length > 0;
 
   for (const featureKey of featureFiles) {
     const parsedFeature = (await datasource.readFeature(featureKey)) as ParsedFeature;
@@ -498,17 +501,24 @@ ${attributeProperties}
     const matchesSelectedTarget = selectedTargets.some((target) =>
       targetIncludesFeature(target, featureKey, parsedFeature),
     );
-    if (
-      (selectedTags.length > 0 || selectedTargets.length > 0) &&
-      !matchesSelectedTag &&
-      !matchesSelectedTarget &&
-      !featureKeysRequiredByVariables.has(featureKey)
-    ) {
-      continue;
+    if (!hasSelection || matchesSelectedTag || matchesSelectedTarget) {
+      directlySelectedFeatureKeys.add(featureKey);
+      selectedFeatureKeys.add(featureKey);
     }
 
-    parsedFeatures.push({ featureKey, parsedFeature });
+    featureCandidates.push({ featureKey, parsedFeature });
   }
+
+  if (hasSelection) {
+    for (const featureKey of directlySelectedFeatureKeys) {
+      const requiredChain = await datasource.getRequiredFeaturesChain(featureKey);
+      requiredChain.forEach((requiredFeatureKey) => selectedFeatureKeys.add(requiredFeatureKey));
+    }
+  }
+
+  const parsedFeatures = hasSelection
+    ? featureCandidates.filter(({ featureKey }) => selectedFeatureKeys.has(featureKey))
+    : featureCandidates;
 
   const featuresTypeSchemasUsed = new Set<string>();
   const featureTypeEntries = parsedFeatures
@@ -557,6 +567,10 @@ export type FeatureVariableKey<F extends FeatureKey> = Features[F] extends Recor
 export type FeatureVariableType<F extends FeatureKey, V extends FeatureVariableKey<F>> = Features[F] extends Record<string, unknown>
   ? Features[F][V]
   : never;
+/** @deprecated Use FeatureVariableKey. */
+export type VariableKey<F extends FeatureKey> = FeatureVariableKey<F>;
+/** @deprecated Use FeatureVariableType. */
+export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = FeatureVariableType<F, V>;
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
   ? Extract<V, string>
   : never;

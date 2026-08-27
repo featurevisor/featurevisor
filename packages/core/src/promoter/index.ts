@@ -13,6 +13,7 @@ import type {
   Schema,
   Segment,
   SegmentAssertion,
+  VariableAssertion,
   Group,
   Target,
   Test,
@@ -864,7 +865,7 @@ function mergeFeature(
   };
 }
 
-type TestAssertion = FeatureAssertion | SegmentAssertion;
+type TestAssertion = FeatureAssertion | SegmentAssertion | VariableAssertion;
 
 function assertionsAreKeyed(
   assertions: TestAssertion[],

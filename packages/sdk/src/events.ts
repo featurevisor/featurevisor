@@ -5,7 +5,7 @@ import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 /** @deprecated Use `StickyFeaturesSetEventDetails` or `StickyVariablesSetEventDetails`. */
 export interface StickySetEventDetails {
   features: FeatureKey[];
-  variables: GlobalVariableKey[];
+  variables?: GlobalVariableKey[];
   replaced: boolean;
 }
 

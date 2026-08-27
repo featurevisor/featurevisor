@@ -223,6 +223,7 @@ describe("catalog export", () => {
     expect(index.counts.variable).toBe(1);
     expect(index.entities.feature[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].targets).toEqual(["premiumWeb"]);
+    expect(index.entities.variable[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].usedInFeatureCount).toBe(1);
     expect(
       index.entities.attribute.find((entity: any) => entity.key === "country").targets,
@@ -329,6 +330,7 @@ describe("catalog export", () => {
     };
     const baseDatasource = createDatasource();
     const featureKey = "checkout/redesign";
+    const variableKey = "checkout/supportEmail";
     const datasource = {
       ...baseDatasource,
       listHistoryEntries: async () => [
@@ -344,12 +346,20 @@ describe("catalog export", () => {
         ...(await baseDatasource.readFeature()),
         key: featureKey,
       }),
-      listTests: async () => ["features/checkout/redesign.spec"],
-      readTest: async () => ({
-        key: "features/checkout/redesign.spec",
-        feature: featureKey,
-        assertions: [],
+      listVariables: async () => [variableKey],
+      readVariable: async () => ({
+        key: variableKey,
+        type: "string",
+        defaultValue: "checkout@example.com",
       }),
+      listTests: async () => [
+        "features/checkout/redesign.spec",
+        "variables/checkout/supportEmail.spec",
+      ],
+      readTest: async (key: string) =>
+        key.startsWith("variables/")
+          ? { key, variable: variableKey, assertions: [] }
+          : { key, feature: featureKey, assertions: [] },
     };
 
     await exportCatalog(createRuntime(), root, projectConfig, datasource, {
@@ -401,6 +411,26 @@ describe("catalog export", () => {
     expect(index.entities.feature[0].href).toBe("entities/feature/checkout/redesign.json");
     expect(detail.sourcePath).toBe("features/checkout/redesign.yml");
     expect(detail.historyPath).toBe("data/root/entities/feature/checkout/redesign/history");
+    expect(
+      fs.existsSync(
+        path.join(
+          root,
+          "catalog",
+          "data",
+          "root",
+          "entities",
+          "variable",
+          "checkout",
+          "supportEmail.json",
+        ),
+      ),
+    ).toBe(true);
+    expect(index.entities.variable[0]).toEqual(
+      expect.objectContaining({
+        key: variableKey,
+        href: "entities/variable/checkout/supportEmail.json",
+      }),
+    );
   });
 
   it("exports precise transitive schema and target relationships", async () => {

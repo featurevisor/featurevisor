@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { getProjectConfig } from "../config/projectConfig";
 import { Datasource } from "../datasource";
+import { testProject } from "../tester";
 import { lintPlugin, lintProject, type LintResult } from "./lintProject";
 
 function createTempProjectFromExample1() {
@@ -262,6 +263,43 @@ describe("core: lintProject", function () {
           error.filePath.includes(path.join("tests", "features", "checkout.spec.yml")),
       ),
     ).toBe(false);
+  });
+
+  it("lints slash-namespaced global variables and their tests", async () => {
+    const root = createTempProject(
+      'module.exports = { namespaceCharacter: "/", environments: ["production"] };',
+    );
+    tempProjectPath = root;
+
+    fs.mkdirSync(path.join(root, "variables", "checkout"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "variables", "checkout", "supportEmail.yml"),
+      [
+        "description: Checkout support email",
+        "type: string",
+        "defaultValue: checkout@example.com",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(root, "tests", "variables", "checkout"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tests", "variables", "checkout", "supportEmail.spec.yml"),
+      [
+        "variable: checkout/supportEmail",
+        "assertions:",
+        "  - environment: production",
+        "    expectedValue: checkout@example.com",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await lintProject(getDeps(root) as any, { json: true });
+    expect(result).toEqual({ hasError: false, errors: [] });
+    await expect(
+      testProject(getDeps(root) as any, { onlyFailures: true, quiet: true }),
+    ).resolves.toBe(false);
   });
 
   it("accepts promotable flags on top-level authored entities", async () => {

@@ -98,6 +98,21 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
     );
   });
 
+  it("allows global variable assertions without an environment in projects without environments", () => {
+    const result = getTestsZodSchema(
+      minimalProjectConfig({ environments: undefined }),
+      ["checkout"],
+      ["desktop"],
+      ["web"],
+      ["settings"],
+    ).safeParse({
+      variable: "settings",
+      assertions: [{ expectedValue: "enabled" }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("accepts a valid feature test with matrix, context, sticky, and expected evaluations", () => {
     expectTestSuccess({
       feature: "checkout",

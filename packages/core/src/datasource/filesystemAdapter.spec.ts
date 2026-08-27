@@ -3,6 +3,7 @@ import * as os from "os";
 import * as path from "path";
 
 import { getProjectConfig } from "../config";
+import { buildDatafile } from "../builder";
 import { Datasource } from "./datasource";
 import { getExistingStateFilePath } from "./filesystemAdapter";
 
@@ -91,7 +92,9 @@ describe("core: filesystemAdapter", () => {
   });
 
   it("keeps slash-separated keys when namespaceCharacter is slash", async () => {
-    const root = createProject('module.exports = { namespaceCharacter: "/" };');
+    const root = createProject(
+      'module.exports = { namespaceCharacter: "/", environments: ["staging", "production"] };',
+    );
 
     writeFile(
       path.join(root, "features", "checkout", "page.yml"),
@@ -111,14 +114,37 @@ describe("core: filesystemAdapter", () => {
         "      percentage: 100",
       ].join("\n"),
     );
+    writeFile(
+      path.join(root, "variables", "checkout", "supportEmail.yml"),
+      [
+        "description: Checkout support email",
+        "type: string",
+        "defaultValue: checkout@example.com",
+      ].join("\n"),
+    );
 
     const config = getProjectConfig(root);
     const datasource = new Datasource(config, root);
 
     await expect(datasource.listFeatures()).resolves.toEqual(["checkout/page"]);
+    await expect(datasource.listVariables()).resolves.toEqual(["checkout/supportEmail"]);
     await expect(datasource.readFeature("checkout/page")).resolves.toMatchObject({
       description: "Checkout page",
     });
+    await expect(datasource.readVariable("checkout/supportEmail")).resolves.toMatchObject({
+      description: "Checkout support email",
+      defaultValue: "checkout@example.com",
+    });
+
+    const datafile = await buildDatafile(
+      config,
+      datasource,
+      { revision: "slash-variable", environment: "production" },
+      { features: {} },
+    );
+    expect(datafile.variables?.["checkout/supportEmail"]).toEqual(
+      expect.objectContaining({ defaultValue: "checkout@example.com" }),
+    );
   });
 
   it("lists sets and reads entities from selected set", async () => {

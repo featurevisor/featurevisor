@@ -30,6 +30,10 @@ function requiredFeaturesDatafile(): DatafileContent {
         variations: [{ value: "control" }, { value: "treatment" }],
         traffic: [{ key: "off", segments: "*", percentage: 0, allocation: [] }],
       }),
+      disabledWithoutVariation: createFeature({
+        variations: [{ value: "control" }, { value: "treatment" }],
+        traffic: [{ key: "off", segments: "*", percentage: 0, allocation: [] }],
+      }),
       stringRequirement: createFeature({ requiredFeatures: ["enabled"] }),
       enabledRequirement: createFeature({
         requiredFeatures: [{ feature: "enabled", enabled: true }],
@@ -139,6 +143,14 @@ function requiredFeaturesDatafile(): DatafileContent {
         disabledValue: "unavailable",
         requiredFeatures: [{ feature: "missing", enabled: false }],
       },
+      disabledWithoutVariationVariable: {
+        type: "string",
+        defaultValue: "available",
+        disabledValue: "unavailable",
+        requiredFeatures: [
+          { feature: "disabledWithoutVariation", enabled: false, variation: "control" },
+        ],
+      },
       overrides: {
         type: "string",
         defaultValue: "default",
@@ -202,6 +214,41 @@ describe("requiredFeatures", () => {
     expect(f.getVariable("disabledVariable")).toBe("available");
     expect(f.getVariable("disabledVariationVariable")).toBe("available");
     expect(f.getVariable("missingDisabledVariable")).toBe("available");
+  });
+
+  it("does not pass a global variable caller default into required feature evaluations", () => {
+    expect(
+      f.evaluateVariable(
+        "disabledWithoutVariationVariable",
+        {},
+        {
+          defaultVariationValue: "control",
+        },
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        reason: "required_features_unmet",
+        variableValue: "unavailable",
+      }),
+    );
+  });
+
+  it("honours a required variation produced by the normal module pipeline", () => {
+    const withModule = createFeaturevisor({
+      datafile: requiredFeaturesDatafile(),
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "supply-disabled-variation",
+          afterEvaluation: (evaluation) =>
+            evaluation.type === "variation" && evaluation.featureKey === "disabledWithoutVariation"
+              ? { ...evaluation, variation: { value: "control" } }
+              : evaluation,
+        },
+      ],
+    });
+
+    expect(withModule.getVariable("disabledWithoutVariationVariable")).toBe("available");
   });
 
   it("matches requiredFeatures alone or with exactly one context selector", () => {

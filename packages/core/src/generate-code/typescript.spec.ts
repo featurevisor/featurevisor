@@ -150,6 +150,12 @@ describe("generate-code/typescript", () => {
     expect(indexContent).toContain('export * from "./features";');
     expect(indexContent).toContain('export * from "./functions";');
     expect(featuresContent).toContain("export type FeatureKey = keyof Features;");
+    expect(featuresContent).toContain(
+      "export type VariableKey<F extends FeatureKey> = FeatureVariableKey<F>;",
+    );
+    expect(featuresContent).toContain(
+      "export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = FeatureVariableType<F, V>;",
+    );
     expect(featuresContent).toContain("? Extract<V, string>");
     expect(functionsContent).toContain("export function isEnabled(");
     expect(functionsContent).toContain("export function getVariation<");
@@ -204,6 +210,51 @@ describe("generate-code/typescript", () => {
     expect(reactContent).not.toContain("export function useGlobalVariable");
     expect(reactContent).not.toContain("as Variation<F> | null");
     expect(reactContent).not.toContain("as VariableType<F, V> | null");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
+  it("includes transitive required features when filtering by tag", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "codegenDependency.yml"),
+      [
+        "description: Code generation dependency",
+        "tags:",
+        "  - dependency-only",
+        "bucketBy: userId",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "codegenSelected.yml"),
+      [
+        "description: Selected for code generation",
+        "tags:",
+        "  - codegen-selected",
+        "requiredFeatures: codegenDependency",
+        "bucketBy: userId",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const projectConfig = getProjectConfig(tempProjectPath);
+    projectConfig.tags.push("codegen-selected");
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { tag: "codegen-selected" },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    expect(featuresContent).toContain("codegenSelected: null;");
+    expect(featuresContent).toContain("codegenDependency: null;");
+    expect(featuresContent).not.toContain("discount: null;");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 
@@ -306,6 +357,57 @@ describe("generate-code/typescript", () => {
     expect(variablesContent).toContain("checkoutSettings: {");
     expect(variablesContent).not.toContain("headerMessage:");
     expect(variablesContent).not.toContain("supportEmail:");
+  });
+
+  it("includes transitive required features when filtering by target", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "targetDependency.yml"),
+      ["description: Target dependency", "tags:", "  - dependency-only", "bucketBy: userId"].join(
+        "\n",
+      ),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "targetSelected.yml"),
+      [
+        "description: Selected through target",
+        "tags:",
+        "  - target-selected",
+        "requiredFeatures: targetDependency",
+        "bucketBy: userId",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "dependency-code.yml"),
+      [
+        "description: Dependency code",
+        "includeFeatures:",
+        "  - targetSelected",
+        "includeVariables: []",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { target: "dependency-code" },
+    );
+
+    const featuresContent = fs.readFileSync(path.join(outputPath, "features.ts"), "utf8");
+    expect(featuresContent).toContain("targetSelected: null;");
+    expect(featuresContent).toContain("targetDependency: null;");
+    expect(featuresContent).not.toContain("discount: null;");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 
   it("combines tags and targets as a union and rejects unknown selectors", async () => {

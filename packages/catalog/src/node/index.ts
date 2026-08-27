@@ -1465,7 +1465,9 @@ async function buildSetCatalog(
                 ? sortSet(relationships.segmentTargets[key])
                 : plan.type === "attribute"
                   ? sortSet(relationships.attributeTargets[key])
-                  : undefined,
+                  : plan.type === "variable"
+                    ? sortSet(relationships.variableTargets[key])
+                    : undefined,
           usedInFeatureCount:
             plan.type === "segment"
               ? sortSet(relationships.segmentsUsedInFeatures[key]).length
