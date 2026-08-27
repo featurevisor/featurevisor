@@ -84,13 +84,14 @@ const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
   "traits",
 ];
 const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries.germany", "countries.france"];
-const TEST_FEATURES: [string, ...string[]] = ["testFeature", "dependency"];
+const TEST_FEATURES: [string, ...string[]] = ["testFeature", "dependency", "noVariations"];
 const TEST_FEATURES_BY_KEY: Record<string, ParsedFeature> = {
   testFeature: { description: "Test feature" } as ParsedFeature,
   dependency: {
     description: "Dependency",
     variations: [{ value: "control" }, { value: "treatment" }],
   } as ParsedFeature,
+  noVariations: { description: "No variations" } as ParsedFeature,
 };
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
 
@@ -165,6 +166,11 @@ describe("requiredFeatures", () => {
     expect(
       getFeatureSchema().safeParse(
         baseFeature({ requiredFeatures: [{ feature: "dependency", variation: "missing" }] }),
+      ).success,
+    ).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ requiredFeatures: [{ feature: "noVariations", variation: "control" }] }),
       ).success,
     ).toBe(false);
     expect(

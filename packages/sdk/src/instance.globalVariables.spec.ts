@@ -118,6 +118,10 @@ interface GlobalVariableConformanceCase {
 
 const globalVariableConformanceCases = conformance.globalVariables
   .cases as GlobalVariableConformanceCase[];
+const dependencyUpdateModes = conformance.globalVariables.dependencyUpdateCase.modes as Array<{
+  name: string;
+  replace: boolean;
+}>;
 
 describe("global variables", () => {
   it("preserves feature-scoped calls and disambiguates by argument shape", () => {
@@ -370,7 +374,7 @@ describe("global variables", () => {
   });
 
   it.each(globalVariableConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(4);
+    expect(conformance.version).toBe(5);
     const f = createFeaturevisor({
       datafile: conformance.globalVariables.datafile,
       stickyVariables: testCase.stickyVariables,
@@ -427,6 +431,49 @@ describe("global variables", () => {
       }),
     );
   });
+
+  it.each(dependencyUpdateModes)(
+    "conformance: reports dependency changes after a complete $name",
+    ({ replace }) => {
+      const testCase = conformance.globalVariables.dependencyUpdateCase;
+      const f = createFeaturevisor({ datafile: testCase.initial, logLevel: "fatal" });
+      const events: any[] = [];
+      f.on("datafile_set", (event) => events.push(event));
+
+      f.setDatafile(testCase.updated, replace);
+
+      expect([...events[0].features].sort()).toEqual(testCase.expectedChangedFeatures);
+      expect([...events[0].variables].sort()).toEqual(testCase.expectedChangedVariables);
+      expect(events[0].replaced).toBe(replace);
+    },
+  );
+
+  it("conformance: reports dependencies when replacement removes a segment", () => {
+    const testCase = conformance.globalVariables.dependencyUpdateCase;
+    const f = createFeaturevisor({ datafile: testCase.initial, logLevel: "fatal" });
+    const events: any[] = [];
+    f.on("datafile_set", (event) => events.push(event));
+
+    f.setDatafile(testCase.withoutSegment, true);
+
+    expect([...events[0].features].sort()).toEqual(testCase.expectedRemovedSegmentFeatures);
+    expect([...events[0].variables].sort()).toEqual(testCase.expectedRemovedSegmentVariables);
+  });
+
+  it.each(dependencyUpdateModes)(
+    "conformance: keeps identical $name dependency events empty",
+    ({ replace }) => {
+      const testCase = conformance.globalVariables.dependencyUpdateCase;
+      const f = createFeaturevisor({ datafile: testCase.initial, logLevel: "fatal" });
+      const events: any[] = [];
+      f.on("datafile_set", (event) => events.push(event));
+
+      f.setDatafile(testCase.initial, replace);
+
+      expect(events[0].features).toEqual([]);
+      expect(events[0].variables).toEqual([]);
+    },
+  );
 
   it("supports child sticky values and change events for variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });

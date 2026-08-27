@@ -26,12 +26,9 @@ function addDependent<TValue extends string>(
   if (dependents.indexOf(dependent) === -1) dependents.push(dependent);
 }
 
-function getRequiredFeatureKey(required: Required): FeatureKey {
-  return typeof required === "string" ? required : required.key;
-}
-
-function getRequiredFeatureKeyV2(required: RequiredFeature): FeatureKey {
-  return typeof required === "string" ? required : required.feature;
+function getRequiredFeatureKey(required: Required | RequiredFeature): FeatureKey {
+  if (typeof required === "string") return required;
+  return "feature" in required ? required.feature : required.key;
 }
 
 function addSegmentKeys(segments: GroupSegment | GroupSegment[] | string, result: Set<SegmentKey>) {
@@ -103,7 +100,7 @@ function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, fe
 
   if (feature.requiredFeatures) {
     for (const required of feature.requiredFeatures) {
-      addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+      addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
     }
   } else {
     for (const required of feature.required || []) {
@@ -119,7 +116,7 @@ function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, fe
         const requirements = override.requiredFeatures;
         if (!requirements) continue;
         for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
-          addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+          addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
         }
       }
     }
@@ -133,7 +130,7 @@ function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, fe
         const requirements = override.requiredFeatures;
         if (!requirements) continue;
         for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
-          addDependent(index.featureDependents, getRequiredFeatureKeyV2(required), featureKey);
+          addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
         }
       }
     }
@@ -146,7 +143,7 @@ function indexVariable(
   variable: DatafileVariable,
 ) {
   for (const required of variable.requiredFeatures || []) {
-    addDependent(index.featureVariables, getRequiredFeatureKeyV2(required), variableKey);
+    addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
   }
 
   for (const override of variable.overrides || []) {
@@ -159,7 +156,7 @@ function indexVariable(
     }
 
     for (const required of override.requiredFeatures || []) {
-      addDependent(index.featureVariables, getRequiredFeatureKeyV2(required), variableKey);
+      addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
     }
   }
 }

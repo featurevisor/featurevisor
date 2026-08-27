@@ -202,7 +202,7 @@ f.on('error', ({ diagnostic }) => {})
 unsubscribe() // every f.on() returns an unsubscribe function
 ```
 
-Required feature dependencies are followed transitively. A partial datafile that updates only a segment or prerequisite feature still reports every feature and global variable whose evaluation may have changed. Use these arrays to limit application updates to affected values.
+Required feature dependencies are followed transitively. A datafile that updates only a segment or prerequisite feature still reports every feature and global variable whose evaluation may have changed. This dependency propagation is the same whether the datafile is merged or replaces the stored datafile. Use these arrays to limit application updates to affected values.
 
 ## Sticky
 

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "description": "Featurevisor v3 cross SDK compatibility contracts",
   "bucketing": {
     "minimum": 0,
@@ -352,6 +352,321 @@
         "changedFeatures": ["retained", "changed"],
         "changedVariables": ["retained", "changed"]
       }
+    },
+    "dependencyUpdateCase": {
+      "modes": [
+        { "name": "merge", "replace": false },
+        { "name": "replacement", "replace": true }
+      ],
+      "initial": {
+        "schemaVersion": "2",
+        "revision": "dependencies-initial",
+        "segments": {
+          "audience": {
+            "conditions": { "attribute": "country", "operator": "equals", "value": "nl" }
+          }
+        },
+        "features": {
+          "segmentFeature": {
+            "hash": "segment-feature",
+            "bucketBy": "userId",
+            "traffic": [{ "key": "audience", "segments": "audience", "percentage": 100000 }]
+          },
+          "segmentDependent": {
+            "hash": "segment-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["segmentFeature"],
+            "traffic": []
+          },
+          "prerequisite": {
+            "hash": "prerequisite-old",
+            "bucketBy": "userId",
+            "traffic": []
+          },
+          "requiredDependent": {
+            "hash": "required-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["prerequisite"],
+            "traffic": []
+          }
+        },
+        "variables": {
+          "bySegment": {
+            "hash": "by-segment",
+            "type": "string",
+            "defaultValue": "default",
+            "overrides": [{ "key": "audience", "segments": "audience", "value": "matched" }]
+          },
+          "bySegmentFeature": {
+            "hash": "by-segment-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["segmentDependent"]
+          },
+          "byRequiredFeature": {
+            "hash": "by-required-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["requiredDependent"]
+          }
+        }
+      },
+      "updated": {
+        "schemaVersion": "2",
+        "revision": "dependencies-updated",
+        "segments": {
+          "audience": {
+            "conditions": { "attribute": "country", "operator": "equals", "value": "de" }
+          }
+        },
+        "features": {
+          "segmentFeature": {
+            "hash": "segment-feature",
+            "bucketBy": "userId",
+            "traffic": [{ "key": "audience", "segments": "audience", "percentage": 100000 }]
+          },
+          "segmentDependent": {
+            "hash": "segment-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["segmentFeature"],
+            "traffic": []
+          },
+          "prerequisite": {
+            "hash": "prerequisite-new",
+            "bucketBy": "userId",
+            "traffic": []
+          },
+          "requiredDependent": {
+            "hash": "required-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["prerequisite"],
+            "traffic": []
+          }
+        },
+        "variables": {
+          "bySegment": {
+            "hash": "by-segment",
+            "type": "string",
+            "defaultValue": "default",
+            "overrides": [{ "key": "audience", "segments": "audience", "value": "matched" }]
+          },
+          "bySegmentFeature": {
+            "hash": "by-segment-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["segmentDependent"]
+          },
+          "byRequiredFeature": {
+            "hash": "by-required-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["requiredDependent"]
+          }
+        }
+      },
+      "withoutSegment": {
+        "schemaVersion": "2",
+        "revision": "dependencies-without-segment",
+        "segments": {},
+        "features": {
+          "segmentFeature": {
+            "hash": "segment-feature",
+            "bucketBy": "userId",
+            "traffic": [{ "key": "audience", "segments": "audience", "percentage": 100000 }]
+          },
+          "segmentDependent": {
+            "hash": "segment-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["segmentFeature"],
+            "traffic": []
+          },
+          "prerequisite": {
+            "hash": "prerequisite-old",
+            "bucketBy": "userId",
+            "traffic": []
+          },
+          "requiredDependent": {
+            "hash": "required-dependent",
+            "bucketBy": "userId",
+            "requiredFeatures": ["prerequisite"],
+            "traffic": []
+          }
+        },
+        "variables": {
+          "bySegment": {
+            "hash": "by-segment",
+            "type": "string",
+            "defaultValue": "default",
+            "overrides": [{ "key": "audience", "segments": "audience", "value": "matched" }]
+          },
+          "bySegmentFeature": {
+            "hash": "by-segment-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["segmentDependent"]
+          },
+          "byRequiredFeature": {
+            "hash": "by-required-feature",
+            "type": "string",
+            "defaultValue": "default",
+            "requiredFeatures": ["requiredDependent"]
+          }
+        }
+      },
+      "expectedChangedFeatures": [
+        "prerequisite",
+        "requiredDependent",
+        "segmentDependent",
+        "segmentFeature"
+      ],
+      "expectedChangedVariables": ["byRequiredFeature", "bySegment", "bySegmentFeature"],
+      "expectedRemovedSegmentFeatures": ["segmentDependent", "segmentFeature"],
+      "expectedRemovedSegmentVariables": ["bySegment", "bySegmentFeature"]
+    }
+  },
+  "requiredFeatures": {
+    "datafile": {
+      "schemaVersion": "2",
+      "revision": "required-features",
+      "segments": {},
+      "features": {
+        "enabledFeature": {
+          "bucketBy": "userId",
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "disabledFeature": { "bucketBy": "userId", "traffic": [] },
+        "disabledVariationFeature": {
+          "bucketBy": "userId",
+          "disabledVariationValue": "treatment",
+          "variations": [{ "value": "control" }, { "value": "treatment" }],
+          "traffic": []
+        },
+        "stringRequirement": {
+          "bucketBy": "userId",
+          "requiredFeatures": ["enabledFeature"],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "explicitEnabledRequirement": {
+          "bucketBy": "userId",
+          "requiredFeatures": [{ "feature": "enabledFeature", "enabled": true }],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "disabledRequirement": {
+          "bucketBy": "userId",
+          "requiredFeatures": [{ "feature": "disabledFeature", "enabled": false }],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "missingDisabledRequirement": {
+          "bucketBy": "userId",
+          "requiredFeatures": [{ "feature": "missingFeature", "enabled": false }],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "enabledAndVariationRequirement": {
+          "bucketBy": "userId",
+          "requiredFeatures": [
+            {
+              "feature": "disabledVariationFeature",
+              "enabled": false,
+              "variation": "treatment"
+            }
+          ],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "multipleRequirements": {
+          "bucketBy": "userId",
+          "requiredFeatures": [
+            "enabledFeature",
+            { "feature": "disabledFeature", "enabled": false }
+          ],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "unmetMultipleRequirements": {
+          "bucketBy": "userId",
+          "requiredFeatures": ["enabledFeature", { "feature": "disabledFeature", "enabled": true }],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "canonicalPrecedence": {
+          "bucketBy": "userId",
+          "required": ["disabledFeature"],
+          "requiredFeatures": ["enabledFeature"],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "featureVariableOverride": {
+          "bucketBy": "userId",
+          "variablesSchema": {
+            "message": { "type": "string", "defaultValue": "default" }
+          },
+          "traffic": [
+            {
+              "key": "all",
+              "segments": "*",
+              "percentage": 100000,
+              "variableOverrides": {
+                "message": [
+                  {
+                    "key": "blocked",
+                    "requiredFeatures": ["disabledFeature"],
+                    "value": "blocked"
+                  },
+                  {
+                    "key": "matched",
+                    "requiredFeatures": ["enabledFeature"],
+                    "value": "matched"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "cases": [
+      {
+        "name": "string requirement defaults to enabled",
+        "feature": "stringRequirement",
+        "expectedEnabled": true
+      },
+      {
+        "name": "explicit enabled true",
+        "feature": "explicitEnabledRequirement",
+        "expectedEnabled": true
+      },
+      {
+        "name": "disabled feature satisfies enabled false",
+        "feature": "disabledRequirement",
+        "expectedEnabled": true
+      },
+      {
+        "name": "missing feature satisfies enabled false",
+        "feature": "missingDisabledRequirement",
+        "expectedEnabled": true
+      },
+      {
+        "name": "enabled and variation both match",
+        "feature": "enabledAndVariationRequirement",
+        "expectedEnabled": true
+      },
+      {
+        "name": "multiple requirements use AND",
+        "feature": "multipleRequirements",
+        "expectedEnabled": true
+      },
+      {
+        "name": "one unmet requirement disables feature",
+        "feature": "unmetMultipleRequirements",
+        "expectedEnabled": false
+      },
+      {
+        "name": "requiredFeatures takes precedence over required",
+        "feature": "canonicalPrecedence",
+        "expectedEnabled": true
+      }
+    ],
+    "featureVariableCase": {
+      "feature": "featureVariableOverride",
+      "variable": "message",
+      "expectedValue": "matched",
+      "expectedOverrideKey": "matched"
     }
   },
   "diagnostics": {

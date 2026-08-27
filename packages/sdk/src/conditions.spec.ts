@@ -15,7 +15,7 @@ const conformance = JSON.parse(
 
 describe("sdk: Conditions", function () {
   it("executes every shared condition conformance case", () => {
-    expect(conformance.version).toBe(4);
+    expect(conformance.version).toBe(5);
 
     for (const testCase of conformance.conditionCases) {
       expect(allConditionsAreMatched(testCase.condition as Condition, testCase.context)).toBe(

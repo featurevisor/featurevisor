@@ -1,6 +1,65 @@
 import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
 
+function createDependencyDatafile(
+  revision: string,
+  segmentValue: string | undefined,
+  prerequisiteHash = "prerequisite",
+) {
+  return createDatafile({
+    revision,
+    segments:
+      typeof segmentValue === "undefined"
+        ? {}
+        : {
+            audience: {
+              conditions: { attribute: "country", operator: "equals", value: segmentValue },
+            },
+          },
+    features: {
+      direct: createFeature({
+        hash: "direct",
+        traffic: [
+          {
+            key: "audience",
+            segments: "audience",
+            percentage: 100000,
+            allocation: [],
+          },
+        ],
+      }),
+      indirect: createFeature({ hash: "indirect", requiredFeatures: ["direct"] }),
+      prerequisite: createFeature({ hash: prerequisiteHash }),
+      requiredDependent: createFeature({
+        hash: "required-dependent",
+        requiredFeatures: ["prerequisite"],
+      }),
+      unrelated: createFeature({ hash: "unrelated" }),
+    },
+    variables: {
+      bySegment: {
+        hash: "by-segment",
+        type: "string",
+        defaultValue: "default",
+        overrides: [{ key: "audience", segments: "audience", value: "matched" }],
+      },
+      byFeature: {
+        hash: "by-feature",
+        type: "string",
+        defaultValue: "default",
+        requiredFeatures: ["indirect"],
+      },
+      byRequiredFeature: {
+        hash: "by-required-feature",
+        type: "string",
+        defaultValue: "default",
+        requiredFeatures: ["requiredDependent"],
+      },
+      unrelated: { hash: "unrelated", type: "string", defaultValue: "default" },
+    },
+  });
+}
+
 describe("Featurevisor public API: datafiles", () => {
   it("starts with a usable empty datafile", () => {
     const diagnostics: FeaturevisorDiagnostic[] = [];
@@ -281,6 +340,72 @@ describe("Featurevisor public API: datafiles", () => {
       variables: ["bySegment", "byFeature"],
       replaced: false,
     });
+  });
+
+  it.each([
+    ["merge", false],
+    ["replacement", true],
+  ])("reports segment dependencies after a complete %s update", (_, replace) => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDependencyDatafile("initial", "nl"),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(createDependencyDatafile("updated", "de"), replace);
+
+    expect(events[0].features).toEqual(["direct", "indirect"]);
+    expect(events[0].variables).toEqual(["bySegment", "byFeature"]);
+    expect(events[0].replaced).toBe(replace);
+  });
+
+  it.each([
+    ["merge", false],
+    ["replacement", true],
+  ])("reports required feature dependencies after a complete %s update", (_, replace) => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDependencyDatafile("initial", "nl", "old"),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(createDependencyDatafile("updated", "nl", "new"), replace);
+
+    expect(events[0].features).toEqual(["prerequisite", "requiredDependent"]);
+    expect(events[0].variables).toEqual(["byRequiredFeature"]);
+    expect(events[0].replaced).toBe(replace);
+  });
+
+  it("reports dependencies when replacement removes a segment", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDependencyDatafile("initial", "nl"),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(createDependencyDatafile("updated", undefined), true);
+
+    expect(events[0].features).toEqual(["direct", "indirect"]);
+    expect(events[0].variables).toEqual(["bySegment", "byFeature"]);
+  });
+
+  it.each([
+    ["merge", false],
+    ["replacement", true],
+  ])("keeps dependency change arrays empty for an identical %s", (_, replace) => {
+    const events: any[] = [];
+    const datafile = createDependencyDatafile("same", "nl");
+    const sdk = createFeaturevisor({ logLevel: "fatal", datafile });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    sdk.setDatafile(createDependencyDatafile("same", "nl"), replace);
+
+    expect(events[0].features).toEqual([]);
+    expect(events[0].variables).toEqual([]);
+    expect(events[0].replaced).toBe(replace);
   });
 
   it("indexes segment dependencies in traffic and variation variable overrides", () => {

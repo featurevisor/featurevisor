@@ -1,7 +1,22 @@
 import type { DatafileContent } from "@featurevisor/types";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { createFeaturevisor } from "./instance";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
+
+interface RequiredFeaturesConformanceCase {
+  name: string;
+  feature: string;
+  expectedEnabled: boolean;
+}
+
+const requiredFeaturesConformanceCases = conformance.requiredFeatures
+  .cases as RequiredFeaturesConformanceCase[];
 
 function requiredFeaturesDatafile(): DatafileContent {
   return createDatafile({
@@ -256,5 +271,27 @@ describe("requiredFeatures", () => {
     expect(withModule.isEnabled("disabled")).toBe(true);
     expect(withModule.isEnabled("disabledRequirement")).toBe(false);
     expect(withModule.getVariable("disabledVariable")).toBe("unavailable");
+  });
+
+  it.each(requiredFeaturesConformanceCases)("conformance: $name", (testCase) => {
+    expect(conformance.version).toBe(5);
+    const sdk = createFeaturevisor({
+      datafile: conformance.requiredFeatures.datafile,
+      logLevel: "fatal",
+    });
+
+    expect(sdk.isEnabled(testCase.feature)).toBe(testCase.expectedEnabled);
+  });
+
+  it("conformance: applies requiredFeatures to feature variable overrides", () => {
+    const testCase = conformance.requiredFeatures.featureVariableCase;
+    const sdk = createFeaturevisor({
+      datafile: conformance.requiredFeatures.datafile,
+      logLevel: "fatal",
+    });
+    const evaluation = sdk.evaluateVariable(testCase.feature, testCase.variable);
+
+    expect(evaluation.variableValue).toBe(testCase.expectedValue);
+    expect(evaluation.variableOverrideKey).toBe(testCase.expectedOverrideKey);
   });
 });

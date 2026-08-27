@@ -188,6 +188,19 @@ function getDatafileSetEventDetails(
   };
 }
 
+function hasUnreportedKey(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+  reported: string[],
+) {
+  const reportedKeys = new Set(reported);
+
+  return (
+    Object.keys(previous).some((key) => !reportedKeys.has(key)) ||
+    Object.keys(next).some((key) => !reportedKeys.has(key))
+  );
+}
+
 function getValueByType(value: VariableValue, fieldType: string | VariableType): VariableValue {
   if (value === undefined || value === null) {
     return null;
@@ -312,13 +325,18 @@ export class Featurevisor {
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
       const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
+      const segmentKeys = Object.keys(
+        replace
+          ? { ...this.datafile.segments, ...storedDatafile.segments }
+          : resolvedDatafile.segments,
+      );
+      const changedSegments = segmentKeys.filter(
+        (segmentKey) =>
+          JSON.stringify(this.datafile.segments[segmentKey]) !==
+          JSON.stringify(storedDatafile.segments[segmentKey]),
+      );
 
       if (!replace) {
-        const changedSegments = Object.keys(resolvedDatafile.segments).filter(
-          (segmentKey) =>
-            JSON.stringify(this.datafile.segments[segmentKey]) !==
-            JSON.stringify(storedDatafile.segments[segmentKey]),
-        );
         const hasFeatureDefinitions = Object.keys(resolvedDatafile.features).length > 0;
         const hasVariableDefinitions = Object.keys(resolvedDatafile.variables || {}).length > 0;
 
@@ -335,6 +353,32 @@ export class Featurevisor {
         } else if (hasFeatureDefinitions || hasVariableDefinitions) {
           this.dependencyIndex = undefined;
         }
+      } else if (details.features.length > 0 || changedSegments.length > 0) {
+        if (
+          hasUnreportedKey(this.datafile.features, storedDatafile.features, details.features) ||
+          hasUnreportedKey(
+            this.datafile.variables || {},
+            storedDatafile.variables || {},
+            details.variables,
+          )
+        ) {
+          const previousIndex =
+            this.dependencyIndex || createDatafileDependencyIndex(this.datafile);
+          const nextIndex = createDatafileDependencyIndex(storedDatafile);
+          addDatafileDependencyChanges(
+            details.features,
+            details.variables,
+            changedSegments,
+            previousIndex,
+          );
+          addDatafileDependencyChanges(
+            details.features,
+            details.variables,
+            changedSegments,
+            nextIndex,
+          );
+        }
+        this.dependencyIndex = undefined;
       } else {
         this.dependencyIndex = undefined;
       }
