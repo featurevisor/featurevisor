@@ -1,4 +1,6 @@
 import { ErrorCode, StandardResolutionReasons } from "@openfeature/core";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   createFeaturevisor,
   type DatafileContent,
@@ -7,6 +9,10 @@ import {
   type Feature,
 } from "@featurevisor/sdk";
 import { FeaturevisorProvider } from "./provider";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 function feature(overrides: Partial<Feature> = {}): Feature {
   return {
@@ -274,6 +280,7 @@ describe("Featurevisor OpenFeature mapping", () => {
 
   it.each([
     ["required", StandardResolutionReasons.TARGETING_MATCH],
+    ["required_features_unmet", conformance.openFeature.reasonMappings.required_features_unmet],
     ["forced", StandardResolutionReasons.TARGETING_MATCH],
     ["sticky", StandardResolutionReasons.TARGETING_MATCH],
     ["rule", StandardResolutionReasons.TARGETING_MATCH],

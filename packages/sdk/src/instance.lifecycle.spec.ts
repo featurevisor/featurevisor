@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import {
   createComplexDatafile,
@@ -5,6 +8,10 @@ import {
   createFeature,
   deterministicBucketModule,
 } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: lifecycle and state", () => {
   it("merges and replaces instance context and emits snapshots", () => {
@@ -90,6 +97,31 @@ describe("Featurevisor public API: lifecycle and state", () => {
     expect(diagnostics.slice(-2).map((diagnostic) => diagnostic.code)).toEqual([
       "sticky_features_set",
       "sticky_variables_set",
+    ]);
+  });
+
+  it("conformance: reports canonical sticky diagnostics before lifecycle events", () => {
+    expect(conformance.lifecycle.diagnosticBeforeEvent).toBe(true);
+    const calls: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "debug",
+      onDiagnostic: (diagnostic) => {
+        if (diagnostic.code.indexOf("sticky_") === 0) {
+          calls.push(`diagnostic:${diagnostic.code}`);
+        }
+      },
+    });
+    sdk.on("sticky_features_set", () => calls.push("event:sticky_features_set"));
+    sdk.on("sticky_variables_set", () => calls.push("event:sticky_variables_set"));
+
+    sdk.setStickyFeatures({ feature: { enabled: true } });
+    sdk.setStickyVariables({ variable: "value" });
+
+    expect(calls).toEqual([
+      `diagnostic:${conformance.lifecycle.stickyFeatureDiagnostic}`,
+      `event:${conformance.lifecycle.stickyFeatureEvent}`,
+      `diagnostic:${conformance.lifecycle.stickyVariableDiagnostic}`,
+      `event:${conformance.lifecycle.stickyVariableEvent}`,
     ]);
   });
 

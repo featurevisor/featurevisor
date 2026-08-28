@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "description": "Featurevisor v3 cross SDK compatibility contracts",
   "bucketing": {
     "minimum": 0,
@@ -787,11 +787,28 @@
       "parentStickyVariables": { "setting": "parent-sticky" },
       "expectedParent": { "flag": true, "setting": "parent-sticky" },
       "expectedChildWithoutStickyOptions": { "flag": false, "setting": "datafile" }
+    },
+    "globalJsonCase": {
+      "datafile": {
+        "schemaVersion": "2",
+        "revision": "child-global-json",
+        "segments": {},
+        "features": {},
+        "variables": {
+          "settings": {
+            "type": "json",
+            "defaultValue": "{\"enabled\":true}"
+          }
+        }
+      },
+      "variableKey": "settings",
+      "expected": { "enabled": true }
     }
   },
   "defaults": {
     "presenceBased": true,
     "values": ["", 0, false, null],
+    "explicitNullBeatsCallerDefault": true,
     "aggregateEvaluationPreservesEmptyVariation": true,
     "aggregateCase": {
       "datafile": {
@@ -812,6 +829,38 @@
         "enabled": false,
         "variation": ""
       }
+    }
+  },
+  "modulePipeline": {
+    "featureOrder": [
+      "before:first",
+      "before:second",
+      "beforeEvaluation:first",
+      "beforeEvaluation:second",
+      "afterEvaluation:first",
+      "afterEvaluation:second",
+      "after:first",
+      "after:second"
+    ],
+    "globalOrder": [
+      "beforeEvaluation:first",
+      "beforeEvaluation:second",
+      "afterEvaluation:first",
+      "afterEvaluation:second"
+    ],
+    "requiredFeaturesUseModules": true,
+    "transformedDefaultsAreApplied": true
+  },
+  "lifecycle": {
+    "stickyFeatureEvent": "sticky_features_set",
+    "stickyFeatureDiagnostic": "sticky_features_set",
+    "stickyVariableEvent": "sticky_variables_set",
+    "stickyVariableDiagnostic": "sticky_variables_set",
+    "diagnosticBeforeEvent": true
+  },
+  "openFeature": {
+    "reasonMappings": {
+      "required_features_unmet": "DISABLED"
     }
   },
   "diagnosticCase": {

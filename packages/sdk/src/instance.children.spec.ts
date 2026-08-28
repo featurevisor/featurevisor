@@ -249,6 +249,13 @@ describe("Featurevisor public API: child instances", () => {
     expect(stickyEvents).toEqual([{ variables: ["message"], replaced: true }]);
   });
 
+  it("conformance: normalizes global JSON values through child instances", () => {
+    const testCase = conformance.childInstances.globalJsonCase;
+    const child = createFeaturevisor({ datafile: testCase.datafile, logLevel: "fatal" }).spawn();
+
+    expect(child.getVariableJSON(testCase.variableKey)).toEqual(testCase.expected);
+  });
+
   it("uses parent datafile updates immediately", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",

@@ -234,6 +234,7 @@ describe("requiredFeatures", () => {
   });
 
   it("honours a required variation produced by the normal module pipeline", () => {
+    expect(conformance.modulePipeline.requiredFeaturesUseModules).toBe(true);
     const withModule = createFeaturevisor({
       datafile: requiredFeaturesDatafile(),
       logLevel: "fatal",
@@ -321,7 +322,7 @@ describe("requiredFeatures", () => {
   });
 
   it.each(requiredFeaturesConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(5);
+    expect(conformance.version).toBe(6);
     const sdk = createFeaturevisor({
       datafile: conformance.requiredFeatures.datafile,
       logLevel: "fatal",

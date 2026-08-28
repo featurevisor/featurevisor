@@ -214,6 +214,35 @@ describe("global variables", () => {
     expect(f.getVariable("gated", { access: true })).toBeNull();
   });
 
+  it("conformance: preserves explicit null values over caller defaults", () => {
+    expect(conformance.defaults.explicitNullBeatsCallerDefault).toBe(true);
+    const f = createFeaturevisor({
+      datafile: {
+        schemaVersion: "2",
+        revision: "explicit-null",
+        segments: {},
+        features: {
+          nullableFeature: {
+            bucketBy: "userId",
+            variablesSchema: {
+              nullable: { type: "json", defaultValue: null },
+            },
+            force: [{ segments: "*", enabled: true }],
+            traffic: [],
+          },
+        },
+        variables: {
+          nullable: { type: "json", defaultValue: null },
+        },
+      },
+      logLevel: "fatal",
+    });
+    const options = { defaultVariableValue: "caller-default" };
+
+    expect(f.evaluateVariable("nullable", {}, options).variableValue).toBeNull();
+    expect(f.evaluateVariable("nullableFeature", "nullable", {}, options).variableValue).toBeNull();
+  });
+
   it("uses sticky variables before a datafile is available", () => {
     const f = createFeaturevisor({
       stickyVariables: { supportEmail: "sticky@example.com", config: { colour: "blue" } },
@@ -374,7 +403,7 @@ describe("global variables", () => {
   });
 
   it.each(globalVariableConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(5);
+    expect(conformance.version).toBe(6);
     const f = createFeaturevisor({
       datafile: conformance.globalVariables.datafile,
       stickyVariables: testCase.stickyVariables,
