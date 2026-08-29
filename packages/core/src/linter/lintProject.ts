@@ -592,7 +592,7 @@ export async function lintProject(
 
       if (
         options.entityType === "feature" &&
-        !projectConfig.allowFeatureAndVariableKeyCollisions &&
+        !projectConfig.allowFeatureAndGlobalVariableKeyCollisions &&
         variables.includes(key)
       ) {
         await reportSimpleError({
@@ -601,7 +601,7 @@ export async function lintProject(
           fullPath,
           message: `Feature "${key}" conflicts with a global variable using the same key`,
           detail:
-            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
+            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
           code: "feature_variable_key_collision",
         });
       }
@@ -683,14 +683,14 @@ export async function lintProject(
         });
       }
 
-      if (!projectConfig.allowFeatureAndVariableKeyCollisions && features.includes(key)) {
+      if (!projectConfig.allowFeatureAndGlobalVariableKeyCollisions && features.includes(key)) {
         await reportSimpleError({
           entityType: "variable",
           key,
           fullPath,
           message: `Variable "${key}" conflicts with a feature using the same key`,
           detail:
-            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
+            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
           code: "feature_variable_key_collision",
         });
       }

@@ -25,7 +25,7 @@ describe("core: projectConfig", () => {
     expect(config.reservedKeys).toEqual(["feature", "variation", "variable"]);
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
-    expect(config.allowFeatureAndVariableKeyCollisions).toBe(false);
+    expect(config.allowFeatureAndGlobalVariableKeyCollisions).toBe(false);
     expect(config.requireOverrideKeysInFeatures).toBe(false);
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
     expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
@@ -71,17 +71,17 @@ describe("core: projectConfig", () => {
     }
   });
 
-  it("validates allowFeatureAndVariableKeyCollisions", () => {
+  it("validates allowFeatureAndGlobalVariableKeyCollisions", () => {
     const allowedRoot = createTempProject(
-      "module.exports = { allowFeatureAndVariableKeyCollisions: true };",
+      "module.exports = { allowFeatureAndGlobalVariableKeyCollisions: true };",
     );
-    expect(getProjectConfig(allowedRoot).allowFeatureAndVariableKeyCollisions).toBe(true);
+    expect(getProjectConfig(allowedRoot).allowFeatureAndGlobalVariableKeyCollisions).toBe(true);
 
     const invalidRoot = createTempProject(
-      'module.exports = { allowFeatureAndVariableKeyCollisions: "yes" };',
+      'module.exports = { allowFeatureAndGlobalVariableKeyCollisions: "yes" };',
     );
     expect(() => getProjectConfig(invalidRoot)).toThrow(
-      "Invalid allowFeatureAndVariableKeyCollisions: yes. It must be a boolean.",
+      "Invalid allowFeatureAndGlobalVariableKeyCollisions: yes. It must be a boolean.",
     );
   });
 

@@ -71,7 +71,7 @@ export interface ProjectConfig {
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
-  allowFeatureAndVariableKeyCollisions?: boolean;
+  allowFeatureAndGlobalVariableKeyCollisions?: boolean;
   requireOverrideKeysInFeatures?: boolean;
 
   enforceCatchAllRule?: boolean;
@@ -97,7 +97,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
     stringify: true,
-    allowFeatureAndVariableKeyCollisions: false,
+    allowFeatureAndGlobalVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
 
     adapter: FilesystemAdapter,
@@ -155,9 +155,9 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
   }
 
-  if (typeof finalConfig.allowFeatureAndVariableKeyCollisions !== "boolean") {
+  if (typeof finalConfig.allowFeatureAndGlobalVariableKeyCollisions !== "boolean") {
     throw new Error(
-      `Invalid allowFeatureAndVariableKeyCollisions: ${finalConfig.allowFeatureAndVariableKeyCollisions}. It must be a boolean.`,
+      `Invalid allowFeatureAndGlobalVariableKeyCollisions: ${finalConfig.allowFeatureAndGlobalVariableKeyCollisions}. It must be a boolean.`,
     );
   }
 

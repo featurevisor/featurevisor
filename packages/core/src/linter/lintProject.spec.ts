@@ -78,7 +78,7 @@ describe("core: lintProject", function () {
     );
 
     const allowedDeps = getDeps(tempProjectPath);
-    allowedDeps.projectConfig.allowFeatureAndVariableKeyCollisions = true;
+    allowedDeps.projectConfig.allowFeatureAndGlobalVariableKeyCollisions = true;
     const allowed = await lintProject(allowedDeps as any, { json: true });
     expect(allowed.errors.some((error) => error.code === "feature_variable_key_collision")).toBe(
       false,
