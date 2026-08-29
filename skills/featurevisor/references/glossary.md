@@ -30,7 +30,7 @@ Short reference of terms used throughout Featurevisor. When in doubt, ground the
 | **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` into the inclusive internal range 0 to 100,000, representing 0% to 100%.        |
 | **Sticky**            | SDK instance state that can override feature evaluations or global variable values before normal datafile evaluation.                           |
 | **Activation**        | The event of a user being assigned a variation; commonly piped to analytics.                                                                     |
-| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
+| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `required_features_unmet`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
 
 ## Rollout terms
 

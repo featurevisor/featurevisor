@@ -18,13 +18,19 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 │   └── qa.yml                   # force-target QA
 ├── features/
 │   └── checkout.yml             # flag + variations + variables + force
+├── variables/
+│   ├── supportEmail.yml         # global variable + environment override
+│   └── checkoutPromoBanner.yml  # global variable gated on a required feature
 ├── targets/
 │   └── all.yml                  # builds one datafile from the `all` tag
 └── tests/
     ├── features/
     │   └── checkout.spec.yml
-    └── segments/
-        └── netherlands.spec.yml
+    ├── segments/
+    │   └── netherlands.spec.yml
+    └── variables/
+        ├── supportEmail.spec.yml
+        └── checkoutPromoBanner.spec.yml
 ```
 
 ## What it demonstrates
@@ -38,4 +44,8 @@ A small but realistic Featurevisor project demonstrating the shapes the skill wr
 - Variables of multiple types (string, boolean, array of strings, object).
 - A per-rule variable override (NL gets a different `paymentMethods` array).
 - A per-variation variable override using **mutation syntax** (`"hero.subtitle"`).
-- Tests covering: catch-all rule, country-specific rule, force, and a matrix expansion.
+- Two **global variables** under `variables/`, owned by no single feature: one with a
+  production-only override reusing the `countries.netherlands` segment, one gated with
+  `requiredFeatures` so it returns its `disabledValue` when `checkout` is off for that user.
+- Tests covering: catch-all rule, country-specific rule, force, a matrix expansion, and both
+  global variables (including the `required_features_unmet` fallback).

@@ -104,7 +104,7 @@ Providers return the caller's default value when the feature is missing, the typ
 | ----------------------------------------------------------------------------------------------- | ------------------ |
 | `required`, `forced`, `sticky`, `rule`, `variable_override_variation`, `variable_override_rule` | `TARGETING_MATCH`  |
 | `allocated`                                                                                     | `SPLIT`            |
-| `disabled`, `variation_disabled`, `variable_disabled`                                           | `DISABLED`         |
+| `disabled`, `variation_disabled`, `variable_disabled`, `required_features_unmet`                 | `DISABLED`         |
 | `feature_not_found`, `variable_not_found`, `no_variations`, `error`                             | `ERROR`            |
 | anything else                                                                                   | `DEFAULT`          |
 
@@ -112,7 +112,7 @@ Error codes: `FLAG_NOT_FOUND` (missing feature, missing variable, no variations)
 
 A `PARSE_ERROR` is sticky only until a good datafile arrives: every resolution returns the default while the loaded datafile is malformed, and normal resolution resumes as soon as `setDatafile` succeeds. So a bad CDN response degrades to defaults rather than poisoning the provider permanently.
 
-Flag metadata carries `featureKey`, `featurevisorReason`, `schemaVersion`, and — when present — `revision`, `variableKey`, `ruleKey`, `bucketKey`, `bucketValue`, `forceIndex`, `variableOverrideIndex`. Variation evaluations also set the OpenFeature `variant`.
+Flag metadata always carries `featurevisorReason` and `schemaVersion`, plus, when present, `featureKey`, `revision`, `variableKey`, `ruleKey`, `bucketKey`, `bucketValue`, `forceIndex`, `variableOverrideIndex`, and `variableOverrideKey`. Global variable resolutions carry no `featureKey`, so read `variableKey` to identify them. Variation evaluations also set the OpenFeature `variant`.
 
 That `featurevisorReason` is the debugging bridge: when a value surprises someone, read it, then reproduce with `npx featurevisor evaluate` in the project ([querying.md](querying.md)).
 
@@ -131,7 +131,7 @@ const provider = new FeaturevisorOpenFeatureProvider({ featurevisor })
 
 Either way `provider.featurevisor` exposes the instance for datafile updates, events, diagnostics, sticky, and everything else the native SDK offers — this is how you keep refreshing datafiles while serving evaluations through OpenFeature.
 
-If both `featurevisor` and construction options (`datafile`, `modules`, …) are passed, **the existing instance wins** and the construction options are ignored; provider options (`targetingKeyField`, `keySeparator`, `variationKey`, `onTrack`) still apply. Call `featurevisor.close()` yourself once every consumer is done.
+If both `featurevisor` and construction options (`datafile`, `modules`, …) are passed, **the existing instance wins** and the construction options are ignored; provider options (`targetingKeyField`, `keySeparator`, `variationKey`, `globalVariablePrefix`, `onTrack`) still apply. Call `featurevisor.close()` yourself once every consumer is done.
 
 ## Tracking
 

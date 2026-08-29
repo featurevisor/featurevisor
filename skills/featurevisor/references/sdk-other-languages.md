@@ -60,6 +60,23 @@ The monorepo keeps a machine-readable contract at [`conformance/sdk-v3.json`](ht
 
 When a user reports "it evaluates differently in our Go service than in the browser", the cause is nearly always **different context** or a **different datafile revision** — not the SDKs. Compare those two first.
 
+## Global variables
+
+[Global variables](global-variables.md) live in the same datafile as features and evaluate identically in every v3 SDK. Only the **spelling of the call** differs, because the JavaScript API distinguishes a feature variable from a global one by argument count:
+
+| Language                              | Global variable read                             |
+| ------------------------------------- | ------------------------------------------------ |
+| JavaScript/TypeScript, Java, Swift    | `getVariable(variableKey, context)` (overloaded) |
+| Python, Ruby, PHP                     | `get_variable` / `getVariable` with the shorter argument list, dispatched at runtime |
+| Go, Rust, Elixir                      | `GetGlobalVariable` / `get_global_variable`      |
+
+Typed accessors follow the same rule: `getVariableString(key, context)` in the first two groups, `GetGlobalVariableString` / `get_global_variable_string` in the third. Listing works the same way, with `getVariableKeys()` (no feature key) returning global variable keys and `getVariableKeys(featureKey)` returning that feature's own.
+
+Two consequences worth stating to anyone porting code between services:
+
+- **A global variable key and a feature key can collide** only if the project allows it (`allowFeatureAndGlobalVariableKeyCollisions`, see [configuration.md](configuration.md)). In the overload-based languages a collision makes the call ambiguous to a reader even when the compiler is happy, which is why the default is to forbid it.
+- **`requiredFeatures` gating is evaluated inside the SDK**, so an unmet requirement returns `disabledValue` and `reason: required_features_unmet` in every language, with no application-side branching.
+
 ## Verifying your project against a specific SDK
 
 Every non-JavaScript SDK ships a CLI that runs **your project's own test specs** through that language's implementation. This is the highest-value trick in this file: it proves the features you authored behave identically in the language your application actually uses.
