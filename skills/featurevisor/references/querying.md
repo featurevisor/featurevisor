@@ -125,7 +125,9 @@ npx featurevisor evaluate \
   --verbose
 ```
 
-Add `--variation` or `--variable=<key>` to debug variation / variable outputs specifically. Add `--json --pretty` for parseable output.
+One `--feature` call already reports the flag, the variation, and every feature variable together, so there is nothing to narrow: `evaluate` has no `--variation` flag, and `--feature` with `--variable` is rejected with `invalid_evaluation_selection` ("Pass exactly one of --feature or --variable"). Add `--json --pretty` for parseable output.
+
+`benchmark` is the command that does take those narrowing flags: `--feature=<key>` with either `--variation` or `--variable=<key>` picks which evaluation to time.
 
 To debug a **global variable**, drop `--feature` entirely and pass `--variable` on its own:
 

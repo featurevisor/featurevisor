@@ -19,24 +19,10 @@ Optional flags:
 | `--tag=<tag>`       | Generate for features and global variables carrying the tag            |
 | `--target=<target>` | Generate for features and global variables selected by the target      |
 | `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
-| `--importSdkPath=<path>`   | Import SDK types from this module instead of `@featurevisor/sdk`      |
-| `--importReactPath=<path>` | Import React hooks from this module instead of `@featurevisor/react`  |
 
 `--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. `includeFeatures` and `excludeFeatures` filter features. `includeVariables` and `excludeVariables` filter global variables. Target context does not specialize generated types.
 
 When a selected feature or global variable requires other features, generated feature types include the complete transitive required feature chain even when those features do not match the selectors directly. This mirrors the corresponding datafile payload.
-
-### Custom import paths
-
-By default the generated files import from `@featurevisor/sdk` and `@featurevisor/react`. Override that when the application consumes Featurevisor through a wrapper module, an internal monorepo alias, or a re-export:
-
-```bash
-npx featurevisor generate-code --language typescript --out-dir ./src \
-  --importSdkPath=@yourorg/featurevisor \
-  --importReactPath=@yourorg/featurevisor-react
-```
-
-Passing `--importReactPath` also turns on React generation, so `--react` is not needed alongside it. Use these only when the target module genuinely re-exports the same API; the generated code calls the real SDK surface and will not compile against a narrower wrapper.
 
 ## Output
 
