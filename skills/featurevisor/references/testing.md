@@ -109,6 +109,8 @@ assertions:
 
 Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.
 
+They do **not** accept `at`. Global variables are never bucketed, so there is no percentile to pin, and lint rejects the key outright with `Unrecognized key: "at"`. When a global variable declares `requiredFeatures`, the required feature is still bucketed on the same context, so drive that branch with a `userId` that lands where you want it (or one covered by a `force` block) rather than reaching for `at`. Assert the gated fallback with `reason: required_features_unmet`.
+
 ## Matrix expansion
 
 Run the same assertion across combinations of values:

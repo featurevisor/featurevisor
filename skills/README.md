@@ -24,13 +24,14 @@ Then in your agent (Claude Code, Cursor, Codex, OpenCode, etc.) ask things like:
 - "Add a kill switch around the payments provider"
 - "Launch `promoBanner` automatically over Black Friday weekend, NL and DE only"
 - "Roll out `newEditor` to employees first, then beta users, then everyone"
+- "Put the support email in one place so every app reads the same value"
 - "Upgrade this project from Featurevisor v2 to v3"
 
 ## What's included
 
 A single skill, `featurevisor`, that the agent invokes (e.g. as `/featurevisor` in Claude Code) covering:
 
-- **Authoring** — features (flags, variations, variables, force, required, expose), segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
+- **Authoring** — features (flags, variations, variables, force, `requiredFeatures`, expose), standalone global variables under `variables/` for shared config that no single feature owns, segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
 - **Testing** — declarative `.spec.yml` assertions, matrix expansion, sticky/children inputs, per-target and per-set runs.
 - **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML.
 - **Visual review** — pairs authoring with `npx featurevisor catalog` running locally in watch mode: the agent makes changes by prompt, and the Catalog in your (or the agent's) browser live-reloads so you see every change visually.

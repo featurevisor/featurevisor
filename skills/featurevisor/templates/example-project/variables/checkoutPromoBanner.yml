@@ -1,0 +1,13 @@
+description: Promo copy for the new checkout
+tags:
+  - all
+  - web
+
+type: string
+
+# Only meaningful while the new checkout is live for this user.
+# When the requirement is unmet the SDK returns disabledValue.
+requiredFeatures: checkout
+
+defaultValue: Free returns on every order
+disabledValue: ""

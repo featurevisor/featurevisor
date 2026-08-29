@@ -23,28 +23,43 @@ const f = createFeaturevisor({
     {
       name: 'analyticsActivation',
 
-      after: function (evaluation) {
-        const { reason, type, featureKey, variationValue } = evaluation
+      afterEvaluation: function (evaluation) {
+        // Read the variation the same way getVariation() does: for the common
+        // `allocated` reason the value lives on `variation`, not `variationValue`.
+        const variationValue =
+          evaluation.variationValue ?? evaluation.variation?.value
 
-        if (reason === 'error') return
-        if (type !== 'variation') return        // only track variation evaluations
+        if (
+          evaluation.reason !== 'error' &&
+          evaluation.type === 'variation' &&
+          typeof variationValue === 'string'
+        ) {
+          const { userId } = f.getContext()
 
-        const feature = f.getFeature(featureKey)
-        if (!feature || !feature.variations) return
+          // hand off to your analytics
+          yourAnalytics.track('featurevisor_activation', {
+            featureKey: evaluation.featureKey,
+            variationValue,
+            userId,
+          })
+        }
 
-        const { userId } = f.getContext()
-
-        // hand off to your analytics
-        yourAnalytics.track('featurevisor_activation', {
-          featureKey,
-          variationValue,
-          userId,
-        })
+        // ALWAYS return the evaluation, on every path.
+        return evaluation
       },
     },
   ],
 })
 ```
+
+Two things in that shape are load-bearing, and both fail silently if you get them wrong:
+
+- **Always return `evaluation`, from every branch.** The SDK assigns the callback's return value back to the evaluation. An early `return` with no value makes every flag read as `false` and every variation as `null`, across the whole application, with no error.
+- **Do not read `variationValue` alone.** For the normal `allocated` reason it is `undefined` and the value sits on `evaluation.variation.value`. Reading only `variationValue` sends `undefined` to analytics for exactly the A/B tests you are trying to measure.
+
+`afterEvaluation` also receives **global variable** evaluations ([global-variables.md](global-variables.md)). The `type === 'variation'` guard above already excludes them. If a module should act only on global variables, branch on a variable evaluation that has no `featureKey`.
+
+Modules written against the older `after` callback still run, but only for feature evaluations, and that callback is deprecated. Use `afterEvaluation` in new code.
 
 ## Google Analytics 4 + GTM (canonical recipe)
 
@@ -56,11 +71,13 @@ const f = createFeaturevisor({
 ```js
 window.dataLayer.push({
   event: 'featurevisorActivation',
-  featureKey,
+  featureKey: evaluation.featureKey,
   variationValue,
   userId,
 })
 ```
+
+The `return evaluation` at the end of the callback still applies. Swapping the analytics call does not change that requirement.
 
 Convention from the docs: snake_case for GA4 event names, camelCase for the `dataLayer` event name.
 

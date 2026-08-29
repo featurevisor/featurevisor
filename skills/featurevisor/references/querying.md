@@ -73,6 +73,26 @@ npx featurevisor find-usage --segment=netherlands
 npx featurevisor find-usage --segment=netherlands --authors    # also list git authors
 ```
 
+Segment usage is reported for **global variables** as well as features, so this is the right command before renaming or deleting a segment.
+
+## "What global variables do we have, and what does this one depend on?"
+
+```bash
+npx featurevisor list --variables --json --pretty
+npx featurevisor list --variables --json --tag=checkout       # by tag
+npx featurevisor find-usage --variable=supportEmail           # its segments, attributes, schemas, required features
+```
+
+`find-usage --variable` answers the dependency direction that matters before you change a global variable: what it reads. To find what *reads it*, search the application code, because global variables are consumed by applications rather than referenced by other definitions.
+
+## "Which global variables break if I delete this feature?"
+
+```bash
+npx featurevisor find-usage --feature=showHeader
+```
+
+Feature usage now includes global variables that name it in `requiredFeatures`, so this is the pre-flight check before archiving or deleting a feature.
+
 ## "Which features / segments use this attribute?"
 
 ```bash
@@ -106,6 +126,18 @@ npx featurevisor evaluate \
 ```
 
 Add `--variation` or `--variable=<key>` to debug variation / variable outputs specifically. Add `--json --pretty` for parseable output.
+
+To debug a **global variable**, drop `--feature` entirely and pass `--variable` on its own:
+
+```bash
+npx featurevisor evaluate \
+  --environment=production \
+  --variable=supportEmail \
+  --context='{"country":"nl"}' \
+  --verbose
+```
+
+The output names the matched `variableOverrideKey` (and `variableOverridePath` for a nested override), which is the fastest way to find out *which* override won. `--environment` is omitted in projects that declare no environments.
 
 Add repeatable `--target=<target>` options to evaluate the exact selected target datafiles independently.
 

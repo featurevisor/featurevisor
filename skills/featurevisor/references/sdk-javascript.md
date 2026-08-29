@@ -130,7 +130,7 @@ const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
 const globalEvaluation = f.evaluateVariable('supportEmail', context)
 ```
 
-Every evaluation object has `type` and `reason` (`sticky`, `required`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. Feature evaluations have `featureKey`; global variable evaluations use `type: "variable"` without it. A matched nested global variable override also exposes its authored `variableOverridePath`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
+Every evaluation object has `type` and `reason` (`sticky`, `required`, `required_features_unmet`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. Feature evaluations have `featureKey`; global variable evaluations use `type: "variable"` without it. A matched nested global variable override also exposes its authored `variableOverridePath`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
 
 ### Inspecting the loaded datafile
 
@@ -338,8 +338,8 @@ Modules intercept evaluation — the mechanism behind analytics activation track
 const myModule = {
   name: 'my-module',
   setup({ getRevision, onDiagnostic, reportDiagnostic }) {},
-  before(options) { return options },              // mutate context/options pre-evaluation
-  after(evaluation, options) { return evaluation }, // observe/adjust result
+  beforeEvaluation(options) { return options },              // mutate context/options pre-evaluation
+  afterEvaluation(evaluation, options) { return evaluation }, // observe/adjust result
   bucketKey({ featureKey, context, bucketBy, bucketKey }) { return bucketKey },
   bucketValue({ featureKey, context, bucketKey, bucketValue }) { return bucketValue },
   close() {},
@@ -348,6 +348,21 @@ const myModule = {
 const f = createFeaturevisor({ modules: [myModule] })
 // or later: const remove = f.addModule(myModule); await f.removeModule('my-module')
 ```
+
+`beforeEvaluation` and `afterEvaluation` run for **both** feature and global variable evaluations. A variable evaluation without a `featureKey` is a global variable, so branch on that when a module should only act on one kind:
+
+```js
+afterEvaluation(evaluation) {
+  if (evaluation.type === 'variable' && !evaluation.featureKey) {
+    // global variable
+  }
+  return evaluation
+}
+```
+
+The older `before` and `after` callbacks still run, but only for feature evaluations, and they are deprecated. Write new modules against `beforeEvaluation` and `afterEvaluation`; migrate existing ones when you touch them, since a module using `after` silently misses every global variable evaluation.
+
+`bucketKey` and `bucketValue` are feature-only by nature: global variables are deterministic and never bucketed ([global-variables.md](global-variables.md)).
 
 ## Cleanup
 

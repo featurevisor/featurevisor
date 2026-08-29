@@ -1,6 +1,6 @@
 ---
 name: featurevisor
-description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, variables/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Kotlin/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), segments, attributes, schemas, groups, dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, the Catalog, upgrading a project or app from Featurevisor v2 to v3, and extending the CLI with plugins.
+description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, variables/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, define a shared/global configuration value that is not owned by any single feature, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Kotlin/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), global variables defined under variables/, segments, attributes, schemas, groups, required feature dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, the Catalog, upgrading a project or app from Featurevisor v2 to v3, and extending the CLI with plugins.
 ---
 
 # Featurevisor
@@ -180,6 +180,7 @@ The most useful commands for an authoring agent (full reference in [cli.md](refe
 | `npx featurevisor find-usage --segment=<key>`                                                                         | Where a segment is used                               |
 | `npx featurevisor find-usage --attribute=<key>`                                                                       | Where an attribute is used                            |
 | `npx featurevisor find-usage --feature=<key>`                                                                         | Feature usage details                                 |
+| `npx featurevisor find-usage --variable=<key>`                                                                        | What a global variable depends on                     |
 | `npx featurevisor find-usage --unusedSegments`                                                                        | Dead segments                                         |
 | `npx featurevisor find-usage --unusedAttributes`                                                                      | Dead attributes                                       |
 | `npx featurevisor find-duplicate-segments`                                                                            | Segments with identical conditions                    |
@@ -234,6 +235,19 @@ Read [features.md](references/features.md) on variations, then use [templates/fe
 ### Adding variables (remote config)
 
 Read [variables-schemas.md](references/variables-schemas.md) — covers all variable types, the inline JSON-Schema-ish form, reusable `schemas/`, variation-level variables, rule-level `variables:` and `variableOverrides:`, and the `mutations` feature for deep-merge overrides. Use [templates/feature-with-variables.yml](templates/feature-with-variables.yml) as the starting shape.
+
+### Adding a global variable (config no single feature owns)
+
+**Ask this first whenever someone wants a configurable value:** is the value owned by a feature, or does it stand on its own? A support address, a retry limit, a CDN base URL, a rate limit shared by four services. None of these is an attribute of any one flag, and hanging them off an unrelated feature is the mistake to head off. Those belong in `variables/<key>.yml` as **global variables**.
+
+Read [global-variables.md](references/global-variables.md) and start from [templates/variable.yml](templates/variable.yml). The differences from feature variables that catch people out:
+
+- **Never bucketed.** No `bucketBy`, no `percentage`, no variations. The first matching override wins for everyone it matches, so the value is deterministic for a given context. There is no way to roll one out to 10% of users; if that is what they want, they want a feature.
+- **`requiredFeatures` instead of a parent.** Gate the value on one or more features (`{ feature, enabled?, variation? }`, `enabled` defaults to `true`). When unmet the SDK returns `disabledValue`, or `defaultValue` with `useDefaultWhenDisabled: true`, and reports `reason: required_features_unmet`.
+- **Overrides may nest**, unlike the flat overrides on feature rules and variations. They follow the same environment rule as `rules` and `force`: a map keyed by environment when the project declares `environments`, a direct list when it does not. Give every override a `key` and keep those keys unique across the whole tree for one environment.
+- **Read them with the two-argument SDK call**, `getVariable(variableKey, context)`, not the three-argument feature form. Go, Rust, and Elixir cannot dispatch on that, so they expose `GetGlobalVariable` / `get_global_variable` instead ([sdk-other-languages.md](references/sdk-other-languages.md#global-variables)).
+
+Before changing or deleting one, run `npx featurevisor find-usage --variable=<key>` for what it depends on; consuming applications are found by searching app code, not the project ([querying.md](references/querying.md)).
 
 ### Complex targeting (and/or/not)
 

@@ -1,0 +1,21 @@
+variable: checkoutPromoBanner
+
+# Global variables are never bucketed, so variable assertions take no `at`.
+# Percentiles still matter indirectly here, because the required feature is
+# bucketed on the same context.
+assertions:
+  - description: Shown while the required checkout feature is enabled for this user
+    environment: production
+    context:
+      userId: u_qa_1 # forced into checkout by the QA rule
+      country: us
+    expectedValue: Free returns on every order
+
+  - description: Falls back to disabledValue when checkout is not enabled
+    environment: production
+    context:
+      userId: shopper_1 # buckets above the 10% catch-all rollout
+      country: us
+    expectedValue: ""
+    expectedEvaluation:
+      reason: required_features_unmet

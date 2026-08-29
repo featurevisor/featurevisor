@@ -1,0 +1,16 @@
+description: Support address shown across the storefront
+tags:
+  - all
+  - web
+
+type: string
+defaultValue: support@example.com
+
+# Global variables are never bucketed, so overrides have no percentage:
+# the first matching entry wins for everyone it matches.
+overrides:
+  production:
+    - key: netherlands
+      description: Dutch shoppers reach the local support desk
+      segments: countries.netherlands
+      value: support-nl@example.com
