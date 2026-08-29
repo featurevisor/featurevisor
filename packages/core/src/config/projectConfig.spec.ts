@@ -26,6 +26,7 @@ describe("core: projectConfig", () => {
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
     expect(config.allowFeatureAndVariableKeyCollisions).toBe(false);
+    expect(config.requireOverrideKeysInFeatures).toBe(false);
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
     expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
     expect("scopes" in config).toBe(false);
@@ -81,6 +82,20 @@ describe("core: projectConfig", () => {
     );
     expect(() => getProjectConfig(invalidRoot)).toThrow(
       "Invalid allowFeatureAndVariableKeyCollisions: yes. It must be a boolean.",
+    );
+  });
+
+  it("validates requireOverrideKeysInFeatures", () => {
+    const enabledRoot = createTempProject(
+      "module.exports = { requireOverrideKeysInFeatures: true };",
+    );
+    expect(getProjectConfig(enabledRoot).requireOverrideKeysInFeatures).toBe(true);
+
+    const invalidRoot = createTempProject(
+      'module.exports = { requireOverrideKeysInFeatures: "yes" };',
+    );
+    expect(() => getProjectConfig(invalidRoot)).toThrow(
+      "Invalid requireOverrideKeysInFeatures: yes. It must be a boolean.",
     );
   });
 

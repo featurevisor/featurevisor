@@ -801,6 +801,28 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("requires keys in variation variableOverrides when configured", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            slug: { type: "string", defaultValue: "home" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                slug: [{ segments: "countries.germany", value: "de" }],
+              },
+            },
+          ],
+        }),
+        "must have a key when `requireOverrideKeysInFeatures` is enabled",
+        { requireOverrideKeysInFeatures: true },
+      );
+    });
+
     it("rejects variableOverride value that does not match schema", () => {
       expectParseFailure(
         baseFeature({
@@ -1103,6 +1125,65 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             production: [{ key: "r1", segments: "*", percentage: 100 }],
           },
         }),
+      );
+    });
+
+    it("requires keys in rule variableOverrides when configured", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            label: { type: "string", defaultValue: "default" },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  label: [{ segments: "countries.germany", value: "de" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "must have a key when `requireOverrideKeysInFeatures` is enabled",
+        { requireOverrideKeysInFeatures: true },
+      );
+    });
+
+    it("accepts keyed rule and variation variableOverrides when configured", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            label: { type: "string", defaultValue: "default" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                label: [{ key: "variation-germany", segments: "countries.germany", value: "de" }],
+              },
+            },
+          ],
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  label: [{ key: "rule-germany", segments: "countries.germany", value: "de" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { requireOverrideKeysInFeatures: true },
       );
     });
 

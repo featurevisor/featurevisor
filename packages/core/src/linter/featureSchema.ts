@@ -1427,6 +1427,17 @@ export function getFeatureZodSchema(
           message: "Every variable override in the list must have a key when `promotable` is used.",
         });
       }
+
+      if (
+        projectConfig.requireOverrideKeysInFeatures &&
+        overrides.some((override) => typeof override.key === "undefined")
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Every variable override inside a feature must have a key when `requireOverrideKeysInFeatures` is enabled.",
+        });
+      }
     });
 
   const exposeSchema = z
