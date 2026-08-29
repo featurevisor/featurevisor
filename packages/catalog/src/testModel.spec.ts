@@ -21,6 +21,12 @@ describe("catalog test model", () => {
           expectedEvaluation: {
             variableValue: { nested: ["${{ value }}", "literal-${{ value }}"] },
           },
+          children: [
+            {
+              context: { enabled: "${{ enabled }}" },
+              expectedValue: { nested: "${{ value }}" },
+            },
+          ],
         },
       ],
     };
@@ -37,6 +43,12 @@ describe("catalog test model", () => {
       expectedEvaluation: {
         variableValue: { nested: ["configured", "literal-configured"] },
       },
+      children: [
+        {
+          context: { enabled: true },
+          expectedValue: { nested: "configured" },
+        },
+      ],
     });
   });
 

@@ -224,6 +224,21 @@ function VariableAssertionContent(props: { assertion: VariableAssertion }) {
       {props.assertion.stickyVariables && (
         <TestDataPanel title="Sticky variables" value={props.assertion.stickyVariables} />
       )}
+      {props.assertion.children?.length ? (
+        <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-faint">
+            Child instances
+          </h4>
+          <div className="space-y-3">
+            {props.assertion.children.map((child, index) => (
+              <div key={index} className="rounded-lg border border-border bg-elevated p-3">
+                <div className="mb-3 text-xs font-semibold text-muted">Child {index + 1}</div>
+                <ValueDisplay value={child} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

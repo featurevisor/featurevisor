@@ -77,6 +77,13 @@ describe("core :: tester :: matrix", function () {
       expectedEvaluation: {
         variableValue: { nested: ["${{ value }}", "literal-${{ value }}"] },
       },
+      children: [
+        {
+          context: { enabled: "${{ enabled }}" },
+          stickyVariables: { settings: "child-${{ value }}" },
+          expectedValue: "child-${{ value }}",
+        },
+      ],
     });
 
     expect(assertions[0]).toMatchObject({
@@ -93,6 +100,13 @@ describe("core :: tester :: matrix", function () {
       expectedEvaluation: {
         variableValue: { nested: ["configured", "literal-configured"] },
       },
+      children: [
+        {
+          context: { enabled: true },
+          stickyVariables: { settings: "child-configured" },
+          expectedValue: "child-configured",
+        },
+      ],
     });
   });
 

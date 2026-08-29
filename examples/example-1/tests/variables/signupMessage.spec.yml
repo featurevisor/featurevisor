@@ -3,6 +3,7 @@ variable: signupMessage
 assertions:
   - description: uses at to test a required feature's control variation
     environment: production
+    target: all
     at: 25
     expectedValue: Create your account
     expectedEvaluation:
@@ -28,14 +29,22 @@ assertions:
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: treatment
+    children:
+      - expectedValue: Create your account
+        expectedEvaluation:
+          variableOverrideKey: control
 
   - description: a sticky disabled feature disables the variable
+    matrix:
+      at: [75]
+      enabled: [false]
+      variation: [control]
     environment: production
-    at: 75
+    at: ${{ at }}
     stickyFeatures:
       allowSignup:
-        enabled: false
-        variation: control
+        enabled: ${{ enabled }}
+        variation: ${{ variation }}
     expectedValue: Sign up is unavailable
     expectedEvaluation:
       reason: required_features_unmet

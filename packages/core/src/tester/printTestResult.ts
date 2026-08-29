@@ -9,6 +9,12 @@ import {
 } from "./cliFormat";
 import { prettyDuration } from "./prettyDuration";
 
+function formatValue(value: unknown) {
+  if (typeof value === "string") return value;
+  if (typeof value === "undefined") return "undefined";
+  return JSON.stringify(value);
+}
+
 export function printTestResult(testResult: TestResult, relativeTestFilePath, rootDirectoryPath) {
   console.log("");
 
@@ -46,7 +52,9 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
 
         let section: string = error.type;
 
-        if (error.type === "flag") {
+        if (testResult.type === "variable" && error.type === "variable") {
+          section = "expectedValue";
+        } else if (error.type === "flag") {
           section = "expectedToBeEnabled";
         } else if (error.type === "variation") {
           section = "expectedVariation";
@@ -58,7 +66,11 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
           section = `children[${error.details.childIndex}].${section}`;
         }
 
-        if (error.type === "variable") {
+        if (testResult.type === "variable" && error.type === "variable") {
+          console.log(CLI_FORMAT_RED, `    => ${section}:`);
+          console.log(CLI_FORMAT_RED, `       => expected: ${formatValue(error.expected)}`);
+          console.log(CLI_FORMAT_RED, `       => received: ${formatValue(error.actual)}`);
+        } else if (error.type === "variable") {
           const variableKey = (error.details as any).variableKey;
 
           console.log(CLI_FORMAT_RED, `    => ${section}.${variableKey}:`);
@@ -66,7 +78,12 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
           console.log(CLI_FORMAT_RED, `       => received: ${error.actual}`);
         } else {
           if (error.type === "evaluation") {
-            if (error.details && error.details.variableKey) {
+            if (testResult.type === "variable") {
+              section = `expectedEvaluation.${error.details?.evaluationKey}`;
+              if (error.details?.childIndex !== undefined) {
+                section = `children[${error.details.childIndex}].${section}`;
+              }
+            } else if (error.details && error.details.variableKey) {
               section = `${section}.variables.${error.details.variableKey}.${error.details.evaluationKey}`;
             } else if (error.details && error.details.evaluationType) {
               section = `${section}.${error.details.evaluationType}.${error.details.evaluationKey}`;

@@ -167,6 +167,13 @@ describe("catalog test presentation", () => {
             reason: "variable_override_rule",
             variableOverrideIndex: 0,
           },
+          children: [
+            {
+              context: { country: "${{ country }}" },
+              stickyVariables: { supportEmail: "child-${{ country }}@example.com" },
+              expectedValue: "child-${{ country }}@example.com",
+            },
+          ],
         },
       ],
     };
@@ -183,6 +190,13 @@ describe("catalog test presentation", () => {
           reason: "variable_override_rule",
           variableOverrideIndex: 0,
         },
+        children: [
+          {
+            context: { country: "nl" },
+            stickyVariables: { supportEmail: "child-nl@example.com" },
+            expectedValue: "child-nl@example.com",
+          },
+        ],
       },
     });
   });

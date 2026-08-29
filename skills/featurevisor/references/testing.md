@@ -107,11 +107,13 @@ assertions:
       variableOverrideKey: netherlands
 ```
 
-Variable assertions support `matrix`, `target`, `at`, `stickyFeatures`, `stickyVariables`, and `defaultVariableValue`.
+Variable assertions support `matrix`, `target`, `at`, `stickyFeatures`, `stickyVariables`, `defaultVariableValue`, and `children`.
 
 Global variables are never bucketed directly. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. This makes a required feature's rollout and variation allocation deterministic without searching for a particular `userId`. It has no effect when no required feature is evaluated.
 
 Use `stickyFeatures` to supply exact upstream feature results. Sticky features take precedence over `at`. Use `stickyVariables` separately to bypass normal evaluation for the global variable itself.
+
+`at` must be a number from 0 to 100 or a complete matrix placeholder whose values are all in that range. One value applies to every non-sticky feature reached through the required feature chain. A sticky result affects only its own feature, while the remaining required features continue to use `at`.
 
 ```yaml
 variable: signupMessage
@@ -127,6 +129,22 @@ assertions:
         enabled: true
         variation: treatment
     expectedValue: Sign up with your preferred provider
+```
+
+Child assertions evaluate the same global variable through `f.spawn()`. They inherit the parent context, then apply their own context on top. Child sticky maps are isolated from the parent, so pass `stickyFeatures` or `stickyVariables` in the child when needed. The parent assertion's `at` remains active for child evaluations.
+
+```yaml
+variable: campaignBanner
+assertions:
+  - environment: production
+    context: { country: nl }
+    expectedValue: Welcome
+    children:
+      - context: { city: amsterdam }
+        expectedValue: Welkom
+      - stickyVariables:
+          campaignBanner: Preview
+        expectedValue: Preview
 ```
 
 ## Matrix expansion

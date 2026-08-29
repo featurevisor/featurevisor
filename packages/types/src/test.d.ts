@@ -133,6 +133,16 @@ export interface VariableAssertion {
   defaultVariableValue?: VariableValue;
   expectedValue?: VariableValue;
   expectedEvaluation?: ExpectedEvaluation;
+  children?: VariableChildAssertion[];
+}
+
+export interface VariableChildAssertion {
+  stickyFeatures?: StickyFeatures;
+  stickyVariables?: StickyVariables;
+  context?: Context;
+  defaultVariableValue?: VariableValue;
+  expectedValue?: VariableValue;
+  expectedEvaluation?: ExpectedEvaluation;
 }
 
 export interface TestVariable {

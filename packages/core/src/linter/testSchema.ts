@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ParsedFeature } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
@@ -9,6 +10,7 @@ export function getTestsZodSchema(
   availableSegmentKeys: [string, ...string[]],
   availableTargetKeys: [string, ...string[]],
   availableVariableKeys: [string, ...string[]] = [] as unknown as [string, ...string[]],
+  featuresByKey: Record<string, ParsedFeature> = {},
 ) {
   function validateAssertionKeys(
     assertions: Array<{ key?: string; promotable?: boolean }>,
@@ -64,12 +66,165 @@ export function getTestsZodSchema(
     ),
   );
 
-  const atZodSchema = z.union([
-    z.number().min(0).max(100),
+  const matrixPlaceholderPattern = /^\${{\s*([^{}]+?)\s*}}$/;
+  const matrixPlaceholderZodSchema = z
+    .string()
+    .regex(matrixPlaceholderPattern, "Expected a matrix placeholder such as ${{ at }}");
+  const atZodSchema = z.union([z.number().min(0).max(100), matrixPlaceholderZodSchema]);
 
-    // because of supporting matrix
-    z.string(),
-  ]);
+  function validateMatrixAt(
+    assertion: { at?: number | string; matrix?: Record<string, unknown[]> },
+    ctx: z.RefinementCtx,
+  ) {
+    if (typeof assertion.at !== "string") return;
+
+    const match = assertion.at.match(matrixPlaceholderPattern);
+    const matrixKey = match?.[1]?.trim();
+    const values = matrixKey ? assertion.matrix?.[matrixKey] : undefined;
+    if (!matrixKey || !values) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["at"],
+        message: `Unknown matrix value "${matrixKey || assertion.at}"`,
+      });
+      return;
+    }
+
+    values.forEach((value, index) => {
+      if (typeof value !== "number" || value < 0 || value > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["matrix", matrixKey, index],
+          message: "Bucket positions must be numbers from 0 to 100",
+        });
+      }
+    });
+  }
+
+  const stickyFeatureZodSchema = z
+    .object({
+      enabled: z.union([z.boolean(), matrixPlaceholderZodSchema]),
+      variation: z.string().optional(),
+      variables: z.record(z.string(), z.unknown()).optional(),
+    })
+    .strict();
+
+  const stickyFeaturesZodSchema = z
+    .record(z.string(), stickyFeatureZodSchema)
+    .superRefine((stickyFeatures, ctx) => {
+      Object.keys(stickyFeatures).forEach((featureKey) => {
+        if (!availableFeatureKeys.includes(featureKey)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [featureKey],
+            message: `Unknown feature "${featureKey}"`,
+          });
+          return;
+        }
+
+        const feature = featuresByKey[featureKey];
+        const stickyFeature = stickyFeatures[featureKey];
+        if (!feature) return;
+
+        const variation = stickyFeature.variation;
+        if (variation && !matrixPlaceholderPattern.test(variation)) {
+          const variationValues = [
+            ...(feature.variations || []).map((item) => item.value),
+            feature.disabledVariationValue,
+          ].filter((value): value is string => typeof value === "string");
+          if (!variationValues.includes(variation)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [featureKey, "variation"],
+              message: `Unknown variation "${variation}" in feature "${featureKey}"`,
+            });
+          }
+        }
+
+        Object.keys(stickyFeature.variables || {}).forEach((variableKey) => {
+          if (!feature.variablesSchema?.[variableKey]) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [featureKey, "variables", variableKey],
+              message: `Unknown variable "${variableKey}" in feature "${featureKey}"`,
+            });
+          }
+        });
+      });
+    });
+
+  const stickyVariablesZodSchema = z
+    .record(z.string(), z.unknown())
+    .superRefine((stickyVariables, ctx) => {
+      Object.keys(stickyVariables).forEach((variableKey) => {
+        if (!availableVariableKeys.includes(variableKey)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [variableKey],
+            message: `Unknown variable "${variableKey}"`,
+          });
+        }
+      });
+    });
+
+  function validateVariableExpectations(
+    assertion: { expectedValue?: unknown; expectedEvaluation?: unknown },
+    ctx: z.RefinementCtx,
+  ) {
+    if (
+      typeof assertion.expectedValue === "undefined" &&
+      typeof assertion.expectedEvaluation === "undefined"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Expected at least one of expectedValue or expectedEvaluation",
+      });
+    }
+  }
+
+  function validateStickyFeatureMatrixValues(
+    stickyFeatures:
+      | Record<
+          string,
+          { enabled?: boolean | string; variation?: string; variables?: Record<string, unknown> }
+        >
+      | undefined,
+    matrix: Record<string, unknown[]> | undefined,
+    path: Array<string | number>,
+    ctx: z.RefinementCtx,
+  ) {
+    Object.entries(stickyFeatures || {}).forEach(([featureKey, stickyFeature]) => {
+      (["enabled", "variation"] as const).forEach((field) => {
+        const value = stickyFeature[field];
+        if (typeof value !== "string") return;
+
+        const match = value.match(matrixPlaceholderPattern);
+        if (!match) return;
+
+        const matrixKey = match[1].trim();
+        const values = matrix?.[matrixKey];
+        if (!values) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [...path, featureKey, field],
+            message: `Unknown matrix value "${matrixKey}"`,
+          });
+          return;
+        }
+
+        const expectedType = field === "enabled" ? "boolean" : "string";
+        values.forEach((matrixValue, index) => {
+          if (typeof matrixValue !== expectedType) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["matrix", matrixKey, index],
+              message: `Sticky feature ${field} values must be ${expectedType}s`,
+            });
+          }
+        });
+      });
+    });
+  }
 
   const expectedEvaluationZodSchema = z
     .object({
@@ -215,7 +370,8 @@ export function getTestsZodSchema(
                 )
                 .optional(),
             })
-            .strict(),
+            .strict()
+            .superRefine(validateMatrixAt),
         )
         .superRefine(validateAssertionKeys),
     })
@@ -251,22 +407,55 @@ export function getTestsZodSchema(
                 (value) => `Unknown target "${value}"`,
               ).optional(),
               at: atZodSchema.optional(),
-              stickyFeatures: z.record(z.string(), z.record(z.string(), z.any())).optional(),
-              stickyVariables: z.record(z.string(), z.unknown()).optional(),
+              stickyFeatures: stickyFeaturesZodSchema.optional(),
+              stickyVariables: stickyVariablesZodSchema.optional(),
               context: z.record(z.string(), z.unknown()).optional(),
               defaultVariableValue: z.unknown().optional(),
               expectedValue: z.unknown().optional(),
               expectedEvaluation: expectedEvaluationZodSchema.optional(),
+              children: z
+                .array(
+                  z
+                    .object({
+                      stickyFeatures: stickyFeaturesZodSchema.optional(),
+                      stickyVariables: stickyVariablesZodSchema.optional(),
+                      context: z.record(z.string(), z.unknown()).optional(),
+                      defaultVariableValue: z.unknown().optional(),
+                      expectedValue: z.unknown().optional(),
+                      expectedEvaluation: expectedEvaluationZodSchema.optional(),
+                    })
+                    .strict()
+                    .superRefine(validateVariableExpectations),
+                )
+                .min(1)
+                .optional(),
             })
             .strict()
             .superRefine((assertion, ctx) => {
+              validateMatrixAt(assertion, ctx);
+              validateStickyFeatureMatrixValues(
+                assertion.stickyFeatures,
+                assertion.matrix,
+                ["stickyFeatures"],
+                ctx,
+              );
+              assertion.children?.forEach((child, index) => {
+                validateStickyFeatureMatrixValues(
+                  child.stickyFeatures,
+                  assertion.matrix,
+                  ["children", index, "stickyFeatures"],
+                  ctx,
+                );
+              });
               if (
                 typeof assertion.expectedValue === "undefined" &&
-                typeof assertion.expectedEvaluation === "undefined"
+                typeof assertion.expectedEvaluation === "undefined" &&
+                !assertion.children?.length
               ) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
-                  message: "Expected at least one of expectedValue or expectedEvaluation",
+                  message:
+                    "Expected at least one of expectedValue, expectedEvaluation, or children",
                 });
               }
             }),

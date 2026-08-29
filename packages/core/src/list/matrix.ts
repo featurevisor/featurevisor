@@ -294,6 +294,7 @@ export function getVariableAssertionsFromMatrix(
       assertion.expectedEvaluation,
       combination,
     );
+    assertion.children = applyCombinationToValue(assertion.children, combination);
     assertion.description = `Assertion #${aIndex + 1}${
       assertion.description ? `: ${assertion.description}` : ""
     }`;

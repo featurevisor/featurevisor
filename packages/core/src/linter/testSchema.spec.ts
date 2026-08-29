@@ -36,7 +36,15 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
 }
 
 function getSchema(projectConfig = minimalProjectConfig()) {
-  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"], ["settings"]);
+  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"], ["settings"], {
+    checkout: {
+      key: "checkout",
+      description: "Checkout",
+      bucketBy: "userId",
+      variations: [{ value: "control" }, { value: "treatment" }],
+      variablesSchema: { copy: { type: "string", defaultValue: "Checkout" } },
+    },
+  });
 }
 
 function parseTest(input: unknown): z.ZodSafeParseResult<unknown> {
@@ -81,7 +89,7 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         variable: "settings",
         assertions: [{ environment: "production" }],
       },
-      "Expected at least one of expectedValue or expectedEvaluation",
+      "Expected at least one of expectedValue, expectedEvaluation, or children",
     );
 
     expectTestFailure(
@@ -105,6 +113,7 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
       ["desktop"],
       ["web"],
       ["settings"],
+      {},
     ).safeParse({
       variable: "settings",
       assertions: [{ expectedValue: "enabled" }],
@@ -147,6 +156,160 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         assertions: [{ environment: "production", at: 100.001, expectedValue: "configured" }],
       },
       "Too big",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production", at: "banana", expectedValue: "configured" }],
+      },
+      "Expected a matrix placeholder",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { other: [25] },
+            at: "${{ at }}",
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown matrix value "at"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { at: [25, 101] },
+            at: "${{ at }}",
+            expectedValue: "configured",
+          },
+        ],
+      },
+      "Bucket positions must be numbers from 0 to 100",
+    );
+  });
+
+  it("validates sticky feature and variable references", () => {
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            stickyFeatures: { unknown: { enabled: true } },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown feature "unknown"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            stickyFeatures: { checkout: { variation: "treatment" } },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      "Invalid input",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            stickyVariables: { unknown: "configured" },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown variable "unknown"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            stickyFeatures: { checkout: { enabled: true, variation: "unknown" } },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown variation "unknown" in feature "checkout"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            stickyFeatures: {
+              checkout: { enabled: true, variables: { unknown: "configured" } },
+            },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown variable "unknown" in feature "checkout"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { enabled: [true, "yes"] },
+            stickyFeatures: { checkout: { enabled: "${{ enabled }}" } },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      "Sticky feature enabled values must be booleans",
+    );
+  });
+
+  it("supports child assertions with their own context, sticky values, and expectations", () => {
+    expectTestSuccess({
+      variable: "settings",
+      assertions: [
+        {
+          environment: "production",
+          at: 75,
+          children: [
+            {
+              context: { country: "nl" },
+              stickyFeatures: { checkout: { enabled: true, variation: "treatment" } },
+              stickyVariables: { settings: "child" },
+              defaultVariableValue: "fallback",
+              expectedValue: "child",
+              expectedEvaluation: { reason: "sticky" },
+            },
+          ],
+        },
+      ],
+    });
+
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            children: [{ context: { country: "nl" } }],
+          },
+        ],
+      },
+      "Expected at least one of expectedValue or expectedEvaluation",
     );
   });
 

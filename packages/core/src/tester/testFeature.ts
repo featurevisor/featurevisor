@@ -85,6 +85,14 @@ export async function testFeature(
       logLevel = "fatal";
     }
 
+    const parsedFeature = await datasource.readFeature(featureKey);
+    if (!parsedFeature) {
+      testResult.notFound = true;
+      testResult.passed = false;
+
+      return testResult;
+    }
+
     const sdk: Featurevisor = createFeaturevisor({
       datafile: datafileContent as DatafileContent,
       stickyFeatures: assertion.sticky ? assertion.sticky : {},
@@ -103,301 +111,301 @@ export async function testFeature(
       logLevel,
     });
 
-    const parsedFeature = await datasource.readFeature(featureKey);
-    if (!parsedFeature) {
-      testResult.notFound = true;
-      testResult.passed = false;
+    try {
+      let context = {};
 
-      return testResult;
-    }
-
-    let context = {};
-
-    if (assertion.context) {
-      context = {
-        ...context,
-        ...assertion.context,
-      };
-    }
-
-    if (context) {
-      sdk.setContext(context);
-    }
-
-    /**
-     * expectedToBeEnabled
-     */
-    function testExpectedToBeEnabled(sdk, assertion, details = {}, evaluationContext = context) {
-      const isEnabled = sdk.isEnabled(featureKey, evaluationContext);
-
-      if (isEnabled !== assertion.expectedToBeEnabled) {
-        testResult.passed = false;
-        testResultAssertion.passed = false;
-
-        (testResultAssertion.errors as TestResultAssertionError[]).push({
-          type: "flag",
-          expected: assertion.expectedToBeEnabled,
-          actual: isEnabled,
-          details,
-        });
-      }
-    }
-
-    if ("expectedToBeEnabled" in assertion) {
-      testExpectedToBeEnabled(sdk, assertion);
-    }
-
-    /**
-     * expectedVariation
-     */
-    function testExpectedVariation(sdk, assertion, details = {}, evaluationContext = context) {
-      const overrideOptions: OverrideOptions = {};
-      if (Object.prototype.hasOwnProperty.call(assertion, "defaultVariationValue")) {
-        overrideOptions.defaultVariationValue = assertion.defaultVariationValue;
+      if (assertion.context) {
+        context = {
+          ...context,
+          ...assertion.context,
+        };
       }
 
-      const variation = sdk.getVariation(featureKey, evaluationContext, overrideOptions);
-
-      if (variation !== assertion.expectedVariation) {
-        testResult.passed = false;
-        testResultAssertion.passed = false;
-
-        (testResultAssertion.errors as TestResultAssertionError[]).push({
-          type: "variation",
-          expected: assertion.expectedVariation,
-          actual: variation,
-          details,
-        });
+      if (context) {
+        sdk.setContext(context);
       }
-    }
 
-    if (typeof assertion.expectedVariation !== "undefined") {
-      testExpectedVariation(sdk, assertion);
-    }
+      /**
+       * expectedToBeEnabled
+       */
+      function testExpectedToBeEnabled(sdk, assertion, details = {}, evaluationContext = context) {
+        const isEnabled = sdk.isEnabled(featureKey, evaluationContext);
 
-    /**
-     * expectedVariables
-     */
-    function testExpectedVariables(sdk, assertion, details = {}, evaluationContext = context) {
-      Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
-        const expectedValue =
-          assertion.expectedVariables && assertion.expectedVariables[variableKey];
-
-        const overrideOptions: OverrideOptions = {};
-        if (
-          assertion.defaultVariableValues &&
-          Object.prototype.hasOwnProperty.call(assertion.defaultVariableValues, variableKey)
-        ) {
-          overrideOptions.defaultVariableValue = assertion.defaultVariableValues[variableKey];
-        }
-
-        const actualValue = sdk.getVariable(
-          featureKey,
-          variableKey,
-          evaluationContext,
-          overrideOptions,
-        );
-
-        let passed;
-
-        // Use feature from datafile so variable schema is always resolved (ResolvedVariableSchema)
-        const featureFromDatafile = datafileContent?.features?.[featureKey];
-        const variableSchema = featureFromDatafile?.variablesSchema?.[variableKey];
-
-        if (!variableSchema) {
+        if (isEnabled !== assertion.expectedToBeEnabled) {
           testResult.passed = false;
           testResultAssertion.passed = false;
 
           (testResultAssertion.errors as TestResultAssertionError[]).push({
-            type: "variable",
-            expected: assertion.expectedVariation,
-            actual: undefined,
-            message: `schema for variable "${variableKey}" not found in feature`,
+            type: "flag",
+            expected: assertion.expectedToBeEnabled,
+            actual: isEnabled,
+            details,
           });
-
-          return;
-        }
-
-        if (variableSchema.type === "json") {
-          // JSON type
-          const parsedExpectedValue =
-            typeof expectedValue === "string" ? JSON.parse(expectedValue as string) : expectedValue;
-
-          if (Array.isArray(actualValue)) {
-            passed = checkIfArraysAreEqual(parsedExpectedValue, actualValue);
-          } else if (typeof actualValue === "object") {
-            passed = checkIfObjectsAreEqual(parsedExpectedValue, actualValue);
-          } else {
-            passed = JSON.stringify(parsedExpectedValue) === JSON.stringify(actualValue);
-          }
-
-          if (!passed) {
-            testResult.passed = false;
-            testResultAssertion.passed = false;
-
-            (testResultAssertion.errors as TestResultAssertionError[]).push({
-              type: "variable",
-              expected:
-                typeof expectedValue !== "string" ? JSON.stringify(expectedValue) : expectedValue,
-              actual: typeof actualValue !== "string" ? JSON.stringify(actualValue) : actualValue,
-              details: {
-                ...details,
-                variableKey,
-              },
-            });
-          }
-        } else {
-          // other types
-          if (typeof expectedValue === "object") {
-            passed = checkIfObjectsAreEqual(expectedValue, actualValue);
-          } else if (Array.isArray(expectedValue)) {
-            passed = checkIfArraysAreEqual(expectedValue, actualValue);
-          } else {
-            passed = expectedValue === actualValue;
-          }
-
-          if (!passed) {
-            testResult.passed = false;
-            testResultAssertion.passed = false;
-
-            (testResultAssertion.errors as TestResultAssertionError[]).push({
-              type: "variable",
-              expected: expectedValue as string,
-              actual: actualValue as string,
-              details: {
-                ...details,
-                variableKey,
-              },
-            });
-          }
-        }
-      });
-    }
-
-    if (typeof assertion.expectedVariables === "object") {
-      testExpectedVariables(sdk, assertion);
-    }
-
-    /**
-     * expectedEvaluations
-     */
-    function testExpectedEvaluations(
-      sdk,
-      assertion,
-      rootDetails = {},
-      evaluationContext = context,
-    ) {
-      function testEvaluation(type, evaluation, expected, details = {}) {
-        for (const [key, value] of Object.entries(expected)) {
-          if (!evaluationValuesAreEqual(value, evaluation[key])) {
-            testResult.passed = false;
-            testResultAssertion.passed = false;
-
-            (testResultAssertion.errors as TestResultAssertionError[]).push({
-              type: "evaluation",
-              expected: value,
-              actual: evaluation[key],
-              details: {
-                ...rootDetails,
-                ...details,
-                evaluationType: type,
-                evaluationKey: key,
-              },
-            });
-          }
         }
       }
 
-      if (assertion.expectedEvaluations.flag) {
-        const evaluation = sdk.evaluateFlag(featureKey, evaluationContext);
-        testEvaluation("flag", evaluation, assertion.expectedEvaluations.flag);
+      if ("expectedToBeEnabled" in assertion) {
+        testExpectedToBeEnabled(sdk, assertion);
       }
 
-      if (assertion.expectedEvaluations.variation) {
-        const evaluation = sdk.evaluateVariation(featureKey, evaluationContext);
-        testEvaluation("variation", evaluation, assertion.expectedEvaluations.variation);
+      /**
+       * expectedVariation
+       */
+      function testExpectedVariation(sdk, assertion, details = {}, evaluationContext = context) {
+        const overrideOptions: OverrideOptions = {};
+        if (Object.prototype.hasOwnProperty.call(assertion, "defaultVariationValue")) {
+          overrideOptions.defaultVariationValue = assertion.defaultVariationValue;
+        }
+
+        const variation = sdk.getVariation(featureKey, evaluationContext, overrideOptions);
+
+        if (variation !== assertion.expectedVariation) {
+          testResult.passed = false;
+          testResultAssertion.passed = false;
+
+          (testResultAssertion.errors as TestResultAssertionError[]).push({
+            type: "variation",
+            expected: assertion.expectedVariation,
+            actual: variation,
+            details,
+          });
+        }
       }
 
-      if (assertion.expectedEvaluations.variables) {
-        const variableKeys = Object.keys(assertion.expectedEvaluations.variables);
+      if (typeof assertion.expectedVariation !== "undefined") {
+        testExpectedVariation(sdk, assertion);
+      }
 
-        for (const variableKey of variableKeys) {
-          const evaluation = sdk.evaluateVariable(featureKey, variableKey, evaluationContext);
-          testEvaluation(
-            "variable",
-            evaluation,
-            assertion.expectedEvaluations.variables[variableKey],
-            { variableKey },
+      /**
+       * expectedVariables
+       */
+      function testExpectedVariables(sdk, assertion, details = {}, evaluationContext = context) {
+        Object.keys(assertion.expectedVariables).forEach(function (variableKey) {
+          const expectedValue =
+            assertion.expectedVariables && assertion.expectedVariables[variableKey];
+
+          const overrideOptions: OverrideOptions = {};
+          if (
+            assertion.defaultVariableValues &&
+            Object.prototype.hasOwnProperty.call(assertion.defaultVariableValues, variableKey)
+          ) {
+            overrideOptions.defaultVariableValue = assertion.defaultVariableValues[variableKey];
+          }
+
+          const actualValue = sdk.getVariable(
+            featureKey,
+            variableKey,
+            evaluationContext,
+            overrideOptions,
           );
-        }
-      }
-    }
 
-    if (assertion.expectedEvaluations) {
-      testExpectedEvaluations(sdk, assertion);
-    }
+          let passed;
 
-    /**
-     * children
-     */
-    if (Array.isArray(assertion.children)) {
-      let childIndex = 0;
+          // Use feature from datafile so variable schema is always resolved (ResolvedVariableSchema)
+          const featureFromDatafile = datafileContent?.features?.[featureKey];
+          const variableSchema = featureFromDatafile?.variablesSchema?.[variableKey];
 
-      for (const child of assertion.children) {
-        const childSdk = sdk.spawn(child.context || {}, {
-          stickyFeatures: assertion.sticky || {},
+          if (!variableSchema) {
+            testResult.passed = false;
+            testResultAssertion.passed = false;
+
+            (testResultAssertion.errors as TestResultAssertionError[]).push({
+              type: "variable",
+              expected: assertion.expectedVariation,
+              actual: undefined,
+              message: `schema for variable "${variableKey}" not found in feature`,
+            });
+
+            return;
+          }
+
+          if (variableSchema.type === "json") {
+            // JSON type
+            const parsedExpectedValue =
+              typeof expectedValue === "string"
+                ? JSON.parse(expectedValue as string)
+                : expectedValue;
+
+            if (Array.isArray(actualValue)) {
+              passed = checkIfArraysAreEqual(parsedExpectedValue, actualValue);
+            } else if (typeof actualValue === "object") {
+              passed = checkIfObjectsAreEqual(parsedExpectedValue, actualValue);
+            } else {
+              passed = JSON.stringify(parsedExpectedValue) === JSON.stringify(actualValue);
+            }
+
+            if (!passed) {
+              testResult.passed = false;
+              testResultAssertion.passed = false;
+
+              (testResultAssertion.errors as TestResultAssertionError[]).push({
+                type: "variable",
+                expected:
+                  typeof expectedValue !== "string" ? JSON.stringify(expectedValue) : expectedValue,
+                actual: typeof actualValue !== "string" ? JSON.stringify(actualValue) : actualValue,
+                details: {
+                  ...details,
+                  variableKey,
+                },
+              });
+            }
+          } else {
+            // other types
+            if (typeof expectedValue === "object") {
+              passed = checkIfObjectsAreEqual(expectedValue, actualValue);
+            } else if (Array.isArray(expectedValue)) {
+              passed = checkIfArraysAreEqual(expectedValue, actualValue);
+            } else {
+              passed = expectedValue === actualValue;
+            }
+
+            if (!passed) {
+              testResult.passed = false;
+              testResultAssertion.passed = false;
+
+              (testResultAssertion.errors as TestResultAssertionError[]).push({
+                type: "variable",
+                expected: expectedValue as string,
+                actual: actualValue as string,
+                details: {
+                  ...details,
+                  variableKey,
+                },
+              });
+            }
+          }
         });
-
-        // expectedToBeEnabled
-        if (typeof child.expectedToBeEnabled !== "undefined") {
-          testExpectedToBeEnabled(
-            childSdk,
-            child,
-            {
-              childIndex,
-            },
-            {},
-          );
-        }
-
-        // expectedVariation
-        if (typeof child.expectedVariation !== "undefined") {
-          testExpectedVariation(
-            childSdk,
-            child,
-            {
-              childIndex,
-            },
-            {},
-          );
-        }
-
-        // expectedVariables
-        if (typeof child.expectedVariables === "object") {
-          testExpectedVariables(
-            childSdk,
-            child,
-            {
-              childIndex,
-            },
-            {},
-          );
-        }
-
-        // expectedEvaluations
-        if (typeof child.expectedEvaluations === "object") {
-          testExpectedEvaluations(
-            childSdk,
-            child,
-            {
-              childIndex,
-            },
-            {},
-          );
-        }
-
-        childIndex++;
       }
+
+      if (typeof assertion.expectedVariables === "object") {
+        testExpectedVariables(sdk, assertion);
+      }
+
+      /**
+       * expectedEvaluations
+       */
+      function testExpectedEvaluations(
+        sdk,
+        assertion,
+        rootDetails = {},
+        evaluationContext = context,
+      ) {
+        function testEvaluation(type, evaluation, expected, details = {}) {
+          for (const [key, value] of Object.entries(expected)) {
+            if (!evaluationValuesAreEqual(value, evaluation[key])) {
+              testResult.passed = false;
+              testResultAssertion.passed = false;
+
+              (testResultAssertion.errors as TestResultAssertionError[]).push({
+                type: "evaluation",
+                expected: value,
+                actual: evaluation[key],
+                details: {
+                  ...rootDetails,
+                  ...details,
+                  evaluationType: type,
+                  evaluationKey: key,
+                },
+              });
+            }
+          }
+        }
+
+        if (assertion.expectedEvaluations.flag) {
+          const evaluation = sdk.evaluateFlag(featureKey, evaluationContext);
+          testEvaluation("flag", evaluation, assertion.expectedEvaluations.flag);
+        }
+
+        if (assertion.expectedEvaluations.variation) {
+          const evaluation = sdk.evaluateVariation(featureKey, evaluationContext);
+          testEvaluation("variation", evaluation, assertion.expectedEvaluations.variation);
+        }
+
+        if (assertion.expectedEvaluations.variables) {
+          const variableKeys = Object.keys(assertion.expectedEvaluations.variables);
+
+          for (const variableKey of variableKeys) {
+            const evaluation = sdk.evaluateVariable(featureKey, variableKey, evaluationContext);
+            testEvaluation(
+              "variable",
+              evaluation,
+              assertion.expectedEvaluations.variables[variableKey],
+              { variableKey },
+            );
+          }
+        }
+      }
+
+      if (assertion.expectedEvaluations) {
+        testExpectedEvaluations(sdk, assertion);
+      }
+
+      /**
+       * children
+       */
+      if (Array.isArray(assertion.children)) {
+        let childIndex = 0;
+
+        for (const child of assertion.children) {
+          const childSdk = sdk.spawn(child.context || {}, {
+            stickyFeatures: assertion.sticky || {},
+          });
+          try {
+            // expectedToBeEnabled
+            if (typeof child.expectedToBeEnabled !== "undefined") {
+              testExpectedToBeEnabled(
+                childSdk,
+                child,
+                {
+                  childIndex,
+                },
+                {},
+              );
+            }
+
+            // expectedVariation
+            if (typeof child.expectedVariation !== "undefined") {
+              testExpectedVariation(
+                childSdk,
+                child,
+                {
+                  childIndex,
+                },
+                {},
+              );
+            }
+
+            // expectedVariables
+            if (typeof child.expectedVariables === "object") {
+              testExpectedVariables(
+                childSdk,
+                child,
+                {
+                  childIndex,
+                },
+                {},
+              );
+            }
+
+            // expectedEvaluations
+            if (typeof child.expectedEvaluations === "object") {
+              testExpectedEvaluations(
+                childSdk,
+                child,
+                {
+                  childIndex,
+                },
+                {},
+              );
+            }
+          } finally {
+            childSdk.close();
+          }
+          childIndex++;
+        }
+      }
+    } finally {
+      await sdk.close();
     }
 
     testResultAssertion.duration = Date.now() - assertionStartTime;

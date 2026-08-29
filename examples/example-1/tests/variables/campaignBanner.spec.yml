@@ -60,6 +60,20 @@ assertions:
         url: https://featurevisor.com
     expectedEvaluation:
       variableOverrideKey: netherlands
+    children:
+      - context:
+          city: amsterdam
+        expectedValue:
+          message: Welkom
+          cta:
+            title: Meer informatie
+            url: https://featurevisor.com/mobile
+        expectedEvaluation:
+          variableOverrideKey: mobile
+          variableOverridePath:
+            - netherlands
+            - amsterdam
+            - mobile
 
   - description: uses the complete catch-all value
     environment: production

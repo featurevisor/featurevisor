@@ -187,7 +187,7 @@ function testStandardProject(projectDirectoryPath) {
   run(projectDirectoryPath, [
     "test",
     "--entity-type=variable",
-    "--key-pattern=^(campaignBanner|flexibleIdentifier)$",
+    "--key-pattern=^(campaignBanner|flexibleIdentifier|signupMessage)$",
   ]);
   run(projectDirectoryPath, ["test", "--target=all", "--target=checkout", "--only-failures"]);
   run(projectDirectoryPath, ["test", "--assertion-pattern=.*", "--only-failures"]);

@@ -174,6 +174,10 @@ function applyCombinationToAssertion(
       variableResult.expectedEvaluation,
       combination,
     ) as VariableAssertion["expectedEvaluation"];
+    variableResult.children = applyCombinationToValue(
+      variableResult.children,
+      combination,
+    ) as VariableAssertion["children"];
   }
 
   return result;
