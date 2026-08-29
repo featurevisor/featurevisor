@@ -207,10 +207,20 @@ function VariableAssertionContent(props: { assertion: VariableAssertion }) {
         {props.assertion.target && (
           <LabelValueBadge label="Target" value={props.assertion.target} compact />
         )}
+        {hasValue(props.assertion.at) && (
+          <LabelValueBadge
+            label="Required feature bucket"
+            value={`${props.assertion.at}%`}
+            compact
+          />
+        )}
       </div>
       <TestDataPanel title="Context" value={props.assertion.context || {}} />
       <TestDataPanel title="Expected" value={expectations} />
       <TestDataPanel title="Defaults" value={defaults} />
+      {props.assertion.stickyFeatures && (
+        <TestDataPanel title="Sticky features" value={props.assertion.stickyFeatures} />
+      )}
       {props.assertion.stickyVariables && (
         <TestDataPanel title="Sticky variables" value={props.assertion.stickyVariables} />
       )}

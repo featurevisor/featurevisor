@@ -17,6 +17,46 @@ function datafile(value: unknown): DatafileContent {
   };
 }
 
+function requiredFeatureDatafile(): DatafileContent {
+  return {
+    schemaVersion: "2",
+    revision: "required-feature-test",
+    segments: {},
+    features: {
+      checkout: {
+        bucketBy: ["userId"],
+        variations: [{ value: "control" }, { value: "treatment" }],
+        traffic: [
+          {
+            key: "everyone",
+            segments: "*",
+            percentage: 100000,
+            allocation: [
+              { variation: "control", range: [0, 50000] },
+              { variation: "treatment", range: [50000, 100000] },
+            ],
+          },
+        ],
+      },
+    },
+    variables: {
+      settings: {
+        type: "string",
+        defaultValue: "control settings",
+        requiredFeatures: ["checkout"],
+        overrides: [
+          {
+            key: "treatment",
+            segments: "*",
+            requiredFeatures: [{ feature: "checkout", variation: "treatment" }],
+            value: "treatment settings",
+          },
+        ],
+      },
+    },
+  };
+}
+
 describe("core: test global variable", () => {
   it("can assert evaluation details without pinning the value", async () => {
     const result = await testVariable(
@@ -102,5 +142,48 @@ describe("core: test global variable", () => {
       expect.objectContaining({ type: "variable" }),
       expect.objectContaining({ type: "evaluation" }),
     ]);
+  });
+
+  it("uses at for required feature bucketing and stickyFeatures for fixed dependencies", async () => {
+    const result = await testVariable(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            description: "control bucket",
+            environment: "production",
+            at: 25,
+            expectedValue: "control settings",
+            expectedEvaluation: { reason: "variable_default" },
+          },
+          {
+            description: "treatment bucket",
+            environment: "production",
+            at: 75,
+            expectedValue: "treatment settings",
+            expectedEvaluation: {
+              reason: "variable_override_rule",
+              variableOverrideKey: "treatment",
+            },
+          },
+          {
+            description: "sticky treatment",
+            environment: "production",
+            at: 25,
+            stickyFeatures: {
+              checkout: { enabled: true, variation: "treatment" },
+            },
+            expectedValue: "treatment settings",
+            expectedEvaluation: { variableOverrideKey: "treatment" },
+          },
+        ],
+      },
+      { quiet: true } as any,
+      new Map([["production", requiredFeatureDatafile()]]),
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.assertions).toHaveLength(3);
+    expect(result.assertions.every((assertion) => assertion.passed)).toBe(true);
   });
 });

@@ -9,7 +9,11 @@ describe("catalog test model", () => {
       assertions: [
         {
           environment: "production",
-          matrix: { value: ["configured"], enabled: [true] },
+          matrix: { at: [37.5], value: ["configured"], enabled: [true] },
+          at: "${{ at }}" as never,
+          stickyFeatures: {
+            checkout: { enabled: "${{ enabled }}" as unknown as boolean },
+          },
           stickyVariables: {
             settings: { nested: ["${{ value }}", { enabled: "${{ enabled }}" }] },
           },
@@ -22,6 +26,10 @@ describe("catalog test model", () => {
     };
 
     expect(expandTestAssertions(test)[0].assertion).toMatchObject({
+      at: 37.5,
+      stickyFeatures: {
+        checkout: { enabled: true },
+      },
       stickyVariables: {
         settings: { nested: ["configured", { enabled: true }] },
       },

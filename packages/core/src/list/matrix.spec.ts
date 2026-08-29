@@ -57,8 +57,17 @@ describe("core :: tester :: matrix", function () {
       environment: "${{ environment }}",
       matrix: {
         environment: ["production"],
+        at: [37.5],
         value: ["configured"],
         enabled: [true],
+        variation: ["treatment"],
+      },
+      at: "${{ at }}" as never,
+      stickyFeatures: {
+        checkout: {
+          enabled: "${{ enabled }}" as unknown as boolean,
+          variation: "${{ variation }}",
+        },
       },
       stickyVariables: {
         settings: { nested: ["${{ value }}", { enabled: "${{ enabled }}" }] },
@@ -72,6 +81,10 @@ describe("core :: tester :: matrix", function () {
 
     expect(assertions[0]).toMatchObject({
       environment: "production",
+      at: 37.5,
+      stickyFeatures: {
+        checkout: { enabled: true, variation: "treatment" },
+      },
       stickyVariables: {
         settings: { nested: ["configured", { enabled: true }] },
       },

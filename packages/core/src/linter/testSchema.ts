@@ -64,6 +64,13 @@ export function getTestsZodSchema(
     ),
   );
 
+  const atZodSchema = z.union([
+    z.number().min(0).max(100),
+
+    // because of supporting matrix
+    z.string(),
+  ]);
+
   const expectedEvaluationZodSchema = z
     .object({
       type: z.enum(["flag", "variation", "variable"]).optional(),
@@ -142,12 +149,7 @@ export function getTestsZodSchema(
               promotable: z.boolean().optional(),
               matrix: matrixZodSchema.optional(),
               description: z.string().optional(),
-              at: z.union([
-                z.number().min(0).max(100),
-
-                // because of supporting matrix
-                z.string(),
-              ]),
+              at: atZodSchema,
               environment: Array.isArray(projectConfig.environments)
                 ? refineWithMessage(
                     z.string(),
@@ -248,6 +250,8 @@ export function getTestsZodSchema(
                 (value) => value.indexOf("${{") === 0 || availableTargetKeys.includes(value),
                 (value) => `Unknown target "${value}"`,
               ).optional(),
+              at: atZodSchema.optional(),
+              stickyFeatures: z.record(z.string(), z.record(z.string(), z.any())).optional(),
               stickyVariables: z.record(z.string(), z.unknown()).optional(),
               context: z.record(z.string(), z.unknown()).optional(),
               defaultVariableValue: z.unknown().optional(),

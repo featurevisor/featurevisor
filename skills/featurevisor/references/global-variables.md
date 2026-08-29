@@ -66,5 +66,8 @@ assertions:
       variableOverrideIndex: 0
 ```
 
-Variable assertions also support `target`, `matrix`, `stickyVariables`, and `defaultVariableValue`.
-Matrix placeholders are substituted recursively in nested sticky values, defaults, expected values, and detailed evaluation expectations. Detailed expectations accept only documented evaluation fields and compare nested arrays and objects by value.
+Variable assertions also support `target`, `matrix`, `at`, `stickyFeatures`, `stickyVariables`, and `defaultVariableValue`.
+
+Global variables are not bucketed. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. It is a no-op when no required feature is evaluated. Use `stickyFeatures` to supply exact upstream flag, variation, and feature variable results. Sticky features take precedence over `at`. Use `stickyVariables` separately to fix the global variable's own result.
+
+Matrix placeholders are substituted recursively in `at`, nested sticky values, defaults, expected values, and detailed evaluation expectations. Detailed expectations accept only documented evaluation fields and compare nested arrays and objects by value.

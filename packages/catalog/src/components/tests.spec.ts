@@ -156,9 +156,11 @@ describe("catalog test presentation", () => {
       variable: "supportEmail",
       assertions: [
         {
-          matrix: { country: ["nl", "de"] },
+          matrix: { country: ["nl", "de"], at: [25] },
           environment: "production",
+          at: "${{ at }}" as never,
           context: { country: "${{ country }}" },
+          stickyFeatures: { checkout: { enabled: true } },
           defaultVariableValue: "fallback@example.com",
           expectedValue: "${{ country }}@example.com",
           expectedEvaluation: {
@@ -172,7 +174,9 @@ describe("catalog test presentation", () => {
     expect(expandTestAssertions(test)[0]).toMatchObject({
       label: "1.1",
       assertion: {
+        at: 25,
         context: { country: "nl" },
+        stickyFeatures: { checkout: { enabled: true } },
         defaultVariableValue: "fallback@example.com",
         expectedValue: "nl@example.com",
         expectedEvaluation: {

@@ -150,10 +150,18 @@ function applyCombinationToAssertion(
       variableResult.target,
       combination,
     ) as VariableAssertion["target"];
+    const at = applyCombinationToValue(variableResult.at, combination);
+    variableResult.at = (
+      typeof at === "string" ? (at.includes(".") ? parseFloat(at) : parseInt(at, 10)) : at
+    ) as VariableAssertion["at"];
     variableResult.expectedValue = applyCombinationToValue(
       variableResult.expectedValue,
       combination,
     ) as VariableAssertion["expectedValue"];
+    variableResult.stickyFeatures = applyCombinationToValue(
+      variableResult.stickyFeatures,
+      combination,
+    ) as VariableAssertion["stickyFeatures"];
     variableResult.stickyVariables = applyCombinationToValue(
       variableResult.stickyVariables,
       combination,

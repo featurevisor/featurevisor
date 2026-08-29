@@ -126,6 +126,8 @@ export interface VariableAssertion {
   description?: string;
   environment?: EnvironmentKey;
   target?: TargetKey;
+  at?: Weight; // bucket weight for feature evaluations reached through requiredFeatures
+  stickyFeatures?: StickyFeatures;
   stickyVariables?: StickyVariables;
   context?: Context;
   defaultVariableValue?: VariableValue;

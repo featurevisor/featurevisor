@@ -5,7 +5,7 @@ import type {
   TestResultAssertionError,
   TestVariable,
 } from "@featurevisor/types";
-import { createFeaturevisor } from "@featurevisor/sdk";
+import { createFeaturevisor, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import type { DatafileContentByKey, TestProjectOptions } from "./testProject";
 import { checkIfArraysAreEqual, checkIfObjectsAreEqual } from "./helpers";
@@ -46,9 +46,20 @@ export async function testVariable(
     const datafile =
       (assertion.target && datafileContentByKey.get(targetKey)) ||
       datafileContentByKey.get(assertion.environment || false);
+    const at = assertion.at;
     const f = createFeaturevisor({
       datafile: datafile as DatafileContent,
+      stickyFeatures: assertion.stickyFeatures,
       stickyVariables: assertion.stickyVariables,
+      modules:
+        typeof at !== "undefined"
+          ? [
+              {
+                name: "tester",
+                bucketValue: () => at * (MAX_BUCKETED_NUMBER / 100),
+              },
+            ]
+          : [],
       logLevel: options.quiet ? "fatal" : options.verbose ? "debug" : "warn",
     });
     const evaluation = f.evaluateVariable(test.variable, assertion.context || {}, {

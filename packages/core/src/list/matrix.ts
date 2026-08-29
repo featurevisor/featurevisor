@@ -280,7 +280,11 @@ export function getVariableAssertionsFromMatrix(
     if (assertion.description) {
       assertion.description = applyCombinationToValue(assertion.description, combination);
     }
+    const at = applyCombinationToValue(assertion.at, combination);
+    assertion.at =
+      typeof at === "string" ? (at.indexOf(".") > -1 ? parseFloat(at) : parseInt(at, 10)) : at;
     assertion.expectedValue = applyCombinationToValue(assertion.expectedValue, combination);
+    assertion.stickyFeatures = applyCombinationToValue(assertion.stickyFeatures, combination);
     assertion.stickyVariables = applyCombinationToValue(assertion.stickyVariables, combination);
     assertion.defaultVariableValue = applyCombinationToValue(
       assertion.defaultVariableValue,

@@ -107,9 +107,27 @@ assertions:
       variableOverrideKey: netherlands
 ```
 
-Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.
+Variable assertions support `matrix`, `target`, `at`, `stickyFeatures`, `stickyVariables`, and `defaultVariableValue`.
 
-They do **not** accept `at`. Global variables are never bucketed, so there is no percentile to pin, and lint rejects the key outright with `Unrecognized key: "at"`. When a global variable declares `requiredFeatures`, the required feature is still bucketed on the same context, so drive that branch with a `userId` that lands where you want it (or one covered by a `force` block) rather than reaching for `at`. Assert the gated fallback with `reason: required_features_unmet`.
+Global variables are never bucketed directly. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. This makes a required feature's rollout and variation allocation deterministic without searching for a particular `userId`. It has no effect when no required feature is evaluated.
+
+Use `stickyFeatures` to supply exact upstream feature results. Sticky features take precedence over `at`. Use `stickyVariables` separately to bypass normal evaluation for the global variable itself.
+
+```yaml
+variable: signupMessage
+assertions:
+  - environment: production
+    at: 75
+    expectedValue: Sign up with your preferred provider
+
+  - environment: production
+    at: 25
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    expectedValue: Sign up with your preferred provider
+```
 
 ## Matrix expansion
 

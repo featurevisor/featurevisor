@@ -113,6 +113,43 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts bucket positions and sticky features in global variable assertions", () => {
+    expectTestSuccess({
+      variable: "settings",
+      assertions: [
+        {
+          environment: "production",
+          at: 37.5,
+          stickyFeatures: {
+            checkout: { enabled: true, variation: "treatment" },
+          },
+          expectedValue: "configured",
+        },
+        {
+          environment: "production",
+          matrix: { at: [25, 75] },
+          at: "${{ at }}",
+          expectedEvaluation: { reason: "required_features_unmet" },
+        },
+      ],
+    });
+
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production", at: -1, expectedValue: "configured" }],
+      },
+      "Too small",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production", at: 100.001, expectedValue: "configured" }],
+      },
+      "Too big",
+    );
+  });
+
   it("accepts a valid feature test with matrix, context, sticky, and expected evaluations", () => {
     expectTestSuccess({
       feature: "checkout",
