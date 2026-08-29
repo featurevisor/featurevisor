@@ -197,11 +197,11 @@ tags:
   - checkout
 bucketBy: userId
 
-required:
+requiredFeatures:
   - oneClickCheckout                     # must be enabled
 
   # OR variation-specific:
-  # - key: oneClickCheckout
+  # - feature: oneClickCheckout
   #   variation: treatment
 
 rules:
@@ -285,7 +285,7 @@ rules:
 App side (sketch, for context only):
 
 ```js
-f.setSticky({
+f.setStickyFeatures({
   plan: { enabled: true, variation: userProfile.plan }
 })
 const ents = f.getVariable('plan', 'entitlements', ctx)
@@ -668,7 +668,7 @@ Flags that reached 100% everywhere and stopped mattering are debt: dead branches
    npx featurevisor list --features --enabledIn=production --without-variations --json --pretty
    ```
    Cross-check age with Git history and confirm every environment sits at an unconditional 100%.
-2. **Confirm nothing depends on them**: `npx featurevisor find-usage --feature=<key>` (other features' `required`, groups).
+2. **Confirm nothing depends on them**: `npx featurevisor find-usage --feature=<key>` (other features' `requiredFeatures`, deprecated `required`, and groups).
 3. **Mark `deprecated: true`** — SDKs log warnings so consuming teams notice ([deprecation recipe](#deprecating-a-feature-safely)).
 4. **Remove the flag checks from application code** — the `isEnabled` calls and the dead `else` branches. This is the step that pays the debt down.
 5. **Archive or delete** the feature file once code no longer references it, then `npx featurevisor lint`.

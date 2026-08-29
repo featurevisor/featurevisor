@@ -184,6 +184,10 @@ describe("promoteProjectSets", function () {
         "  - web*",
         "excludeFeatures:",
         "  - webInternal*",
+        "includeVariables:",
+        "  - web*",
+        "excludeVariables:",
+        "  - webInternal*",
         "",
       ].join("\n"),
     );
@@ -208,6 +212,21 @@ describe("promoteProjectSets", function () {
         ].join("\n"),
       );
     }
+    for (const key of ["webSettings", "webInternalSettings"]) {
+      await writeFile(
+        root,
+        `sets/dev/variables/${key}.yml`,
+        [
+          `description: ${key}`,
+          "tags:",
+          "  - web",
+          "  - all",
+          "type: string",
+          `defaultValue: ${key}`,
+          "",
+        ].join("\n"),
+      );
+    }
     const projectConfig = getProjectConfig(root);
     const datasource = new Datasource(projectConfig, root);
 
@@ -221,20 +240,29 @@ describe("promoteProjectSets", function () {
     expect(result.filters.targets).toEqual(["web"]);
     expect(result.dependencies.target).toEqual(1);
     expect(result.dependencies.feature).toEqual(1);
+    expect(result.dependencies.variable).toEqual(1);
     expect(result.dependencies.segment).toEqual(1);
     expect(result.dependencies.attribute).toEqual(2);
     expect(result.files.created).toEqual(
       expect.arrayContaining([
         expect.stringContaining("targets/web.yml"),
         expect.stringContaining("features/webCheckout.yml"),
+        expect.stringContaining("variables/webSettings.yml"),
       ]),
     );
     expect(result.files.created).not.toEqual(
       expect.arrayContaining([expect.stringContaining("features/webInternalTools.yml")]),
     );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("variables/webInternalSettings.yml")]),
+    );
 
     const destinationDatasource = datasource.forSet("staging");
     const target = await destinationDatasource.readTarget("web");
+    expect(await destinationDatasource.listVariables()).toEqual(["webSettings"]);
+    const promotedVariable = await destinationDatasource.readVariable("webSettings");
+    expect(promotedVariable).toEqual(expect.objectContaining({ defaultValue: "webSettings" }));
+    expect(promotedVariable.overrides).toBeUndefined();
     const datafile = await getCustomDatafile({
       environment: false,
       projectConfig: destinationDatasource.getConfig(),
@@ -244,9 +272,298 @@ describe("promoteProjectSets", function () {
       tags: target.tags,
       includeFeatures: target.includeFeatures,
       excludeFeatures: target.excludeFeatures,
+      includeVariables: target.includeVariables,
+      excludeVariables: target.excludeVariables,
     });
     expect(Object.keys(datafile.features)).toEqual(["webCheckout"]);
+    expect(Object.keys(datafile.variables || {})).toEqual(["webSettings"]);
     expect(Object.keys(datafile.segments)).toEqual(["internal"]);
+  });
+
+  it("promotes tagged variables with their dependencies and item-level protection", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/protectedDependency.yml",
+      [
+        "description: Protected dependency",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/segments/protectedUsers.yml",
+      [
+        "description: Protected users",
+        "conditions:",
+        "  - attribute: team",
+        "    operator: equals",
+        "    value: protected",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/variables/checkoutSettings.yml",
+      [
+        "description: Checkout settings",
+        "tags:",
+        "  - web",
+        "type: object",
+        "defaultValue:",
+        "  enabled: true",
+        "requiredFeatures:",
+        "  - checkoutFlow",
+        "overrides:",
+        "  - key: internal",
+        "    segments: internal",
+        "    value:",
+        "      enabled: false",
+        "    overrides:",
+        "      - key: nested",
+        "        segments: internal",
+        "        value:",
+        "          enabled: true",
+        "      - key: nested-protected",
+        "        promotable: false",
+        "        segments: protectedUsers",
+        "        requiredFeatures:",
+        "          - protectedDependency",
+        "        value:",
+        "          enabled: true",
+        "  - key: protected",
+        "    promotable: false",
+        "    segments: protectedUsers",
+        "    requiredFeatures:",
+        "      - protectedDependency",
+        "    value:",
+        "      enabled: true",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    expect(result.dependencies.variable).toBe(1);
+    expect(result.dependencies.feature).toBe(1);
+    expect(result.dependencies.segment).toBe(1);
+    expect(result.dependencies.attribute).toBe(2);
+    const variable = await datasource.forSet("staging").readVariable("checkoutSettings");
+    expect(Array.isArray(variable.overrides) && variable.overrides.map((item) => item.key)).toEqual(
+      ["internal"],
+    );
+    expect(
+      Array.isArray(variable.overrides) && variable.overrides[0].overrides?.map((item) => item.key),
+    ).toEqual(["nested"]);
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("features/protectedDependency.yml"),
+        expect.stringContaining("segments/protectedUsers.yml"),
+      ]),
+    );
+  });
+
+  it("promotes keyed feature variable overrides with item-level protection", async function () {
+    const root = await createProject();
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutDependency.yml",
+      [
+        "description: Checkout dependency",
+        "bucketBy: userId",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/segments/protectedUsers.yml",
+      [
+        "description: Protected users",
+        "conditions:",
+        "  - attribute: team",
+        "    operator: equals",
+        "    value: protected",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/features/checkoutFlow.yml",
+      [
+        "description: Checkout flow in dev",
+        "tags:",
+        "  - all",
+        "bucketBy: userId",
+        "variablesSchema:",
+        "  payload:",
+        "    schema: payload",
+        "    defaultValue: {}",
+        "rules:",
+        "  - key: everyone",
+        '    segments: "*"',
+        "    percentage: 100",
+        "    variableOverrides:",
+        "      payload:",
+        "        - key: internal",
+        "          segments: internal",
+        "          requiredFeatures: checkoutDependency",
+        "          value: {}",
+        "        - key: protected",
+        "          promotable: false",
+        "          segments: protectedUsers",
+        "          value: {}",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      includeFeatures: "checkoutFlow",
+      apply: true,
+    });
+
+    const feature = await datasource.forSet("staging").readFeature("checkoutFlow");
+    const rules = Array.isArray(feature.rules) ? feature.rules : [];
+    expect(rules[0].variableOverrides?.payload.map((override) => override.key)).toEqual([
+      "internal",
+    ]);
+    expect(result.files.created).toEqual(
+      expect.arrayContaining([expect.stringContaining("features/checkoutDependency.yml")]),
+    );
+    expect(result.files.created).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("segments/protectedUsers.yml")]),
+    );
+  });
+
+  it("merges nested global variable overrides by key and preserves protected children", async () => {
+    const root = await createProject();
+    const variable = (parent: string, open: string, protectedValue: string, protect = false) =>
+      [
+        "description: Nested settings",
+        "tags:",
+        "  - web",
+        "type: string",
+        "defaultValue: default",
+        "overrides:",
+        "  - key: country",
+        '    segments: "*"',
+        `    value: ${parent}`,
+        "    overrides:",
+        "      - key: open",
+        "        conditions:",
+        "          attribute: team",
+        "          operator: equals",
+        "          value: open",
+        `        value: ${open}`,
+        "      - key: protected",
+        ...(protect ? ["        promotable: false"] : []),
+        "        conditions:",
+        "          attribute: team",
+        "          operator: equals",
+        "          value: protected",
+        `        value: ${protectedValue}`,
+        "",
+      ].join("\n");
+
+    await writeFile(
+      root,
+      "sets/dev/variables/nestedSettings.yml",
+      variable("source-parent", "source-open", "source-protected"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/variables/nestedSettings.yml",
+      variable("destination-parent", "destination-open", "destination-protected", true),
+    );
+
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    const promoted = await datasource.forSet("staging").readVariable("nestedSettings");
+    expect(Array.isArray(promoted.overrides)).toBe(true);
+    const country = Array.isArray(promoted.overrides) ? promoted.overrides[0] : undefined;
+    expect(country?.value).toBe("source-parent");
+    expect(country?.overrides?.map((entry) => [entry.key, entry.value])).toEqual([
+      ["open", "source-open"],
+      ["protected", "destination-protected"],
+    ]);
+  });
+
+  it("promotes nested reusable schemas without treating runtime schema keys as references", async function () {
+    const root = await createProject();
+    await writeFile(root, "sets/dev/schemas/inner.yml", "description: Inner value\ntype: string\n");
+    await writeFile(
+      root,
+      "sets/dev/schemas/outer.yml",
+      [
+        "description: Outer value",
+        "type: object",
+        "properties:",
+        "  value:",
+        "    schema: inner",
+        "  schema:",
+        "    type: string",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/dev/variables/schemaSettings.yml",
+      [
+        "description: Schema settings",
+        "tags:",
+        "  - web",
+        "schema: outer",
+        "defaultValue:",
+        "  value: configured",
+        "  schema: not-a-project-reference",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    const result = await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    expect(result.dependencies.variable).toBe(1);
+    expect(result.dependencies.schema).toBe(2);
+    expect(result.files.created).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("schemas/inner.yml"),
+        expect.stringContaining("schemas/outer.yml"),
+        expect.stringContaining("variables/schemaSettings.yml"),
+      ]),
+    );
   });
 
   it("selects features by tag and includes exclusion group members", async function () {
@@ -336,7 +653,7 @@ describe("promoteProjectSets", function () {
         to: "staging",
         tag: "web",
       }),
-    ).rejects.toThrow("No source features matched the promotion filters.");
+    ).rejects.toThrow("No source features or variables matched the promotion filters.");
 
     const empty = await promoteProjectSets(projectConfig, datasource, {
       from: "dev",
@@ -663,6 +980,71 @@ describe("promoteProjectSets", function () {
     });
   });
 
+  it("applies assertion protection to global variable test specs", async function () {
+    const root = await createProject();
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/variables/supportEmail.yml`,
+        [
+          "description: Support email",
+          "tags:",
+          "  - web",
+          "type: string",
+          `defaultValue: ${set}@example.com`,
+          "",
+        ].join("\n"),
+      );
+    }
+    await writeFile(
+      root,
+      "sets/dev/tests/variables/supportEmail.spec.yml",
+      [
+        "variable: supportEmail",
+        "assertions:",
+        "  - key: shared",
+        "    expectedValue: source@example.com",
+        "  - key: dev-only",
+        "    promotable: false",
+        "    expectedValue: dev@example.com",
+        "",
+      ].join("\n"),
+    );
+    await writeFile(
+      root,
+      "sets/staging/tests/variables/supportEmail.spec.yml",
+      [
+        "variable: supportEmail",
+        "assertions:",
+        "  - key: shared",
+        "    expectedValue: destination@example.com",
+        "  - key: protected",
+        "    promotable: false",
+        "    expectedValue: protected@example.com",
+        "",
+      ].join("\n"),
+    );
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+
+    await promoteProjectSets(projectConfig, datasource, {
+      from: "dev",
+      to: "staging",
+      tag: "web",
+      apply: true,
+    });
+
+    const test = await datasource.forSet("staging").readTest("variables.supportEmail.spec");
+    expect(test.assertions.map((assertion) => assertion.key)).toEqual(["shared", "protected"]);
+    expect(test.assertions.find((assertion) => assertion.key === "shared")).toMatchObject({
+      expectedValue: "source@example.com",
+    });
+    expect(test.assertions.find((assertion) => assertion.key === "protected")).toMatchObject({
+      promotable: false,
+      expectedValue: "protected@example.com",
+    });
+  });
+
   it("omits non-promotable assertions when creating a missing test spec", async function () {
     const root = await createProject();
     await writeFile(
@@ -817,6 +1199,7 @@ describe("promoteProjectSets", function () {
       const audit = await fs.promises.readFile(path.resolve(root, applied.auditFilePath!), "utf8");
       expect(audit).toContain("# Featurevisor Promotion");
       expect(audit).toContain("- Mode: apply");
+      expect(audit).toContain("- Variables: 0");
       expect(audit).toContain("features/checkoutFlow.yml");
     } finally {
       jest.useRealTimers();

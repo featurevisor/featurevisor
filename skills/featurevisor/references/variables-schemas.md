@@ -160,12 +160,15 @@ rules:
         bgColor: orange
       variableOverrides:
         bgColor:
-          - segments: amsterdam
+          - key: amsterdam
+            segments: amsterdam
             value: red
-          - conditions:
+          - key: rotterdam
+            conditions:
               - attribute: city
                 operator: equals
                 value: rotterdam
+            requiredFeatures: checkout
             value: blue
 ```
 
@@ -181,14 +184,18 @@ variations:
       bgColor: blue
     variableOverrides:
       bgColor:
-        - segments: netherlands
+        - key: netherlands
+          segments: netherlands
           value: orange
-        - conditions:
+        - key: germany
+          conditions:
             - attribute: country
               operator: equals
               value: de
           value: yellow
 ```
+
+Feature variable overrides follow the global override shape. Provide at least one of `conditions`, `segments`, or `requiredFeatures`. Do not combine conditions and segments. Requirements can be paired with either selector. Provide exactly one of `value` or explicit `mutate`. A stable `key` is recommended, appears in detailed evaluations, and is required for item level promotion protection. Existing unkeyed overrides and mutation maps under `value` remain valid for compatibility.
 
 ## Reusable schemas
 

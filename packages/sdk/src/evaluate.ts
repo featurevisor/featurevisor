@@ -5,6 +5,7 @@ import type {
   Traffic,
   Force,
   Required,
+  RequiredFeature,
   Variation,
   VariationValue,
   VariableKey,
@@ -16,10 +17,13 @@ import type {
   Feature,
   Condition,
   GroupSegment,
+  DatafileVariable,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import type { FeaturevisorModule } from "./modules.js";
-import { BucketKey, BucketValue, getBucketKey, getBucketedNumber } from "./bucketer.js";
+import { getBucketKey, getBucketedNumber } from "./bucketer.js";
+import type { BucketKey, BucketValue } from "./bucketer.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 import { parseSegmentsIfStringified } from "./conditions.js";
 
@@ -35,6 +39,7 @@ export type EvaluationReason =
   | "variable_disabled"
   | "variable_override_variation"
   | "variable_override_rule"
+  | "required_features_unmet"
   | "no_match"
   | "forced"
   | "sticky"
@@ -42,7 +47,7 @@ export type EvaluationReason =
   | "allocated"
   | "error";
 
-type EvaluationType = "flag" | "variation" | "variable";
+export type EvaluationType = "flag" | "variation" | "variable";
 
 export interface ForceResult {
   force?: Force;
@@ -62,12 +67,18 @@ export interface EvaluationDataProvider {
   getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined;
   getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined;
   getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult;
+  evaluateRequiredFeature(
+    type: "flag" | "variation",
+    featureKey: FeatureKey,
+    dependencies: EvaluateDependencies,
+  ): Evaluation;
 }
 
 export interface Evaluation {
-  // required
+  // identity
   type: EvaluationType;
-  featureKey: FeatureKey;
+  /** Present for feature evaluations and omitted for global variable evaluations. */
+  featureKey?: FeatureKey;
   reason: EvaluationReason;
 
   // common
@@ -80,6 +91,9 @@ export interface Evaluation {
   forceIndex?: number;
   force?: Force;
   required?: Required[];
+  requiredFeatures?: RequiredFeature[];
+  stickyFeature?: EvaluatedFeature;
+  /** @deprecated Use `stickyFeature`. */
   sticky?: EvaluatedFeature;
 
   // variation
@@ -87,10 +101,16 @@ export interface Evaluation {
   variationValue?: VariationValue;
 
   // variable
-  variableKey?: VariableKey;
+  variableKey?: VariableKey | GlobalVariableKey;
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
+  /** Present when a keyed feature or global variable override matched. */
+  variableOverrideKey?: string;
+  /** Authored key route when a global variable override matched. */
+  variableOverridePath?: string[];
+  /** Present when evaluating a global variable. */
+  variable?: DatafileVariable;
 }
 
 export interface EvaluateDependencies {
@@ -101,7 +121,7 @@ export interface EvaluateDependencies {
   datafile: EvaluationDataProvider;
 
   // OverrideOptions
-  sticky?: StickyFeatures;
+  stickyFeatures?: StickyFeatures;
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
@@ -114,6 +134,15 @@ export interface EvaluateParams {
 }
 
 export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
+
+export interface GlobalVariableEvaluateOptions {
+  type: "variable";
+  variableKey: GlobalVariableKey;
+  context: Context;
+  defaultVariableValue?: VariableValue;
+}
+
+export type EvaluationOptions = EvaluateOptions | GlobalVariableEvaluateOptions;
 
 function reportEvaluationDiagnostic(
   reportDiagnostic: FeaturevisorDiagnosticReporter,
@@ -136,6 +165,42 @@ function reportEvaluationDiagnostic(
   });
 }
 
+function requiredFeaturesAreMatched(
+  requirements: RequiredFeature[] | RequiredFeature | Required[] | undefined,
+  datafile: EvaluationDataProvider,
+  options: EvaluateOptions,
+): boolean {
+  if (typeof requirements === "undefined") return true;
+  const items = Array.isArray(requirements) ? requirements : [requirements];
+
+  return items.every((required) => {
+    let requiredKey: FeatureKey;
+    let requiredEnabled = true;
+    let requiredVariation: VariationValue | undefined;
+
+    if (typeof required === "string") {
+      requiredKey = required;
+    } else if ("feature" in required) {
+      requiredKey = required.feature;
+      requiredEnabled = required.enabled ?? true;
+      requiredVariation = required.variation;
+    } else {
+      requiredKey = required.key;
+      requiredVariation = required.variation;
+    }
+
+    const requiredEvaluation = datafile.evaluateRequiredFeature("flag", requiredKey, options);
+    if ((requiredEvaluation.enabled === true) !== requiredEnabled) return false;
+    if (typeof requiredVariation === "undefined") return true;
+
+    const variationEvaluation = datafile.evaluateRequiredFeature("variation", requiredKey, options);
+    return (
+      (variationEvaluation.variationValue || variationEvaluation.variation?.value) ===
+      requiredVariation
+    );
+  });
+}
+
 export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
   try {
     const { modules } = opts;
@@ -145,6 +210,11 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
     for (const module of modules) {
       if (module.before) {
         options = module.before(options);
+      }
+    }
+    for (const module of modules) {
+      if (module.beforeEvaluation) {
+        options = module.beforeEvaluation(options);
       }
     }
 
@@ -170,7 +240,14 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
       evaluation.variableValue = options.defaultVariableValue;
     }
 
-    // run after modules
+    // run unified after modules
+    for (const module of modules) {
+      if (module.afterEvaluation) {
+        evaluation = module.afterEvaluation(evaluation, options) as Evaluation;
+      }
+    }
+
+    // run deprecated feature-only after modules
     for (const module of modules) {
       if (module.after) {
         evaluation = module.after(evaluation, options);
@@ -202,8 +279,16 @@ export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
 }
 
 function evaluate(options: EvaluateOptions): Evaluation {
-  const { type, featureKey, variableKey, context, reportDiagnostic, datafile, sticky, modules } =
-    options;
+  const {
+    type,
+    featureKey,
+    variableKey,
+    context,
+    reportDiagnostic,
+    datafile,
+    stickyFeatures,
+    modules,
+  } = options;
 
   let evaluation: Evaluation;
 
@@ -284,15 +369,16 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Sticky
      */
-    if (sticky && sticky[featureKey]) {
+    if (stickyFeatures && stickyFeatures[featureKey]) {
       // flag
-      if (type === "flag" && typeof sticky[featureKey].enabled !== "undefined") {
+      if (type === "flag" && typeof stickyFeatures[featureKey].enabled !== "undefined") {
         evaluation = {
           type,
           featureKey,
           reason: "sticky",
-          sticky: sticky[featureKey],
-          enabled: sticky[featureKey].enabled,
+          stickyFeature: stickyFeatures[featureKey],
+          sticky: stickyFeatures[featureKey],
+          enabled: stickyFeatures[featureKey].enabled,
         };
 
         reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky enabled");
@@ -302,7 +388,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variation
       if (type === "variation") {
-        const variationValue = sticky[featureKey].variation;
+        const variationValue = stickyFeatures[featureKey].variation;
 
         if (typeof variationValue !== "undefined") {
           evaluation = {
@@ -320,7 +406,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variable
       if (variableKey) {
-        const variables = sticky[featureKey].variables;
+        const variables = stickyFeatures[featureKey].variables;
 
         if (variables) {
           const result = variables[variableKey];
@@ -497,49 +583,13 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Required
      */
-    if (type === "flag" && feature.required && feature.required.length > 0) {
-      const requiredFeaturesAreEnabled = feature.required.every((required) => {
-        let requiredKey;
-        let requiredVariation;
-
-        if (typeof required === "string") {
-          requiredKey = required;
-        } else {
-          requiredKey = required.key;
-          requiredVariation = required.variation;
-        }
-
-        const requiredEvaluation = evaluate({
-          ...options,
-          type: "flag",
-          featureKey: requiredKey,
-        });
-        const requiredIsEnabled = requiredEvaluation.enabled;
-
-        if (!requiredIsEnabled) {
-          return false;
-        }
-
-        if (typeof requiredVariation !== "undefined") {
-          const requiredVariationEvaluation = evaluate({
-            ...options,
-            type: "variation",
-            featureKey: requiredKey,
-          });
-
-          let requiredVariationValue;
-
-          if (requiredVariationEvaluation.variationValue) {
-            requiredVariationValue = requiredVariationEvaluation.variationValue;
-          } else if (requiredVariationEvaluation.variation) {
-            requiredVariationValue = requiredVariationEvaluation.variation.value;
-          }
-
-          return requiredVariationValue === requiredVariation;
-        }
-
-        return true;
-      });
+    const requiredFeatures = feature.requiredFeatures || feature.required;
+    if (type === "flag" && requiredFeatures && requiredFeatures.length > 0) {
+      const requiredFeaturesAreEnabled = requiredFeaturesAreMatched(
+        requiredFeatures,
+        datafile,
+        options,
+      );
 
       if (!requiredFeaturesAreEnabled) {
         evaluation = {
@@ -547,6 +597,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
           featureKey,
           reason: "required",
           required: feature.required,
+          requiredFeatures: feature.requiredFeatures,
           enabled: requiredFeaturesAreEnabled,
         };
 
@@ -760,6 +811,12 @@ function evaluate(options: EvaluateOptions): Evaluation {
           const overrides = matchedTraffic.variableOverrides[variableKey];
 
           const overrideIndex = overrides.findIndex((o) => {
+            if (
+              o.requiredFeatures &&
+              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
+            ) {
+              return false;
+            }
             if (o.conditions) {
               return datafile.allConditionsAreMatched(
                 typeof o.conditions === "string" && o.conditions !== "*"
@@ -776,7 +833,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               );
             }
 
-            return false;
+            return typeof o.requiredFeatures !== "undefined";
           });
 
           if (overrideIndex !== -1) {
@@ -794,6 +851,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               variableSchema,
               variableValue: override.value,
               variableOverrideIndex: overrideIndex,
+              variableOverrideKey: override.key,
             };
 
             reportEvaluationDiagnostic(reportDiagnostic, evaluation, "variable override from rule");
@@ -844,6 +902,12 @@ function evaluate(options: EvaluateOptions): Evaluation {
           const overrides = variation.variableOverrides[variableKey];
 
           const overrideIndex = overrides.findIndex((o) => {
+            if (
+              o.requiredFeatures &&
+              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
+            ) {
+              return false;
+            }
             if (o.conditions) {
               return datafile.allConditionsAreMatched(
                 typeof o.conditions === "string" && o.conditions !== "*"
@@ -860,7 +924,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               );
             }
 
-            return false;
+            return typeof o.requiredFeatures !== "undefined";
           });
 
           if (overrideIndex !== -1) {
@@ -878,6 +942,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
               variableSchema,
               variableValue: override.value,
               variableOverrideIndex: overrideIndex,
+              variableOverrideKey: override.key,
             };
 
             reportEvaluationDiagnostic(

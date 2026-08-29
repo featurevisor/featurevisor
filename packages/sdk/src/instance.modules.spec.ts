@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { createFeaturevisor, type FeaturevisorDiagnostic, type FeaturevisorModule } from "./index";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: modules and diagnostics", () => {
   const datafile = createDatafile({
@@ -68,6 +75,64 @@ describe("Featurevisor public API: modules and diagnostics", () => {
       "first:after",
       "second:after",
     ]);
+  });
+
+  it("conformance: runs feature and global module phases in canonical order", () => {
+    const featureCalls: string[] = [];
+    const globalCalls: string[] = [];
+    const modules = ["first", "second"].map(
+      (name): FeaturevisorModule => ({
+        name,
+        before: (options) => {
+          featureCalls.push(`before:${name}`);
+          return options;
+        },
+        beforeEvaluation: (options) => {
+          const calls = "featureKey" in options ? featureCalls : globalCalls;
+          calls.push(`beforeEvaluation:${name}`);
+          return options;
+        },
+        afterEvaluation: (evaluation, options) => {
+          const calls = "featureKey" in options ? featureCalls : globalCalls;
+          calls.push(`afterEvaluation:${name}`);
+          return evaluation;
+        },
+        after: (evaluation) => {
+          featureCalls.push(`after:${name}`);
+          return evaluation;
+        },
+      }),
+    );
+    const sdk = createFeaturevisor({
+      datafile: createDatafile({
+        features: { experiment: createFeature() },
+        variables: { message: { type: "string", defaultValue: "hello" } },
+      }),
+      modules,
+      logLevel: "fatal",
+    });
+
+    expect(sdk.isEnabled("experiment")).toBe(true);
+    expect(sdk.getVariable("message")).toBe("hello");
+    expect(featureCalls).toEqual(conformance.modulePipeline.featureOrder);
+    expect(globalCalls).toEqual(conformance.modulePipeline.globalOrder);
+  });
+
+  it("conformance: applies defaults transformed by unified modules", () => {
+    expect(conformance.modulePipeline.transformedDefaultsAreApplied).toBe(true);
+    const sdk = createFeaturevisor({
+      modules: [
+        {
+          beforeEvaluation: (options) => ({
+            ...options,
+            defaultVariableValue: "module-default",
+          }),
+        },
+      ],
+      logLevel: "fatal",
+    });
+
+    expect(sdk.getVariable("missing")).toBe("module-default");
   });
 
   it("chains bucket transformations and allows final evaluation transformation", () => {

@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, Schema } from "@featurevisor/types";
+import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
 import type { ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
@@ -13,6 +13,7 @@ import { getFeatureZodSchema } from "./featureSchema";
 import { getSchemaZodSchema } from "./schema";
 import { getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
+import { getVariableZodSchema } from "./variableSchema";
 
 import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
 import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
@@ -22,6 +23,8 @@ import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
+import { normalizeFeatureRequirements } from "../datasource/requiredFeatures";
+import { DEFAULT_RESERVED_KEYS } from "../config";
 
 export type LintEntityType =
   | "attribute"
@@ -30,6 +33,7 @@ export type LintEntityType =
   | "group"
   | "schema"
   | "target"
+  | "variable"
   | "test";
 
 export interface LintProjectOptions {
@@ -73,6 +77,10 @@ function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
   );
 
   return ENTITY_NAME_REGEX.test(keyWithoutNamespaceCharacter);
+}
+
+function isReservedKey(key: string, reservedKeys: string[]): boolean {
+  return reservedKeys.includes(key);
 }
 
 function getPathSegmentsFromKey(
@@ -178,6 +186,8 @@ export async function lintProject(
       fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
     } else if (type === "target") {
       fullPath = path.join(projectConfig.targetsDirectoryPath, fileName);
+    } else if (type === "variable") {
+      fullPath = path.join(projectConfig.variablesDirectoryPath, fileName);
     } else {
       fullPath = path.join(projectConfig.testsDirectoryPath, fileName);
     }
@@ -207,6 +217,9 @@ export async function lintProject(
     }
     if (type === "target") {
       return projectConfig.targetsDirectoryPath;
+    }
+    if (type === "variable") {
+      return projectConfig.variablesDirectoryPath;
     }
 
     return projectConfig.testsDirectoryPath;
@@ -529,8 +542,20 @@ export async function lintProject(
     }
   }
 
+  // Load both key spaces before linting either one so a focused feature or
+  // variable lint can report collisions independently.
+  const variables = await datasource.listVariables();
+
   // lint features
   const features = await datasource.listFeatures();
+  const featuresByKey: Record<string, ParsedFeature> = {};
+  for (const key of features) {
+    try {
+      featuresByKey[key] = await datasource.readFeature(key);
+    } catch {
+      // Feature read failures are reported during feature linting below.
+    }
+  }
   const featureZodSchema = getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
@@ -539,6 +564,7 @@ export async function lintProject(
     features as [string, ...string[]],
     schemas,
     schemasByKey,
+    featuresByKey,
   );
 
   if (!options.entityType || options.entityType === "feature") {
@@ -552,6 +578,33 @@ export async function lintProject(
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("feature", key);
+
+      if (isReservedKey(key, projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS)) {
+        await reportSimpleError({
+          entityType: "feature",
+          key,
+          fullPath,
+          message: `Feature key "${key}" is reserved and cannot be used`,
+          detail: "Choose another key, or customize reservedKeys in featurevisor.config.js.",
+          code: "reserved_key",
+        });
+      }
+
+      if (
+        options.entityType === "feature" &&
+        !projectConfig.allowFeatureAndGlobalVariableKeyCollisions &&
+        variables.includes(key)
+      ) {
+        await reportSimpleError({
+          entityType: "feature",
+          key,
+          fullPath,
+          message: `Feature "${key}" conflicts with a global variable using the same key`,
+          detail:
+            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
+          code: "feature_variable_key_collision",
+        });
+      }
 
       if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
@@ -567,7 +620,7 @@ export async function lintProject(
       let parsed;
 
       try {
-        parsed = await datasource.readFeature(key);
+        parsed = featuresByKey[key] ?? (await datasource.readFeature(key));
 
         const result = featureZodSchema.safeParse(parsed);
 
@@ -578,9 +631,13 @@ export async function lintProject(
         await reportThrownError("feature", key, fullPath, error);
       }
 
-      if (parsed && parsed.required) {
+      if (parsed && (parsed.required || parsed.requiredFeatures)) {
         try {
-          await checkForCircularDependencyInRequired(datasource, key, parsed.required);
+          await checkForCircularDependencyInRequired(
+            datasource,
+            key,
+            normalizeFeatureRequirements(parsed),
+          );
         } catch (error) {
           await reportSimpleError({
             entityType: "feature",
@@ -590,6 +647,74 @@ export async function lintProject(
             code: error instanceof Error ? error.name : "error",
           });
         }
+      }
+    }
+  }
+
+  // lint global variables
+  const variableZodSchema = getVariableZodSchema(
+    projectConfig,
+    attributesByKey,
+    segments,
+    featuresByKey,
+    schemasByKey,
+  );
+
+  if (!options.entityType || options.entityType === "variable") {
+    await lintReservedNamespaceCharacterInEntityPaths("variable");
+
+    const filteredKeys = !keyPattern ? variables : variables.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      log(`Linting ${filteredKeys.length} variables...\n`);
+    }
+
+    for (const key of filteredKeys) {
+      const fullPath = getFullPathFromKey("variable", key);
+
+      if (isReservedKey(key, projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Variable key "${key}" is reserved and cannot be used`,
+          detail: "Choose another key, or customize reservedKeys in featurevisor.config.js.",
+          code: "reserved_key",
+        });
+      }
+
+      if (!projectConfig.allowFeatureAndGlobalVariableKeyCollisions && features.includes(key)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Variable "${key}" conflicts with a feature using the same key`,
+          detail:
+            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
+          code: "feature_variable_key_collision",
+        });
+      }
+
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+        await reportSimpleError({
+          entityType: "variable",
+          key,
+          fullPath,
+          message: `Invalid name: "${key}"`,
+          detail: ENTITY_NAME_REGEX_ERROR,
+          code: "invalid_name",
+        });
+      }
+
+      try {
+        const parsed = await datasource.readVariable(key);
+        const result = variableZodSchema.safeParse(parsed);
+
+        if (!result.success && "error" in result) {
+          await reportZodValidationError("variable", key, fullPath, result.error);
+        }
+      } catch (error) {
+        await reportThrownError("variable", key, fullPath, error);
       }
     }
   }
@@ -742,6 +867,7 @@ export async function lintProject(
     features as [string, ...string[]],
     segments as [string, ...string[]],
     targets as [string, ...string[]],
+    variables as [string, ...string[]],
   );
 
   if (!options.entityType || options.entityType === "test") {

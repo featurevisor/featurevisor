@@ -1,0 +1,41 @@
+variable: dependencyMessage
+assertions:
+  - description: matches conditions and required features together
+    environment: production
+    context:
+      country: nl
+      device: mobile
+      version: 1.2.3
+    expectedValue: Conditions and requirements matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: conditions-and-requirements
+
+  - description: matches segments and required features together
+    environment: production
+    context:
+      country: de
+      device: tablet
+    expectedValue: Segments and requirements matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: segments-and-requirements
+
+  - description: matches an override selected only by required features
+    environment: production
+    context:
+      country: fr
+      device: tablet
+    expectedValue: Requirements matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: requirements-only
+
+  - description: uses the default when no requirement based override matches
+    environment: staging
+    context:
+      country: fr
+      device: tablet
+    expectedValue: No dependency based override matched
+    expectedEvaluation:
+      reason: variable_default

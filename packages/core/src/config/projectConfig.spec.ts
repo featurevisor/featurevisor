@@ -22,12 +22,81 @@ describe("core: projectConfig", () => {
 
     expect(config.environments).toBeUndefined();
     expect(config.namespaceCharacter).toBe(".");
+    expect(config.reservedKeys).toEqual(["feature", "variation", "variable"]);
     expect(config.sets).toBe(false);
     expect(config.promotionFlows).toBeUndefined();
+    expect(config.allowFeatureAndGlobalVariableKeyCollisions).toBe(false);
+    expect(config.requireOverrideKeysInFeatures).toBe(false);
     expect(config.setsDirectoryPath).toBe(path.join(root, SETS_DIRECTORY_NAME));
     expect(config.targetsDirectoryPath).toBe(path.join(root, TARGETS_DIRECTORY_NAME));
     expect("scopes" in config).toBe(false);
     expect("siteExportDirectoryPath" in config).toBe(false);
+  });
+
+  it("accepts custom and empty reservedKeys", () => {
+    const customRoot = createTempProject('module.exports = { reservedKeys: ["custom"] };');
+    expect(getProjectConfig(customRoot).reservedKeys).toEqual(["custom"]);
+
+    const emptyRoot = createTempProject("module.exports = { reservedKeys: [] };");
+    expect(getProjectConfig(emptyRoot).reservedKeys).toEqual([]);
+  });
+
+  it("rejects invalid reservedKeys", () => {
+    const cases = [
+      {
+        config: 'module.exports = { reservedKeys: "variable" };',
+        message: "It must be an array of unique, non-empty strings.",
+      },
+      {
+        config: 'module.exports = { reservedKeys: ["variable", 1] };',
+        message: "Invalid reservedKeys[1]",
+      },
+      {
+        config: 'module.exports = { reservedKeys: [""] };',
+        message: "Invalid reservedKeys[0]",
+      },
+      {
+        config: 'module.exports = { reservedKeys: [" variable"] };',
+        message: "without surrounding whitespace",
+      },
+      {
+        config: 'module.exports = { reservedKeys: ["variable", "variable"] };',
+        message: 'duplicate key "variable"',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const root = createTempProject(testCase.config);
+      expect(() => getProjectConfig(root)).toThrow(testCase.message);
+    }
+  });
+
+  it("validates allowFeatureAndGlobalVariableKeyCollisions", () => {
+    const allowedRoot = createTempProject(
+      "module.exports = { allowFeatureAndGlobalVariableKeyCollisions: true };",
+    );
+    expect(getProjectConfig(allowedRoot).allowFeatureAndGlobalVariableKeyCollisions).toBe(true);
+
+    const invalidRoot = createTempProject(
+      'module.exports = { allowFeatureAndGlobalVariableKeyCollisions: "yes" };',
+    );
+    expect(() => getProjectConfig(invalidRoot)).toThrow(
+      "Invalid allowFeatureAndGlobalVariableKeyCollisions: yes. It must be a boolean.",
+    );
+  });
+
+  it("validates requireOverrideKeysInFeatures", () => {
+    const enabledRoot = createTempProject(
+      "module.exports = { requireOverrideKeysInFeatures: true };",
+    );
+    expect(getProjectConfig(enabledRoot).requireOverrideKeysInFeatures).toBe(true);
+
+    const invalidRoot = createTempProject(
+      'module.exports = { requireOverrideKeysInFeatures: "yes" };',
+    );
+    expect(() => getProjectConfig(invalidRoot)).toThrow(
+      "Invalid requireOverrideKeysInFeatures: yes. It must be a boolean.",
+    );
   });
 
   it("silently ignores obsolete scopes configuration", () => {
@@ -172,6 +241,7 @@ describe("core: projectConfig", () => {
     expect(setConfig.featuresDirectoryPath).toBe(path.join(setRoot, "features"));
     expect(setConfig.environments).toBeUndefined();
     expect(setConfig.namespaceCharacter).toBe(".");
+    expect(setConfig.reservedKeys).toEqual(["feature", "variation", "variable"]);
     expect(setConfig.segmentsDirectoryPath).toBe(path.join(setRoot, "segments"));
     expect(setConfig.attributesDirectoryPath).toBe(path.join(setRoot, "attributes"));
     expect(setConfig.groupsDirectoryPath).toBe(path.join(setRoot, "groups"));

@@ -110,14 +110,16 @@ for (const [name, value] of Object.entries({
     join(consumerDirectory, "consumer.mjs"),
     `
 import { createFeaturevisor } from "@featurevisor/sdk";
-import { FeaturevisorProvider } from "@featurevisor/react";
-import { setupApp } from "@featurevisor/vue";
+import { FeaturevisorProvider, useVariable as useReactVariable } from "@featurevisor/react";
+import { setupApp, useVariable as useVueVariable } from "@featurevisor/vue";
 import { FeaturevisorOpenFeatureProvider } from "@featurevisor/openfeature-provider-web";
 
 for (const [name, value] of Object.entries({
   createFeaturevisor,
   FeaturevisorProvider,
+  useReactVariable,
   setupApp,
+  useVueVariable,
   FeaturevisorOpenFeatureProvider,
 })) {
   if (typeof value !== "function") throw new Error(name + " is not callable");
@@ -133,6 +135,8 @@ import {
   createFeaturevisor,
   type Featurevisor,
   type FeaturevisorOptions,
+  type EvaluatedFeatures,
+  type EvaluatedVariables,
   type ObjectValue,
   type VariableValue,
   type VariationValue,
@@ -173,12 +177,19 @@ const variation = featurevisor.getVariation("checkout");
 const typedVariation = featurevisor.getVariation<"control" | "treatment">("checkout");
 const variable = featurevisor.getVariable("checkout", "config");
 const typedVariable = featurevisor.getVariable<CheckoutConfig>("checkout", "config");
+const globalVariable = featurevisor.getVariable("supportEmail");
+const typedGlobalVariable = featurevisor.getVariable<string>("supportEmail", { country: "nl" });
 const arrayVariable = featurevisor.getVariableArray("checkout", "items");
 const typedArrayVariable = featurevisor.getVariableArray<number>("checkout", "items");
 const objectVariable = featurevisor.getVariableObject("checkout", "config");
 const typedObjectVariable = featurevisor.getVariableObject<CheckoutConfig>("checkout", "config");
 const jsonVariable = featurevisor.getVariableJSON("checkout", "config");
 const typedJsonVariable = featurevisor.getVariableJSON<CheckoutConfig>("checkout", "config");
+const globalVariableKeys = featurevisor.getVariableKeys();
+const featureVariableKeys = featurevisor.getVariableKeys("checkout");
+const featureEvaluations = featurevisor.getFeatureEvaluations({}, ["checkout"]);
+const variableEvaluations = featurevisor.getVariableEvaluations({}, ["supportEmail"]);
+const deprecatedAllEvaluations = featurevisor.getAllEvaluations({}, ["checkout"]);
 
 type _Variation = Assert<IsExact<typeof variation, VariationValue | null>>;
 type _TypedVariation = Assert<
@@ -186,6 +197,8 @@ type _TypedVariation = Assert<
 >;
 type _Variable = Assert<IsExact<typeof variable, VariableValue | null>>;
 type _TypedVariable = Assert<IsExact<typeof typedVariable, CheckoutConfig | null>>;
+type _GlobalVariable = Assert<IsExact<typeof globalVariable, VariableValue | null>>;
+type _TypedGlobalVariable = Assert<IsExact<typeof typedGlobalVariable, string | null>>;
 type _ArrayVariable = Assert<IsExact<typeof arrayVariable, string[] | null>>;
 type _TypedArrayVariable = Assert<IsExact<typeof typedArrayVariable, number[] | null>>;
 type _ObjectVariable = Assert<IsExact<typeof objectVariable, ObjectValue | null>>;
@@ -194,12 +207,22 @@ type _TypedObjectVariable = Assert<
 >;
 type _JsonVariable = Assert<IsExact<typeof jsonVariable, VariableValue | null>>;
 type _TypedJsonVariable = Assert<IsExact<typeof typedJsonVariable, CheckoutConfig | null>>;
+type _GlobalVariableKeys = Assert<IsExact<typeof globalVariableKeys, string[]>>;
+type _FeatureVariableKeys = Assert<IsExact<typeof featureVariableKeys, string[]>>;
+type _FeatureEvaluations = Assert<IsExact<typeof featureEvaluations, EvaluatedFeatures>>;
+type _VariableEvaluations = Assert<IsExact<typeof variableEvaluations, EvaluatedVariables>>;
+type _DeprecatedAllEvaluations = Assert<
+  IsExact<typeof deprecatedAllEvaluations, EvaluatedFeatures>
+>;
 
 const child = featurevisor.spawn();
 const childBroadVariation = child.getVariation("checkout");
 const childVariation = child.getVariation<"control" | "treatment">("checkout");
 const childBroadVariable = child.getVariable("checkout", "config");
 const childVariable = child.getVariable<CheckoutConfig>("checkout", "config");
+const childGlobalVariable = child.getVariable<string>("supportEmail");
+const childFeatureEvaluations = child.getFeatureEvaluations({}, ["checkout"]);
+const childVariableEvaluations = child.getVariableEvaluations({}, ["supportEmail"]);
 type _ChildBroadVariation = Assert<
   IsExact<typeof childBroadVariation, VariationValue | null>
 >;
@@ -208,6 +231,13 @@ type _ChildVariation = Assert<
 >;
 type _ChildBroadVariable = Assert<IsExact<typeof childBroadVariable, VariableValue | null>>;
 type _ChildVariable = Assert<IsExact<typeof childVariable, CheckoutConfig | null>>;
+type _ChildGlobalVariable = Assert<IsExact<typeof childGlobalVariable, string | null>>;
+type _ChildFeatureEvaluations = Assert<
+  IsExact<typeof childFeatureEvaluations, EvaluatedFeatures>
+>;
+type _ChildVariableEvaluations = Assert<
+  IsExact<typeof childVariableEvaluations, EvaluatedVariables>
+>;
 
 const oldVariationMethod: (featureKey: string) => VariationValue | null =
   featurevisor.getVariation.bind(featurevisor);
@@ -225,10 +255,12 @@ function checkFrameworkTypes() {
   const reactVariation = useReactVariation<"control" | "treatment">("checkout");
   const broadReactVariable = useReactVariable("checkout", "config");
   const reactVariable = useReactVariable<CheckoutConfig>("checkout", "config");
+  const reactGlobalVariable = useReactVariable<string>("supportEmail");
   const broadVueVariation = useVueVariation("checkout");
   const vueVariation = useVueVariation<"control" | "treatment">("checkout");
   const broadVueVariable = useVueVariable("checkout", "config");
   const vueVariable = useVueVariable<CheckoutConfig>("checkout", "config");
+  const vueGlobalVariable = useVueVariable<string>("supportEmail");
 
   type _BroadReactVariation = Assert<
     IsExact<typeof broadReactVariation, VariationValue | null>
@@ -240,6 +272,7 @@ function checkFrameworkTypes() {
     IsExact<typeof broadReactVariable, VariableValue | null>
   >;
   type _ReactVariable = Assert<IsExact<typeof reactVariable, CheckoutConfig | null>>;
+  type _ReactGlobalVariable = Assert<IsExact<typeof reactGlobalVariable, string | null>>;
   type _BroadVueVariation = Assert<
     IsExact<typeof broadVueVariation, VariationValue | null>
   >;
@@ -248,16 +281,19 @@ function checkFrameworkTypes() {
   >;
   type _BroadVueVariable = Assert<IsExact<typeof broadVueVariable, VariableValue | null>>;
   type _VueVariable = Assert<IsExact<typeof vueVariable, CheckoutConfig | null>>;
+  type _VueGlobalVariable = Assert<IsExact<typeof vueGlobalVariable, string | null>>;
 
   return [
     broadReactVariation,
     reactVariation,
     broadReactVariable,
     reactVariable,
+    reactGlobalVariable,
     broadVueVariation,
     vueVariation,
     broadVueVariable,
     vueVariable,
+    vueGlobalVariable,
   ];
 }
 
@@ -266,6 +302,7 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   const hookVariation = api.getVariation<"control" | "treatment">("checkout");
   const broadHookVariable = api.getVariable("checkout", "config");
   const hookVariable = api.getVariable<CheckoutConfig>("checkout", "config");
+  const hookGlobalVariable = api.getVariable<string>("supportEmail");
 
   type _BroadHookVariation = Assert<
     IsExact<typeof broadHookVariation, VariationValue | null>
@@ -275,8 +312,15 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   >;
   type _BroadHookVariable = Assert<IsExact<typeof broadHookVariable, VariableValue | null>>;
   type _HookVariable = Assert<IsExact<typeof hookVariable, CheckoutConfig | null>>;
+  type _HookGlobalVariable = Assert<IsExact<typeof hookGlobalVariable, string | null>>;
 
-  return [broadHookVariation, hookVariation, broadHookVariable, hookVariable];
+  return [
+    broadHookVariation,
+    hookVariation,
+    broadHookVariable,
+    hookVariable,
+    hookGlobalVariable,
+  ];
 }
 
 // @ts-expect-error Variation types must remain strings.

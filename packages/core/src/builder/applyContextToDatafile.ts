@@ -3,6 +3,7 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { applyContextToConditions } from "./applyContextToConditions";
 import { applyContextToSegments } from "./applyContextToSegments";
+import { refreshDatafileHashes } from "./hashes";
 
 function parseIfStringified<T>(value: T): T {
   if (typeof value !== "string" || value === "*") {
@@ -39,7 +40,7 @@ export function applyContextToDatafile(
   // segments
   for (const segmentKey in contextualDatafileContent.segments) {
     const segment = contextualDatafileContent.segments[segmentKey];
-    const originalConditions = segment.conditions;
+    const originalConditions = parseIfStringified(segment.conditions);
     const contextualConditions = applyContextToConditions(
       originalFeaturevisor,
       originalConditions,
@@ -63,9 +64,10 @@ export function applyContextToDatafile(
 
         // segments
         if (force.segments) {
+          const segments = parseIfStringified(force.segments);
           feature.force[forceI].segments = applyContextToSegments(
             originalFeaturevisor,
-            force.segments,
+            segments,
             context,
             removeSegments,
           );
@@ -73,9 +75,10 @@ export function applyContextToDatafile(
 
         // conditions
         if (force.conditions) {
+          const conditions = parseIfStringified(force.conditions);
           feature.force[forceI].conditions = applyContextToConditions(
             originalFeaturevisor,
-            force.conditions,
+            conditions,
             context,
           );
         }
@@ -163,9 +166,10 @@ export function applyContextToDatafile(
 
               // segments
               if (variableOverride.segments) {
+                const segments = parseIfStringified(variableOverride.segments);
                 variableOverride.segments = applyContextToSegments(
                   originalFeaturevisor,
-                  variableOverride.segments,
+                  segments,
                   context,
                   removeSegments,
                 );
@@ -173,9 +177,10 @@ export function applyContextToDatafile(
 
               // conditions
               if (variableOverride.conditions) {
+                const conditions = parseIfStringified(variableOverride.conditions);
                 variableOverride.conditions = applyContextToConditions(
                   originalFeaturevisor,
-                  variableOverride.conditions,
+                  conditions,
                   context,
                 );
               }
@@ -220,10 +225,31 @@ export function applyContextToDatafile(
     contextualDatafileContent.features[featureKey] = feature;
   }
 
+  // global variables
+  for (const variable of Object.values(contextualDatafileContent.variables || {})) {
+    for (const override of variable.overrides || []) {
+      if (override.segments) {
+        override.segments = applyContextToSegments(
+          originalFeaturevisor,
+          parseIfStringified(override.segments),
+          context,
+          removeSegments,
+        );
+      }
+      if (override.conditions) {
+        override.conditions = applyContextToConditions(
+          originalFeaturevisor,
+          parseIfStringified(override.conditions),
+          context,
+        );
+      }
+    }
+  }
+
   // remove segments
   for (const removeSegment of removeSegments) {
     delete contextualDatafileContent.segments[removeSegment];
   }
 
-  return contextualDatafileContent;
+  return refreshDatafileHashes(contextualDatafileContent);
 }

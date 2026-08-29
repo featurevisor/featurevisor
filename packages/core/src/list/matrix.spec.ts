@@ -1,4 +1,9 @@
-import { getMatrixCombinations } from "./matrix";
+import {
+  getFeatureAssertionsFromMatrix,
+  getMatrixCombinations,
+  getSegmentAssertionsFromMatrix,
+  getVariableAssertionsFromMatrix,
+} from "./matrix";
 
 describe("core :: tester :: matrix", function () {
   test("should empty array when no keys are available", function () {
@@ -45,5 +50,83 @@ describe("core :: tester :: matrix", function () {
       { a: 2, b: "y", c: true },
       { a: 2, b: "y", c: false },
     ]);
+  });
+
+  test("substitutes nested global variable assertion values", function () {
+    const assertions = getVariableAssertionsFromMatrix(0, {
+      environment: "${{ environment }}",
+      matrix: {
+        environment: ["production"],
+        value: ["configured"],
+        enabled: [true],
+      },
+      stickyVariables: {
+        settings: { nested: ["${{ value }}", { enabled: "${{ enabled }}" }] },
+      },
+      defaultVariableValue: { fallback: "${{ value }}" },
+      expectedValue: { nested: "${{ value }}" },
+      expectedEvaluation: {
+        variableValue: { nested: ["${{ value }}", "literal-${{ value }}"] },
+      },
+    });
+
+    expect(assertions[0]).toMatchObject({
+      environment: "production",
+      stickyVariables: {
+        settings: { nested: ["configured", { enabled: true }] },
+      },
+      defaultVariableValue: { fallback: "configured" },
+      expectedValue: { nested: "configured" },
+      expectedEvaluation: {
+        variableValue: { nested: ["configured", "literal-configured"] },
+      },
+    });
+  });
+
+  test("substitutes nested feature and child assertion values", function () {
+    const assertions = getFeatureAssertionsFromMatrix(0, {
+      environment: "staging",
+      at: 50,
+      matrix: { value: ["configured"], enabled: [true] },
+      sticky: {
+        checkout: { enabled: true, variables: { settings: { value: "${{ value }}" } } },
+      },
+      defaultVariableValues: { settings: { value: "${{ value }}" } },
+      expectedToBeEnabled: "${{ enabled }}" as unknown as boolean,
+      expectedEvaluations: {
+        variables: { settings: { variableValue: { value: "${{ value }}" } } },
+      },
+      children: [
+        {
+          context: { enabled: "${{ enabled }}" },
+          expectedVariables: { settings: { value: "${{ value }}" } },
+        },
+      ],
+    });
+
+    expect(assertions[0]).toMatchObject({
+      sticky: { checkout: { enabled: true, variables: { settings: { value: "configured" } } } },
+      defaultVariableValues: { settings: { value: "configured" } },
+      expectedToBeEnabled: true,
+      expectedEvaluations: {
+        variables: { settings: { variableValue: { value: "configured" } } },
+      },
+      children: [
+        {
+          context: { enabled: true },
+          expectedVariables: { settings: { value: "configured" } },
+        },
+      ],
+    });
+  });
+
+  test("preserves native matrix values in segment expectations", function () {
+    const assertions = getSegmentAssertionsFromMatrix(0, {
+      context: { active: "${{ active }}" },
+      expectedToMatch: "${{ active }}" as unknown as boolean,
+      matrix: { active: [true] },
+    });
+
+    expect(assertions[0]).toMatchObject({ context: { active: true }, expectedToMatch: true });
   });
 });

@@ -82,9 +82,18 @@ export function benchmarkFeatureVariable(
   return benchmarkEvaluation(n, () => f.getVariable(featureKey, variableKey, context as Context));
 }
 
+export function benchmarkGlobalVariable(
+  f: Featurevisor,
+  variableKey: string,
+  context: Record<string, unknown>,
+  n: number,
+): BenchmarkOutput {
+  return benchmarkEvaluation(n, () => f.getVariable(variableKey, context as Context));
+}
+
 export interface BenchmarkOptions {
   environment?: string;
-  feature: string;
+  feature?: string;
   n: number;
   context: Record<string, unknown>;
   variation?: boolean;
@@ -99,8 +108,11 @@ async function benchmarkFeatureWithDatafile(
   target?: string,
 ): Promise<void> {
   console.log("");
-  console.log(CLI_FORMAT_BOLD, "Benchmark Featurevisor feature");
-  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(
+    CLI_FORMAT_BOLD,
+    options.feature ? "Benchmark Featurevisor feature" : "Benchmark Featurevisor variable",
+  );
+  if (options.feature) console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
   console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
   if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${options.n}`);
@@ -134,21 +146,17 @@ async function benchmarkFeatureWithDatafile(
   if (options.variable) {
     // variable
     console.log(`Evaluating variable "${options.variable}" ${options.n} times...`);
-    output = benchmarkFeatureVariable(
-      f,
-      options.feature,
-      options.variable,
-      options.context,
-      options.n,
-    );
+    output = options.feature
+      ? benchmarkFeatureVariable(f, options.feature, options.variable, options.context, options.n)
+      : benchmarkGlobalVariable(f, options.variable, options.context, options.n);
   } else if (options.variation) {
     // variation
     console.log(`Evaluating variation ${options.n} times...`);
-    output = benchmarkFeatureVariation(f, options.feature, options.context, options.n);
+    output = benchmarkFeatureVariation(f, options.feature as string, options.context, options.n);
   } else {
     // flag
     console.log(`Evaluating flag ${options.n} times...`);
-    output = benchmarkFeatureFlag(f, options.feature, options.context, options.n);
+    output = benchmarkFeatureFlag(f, options.feature as string, options.context, options.n);
   }
 
   console.log("");
@@ -202,6 +210,16 @@ export const benchmarkPlugin: Plugin = {
         },
       );
     }
+    if (!parsed.feature && !parsed.variable) {
+      throw new FeaturevisorCLIError("Pass --feature or --variable.", {
+        code: "missing_cli_option",
+      });
+    }
+    if (parsed.variation && !parsed.feature) {
+      throw new FeaturevisorCLIError("Option --variation requires --feature.", {
+        code: "missing_cli_option",
+      });
+    }
 
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
 
@@ -246,6 +264,11 @@ export const benchmarkPlugin: Plugin = {
       command:
         'benchmark --environment=production --feature=my_feature -n=1000 --context=\'{"userId": "123"}\' --variable=my-variable',
       description: "Benchmark a feature variable",
+    },
+    {
+      command:
+        'benchmark --environment=production -n=1000 --context=\'{"country": "nl"}\' --variable=supportEmail',
+      description: "Benchmark a global variable",
     },
   ],
 };

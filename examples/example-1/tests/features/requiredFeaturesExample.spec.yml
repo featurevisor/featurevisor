@@ -1,0 +1,49 @@
+feature: requiredFeaturesExample
+assertions:
+  - description: continues evaluation when every requirement matches
+    at: 90
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedEvaluations:
+      flag:
+        reason: rule
+
+  - description: fails when the required variation does not match
+    at: 5
+    environment: production
+    context:
+      country: nl
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: required
+        requiredFeatures:
+          - feature: redesign
+            enabled: true
+          - feature: sidebar
+            variation: treatment
+          - feature: pricing
+            enabled: false
+            variation: control
+
+  - description: fails when a required enabled feature is disabled
+    at: 90
+    environment: production
+    context:
+      country: de
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: required
+
+  - description: fails when a feature required to be disabled is enabled
+    at: 90
+    environment: staging
+    context:
+      country: nl
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: required

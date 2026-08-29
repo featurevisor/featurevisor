@@ -1,0 +1,72 @@
+variable: campaignBanner
+assertions:
+  - description: resolves a reusable schema and applies a mutation
+    environment: staging
+    expectedValue:
+      message: Welcome to staging
+      cta:
+        title: Learn more
+        url: https://featurevisor.com
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: staging
+
+  - description: applies a nested city mutation on top of its country value
+    environment: production
+    context:
+      country: nl
+      city: amsterdam
+      device: desktop
+    expectedValue:
+      message: Welkom
+      cta:
+        title: Meer informatie
+        url: https://featurevisor.com
+    expectedEvaluation:
+      variableOverrideKey: amsterdam
+      variableOverridePath:
+        - netherlands
+        - amsterdam
+
+  - description: combines inherited conditions with a nested segment
+    environment: production
+    context:
+      country: nl
+      city: amsterdam
+      device: mobile
+    expectedValue:
+      message: Welkom
+      cta:
+        title: Meer informatie
+        url: https://featurevisor.com/mobile
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: mobile
+      variableOverridePath:
+        - netherlands
+        - amsterdam
+        - mobile
+
+  - description: falls back to the matched parent when no child matches
+    environment: production
+    context:
+      country: nl
+      city: rotterdam
+      device: mobile
+    expectedValue:
+      message: Welkom
+      cta:
+        title: Learn more
+        url: https://featurevisor.com
+    expectedEvaluation:
+      variableOverrideKey: netherlands
+
+  - description: uses the complete catch-all value
+    environment: production
+    context:
+      country: de
+    expectedValue:
+      message: Welcome
+      cta:
+        title: Learn more
+        url: https://featurevisor.com

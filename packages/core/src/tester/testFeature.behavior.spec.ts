@@ -59,7 +59,16 @@ describe("core: feature tester behavior", () => {
               expectedVariation: "control",
               expectedVariables: { count: 2 },
               expectedEvaluations: {
-                flag: { enabled: true, reason: "forced" },
+                flag: {
+                  enabled: true,
+                  reason: "forced",
+                  force: {
+                    conditions: [{ attribute: "country", operator: "equals", value: "child" }],
+                    enabled: true,
+                    variation: "control",
+                    variables: { count: 2 },
+                  },
+                },
                 variation: { reason: "forced" },
                 variables: {
                   count: { variableValue: 2, reason: "forced" },
@@ -105,6 +114,32 @@ describe("core: feature tester behavior", () => {
             label: "",
             nullable: null,
           },
+        },
+      ],
+    } as unknown as TestFeature;
+
+    const result = await testFeature(
+      createDatasource(),
+      {} as any,
+      test,
+      { quiet: true },
+      new Map([[false, createDatafile()]]),
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.assertions[0].errors).toEqual([]);
+  });
+
+  it("does not evaluate a variation when an optional parsed field is undefined", async () => {
+    const test = {
+      key: featureKey,
+      feature: featureKey,
+      assertions: [
+        {
+          description: "flag only",
+          context: {},
+          expectedToBeEnabled: false,
+          expectedVariation: undefined,
         },
       ],
     } as unknown as TestFeature;

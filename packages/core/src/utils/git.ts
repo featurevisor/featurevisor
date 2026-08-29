@@ -99,6 +99,8 @@ export function getCommit(
       type = "group";
     } else if (isWithinDirectory(projectConfig.schemasDirectoryPath, relativeDir)) {
       type = "schema";
+    } else if (isWithinDirectory(projectConfig.variablesDirectoryPath, relativeDir)) {
+      type = "variable";
     } else if (isWithinDirectory(projectConfig.targetsDirectoryPath, relativeDir)) {
       type = "target";
     } else if (isWithinDirectory(projectConfig.testsDirectoryPath, relativeDir)) {
@@ -120,17 +122,21 @@ export function getCommit(
     let key = fileName.replace(extensionWithDot, "");
 
     if (
-      (type === "feature" || type === "target") &&
+      (type === "feature" || type === "target" || type === "variable") &&
       absolutePath.startsWith(
         (type === "feature"
           ? projectConfig.featuresDirectoryPath
-          : projectConfig.targetsDirectoryPath) + path.sep,
+          : type === "target"
+            ? projectConfig.targetsDirectoryPath
+            : projectConfig.variablesDirectoryPath) + path.sep,
       )
     ) {
       const entityDirectoryPath =
         type === "feature"
           ? projectConfig.featuresDirectoryPath
-          : projectConfig.targetsDirectoryPath;
+          : type === "target"
+            ? projectConfig.targetsDirectoryPath
+            : projectConfig.variablesDirectoryPath;
       key = absolutePath
         .replace(entityDirectoryPath + path.sep, "")
         .replace(extensionWithDot, "")

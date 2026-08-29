@@ -4,7 +4,7 @@
  * rules, force). Ensures every place a variable value can be set is validated against
  * the variable's schema.
  */
-import type { Attribute, Schema } from "@featurevisor/types";
+import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
@@ -20,6 +20,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
+    variablesDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
@@ -83,7 +84,15 @@ const TEST_ATTRIBUTE_KEYS: [string, ...string[]] = [
   "traits",
 ];
 const TEST_SEGMENTS: [string, ...string[]] = ["*", "countries.germany", "countries.france"];
-const TEST_FEATURES: [string, ...string[]] = ["testFeature"];
+const TEST_FEATURES: [string, ...string[]] = ["testFeature", "dependency", "noVariations"];
+const TEST_FEATURES_BY_KEY: Record<string, ParsedFeature> = {
+  testFeature: { description: "Test feature" } as ParsedFeature,
+  dependency: {
+    description: "Dependency",
+    variations: [{ value: "control" }, { value: "treatment" }],
+  } as ParsedFeature,
+  noVariations: { description: "No variations" } as ParsedFeature,
+};
 const TEST_SCHEMA_KEYS = ["link", "slugSchema"];
 
 /** Resolved schema for "slugSchema": string with pattern and length. */
@@ -120,6 +129,7 @@ function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
     TEST_FEATURES,
     TEST_SCHEMA_KEYS,
     TEST_SCHEMAS_BY_KEY,
+    TEST_FEATURES_BY_KEY,
   );
 }
 
@@ -136,6 +146,40 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("requiredFeatures", () => {
+  it.each([
+    "dependency",
+    ["dependency"],
+    [{ feature: "dependency" }],
+    [{ feature: "dependency", enabled: false }],
+    [{ feature: "dependency", enabled: false, variation: "control" }],
+  ])("accepts canonical requirement %j", (requiredFeatures) => {
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures })).success).toBe(true);
+  });
+
+  it("rejects empty, unknown, invalid variation, and mixed legacy definitions", () => {
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: [] })).success).toBe(false);
+    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: "missing" })).success).toBe(
+      false,
+    );
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ requiredFeatures: [{ feature: "dependency", variation: "missing" }] }),
+      ).success,
+    ).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ requiredFeatures: [{ feature: "noVariations", variation: "control" }] }),
+      ).success,
+    ).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({ required: ["dependency"], requiredFeatures: "dependency" }),
+      ).success,
+    ).toBe(false);
+  });
+});
 
 function parseFeature(
   feature: unknown,
@@ -611,14 +655,38 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
-    it("rejects reserved variable key 'variation'", () => {
+    it.each(["feature", "variation", "variable"])(
+      "rejects reserved variable key '%s'",
+      (variableKey) => {
+        expectParseFailure(
+          baseFeature({
+            variablesSchema: {
+              [variableKey]: { type: "string", defaultValue: "control" },
+            },
+          }),
+          "reserved",
+        );
+      },
+    );
+
+    it("uses custom reserved variable keys as an exact, case-sensitive list", () => {
       expectParseFailure(
         baseFeature({
           variablesSchema: {
-            variation: { type: "string", defaultValue: "control" },
+            custom: { type: "string", defaultValue: "value" },
           },
         }),
         "reserved",
+        { reservedKeys: ["custom"] },
+      );
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            variation: { type: "string", defaultValue: "control" },
+            Custom: { type: "string", defaultValue: "value" },
+          },
+        }),
+        { reservedKeys: ["custom"] },
       );
     });
   });
@@ -730,6 +798,28 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             },
           ],
         }),
+      );
+    });
+
+    it("requires keys in variation variableOverrides when configured", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            slug: { type: "string", defaultValue: "home" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                slug: [{ segments: "countries.germany", value: "de" }],
+              },
+            },
+          ],
+        }),
+        "must have a key when `requireOverrideKeysInFeatures` is enabled",
+        { requireOverrideKeysInFeatures: true },
       );
     });
 
@@ -962,6 +1052,210 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
         }),
       );
+    });
+
+    it("accepts the aligned keyed, mutation, and required feature forms", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" }, compact: { type: "boolean" } },
+              defaultValue: { title: "Default", compact: false },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [
+                    {
+                      key: "german-treatment",
+                      description: "German treatment configuration",
+                      promotable: true,
+                      conditions: { attribute: "country", operator: "equals", value: "de" },
+                      requiredFeatures: [
+                        {
+                          feature: "dependency",
+                          enabled: true,
+                          variation: "treatment",
+                        },
+                      ],
+                      mutate: { title: "Behandlung" },
+                    },
+                    {
+                      key: "dependency-only",
+                      requiredFeatures: "dependency",
+                      value: { title: "Dependency", compact: true },
+                    },
+                  ],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("keeps legacy unkeyed value mutation maps valid", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            config: {
+              type: "object",
+              properties: { title: { type: "string" }, compact: { type: "boolean" } },
+              defaultValue: { title: "Default", compact: false },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  config: [{ segments: "*", value: { title: "Legacy" } }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
+    it("requires keys in rule variableOverrides when configured", () => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: {
+            label: { type: "string", defaultValue: "default" },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  label: [{ segments: "countries.germany", value: "de" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        "must have a key when `requireOverrideKeysInFeatures` is enabled",
+        { requireOverrideKeysInFeatures: true },
+      );
+    });
+
+    it("accepts keyed rule and variation variableOverrides when configured", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            label: { type: "string", defaultValue: "default" },
+          },
+          variations: [
+            { value: "control", weight: 50 },
+            {
+              value: "treatment",
+              weight: 50,
+              variableOverrides: {
+                label: [{ key: "variation-germany", segments: "countries.germany", value: "de" }],
+              },
+            },
+          ],
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: {
+                  label: [{ key: "rule-germany", segments: "countries.germany", value: "de" }],
+                },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        { requireOverrideKeysInFeatures: true },
+      );
+    });
+
+    it.each([
+      {
+        name: "missing selector",
+        override: { key: "invalid", value: "x" },
+        message: "must define `conditions`, `segments`, or `requiredFeatures`",
+      },
+      {
+        name: "conditions and segments together",
+        override: { key: "invalid", conditions: [], segments: "*", value: "x" },
+        message: "cannot define both `conditions` and `segments`",
+      },
+      {
+        name: "value and mutate together",
+        override: { key: "invalid", segments: "*", value: "x", mutate: { title: "x" } },
+        message: "exactly one of `value` or `mutate`",
+      },
+      {
+        name: "neither value nor mutate",
+        override: { key: "invalid", segments: "*" },
+        message: "exactly one of `value` or `mutate`",
+      },
+      {
+        name: "promotable without key",
+        override: { promotable: false, segments: "*", value: "x" },
+        message: "key is required when `promotable` is set",
+      },
+    ])("rejects $name", ({ override, message }) => {
+      expectParseFailure(
+        baseFeature({
+          variablesSchema: { label: { type: "string", defaultValue: "default" } },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                segments: "*",
+                percentage: 100,
+                variableOverrides: { label: [override] },
+              },
+            ],
+            production: [{ key: "r1", segments: "*", percentage: 100 }],
+          },
+        }),
+        message,
+      );
+    });
+
+    it("rejects duplicate provided keys and mixed keyed promotion lists", () => {
+      const feature = baseFeature({
+        variablesSchema: { label: { type: "string", defaultValue: "default" } },
+        rules: {
+          staging: [
+            {
+              key: "r1",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                label: [
+                  { key: "same", promotable: false, segments: "*", value: "first" },
+                  { key: "same", conditions: [], value: "second" },
+                  { segments: "*", value: "legacy" },
+                ],
+              },
+            },
+          ],
+          production: [{ key: "r1", segments: "*", percentage: 100 }],
+        },
+      });
+      expectParseFailure(feature, "Duplicate variable override keys");
+      expectParseFailure(feature, "Every variable override in the list must have a key");
     });
 
     it("rejects rule variableOverrides for unknown variable key", () => {

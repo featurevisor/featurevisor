@@ -12,12 +12,12 @@ const targetTagSchema = (projectConfig: ProjectConfig) =>
 
 export function getTargetZodSchema(projectConfig: ProjectConfig) {
   const tagSchema = targetTagSchema(projectConfig);
-  const featurePatternSchema = z
+  const entityPatternSchema = z
     .string()
     .min(1)
-    .refine((value) => value.trim() === value, "Feature patterns cannot have surrounding spaces")
+    .refine((value) => value.trim() === value, "Entity patterns cannot have surrounding spaces")
     .refine((value) => !value.includes("**"), 'Use "*" for glob-like wildcard matching');
-  const featurePatternsSchema = z.union([z.literal("*"), z.array(featurePatternSchema).min(1)]);
+  const entityPatternsSchema = z.union([z.literal("*"), z.array(entityPatternSchema).min(1)]);
 
   return z
     .object({
@@ -34,8 +34,10 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
           z.object({ and: z.array(tagSchema).min(1) }).strict(),
         ])
         .optional(),
-      includeFeatures: featurePatternsSchema.optional(),
-      excludeFeatures: featurePatternsSchema.optional(),
+      includeFeatures: entityPatternsSchema.optional(),
+      excludeFeatures: entityPatternsSchema.optional(),
+      includeVariables: entityPatternsSchema.optional(),
+      excludeVariables: entityPatternsSchema.optional(),
       context: z.record(z.string(), z.unknown()).optional(),
     })
     .strict()

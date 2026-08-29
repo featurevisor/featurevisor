@@ -9,6 +9,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
+    variablesDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
@@ -56,7 +57,7 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts feature patterns and the direct all-features wildcard", () => {
+  it("accepts feature and variable patterns with the direct wildcard", () => {
     expect(
       parseTarget({
         description: "Selected features",
@@ -67,8 +68,10 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
 
     expect(
       parseTarget({
-        description: "All features",
+        description: "All entities",
         includeFeatures: "*",
+        includeVariables: ["checkout*", "support.email"],
+        excludeVariables: "*",
       }).success,
     ).toBe(true);
   });
@@ -79,6 +82,12 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     ).toBe(false);
     expect(parseTarget({ description: "Empty include", includeFeatures: [] }).success).toBe(false);
     expect(parseTarget({ description: "Empty exclude", excludeFeatures: [] }).success).toBe(false);
+    expect(parseTarget({ description: "Empty variables", includeVariables: [] }).success).toBe(
+      false,
+    );
+    expect(parseTarget({ description: "Empty variables", excludeVariables: [] }).success).toBe(
+      false,
+    );
   });
 
   it("rejects empty tag selectors", () => {
@@ -96,6 +105,9 @@ describe("targetSchema.ts :: getTargetZodSchema", () => {
     );
     expect(
       parseTarget({ description: "Double wildcard", includeFeatures: ["checkout**"] }).success,
+    ).toBe(false);
+    expect(
+      parseTarget({ description: "Variable spaces", includeVariables: [" checkout*"] }).success,
     ).toBe(false);
   });
 

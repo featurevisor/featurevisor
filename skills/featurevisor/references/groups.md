@@ -50,7 +50,7 @@ This is the right way to "shrink" a group's effective traffic without resizing s
 
 - A feature can belong to **at most one** group.
 - A feature cannot appear in the same group twice.
-- A `required`/dependent pair cannot share a group.
+- A `requiredFeatures` dependency pair cannot share a group. The same applies to deprecated `required` definitions.
 - **Don't change slot percentages once users are bucketed** — that re-buckets everyone in the group. Plan up front and prefer leaving headroom (a 50% slot with the feature at 10% is fine; raise feature percentage over time within the slot's cap).
 - Groups cannot be archived; delete the YAML file if no longer needed.
 

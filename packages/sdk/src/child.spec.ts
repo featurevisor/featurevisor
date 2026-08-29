@@ -270,7 +270,7 @@ describe("sdk: child", function () {
     unsubscribeContext();
 
     expect(childF.isEnabled("newFeature")).toEqual(false);
-    childF.setSticky({
+    childF.setStickyFeatures({
       newFeature: {
         enabled: true,
       },
@@ -280,7 +280,7 @@ describe("sdk: child", function () {
       expect.objectContaining({ enabled: true, reason: "sticky" }),
     );
 
-    const allEvaluations = childF.getAllEvaluations();
+    const allEvaluations = childF.getFeatureEvaluations();
     expect(Object.keys(allEvaluations)).toEqual(["test", "anotherTest"]);
 
     childF.close();

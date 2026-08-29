@@ -1,0 +1,33 @@
+variable: supportEmail
+assertions:
+  - description: uses the staging override
+    environment: staging
+    expectedValue: support-staging@example.com
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: staging
+
+  - matrix:
+      country:
+        - nl
+    description: resolves the production email for ${{ country }}
+    environment: production
+    context:
+      country: ${{ country }}
+    expectedValue: support-nl@example.com
+
+  - description: uses the production catch-all override
+    environment: production
+    context:
+      country: de
+    expectedValue: support@example.com
+
+  - description: sticky values take precedence over matching overrides
+    environment: production
+    stickyVariables:
+      supportEmail: sticky-support@example.com
+    context:
+      country: nl
+    expectedValue: sticky-support@example.com
+    expectedEvaluation:
+      reason: sticky

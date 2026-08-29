@@ -1,0 +1,29 @@
+description: Demonstrate multiple required feature checks
+tags:
+  - all
+
+bucketBy: userId
+
+requiredFeatures:
+  # explicitly require an enabled feature
+  - feature: redesign
+    enabled: true
+
+  # enabled defaults to true when omitted
+  - feature: sidebar
+    variation: treatment
+
+  # enabled and variation can be checked together for a disabled feature
+  - feature: pricing
+    enabled: false
+    variation: control
+
+rules:
+  staging:
+    - key: "1"
+      segments: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      segments: "*"
+      percentage: 100

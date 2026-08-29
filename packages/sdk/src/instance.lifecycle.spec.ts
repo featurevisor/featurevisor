@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import {
   createComplexDatafile,
@@ -5,6 +8,10 @@ import {
   createFeature,
   deterministicBucketModule,
 } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: lifecycle and state", () => {
   it("merges and replaces instance context and emits snapshots", () => {
@@ -34,20 +41,87 @@ describe("Featurevisor public API: lifecycle and state", () => {
     expect(sdk.getContext()).toEqual({ country: "nl", nested: { source: "base" } });
   });
 
-  it("merges and replaces sticky values and reports affected keys", () => {
+  it("merges and replaces sticky features and reports affected keys", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({
       logLevel: "fatal",
-      sticky: { a: { enabled: true }, shared: { enabled: true, variation: "control" } },
+      stickyFeatures: { a: { enabled: true }, shared: { enabled: true, variation: "control" } },
     });
-    sdk.on("sticky_set", (event) => events.push(event));
+    sdk.on("sticky_features_set", (event) => events.push(event));
 
-    sdk.setSticky({ b: { enabled: false }, shared: { enabled: true, variation: "treatment" } });
-    sdk.setSticky({ c: { enabled: true } }, true);
+    sdk.setStickyFeatures({
+      b: { enabled: false },
+      shared: { enabled: true, variation: "treatment" },
+    });
+    sdk.setStickyFeatures({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
       { features: ["a", "shared", "b"], replaced: false },
       { features: ["a", "shared", "b", "c"], replaced: true },
+    ]);
+  });
+
+  it("keeps deprecated sticky feature options, methods, and events working", () => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({ sticky: { flag: { enabled: false } } });
+    sdk.on("sticky_set", (event) => events.push(event));
+
+    expect(sdk.isEnabled("flag")).toBe(false);
+    sdk.setSticky({ flag: { enabled: true } }, true);
+    expect(sdk.isEnabled("flag")).toBe(true);
+    sdk.setStickyVariables({ variable: "value" });
+    expect(events).toEqual([
+      { features: ["flag"], variables: [], replaced: true },
+      { features: [], variables: ["variable"], replaced: false },
+    ]);
+  });
+
+  it("prefers stickyFeatures when both option names are supplied", () => {
+    const sdk = createFeaturevisor({
+      stickyFeatures: { flag: { enabled: true } },
+      sticky: { flag: { enabled: false } },
+    });
+
+    expect(sdk.isEnabled("flag")).toBe(true);
+  });
+
+  it("reports distinct sticky feature and variable diagnostics", () => {
+    const diagnostics: FeaturevisorDiagnostic[] = [];
+    const sdk = createFeaturevisor({
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    sdk.setStickyFeatures({ feature: { enabled: true } });
+    sdk.setStickyVariables({ variable: "value" });
+
+    expect(diagnostics.slice(-2).map((diagnostic) => diagnostic.code)).toEqual([
+      "sticky_features_set",
+      "sticky_variables_set",
+    ]);
+  });
+
+  it("conformance: reports canonical sticky diagnostics before lifecycle events", () => {
+    expect(conformance.lifecycle.diagnosticBeforeEvent).toBe(true);
+    const calls: string[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "debug",
+      onDiagnostic: (diagnostic) => {
+        if (diagnostic.code.indexOf("sticky_") === 0) {
+          calls.push(`diagnostic:${diagnostic.code}`);
+        }
+      },
+    });
+    sdk.on("sticky_features_set", () => calls.push("event:sticky_features_set"));
+    sdk.on("sticky_variables_set", () => calls.push("event:sticky_variables_set"));
+
+    sdk.setStickyFeatures({ feature: { enabled: true } });
+    sdk.setStickyVariables({ variable: "value" });
+
+    expect(calls).toEqual([
+      `diagnostic:${conformance.lifecycle.stickyFeatureDiagnostic}`,
+      `event:${conformance.lifecycle.stickyFeatureEvent}`,
+      `diagnostic:${conformance.lifecycle.stickyVariableDiagnostic}`,
+      `event:${conformance.lifecycle.stickyVariableEvent}`,
     ]);
   });
 
@@ -94,14 +168,14 @@ describe("Featurevisor public API: lifecycle and state", () => {
     );
   });
 
-  it("returns only requested features from getAllEvaluations", () => {
+  it("returns only requested features from getFeatureEvaluations", () => {
     const sdk = createFeaturevisor({
       logLevel: "fatal",
       datafile: createComplexDatafile(),
       modules: [deterministicBucketModule()],
     });
 
-    const result = sdk.getAllEvaluations({ userId: "a", bucket: 75000 }, [
+    const result = sdk.getFeatureEvaluations({ userId: "a", bucket: 75000 }, [
       "experiment",
       "dependent",
     ]);
@@ -113,7 +187,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     expect(result.dependent.enabled).toBe(true);
   });
 
-  it("preserves falsey variable values in getAllEvaluations", () => {
+  it("preserves falsey feature variable values in getFeatureEvaluations", () => {
     const sdk = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({
@@ -129,10 +203,14 @@ describe("Featurevisor public API: lifecycle and state", () => {
       }),
     });
 
-    expect(sdk.getAllEvaluations().falsey.variables).toEqual({ bool: false, count: 0, text: "" });
+    expect(sdk.getFeatureEvaluations().falsey.variables).toEqual({
+      bool: false,
+      count: 0,
+      text: "",
+    });
   });
 
-  it("preserves an explicit empty default variation in getAllEvaluations", () => {
+  it("preserves an explicit empty default variation in getFeatureEvaluations", () => {
     const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
@@ -150,13 +228,26 @@ describe("Featurevisor public API: lifecycle and state", () => {
     });
 
     expect(
-      sdk.getAllEvaluations({}, [], {
+      sdk.getFeatureEvaluations({}, [], {
         defaultVariationValue: "",
       }).experiment,
     ).toEqual({
       enabled: false,
       variation: "",
     });
+  });
+
+  it("keeps getAllEvaluations as a deprecated feature evaluations alias", () => {
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createComplexDatafile(),
+      modules: [deterministicBucketModule()],
+    });
+    const context = { userId: "a", bucket: 75000 };
+
+    expect(sdk.getAllEvaluations(context, ["experiment"])).toEqual(
+      sdk.getFeatureEvaluations(context, ["experiment"]),
+    );
   });
 
   it("updates diagnostic filtering at runtime", () => {
@@ -193,7 +284,7 @@ describe("Featurevisor public API: lifecycle and state", () => {
     await sdk.close();
     await sdk.close();
     sdk.setContext({ late: true });
-    sdk.setSticky({ late: { enabled: true } });
+    sdk.setStickyFeatures({ late: { enabled: true } });
     sdk.setDatafile(createDatafile({ revision: "after" }));
     sdk.addModule({ name: "late", setup: () => calls.push("setup") });
     await sdk.removeModule("module");

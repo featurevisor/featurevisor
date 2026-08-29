@@ -31,6 +31,7 @@ export interface FeaturevisorProviderOptions extends FeaturevisorOptions {
   targetingKeyField?: string;
   keySeparator?: string;
   variationKey?: string;
+  globalVariablePrefix?: string;
   onTrack?: FeaturevisorProviderTrackingHandler;
 }
 
@@ -79,6 +80,7 @@ function reasonFor(evaluation: Evaluation): string {
   if (errorReasons.has(evaluation.reason)) return StandardResolutionReasons.ERROR;
   if (targetingReasons.has(evaluation.reason)) return StandardResolutionReasons.TARGETING_MATCH;
   if (evaluation.reason === "allocated") return StandardResolutionReasons.SPLIT;
+  if (evaluation.reason === "required_features_unmet") return StandardResolutionReasons.DISABLED;
   if (
     evaluation.reason === "disabled" ||
     evaluation.reason === "variation_disabled" ||
@@ -91,10 +93,10 @@ function reasonFor(evaluation: Evaluation): string {
 
 function metadataFor(evaluation: Evaluation, featurevisor: Featurevisor): FlagMetadata {
   const metadata: FlagMetadata = {
-    featureKey: evaluation.featureKey,
     featurevisorReason: evaluation.reason,
     schemaVersion: featurevisor.getSchemaVersion(),
   };
+  if (evaluation.featureKey) metadata.featureKey = evaluation.featureKey;
   const revision = featurevisor.getRevision();
   if (revision) metadata.revision = revision;
   if (evaluation.variableKey) metadata.variableKey = evaluation.variableKey;
@@ -104,6 +106,7 @@ function metadataFor(evaluation: Evaluation, featurevisor: Featurevisor): FlagMe
   if (typeof evaluation.forceIndex === "number") metadata.forceIndex = evaluation.forceIndex;
   if (typeof evaluation.variableOverrideIndex === "number")
     metadata.variableOverrideIndex = evaluation.variableOverrideIndex;
+  if (evaluation.variableOverrideKey) metadata.variableOverrideKey = evaluation.variableOverrideKey;
   return metadata;
 }
 
@@ -119,11 +122,13 @@ function errorCodeFor(evaluation: Evaluation): ErrorCode | undefined {
 function errorMessageFor(evaluation: Evaluation): string | undefined {
   if (evaluation.error) return evaluation.error.message;
   if (evaluation.reason === "feature_not_found")
-    return `Feature \"${evaluation.featureKey}\" was not found`;
+    return `Feature \"${evaluation.featureKey || ""}\" was not found`;
   if (evaluation.reason === "variable_not_found")
-    return `Variable \"${evaluation.variableKey}\" was not found for feature \"${evaluation.featureKey}\"`;
+    return evaluation.featureKey
+      ? `Variable \"${evaluation.variableKey}\" was not found for feature \"${evaluation.featureKey}\"`
+      : `Global variable \"${evaluation.variableKey}\" was not found`;
   if (evaluation.reason === "no_variations")
-    return `Feature \"${evaluation.featureKey}\" has no variations`;
+    return `Feature \"${evaluation.featureKey || ""}\" has no variations`;
   return undefined;
 }
 
@@ -139,6 +144,7 @@ export class FeaturevisorProvider {
   readonly targetingKeyField: string;
   readonly keySeparator: string;
   readonly variationKey: string;
+  readonly globalVariablePrefix: string;
   private readonly onTrack?: FeaturevisorProviderTrackingHandler;
   private readonly ownsFeaturevisor: boolean;
   private datafileError?: string;
@@ -149,6 +155,7 @@ export class FeaturevisorProvider {
       targetingKeyField,
       keySeparator,
       variationKey,
+      globalVariablePrefix,
       onTrack,
       ...featurevisorOptions
     } = options;
@@ -169,6 +176,10 @@ export class FeaturevisorProvider {
     this.targetingKeyField = targetingKeyField || "userId";
     this.keySeparator = keySeparator || ":";
     this.variationKey = variationKey || "variation";
+    this.globalVariablePrefix = globalVariablePrefix || "variable";
+    if (this.globalVariablePrefix.indexOf(this.keySeparator) !== -1) {
+      throw new Error("globalVariablePrefix cannot contain keySeparator");
+    }
     this.onTrack = onTrack;
   }
 
@@ -195,7 +206,10 @@ export class FeaturevisorProvider {
     let evaluation: Evaluation;
     let value: unknown;
 
-    if (!selector) {
+    if (featureKey === this.globalVariablePrefix && selector) {
+      evaluation = this.featurevisor.evaluateVariable(selector, featurevisorContext);
+      value = this.normalizeGlobalVariable(evaluation);
+    } else if (!selector) {
       if (expectedType !== "boolean") return this.typeMismatch(flagKey, defaultValue, expectedType);
       evaluation = this.featurevisor.evaluateFlag(featureKey, featurevisorContext);
       value = evaluation.enabled;
@@ -212,7 +226,10 @@ export class FeaturevisorProvider {
       reason: reasonFor(evaluation),
       flagMetadata: metadataFor(evaluation, this.featurevisor),
     };
-    if (typeof evaluation.variationValue !== "undefined" || evaluation.variation) {
+    if (
+      evaluation.featureKey &&
+      (typeof evaluation.variationValue !== "undefined" || evaluation.variation)
+    ) {
       result.variant = String(evaluation.variationValue ?? evaluation.variation?.value);
     }
 
@@ -247,6 +264,10 @@ export class FeaturevisorProvider {
       }
     }
     return value;
+  }
+
+  private normalizeGlobalVariable(evaluation: Evaluation): unknown {
+    return this.normalizeVariable(evaluation.variableValue, evaluation.variable?.type);
   }
 
   private typeMismatch<T>(

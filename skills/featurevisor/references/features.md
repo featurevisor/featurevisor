@@ -38,7 +38,7 @@ rules:
 | `rules`                  | yes                                      | Map of env → ordered rule list when environments are enabled                      |
 | `variations`             | no                                       | A/B test variations                                                               |
 | `variablesSchema`        | no                                       | Variables this feature exposes (see [variables-schemas.md](variables-schemas.md)) |
-| `required`               | no                                       | Other features that must be enabled first                                         |
+| `requiredFeatures`       | no                                       | Feature enabled and variation requirements                                        |
 | `force`                  | no                                       | Per-env force rules (override percentage logic)                                   |
 | `expose`                 | no                                       | Per-env / per-tag inclusion control                                               |
 | `disabledVariationValue` | no                                       | Variation value when feature is disabled (defaults to `null`)                     |
@@ -169,12 +169,15 @@ rules:
         treatment: 30
       variableOverrides:            # further conditional overrides
         bgColor:
-          - segments: amsterdam
+          - key: amsterdam
+            segments: amsterdam
             value: red
-          - conditions:
+          - key: rotterdam
+            conditions:
               - attribute: city
                 operator: equals
                 value: rotterdam
+            requiredFeatures: checkout
             value: blue
 ```
 
@@ -192,25 +195,32 @@ variations:
       bgColor: blue
     variableOverrides:               # conditional overrides per variation
       bgColor:
-        - segments: netherlands
+        - key: netherlands
+          segments: netherlands
           value: orange
 ```
+
+Feature variable overrides are checked in order. Each entry needs at least one selector from `conditions`, `segments`, or `requiredFeatures`, and exactly one of `value` or `mutate`. Conditions and segments are mutually exclusive. Requirements may be used alone or with either selector, using AND semantics. Stable keys are recommended and are required when `promotable` is set. Existing unkeyed entries and legacy mutation maps under `value` remain supported. Prefer explicit `mutate` for new partial updates.
 
 - Weights must sum to **100** (up to 2 decimals each).
 - `control`/`treatment` is convention only; any unique string is fine.
 - `disabledVariationValue: control` at the feature level controls what is returned when the feature is disabled.
 
-## Required (feature dependencies)
+## Required features
 
 ```yaml
-required:
+requiredFeatures:
   - checkoutRedesign                 # must be enabled
 
-  - key: someFeature                 # must be enabled AND in this variation
+  - feature: someFeature             # must be enabled and in this variation
     variation: treatment
+
+  - feature: legacyFeature           # must be disabled with this returned variation
+    enabled: false
+    variation: control
 ```
 
-The dependent feature evaluates as disabled if any required check fails.
+For one enabled dependency, `requiredFeatures: checkoutRedesign` is equivalent to a one item array. `enabled` defaults to `true` and compares with `isEnabled()`. `variation` compares with `getVariation()`. All supplied checks and all entries use AND semantics. The older `required` property remains supported but is deprecated. Never declare both.
 
 ## Force
 
@@ -266,8 +276,8 @@ For each evaluation type (flag / variation / variable), the SDK runs through thi
 
 1. SDK sticky override (if present)
 2. Feature not in datafile → disabled
-3. `required` dependencies fail → disabled
-4. First matching `force` entry's `enabled`
+3. First matching `force` entry's `enabled`
+4. `requiredFeatures` dependencies fail → disabled
 5. First matching rule's `percentage` + bucketing
 6. No match → disabled
 

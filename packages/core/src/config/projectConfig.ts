@@ -12,6 +12,7 @@ export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
 export const GROUPS_DIRECTORY_NAME = "groups";
 export const SCHEMAS_DIRECTORY_NAME = "schemas";
+export const VARIABLES_DIRECTORY_NAME = "variables";
 export const TARGETS_DIRECTORY_NAME = "targets";
 export const TESTS_DIRECTORY_NAME = "tests";
 export const STATE_DIRECTORY_NAME = ".featurevisor";
@@ -26,6 +27,7 @@ export const ROOT_DIR_PLACEHOLDER = "<rootDir>";
 
 export const DEFAULT_NAMESPACE_CHARACTER = ".";
 export const DEFAULT_TAGS = ["all"];
+export const DEFAULT_RESERVED_KEYS = ["feature", "variation", "variable"];
 export const DEFAULT_BUCKET_BY_ATTRIBUTE = "userId";
 export const DEFAULT_SETS = false;
 
@@ -45,6 +47,7 @@ export interface ProjectConfig {
   attributesDirectoryPath: string;
   groupsDirectoryPath: string;
   schemasDirectoryPath: string;
+  variablesDirectoryPath: string;
   targetsDirectoryPath: string;
   testsDirectoryPath: string;
   stateDirectoryPath: string;
@@ -57,6 +60,7 @@ export interface ProjectConfig {
   environments?: string[];
   sets: boolean;
   tags: string[];
+  reservedKeys?: string[];
 
   adapter: any; // @NOTE: type this properly later
   plugins: Plugin[];
@@ -67,6 +71,8 @@ export interface ProjectConfig {
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
+  allowFeatureAndGlobalVariableKeyCollisions?: boolean;
+  requireOverrideKeysInFeatures?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -83,6 +89,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
     tags: DEFAULT_TAGS,
+    reservedKeys: [...DEFAULT_RESERVED_KEYS],
     defaultBucketBy: "userId",
 
     parser: DEFAULT_PARSER,
@@ -90,6 +97,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
     stringify: true,
+    allowFeatureAndGlobalVariableKeyCollisions: false,
+    requireOverrideKeysInFeatures: false,
 
     adapter: FilesystemAdapter,
 
@@ -99,6 +108,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(rootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
+    variablesDirectoryPath: path.join(rootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(rootDirectoryPath, TARGETS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(rootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(rootDirectoryPath, STATE_DIRECTORY_NAME),
@@ -144,6 +154,41 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
   }
+
+  if (typeof finalConfig.allowFeatureAndGlobalVariableKeyCollisions !== "boolean") {
+    throw new Error(
+      `Invalid allowFeatureAndGlobalVariableKeyCollisions: ${finalConfig.allowFeatureAndGlobalVariableKeyCollisions}. It must be a boolean.`,
+    );
+  }
+
+  if (typeof finalConfig.requireOverrideKeysInFeatures !== "boolean") {
+    throw new Error(
+      `Invalid requireOverrideKeysInFeatures: ${finalConfig.requireOverrideKeysInFeatures}. It must be a boolean.`,
+    );
+  }
+
+  if (!Array.isArray(finalConfig.reservedKeys)) {
+    throw new Error(
+      `Invalid reservedKeys: ${finalConfig.reservedKeys}. It must be an array of unique, non-empty strings.`,
+    );
+  }
+
+  const seenReservedKeys = new Set<string>();
+  finalConfig.reservedKeys.forEach((reservedKey: unknown, index: number) => {
+    if (
+      typeof reservedKey !== "string" ||
+      reservedKey.length === 0 ||
+      reservedKey.trim() !== reservedKey
+    ) {
+      throw new Error(
+        `Invalid reservedKeys[${index}]: ${reservedKey}. It must be a non-empty string without surrounding whitespace.`,
+      );
+    }
+    if (seenReservedKeys.has(reservedKey)) {
+      throw new Error(`Invalid reservedKeys: duplicate key "${reservedKey}".`);
+    }
+    seenReservedKeys.add(reservedKey);
+  });
 
   if (typeof finalConfig.environments !== "undefined") {
     if (!Array.isArray(finalConfig.environments)) {
@@ -211,6 +256,7 @@ export function getProjectConfigForSet(projectConfig: ProjectConfig, set: string
     attributesDirectoryPath: path.join(setRootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
     groupsDirectoryPath: path.join(setRootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(setRootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
+    variablesDirectoryPath: path.join(setRootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(setRootDirectoryPath, TARGETS_DIRECTORY_NAME),
     testsDirectoryPath: path.join(setRootDirectoryPath, TESTS_DIRECTORY_NAME),
     stateDirectoryPath: path.join(projectConfig.stateDirectoryPath, SETS_DIRECTORY_NAME, set),

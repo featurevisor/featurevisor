@@ -6,6 +6,7 @@ import type {
   Test,
   TestFeature,
   TestSegment,
+  VariableAssertion,
 } from "@featurevisor/types";
 
 import { Badge, EmptyState, EntityKey, LabelValueBadge, MarkdownContent } from "./ui";
@@ -184,6 +185,39 @@ function SegmentAssertionContent(props: { assertion: SegmentAssertion }) {
   );
 }
 
+function VariableAssertionContent(props: { assertion: VariableAssertion }) {
+  const defaults = hasValue(props.assertion.defaultVariableValue)
+    ? { value: props.assertion.defaultVariableValue }
+    : undefined;
+  const expectations = {
+    ...(hasValue(props.assertion.expectedValue) ? { value: props.assertion.expectedValue } : {}),
+    ...(props.assertion.expectedEvaluation
+      ? { evaluation: props.assertion.expectedEvaluation }
+      : {}),
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <LabelValueBadge
+          label="Environment"
+          value={props.assertion.environment || "none"}
+          compact
+        />
+        {props.assertion.target && (
+          <LabelValueBadge label="Target" value={props.assertion.target} compact />
+        )}
+      </div>
+      <TestDataPanel title="Context" value={props.assertion.context || {}} />
+      <TestDataPanel title="Expected" value={expectations} />
+      <TestDataPanel title="Defaults" value={defaults} />
+      {props.assertion.stickyVariables && (
+        <TestDataPanel title="Sticky variables" value={props.assertion.stickyVariables} />
+      )}
+    </div>
+  );
+}
+
 function TestSpec(props: { test: Test; index: number; selectedPermalink?: string }) {
   const testKey = props.test.key || `test-${props.index + 1}`;
   const assertions = expandTestAssertions(props.test);
@@ -257,6 +291,8 @@ function TestSpec(props: { test: Test; index: number; selectedPermalink?: string
 
                 {"feature" in props.test ? (
                   <FeatureAssertionContent assertion={assertion as FeatureAssertion} />
+                ) : "variable" in props.test ? (
+                  <VariableAssertionContent assertion={assertion as VariableAssertion} />
                 ) : (
                   <SegmentAssertionContent assertion={assertion as SegmentAssertion} />
                 )}

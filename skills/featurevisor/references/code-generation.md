@@ -16,11 +16,13 @@ Optional flags:
 
 | Flag                | Effect                                                                 |
 | ------------------- | ---------------------------------------------------------------------- |
-| `--tag=<tag>`       | Generate for features carrying the tag                                 |
-| `--target=<target>` | Generate for features selected by the target                           |
+| `--tag=<tag>`       | Generate for features and global variables carrying the tag            |
+| `--target=<target>` | Generate for features and global variables selected by the target      |
 | `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
 
-`--tag` and `--target` are repeatable. All supplied tags and targets form a union. A target applies its `tag` or `tags`, `includeFeatures`, and `excludeFeatures` selectors. Target context does not specialize generated types.
+`--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. `includeFeatures` and `excludeFeatures` filter features. `includeVariables` and `excludeVariables` filter global variables. Target context does not specialize generated types.
+
+When a selected feature or global variable requires other features, generated feature types include the complete transitive required feature chain even when those features do not match the selectors directly. This mirrors the corresponding datafile payload.
 
 ## Output
 

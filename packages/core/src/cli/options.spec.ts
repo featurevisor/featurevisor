@@ -8,6 +8,14 @@ describe("core: CLI options", function () {
     expect(getBuiltinCLIOptions("promote")?.target.type).toBe("array");
   });
 
+  test("allows global variables without requiring feature selectors", function () {
+    expect(getBuiltinCLIOptions("benchmark")?.feature.demandOption).toBeUndefined();
+    expect(getBuiltinCLIOptions("benchmark")?.variable.type).toBe("string");
+    expect(getBuiltinCLIOptions("evaluate")?.variable.type).toBe("string");
+    expect(getBuiltinCLIOptions("build")?.variable.type).toBe("string");
+    expect(getBuiltinCLIOptions("list")?.variables.type).toBe("boolean");
+  });
+
   test("declares hidden TypeScript import path overrides", function () {
     expect(getBuiltinCLIOptions("generate-code")?.importSdkPath).toEqual({
       type: "string",

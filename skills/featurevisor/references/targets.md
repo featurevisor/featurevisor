@@ -11,7 +11,7 @@ context:
   platform: web
 ```
 
-Only `description` is required.
+Only `description` is required. Without selectors, a Target includes every active feature and global variable.
 
 ## Tags
 
@@ -72,7 +72,21 @@ includeFeatures:
 
 In this example, a `checkout` feature without the `web` tag is not included, even though its key matches `checkout*`.
 
-If all selectors are omitted, the target includes all non-archived features.
+## Global variables
+
+Use `includeVariables` and `excludeVariables` for glob-like global variable key filtering. They follow the same pattern rules as feature selectors:
+
+```yaml
+description: Checkout datafile
+includeVariables:
+  - checkout*
+excludeVariables:
+  - checkout.internal*
+```
+
+`includeFeatures` and `excludeFeatures` only affect features. `includeVariables` and `excludeVariables` only affect global variables. Tags apply to both. Tags and the matching entity key selectors use AND semantics.
+
+If all selectors are omitted, the target includes every non-archived feature and global variable.
 
 ## Context
 

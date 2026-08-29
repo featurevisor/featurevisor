@@ -102,27 +102,49 @@ describe("react: onFeatureChange", function () {
     expect(calls).toBe(0);
   });
 
-  test("should invoke callback on sticky_set when that feature is listed", function () {
+  test("should invoke callback when a segment dependency changes in a partial datafile", function () {
+    const datafile = datafileForTestFeature();
+    datafile.segments = { audience: { conditions: "*" } };
+    datafile.features.test.traffic[0].segments = "audience" as never;
+    const sdk = createFeaturevisor({ datafile });
+    let calls = 0;
+    onFeatureChange(sdk, "test", () => {
+      calls += 1;
+    });
+
+    sdk.setDatafile({
+      schemaVersion: "2",
+      revision: "2.0",
+      segments: {
+        audience: { conditions: { attribute: "country", operator: "equals", value: "nl" } },
+      },
+      features: {},
+    });
+
+    expect(calls).toBe(1);
+  });
+
+  test("should invoke callback on sticky_features_set when that feature is listed", function () {
     const sdk = createFeaturevisor({ datafile: datafileForTestFeature() });
     let calls = 0;
     onFeatureChange(sdk, "test", () => {
       calls += 1;
     });
 
-    sdk.setSticky({
+    sdk.setStickyFeatures({
       test: { enabled: true },
     });
     expect(calls).toBe(1);
   });
 
-  test("should not invoke callback on sticky_set when another feature is listed", function () {
+  test("should not invoke callback on sticky_features_set when another feature is listed", function () {
     const sdk = createFeaturevisor({ datafile: datafileWithTwoFeatures() });
     let calls = 0;
     onFeatureChange(sdk, "test", () => {
       calls += 1;
     });
 
-    sdk.setSticky({
+    sdk.setStickyFeatures({
       other: { enabled: true },
     });
     expect(calls).toBe(0);
@@ -139,7 +161,7 @@ describe("react: onFeatureChange", function () {
 
     sdk.setContext({ x: 1 });
     sdk.setDatafile(datafileForTestFeature("2"));
-    sdk.setSticky({ test: { enabled: false } }, true);
+    sdk.setStickyFeatures({ test: { enabled: false } }, true);
 
     expect(calls).toBe(0);
   });

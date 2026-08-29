@@ -39,6 +39,16 @@ function getNewDatafile(colorValue = "red"): DatafileContent {
       },
     },
     segments: {},
+    variables: {
+      theme: { type: "string", defaultValue: colorValue, hash: colorValue },
+      dependentTheme: {
+        type: "string",
+        defaultValue: colorValue,
+        disabledValue: "disabled",
+        requiredFeatures: ["test"],
+        hash: `dependent-${colorValue}`,
+      },
+    },
   };
 }
 
@@ -124,6 +134,47 @@ describe("react: useVariable", function () {
     });
   });
 
+  test("should evaluate global variables with optional generics and update reactively", async () => {
+    function TestComponent() {
+      const theme = useVariable<"red" | "blue">("theme");
+      return <p data-testid="theme">{theme}</p>;
+    }
+    const f = getNewInstance();
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+    expect(screen.getByTestId("theme")).toHaveTextContent("red");
+
+    await act(async () => f.setDatafile(getNewDatafile("blue")));
+    await waitFor(() => expect(screen.getByTestId("theme")).toHaveTextContent("blue"));
+
+    await act(async () => f.setStickyVariables({ theme: "red" }));
+    await waitFor(() => expect(screen.getByTestId("theme")).toHaveTextContent("red"));
+  });
+
+  test("should update a global variable when a required feature changes", async () => {
+    function TestComponent() {
+      return <p data-testid="dependent-theme">{useVariable("dependentTheme")}</p>;
+    }
+    const f = getNewInstance();
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+    expect(screen.getByTestId("dependent-theme")).toHaveTextContent("red");
+
+    await act(async () => f.setStickyFeatures({ test: { enabled: false } }));
+    await waitFor(() =>
+      expect(screen.getByTestId("dependent-theme")).toHaveTextContent("disabled"),
+    );
+
+    await act(async () => f.setStickyFeatures({ test: { enabled: true } }, true));
+    await waitFor(() => expect(screen.getByTestId("dependent-theme")).toHaveTextContent("red"));
+  });
+
   test("should read different variable keys when the key prop changes", async function () {
     function TestComponent({ name }: { name: "color" | "size" }) {
       const value = useVariable("test", name, { userId: "1" });
@@ -194,7 +245,7 @@ describe("react: useVariable", function () {
     expect(screen.getByTestId("hero")).toHaveTextContent("Hero Title");
   });
 
-  test("should update when setSticky provides a variable override", async function () {
+  test("should update when setStickyFeatures provides a variable override", async function () {
     const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
@@ -235,7 +286,7 @@ describe("react: useVariable", function () {
     expect(screen.getByTestId("c")).toHaveTextContent("red");
 
     await act(async () => {
-      sdk.setSticky({
+      sdk.setStickyFeatures({
         test: {
           enabled: true,
           variables: { color: "green" },

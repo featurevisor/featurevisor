@@ -3,7 +3,6 @@ import type {
   Context,
   FeatureKey,
   Featurevisor,
-  VariableKey,
   VariableValue,
   VariationValue,
 } from "@featurevisor/sdk";
@@ -48,14 +47,10 @@ function createVariationGetter(value: VariationValue | null) {
 
 function createVariableGetter(value: VariableValue | null) {
   const spy = jest.fn();
-  const getVariable: Featurevisor["getVariable"] = <TValue = VariableValue>(
-    featureKey: FeatureKey,
-    variableKey: VariableKey,
-    context: Context = {},
-  ): TValue | null => {
-    spy(featureKey, variableKey, context);
-    return value as TValue | null;
-  };
+  const getVariable = ((...args: unknown[]) => {
+    spy(...args);
+    return value;
+  }) as Featurevisor["getVariable"];
 
   return { getVariable, spy };
 }
@@ -181,16 +176,19 @@ describe("vue: composables", () => {
       const typedVariation = useVariation<"control" | "treatment">("checkout");
       const variable = useVariable("checkout", "configuration");
       const typedVariable = useVariable<CheckoutConfig>("checkout", "configuration");
+      const globalVariable = useVariable<CheckoutConfig>("configuration", { userId: "u" });
 
       expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
       expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);
       expectExactType<IsExact<typeof variable, VariableValue | null>>(true);
       expectExactType<IsExact<typeof typedVariable, CheckoutConfig | null>>(true);
+      expectExactType<IsExact<typeof globalVariable, CheckoutConfig | null>>(true);
 
       expect(variation).toBe("treatment");
       expect(typedVariation).toBe("treatment");
       expect(variable).toEqual({ theme: "dark" });
       expect(typedVariable).toEqual({ theme: "dark" });
+      expect(globalVariable).toEqual({ theme: "dark" });
 
       return {};
     }, sdk);
@@ -206,11 +204,13 @@ describe("vue: composables", () => {
       useFlag("checkout");
       useVariation("checkout");
       useVariable("checkout", "configuration");
+      useVariable("globalConfiguration");
       return {};
     }, sdk);
 
     expect(isEnabled).toHaveBeenCalledWith("checkout", {});
     expect(getVariationSpy).toHaveBeenCalledWith("checkout", {});
     expect(getVariableSpy).toHaveBeenCalledWith("checkout", "configuration", {});
+    expect(getVariableSpy).toHaveBeenCalledWith("globalConfiguration", {});
   });
 });

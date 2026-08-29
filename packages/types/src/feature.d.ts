@@ -9,25 +9,44 @@ export type VariableKey = string;
 export type VariableType = SchemaType | "json";
 export type VariableValue = Value | null;
 
-export interface VariableOverrideSegments {
-  segments: GroupSegment | GroupSegment[] | "*";
+/**
+ * Variable override used inside a feature rule or variation.
+ *
+ * `key` remains optional for compatibility with existing definitions. New
+ * definitions should provide one so evaluations and promotion can use a stable
+ * identity. `mutate` is the explicit partial update form. Legacy mutation maps
+ * supplied through `value` remain supported until the next major release.
+ */
+interface VariableOverrideBase {
+  key?: string;
+  description?: string;
+  promotable?: boolean;
 }
 
-export interface VariableOverrideConditions {
-  conditions: Condition | Condition[];
-}
+type VariableOverrideSelector =
+  | {
+      conditions: Condition | Condition[];
+      segments?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      segments: GroupSegment | GroupSegment[] | "*";
+      conditions?: never;
+      requiredFeatures?: RequiredFeatures;
+    }
+  | {
+      requiredFeatures: RequiredFeatures;
+      conditions?: never;
+      segments?: never;
+    };
 
-export type VariableOverrideSegmentsOrConditions =
-  | VariableOverrideSegments
-  | VariableOverrideConditions;
+type VariableOverrideValue =
+  | { value: VariableValue; mutate?: never }
+  | { mutate: Record<string, VariableValue>; value?: never };
 
-export interface VariableOverride {
-  value: VariableValue;
-
-  // one of the below must be present in YAML files
-  conditions?: Condition | Condition[];
-  segments?: GroupSegment | GroupSegment[] | "*";
-}
+export type VariableOverride = VariableOverrideBase &
+  VariableOverrideSelector &
+  VariableOverrideValue;
 
 export interface Variation {
   description?: string; // only available in YAML files
@@ -63,7 +82,7 @@ export interface VariableSchemaWithInline {
   additionalProperties?: Schema["additionalProperties"]; // if type is object
   required?: Schema["required"]; // if type is object
   items?: Schema["items"]; // if type is array
-  oneOf?: Schema[]; // value must match exactly one of these (mutually exclusive with type at top level when used)
+  oneOf?: Schema[]; // value must match exactly one branch (mutually exclusive with type at the definition root)
   enum?: Value[];
   const?: VariableValue;
 
@@ -112,7 +131,21 @@ export interface RequiredWithVariation {
   variation: VariationValue;
 }
 
+/** @deprecated Use `RequiredFeature` and `requiredFeatures` instead. */
 export type Required = FeatureKey | RequiredWithVariation;
+
+export interface RequiredFeatureOptions {
+  feature: FeatureKey;
+  /** Expected result from `isEnabled()`. Defaults to `true`. */
+  enabled?: boolean;
+  /** Expected result from `getVariation()`. */
+  variation?: VariationValue;
+}
+
+export type RequiredFeature = FeatureKey | RequiredFeatureOptions;
+
+/** Authoring form. A single feature key is shorthand for a one-item array. */
+export type RequiredFeatures = FeatureKey | RequiredFeature[];
 
 export type Weight = number; // 0 to 100
 
@@ -178,7 +211,9 @@ export interface ParsedFeature {
   description: string;
   tags?: Tag[];
 
+  /** @deprecated Use `requiredFeatures`. */
   required?: Required[];
+  requiredFeatures?: RequiredFeatures;
 
   bucketBy: BucketBy;
 

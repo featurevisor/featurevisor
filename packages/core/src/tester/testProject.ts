@@ -1,9 +1,16 @@
 import * as fs from "fs";
 
-import type { TestSegment, TestFeature, Test, DatafileContent } from "@featurevisor/types";
+import type {
+  TestSegment,
+  TestFeature,
+  TestVariable,
+  Test,
+  DatafileContent,
+} from "@featurevisor/types";
 
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
+import { testVariable } from "./testVariable";
 import { CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "./cliFormat";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
@@ -22,7 +29,7 @@ export interface TestProjectOptions {
   showDatafile?: boolean;
   onlyFailures?: boolean;
   quiet?: boolean;
-  entityType?: "feature" | "segment";
+  entityType?: "feature" | "segment" | "variable";
   inflate?: number;
   target?: string | string[];
 }
@@ -39,7 +46,8 @@ export interface ExecutionResult {
 export type DatafileContentByKey = Map<string | false, DatafileContent>;
 
 export function filterTestForTargets(test: Test, selectedTargetKeys?: string[]): Test | undefined {
-  if (!selectedTargetKeys || !(test as TestFeature).feature) return test;
+  if (!selectedTargetKeys || (!(test as TestFeature).feature && !(test as TestVariable).variable))
+    return test;
 
   const featureTest = test as TestFeature;
   const assertions = featureTest.assertions.filter(
@@ -100,8 +108,9 @@ export async function executeTest(
 
   const tAsSegment = test as TestSegment;
   const tAsFeature = test as TestFeature;
-  const key = tAsSegment.segment || tAsFeature.feature;
-  const type = tAsSegment.segment ? "segment" : "feature";
+  const tAsVariable = test as TestVariable;
+  const key = tAsSegment.segment || tAsFeature.feature || tAsVariable.variable;
+  const type = tAsSegment.segment ? "segment" : tAsVariable.variable ? "variable" : "feature";
 
   const executionResult: ExecutionResult = {
     passed: true,
@@ -121,6 +130,8 @@ export async function executeTest(
   let testResult;
   if (type === "segment") {
     testResult = await testSegment(datasource, tAsSegment, options);
+  } else if (type === "variable") {
+    testResult = await testVariable(tAsVariable, options, datafileContentByKey);
   } else {
     testResult = await testFeature(
       datasource,

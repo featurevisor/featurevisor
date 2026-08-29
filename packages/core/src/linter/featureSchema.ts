@@ -1,7 +1,7 @@
-import type { Schema, SchemaType } from "@featurevisor/types";
+import type { ParsedFeature, Schema, SchemaType } from "@featurevisor/types";
 import { z } from "zod";
 
-import { ProjectConfig } from "../config";
+import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
 import { isMutationKey, validateMutationKey } from "./mutationNotation";
 import {
   valueZodSchema,
@@ -13,6 +13,7 @@ import {
   refineArrayItems,
 } from "./schema";
 import { refineWithMessage } from "./zodHelpers";
+import { getRequiredFeaturesZodSchema } from "./requiredFeaturesSchema";
 
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
@@ -39,7 +40,7 @@ function getVariableLabel(variableSchema, variableKey, path) {
  * Resolve variable schema to the Schema used for value validation.
  * When variable has `schema` (reference), returns the parsed Schema from schemasByKey; otherwise returns the inline variable schema.
  */
-function resolveVariableSchema(
+export function resolveVariableSchema(
   variableSchema: {
     schema?: string;
     type?: string;
@@ -285,7 +286,7 @@ type SchemaLikeForRequired = {
  * When schemasByKey is provided, resolves schema references (schema: key) so that
  * referenced and nested schemas are validated too.
  */
-function refineRequiredKeysInSchema(
+export function refineRequiredKeysInSchema(
   schema: SchemaLikeForRequired,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
@@ -584,7 +585,7 @@ type VariableSchemaLike =
   | null
   | undefined;
 
-function superRefineVariableValue(
+export function superRefineVariableValue(
   projectConfig: ProjectConfig,
   variableSchema: VariableSchemaLike,
   variableValue: unknown,
@@ -1004,7 +1005,7 @@ function refineVariableOverrides({
 }: {
   ctx: z.RefinementCtx;
   variableSchemaByKey: Record<string, unknown>;
-  variableOverrides: Record<string, Array<{ value?: unknown }>>;
+  variableOverrides: Record<string, Array<{ value?: unknown; mutate?: Record<string, unknown> }>>;
   pathPrefix: (string | number)[];
   projectConfig: ProjectConfig;
   schemasByKey?: Record<string, Schema>;
@@ -1053,8 +1054,14 @@ function refineVariableOverrides({
     }
 
     overrides.forEach((override, overrideN) => {
-      const overrideValue = override.value;
-      const valuePath = [...pathPrefix, variableKey, overrideN, "value"];
+      const usesExplicitMutation = typeof override.mutate !== "undefined";
+      const overrideValue = usesExplicitMutation ? override.mutate : override.value;
+      const valuePath = [
+        ...pathPrefix,
+        variableKey,
+        overrideN,
+        usesExplicitMutation ? "mutate" : "value",
+      ];
 
       if (
         typeof overrideValue === "object" &&
@@ -1068,6 +1075,7 @@ function refineVariableOverrides({
           (Boolean(resolvedVariableSchema.properties) ||
             Boolean(resolvedVariableSchema.additionalProperties));
         const treatAsPathMap =
+          usesExplicitMutation ||
           pathKeys.some((pathKey) => isMutationKey(pathKey)) ||
           (hasStructuredObjectSchema && pathKeys.length > 0);
 
@@ -1301,6 +1309,7 @@ export function getFeatureZodSchema(
   availableFeatureKeys: [string, ...string[]],
   availableSchemaKeys: string[] = [],
   schemasByKey: Record<string, Schema> = {},
+  featuresByKey: Record<string, ParsedFeature> = {},
 ) {
   const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
   const variableValueZodSchema = valueZodSchema;
@@ -1340,6 +1349,96 @@ export function getFeatureZodSchema(
   const groupSegmentZodSchema = z.union([andOrNotGroupSegment, plainGroupSegment]);
 
   const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
+  const requiredFeaturesZodSchema = getRequiredFeaturesZodSchema(
+    featuresByKey,
+    availableFeatureKeys,
+  ).optional();
+  const featureVariableOverrideSchema = z
+    .object({
+      key: z.string().min(1).optional(),
+      description: z.string().optional(),
+      promotable: z.boolean().optional(),
+      conditions: conditionsZodSchema.optional(),
+      segments: groupSegmentsZodSchema.optional(),
+      requiredFeatures: requiredFeaturesZodSchema,
+      value: overrideValueZodSchema.optional(),
+      mutate: overridePathMapValueZodSchema.optional(),
+    })
+    .strict()
+    .superRefine((override, ctx) => {
+      if (
+        typeof override.conditions === "undefined" &&
+        typeof override.segments === "undefined" &&
+        typeof override.requiredFeatures === "undefined"
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "A variable override must define `conditions`, `segments`, or `requiredFeatures`.",
+          path: ["segments"],
+        });
+      }
+
+      if (typeof override.conditions !== "undefined" && typeof override.segments !== "undefined") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A variable override cannot define both `conditions` and `segments`.",
+          path: ["segments"],
+        });
+      }
+
+      const hasValue = Object.prototype.hasOwnProperty.call(override, "value");
+      const hasMutate = Object.prototype.hasOwnProperty.call(override, "mutate");
+      if (hasValue === hasMutate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A variable override must define exactly one of `value` or `mutate`.",
+          path: hasValue ? ["mutate"] : ["value"],
+        });
+      }
+
+      if (typeof override.promotable !== "undefined" && typeof override.key === "undefined") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A variable override key is required when `promotable` is set.",
+          path: ["key"],
+        });
+      }
+    });
+  const featureVariableOverridesSchema = z
+    .array(featureVariableOverrideSchema)
+    .superRefine((overrides, ctx) => {
+      const keys = overrides
+        .map((override) => override.key)
+        .filter((key): key is string => typeof key === "string");
+      if (keys.length !== new Set(keys).size) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate variable override keys found: ${keys.join(", ")}`,
+        });
+      }
+
+      if (
+        overrides.some((override) => typeof override.promotable !== "undefined") &&
+        overrides.some((override) => typeof override.key === "undefined")
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Every variable override in the list must have a key when `promotable` is used.",
+        });
+      }
+
+      if (
+        projectConfig.requireOverrideKeysInFeatures &&
+        overrides.some((override) => typeof override.key === "undefined")
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Every variable override inside a feature must have a key when `requireOverrideKeysInFeatures` is enabled.",
+        });
+      }
+    });
 
   const exposeSchema = z
     .union([z.boolean(), z.array(z.string().refine((value) => projectConfig.tags.includes(value)))])
@@ -1358,27 +1457,7 @@ export function getFeatureZodSchema(
           enabled: z.boolean().optional(),
           variation: variationValueZodSchema.optional(),
           variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
-          variableOverrides: z
-            .record(
-              z.string(),
-              z.array(
-                z.union([
-                  z
-                    .object({
-                      conditions: conditionsZodSchema,
-                      value: overrideValueZodSchema,
-                    })
-                    .strict(),
-                  z
-                    .object({
-                      segments: groupSegmentsZodSchema,
-                      value: overrideValueZodSchema,
-                    })
-                    .strict(),
-                ]),
-              ),
-            )
-            .optional(),
+          variableOverrides: z.record(z.string(), featureVariableOverridesSchema).optional(),
           variationWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
         })
         .strict(),
@@ -1497,6 +1576,11 @@ export function getFeatureZodSchema(
           ]),
         )
         .optional(),
+
+      requiredFeatures: getRequiredFeaturesZodSchema(
+        featuresByKey,
+        availableFeatureKeys,
+      ).optional(),
 
       bucketBy: z.union([
         attributeKeyZodSchema,
@@ -1642,27 +1726,7 @@ export function getFeatureZodSchema(
               value: variationValueZodSchema,
               weight: z.number().min(0).max(100),
               variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
-              variableOverrides: z
-                .record(
-                  z.string(),
-                  z.array(
-                    z.union([
-                      z
-                        .object({
-                          conditions: conditionsZodSchema,
-                          value: overrideValueZodSchema,
-                        })
-                        .strict(),
-                      z
-                        .object({
-                          segments: groupSegmentsZodSchema,
-                          value: overrideValueZodSchema,
-                        })
-                        .strict(),
-                    ]),
-                  ),
-                )
-                .optional(),
+              variableOverrides: z.record(z.string(), featureVariableOverridesSchema).optional(),
             })
             .strict(),
         )
@@ -1693,6 +1757,14 @@ export function getFeatureZodSchema(
     })
     .strict()
     .superRefine((value, ctx) => {
+      if (value.required && value.requiredFeatures) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A feature cannot define both `required` and `requiredFeatures`.",
+          path: ["requiredFeatures"],
+        });
+      }
+
       // disabledVariationValue
       if (value.disabledVariationValue) {
         if (!value.variations) {
@@ -1788,7 +1860,7 @@ export function getFeatureZodSchema(
             );
           }
 
-          if (variableKey === "variation") {
+          if ((projectConfig.reservedKeys || DEFAULT_RESERVED_KEYS).includes(variableKey)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `Variable key "${variableKey}" is reserved and cannot be used.`,

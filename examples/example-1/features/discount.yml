@@ -5,8 +5,7 @@ tags:
 
 bucketBy: userId
 
-required:
-  - sidebar
+requiredFeatures: sidebar
 
 rules:
   staging:

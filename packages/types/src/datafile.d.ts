@@ -6,6 +6,7 @@ import type {
   Weight,
   FeatureKey,
   Required,
+  RequiredFeature,
   VariableKey,
   ResolvedVariableSchema,
   Variation,
@@ -13,6 +14,7 @@ import type {
   VariableOverride,
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
+import type { DatafileVariable, GlobalVariableKey } from "./variable";
 
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
@@ -47,7 +49,9 @@ export interface Feature {
   key?: FeatureKey; // available while building, omitted from generated datafiles
   hash?: string;
   deprecated?: boolean;
+  /** @deprecated Read for compatibility with older datafiles. */
   required?: Required[];
+  requiredFeatures?: RequiredFeature[];
   variablesSchema?: Record<VariableKey, ResolvedVariableSchema>;
   disabledVariationValue?: VariationValue;
   variations?: Variation[];
@@ -66,5 +70,9 @@ export interface DatafileContent {
   };
   features: {
     [key: FeatureKey]: Feature;
+  };
+  /** Optional for compatibility with datafiles generated before global variables. */
+  variables?: {
+    [key: GlobalVariableKey]: DatafileVariable;
   };
 }

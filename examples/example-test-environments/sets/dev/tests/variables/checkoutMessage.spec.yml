@@ -1,0 +1,15 @@
+variable: checkoutMessage
+assertions:
+  - description: uses the internal development message
+    context:
+      team: engineering
+    expectedValue: Development checkout for engineers
+    expectedEvaluation:
+      variableOverrideKey: internal
+
+  - description: uses the default development message
+    context:
+      team: external
+    expectedValue: Development checkout
+    expectedEvaluation:
+      variableOverrideKey: default

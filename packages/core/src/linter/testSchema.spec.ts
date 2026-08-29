@@ -12,6 +12,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
+    variablesDirectoryPath: "",
     testsDirectoryPath: "",
     stateDirectoryPath: "",
     datafilesDirectoryPath: "",
@@ -35,7 +36,7 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
 }
 
 function getSchema(projectConfig = minimalProjectConfig()) {
-  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"]);
+  return getTestsZodSchema(projectConfig, ["checkout"], ["desktop"], ["web"], ["settings"]);
 }
 
 function parseTest(input: unknown): z.ZodSafeParseResult<unknown> {
@@ -65,6 +66,53 @@ function expectTestFailure(input: unknown, messageSubstring: string): z.ZodError
 }
 
 describe("testSchema.ts :: getTestsZodSchema", () => {
+  it("requires at least one global variable expectation", () => {
+    expectTestSuccess({
+      variable: "settings",
+      assertions: [
+        {
+          environment: "production",
+          expectedEvaluation: { reason: "variable_default" },
+        },
+      ],
+    });
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production" }],
+      },
+      "Expected at least one of expectedValue or expectedEvaluation",
+    );
+
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            expectedEvaluation: { unknownField: true },
+          },
+        ],
+      },
+      "Unrecognized key",
+    );
+  });
+
+  it("allows global variable assertions without an environment in projects without environments", () => {
+    const result = getTestsZodSchema(
+      minimalProjectConfig({ environments: undefined }),
+      ["checkout"],
+      ["desktop"],
+      ["web"],
+      ["settings"],
+    ).safeParse({
+      variable: "settings",
+      assertions: [{ expectedValue: "enabled" }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("accepts a valid feature test with matrix, context, sticky, and expected evaluations", () => {
     expectTestSuccess({
       feature: "checkout",
@@ -95,7 +143,10 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
             title: "Checkout",
           },
           expectedEvaluations: {
-            flag: { reason: "rule" },
+            flag: {
+              reason: "required",
+              requiredFeatures: [{ feature: "checkout", enabled: true }],
+            },
             variation: { reason: "bucketed" },
             variables: { title: { reason: "default" } },
           },

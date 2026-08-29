@@ -770,7 +770,7 @@ describe("sdk: instance", function () {
             const { featureKey, variableKey } = options;
 
             intercepted = true;
-            interceptedFeatureKey = featureKey;
+            interceptedFeatureKey = featureKey || "";
             interceptedVariableKey = variableKey;
 
             return options;
@@ -825,7 +825,7 @@ describe("sdk: instance", function () {
             const { featureKey, variableKey } = options;
 
             intercepted = true;
-            interceptedFeatureKey = featureKey;
+            interceptedFeatureKey = featureKey || "";
             interceptedVariableKey = variableKey;
 
             options.variationValue = "control_intercepted"; // manipulating value here
@@ -872,7 +872,7 @@ describe("sdk: instance", function () {
     };
 
     const sdk = createFeaturevisor({
-      sticky: {
+      stickyFeatures: {
         test: {
           enabled: true,
           variation: "control",
@@ -906,7 +906,7 @@ describe("sdk: instance", function () {
       ).toEqual("control");
 
       // unsetting sticky features will make it treatment
-      sdk.setSticky({}, true);
+      sdk.setStickyFeatures({}, true);
       expect(
         sdk.getVariation("test", {
           userId: "123",
@@ -1517,7 +1517,7 @@ describe("sdk: instance", function () {
       userId: "123",
     };
 
-    const evaluatedFeatures = sdk.getAllEvaluations(context);
+    const evaluatedFeatures = sdk.getFeatureEvaluations(context);
     expect(evaluatedFeatures).toEqual({
       test: {
         enabled: true,
@@ -2122,10 +2122,10 @@ describe("sdk: instance", function () {
       expect(sdk.getVariableObject("nonExistingFeature", "themeConfig", context)).toBeNull();
     });
 
-    it("should include array and object variables in getAllEvaluations", function () {
+    it("should include array and object variables in getFeatureEvaluations", function () {
       const sdk = createFeaturevisor({ datafile: arrayAndObjectDatafile });
 
-      const all = sdk.getAllEvaluations(context);
+      const all = sdk.getFeatureEvaluations(context);
 
       expect(all.withArray).toBeDefined();
       expect(all.withArray?.enabled).toBe(true);

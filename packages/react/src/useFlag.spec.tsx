@@ -242,7 +242,7 @@ describe("react: useFlag", function () {
     });
   });
 
-  test("should update when setSticky overrides a disabled feature", async function () {
+  test("should update when setStickyFeatures overrides a disabled feature", async function () {
     const sdk = createFeaturevisor({
       datafile: {
         schemaVersion: "2",
@@ -281,7 +281,7 @@ describe("react: useFlag", function () {
     expect(screen.getByText("StickyOff")).toBeInTheDocument();
 
     await act(async () => {
-      sdk.setSticky({ test: { enabled: true } });
+      sdk.setStickyFeatures({ test: { enabled: true } });
     });
 
     await waitFor(() => {

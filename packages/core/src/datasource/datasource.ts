@@ -15,13 +15,22 @@ import type {
   Schema,
   Target,
   TargetKey,
+  ParsedVariable,
+  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import { getProjectConfigForSet, ProjectConfig } from "../config";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
-import { collectRequiredFeatureKeys } from "./requiredFeatures";
+import {
+  collectRequiredFeatureKeys,
+  getFeatureVariableOverrideRequirements,
+  getRequiredFeatureKey,
+  normalizeFeatureRequirements,
+  normalizeRequiredFeatures,
+} from "./requiredFeatures";
+import { flattenVariableOverrides } from "./variableOverrides";
 
 export class Datasource {
   private adapter: Adapter;
@@ -125,8 +134,53 @@ export class Datasource {
     }
 
     const feature = await this.readFeature(featureKey);
+    const featureCache = new Map<FeatureKey, ParsedFeature>([[featureKey, feature]]);
+    const cachedDatasource = {
+      featureExists: (key: FeatureKey) => this.featureExists(key),
+      readFeature: async (key: FeatureKey) => {
+        const cached = featureCache.get(key);
+        if (cached) return cached;
+        const value = await this.readFeature(key);
+        featureCache.set(key, value);
+        return value;
+      },
+    };
 
-    return collectRequiredFeatureKeys(this, featureKey, feature.required);
+    const result = await collectRequiredFeatureKeys(
+      cachedDatasource,
+      featureKey,
+      normalizeFeatureRequirements(feature),
+    );
+    const processed = new Set<FeatureKey>();
+    const queue = Array.from(result);
+
+    while (queue.length > 0) {
+      const currentKey = queue.shift()!;
+      if (processed.has(currentKey)) continue;
+      processed.add(currentKey);
+
+      const current = await cachedDatasource.readFeature(currentKey);
+      for (const required of getFeatureVariableOverrideRequirements(current)) {
+        const requiredKey = getRequiredFeatureKey(required);
+        if (!(await this.featureExists(requiredKey))) {
+          throw new Error(`required feature "${requiredKey}" not found`);
+        }
+        const requiredFeature = await cachedDatasource.readFeature(requiredKey);
+        const chain = await collectRequiredFeatureKeys(
+          cachedDatasource,
+          requiredKey,
+          normalizeFeatureRequirements(requiredFeature),
+        );
+        for (const key of chain) {
+          if (!result.has(key)) {
+            result.add(key);
+            queue.push(key);
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   // segments
@@ -232,6 +286,52 @@ export class Datasource {
 
   deleteSchema(schemaKey: SchemaKey) {
     return this.adapter.deleteEntity("schema", schemaKey);
+  }
+
+  // global variables
+  listVariables() {
+    return this.adapter.listEntities("variable");
+  }
+
+  variableExists(variableKey: GlobalVariableKey) {
+    return this.adapter.entityExists("variable", variableKey);
+  }
+
+  readVariable(variableKey: GlobalVariableKey) {
+    return this.adapter.readEntity<ParsedVariable>("variable", variableKey);
+  }
+
+  writeVariable(variableKey: GlobalVariableKey, variable: ParsedVariable) {
+    return this.adapter.writeEntity<ParsedVariable>("variable", variableKey, variable);
+  }
+
+  deleteVariable(variableKey: GlobalVariableKey) {
+    return this.adapter.deleteEntity("variable", variableKey);
+  }
+
+  async getRequiredFeaturesChainForVariable(
+    variableKey: GlobalVariableKey,
+  ): Promise<Set<FeatureKey>> {
+    if (!(await this.variableExists(variableKey))) {
+      throw new Error(`Variable not found: ${variableKey}`);
+    }
+
+    const variable = await this.readVariable(variableKey);
+    const result = new Set<FeatureKey>();
+    const requirements = [
+      ...normalizeRequiredFeatures(variable.requiredFeatures),
+      ...flattenVariableOverrides(variable.overrides).flatMap((override) =>
+        normalizeRequiredFeatures(override.requiredFeatures),
+      ),
+    ];
+
+    for (const required of requirements) {
+      const featureKey = getRequiredFeatureKey(required);
+      const chain = await this.getRequiredFeaturesChain(featureKey);
+      chain.forEach((key) => result.add(key));
+    }
+
+    return result;
   }
 
   // targets

@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/testing>
 
-Featurevisor ships an in-process test runner. Specs live in `tests/features/<key>.spec.yml` and `tests/segments/<key>.spec.yml` by default. File names are conventional, not load-bearing.
+Featurevisor ships an in-process test runner. Specs live in `tests/features/`, `tests/segments/`, and `tests/variables/` by default. File names are conventional, not load-bearing.
 
 In a sets project, `promotable: false` can be set at the top level of either kind of test spec. If the matching destination spec exists, it is preserved when either the source or destination spec has this field. A missing destination spec is still created.
 
@@ -51,7 +51,7 @@ Additional inputs an assertion can set up (advanced, all optional):
 
 | Field                                             | Purpose                                                                                                                                                                                     |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sticky`                                          | Sticky features for the test SDK instance — consulted before evaluation, exactly like `f.setSticky()` at runtime                                                                            |
+| `sticky`                                          | Sticky features for the test SDK instance, consulted before evaluation exactly like `f.setStickyFeatures()` at runtime                                                                      |
 | `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                             |
 | `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
 
@@ -94,6 +94,21 @@ assertions:
     expectedToMatch: false
 ```
 
+## Global variable spec
+
+```yaml
+variable: supportEmail
+assertions:
+  - environment: production
+    context: { country: nl }
+    expectedValue: support-nl@example.com
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: netherlands
+```
+
+Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.
+
 ## Matrix expansion
 
 Run the same assertion across combinations of values:
@@ -115,7 +130,7 @@ assertions:
     expectedToBeEnabled: true
 ```
 
-Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix-driven fields is fine — only interpolate where it changes.
+Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix driven fields is fine. Placeholders are replaced recursively inside nested objects and arrays, including context, sticky values, defaults, expected values, detailed expected evaluations, and child assertions. A placeholder used as the complete value preserves its original type.
 
 ## Testing against target datafiles
 

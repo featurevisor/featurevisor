@@ -44,7 +44,8 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "attributes" ||
     value === "targets" ||
     value === "groups" ||
-    value === "schemas"
+    value === "schemas" ||
+    value === "variables"
   );
 }
 
@@ -486,7 +487,9 @@ export function EntityDetailPage() {
           { to: "force", label: "Force" },
         ]
       : []),
-    ...(type === "feature" || type === "segment" ? [{ to: "tests", label: "Tests" }] : []),
+    ...(type === "feature" || type === "segment" || type === "variable"
+      ? [{ to: "tests", label: "Tests" }]
+      : []),
     ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
     { to: "history", label: "History" },
   ];
@@ -513,7 +516,7 @@ export function OverviewTab() {
   const schema = entity as SchemaLike;
   const hasStructureTable =
     (detail.type === "schema" && usesSchemaStructureTable(schema) && hasSchemaTableRows(schema)) ||
-    (detail.type === "attribute" && hasSchemaTableRows(schema));
+    ((detail.type === "attribute" || detail.type === "variable") && hasSchemaTableRows(schema));
 
   return (
     <div className="space-y-6">
@@ -541,6 +544,31 @@ export function OverviewTab() {
         <OverviewSection title="Structure">
           <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
         </OverviewSection>
+      )}
+
+      {detail.type === "variable" && (
+        <>
+          {hasSchemaTableRows(entity as SchemaLike) && (
+            <OverviewSection title="Structure">
+              <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+            </OverviewSection>
+          )}
+          <OverviewSection title="Values">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-border bg-elevated p-4">
+                <div className="mb-2 text-xs font-semibold text-muted">Default</div>
+                <FormattedValue value={entity.defaultValue} />
+              </div>
+              <div className="rounded-xl border border-border bg-elevated p-4">
+                <div className="mb-2 text-xs font-semibold text-muted">Disabled</div>
+                <FormattedValue value={entity.disabledValue} />
+              </div>
+            </div>
+          </OverviewSection>
+          <OverviewSection title="Overrides">
+            <GlobalVariableOverrides value={entity.overrides} />
+          </OverviewSection>
+        </>
       )}
 
       <DescriptionField value={entity.description} showTopDivider={!hasStructureTable} />
@@ -671,6 +699,143 @@ function asStringArray(value: unknown) {
   return undefined;
 }
 
+function asRequiredFeatures(
+  value: unknown,
+): Array<{ feature: string; enabled?: boolean; variation?: string }> {
+  const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
+  return items.flatMap((item) => {
+    if (typeof item === "string") return [{ feature: item }];
+    if (!item || typeof item !== "object") return [];
+    const requirement = item as {
+      feature?: unknown;
+      key?: unknown;
+      enabled?: unknown;
+      variation?: unknown;
+    };
+    const feature = requirement.feature || requirement.key;
+    return typeof feature === "string"
+      ? [
+          {
+            feature,
+            enabled: typeof requirement.enabled === "boolean" ? requirement.enabled : undefined,
+            variation:
+              typeof requirement.variation === "string" ? requirement.variation : undefined,
+          },
+        ]
+      : [];
+  });
+}
+
+interface GlobalVariableOverrideView {
+  key?: string;
+  description?: string;
+  conditions?: unknown;
+  segments?: unknown;
+  requiredFeatures?: unknown;
+  value?: unknown;
+  mutate?: unknown;
+  overrides?: GlobalVariableOverrideView[];
+}
+
+function GlobalVariableOverrideCard(props: {
+  override: GlobalVariableOverrideView;
+  index: number;
+  depth?: number;
+}) {
+  const { override, index, depth = 0 } = props;
+  const selectors = [
+    ["Conditions", override.conditions],
+    ["Segments", override.segments],
+    ["Required features", override.requiredFeatures],
+  ].filter(([, value]) => typeof value !== "undefined");
+  const hasMutate = typeof override.mutate !== "undefined";
+
+  return (
+    <div className={depth > 0 ? "border-l border-border pl-4" : ""}>
+      <div className="rounded-xl border border-border bg-elevated p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-foreground">
+            {override.key || `Override ${index + 1}`}
+          </span>
+          {depth > 0 ? <Badge>nested</Badge> : null}
+        </div>
+        {override.description ? (
+          <p className="mt-1 text-sm text-muted">{override.description}</p>
+        ) : null}
+        {selectors.length > 0 ? (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {selectors.map(([label, value]) => (
+              <div key={label as string}>
+                <div className="mb-1 text-xs font-semibold text-muted">{label as string}</div>
+                <FormattedValue value={value} />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="mt-4">
+          <div className="mb-1 text-xs font-semibold text-muted">
+            {hasMutate ? "Mutation" : "Value"}
+          </div>
+          <FormattedValue value={hasMutate ? override.mutate : override.value} />
+        </div>
+      </div>
+      {override.overrides?.length ? (
+        <div className="mt-3 space-y-3">
+          {override.overrides.map((child, childIndex) => (
+            <GlobalVariableOverrideCard
+              key={child.key || childIndex}
+              override={child}
+              index={childIndex}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function GlobalVariableOverrides(props: { value: unknown }) {
+  const groups: Array<[string | undefined, GlobalVariableOverrideView[]]> = Array.isArray(
+    props.value,
+  )
+    ? [[undefined, props.value as GlobalVariableOverrideView[]]]
+    : props.value && typeof props.value === "object"
+      ? Object.entries(props.value as Record<string, GlobalVariableOverrideView[]>).map(
+          ([environment, overrides]) => [environment, Array.isArray(overrides) ? overrides : []],
+        )
+      : [];
+
+  if (groups.every(([, overrides]) => overrides.length === 0)) {
+    return <div className="text-sm text-muted">No overrides are defined.</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      {groups.map(([environment, overrides]) =>
+        overrides.length > 0 ? (
+          <div key={environment || "all"}>
+            {environment ? (
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                {environment}
+              </div>
+            ) : null}
+            <div className="space-y-3">
+              {overrides.map((override, index) => (
+                <GlobalVariableOverrideCard
+                  key={override.key || index}
+                  override={override}
+                  index={index}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 function EntityOverviewMeta(props: {
   detail: EntityDetail;
   entity: Record<string, unknown>;
@@ -679,7 +844,7 @@ function EntityOverviewMeta(props: {
   const { detail, entity, setKey } = props;
   const tags = asStringArray(entity.tags);
   const targets = detail.relationships?.targets;
-  const required = asStringArray(entity.required);
+  const required = asRequiredFeatures(entity.requiredFeatures ?? entity.required);
   const hasStatus =
     entity.archived === true || entity.deprecated === true || entity.promotable === false;
 
@@ -706,9 +871,67 @@ function EntityOverviewMeta(props: {
         )}
         {required?.length ? (
           <OverviewMetaRow label="Required">
-            {required.map((key) => (
-              <OverviewChipLink key={key} to={getEntityRoute("feature", key, setKey)}>
-                {key}
+            {required.map((requirement) => (
+              <OverviewChipLink
+                key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
+                to={getEntityRoute("feature", requirement.feature, setKey)}
+              >
+                {requirement.feature}
+                {requirement.enabled === false ? " (disabled)" : ""}
+                {requirement.variation ? ` (${requirement.variation})` : ""}
+              </OverviewChipLink>
+            ))}
+          </OverviewMetaRow>
+        ) : null}
+        {tags?.length ? (
+          <OverviewMetaRow label="Tags">
+            {tags.map((tag) => (
+              <OverviewChip key={tag}>{tag}</OverviewChip>
+            ))}
+          </OverviewMetaRow>
+        ) : null}
+        {targets?.length ? (
+          <OverviewMetaRow label="Targets">
+            <LinkedEntityChips type="target" values={targets} setKey={setKey} />
+          </OverviewMetaRow>
+        ) : null}
+      </OverviewMetaPanel>
+    );
+  }
+
+  if (detail.type === "variable") {
+    const hasType =
+      Boolean(entity.type) || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0);
+    const typeLabel = entity.type ? String(entity.type) : "oneOf";
+    const hasFacts = hasType || Boolean(required.length);
+    const hasRelations = Boolean(tags?.length) || Boolean(targets?.length);
+
+    if (!hasStatus && !hasFacts && !hasRelations) {
+      return null;
+    }
+
+    return (
+      <OverviewMetaPanel>
+        {hasStatus && (
+          <OverviewMetaRow label="Status">
+            <EntityStatusBadges entity={entity} />
+          </OverviewMetaRow>
+        )}
+        {hasType ? (
+          <OverviewMetaRow label="Type">
+            <OverviewChip>{typeLabel}</OverviewChip>
+          </OverviewMetaRow>
+        ) : null}
+        {required.length ? (
+          <OverviewMetaRow label="Required">
+            {required.map((requirement) => (
+              <OverviewChipLink
+                key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
+                to={getEntityRoute("feature", requirement.feature, setKey)}
+              >
+                {requirement.feature}
+                {requirement.enabled === false ? " (disabled)" : ""}
+                {requirement.variation ? ` (${requirement.variation})` : ""}
               </OverviewChipLink>
             ))}
           </OverviewMetaRow>
@@ -1010,6 +1233,9 @@ function getUsageEntityType(label: string): CatalogEntityType {
   if (label.includes("test")) {
     return "test";
   }
+  if (label.includes("variable")) {
+    return "variable";
+  }
 
   return "feature";
 }
@@ -1051,6 +1277,7 @@ export function UsageTab() {
       ? [
           ["targets", relationships.targets || []],
           ["features", relationships.requiredBy || []],
+          ["variables", relationships.variables || []],
         ]
       : Object.entries(relationships).filter(([label]) => label !== "tests");
   const visibleEntries = entries.filter(([, values]) => values.length > 0);
@@ -1077,7 +1304,7 @@ export function UsageTab() {
 export function TestsTab() {
   const { detail } = useEntityDetail();
 
-  if (detail.type !== "feature" && detail.type !== "segment") {
+  if (detail.type !== "feature" && detail.type !== "segment" && detail.type !== "variable") {
     return <Navigate to=".." replace />;
   }
 

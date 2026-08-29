@@ -7,6 +7,7 @@ export const entityPaths: EntityPath[] = [
   "targets",
   "groups",
   "schemas",
+  "variables",
 ];
 
 export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
@@ -17,6 +18,7 @@ export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
   groups: "group",
   schemas: "schema",
   tests: "test",
+  variables: "variable",
 };
 
 export const entityTypeToPath: Record<CatalogEntityType, EntityPath> = {
@@ -27,6 +29,7 @@ export const entityTypeToPath: Record<CatalogEntityType, EntityPath> = {
   group: "groups",
   schema: "schemas",
   test: "tests",
+  variable: "variables",
 };
 
 export const entityLabels: Record<CatalogEntityType, { singular: string; plural: string }> = {
@@ -37,6 +40,7 @@ export const entityLabels: Record<CatalogEntityType, { singular: string; plural:
   group: { singular: "Group", plural: "Groups" },
   schema: { singular: "Schema", plural: "Schemas" },
   test: { singular: "Test", plural: "Tests" },
+  variable: { singular: "Variable", plural: "Variables" },
 };
 
 export function encodeRouteSegment(value: string) {

@@ -1,4 +1,4 @@
-import type { Test, TestFeature } from "@featurevisor/types";
+import type { Test, TestFeature, TestVariable } from "@featurevisor/types";
 
 import { filterTestForTargets } from "./testProject";
 
@@ -46,5 +46,22 @@ describe("core: test target selection", () => {
     } as unknown as Test;
 
     expect(filterTestForTargets(segmentTest, ["web"])).toBe(segmentTest);
+  });
+
+  it("filters variable assertions using the same target rules as features", () => {
+    const variableTest: TestVariable = {
+      variable: "supportEmail",
+      assertions: [
+        { environment: "production", expectedValue: "base" },
+        { environment: "production", target: "web", expectedValue: "web" },
+        { environment: "production", target: "mobile", expectedValue: "mobile" },
+      ],
+    };
+
+    const filtered = filterTestForTargets(variableTest, ["web"]) as TestVariable;
+    expect(filtered.assertions.map((assertion) => assertion.expectedValue)).toEqual([
+      "base",
+      "web",
+    ]);
   });
 });

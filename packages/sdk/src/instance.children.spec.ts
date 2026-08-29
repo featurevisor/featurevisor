@@ -1,10 +1,16 @@
 import { createFeaturevisor } from "./index";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   createComplexDatafile,
   createDatafile,
   createFeature,
   deterministicBucketModule,
 } from "./instance.test-fixtures";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 describe("Featurevisor public API: child instances", () => {
   it("layers parent, child, and call context without mutating any layer", () => {
@@ -56,32 +62,64 @@ describe("Featurevisor public API: child instances", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({ features: { flag: createFeature() } }),
-      sticky: { flag: { enabled: true } },
+      stickyFeatures: { flag: { enabled: true } },
     });
-    const offChild = parent.spawn({}, { sticky: { flag: { enabled: false } } });
-    const inheritedChild = parent.spawn();
+    const offChild = parent.spawn({}, { stickyFeatures: { flag: { enabled: false } } });
+    const childWithoutSticky = parent.spawn();
 
     expect(parent.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag")).toBe(false);
-    expect(inheritedChild.isEnabled("flag")).toBe(true);
+    expect(childWithoutSticky.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(
       false,
     );
     expect(offChild.isEnabled("flag")).toBe(false);
   });
 
-  it("emits child sticky events with merge and replacement semantics", () => {
+  it("does not inherit parent sticky state when child sticky options are omitted", () => {
+    const testCase = conformance.childInstances.stickyCase;
+    const parent = createFeaturevisor({
+      datafile: testCase.datafile,
+      stickyFeatures: testCase.parentStickyFeatures,
+      stickyVariables: testCase.parentStickyVariables,
+      logLevel: "fatal",
+    });
+    const child = parent.spawn();
+
+    expect({
+      flag: parent.isEnabled("flag"),
+      setting: parent.getVariable("setting"),
+    }).toEqual(testCase.expectedParent);
+    expect({
+      flag: child.isEnabled("flag"),
+      setting: child.getVariable("setting"),
+    }).toEqual(testCase.expectedChildWithoutStickyOptions);
+  });
+
+  it("prefers child stickyFeatures over the deprecated sticky option", () => {
+    const child = createFeaturevisor({ logLevel: "fatal" }).spawn(
+      {},
+      {
+        stickyFeatures: { flag: { enabled: true } },
+        sticky: { flag: { enabled: false } },
+      },
+    );
+
+    expect(child.isEnabled("flag")).toBe(true);
+  });
+
+  it("emits child sticky feature events with merge and replacement semantics", () => {
     const events: any[] = [];
     const child = createFeaturevisor({ logLevel: "fatal" }).spawn(
       {},
       {
-        sticky: { a: { enabled: true } },
+        stickyFeatures: { a: { enabled: true } },
       },
     );
-    child.on("sticky_set", (event) => events.push(event));
+    child.on("sticky_features_set", (event) => events.push(event));
 
-    child.setSticky({ b: { enabled: false } });
-    child.setSticky({ c: { enabled: true } }, true);
+    child.setStickyFeatures({ b: { enabled: false } });
+    child.setStickyFeatures({ c: { enabled: true } }, true);
 
     expect(events).toEqual([
       { features: ["a", "b"], replaced: false },
@@ -137,7 +175,7 @@ describe("Featurevisor public API: child instances", () => {
     expect(forwarded).toEqual([]);
   });
 
-  it("delegates every typed getter and getAllEvaluations with child context", () => {
+  it("delegates typed getters and aggregate evaluations with child context", () => {
     const parent = createFeaturevisor({
       logLevel: "fatal",
       datafile: createComplexDatafile(),
@@ -155,9 +193,67 @@ describe("Featurevisor public API: child instances", () => {
     expect(child.getVariableArray("experiment", "items")).toEqual(["default"]);
     expect(child.getVariableObject("experiment", "config")).toEqual({ source: "default" });
     expect(child.getVariableJSON("experiment", "jsonConfig")).toEqual({ source: "json" });
-    expect(child.getAllEvaluations({}, ["experiment"]).experiment).toEqual(
+    expect(child.getFeatureEvaluations({}, ["experiment"]).experiment).toEqual(
       expect.objectContaining({ enabled: true, variation: "treatment" }),
     );
+    expect(child.getAllEvaluations({}, ["experiment"])).toEqual(
+      child.getFeatureEvaluations({}, ["experiment"]),
+    );
+  });
+
+  it("delegates every global variable getter and child sticky variable operation", () => {
+    const parent = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createDatafile({
+        variables: {
+          message: {
+            type: "string",
+            defaultValue: "default",
+            overrides: [
+              {
+                key: "germany",
+                conditions: { attribute: "country", operator: "equals", value: "de" },
+                value: "Hallo",
+              },
+            ],
+          },
+          enabled: { type: "boolean", defaultValue: true },
+          count: { type: "integer", defaultValue: 2 },
+          ratio: { type: "double", defaultValue: 2.5 },
+          items: { type: "array", defaultValue: ["one", "two"] },
+          config: { type: "object", defaultValue: { colour: "blue" } },
+          json: { type: "json", defaultValue: '{"colour":"green"}' },
+        },
+      }),
+    });
+    const child = parent.spawn({ country: "de" }, { stickyVariables: { message: "sticky" } });
+    const stickyEvents: unknown[] = [];
+    child.on("sticky_variables_set", (event) => stickyEvents.push(event));
+
+    expect(child.evaluateVariable("message")).toEqual(
+      expect.objectContaining({ reason: "sticky", variableValue: "sticky" }),
+    );
+    child.setStickyVariables({}, true);
+
+    expect(child.getVariableString("message")).toBe("Hallo");
+    expect(child.getVariableBoolean("enabled")).toBe(true);
+    expect(child.getVariableInteger("count")).toBe(2);
+    expect(child.getVariableDouble("ratio")).toBe(2.5);
+    expect(child.getVariableArray("items")).toEqual(["one", "two"]);
+    expect(child.getVariableObject("config")).toEqual({ colour: "blue" });
+    expect(child.getVariableJSON("json")).toEqual({ colour: "green" });
+    expect(child.getVariableEvaluations({}, ["message", "count"])).toEqual({
+      message: "Hallo",
+      count: 2,
+    });
+    expect(stickyEvents).toEqual([{ variables: ["message"], replaced: true }]);
+  });
+
+  it("conformance: normalizes global JSON values through child instances", () => {
+    const testCase = conformance.childInstances.globalJsonCase;
+    const child = createFeaturevisor({ datafile: testCase.datafile, logLevel: "fatal" }).spawn();
+
+    expect(child.getVariableJSON(testCase.variableKey)).toEqual(testCase.expected);
   });
 
   it("uses parent datafile updates immediately", () => {

@@ -1,0 +1,12 @@
+description: Checkout message in staging
+tags:
+  - all
+type: string
+defaultValue: Staging checkout
+overrides:
+  - key: internal
+    segments: internal
+    value: Staging checkout for engineers
+  - key: default
+    segments: "*"
+    value: Staging checkout

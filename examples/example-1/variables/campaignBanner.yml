@@ -1,0 +1,43 @@
+description: Shared campaign banner using a reusable schema
+tags:
+  - all
+schema: promoBanner
+defaultValue:
+  message: Welcome
+  cta:
+    title: Learn more
+    url: https://featurevisor.com
+overrides:
+  staging:
+    - key: staging
+      segments: "*"
+      mutate:
+        message: Welcome to staging
+  production:
+    - key: netherlands
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      mutate:
+        message: Welkom
+      overrides:
+        - key: amsterdam
+          conditions:
+            attribute: city
+            operator: equals
+            value: amsterdam
+          mutate:
+            cta.title: Meer informatie
+          overrides:
+            - key: mobile
+              segments: mobile
+              mutate:
+                cta.url: https://featurevisor.com/mobile
+    - key: default
+      segments: "*"
+      value:
+        message: Welcome
+        cta:
+          title: Learn more
+          url: https://featurevisor.com

@@ -1,0 +1,15 @@
+variable: checkoutMessage
+assertions:
+  - description: uses the internal staging message
+    context:
+      team: engineering
+    expectedValue: Staging checkout for engineers
+    expectedEvaluation:
+      variableOverrideKey: internal
+
+  - description: uses the default staging message
+    context:
+      team: external
+    expectedValue: Staging checkout
+    expectedEvaluation:
+      variableOverrideKey: default

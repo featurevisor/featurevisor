@@ -1,4 +1,11 @@
-import type { Condition, FeatureKey, SegmentKey, AttributeKey } from "@featurevisor/types";
+import type {
+  Condition,
+  FeatureKey,
+  SegmentKey,
+  AttributeKey,
+  SchemaKey,
+  VariableOverride,
+} from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
@@ -8,6 +15,13 @@ import {
   extractSegmentKeysFromGroupSegments,
 } from "../utils/extractKeys";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
+import { extractSchemaReferences } from "../utils/schemaReferences";
+import { flattenVariableOverrides } from "../datasource/variableOverrides";
+import {
+  getFeatureVariableOverrideRequirements,
+  getRequiredFeatureKey,
+  normalizeFeatureRequirements,
+} from "../datasource/requiredFeatures";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_DIM,
@@ -39,16 +53,12 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
       attributes: new Set<AttributeKey>(),
     };
 
-    // required
-    if (feature.required) {
-      feature.required.forEach((required) => {
-        if (typeof required === "string") {
-          usageInFeatures[featureKey].features.add(required);
-        } else if (typeof required === "object" && required.key) {
-          usageInFeatures[featureKey].features.add(required.key);
-        }
-      });
-    }
+    normalizeFeatureRequirements(feature).forEach((required) =>
+      usageInFeatures[featureKey].features.add(getRequiredFeatureKey(required)),
+    );
+    getFeatureVariableOverrideRequirements(feature).forEach((required) =>
+      usageInFeatures[featureKey].features.add(getRequiredFeatureKey(required)),
+    );
 
     // bucketBy
     if (feature.bucketBy) {
@@ -114,6 +124,22 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
             extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
               usageInFeatures[featureKey].segments.add(segmentKey),
             );
+            (Object.values(rule.variableOverrides || {}) as VariableOverride[][]).forEach(
+              (overrides) => {
+                overrides.forEach((override) => {
+                  if (override.segments) {
+                    extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                      usageInFeatures[featureKey].segments.add(segmentKey),
+                    );
+                  }
+                  if (override.conditions) {
+                    extractAttributeKeysFromConditions(override.conditions).forEach(
+                      (attributeKey) => usageInFeatures[featureKey].attributes.add(attributeKey),
+                    );
+                  }
+                });
+              },
+            );
           });
         }
       });
@@ -144,6 +170,20 @@ export async function findAllUsageInFeatures(deps: Dependencies): Promise<UsageI
           extractSegmentKeysFromGroupSegments(rule.segments).forEach((segmentKey) =>
             usageInFeatures[featureKey].segments.add(segmentKey),
           );
+          Object.values(rule.variableOverrides || {}).forEach((overrides) => {
+            overrides.forEach((override) => {
+              if (override.segments) {
+                extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
+                  usageInFeatures[featureKey].segments.add(segmentKey),
+                );
+              }
+              if (override.conditions) {
+                extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
+                  usageInFeatures[featureKey].attributes.add(attributeKey),
+                );
+              }
+            });
+          });
         });
       }
     }
@@ -156,6 +196,52 @@ export interface UsageInSegments {
   [segmentKey: string]: {
     attributes: Set<AttributeKey>;
   };
+}
+
+export interface UsageInVariables {
+  [variableKey: string]: {
+    features: Set<FeatureKey>;
+    segments: Set<SegmentKey>;
+    attributes: Set<AttributeKey>;
+    schemas: Set<SchemaKey>;
+  };
+}
+
+export async function findAllUsageInVariables(deps: Dependencies): Promise<UsageInVariables> {
+  const result: UsageInVariables = {};
+  for (const variableKey of await deps.datasource.listVariables()) {
+    const variable = await deps.datasource.readVariable(variableKey);
+    const usage = {
+      features: new Set<FeatureKey>(),
+      segments: new Set<SegmentKey>(),
+      attributes: new Set<AttributeKey>(),
+      schemas: new Set<SchemaKey>(),
+    };
+    extractSchemaReferences(variable).forEach((key) => usage.schemas.add(key));
+    const pendingSchemas = Array.from(usage.schemas);
+    for (let index = 0; index < pendingSchemas.length; index++) {
+      const schemaKey = pendingSchemas[index];
+      const schema = await deps.datasource.readSchema(schemaKey);
+      for (const dependency of extractSchemaReferences(schema)) {
+        if (!usage.schemas.has(dependency)) {
+          usage.schemas.add(dependency);
+          pendingSchemas.push(dependency);
+        }
+      }
+    }
+    const requiredFeatures = await deps.datasource.getRequiredFeaturesChainForVariable(variableKey);
+    requiredFeatures.forEach((featureKey) => usage.features.add(featureKey));
+    flattenVariableOverrides(variable.overrides).forEach((override) => {
+      extractSegmentKeysFromGroupSegments(override.segments || []).forEach((key) =>
+        usage.segments.add(key),
+      );
+      extractAttributeKeysFromConditions(override.conditions || []).forEach((key) =>
+        usage.attributes.add(key),
+      );
+    });
+    result[variableKey] = usage;
+  }
+  return result;
 }
 
 export async function findAllUsageInSegments(deps: Dependencies): Promise<UsageInSegments> {
@@ -243,6 +329,7 @@ export async function findAttributeUsage(
 export async function findUnusedSegments(
   deps: Dependencies,
   usageInFeatures: UsageInFeatures,
+  usageInVariables: UsageInVariables = {},
 ): Promise<Set<SegmentKey>> {
   const { datasource } = deps;
   const unusedSegments = new Set<SegmentKey>();
@@ -255,6 +342,9 @@ export async function findUnusedSegments(
       usedSegmentKeys.add(segmentKey);
     });
   }
+  Object.values(usageInVariables).forEach((usage) =>
+    usage.segments.forEach((segmentKey) => usedSegmentKeys.add(segmentKey)),
+  );
 
   allSegmentKeys.forEach((segmentKey) => {
     if (!usedSegmentKeys.has(segmentKey)) {
@@ -269,6 +359,7 @@ export async function findUnusedAttributes(
   deps: Dependencies,
   usageInFeatures: UsageInFeatures,
   usageInSegments: UsageInSegments,
+  usageInVariables: UsageInVariables = {},
 ): Promise<Set<AttributeKey>> {
   const { datasource } = deps;
   const unusedAttributes = new Set<AttributeKey>();
@@ -287,6 +378,9 @@ export async function findUnusedAttributes(
       usedAttributeKeys.add(attributeKey);
     });
   }
+  Object.values(usageInVariables).forEach((usage) =>
+    usage.attributes.forEach((attributeKey) => usedAttributeKeys.add(attributeKey)),
+  );
 
   allAttributeKeys.forEach((attributeKey) => {
     if (!usedAttributeKeys.has(attributeKey)) {
@@ -301,6 +395,7 @@ export interface FindUsageOptions {
   feature?: string;
   segment?: string;
   attribute?: string;
+  variable?: string;
 
   unusedSegments?: boolean;
   unusedAttributes?: boolean;
@@ -309,9 +404,14 @@ export interface FindUsageOptions {
 }
 
 export function assertFindUsageOptions(options: FindUsageOptions) {
-  const queries = ["feature", "segment", "attribute", "unusedSegments", "unusedAttributes"].filter(
-    (key) => Boolean(options[key]),
-  );
+  const queries = [
+    "feature",
+    "segment",
+    "attribute",
+    "variable",
+    "unusedSegments",
+    "unusedAttributes",
+  ].filter((key) => Boolean(options[key]));
 
   if (queries.length !== 1) {
     throw new FeaturevisorCLIError(
@@ -335,14 +435,46 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   const usageInFeatures = await findAllUsageInFeatures(deps);
   const usageInSegments = await findAllUsageInSegments(deps);
+  const usageInVariables = await findAllUsageInVariables(deps);
+
+  if (options.variable) {
+    const usage = usageInVariables[options.variable];
+    if (!usage) {
+      throw new FeaturevisorCLIError(`Variable "${options.variable}" was not found.`, {
+        code: "variable_not_found",
+        details: { variable: options.variable },
+      });
+    }
+
+    console.log(CLI_FORMAT_BOLD, `Dependencies of global variable "${options.variable}"`);
+    console.log("");
+    const groups: Array<[string, Set<string>]> = [
+      ["Features", usage.features],
+      ["Segments", usage.segments],
+      ["Attributes", usage.attributes],
+      ["Schemas", usage.schemas],
+    ];
+    let found = false;
+    for (const [label, keys] of groups) {
+      if (keys.size === 0) continue;
+      found = true;
+      console.log(`  ${colorize(label, CLI_COLOR_CYAN)}: ${Array.from(keys).sort().join(", ")}`);
+    }
+    if (!found) console.log(CLI_FORMAT_GREEN, "  No dependencies.");
+    console.log("");
+    return;
+  }
 
   // feature
   if (options.feature) {
     const usedInFeatures = await findFeatureUsage(usageInFeatures, options.feature);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].features.has(options.feature as string),
+    );
 
-    if (usedInFeatures.size === 0) {
-      console.log(CLI_FORMAT_GREEN, `Feature "${options.feature}" is not used in any features.`);
-    } else {
+    if (usedInFeatures.size === 0 && usedInVariables.length === 0) {
+      console.log(CLI_FORMAT_GREEN, `Feature "${options.feature}" is not used by other entities.`);
+    } else if (usedInFeatures.size > 0) {
       console.log(CLI_FORMAT_BOLD, `Feature "${options.feature}" is used in these features`);
       console.log("");
 
@@ -360,16 +492,39 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       }
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Feature "${options.feature}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // segment
   if (options.segment) {
     const usedInFeatures = await findSegmentUsage(usageInFeatures, options.segment);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].segments.has(options.segment as string),
+    );
 
-    if (usedInFeatures.size === 0) {
-      console.log(CLI_FORMAT_GREEN, `Segment "${options.segment}" is not used in any features.`);
-    } else {
+    if (usedInFeatures.size === 0 && usedInVariables.length === 0) {
+      console.log(
+        CLI_FORMAT_GREEN,
+        `Segment "${options.segment}" is not used in any features or variables.`,
+      );
+    } else if (usedInFeatures.size > 0) {
       console.log(CLI_FORMAT_BOLD, `Segment "${options.segment}" is used in these features`);
       console.log("");
 
@@ -387,17 +542,37 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       }
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Segment "${options.segment}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // attribute
   if (options.attribute) {
     const usedIn = await findAttributeUsage(usageInFeatures, usageInSegments, options.attribute);
+    const usedInVariables = Object.keys(usageInVariables).filter((key) =>
+      usageInVariables[key].attributes.has(options.attribute as string),
+    );
 
-    if (usedIn.features.size === 0 && usedIn.segments.size === 0) {
+    if (usedIn.features.size === 0 && usedIn.segments.size === 0 && usedInVariables.length === 0) {
       console.log(
         CLI_FORMAT_GREEN,
-        `Attribute "${options.attribute}" is not used in any features or segments.`,
+        `Attribute "${options.attribute}" is not used in any features, segments, or variables.`,
       );
 
       return;
@@ -473,12 +648,29 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
       console.log("");
     }
 
+    if (usedInVariables.length > 0) {
+      console.log(CLI_FORMAT_BOLD, `Attribute "${options.attribute}" is used in these variables`);
+      console.log("");
+      for (const key of usedInVariables) {
+        if (options.authors) {
+          const entries = await datasource.listHistoryEntries("variable", key);
+          const authors = Array.from(new Set(entries.map((entry) => entry.author)));
+          console.log(
+            `  ${colorize("•", CLI_COLOR_CYAN)} ${key} ${colorize(`(Authors: ${authors.join(", ")})`, CLI_COLOR_DIM)}`,
+          );
+        } else {
+          console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${key}`);
+        }
+      }
+      console.log("");
+    }
+
     return;
   }
 
   // unused segments
   if (options.unusedSegments) {
-    const unusedSegments = await findUnusedSegments(deps, usageInFeatures);
+    const unusedSegments = await findUnusedSegments(deps, usageInFeatures, usageInVariables);
 
     if (unusedSegments.size === 0) {
       console.log(CLI_FORMAT_GREEN, "No unused segments found.");
@@ -505,7 +697,12 @@ export async function findUsageInProject(deps: Dependencies, options: FindUsageO
 
   // unused attributes
   if (options.unusedAttributes) {
-    const unusedAttributes = await findUnusedAttributes(deps, usageInFeatures, usageInSegments);
+    const unusedAttributes = await findUnusedAttributes(
+      deps,
+      usageInFeatures,
+      usageInSegments,
+      usageInVariables,
+    );
 
     if (unusedAttributes.size === 0) {
       console.log(CLI_FORMAT_GREEN, "No unused attributes found.");
@@ -554,6 +751,7 @@ export const findUsagePlugin: Plugin = {
           feature: parsed.feature,
           segment: parsed.segment,
           attribute: parsed.attribute,
+          variable: parsed.variable,
           unusedSegments: parsed.unusedSegments,
           unusedAttributes: parsed.unusedAttributes,
           authors: parsed.authors,
@@ -562,6 +760,10 @@ export const findUsagePlugin: Plugin = {
     }
   },
   examples: [
+    {
+      command: "find-usage --variable=<variableKey>",
+      description: "Show dependencies of a global variable",
+    },
     {
       command: "find-usage --segment=<segmentKey>",
       description: "Find usage of a segment",

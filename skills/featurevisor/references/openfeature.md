@@ -15,7 +15,7 @@ Use a provider when:
 
 Stay on the native SDK when:
 
-- Featurevisor is the only flag system in play. The native API is simpler, synchronous, and exposes everything (events, sticky, `spawn`, `getAllEvaluations`, modules) — OpenFeature's surface is deliberately smaller.
+- Featurevisor is the only flag system in play. The native API is simpler, synchronous, and exposes everything (events, sticky, `spawn`, aggregate feature and variable evaluations, modules) — OpenFeature's surface is deliberately smaller.
 - You need Featurevisor-specific features at call sites. They're still reachable through `provider.featurevisor`, but at that point you're using both APIs.
 
 The two mix cleanly: an application can hand an existing Featurevisor instance to the provider and keep using both.
@@ -64,21 +64,25 @@ Both packages export the same class name, `FeaturevisorOpenFeatureProvider`. Ser
 
 ## Flag keys: one key, three evaluation types
 
-OpenFeature has a single flag key; Featurevisor has flags, variations, and variables. Providers bridge that with a suffix convention:
+OpenFeature has a single flag key; Featurevisor has flags, variations, and variables. Providers bridge that with a key convention:
 
-| OpenFeature key      | Featurevisor evaluation                  |
-| -------------------- | ---------------------------------------- |
-| `checkout`           | flag (`evaluateFlag`)                    |
-| `checkout:variation` | variation (`evaluateVariation`)          |
-| `checkout:title`     | variable `title` (`evaluateVariable`)    |
+| OpenFeature key         | Featurevisor evaluation                             |
+| ----------------------- | --------------------------------------------------- |
+| `checkout`              | flag (`evaluateFlag`)                               |
+| `checkout:variation`    | variation (`evaluateVariation`)                     |
+| `checkout:title`        | variable `title` (`evaluateVariable`)               |
+| `variable:supportEmail` | global variable `supportEmail` (`evaluateVariable`) |
 
-The **first** `:` separates feature key from selector. Match the resolver to the Featurevisor value type:
+The **first** `:` separates the routing prefix or feature key from the remaining selector. Match the resolver to the Featurevisor value type:
 
 - Plain feature key → **boolean resolver only**. Any other resolver returns `TYPE_MISMATCH`.
 - `:variation` → string resolver.
 - `:<variableKey>` → resolver matching the variable's type; `array`, `object`, and `json` variables all use the **object** resolver (`json` values are parsed for you).
+- `variable:<variableKey>` → global variable through the Node.js and Browser providers.
 
-If a project's own keys collide with the convention, configure `keySeparator` (default `":"`) and `variationKey` (default `"variation"`).
+The prefix is checked first. `checkout:variable` therefore remains a feature variable named `variable`, while `variable:checkout` is global variable `checkout`.
+
+If a project's own keys collide with the convention, configure `keySeparator` (default `":"`), `variationKey` (default `"variation"`), or `globalVariablePrefix` (default `"variable"`).
 
 ## Context and targeting key
 
@@ -96,13 +100,13 @@ OpenFeature owns context merging and **hooks**; Featurevisor modules still run i
 
 Providers return the caller's default value when the feature is missing, the type doesn't match, or evaluation fails.
 
-| Featurevisor reason                                                                              | OpenFeature reason |
-| ------------------------------------------------------------------------------------------------ | ------------------ |
-| `required`, `forced`, `sticky`, `rule`, `variable_override_variation`, `variable_override_rule`   | `TARGETING_MATCH`  |
-| `allocated`                                                                                      | `SPLIT`            |
-| `disabled`, `variation_disabled`, `variable_disabled`                                            | `DISABLED`         |
-| `feature_not_found`, `variable_not_found`, `no_variations`, `error`                              | `ERROR`            |
-| anything else                                                                                    | `DEFAULT`          |
+| Featurevisor reason                                                                             | OpenFeature reason |
+| ----------------------------------------------------------------------------------------------- | ------------------ |
+| `required`, `forced`, `sticky`, `rule`, `variable_override_variation`, `variable_override_rule` | `TARGETING_MATCH`  |
+| `allocated`                                                                                     | `SPLIT`            |
+| `disabled`, `variation_disabled`, `variable_disabled`                                           | `DISABLED`         |
+| `feature_not_found`, `variable_not_found`, `no_variations`, `error`                             | `ERROR`            |
+| anything else                                                                                   | `DEFAULT`          |
 
 Error codes: `FLAG_NOT_FOUND` (missing feature, missing variable, no variations), `TYPE_MISMATCH` (wrong resolver, including non-finite numbers), `PARSE_ERROR` (invalid datafile JSON), `GENERAL` (evaluation error).
 
@@ -146,16 +150,16 @@ For experiment activation specifically, a Featurevisor [module](tracking.md) is 
 
 Every provider follows the same key convention, context mapping, reason mapping, and ownership rules; only packaging differs. Each is published separately so non-OpenFeature applications don't pull the dependency.
 
-| Platform | Notes                                                                    |
-| -------- | ------------------------------------------------------------------------ |
-| Node.js  | `@featurevisor/openfeature-provider-node` + `@openfeature/server-sdk`    |
-| Browser  | `@featurevisor/openfeature-provider-web` + `@openfeature/web-sdk`        |
-| Go       | Separate Go module                                                       |
-| Swift    | `FeaturevisorOpenFeature` library product (explicit close available)      |
-| Java     | Separate artifact, versioned with the Java SDK                            |
-| Ruby     | Separate gem (requires Ruby 3.4+, per the OpenFeature Ruby SDK)          |
-| Python   | `featurevisor.openfeature` module; OpenFeature Python SDK `0.10.x`        |
-| PHP      | OpenFeature PHP SDK `2.x` (explicit shutdown available)                   |
+| Platform | Notes                                                                 |
+| -------- | --------------------------------------------------------------------- |
+| Node.js  | `@featurevisor/openfeature-provider-node` + `@openfeature/server-sdk` |
+| Browser  | `@featurevisor/openfeature-provider-web` + `@openfeature/web-sdk`     |
+| Go       | Separate Go module                                                    |
+| Swift    | `FeaturevisorOpenFeature` library product (explicit close available)  |
+| Java     | Separate artifact, versioned with the Java SDK                        |
+| Ruby     | Separate gem (requires Ruby 3.4+, per the OpenFeature Ruby SDK)       |
+| Python   | `featurevisor.openfeature` module; OpenFeature Python SDK `0.10.x`    |
+| PHP      | OpenFeature PHP SDK `2.x` (explicit shutdown available)               |
 
 Per-language setup lives on each SDK page under its "OpenFeature" section — see [sdk-other-languages.md](sdk-other-languages.md) for the index.
 

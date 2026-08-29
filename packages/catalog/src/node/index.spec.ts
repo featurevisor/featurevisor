@@ -18,6 +18,7 @@ function createProjectConfig(root: string, sets = false) {
     targetsDirectoryPath: path.join(root, "targets"),
     groupsDirectoryPath: path.join(root, "groups"),
     schemasDirectoryPath: path.join(root, "schemas"),
+    variablesDirectoryPath: path.join(root, "variables"),
     testsDirectoryPath: path.join(root, "tests"),
     setsDirectoryPath: path.join(root, "sets"),
   };
@@ -85,8 +86,38 @@ function createDatasource(set = "") {
     readGroup: async () => undefined,
     listSchemas: async () => [],
     readSchema: async () => undefined,
-    listTests: async () => ["checkout-primary", "checkout-matrix", "premium-users"],
+    listVariables: async () => ["supportEmail"],
+    readVariable: async () => ({
+      key: "supportEmail",
+      description: "Support email",
+      tags: ["web", "premium"],
+      type: "string",
+      defaultValue: "support@example.com",
+      overrides: {
+        staging: [{ key: "premium", segments: segmentKey, value: "premium@example.com" }],
+        production: [],
+      },
+    }),
+    listTests: async () => [
+      "checkout-primary",
+      "checkout-matrix",
+      "premium-users",
+      "support-email",
+    ],
     readTest: async (key: string) => {
+      if (key === "support-email") {
+        return {
+          key,
+          variable: "supportEmail",
+          assertions: [
+            {
+              environment: "staging",
+              context: { plan: "premium" },
+              expectedValue: "premium@example.com",
+            },
+          ],
+        };
+      }
       if (key === "premium-users") {
         return {
           key,
@@ -150,6 +181,7 @@ function createRuntime(): CatalogRuntime {
           targetsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "targets"),
           groupsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "groups"),
           schemasDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "schemas"),
+          variablesDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "variables"),
           testsDirectoryPath: path.join(projectConfig.setsDirectoryPath, set, "tests"),
         },
         datasource: datasource.forSet(set),
@@ -188,8 +220,10 @@ describe("catalog export", () => {
 
     expect(manifest.sets).toBe(false);
     expect(index.counts.feature).toBe(1);
+    expect(index.counts.variable).toBe(1);
     expect(index.entities.feature[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].targets).toEqual(["premiumWeb"]);
+    expect(index.entities.variable[0].targets).toEqual(["premiumWeb"]);
     expect(index.entities.segment[0].usedInFeatureCount).toBe(1);
     expect(
       index.entities.attribute.find((entity: any) => entity.key === "country").targets,
@@ -225,6 +259,32 @@ describe("catalog export", () => {
     expect(segmentDetail.tests).toEqual([
       expect.objectContaining({ key: "premium-users", segment: "premiumUsers" }),
     ]);
+
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
+    expect(variableDetail.relationships).toMatchObject({
+      segments: ["premiumUsers"],
+      targets: ["premiumWeb"],
+      tests: ["support-email"],
+    });
+    expect(variableDetail.tests).toEqual([
+      expect.objectContaining({ key: "support-email", variable: "supportEmail" }),
+    ]);
+
+    const targetDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "target", "premiumWeb.json"),
+        "utf8",
+      ),
+    );
+    expect(targetDetail.relationships).toMatchObject({
+      features: ["checkout"],
+      variables: ["supportEmail"],
+    });
   });
 
   it("writes per-set catalog files for sets-enabled projects", async () => {
@@ -270,6 +330,7 @@ describe("catalog export", () => {
     };
     const baseDatasource = createDatasource();
     const featureKey = "checkout/redesign";
+    const variableKey = "checkout/supportEmail";
     const datasource = {
       ...baseDatasource,
       listHistoryEntries: async () => [
@@ -285,12 +346,20 @@ describe("catalog export", () => {
         ...(await baseDatasource.readFeature()),
         key: featureKey,
       }),
-      listTests: async () => ["features/checkout/redesign.spec"],
-      readTest: async () => ({
-        key: "features/checkout/redesign.spec",
-        feature: featureKey,
-        assertions: [],
+      listVariables: async () => [variableKey],
+      readVariable: async () => ({
+        key: variableKey,
+        type: "string",
+        defaultValue: "checkout@example.com",
       }),
+      listTests: async () => [
+        "features/checkout/redesign.spec",
+        "variables/checkout/supportEmail.spec",
+      ],
+      readTest: async (key: string) =>
+        key.startsWith("variables/")
+          ? { key, variable: variableKey, assertions: [] }
+          : { key, feature: featureKey, assertions: [] },
     };
 
     await exportCatalog(createRuntime(), root, projectConfig, datasource, {
@@ -342,6 +411,91 @@ describe("catalog export", () => {
     expect(index.entities.feature[0].href).toBe("entities/feature/checkout/redesign.json");
     expect(detail.sourcePath).toBe("features/checkout/redesign.yml");
     expect(detail.historyPath).toBe("data/root/entities/feature/checkout/redesign/history");
+    expect(
+      fs.existsSync(
+        path.join(
+          root,
+          "catalog",
+          "data",
+          "root",
+          "entities",
+          "variable",
+          "checkout",
+          "supportEmail.json",
+        ),
+      ),
+    ).toBe(true);
+    expect(index.entities.variable[0]).toEqual(
+      expect.objectContaining({
+        key: variableKey,
+        href: "entities/variable/checkout/supportEmail.json",
+      }),
+    );
+  });
+
+  it("exports precise transitive schema and target relationships", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+    const baseDatasource = createDatasource();
+    const datasource = {
+      ...baseDatasource,
+      listFeatures: async () => ["checkout", "archivedCheckout"],
+      readFeature: async (key: string) =>
+        key === "archivedCheckout"
+          ? {
+              key,
+              description: "Archived checkout",
+              archived: true,
+              tags: ["web", "premium"],
+              bucketBy: "userId",
+              rules: [],
+            }
+          : {
+              ...(await baseDatasource.readFeature()),
+              variablesSchema: {
+                payload: { schema: "outer", defaultValue: {} },
+              },
+            },
+      listSchemas: async () => ["outer", "inner", "unused"],
+      readSchema: async (key: string) =>
+        key === "outer"
+          ? { description: "Outer", type: "object", properties: { value: { schema: "inner" } } }
+          : { description: key, type: "string" },
+      readVariable: async () => ({
+        key: "supportEmail",
+        description: "Support email",
+        tags: ["web", "premium"],
+        schema: "outer",
+        defaultValue: { schema: "unused" },
+      }),
+    };
+
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), datasource, {
+      copyAssets: false,
+    });
+
+    const featureDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "checkout.json"),
+        "utf8",
+      ),
+    );
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
+    const archivedDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "archivedCheckout.json"),
+        "utf8",
+      ),
+    );
+
+    expect(featureDetail.relationships.schemas).toEqual(["inner", "outer"]);
+    expect(variableDetail.relationships.schemas).toEqual(["inner", "outer"]);
+    expect(variableDetail.relationships.schemas).not.toContain("unused");
+    expect(archivedDetail.relationships.targets).toEqual([]);
   });
 
   it("exports repository source links and dev editor links", async () => {
@@ -376,5 +530,98 @@ describe("catalog export", () => {
     expect(manifest.dev.editors).toEqual([{ id: "cursor", label: "Cursor", icon: "cursor" }]);
     expect(detail.sourcePath).toBe("features/checkout.yml");
     expect(detail.editLinks.cursor).toMatch(/^cursor:\/\/file\/.+features\/checkout\.yml$/);
+  });
+
+  it("projects global variable dependency chains into target relationships", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-variable-target-"));
+    const baseDatasource = createDatasource();
+    const datasource = {
+      ...baseDatasource,
+      listFeatures: async () => ["checkout", "account", "authenticated"],
+      readFeature: async (key: string) => {
+        if (key === "account") {
+          return {
+            key,
+            description: "Account",
+            tags: ["mobile"],
+            requiredFeatures: "authenticated",
+            bucketBy: "userId",
+            rules: { staging: [], production: [] },
+          };
+        }
+        if (key === "authenticated") {
+          return {
+            key,
+            description: "Authenticated",
+            tags: ["mobile"],
+            bucketBy: "userId",
+            rules: { staging: [], production: [] },
+          };
+        }
+        return baseDatasource.readFeature();
+      },
+      readVariable: async () => ({
+        key: "supportEmail",
+        description: "Support email",
+        tags: ["web", "premium"],
+        type: "string",
+        defaultValue: "support@example.com",
+        requiredFeatures: ["account"],
+        overrides: {
+          staging: [
+            {
+              key: "premium",
+              segments: "premiumUsers",
+              value: "premium@example.com",
+              overrides: [
+                {
+                  key: "enterprise",
+                  conditions: [{ attribute: "plan", operator: "equals", value: "enterprise" }],
+                  requiredFeatures: "authenticated",
+                  value: "enterprise@example.com",
+                },
+              ],
+            },
+            {
+              key: "netherlands",
+              conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+              requiredFeatures: "account",
+              value: "nl@example.com",
+            },
+          ],
+          production: [],
+        },
+      }),
+    };
+
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), datasource, {
+      copyAssets: false,
+    });
+
+    const targetDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "target", "premiumWeb.json"),
+        "utf8",
+      ),
+    );
+    const accountDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "feature", "account.json"),
+        "utf8",
+      ),
+    );
+    const variableDetail = JSON.parse(
+      fs.readFileSync(
+        path.join(root, "catalog", "data", "root", "entities", "variable", "supportEmail.json"),
+        "utf8",
+      ),
+    );
+
+    expect(targetDetail.relationships.features).toEqual(["account", "authenticated", "checkout"]);
+    expect(targetDetail.relationships.variables).toEqual(["supportEmail"]);
+    expect(accountDetail.relationships.targets).toEqual(["mobile", "premiumWeb"]);
+    expect(variableDetail.relationships.features).toEqual(["account", "authenticated"]);
+    expect(variableDetail.relationships.segments).toEqual(["premiumUsers"]);
+    expect(variableDetail.relationships.attributes).toEqual(["country", "plan"]);
   });
 });

@@ -68,15 +68,14 @@ export function removeRedundantGroupSegments(
       const processed = groupSegments.or.map((gs) =>
         removeRedundantGroupSegments(gs),
       ) as GroupSegment[];
-      const filtered = processed.filter((gs) => gs !== "*");
 
-      // If all were "*", return "*"
-      if (filtered.length === 0) {
+      // `or` is true as soon as any child is true.
+      if (processed.indexOf("*") !== -1) {
         return "*";
       }
 
       return {
-        or: filtered,
+        or: processed,
       } as OrGroupSegment;
     }
 

@@ -1,8 +1,8 @@
-import type { Required } from "@featurevisor/types";
+import type { ParsedFeature } from "@featurevisor/types";
 
 import { Datasource } from "./datasource";
 
-function createDatasource(features: Record<string, { required?: Required[] }>) {
+function createDatasource(features: Record<string, Partial<ParsedFeature>>) {
   return {
     featureExists: jest.fn(async (key: string) =>
       Object.prototype.hasOwnProperty.call(features, key),
@@ -69,5 +69,123 @@ describe("core: datasource required features", () => {
     const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
 
     expect(Array.from(result)).toEqual(["checkout", "pricing"]);
+  });
+
+  it("follows canonical requiredFeatures including the direct string shorthand", async () => {
+    const datasource = createDatasource({
+      checkout: { requiredFeatures: "pricing" },
+      pricing: { requiredFeatures: [{ feature: "currency", enabled: false }] },
+      currency: {},
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
+
+    expect(Array.from(result)).toEqual(["checkout", "pricing", "currency"]);
+  });
+
+  it("includes requirements from rule and variation variable overrides", async () => {
+    const datasource = createDatasource({
+      checkout: {
+        rules: {
+          production: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                message: [{ requiredFeatures: "pricing", value: "rule" }],
+              },
+            },
+          ],
+        },
+        variations: [
+          {
+            value: "treatment",
+            variableOverrides: {
+              message: [
+                {
+                  requiredFeatures: [{ feature: "shipping", enabled: false }],
+                  value: "variation",
+                },
+              ],
+            },
+          },
+        ],
+      },
+      pricing: { requiredFeatures: "currency" },
+      currency: {},
+      shipping: {},
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
+
+    expect(Array.from(result)).toEqual(["checkout", "pricing", "currency", "shipping"]);
+  });
+
+  it("allows non-recursive override requirement cycles", async () => {
+    const datasource = createDatasource({
+      first: {
+        variations: [
+          {
+            value: "control",
+            variableOverrides: { value: [{ requiredFeatures: "second", value: "first" }] },
+          },
+        ],
+      },
+      second: {
+        variations: [
+          {
+            value: "control",
+            variableOverrides: { value: [{ requiredFeatures: "first", value: "second" }] },
+          },
+        ],
+      },
+    });
+
+    const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "first");
+    expect(Array.from(result)).toEqual(["first", "second"]);
+  });
+
+  it("includes requirements from every level of a global variable override tree", async () => {
+    const datasource = {
+      variableExists: jest.fn(async () => true),
+      readVariable: jest.fn(async () => ({
+        defaultValue: "default",
+        requiredFeatures: "root",
+        overrides: {
+          production: [
+            {
+              key: "country",
+              segments: "*",
+              requiredFeatures: "country-feature",
+              value: "country",
+              overrides: [
+                {
+                  key: "city",
+                  segments: "*",
+                  requiredFeatures: "city-feature",
+                  value: "city",
+                },
+              ],
+            },
+          ],
+        },
+      })),
+      getRequiredFeaturesChain: jest.fn(async (key: string) => new Set([key, `${key}-child`])),
+    };
+
+    const result = await Datasource.prototype.getRequiredFeaturesChainForVariable.call(
+      datasource,
+      "settings",
+    );
+
+    expect(Array.from(result)).toEqual([
+      "root",
+      "root-child",
+      "country-feature",
+      "country-feature-child",
+      "city-feature",
+      "city-feature-child",
+    ]);
   });
 });

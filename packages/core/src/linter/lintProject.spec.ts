@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { getProjectConfig } from "../config/projectConfig";
 import { Datasource } from "../datasource";
+import { testProject } from "../tester";
 import { lintPlugin, lintProject, type LintResult } from "./lintProject";
 
 function createTempProjectFromExample1() {
@@ -61,6 +62,155 @@ describe("core: lintProject", function () {
     });
   });
 
+  it("rejects feature and global variable key collisions unless explicitly allowed", async () => {
+    const variablePath = path.join(tempProjectPath, "variables", "showHeader.yml");
+    fs.writeFileSync(variablePath, "type: boolean\ndefaultValue: true\n", "utf8");
+
+    const rejected = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(rejected.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "variable",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+
+    const allowedDeps = getDeps(tempProjectPath);
+    allowedDeps.projectConfig.allowFeatureAndGlobalVariableKeyCollisions = true;
+    const allowed = await lintProject(allowedDeps as any, { json: true });
+    expect(allowed.errors.some((error) => error.code === "feature_variable_key_collision")).toBe(
+      false,
+    );
+  });
+
+  it("rejects default reserved feature and global variable keys", async () => {
+    for (const key of ["feature", "variation", "variable"]) {
+      fs.copyFileSync(
+        path.join(tempProjectPath, "features", "showHeader.yml"),
+        path.join(tempProjectPath, "features", `${key}.yml`),
+      );
+      fs.copyFileSync(
+        path.join(tempProjectPath, "variables", "supportEmail.yml"),
+        path.join(tempProjectPath, "variables", `${key}.yml`),
+      );
+    }
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    for (const entityType of ["feature", "variable"]) {
+      for (const key of ["feature", "variation", "variable"]) {
+        expect(result.errors).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ entityType, key, code: "reserved_key" }),
+          ]),
+        );
+      }
+    }
+  });
+
+  it("uses custom reserved keys and allows disabling the rule", async () => {
+    fs.copyFileSync(
+      path.join(tempProjectPath, "features", "showHeader.yml"),
+      path.join(tempProjectPath, "features", "custom.yml"),
+    );
+    fs.copyFileSync(
+      path.join(tempProjectPath, "variables", "supportEmail.yml"),
+      path.join(tempProjectPath, "variables", "custom.yml"),
+    );
+
+    const customDeps = getDeps(tempProjectPath);
+    customDeps.projectConfig.reservedKeys = ["custom"];
+    const rejected = await lintProject(customDeps as any, { json: true });
+    expect(rejected.errors.filter((error) => error.code === "reserved_key")).toHaveLength(2);
+
+    const disabledDeps = getDeps(tempProjectPath);
+    disabledDeps.projectConfig.reservedKeys = [];
+    const allowed = await lintProject(disabledDeps as any, { json: true });
+    expect(allowed.errors.some((error) => error.code === "reserved_key")).toBe(false);
+  });
+
+  it("applies reservedKeys to variables declared inside features", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "features", "reservedVariableKey.yml"),
+      [
+        "description: Reserved variable key fixture",
+        "bucketBy: userId",
+        "variablesSchema:",
+        "  variable:",
+        "    type: string",
+        "    defaultValue: value",
+        "rules:",
+        "  staging:",
+        "    - key: all",
+        '      segments: "*"',
+        "      percentage: 100",
+        "  production:",
+        "    - key: all",
+        '      segments: "*"',
+        "      percentage: 100",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const rejected = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    expect(rejected.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "feature",
+          key: "reservedVariableKey",
+          path: ["variablesSchema", "variable"],
+          message: expect.stringContaining("reserved"),
+        }),
+      ]),
+    );
+
+    const customizedDeps = getDeps(tempProjectPath);
+    customizedDeps.projectConfig.reservedKeys = ["variation"];
+    const allowed = await lintProject(customizedDeps as any, { json: true });
+    expect(
+      allowed.errors.some(
+        (error) =>
+          error.key === "reservedVariableKey" &&
+          error.path.join(".") === "variablesSchema.variable",
+      ),
+    ).toBe(false);
+  });
+
+  it("reports key collisions from focused feature and variable lint runs", async () => {
+    const variablePath = path.join(tempProjectPath, "variables", "showHeader.yml");
+    fs.writeFileSync(variablePath, "type: boolean\ndefaultValue: true\n", "utf8");
+
+    const featureResult = await lintProject(getDeps(tempProjectPath) as any, {
+      entityType: "feature",
+      json: true,
+    });
+    expect(featureResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "feature",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+
+    const variableResult = await lintProject(getDeps(tempProjectPath) as any, {
+      entityType: "variable",
+      json: true,
+    });
+    expect(variableResult.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityType: "variable",
+          key: "showHeader",
+          code: "feature_variable_key_collision",
+        }),
+      ]),
+    );
+  });
+
   it("rejects entity file names containing the namespace character", async () => {
     const root = createTempProject();
     tempProjectPath = root;
@@ -113,6 +263,43 @@ describe("core: lintProject", function () {
           error.filePath.includes(path.join("tests", "features", "checkout.spec.yml")),
       ),
     ).toBe(false);
+  });
+
+  it("lints slash-namespaced global variables and their tests", async () => {
+    const root = createTempProject(
+      'module.exports = { namespaceCharacter: "/", environments: ["production"] };',
+    );
+    tempProjectPath = root;
+
+    fs.mkdirSync(path.join(root, "variables", "checkout"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "variables", "checkout", "supportEmail.yml"),
+      [
+        "description: Checkout support email",
+        "type: string",
+        "defaultValue: checkout@example.com",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(root, "tests", "variables", "checkout"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "tests", "variables", "checkout", "supportEmail.spec.yml"),
+      [
+        "variable: checkout/supportEmail",
+        "assertions:",
+        "  - environment: production",
+        "    expectedValue: checkout@example.com",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await lintProject(getDeps(root) as any, { json: true });
+    expect(result).toEqual({ hasError: false, errors: [] });
+    await expect(
+      testProject(getDeps(root) as any, { onlyFailures: true, quiet: true }),
+    ).resolves.toBe(false);
   });
 
   it("accepts promotable flags on top-level authored entities", async () => {

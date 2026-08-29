@@ -1,0 +1,8 @@
+description: Demonstrate useDefaultWhenDisabled for a global variable
+tags:
+  - all
+type: string
+defaultValue: Header fallback
+disabledValue: This value is intentionally ignored
+useDefaultWhenDisabled: true
+requiredFeatures: showHeader

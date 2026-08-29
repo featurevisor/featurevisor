@@ -2,11 +2,12 @@ import type {
   AssertionMatrix,
   FeatureAssertion,
   SegmentAssertion,
+  VariableAssertion,
   Test,
 } from "@featurevisor/types";
 
 export interface ExpandedTestAssertion {
-  assertion: FeatureAssertion | SegmentAssertion;
+  assertion: FeatureAssertion | SegmentAssertion | VariableAssertion;
   assertionIndex: number;
   caseIndex?: number;
   caseCount?: number;
@@ -31,21 +32,31 @@ function getMatrixCombinations(matrix: AssertionMatrix) {
 }
 
 function applyCombinationToValue(value: unknown, combination: Record<string, unknown>) {
-  if (typeof value !== "string") {
-    return value;
+  if (typeof value === "string") {
+    const placeholders = value.match(/\${{(.+?)}}/g);
+    if (!placeholders) {
+      return value;
+    }
+
+    if (placeholders.length === 1 && value.startsWith("${{") && value.endsWith("}}")) {
+      const key = value.replace("${{", "").replace("}}", "").trim();
+      return combination[key];
+    }
+
+    return value.replace(/\${{(.+?)}}/g, (_, key) => String(combination[key.trim()]));
   }
 
-  const placeholders = value.match(/\${{(.+?)}}/g);
-  if (!placeholders) {
-    return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => applyCombinationToValue(item, combination));
   }
 
-  if (placeholders.length === 1 && value.startsWith("${{") && value.endsWith("}}")) {
-    const key = value.replace("${{", "").replace("}}", "").trim();
-    return combination[key];
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, applyCombinationToValue(item, combination)]),
+    );
   }
 
-  return value.replace(/\${{(.+?)}}/g, (_, key) => String(combination[key.trim()]));
+  return value;
 }
 
 function applyCombinationToContext(
@@ -62,7 +73,7 @@ function applyCombinationToContext(
 
 function applyCombinationToAssertion(
   test: Test,
-  assertion: FeatureAssertion | SegmentAssertion,
+  assertion: FeatureAssertion | SegmentAssertion | VariableAssertion,
   combination: Record<string, unknown>,
 ) {
   const result = {
@@ -89,6 +100,72 @@ function applyCombinationToAssertion(
     featureResult.at = (
       typeof at === "string" ? (at.includes(".") ? parseFloat(at) : parseInt(at, 10)) : at
     ) as FeatureAssertion["at"];
+    featureResult.sticky = applyCombinationToValue(
+      featureResult.sticky,
+      combination,
+    ) as FeatureAssertion["sticky"];
+    featureResult.defaultVariationValue = applyCombinationToValue(
+      featureResult.defaultVariationValue,
+      combination,
+    ) as FeatureAssertion["defaultVariationValue"];
+    featureResult.defaultVariableValues = applyCombinationToValue(
+      featureResult.defaultVariableValues,
+      combination,
+    ) as FeatureAssertion["defaultVariableValues"];
+    featureResult.expectedToBeEnabled = applyCombinationToValue(
+      featureResult.expectedToBeEnabled,
+      combination,
+    ) as FeatureAssertion["expectedToBeEnabled"];
+    featureResult.expectedVariation = applyCombinationToValue(
+      featureResult.expectedVariation,
+      combination,
+    ) as FeatureAssertion["expectedVariation"];
+    featureResult.expectedVariables = applyCombinationToValue(
+      featureResult.expectedVariables,
+      combination,
+    ) as FeatureAssertion["expectedVariables"];
+    featureResult.expectedEvaluations = applyCombinationToValue(
+      featureResult.expectedEvaluations,
+      combination,
+    ) as FeatureAssertion["expectedEvaluations"];
+    featureResult.children = applyCombinationToValue(
+      featureResult.children,
+      combination,
+    ) as FeatureAssertion["children"];
+  }
+  if ("segment" in test) {
+    const segmentResult = result as SegmentAssertion;
+    segmentResult.expectedToMatch = applyCombinationToValue(
+      segmentResult.expectedToMatch,
+      combination,
+    ) as SegmentAssertion["expectedToMatch"];
+  }
+  if ("variable" in test) {
+    const variableResult = result as VariableAssertion;
+    variableResult.environment = applyCombinationToValue(
+      variableResult.environment,
+      combination,
+    ) as VariableAssertion["environment"];
+    variableResult.target = applyCombinationToValue(
+      variableResult.target,
+      combination,
+    ) as VariableAssertion["target"];
+    variableResult.expectedValue = applyCombinationToValue(
+      variableResult.expectedValue,
+      combination,
+    ) as VariableAssertion["expectedValue"];
+    variableResult.stickyVariables = applyCombinationToValue(
+      variableResult.stickyVariables,
+      combination,
+    ) as VariableAssertion["stickyVariables"];
+    variableResult.defaultVariableValue = applyCombinationToValue(
+      variableResult.defaultVariableValue,
+      combination,
+    ) as VariableAssertion["defaultVariableValue"];
+    variableResult.expectedEvaluation = applyCombinationToValue(
+      variableResult.expectedEvaluation,
+      combination,
+    ) as VariableAssertion["expectedEvaluation"];
   }
 
   return result;

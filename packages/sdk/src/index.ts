@@ -15,7 +15,7 @@ export type {
   SpawnOptions,
 } from "./instance.js";
 export type { FeaturevisorChildInstance } from "./child.js";
-export type { Evaluation, EvaluationReason } from "./evaluate.js";
+export type { Evaluation, EvaluationOptions, EvaluationReason } from "./evaluate.js";
 export type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -28,6 +28,7 @@ export type {
   ConfigureBucketKeyOptions,
   ConfigureBucketValue,
   ConfigureBucketValueOptions,
+  BeforeEvaluation,
   FeaturevisorModule,
   FeaturevisorModuleApi,
   FeaturevisorModuleUnsubscribe,
@@ -41,7 +42,9 @@ export type {
   EventDetails,
   EventDetailsByName,
   EventName,
+  StickyFeaturesSetEventDetails,
   StickySetEventDetails,
+  StickyVariablesSetEventDetails,
 } from "./events.js";
 
 export type * from "@featurevisor/types";

@@ -1,4 +1,4 @@
-import type { FeatureKey, Required } from "@featurevisor/types";
+import type { FeatureKey, RequiredFeature } from "@featurevisor/types";
 
 import { Datasource } from "../datasource";
 import { collectRequiredFeatureKeys } from "../datasource/requiredFeatures";
@@ -6,7 +6,7 @@ import { collectRequiredFeatureKeys } from "../datasource/requiredFeatures";
 export async function checkForCircularDependencyInRequired(
   datasource: Datasource,
   featureKey: FeatureKey,
-  required?: Required[],
+  requiredFeatures?: RequiredFeature[],
 ) {
-  await collectRequiredFeatureKeys(datasource, featureKey, required);
+  await collectRequiredFeatureKeys(datasource, featureKey, requiredFeatures);
 }

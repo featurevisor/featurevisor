@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Featurevisor } from "@featurevisor/sdk";
+import type { Featurevisor } from "@featurevisor/sdk";
 
 import { useSdk } from "./useSdk.js";
 
@@ -19,6 +19,8 @@ export const BOUND_METHODS = [
   "setContext",
   "getContext",
 
+  "setStickyFeatures",
+  "setStickyVariables",
   "setSticky",
 ] as const satisfies readonly (keyof Featurevisor)[];
 

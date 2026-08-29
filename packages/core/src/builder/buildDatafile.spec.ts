@@ -6,7 +6,7 @@ import type { DatafileContent, ExistingState, ParsedFeature, Segment } from "@fe
 import { parsers } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
-import { buildDatafile } from "./buildDatafile";
+import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { buildTargetDatafile } from "./buildProject";
 
 function createProjectConfig(root: string, stringify = true): ProjectConfig {
@@ -17,6 +17,7 @@ function createProjectConfig(root: string, stringify = true): ProjectConfig {
     groupsDirectoryPath: path.join(root, "groups-missing"),
     schemasDirectoryPath: path.join(root, "schemas-missing"),
     targetsDirectoryPath: path.join(root, "targets-missing"),
+    variablesDirectoryPath: path.join(root, "variables-missing"),
     testsDirectoryPath: path.join(root, "tests-missing"),
     stateDirectoryPath: path.join(root, ".featurevisor"),
     datafilesDirectoryPath: path.join(root, "datafiles"),
@@ -70,6 +71,9 @@ function createMockDatasource(
     readAttribute: async () => {
       throw new Error("readAttribute should not be called");
     },
+    listVariables: async () => [],
+    getRequiredFeaturesChain: async (key: string) => new Set([key]),
+    getRequiredFeaturesChainForVariable: async () => new Set<string>(),
   } as any;
 }
 
@@ -259,6 +263,69 @@ describe("core: buildDatafile", function () {
     );
   });
 
+  test("builds aligned feature variable overrides while preserving legacy output", async function () {
+    const config = createProjectConfig(root, true);
+    const feature = createFeatureFixture();
+    const rule = (feature.rules as Record<string, any[]>).staging[0];
+    rule.variableOverrides.config.push({
+      key: "required-mutation",
+      description: "Authoring metadata is removed",
+      promotable: true,
+      requiredFeatures: [
+        {
+          feature: "prerequisite",
+          enabled: false,
+          variation: "control",
+        },
+      ],
+      mutate: {
+        "nested.value": 40,
+        "list:append": "required",
+      },
+    });
+    const datasource = createMockDatasource({
+      withRuleOverrides: feature,
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        bucketBy: "userId",
+        disabledVariationValue: "control",
+        variations: [{ value: "control", weight: 100 }],
+        rules: { staging: [{ key: "off", segments: "*", percentage: 0 }] },
+      } as ParsedFeature,
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+    const overrides = result.features.withRuleOverrides.traffic[0].variableOverrides!.config;
+
+    expect(overrides[0].key).toBeUndefined();
+    expect(overrides[0].value).toEqual(
+      expect.objectContaining({ source: "rule", nested: { value: 20 } }),
+    );
+    expect(overrides[3]).toEqual({
+      key: "required-mutation",
+      requiredFeatures: [{ feature: "prerequisite", enabled: false, variation: "control" }],
+      value: {
+        source: "rule",
+        nested: { value: 40 },
+        list: ["base", "required"],
+        rows: [
+          { id: 1, label: "one" },
+          { id: 2, label: "two" },
+        ],
+        flag: true,
+      },
+    });
+    expect((overrides[3] as any).description).toBeUndefined();
+    expect((overrides[3] as any).promotable).toBeUndefined();
+    expect((overrides[3] as any).mutate).toBeUndefined();
+  });
+
   test("keeps segments and conditions non-stringified when projectConfig.stringify is false", async function () {
     const config = createProjectConfig(root, false);
     const datasource = createMockDatasource(createFeatureFixture());
@@ -441,5 +508,426 @@ describe("core: buildDatafile", function () {
     expect(webChromeDatafile.features.targeted.traffic[1].segments).toEqual({
       not: ["*"],
     });
+  });
+
+  test("specializes stringified force and variation override expressions", async function () {
+    const config = createProjectConfig(root, true);
+    const feature: ParsedFeature = {
+      key: "targeted",
+      description: "Targeted feature",
+      tags: ["all"],
+      bucketBy: "userId",
+      variablesSchema: {
+        colour: { type: "string", defaultValue: "black" },
+      },
+      variations: [
+        {
+          value: "control",
+          weight: 100,
+          variableOverrides: {
+            colour: [
+              { segments: { or: ["web", "mobile"] }, value: "red" },
+              {
+                conditions: {
+                  or: [
+                    { attribute: "platform", operator: "equals", value: "web" },
+                    { attribute: "platform", operator: "equals", value: "mobile" },
+                  ],
+                },
+                value: "blue",
+              },
+            ],
+          },
+        },
+      ],
+      force: {
+        staging: [
+          { segments: { or: ["web", "mobile"] }, variation: "control" },
+          {
+            conditions: {
+              or: [
+                { attribute: "platform", operator: "equals", value: "web" },
+                { attribute: "platform", operator: "equals", value: "mobile" },
+              ],
+            },
+            variation: "control",
+          },
+        ],
+      },
+      rules: {
+        staging: [{ key: "all", segments: "*", percentage: 100, variation: "control" }],
+      },
+    } as ParsedFeature;
+    const datasource = createMockDatasource(feature, {
+      web: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "web" }],
+      },
+      mobile: {
+        conditions: [{ attribute: "platform", operator: "equals", value: "mobile" }],
+      },
+    });
+
+    const result = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "Web", context: { platform: "web" } },
+      environment: "staging",
+      existingState,
+      revision: "1",
+    });
+
+    expect(result.features.targeted.force?.[0].segments).toBe("*");
+    expect(result.features.targeted.force?.[1].conditions).toBe("*");
+    expect(result.segments.web).toBeUndefined();
+    expect(result.features.targeted.variations?.[0].variableOverrides?.colour[0].segments).toBe(
+      "*",
+    );
+    expect(result.features.targeted.variations?.[0].variableOverrides?.colour[1].conditions).toBe(
+      "*",
+    );
+  });
+
+  test("derives revision hashes from the final target-specialized datafile", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource(
+      {
+        targeted: {
+          key: "targeted",
+          description: "Targeted",
+          bucketBy: "userId",
+          rules: {
+            staging: [{ key: "country", segments: "nl", percentage: 100, enabled: true }],
+          },
+        } as ParsedFeature,
+      },
+      {
+        nl: {
+          conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+        },
+      },
+    );
+
+    const nl = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "NL", context: { country: "nl" } },
+      environment: "staging",
+      existingState,
+      revision: "source",
+      revisionFromHash: true,
+    });
+    const de = await buildTargetDatafile({
+      projectConfig: config,
+      datasource,
+      target: { description: "DE", context: { country: "de" } },
+      environment: "staging",
+      existingState,
+      revision: "source",
+      revisionFromHash: true,
+    });
+
+    expect(nl.revision).not.toBe("source");
+    expect(de.revision).not.toBe("source");
+    expect(nl.revision).not.toBe(de.revision);
+  });
+
+  test("builds tagged global variables with dependencies and resolved mutations", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      checkout: {
+        key: "checkout",
+        description: "Checkout",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      } as ParsedFeature,
+      account: {
+        key: "account",
+        description: "Account",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      } as ParsedFeature,
+    });
+    Object.assign(datasource, {
+      listVariables: async () => ["banner", "serverOnly"],
+      readVariable: async (key: string) =>
+        key === "banner"
+          ? {
+              description: "Banner",
+              tags: ["web"],
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                subtitle: { type: "string" },
+              },
+              defaultValue: { title: "Hello", subtitle: "Default" },
+              requiredFeatures: "checkout",
+              overrides: {
+                staging: [
+                  {
+                    key: "eu",
+                    segments: "europe",
+                    requiredFeatures: "account",
+                    mutate: { title: "Hallo" },
+                    overrides: [
+                      {
+                        key: "nl",
+                        conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                        requiredFeatures: "checkout",
+                        mutate: { subtitle: "Hoi" },
+                      },
+                    ],
+                  },
+                  {
+                    key: "checkout-only",
+                    conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+                    requiredFeatures: "checkout",
+                    value: { title: "Checkout", subtitle: "Selected" },
+                  },
+                ],
+              },
+            }
+          : {
+              description: "Server only",
+              tags: ["server"],
+              type: "string",
+              defaultValue: "hidden",
+            },
+      getRequiredFeaturesChainForVariable: async (key: string) =>
+        new Set(key === "banner" ? ["checkout", "account"] : []),
+      listSegments: async () => ["europe"],
+      readSegment: async () => ({
+        conditions: [{ attribute: "continent", operator: "equals", value: "eu" }],
+      }),
+      listAttributes: async () => ["continent", "country"],
+      readAttribute: async () => ({ description: "Attribute", type: "string" }),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging", tag: "web" },
+      existingState,
+    );
+
+    expect(Object.keys(result.variables || {})).toEqual(["banner"]);
+    expect(Object.keys(result.features)).toEqual(["checkout", "account"]);
+    expect(result.variables?.banner.requiredFeatures).toEqual(["checkout"]);
+    expect(result.variables?.banner.overrides?.[0]).toEqual(
+      expect.objectContaining({
+        key: "nl",
+        keyPath: ["eu", "nl"],
+        segments: "europe",
+        conditions: JSON.stringify({ attribute: "country", operator: "equals", value: "nl" }),
+        requiredFeatures: ["account", "checkout"],
+        value: { title: "Hallo", subtitle: "Hoi" },
+      }),
+    );
+    expect(result.variables?.banner.overrides?.[1]).toEqual(
+      expect.objectContaining({
+        key: "eu",
+        segments: "europe",
+        requiredFeatures: ["account"],
+        value: { title: "Hallo", subtitle: "Default" },
+      }),
+    );
+    expect(result.variables?.banner.overrides?.[2]).toEqual(
+      expect.objectContaining({
+        key: "checkout-only",
+        conditions: JSON.stringify({ attribute: "country", operator: "equals", value: "nl" }),
+        requiredFeatures: ["checkout"],
+        value: { title: "Checkout", subtitle: "Selected" },
+      }),
+    );
+    expect(result.variables?.banner.hash).toEqual(expect.any(String));
+    expect(Object.keys(result.segments)).toEqual(["europe"]);
+  });
+
+  test("builds a custom variable datafile with the union of requested dependencies", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      requested: {
+        key: "requested",
+        description: "Requested feature",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+      prerequisite: {
+        key: "prerequisite",
+        description: "Variable prerequisite",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+      unrelated: {
+        key: "unrelated",
+        description: "Unrelated feature",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      },
+    });
+    Object.assign(datasource, {
+      readState: async () => existingState,
+      listVariables: async () => ["settings", "unrelatedVariable"],
+      readVariable: async (key: string) => ({
+        description: key,
+        type: "string",
+        defaultValue: key,
+        requiredFeatures: key === "settings" ? "prerequisite" : undefined,
+      }),
+      getRequiredFeaturesChain: async (key: string) => new Set([key]),
+      getRequiredFeaturesChainForVariable: async (key: string) =>
+        new Set(key === "settings" ? ["prerequisite"] : []),
+    });
+
+    const result = await getCustomDatafile({
+      featureKey: "requested",
+      variableKey: "settings",
+      environment: "staging",
+      projectConfig: config,
+      datasource,
+    });
+
+    expect(Object.keys(result.features)).toEqual(["requested", "prerequisite"]);
+    expect(Object.keys(result.variables || {})).toEqual(["settings"]);
+  });
+
+  test("includes feature variable override dependencies when feature filters are used", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      selected: {
+        key: "selected",
+        description: "Selected",
+        tags: ["all"],
+        bucketBy: "userId",
+        variablesSchema: { message: { type: "string", defaultValue: "default" } },
+        rules: {
+          staging: [
+            {
+              key: "all",
+              segments: "*",
+              percentage: 100,
+              variableOverrides: {
+                message: [{ requiredFeatures: "prerequisite", value: "matched" }],
+              },
+            },
+          ],
+        },
+      } as ParsedFeature,
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        tags: ["server"],
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100 }] },
+      } as ParsedFeature,
+    });
+    datasource.getRequiredFeaturesChain = async (key: string) =>
+      new Set(key === "selected" ? ["selected", "prerequisite"] : [key]);
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging", tag: "all" },
+      existingState,
+    );
+
+    expect(Object.keys(result.features)).toEqual(["selected", "prerequisite"]);
+  });
+
+  test("normalizes canonical requirements and preserves legacy datafile compatibility", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({
+      prerequisite: {
+        key: "prerequisite",
+        description: "Prerequisite",
+        bucketBy: "userId",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+      canonical: {
+        key: "canonical",
+        description: "Canonical",
+        bucketBy: "userId",
+        requiredFeatures: "prerequisite",
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+      legacy: {
+        key: "legacy",
+        description: "Legacy",
+        bucketBy: "userId",
+        required: [{ key: "prerequisite", variation: "control" }],
+        rules: { staging: [{ key: "all", segments: "*", percentage: 100, enabled: true }] },
+      },
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+
+    expect(result.features.canonical.requiredFeatures).toEqual(["prerequisite"]);
+    expect(result.features.legacy.requiredFeatures).toBeUndefined();
+    expect(result.features.canonical.required).toBeUndefined();
+    expect(result.features.legacy.required).toEqual([
+      { key: "prerequisite", variation: "control" },
+    ]);
+  });
+
+  test("filters global variables with independent include and exclude patterns", async () => {
+    const config = createProjectConfig(root, true);
+    const datasource = createMockDatasource({});
+    Object.assign(datasource, {
+      listVariables: async () => ["checkoutMessage", "checkoutInternal", "supportEmail"],
+      readVariable: async (key: string) => ({
+        description: key,
+        tags: key === "supportEmail" ? ["support"] : ["checkout"],
+        type: "string",
+        defaultValue: key,
+      }),
+      getRequiredFeaturesChainForVariable: async () => new Set(),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      {
+        revision: "1",
+        environment: "staging",
+        tag: "checkout",
+        includeVariables: ["checkout*"],
+        excludeVariables: ["*Internal"],
+      },
+      existingState,
+    );
+
+    expect(Object.keys(result.variables || {})).toEqual(["checkoutMessage"]);
+  });
+
+  test("emits a non-JSON runtime type for oneOf global variables", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-global-one-of-"));
+    fs.mkdirSync(path.join(root, "variables"), { recursive: true });
+    const config = createProjectConfig(root);
+    const datasource = createMockDatasource({});
+    Object.assign(datasource, {
+      listVariables: async () => ["union"],
+      readVariable: async () => ({
+        description: "Union",
+        oneOf: [{ type: "string" }, { type: "integer" }],
+        defaultValue: "plain-string",
+      }),
+    });
+
+    const result = await buildDatafile(
+      config,
+      datasource,
+      { revision: "1", environment: "staging" },
+      existingState,
+    );
+
+    expect(result.variables?.union).toEqual(
+      expect.objectContaining({ type: "string", defaultValue: "plain-string" }),
+    );
   });
 });

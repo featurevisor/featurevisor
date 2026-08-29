@@ -171,7 +171,7 @@ describe("core: applyContextToSegments", function () {
         ),
       ).toEqual("*");
 
-      // OR with partial match (redundant "*" removed, but OR structure remains)
+      // OR with partial match is already true
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -182,9 +182,7 @@ describe("core: applyContextToSegments", function () {
             platform: "web",
           },
         ),
-      ).toEqual({
-        or: ["chrome"],
-      });
+      ).toEqual("*");
 
       // OR with no matches
       expect(
@@ -298,7 +296,7 @@ describe("core: applyContextToSegments", function () {
     });
 
     test("nested OR group segments", function () {
-      // Nested OR with outer match (redundant "*" removed, but inner OR remains)
+      // Nested OR with outer match is already true
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -314,15 +312,9 @@ describe("core: applyContextToSegments", function () {
             platform: "web",
           },
         ),
-      ).toEqual({
-        or: [
-          {
-            or: ["mobile", "chrome"],
-          },
-        ],
-      });
+      ).toEqual("*");
 
-      // Nested OR with inner match (redundant "*" removed, but outer OR remains)
+      // Nested OR with inner match is already true
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -338,14 +330,7 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual({
-        or: [
-          "web",
-          {
-            or: ["safari"],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("nested NOT group segments", function () {
@@ -376,7 +361,7 @@ describe("core: applyContextToSegments", function () {
     });
 
     test("mixed nested group segments", function () {
-      // AND with nested OR (redundant "*" removed, but OR structure remains if not all match)
+      // AND with a true nested OR is already true when its other child also matches
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -393,15 +378,9 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual({
-        and: [
-          {
-            or: ["safari"],
-          },
-        ],
-      });
+      ).toEqual("*");
 
-      // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
+      // OR with a true nested AND is already true
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -418,9 +397,7 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual({
-        or: ["web"],
-      });
+      ).toEqual("*");
 
       // AND with nested NOT (redundant "*" removed)
       expect(
@@ -446,7 +423,7 @@ describe("core: applyContextToSegments", function () {
         ],
       });
 
-      // Complex nested structure (redundant "*" removed)
+      // Complex nested structure where every AND requirement matches
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -469,13 +446,7 @@ describe("core: applyContextToSegments", function () {
             country: "us",
           },
         ),
-      ).toEqual({
-        and: [
-          {
-            or: ["safari"],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("arrays with nested group segments", function () {
@@ -497,7 +468,7 @@ describe("core: applyContextToSegments", function () {
         ),
       ).toEqual("*");
 
-      // Array with OR group segment (redundant "*" removed, but OR structure remains if not all match)
+      // An array is an implicit AND, and both children match
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -512,11 +483,7 @@ describe("core: applyContextToSegments", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual([
-        {
-          or: ["safari"],
-        },
-      ]);
+      ).toEqual("*");
     });
 
     test("segments with complex conditions", function () {
@@ -562,7 +529,7 @@ describe("core: applyContextToSegments", function () {
         ),
       ).toEqual("*");
 
-      // OR with empty array (all "*" becomes "*")
+      // OR with an empty array remains an always-false expression
       expect(
         applyContextToSegments(
           featurevisorWithSegments,
@@ -571,7 +538,7 @@ describe("core: applyContextToSegments", function () {
           },
           {},
         ),
-      ).toEqual("*");
+      ).toEqual({ or: [] });
     });
   });
 
@@ -623,18 +590,14 @@ describe("core: applyContextToSegments", function () {
         removeRedundantGroupSegments({
           or: ["*", "web", "*"],
         }),
-      ).toEqual({
-        or: ["web"],
-      });
+      ).toEqual("*");
 
       // Multiple non-* group segments in OR
       expect(
         removeRedundantGroupSegments({
           or: ["*", "web", "*", "mobile", "*"],
         }),
-      ).toEqual({
-        or: ["web", "mobile"],
-      });
+      ).toEqual("*");
     });
 
     test("NOT group segments", function () {
@@ -710,7 +673,7 @@ describe("core: applyContextToSegments", function () {
         }),
       ).toEqual("*");
 
-      // Nested OR with mixed group segments
+      // Any true child makes an OR expression true
       expect(
         removeRedundantGroupSegments({
           or: [
@@ -722,14 +685,7 @@ describe("core: applyContextToSegments", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          "web",
-          {
-            or: ["mobile"],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("nested NOT group segments", function () {
@@ -782,15 +738,10 @@ describe("core: applyContextToSegments", function () {
           ],
         }),
       ).toEqual({
-        and: [
-          "web",
-          {
-            or: ["chrome"],
-          },
-        ],
+        and: ["web"],
       });
 
-      // OR with nested AND
+      // A direct true child makes the outer OR true
       expect(
         removeRedundantGroupSegments({
           or: [
@@ -802,14 +753,7 @@ describe("core: applyContextToSegments", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          "web",
-          {
-            and: ["chrome"],
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // AND with nested NOT
       expect(
@@ -851,16 +795,7 @@ describe("core: applyContextToSegments", function () {
           ],
         }),
       ).toEqual({
-        and: [
-          "web",
-          {
-            or: [
-              {
-                and: ["chrome"],
-              },
-            ],
-          },
-        ],
+        and: ["web"],
       });
     });
 
@@ -890,12 +825,7 @@ describe("core: applyContextToSegments", function () {
           },
           "*",
         ]),
-      ).toEqual([
-        "web",
-        {
-          or: ["chrome"],
-        },
-      ]);
+      ).toEqual(["web"]);
     });
 
     test("edge cases", function () {

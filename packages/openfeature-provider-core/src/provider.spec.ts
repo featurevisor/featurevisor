@@ -1,4 +1,6 @@
 import { ErrorCode, StandardResolutionReasons } from "@openfeature/core";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   createFeaturevisor,
   type DatafileContent,
@@ -7,6 +9,10 @@ import {
   type Feature,
 } from "@featurevisor/sdk";
 import { FeaturevisorProvider } from "./provider";
+
+const conformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+);
 
 function feature(overrides: Partial<Feature> = {}): Feature {
   return {
@@ -22,6 +28,23 @@ function datafile(): DatafileContent {
     revision: "revision-1",
     featurevisorVersion: "3.0.1",
     segments: {},
+    variables: {
+      supportEmail: {
+        type: "string",
+        defaultValue: "support@example.com",
+        overrides: [
+          {
+            key: "netherlands",
+            conditions: { attribute: "country", operator: "equals", value: "nl" },
+            value: "support-nl@example.com",
+          },
+        ],
+      },
+      limits: {
+        type: "object",
+        defaultValue: { requests: 10 },
+      },
+    },
     features: {
       checkout: feature({
         variations: [
@@ -36,6 +59,7 @@ function datafile(): DatafileContent {
               config: { color: "blue" },
               json: '{"nested":true}',
               invalidJson: "not-json",
+              variable: "Feature variable",
             },
           },
         ],
@@ -48,6 +72,7 @@ function datafile(): DatafileContent {
           config: { type: "object", defaultValue: {} },
           json: { type: "json", defaultValue: "{}" },
           invalidJson: { type: "json", defaultValue: "{}" },
+          variable: { type: "string", defaultValue: "Default variable" },
         },
       }),
       disabled: feature({
@@ -78,6 +103,9 @@ describe("Featurevisor OpenFeature mapping", () => {
       }),
     );
     expect(provider.resolve("checkout:title", "fallback", context, "string").value).toBe("Hello");
+    expect(provider.resolve("checkout:variable", "fallback", context, "string").value).toBe(
+      "Feature variable",
+    );
     expect(provider.resolve("checkout:count", 0, context, "number").value).toBe(3);
     expect(provider.resolve("checkout:ratio", 0, context, "number").value).toBe(1.5);
     expect(provider.resolve("checkout:visible", false, context, "boolean").value).toBe(true);
@@ -133,6 +161,60 @@ describe("Featurevisor OpenFeature mapping", () => {
     expect(
       provider.resolve("checkout/title", "fallback", { targetingKey: "u" }, "string").value,
     ).toBe("Hello");
+  });
+
+  it("resolves global variables with default and custom prefixes", () => {
+    const provider = new FeaturevisorProvider({ datafile: datafile() });
+    expect(
+      provider.resolve("variable:supportEmail", "fallback", { country: "nl" }, "string"),
+    ).toEqual(
+      expect.objectContaining({
+        value: "support-nl@example.com",
+        reason: StandardResolutionReasons.TARGETING_MATCH,
+        flagMetadata: expect.objectContaining({
+          variableKey: "supportEmail",
+          variableOverrideKey: "netherlands",
+        }),
+      }),
+    );
+    expect(provider.resolve("variable:limits", {}, {}, "object").value).toEqual({
+      requests: 10,
+    });
+
+    const custom = new FeaturevisorProvider({
+      datafile: datafile(),
+      keySeparator: "/",
+      globalVariablePrefix: "$variable",
+    });
+    expect(custom.resolve("$variable/supportEmail", "fallback", {}, "string").value).toBe(
+      "support@example.com",
+    );
+  });
+
+  it("rejects a global variable prefix containing the key separator", () => {
+    expect(
+      () =>
+        new FeaturevisorProvider({
+          datafile: datafile(),
+          globalVariablePrefix: "global:variable",
+        }),
+    ).toThrow("globalVariablePrefix cannot contain keySeparator");
+  });
+
+  it("returns a standard not found error for missing global variables", () => {
+    const result = new FeaturevisorProvider({ datafile: datafile() }).resolve(
+      "variable:missing",
+      "fallback",
+      {},
+      "string",
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        value: "fallback",
+        reason: StandardResolutionReasons.ERROR,
+        errorCode: ErrorCode.FLAG_NOT_FOUND,
+      }),
+    );
   });
 
   it("returns defaults with standard errors for missing flags, variables, variations, and malformed datafiles", () => {
@@ -198,6 +280,7 @@ describe("Featurevisor OpenFeature mapping", () => {
 
   it.each([
     ["required", StandardResolutionReasons.TARGETING_MATCH],
+    ["required_features_unmet", conformance.openFeature.reasonMappings.required_features_unmet],
     ["forced", StandardResolutionReasons.TARGETING_MATCH],
     ["sticky", StandardResolutionReasons.TARGETING_MATCH],
     ["rule", StandardResolutionReasons.TARGETING_MATCH],

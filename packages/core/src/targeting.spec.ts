@@ -1,6 +1,12 @@
-import type { ParsedFeature, Target } from "@featurevisor/types";
+import type { ParsedFeature, ParsedVariable, Target } from "@featurevisor/types";
 
-import { getTargetFeatureKeys, resolveTargets, targetIncludesFeature } from "./targeting";
+import {
+  getTargetFeatureKeys,
+  getTargetVariableKeys,
+  resolveTargets,
+  targetIncludesFeature,
+  targetIncludesVariable,
+} from "./targeting";
 
 const features: Record<string, ParsedFeature> = {
   webCheckout: {
@@ -36,12 +42,36 @@ const targets: Record<string, Target> = {
   mobile: { description: "Mobile", tag: "mobile" },
 };
 
+const variables: Record<string, ParsedVariable> = {
+  checkoutMessage: {
+    description: "Checkout message",
+    tags: ["web", "checkout"],
+    type: "string",
+    defaultValue: "Checkout",
+  },
+  internalMessage: {
+    description: "Internal message",
+    tags: ["web", "internal"],
+    type: "string",
+    defaultValue: "Internal",
+  },
+  archivedMessage: {
+    description: "Archived message",
+    tags: ["web", "checkout"],
+    archived: true,
+    type: "string",
+    defaultValue: "Archived",
+  },
+};
+
 function createDatasource() {
   return {
     listTargets: async () => Object.keys(targets),
     readTarget: async (key: string) => targets[key],
     listFeatures: async () => Object.keys(features),
     readFeature: async (key: string) => features[key],
+    listVariables: async () => Object.keys(variables),
+    readVariable: async (key: string) => variables[key],
   } as any;
 }
 
@@ -61,6 +91,34 @@ describe("targeting", () => {
 
     expect(resolved.map((target) => target.key)).toEqual(["web", "mobile"]);
     expect(Array.from(featureKeys).sort()).toEqual(["mobileCheckout", "webCheckout"]);
+  });
+
+  it("applies variable tags, include patterns, exclude patterns, and archived state together", async () => {
+    const target: Target = {
+      description: "Web checkout variables",
+      tags: { and: ["web", "checkout"] },
+      includeVariables: ["*Message"],
+      excludeVariables: ["internal*"],
+    };
+
+    expect(targetIncludesVariable(target, "checkoutMessage", variables.checkoutMessage)).toBe(true);
+    expect(targetIncludesVariable(target, "internalMessage", variables.internalMessage)).toBe(
+      false,
+    );
+    expect(targetIncludesVariable(target, "archivedMessage", variables.archivedMessage)).toBe(
+      false,
+    );
+  });
+
+  it("includes every active entity when a target has no selectors", async () => {
+    const target: Target = { description: "Everything" };
+    expect(targetIncludesFeature(target, "webCheckout", features.webCheckout)).toBe(true);
+    expect(targetIncludesVariable(target, "checkoutMessage", variables.checkoutMessage)).toBe(true);
+
+    const variableKeys = await getTargetVariableKeys(createDatasource(), [
+      { ...target, key: "everything" },
+    ]);
+    expect(Array.from(variableKeys).sort()).toEqual(["checkoutMessage", "internalMessage"]);
   });
 
   it("validates unknown and missing targets", async () => {

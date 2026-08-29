@@ -6,11 +6,11 @@ Full docs:
 - Deployment: <https://featurevisor.com/docs/deployment>
 - State files: <https://featurevisor.com/docs/state-files>
 
-Datafiles are the static JSON artifacts the SDKs consume. They are produced per environment × target and generated with `schemaVersion: "2"`.
+Datafiles are the static JSON artifacts the SDKs consume. They contain selected features and global variables with their dependencies. They are produced per environment × target and generated with `schemaVersion: "2"`.
 
 ## Two kinds of build
 
-Bare `npx featurevisor build` is a **CI command**: besides writing datafiles, it increments `.featurevisor/REVISION` and updates `.featurevisor/existing-state-*.json`, which CI commits back — that state is how the *next* build preserves consistent bucketing.
+Bare `npx featurevisor build` is a **CI command**: besides writing datafiles, it increments `.featurevisor/REVISION` and updates `.featurevisor/existing-state-*.json`, which CI commits back — that state is how the _next_ build preserves consistent bucketing.
 
 **Local development builds should default to `--no-state-files`:**
 
@@ -32,6 +32,8 @@ datafiles/
 
 With multiple targets, you'll see one `featurevisor-<target>.json` file per target and environment. Without `--target`, every configured target is built.
 
+A Target without selectors includes every active feature and global variable. Tag selectors apply to both kinds. `includeFeatures` and `excludeFeatures` filter feature keys, while `includeVariables` and `excludeVariables` filter global variable keys. When tag and key selectors are present, an entity must satisfy both.
+
 ## Build options
 
 | Flag                   | Effect                                                                                           |
@@ -40,12 +42,13 @@ With multiple targets, you'll see one `featurevisor-<target>.json` file per targ
 | `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
 | `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
 | `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
+| `--variable=<key>`     | Print one global variable and its dependencies to stdout                                         |
 | `--environment=<env>`  | Limit to one environment                                                                         |
-| `--target=<target>`    | Build only this target; repeat to build several                                                   |
+| `--target=<target>`    | Build only this target; repeat to build several                                                  |
 | `--pretty`             | Pretty-print the output                                                                          |
 | `--print`              | Print full datafile to stdout (no files written)                                                 |
 | `--datafilesDir=<dir>` | Write elsewhere than `datafilesDirectoryPath` for this run                                       |
-| `--set=<set>`          | Sets projects — build one set ([sets-promotions.md](sets-promotions.md))                          |
+| `--set=<set>`          | Sets projects — build one set ([sets-promotions.md](sets-promotions.md))                         |
 
 When debugging the shape of a datafile entry, prefer `--feature=<key> --print` over reading the full file.
 

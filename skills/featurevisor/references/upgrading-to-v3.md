@@ -111,7 +111,7 @@ Renames (mechanical, do these first):
 Behaviour changes that renaming won't catch. Check each one deliberately:
 
 - **`setDatafile` merges by default.** Code that refreshes the *same* datafile must now pass `true` to replace, or features deleted upstream will linger: `f.setDatafile(fresh, true)`. ([sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile))
-- **Per-evaluation `sticky` is gone.** `f.isEnabled(key, ctx, { sticky })` → `f.setSticky(...)` on the instance, or `f.spawn(ctx, { sticky })` for isolated state.
+- **Per-evaluation `sticky` is gone.** `f.isEnabled(key, ctx, { sticky })` → `f.setStickyFeatures(...)` on the instance, or `f.spawn(ctx, { stickyFeatures })` for isolated state.
 - **Child instances snapshot parent context** at spawn and must be `close()`d. ([sdk-javascript.md](sdk-javascript.md#child-instances-server-side))
 - **Explicit defaults preserve falsey values.** `false`, `0`, `""`, and `null` are honoured. Strip `|| fallback` wrappers that were compensating for the old behaviour.
 - **Internal helpers are no longer exported**: `DatafileReader`, logger/emitter/evaluator internals, and the v1-only types. Replace reader calls with instance methods (`f.getRevision()`, `f.getFeature()`, `f.getFeatureKeys()`, `f.getVariableKeys()`, `f.hasVariations()`, `f.getSegment()`, `f.getSchemaVersion()`).

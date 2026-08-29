@@ -294,7 +294,7 @@ describe("core: applyContextToConditions", function () {
         ),
       ).toEqual("*");
 
-      // OR with partial match (redundant "*" removed, but OR structure remains)
+      // OR with partial match is already true
       expect(
         applyContextToConditions(
           featurevisor,
@@ -316,15 +316,7 @@ describe("core: applyContextToConditions", function () {
             platform: "web",
           },
         ),
-      ).toEqual({
-        or: [
-          {
-            attribute: "browser",
-            operator: "equals",
-            value: "chrome",
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // OR with no matches
       expect(
@@ -556,24 +548,7 @@ describe("core: applyContextToConditions", function () {
             platform: "web",
           },
         ),
-      ).toEqual({
-        or: [
-          {
-            or: [
-              {
-                attribute: "platform",
-                operator: "equals",
-                value: "mobile",
-              },
-              {
-                attribute: "platform",
-                operator: "equals",
-                value: "desktop",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // Nested OR with inner match (redundant "*" removed, but outer OR remains)
       expect(
@@ -606,24 +581,7 @@ describe("core: applyContextToConditions", function () {
             platform: "mobile",
           },
         ),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-          {
-            or: [
-              {
-                attribute: "platform",
-                operator: "equals",
-                value: "desktop",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("nested NOT conditions", function () {
@@ -696,19 +654,7 @@ describe("core: applyContextToConditions", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual({
-        and: [
-          {
-            or: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "firefox",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // OR with nested AND (redundant "*" removed, but OR structure remains if not all match)
       expect(
@@ -742,15 +688,7 @@ describe("core: applyContextToConditions", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // AND with nested NOT (redundant "*" removed)
       expect(
@@ -835,19 +773,7 @@ describe("core: applyContextToConditions", function () {
             version: "1.0",
           },
         ),
-      ).toEqual({
-        and: [
-          {
-            or: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "firefox",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("arrays with nested conditions", function () {
@@ -914,17 +840,7 @@ describe("core: applyContextToConditions", function () {
             browser: "chrome",
           },
         ),
-      ).toEqual([
-        {
-          or: [
-            {
-              attribute: "browser",
-              operator: "equals",
-              value: "firefox",
-            },
-          ],
-        },
-      ]);
+      ).toEqual("*");
     });
 
     test("edge cases", function () {
@@ -977,7 +893,7 @@ describe("core: applyContextToConditions", function () {
         ),
       ).toEqual("*");
 
-      // OR with empty array (all "*" becomes "*")
+      // OR with an empty array remains an always-false expression
       expect(
         applyContextToConditions(
           featurevisor,
@@ -986,7 +902,7 @@ describe("core: applyContextToConditions", function () {
           },
           {},
         ),
-      ).toEqual("*");
+      ).toEqual({ or: [] });
     });
   });
 
@@ -2089,15 +2005,7 @@ describe("core: applyContextToConditions", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // Multiple non-* conditions in OR
       expect(
@@ -2118,20 +2026,7 @@ describe("core: applyContextToConditions", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "mobile",
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("NOT conditions", function () {
@@ -2255,7 +2150,7 @@ describe("core: applyContextToConditions", function () {
         }),
       ).toEqual("*");
 
-      // Nested OR with mixed conditions
+      // Any true child makes an OR expression true
       expect(
         removeRedundantConditions({
           or: [
@@ -2279,24 +2174,7 @@ describe("core: applyContextToConditions", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-          {
-            or: [
-              {
-                attribute: "platform",
-                operator: "equals",
-                value: "mobile",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
     });
 
     test("nested NOT conditions", function () {
@@ -2395,15 +2273,6 @@ describe("core: applyContextToConditions", function () {
             operator: "equals",
             value: "web",
           },
-          {
-            or: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "chrome",
-              },
-            ],
-          },
         ],
       });
 
@@ -2431,24 +2300,7 @@ describe("core: applyContextToConditions", function () {
             "*",
           ],
         }),
-      ).toEqual({
-        or: [
-          {
-            attribute: "platform",
-            operator: "equals",
-            value: "web",
-          },
-          {
-            and: [
-              {
-                attribute: "browser",
-                operator: "equals",
-                value: "chrome",
-              },
-            ],
-          },
-        ],
-      });
+      ).toEqual("*");
 
       // AND with nested NOT
       expect(
@@ -2530,19 +2382,6 @@ describe("core: applyContextToConditions", function () {
             operator: "equals",
             value: "web",
           },
-          {
-            or: [
-              {
-                and: [
-                  {
-                    attribute: "browser",
-                    operator: "equals",
-                    value: "chrome",
-                  },
-                ],
-              },
-            ],
-          },
         ],
       });
     });
@@ -2604,15 +2443,6 @@ describe("core: applyContextToConditions", function () {
           attribute: "platform",
           operator: "equals",
           value: "web",
-        },
-        {
-          or: [
-            {
-              attribute: "browser",
-              operator: "equals",
-              value: "chrome",
-            },
-          ],
         },
       ]);
     });

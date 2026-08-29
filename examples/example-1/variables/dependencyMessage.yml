@@ -1,0 +1,32 @@
+description: Demonstrate required features in global variable overrides
+tags:
+  - all
+type: string
+defaultValue: No dependency based override matched
+overrides:
+  production:
+    # conditions and requiredFeatures use AND semantics
+    - key: conditions-and-requirements
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      requiredFeatures: showHeader
+      value: Conditions and requirements matched
+
+    # segments and requiredFeatures also use AND semantics
+    - key: segments-and-requirements
+      segments: countries.germany
+      requiredFeatures:
+        - feature: pricing
+          enabled: true
+          variation: treatment
+      value: Segments and requirements matched
+
+    # requiredFeatures can be the only selector
+    - key: requirements-only
+      requiredFeatures:
+        - feature: pricing
+          enabled: false
+          variation: control
+      value: Requirements matched

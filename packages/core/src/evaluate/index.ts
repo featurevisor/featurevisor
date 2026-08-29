@@ -6,6 +6,7 @@ import { Dependencies } from "../dependencies";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Plugin } from "../cli";
 import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
+import { FeaturevisorCLIError } from "../error";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
   CLI_COLOR_CYAN,
@@ -57,7 +58,8 @@ function printHeader(message: string) {
 
 export interface EvaluateOptions {
   environment?: string;
-  feature: string;
+  feature?: string;
+  variable?: string;
   context: Record<string, unknown>;
   json?: boolean;
   pretty?: boolean;
@@ -78,18 +80,37 @@ async function evaluateFeatureWithDatafile(
     onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
   });
 
-  const flagEvaluation = f.evaluateFlag(options.feature, options.context as Context);
+  if (options.variable && !options.feature) {
+    const evaluation = f.evaluateVariable(options.variable, options.context as Context);
+    const evaluationDiagnostics = [...diagnostics];
+    if (options.json) return evaluation;
+
+    console.log("");
+    console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor variable");
+    console.log(`  ${colorize("Variable", CLI_COLOR_CYAN)}: ${options.variable}`);
+    console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+    if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
+    console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
+    if (options.verbose) printDiagnostics(evaluationDiagnostics);
+    console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(evaluation.variableValue)}`);
+    console.log("\nDetails:\n");
+    printEvaluationDetails(evaluation);
+    return evaluation;
+  }
+
+  const featureKey = options.feature as string;
+  const flagEvaluation = f.evaluateFlag(featureKey, options.context as Context);
   const flagEvaluationDiagnostics = [...diagnostics];
   diagnostics = [];
 
-  const variationEvaluation = f.evaluateVariation(options.feature, options.context as Context);
+  const variationEvaluation = f.evaluateVariation(featureKey, options.context as Context);
   const variationEvaluationDiagnostics = [...diagnostics];
   diagnostics = [];
 
   const variableEvaluations: Record<string, Evaluation> = {};
   const variableEvaluationDiagnostics: Record<string, FeaturevisorDiagnostic[]> = {};
 
-  const feature = f.getFeature(options.feature);
+  const feature = f.getFeature(featureKey);
   if (feature?.variablesSchema) {
     const variableKeys = Array.isArray(feature.variablesSchema)
       ? feature.variablesSchema
@@ -97,7 +118,7 @@ async function evaluateFeatureWithDatafile(
 
     variableKeys.forEach((variableKey) => {
       const variableEvaluation = f.evaluateVariable(
-        options.feature,
+        featureKey,
         variableKey,
         options.context as Context,
       );
@@ -121,7 +142,7 @@ async function evaluateFeatureWithDatafile(
 
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor feature");
-  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
+  console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${featureKey}`);
   console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
   if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
@@ -185,6 +206,12 @@ async function evaluateFeatureWithDatafile(
 }
 
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
+  if (Boolean(options.feature) === Boolean(options.variable)) {
+    throw new FeaturevisorCLIError("Pass exactly one of --feature or --variable.", {
+      code: "invalid_evaluation_selection",
+      details: { feature: options.feature, variable: options.variable },
+    });
+  }
   const datafiles = await buildRuntimeDatafiles(deps, {
     environment: options.environment || false,
     target: options.target,
@@ -224,6 +251,7 @@ export const evaluatePlugin: Plugin = {
         {
           environment: parsed.environment,
           feature: parsed.feature,
+          variable: parsed.variable,
           context: parsed.context ? parseJsonObjectOption("--context", parsed.context) : {},
           // @NOTE: introduce optional --at?
           json: parsed.json,
@@ -243,6 +271,11 @@ export const evaluatePlugin: Plugin = {
       command:
         'evaluate --environment=production --feature=my_feature --context=\'{"userId": "123"}\'',
       description: "evaluate a feature against provided context",
+    },
+    {
+      command:
+        'evaluate --environment=production --variable=supportEmail --context=\'{"country": "nl"}\'',
+      description: "evaluate a global variable against provided context",
     },
   ],
 };
