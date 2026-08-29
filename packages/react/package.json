@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/react",
-  "version": "3.5.0",
+  "version": "3.7.0",
   "description": "React package for Featurevisor",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -54,8 +54,8 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "dependencies": {
-    "@featurevisor/sdk": "3.5.0",
-    "@featurevisor/types": "3.3.0"
+    "@featurevisor/sdk": "3.7.0",
+    "@featurevisor/types": "3.7.0"
   },
   "peerDependencies": {
     "react": ">=16.8"

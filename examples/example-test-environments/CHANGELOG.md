@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.7.0](https://github.com/featurevisor/featurevisor/compare/v3.6.0...v3.7.0) (2026-08-29)
+
+
+### Features
+
+* global variables ([#424](https://github.com/featurevisor/featurevisor/issues/424)) ([998224d](https://github.com/featurevisor/featurevisor/commit/998224db00c5dcca3c1da914a32b463ce31cc082))
+
+
+
+
+
 # [3.6.0](https://github.com/featurevisor/featurevisor/compare/v3.5.0...v3.6.0) (2026-08-23)
 
 **Note:** Version bump only for package @featurevisor/example-test-environments
