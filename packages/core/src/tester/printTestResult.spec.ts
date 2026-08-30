@@ -25,13 +25,19 @@ describe("core: print test result", () => {
               },
               {
                 type: "evaluation",
-                expected: "variable_default",
-                actual: "variable_override_rule",
+                expected: { nested: ["expected"] },
+                actual: { nested: ["actual"] },
                 details: {
                   evaluationType: "variable",
-                  evaluationKey: "reason",
+                  evaluationKey: "variableValue",
                   childIndex: 0,
                 },
+              },
+              {
+                type: "variable",
+                expected: null,
+                actual: "actual",
+                details: { variableKey: "settings", childIndex: 1 },
               },
             ],
           },
@@ -42,7 +48,11 @@ describe("core: print test result", () => {
       const output = log.mock.calls.flat().join("\n");
       expect(output).toContain("expectedValue");
       expect(output).not.toContain("expectedVariables.settings");
-      expect(output).toContain("children[0].expectedEvaluation.reason");
+      expect(output).toContain("children[0].expectedEvaluation.variableValue");
+      expect(output).toContain('{"nested":["expected"]}');
+      expect(output).not.toContain("[object Object]");
+      expect(output).toContain("children[1].expectedValue");
+      expect(output).toContain("expected: null");
     } finally {
       log.mockRestore();
     }

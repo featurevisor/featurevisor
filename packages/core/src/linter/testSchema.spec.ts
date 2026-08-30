@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
-import { getLintIssuesFromZodError } from "./printError";
 import { getTestsZodSchema } from "./testSchema";
 
 function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
@@ -74,6 +73,121 @@ function expectTestFailure(input: unknown, messageSubstring: string): z.ZodError
 }
 
 describe("testSchema.ts :: getTestsZodSchema", () => {
+  it("rejects empty test assertions and matrices that cannot produce a case", () => {
+    expectTestFailure(
+      { variable: "settings", assertions: [] },
+      "Test spec must contain at least one assertion",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production", matrix: {}, expectedValue: "configured" }],
+      },
+      "Matrix must contain at least one key",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { value: [] },
+            expectedValue: "${{ value }}",
+          },
+        ],
+      },
+      "Matrix values cannot be empty",
+    );
+  });
+
+  it("rejects unknown matrix placeholders anywhere in a variable assertion", () => {
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { value: ["configured"] },
+            expectedValue: "${{ missing }}",
+          },
+        ],
+      },
+      'Unknown matrix value "missing"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { value: ["configured"] },
+            children: [{ expectedValue: { nested: "${{ missing }}" } }],
+          },
+        ],
+      },
+      'Unknown matrix value "missing"',
+    );
+  });
+
+  it("validates matrix environments and targets after expansion", () => {
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            matrix: { environment: ["unknown"] },
+            environment: "${{ environment }}",
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown environment "unknown"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { target: ["unknown"] },
+            target: "${{ target }}",
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown target "unknown"',
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { target: ["web"] },
+            target: "${{ target }}-suffix",
+            expectedValue: "configured",
+          },
+        ],
+      },
+      "Expected a complete matrix placeholder",
+    );
+  });
+
+  it("accepts structured matrix values without converting their types", () => {
+    expectTestSuccess({
+      variable: "settings",
+      assertions: [
+        {
+          environment: "production",
+          matrix: {
+            value: [["one", "two"], { enabled: true, nested: { count: 2 } }],
+          },
+          expectedValue: "${{ value }}",
+        },
+      ],
+    });
+  });
+
   it("requires at least one global variable expectation", () => {
     expectTestSuccess({
       variable: "settings",
@@ -103,6 +217,25 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         ],
       },
       "Unrecognized key",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [{ environment: "production", expectedEvaluation: {} }],
+      },
+      "Expected evaluation must contain at least one field",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            children: [{ expectedEvaluation: {} }],
+          },
+        ],
+      },
+      "Expected evaluation must contain at least one field",
     );
   });
 
@@ -275,6 +408,22 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         ],
       },
       "Sticky feature enabled values must be booleans",
+    );
+    expectTestFailure(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            matrix: { variation: ["unknown"] },
+            stickyFeatures: {
+              checkout: { enabled: true, variation: "${{ variation }}" },
+            },
+            expectedValue: "configured",
+          },
+        ],
+      },
+      'Unknown variation "unknown" in feature "checkout"',
     );
   });
 
@@ -476,7 +625,7 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
       assertions: [
         {
           matrix: {
-            target: ["web", "mobile"],
+            target: ["web"],
           },
           at: 1,
           environment: "staging",
@@ -572,29 +721,6 @@ describe("testSchema.ts :: getTestsZodSchema", () => {
         ],
       },
       'Unknown segment "not-real"',
-    );
-  });
-
-  it("rejects invalid matrix values", () => {
-    const error = expectTestFailure(
-      {
-        feature: "checkout",
-        assertions: [
-          {
-            matrix: {
-              country: [{ code: "nl" }],
-            },
-            at: 1,
-            environment: "staging",
-          },
-        ],
-      },
-      "Invalid input",
-    );
-
-    const lintIssues = getLintIssuesFromZodError(error);
-    expect(lintIssues.some((issue) => issue.path.join(".").includes("matrix.country.0"))).toBe(
-      true,
     );
   });
 });

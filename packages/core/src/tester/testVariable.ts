@@ -105,14 +105,9 @@ export async function testVariable(
       errors: [],
     };
     const targetKey = `${assertion.environment || false}-target-${assertion.target}`;
-    const datafile =
-      (assertion.target && datafileContentByKey.get(targetKey)) ||
-      datafileContentByKey.get(assertion.environment || false);
-    if (options.showDatafile) {
-      console.log("");
-      console.log(JSON.stringify(datafile, null, 2));
-      console.log("");
-    }
+    const datafile = assertion.target
+      ? datafileContentByKey.get(targetKey)
+      : datafileContentByKey.get(assertion.environment || false);
 
     if (!datafile) {
       assertionResult.passed = false;
@@ -121,11 +116,19 @@ export async function testVariable(
         type: "variable",
         expected: "datafile",
         actual: undefined,
-        message: `datafile not found for environment "${assertion.environment || "none"}"`,
+        message: `datafile not found for environment "${assertion.environment || "none"}"${
+          assertion.target ? ` and target "${assertion.target}"` : ""
+        }`,
       });
       assertionResult.duration = Date.now() - assertionStartedAt;
       result.assertions.push(assertionResult);
       continue;
+    }
+
+    if (options.showDatafile) {
+      console.log("");
+      console.log(JSON.stringify(datafile, null, 2));
+      console.log("");
     }
 
     const at = assertion.at;

@@ -1,4 +1,5 @@
 import type { DatafileContent, TestVariable } from "@featurevisor/types";
+import * as featurevisorSdk from "@featurevisor/sdk";
 
 import { testVariable } from "./testVariable";
 
@@ -441,6 +442,133 @@ describe("core: test global variable", () => {
       expect(log.mock.calls.flat().join("\n")).toContain('"revision": "test"');
     } finally {
       log.mockRestore();
+    }
+  });
+
+  it("does not fall back to the base datafile when a target datafile is missing", async () => {
+    const result = await testVariable(
+      {
+        variable: "settings",
+        assertions: [
+          {
+            environment: "production",
+            target: "web",
+            expectedValue: "base",
+          },
+        ],
+      },
+      { quiet: true } as any,
+      new Map([["production", datafile("base")]]),
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.assertions[0].errors).toEqual([
+      expect.objectContaining({
+        message: 'datafile not found for environment "production" and target "web"',
+      }),
+    ]);
+  });
+
+  it("closes parent and child instances after successful assertions", async () => {
+    const createFeaturevisor = featurevisorSdk.createFeaturevisor;
+    const parentClose = jest.fn();
+    const childClose = jest.fn();
+    const createSpy = jest
+      .spyOn(featurevisorSdk, "createFeaturevisor")
+      .mockImplementation((options) => {
+        const f = createFeaturevisor(options);
+        const originalParentClose = f.close.bind(f);
+        const originalSpawn = f.spawn.bind(f);
+        jest.spyOn(f, "close").mockImplementation(async () => {
+          parentClose();
+          await originalParentClose();
+        });
+        jest.spyOn(f, "spawn").mockImplementation((context, spawnOptions) => {
+          const child = originalSpawn(context, spawnOptions);
+          const originalChildClose = child.close.bind(child);
+          jest.spyOn(child, "close").mockImplementation(() => {
+            childClose();
+            originalChildClose();
+          });
+          return child;
+        });
+        return f;
+      });
+
+    try {
+      const result = await testVariable(
+        {
+          variable: "settings",
+          assertions: [
+            {
+              environment: "production",
+              expectedValue: "base",
+              children: [{ expectedValue: "base" }],
+            },
+          ],
+        },
+        { quiet: true } as any,
+        new Map([["production", datafile("base")]]),
+      );
+
+      expect(result.passed).toBe(true);
+      expect(parentClose).toHaveBeenCalledTimes(1);
+      expect(childClose).toHaveBeenCalledTimes(1);
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
+
+  it("closes parent and child instances when child evaluation throws", async () => {
+    const createFeaturevisor = featurevisorSdk.createFeaturevisor;
+    const parentClose = jest.fn();
+    const childClose = jest.fn();
+    const createSpy = jest
+      .spyOn(featurevisorSdk, "createFeaturevisor")
+      .mockImplementation((options) => {
+        const f = createFeaturevisor(options);
+        const originalParentClose = f.close.bind(f);
+        const originalSpawn = f.spawn.bind(f);
+        jest.spyOn(f, "close").mockImplementation(async () => {
+          parentClose();
+          await originalParentClose();
+        });
+        jest.spyOn(f, "spawn").mockImplementation((context, spawnOptions) => {
+          const child = originalSpawn(context, spawnOptions);
+          const originalChildClose = child.close.bind(child);
+          jest.spyOn(child, "close").mockImplementation(() => {
+            childClose();
+            originalChildClose();
+          });
+          jest.spyOn(child, "evaluateVariable").mockImplementation(() => {
+            throw new Error("evaluation failed");
+          });
+          return child;
+        });
+        return f;
+      });
+
+    try {
+      await expect(
+        testVariable(
+          {
+            variable: "settings",
+            assertions: [
+              {
+                environment: "production",
+                expectedValue: "base",
+                children: [{ expectedValue: "base" }],
+              },
+            ],
+          },
+          { quiet: true } as any,
+          new Map([["production", datafile("base")]]),
+        ),
+      ).rejects.toThrow("evaluation failed");
+      expect(parentClose).toHaveBeenCalledTimes(1);
+      expect(childClose).toHaveBeenCalledTimes(1);
+    } finally {
+      createSpy.mockRestore();
     }
   });
 });

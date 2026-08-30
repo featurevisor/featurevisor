@@ -74,8 +74,8 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
           const variableKey = (error.details as any).variableKey;
 
           console.log(CLI_FORMAT_RED, `    => ${section}.${variableKey}:`);
-          console.log(CLI_FORMAT_RED, `       => expected: ${error.expected}`);
-          console.log(CLI_FORMAT_RED, `       => received: ${error.actual}`);
+          console.log(CLI_FORMAT_RED, `       => expected: ${formatValue(error.expected)}`);
+          console.log(CLI_FORMAT_RED, `       => received: ${formatValue(error.actual)}`);
         } else {
           if (error.type === "evaluation") {
             if (testResult.type === "variable") {
@@ -92,7 +92,9 @@ export function printTestResult(testResult: TestResult, relativeTestFilePath, ro
 
           console.log(
             CLI_FORMAT_RED,
-            `    => ${section}: expected "${error.expected}", received "${error.actual}"`,
+            `    => ${section}: expected ${formatValue(error.expected)}, received ${formatValue(
+              error.actual,
+            )}`,
           );
         }
       });

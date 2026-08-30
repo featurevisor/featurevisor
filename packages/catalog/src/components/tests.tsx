@@ -10,19 +10,29 @@ import type {
 } from "@featurevisor/types";
 
 import { Badge, EmptyState, EntityKey, LabelValueBadge, MarkdownContent } from "./ui";
-import { expandTestAssertions, getTestAssertionPermalink } from "../testModel";
+import {
+  expandTestAssertions,
+  getTestAssertionPermalink,
+  getTestValuePresence,
+} from "../testModel";
 
 function getAssertionElementId(permalink: string) {
   return `assertion-${encodeURIComponent(permalink)}`;
 }
 
 function hasValue(value: unknown) {
-  return value !== undefined && value !== null;
+  return value !== undefined;
 }
 
 function ValueDisplay(props: { value: unknown }) {
-  if (props.value === undefined || props.value === null) {
+  const presence = getTestValuePresence(props.value);
+
+  if (presence === "missing") {
     return <span className="text-faint">not set</span>;
+  }
+
+  if (presence === "null") {
+    return <span className="font-mono text-xs [overflow-wrap:anywhere]">null</span>;
   }
 
   if (typeof props.value === "boolean") {

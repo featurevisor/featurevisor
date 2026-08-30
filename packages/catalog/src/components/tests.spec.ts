@@ -1,8 +1,18 @@
 import type { TestFeature, TestSegment, TestVariable } from "@featurevisor/types";
 
-import { expandTestAssertions, getTestAssertionPermalink } from "../testModel";
+import {
+  expandTestAssertions,
+  getTestAssertionPermalink,
+  getTestValuePresence,
+} from "../testModel";
 
 describe("catalog test presentation", () => {
+  it("distinguishes an explicit null from a missing value", () => {
+    expect(getTestValuePresence(undefined)).toBe("missing");
+    expect(getTestValuePresence(null)).toBe("null");
+    expect(getTestValuePresence(false)).toBe("value");
+  });
+
   it("keeps authored assertions without matrices as one numbered assertion", () => {
     const test: TestFeature = {
       key: "checkout-primary",

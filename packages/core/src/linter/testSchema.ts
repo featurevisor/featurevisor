@@ -53,24 +53,99 @@ export function getTestsZodSchema(
     });
   }
 
-  const matrixZodSchema = z.record(
-    z.string(),
-    z.array(
-      z.union([
-        // allowed values in arrays
-        z.string(),
-        z.number(),
-        z.boolean(),
-        z.null(),
-      ]),
-    ),
+  const matrixValueZodSchema: z.ZodType<unknown> = z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.null(),
+      z.array(matrixValueZodSchema),
+      z.record(z.string(), matrixValueZodSchema),
+    ]),
   );
+  const matrixZodSchema = z
+    .record(z.string(), z.array(matrixValueZodSchema).min(1, "Matrix values cannot be empty"))
+    .refine((matrix) => Object.keys(matrix).length > 0, "Matrix must contain at least one key");
 
   const matrixPlaceholderPattern = /^\${{\s*([^{}]+?)\s*}}$/;
   const matrixPlaceholderZodSchema = z
     .string()
     .regex(matrixPlaceholderPattern, "Expected a matrix placeholder such as ${{ at }}");
   const atZodSchema = z.union([z.number().min(0).max(100), matrixPlaceholderZodSchema]);
+
+  function getMatrixPlaceholderKey(value: string): string | undefined {
+    return value.match(matrixPlaceholderPattern)?.[1]?.trim();
+  }
+
+  function validateMatrixPlaceholders(
+    value: unknown,
+    matrix: Record<string, unknown[]> | undefined,
+    path: Array<string | number>,
+    ctx: z.RefinementCtx,
+  ) {
+    if (typeof value === "string") {
+      const placeholderPattern = /\${{\s*([^{}]+?)\s*}}/g;
+      for (const match of value.matchAll(placeholderPattern)) {
+        const matrixKey = match[1].trim();
+        if (!matrix || !Object.prototype.hasOwnProperty.call(matrix, matrixKey)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path,
+            message: `Unknown matrix value "${matrixKey}"`,
+          });
+        }
+      }
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) =>
+        validateMatrixPlaceholders(item, matrix, [...path, index], ctx),
+      );
+      return;
+    }
+
+    if (value && typeof value === "object" && !(value instanceof Date)) {
+      Object.entries(value).forEach(([key, item]) => {
+        if (key !== "matrix") {
+          validateMatrixPlaceholders(item, matrix, [...path, key], ctx);
+        }
+      });
+    }
+  }
+
+  function validateMatrixSelectorValues(
+    value: string | undefined,
+    matrix: Record<string, unknown[]> | undefined,
+    allowedValues: string[],
+    field: "environment" | "target",
+    ctx: z.RefinementCtx,
+  ) {
+    if (typeof value !== "string" || !value.includes("${{")) return;
+
+    const matrixKey = getMatrixPlaceholderKey(value);
+    if (!matrixKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `Expected a complete matrix placeholder such as \${{ ${field} }}`,
+      });
+      return;
+    }
+
+    const values = matrix?.[matrixKey];
+    if (!values) return;
+
+    values.forEach((matrixValue, index) => {
+      if (typeof matrixValue !== "string" || !allowedValues.includes(matrixValue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["matrix", matrixKey, index],
+          message: `Unknown ${field} "${String(matrixValue)}"`,
+        });
+      }
+    });
+  }
 
   function validateMatrixAt(
     assertion: { at?: number | string; matrix?: Record<string, unknown[]> },
@@ -220,6 +295,24 @@ export function getTestsZodSchema(
               path: ["matrix", matrixKey, index],
               message: `Sticky feature ${field} values must be ${expectedType}s`,
             });
+            return;
+          }
+
+          if (field === "variation") {
+            const feature = featuresByKey[featureKey];
+            const variationValues = [
+              ...(feature?.variations || []).map((item) => item.value),
+              feature?.disabledVariationValue,
+            ].filter((variationValue): variationValue is string => {
+              return typeof variationValue === "string";
+            });
+            if (!variationValues.includes(matrixValue as string)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["matrix", matrixKey, index],
+                message: `Unknown variation "${String(matrixValue)}" in feature "${featureKey}"`,
+              });
+            }
           }
         });
       });
@@ -253,7 +346,11 @@ export function getTestsZodSchema(
       variableOverridePath: z.array(z.string()).optional(),
       variable: z.unknown().optional(),
     })
-    .strict();
+    .strict()
+    .refine(
+      (expectedEvaluation) => Object.keys(expectedEvaluation).length > 0,
+      "Expected evaluation must contain at least one field",
+    );
 
   const expectedEvaluationsZodSchema = z
     .object({
@@ -282,8 +379,12 @@ export function getTestsZodSchema(
               context: z.record(z.string(), z.unknown()),
               expectedToMatch: z.boolean(),
             })
-            .strict(),
+            .strict()
+            .superRefine((assertion, ctx) => {
+              validateMatrixPlaceholders(assertion, assertion.matrix, [], ctx);
+            }),
         )
+        .min(1, "Test spec must contain at least one assertion")
         .superRefine(validateAssertionKeys),
     })
     .strict();
@@ -371,8 +472,26 @@ export function getTestsZodSchema(
                 .optional(),
             })
             .strict()
-            .superRefine(validateMatrixAt),
+            .superRefine((assertion, ctx) => {
+              validateMatrixPlaceholders(assertion, assertion.matrix, [], ctx);
+              validateMatrixAt(assertion, ctx);
+              validateMatrixSelectorValues(
+                assertion.environment,
+                assertion.matrix,
+                projectConfig.environments || [],
+                "environment",
+                ctx,
+              );
+              validateMatrixSelectorValues(
+                assertion.target,
+                assertion.matrix,
+                availableTargetKeys,
+                "target",
+                ctx,
+              );
+            }),
         )
+        .min(1, "Test spec must contain at least one assertion")
         .superRefine(validateAssertionKeys),
     })
     .strict();
@@ -432,7 +551,22 @@ export function getTestsZodSchema(
             })
             .strict()
             .superRefine((assertion, ctx) => {
+              validateMatrixPlaceholders(assertion, assertion.matrix, [], ctx);
               validateMatrixAt(assertion, ctx);
+              validateMatrixSelectorValues(
+                assertion.environment,
+                assertion.matrix,
+                projectConfig.environments || [],
+                "environment",
+                ctx,
+              );
+              validateMatrixSelectorValues(
+                assertion.target,
+                assertion.matrix,
+                availableTargetKeys,
+                "target",
+                ctx,
+              );
               validateStickyFeatureMatrixValues(
                 assertion.stickyFeatures,
                 assertion.matrix,
@@ -460,6 +594,7 @@ export function getTestsZodSchema(
               }
             }),
         )
+        .min(1, "Test spec must contain at least one assertion")
         .superRefine(validateAssertionKeys),
     })
     .strict();

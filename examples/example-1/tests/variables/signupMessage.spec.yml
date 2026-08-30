@@ -3,7 +3,7 @@ variable: signupMessage
 assertions:
   - description: uses at to test a required feature's control variation
     environment: production
-    target: all
+    target: signup-message
     at: 25
     expectedValue: Create your account
     expectedEvaluation:

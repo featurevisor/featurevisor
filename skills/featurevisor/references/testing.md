@@ -170,9 +170,11 @@ assertions:
 
 Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix driven fields is fine. Placeholders are replaced recursively inside nested objects and arrays, including context, sticky values, defaults, expected values, detailed expected evaluations, and child assertions. A placeholder used as the complete value preserves its original type.
 
+Matrices and their axes must be nonempty. Every placeholder must name a key in the same assertion's matrix. Matrix driven `environment` and `target` selectors must be complete placeholders whose values name entities that exist in the project. Assertions must contain at least one case, and `expectedEvaluation` must contain at least one field. Expanded JSON from `list --tests --apply-matrix` contains final assertions and omits the original `matrix` property.
+
 ## Testing against target datafiles
 
-The runner builds target datafiles in memory. To imitate a real consumer that loads a target-specific datafile:
+The runner builds target datafiles in memory. A Target assertion must use its exact Target datafile and must fail clearly when that datafile is unavailable. It must never fall back to the base environment datafile. To imitate a real consumer that loads a target-specific datafile:
 
 ```yaml
 assertions:

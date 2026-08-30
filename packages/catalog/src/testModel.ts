@@ -15,6 +15,14 @@ export interface ExpandedTestAssertion {
   matrixValues?: Record<string, unknown>;
 }
 
+export function getTestValuePresence(value: unknown): "missing" | "null" | "value" {
+  if (value === undefined) {
+    return "missing";
+  }
+
+  return value === null ? "null" : "value";
+}
+
 function getMatrixCombinations(matrix: AssertionMatrix) {
   const keys = Object.keys(matrix);
 

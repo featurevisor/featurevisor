@@ -64,19 +64,10 @@ export async function testFeature(
       errors: [],
     };
 
-    let datafileContent = datafileContentByKey.get(assertion.environment || false);
-
-    // target
     const targetDatafileKey = `${assertion.environment || false}-target-${assertion.target}`;
-    if (assertion.target && datafileContentByKey.has(targetDatafileKey)) {
-      datafileContent = datafileContentByKey.get(targetDatafileKey);
-    }
-
-    if (options.showDatafile) {
-      console.log("");
-      console.log(JSON.stringify(datafileContent, null, 2));
-      console.log("");
-    }
+    const datafileContent = assertion.target
+      ? datafileContentByKey.get(targetDatafileKey)
+      : datafileContentByKey.get(assertion.environment || false);
 
     let logLevel: FeaturevisorLogLevel = "warn";
     if (options.verbose) {
@@ -91,6 +82,28 @@ export async function testFeature(
       testResult.passed = false;
 
       return testResult;
+    }
+
+    if (!datafileContent) {
+      testResultAssertion.passed = false;
+      testResult.passed = false;
+      testResultAssertion.errors!.push({
+        type: "flag",
+        expected: "datafile",
+        actual: undefined,
+        message: `datafile not found for environment "${assertion.environment || "none"}"${
+          assertion.target ? ` and target "${assertion.target}"` : ""
+        }`,
+      });
+      testResultAssertion.duration = Date.now() - assertionStartTime;
+      testResult.assertions.push(testResultAssertion);
+      continue;
+    }
+
+    if (options.showDatafile) {
+      console.log("");
+      console.log(JSON.stringify(datafileContent, null, 2));
+      console.log("");
     }
 
     const sdk: Featurevisor = createFeaturevisor({

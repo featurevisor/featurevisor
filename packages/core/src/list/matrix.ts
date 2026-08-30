@@ -81,6 +81,7 @@ export function applyCombinationToFeatureAssertion(
   assertion: FeatureAssertion,
 ): FeatureAssertion {
   const flattenedAssertion = { ...assertion };
+  delete flattenedAssertion.matrix;
 
   // environment
   flattenedAssertion.environment = applyCombinationToValue(
@@ -206,6 +207,7 @@ export function applyCombinationToSegmentAssertion(
   assertion: SegmentAssertion,
 ): SegmentAssertion {
   const flattenedAssertion = { ...assertion };
+  delete flattenedAssertion.matrix;
 
   // context
   flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
@@ -269,6 +271,7 @@ export function getVariableAssertionsFromMatrix(
 
   return combinations.map((combination) => {
     const assertion = { ...assertionWithMatrix };
+    delete assertion.matrix;
     assertion.environment = applyCombinationToValue(assertion.environment, combination);
     assertion.context = Object.keys(assertion.context || {}).reduce((acc, key) => {
       acc[key] = applyCombinationToValue(assertion.context?.[key], combination);

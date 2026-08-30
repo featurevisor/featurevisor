@@ -1,4 +1,3 @@
-import type { AttributeValue } from "./attribute";
 import type { Context } from "./context";
 import type {
   VariableKey,
@@ -20,8 +19,16 @@ import type { SegmentKey } from "./segment";
 import type { TargetKey } from "./target";
 import type { StickyVariables, GlobalVariableKey, DatafileVariable } from "./variable";
 
+export type AssertionMatrixValue =
+  | string
+  | number
+  | boolean
+  | null
+  | AssertionMatrixValue[]
+  | { [key: string]: AssertionMatrixValue };
+
 export interface AssertionMatrix {
-  [key: string]: AttributeValue[];
+  [key: string]: AssertionMatrixValue[];
 }
 
 export interface ExpectedEvaluation {
@@ -126,7 +133,7 @@ export interface VariableAssertion {
   description?: string;
   environment?: EnvironmentKey;
   target?: TargetKey;
-  at?: Weight; // bucket weight for feature evaluations reached through requiredFeatures
+  at?: Weight; // percentage position for feature evaluations reached through requiredFeatures
   stickyFeatures?: StickyFeatures;
   stickyVariables?: StickyVariables;
   context?: Context;
