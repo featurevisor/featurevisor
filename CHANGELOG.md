@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.9.0](https://github.com/featurevisor/featurevisor/compare/v3.8.0...v3.9.0) (2026-08-30)
+
+
+### Features
+
+* variables page in catalog updated ([#427](https://github.com/featurevisor/featurevisor/issues/427)) ([847f592](https://github.com/featurevisor/featurevisor/commit/847f5924a1f8db27f926076d120517a67531ac26))
+
+
+
+
+
 # [3.8.0](https://github.com/featurevisor/featurevisor/compare/v3.7.0...v3.8.0) (2026-08-30)
 
 
