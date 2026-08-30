@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/openfeature-provider-core",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "Shared OpenFeature provider mapping for Featurevisor",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -49,7 +49,7 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "@featurevisor/sdk": "3.7.0",
+    "@featurevisor/sdk": "3.8.0",
     "@openfeature/core": "^1.11.0"
   }
 }
