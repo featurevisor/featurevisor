@@ -30,6 +30,7 @@ import {
   FeatureVariablesList,
   SchemaPropertiesOverview,
   SchemaTable,
+  VariableValueView,
   hasSchemaTableRows,
   usesSchemaStructureTable,
   type SchemaLike,
@@ -56,11 +57,11 @@ function slugifyFragment(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function RulePermalink(props: { targetId: string }) {
+function RulePermalink(props: { targetId: string; label?: string }) {
   return (
     <a
       href={`#${props.targetId}`}
-      aria-label="Link to this rule"
+      aria-label={props.label || "Link to this rule"}
       className="inline-flex rounded p-1 text-muted opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100"
     >
       <svg
@@ -487,6 +488,7 @@ export function EntityDetailPage() {
           { to: "force", label: "Force" },
         ]
       : []),
+    ...(type === "variable" ? [{ to: "overrides", label: "Overrides" }] : []),
     ...(type === "feature" || type === "segment" || type === "variable"
       ? [{ to: "tests", label: "Tests" }]
       : []),
@@ -556,17 +558,16 @@ export function OverviewTab() {
           <OverviewSection title="Values">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-border bg-elevated p-4">
-                <div className="mb-2 text-xs font-semibold text-muted">Default</div>
-                <FormattedValue value={entity.defaultValue} />
+                <h3 className="mb-2 text-sm font-semibold text-muted">Default</h3>
+                <VariableValueView value={entity.defaultValue} />
               </div>
-              <div className="rounded-xl border border-border bg-elevated p-4">
-                <div className="mb-2 text-xs font-semibold text-muted">Disabled</div>
-                <FormattedValue value={entity.disabledValue} />
-              </div>
+              {"disabledValue" in entity && (
+                <div className="rounded-xl border border-border bg-elevated p-4">
+                  <h3 className="mb-2 text-sm font-semibold text-muted">Disabled</h3>
+                  <VariableValueView value={entity.disabledValue} />
+                </div>
+              )}
             </div>
-          </OverviewSection>
-          <OverviewSection title="Overrides">
-            <GlobalVariableOverrides value={entity.overrides} />
           </OverviewSection>
         </>
       )}
@@ -726,113 +727,22 @@ function asRequiredFeatures(
   });
 }
 
-interface GlobalVariableOverrideView {
-  key?: string;
-  description?: string;
-  conditions?: unknown;
-  segments?: unknown;
-  requiredFeatures?: unknown;
-  value?: unknown;
-  mutate?: unknown;
-  overrides?: GlobalVariableOverrideView[];
-}
-
-function GlobalVariableOverrideCard(props: {
-  override: GlobalVariableOverrideView;
-  index: number;
-  depth?: number;
-}) {
-  const { override, index, depth = 0 } = props;
-  const selectors = [
-    ["Conditions", override.conditions],
-    ["Segments", override.segments],
-    ["Required features", override.requiredFeatures],
-  ].filter(([, value]) => typeof value !== "undefined");
-  const hasMutate = typeof override.mutate !== "undefined";
+function RequiredFeatureChips(props: { value: unknown; setKey?: string }) {
+  const requirements = asRequiredFeatures(props.value);
 
   return (
-    <div className={depth > 0 ? "border-l border-border pl-4" : ""}>
-      <div className="rounded-xl border border-border bg-elevated p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-foreground">
-            {override.key || `Override ${index + 1}`}
-          </span>
-          {depth > 0 ? <Badge>nested</Badge> : null}
-        </div>
-        {override.description ? (
-          <p className="mt-1 text-sm text-muted">{override.description}</p>
-        ) : null}
-        {selectors.length > 0 ? (
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {selectors.map(([label, value]) => (
-              <div key={label as string}>
-                <div className="mb-1 text-xs font-semibold text-muted">{label as string}</div>
-                <FormattedValue value={value} />
-              </div>
-            ))}
-          </div>
-        ) : null}
-        <div className="mt-4">
-          <div className="mb-1 text-xs font-semibold text-muted">
-            {hasMutate ? "Mutation" : "Value"}
-          </div>
-          <FormattedValue value={hasMutate ? override.mutate : override.value} />
-        </div>
-      </div>
-      {override.overrides?.length ? (
-        <div className="mt-3 space-y-3">
-          {override.overrides.map((child, childIndex) => (
-            <GlobalVariableOverrideCard
-              key={child.key || childIndex}
-              override={child}
-              index={childIndex}
-              depth={depth + 1}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function GlobalVariableOverrides(props: { value: unknown }) {
-  const groups: Array<[string | undefined, GlobalVariableOverrideView[]]> = Array.isArray(
-    props.value,
-  )
-    ? [[undefined, props.value as GlobalVariableOverrideView[]]]
-    : props.value && typeof props.value === "object"
-      ? Object.entries(props.value as Record<string, GlobalVariableOverrideView[]>).map(
-          ([environment, overrides]) => [environment, Array.isArray(overrides) ? overrides : []],
-        )
-      : [];
-
-  if (groups.every(([, overrides]) => overrides.length === 0)) {
-    return <div className="text-sm text-muted">No overrides are defined.</div>;
-  }
-
-  return (
-    <div className="space-y-5">
-      {groups.map(([environment, overrides]) =>
-        overrides.length > 0 ? (
-          <div key={environment || "all"}>
-            {environment ? (
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                {environment}
-              </div>
-            ) : null}
-            <div className="space-y-3">
-              {overrides.map((override, index) => (
-                <GlobalVariableOverrideCard
-                  key={override.key || index}
-                  override={override}
-                  index={index}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null,
-      )}
-    </div>
+    <>
+      {requirements.map((requirement) => (
+        <OverviewChipLink
+          key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
+          to={getEntityRoute("feature", requirement.feature, props.setKey)}
+        >
+          {requirement.feature}
+          {requirement.enabled === false ? " (disabled)" : ""}
+          {requirement.variation ? ` (${requirement.variation})` : ""}
+        </OverviewChipLink>
+      ))}
+    </>
   );
 }
 
@@ -871,16 +781,10 @@ function EntityOverviewMeta(props: {
         )}
         {required?.length ? (
           <OverviewMetaRow label="Required">
-            {required.map((requirement) => (
-              <OverviewChipLink
-                key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
-                to={getEntityRoute("feature", requirement.feature, setKey)}
-              >
-                {requirement.feature}
-                {requirement.enabled === false ? " (disabled)" : ""}
-                {requirement.variation ? ` (${requirement.variation})` : ""}
-              </OverviewChipLink>
-            ))}
+            <RequiredFeatureChips
+              value={entity.requiredFeatures ?? entity.required}
+              setKey={setKey}
+            />
           </OverviewMetaRow>
         ) : null}
         {tags?.length ? (
@@ -903,7 +807,8 @@ function EntityOverviewMeta(props: {
     const hasType =
       Boolean(entity.type) || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0);
     const typeLabel = entity.type ? String(entity.type) : "oneOf";
-    const hasFacts = hasType || Boolean(required.length);
+    const schemaKey = typeof entity.schema === "string" ? entity.schema : undefined;
+    const hasFacts = hasType || Boolean(schemaKey) || Boolean(required.length);
     const hasRelations = Boolean(tags?.length) || Boolean(targets?.length);
 
     if (!hasStatus && !hasFacts && !hasRelations) {
@@ -922,18 +827,19 @@ function EntityOverviewMeta(props: {
             <OverviewChip>{typeLabel}</OverviewChip>
           </OverviewMetaRow>
         ) : null}
+        {schemaKey ? (
+          <OverviewMetaRow label="Schema">
+            <OverviewChipLink to={getEntityRoute("schema", schemaKey, setKey)}>
+              {schemaKey}
+            </OverviewChipLink>
+          </OverviewMetaRow>
+        ) : null}
         {required.length ? (
           <OverviewMetaRow label="Required">
-            {required.map((requirement) => (
-              <OverviewChipLink
-                key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
-                to={getEntityRoute("feature", requirement.feature, setKey)}
-              >
-                {requirement.feature}
-                {requirement.enabled === false ? " (disabled)" : ""}
-                {requirement.variation ? ` (${requirement.variation})` : ""}
-              </OverviewChipLink>
-            ))}
+            <RequiredFeatureChips
+              value={entity.requiredFeatures ?? entity.required}
+              setKey={setKey}
+            />
           </OverviewMetaRow>
         ) : null}
         {tags?.length ? (
@@ -985,7 +891,7 @@ function EntityOverviewMeta(props: {
   );
 }
 
-function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force") {
+function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force" | "overrides") {
   const entity = detail.entity as Record<string, any>;
   const value = entity[tab];
 
@@ -1046,6 +952,26 @@ export function FeatureRulesTab() {
   );
 }
 
+export function VariableOverridesTab() {
+  const { detail, setKey } = useEntityDetail();
+  const { environmentKey } = useParams();
+  const entity = detail.entity as Record<string, any>;
+  const environments = getEnvironmentItems(detail, "overrides");
+  const selectedEnvironment = environmentKey || environments[0];
+  const rows = environments.length > 0 ? entity.overrides?.[selectedEnvironment] : entity.overrides;
+
+  if (detail.type !== "variable") return <Navigate to=".." replace />;
+
+  return (
+    <VariableOverrideRows
+      environments={environments}
+      selectedEnvironment={selectedEnvironment}
+      rows={Array.isArray(rows) ? rows : []}
+      setKey={setKey}
+    />
+  );
+}
+
 export function FeatureForceTab() {
   const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
@@ -1067,6 +993,35 @@ export function FeatureForceTab() {
       showConditions
       setKey={setKey}
     />
+  );
+}
+
+function EnvironmentPills(props: {
+  base: string;
+  environments: string[];
+  selectedEnvironment?: string;
+}) {
+  if (props.environments.length === 0) {
+    return null;
+  }
+
+  return (
+    <nav className="flex flex-wrap gap-2">
+      {props.environments.map((environment) => (
+        <Link
+          key={environment}
+          to={`../${props.base}/${environment}`}
+          className={[
+            "inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+            environment === props.selectedEnvironment
+              ? "border-primary bg-header-active !text-header-text"
+              : "border-pill bg-transparent text-text hover:bg-elevated",
+          ].join(" ")}
+        >
+          {environment}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -1092,24 +1047,11 @@ function FeatureRows(props: {
 
   return (
     <div className="space-y-4">
-      {props.environments.length > 0 && (
-        <nav className="flex flex-wrap gap-2">
-          {props.environments.map((environment) => (
-            <Link
-              key={environment}
-              to={`../${props.base}/${environment}`}
-              className={[
-                "inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                environment === props.selectedEnvironment
-                  ? "border-primary bg-header-active !text-header-text"
-                  : "border-pill bg-transparent text-text hover:bg-elevated",
-              ].join(" ")}
-            >
-              {environment}
-            </Link>
-          ))}
-        </nav>
-      )}
+      <EnvironmentPills
+        base={props.base}
+        environments={props.environments}
+        selectedEnvironment={props.selectedEnvironment}
+      />
 
       {typeof props.expose !== "undefined" && (
         <div className="rounded border border-border bg-warning-surface p-3 text-sm">
@@ -1177,6 +1119,148 @@ function RuleProgress(props: { value: number }) {
       <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
         <div className="h-full rounded-full bg-green-500" style={{ width: `${value}%` }} />
       </div>
+    </div>
+  );
+}
+
+interface GlobalVariableOverrideView {
+  key?: string;
+  description?: string;
+  promotable?: boolean;
+  conditions?: unknown;
+  segments?: unknown;
+  requiredFeatures?: unknown;
+  value?: unknown;
+  mutate?: unknown;
+  overrides?: GlobalVariableOverrideView[];
+}
+
+function VariableOverrideRows(props: {
+  environments: string[];
+  selectedEnvironment?: string;
+  rows: GlobalVariableOverrideView[];
+  setKey?: string;
+}) {
+  const base = "overrides";
+  useScrollToHash([base, props.selectedEnvironment, props.rows.length]);
+
+  if (props.environments.length > 0 && props.selectedEnvironment) {
+    const isKnown = props.environments.includes(props.selectedEnvironment);
+    if (!isKnown) {
+      return <Navigate to={`../${base}/${props.environments[0]}`} replace />;
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <EnvironmentPills
+        base={base}
+        environments={props.environments}
+        selectedEnvironment={props.selectedEnvironment}
+      />
+
+      {props.rows.length === 0 && <EmptyState title="No overrides found" />}
+      <div className="space-y-8">
+        {props.rows.map((row, index) => (
+          <VariableOverrideSection
+            key={row.key || index}
+            override={row}
+            index={index}
+            base={base}
+            selectedEnvironment={props.selectedEnvironment}
+            setKey={props.setKey}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VariableOverrideSection(props: {
+  override: GlobalVariableOverrideView;
+  index: number;
+  depth?: number;
+  base: string;
+  selectedEnvironment?: string;
+  ancestorKeys?: string[];
+  setKey?: string;
+}) {
+  const { override, index, depth = 0, setKey } = props;
+  const ancestorKeys = props.ancestorKeys || [];
+  const overrideKey = String(override.key || `#${index + 1}`);
+  const keyPath = [...ancestorKeys, overrideKey];
+  const overrideId = slugifyFragment(
+    [props.base, props.selectedEnvironment, ...keyPath].filter(Boolean).join("-"),
+  );
+  const required = asRequiredFeatures(override.requiredFeatures);
+  const hasSegments = typeof override.segments !== "undefined";
+  const hasConditions = typeof override.conditions !== "undefined";
+  const hasRequirements = required.length > 0;
+  const hasMutate = typeof override.mutate !== "undefined";
+  const selectorCount = [hasSegments, hasConditions, hasRequirements].filter(Boolean).length;
+
+  return (
+    <div className={depth > 0 ? "border-l border-border pl-4" : undefined}>
+      <section className="space-y-4">
+        <div className="space-y-3">
+          <div className="group flex min-w-0 flex-wrap items-center gap-2">
+            <h2 id={overrideId} className="font-semibold [overflow-wrap:anywhere]">
+              <EntityKey value={overrideKey} className="font-semibold" />
+            </h2>
+            <RulePermalink targetId={overrideId} label="Link to this override" />
+            {depth > 0 && <Badge>nested</Badge>}
+            {override.promotable === false && <Badge>not promotable</Badge>}
+          </div>
+          {override.description && <MarkdownContent value={override.description} />}
+        </div>
+
+        {selectorCount > 0 && (
+          <div className={`grid gap-4 ${selectorCount > 1 ? "md:grid-cols-2" : ""}`}>
+            {hasSegments && (
+              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                <h3 className="text-sm font-semibold text-muted">Segments</h3>
+                <GroupSegmentTree segments={override.segments as any} setKey={setKey} />
+              </div>
+            )}
+            {hasConditions && (
+              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                <h3 className="text-sm font-semibold text-muted">Conditions</h3>
+                <ConditionTree conditions={override.conditions as any} setKey={setKey} />
+              </div>
+            )}
+            {hasRequirements && (
+              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+                <h3 className="text-sm font-semibold text-muted">Required features</h3>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <RequiredFeatureChips value={override.requiredFeatures} setKey={setKey} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
+          <h3 className="text-sm font-semibold text-muted">{hasMutate ? "Mutation" : "Value"}</h3>
+          <VariableValueView value={hasMutate ? override.mutate : override.value} />
+        </div>
+      </section>
+
+      {override.overrides?.length ? (
+        <div className="mt-8 space-y-8">
+          {override.overrides.map((child, childIndex) => (
+            <VariableOverrideSection
+              key={child.key || childIndex}
+              override={child}
+              index={childIndex}
+              depth={depth + 1}
+              base={props.base}
+              selectedEnvironment={props.selectedEnvironment}
+              ancestorKeys={keyPath}
+              setKey={setKey}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
