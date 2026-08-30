@@ -868,6 +868,7 @@ export async function lintProject(
     segments as [string, ...string[]],
     targets as [string, ...string[]],
     variables as [string, ...string[]],
+    featuresByKey,
   );
 
   if (!options.entityType || options.entityType === "test") {

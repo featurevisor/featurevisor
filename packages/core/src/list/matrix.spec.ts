@@ -57,8 +57,17 @@ describe("core :: tester :: matrix", function () {
       environment: "${{ environment }}",
       matrix: {
         environment: ["production"],
+        at: [37.5],
         value: ["configured"],
         enabled: [true],
+        variation: ["treatment"],
+      },
+      at: "${{ at }}" as never,
+      stickyFeatures: {
+        checkout: {
+          enabled: "${{ enabled }}" as unknown as boolean,
+          variation: "${{ variation }}",
+        },
       },
       stickyVariables: {
         settings: { nested: ["${{ value }}", { enabled: "${{ enabled }}" }] },
@@ -68,10 +77,23 @@ describe("core :: tester :: matrix", function () {
       expectedEvaluation: {
         variableValue: { nested: ["${{ value }}", "literal-${{ value }}"] },
       },
+      children: [
+        {
+          context: { enabled: "${{ enabled }}" },
+          stickyVariables: { settings: "child-${{ value }}" },
+          expectedValue: "child-${{ value }}",
+        },
+      ],
     });
 
+    expect(assertions).toHaveLength(1);
+    expect(assertions[0].matrix).toBeUndefined();
     expect(assertions[0]).toMatchObject({
       environment: "production",
+      at: 37.5,
+      stickyFeatures: {
+        checkout: { enabled: true, variation: "treatment" },
+      },
       stickyVariables: {
         settings: { nested: ["configured", { enabled: true }] },
       },
@@ -80,7 +102,29 @@ describe("core :: tester :: matrix", function () {
       expectedEvaluation: {
         variableValue: { nested: ["configured", "literal-configured"] },
       },
+      children: [
+        {
+          context: { enabled: true },
+          stickyVariables: { settings: "child-configured" },
+          expectedValue: "child-configured",
+        },
+      ],
     });
+  });
+
+  test("preserves structured matrix values as complete placeholder values", function () {
+    const assertions = getVariableAssertionsFromMatrix(0, {
+      environment: "production",
+      matrix: {
+        value: [["one", "two"], { enabled: true, nested: { count: 2 } }],
+      },
+      expectedValue: "${{ value }}",
+    });
+
+    expect(assertions).toHaveLength(2);
+    expect(assertions[0].expectedValue).toEqual(["one", "two"]);
+    expect(assertions[1].expectedValue).toEqual({ enabled: true, nested: { count: 2 } });
+    expect(assertions.every((assertion) => typeof assertion.matrix === "undefined")).toBe(true);
   });
 
   test("substitutes nested feature and child assertion values", function () {

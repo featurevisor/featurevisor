@@ -187,9 +187,15 @@ function testStandardProject(projectDirectoryPath) {
   run(projectDirectoryPath, [
     "test",
     "--entity-type=variable",
-    "--key-pattern=^(campaignBanner|flexibleIdentifier)$",
+    "--key-pattern=^(campaignBanner|flexibleIdentifier|signupMessage)$",
   ]);
-  run(projectDirectoryPath, ["test", "--target=all", "--target=checkout", "--only-failures"]);
+  run(projectDirectoryPath, [
+    "test",
+    "--target=all",
+    "--target=checkout",
+    "--target=signup-message",
+    "--only-failures",
+  ]);
   run(projectDirectoryPath, ["test", "--assertion-pattern=.*", "--only-failures"]);
 
   const datafilesDirectoryPath = join(projectDirectoryPath, "generated-datafiles");
@@ -393,9 +399,16 @@ function testStandardProject(projectDirectoryPath) {
     ["list", "--features", "--with-variations", "--with-variables", "--json"],
     (features) => assert.ok(features.some((feature) => feature.key === "foo")),
   );
-  runJson(projectDirectoryPath, ["list", "--tests", "--apply-matrix", "--json"], (tests) =>
-    assert.ok(tests.length > 0),
-  );
+  runJson(projectDirectoryPath, ["list", "--tests", "--apply-matrix", "--json"], (tests) => {
+    assert.ok(tests.length > 0);
+    assert.ok(
+      tests.every((test) => test.assertions.every((assertion) => !("matrix" in assertion))),
+    );
+    const signupMessage = tests.find((test) => test.variable === "signupMessage");
+    assert.ok(signupMessage);
+    assert.equal(signupMessage.assertions[0].target, "signup-message");
+    assert.equal(signupMessage.assertions[2].children[0].expectedValue, "Create your account");
+  });
 
   run(projectDirectoryPath, ["find-duplicate-segments", "--authors"]);
   run(projectDirectoryPath, ["find-usage", "--segment=mobile"]);

@@ -1,8 +1,7 @@
 variable: checkoutPromoBanner
 
-# Global variables are never bucketed, so variable assertions take no `at`.
-# Percentiles still matter indirectly here, because the required feature is
-# bucketed on the same context.
+# Global variables are never bucketed directly. An optional `at` controls only
+# feature evaluations reached through requiredFeatures.
 assertions:
   - description: Shown while the required checkout feature is enabled for this user
     environment: production

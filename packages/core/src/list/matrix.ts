@@ -81,6 +81,7 @@ export function applyCombinationToFeatureAssertion(
   assertion: FeatureAssertion,
 ): FeatureAssertion {
   const flattenedAssertion = { ...assertion };
+  delete flattenedAssertion.matrix;
 
   // environment
   flattenedAssertion.environment = applyCombinationToValue(
@@ -206,6 +207,7 @@ export function applyCombinationToSegmentAssertion(
   assertion: SegmentAssertion,
 ): SegmentAssertion {
   const flattenedAssertion = { ...assertion };
+  delete flattenedAssertion.matrix;
 
   // context
   flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
@@ -269,6 +271,7 @@ export function getVariableAssertionsFromMatrix(
 
   return combinations.map((combination) => {
     const assertion = { ...assertionWithMatrix };
+    delete assertion.matrix;
     assertion.environment = applyCombinationToValue(assertion.environment, combination);
     assertion.context = Object.keys(assertion.context || {}).reduce((acc, key) => {
       acc[key] = applyCombinationToValue(assertion.context?.[key], combination);
@@ -280,7 +283,11 @@ export function getVariableAssertionsFromMatrix(
     if (assertion.description) {
       assertion.description = applyCombinationToValue(assertion.description, combination);
     }
+    const at = applyCombinationToValue(assertion.at, combination);
+    assertion.at =
+      typeof at === "string" ? (at.indexOf(".") > -1 ? parseFloat(at) : parseInt(at, 10)) : at;
     assertion.expectedValue = applyCombinationToValue(assertion.expectedValue, combination);
+    assertion.stickyFeatures = applyCombinationToValue(assertion.stickyFeatures, combination);
     assertion.stickyVariables = applyCombinationToValue(assertion.stickyVariables, combination);
     assertion.defaultVariableValue = applyCombinationToValue(
       assertion.defaultVariableValue,
@@ -290,6 +297,7 @@ export function getVariableAssertionsFromMatrix(
       assertion.expectedEvaluation,
       combination,
     );
+    assertion.children = applyCombinationToValue(assertion.children, combination);
     assertion.description = `Assertion #${aIndex + 1}${
       assertion.description ? `: ${assertion.description}` : ""
     }`;

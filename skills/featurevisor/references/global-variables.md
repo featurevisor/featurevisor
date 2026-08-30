@@ -66,5 +66,14 @@ assertions:
       variableOverrideIndex: 0
 ```
 
-Variable assertions also support `target`, `matrix`, `stickyVariables`, and `defaultVariableValue`.
-Matrix placeholders are substituted recursively in nested sticky values, defaults, expected values, and detailed evaluation expectations. Detailed expectations accept only documented evaluation fields and compare nested arrays and objects by value.
+Variable assertions also support `target`, `matrix`, `at`, `stickyFeatures`, `stickyVariables`, `defaultVariableValue`, and `children`.
+
+Global variables are not bucketed. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. It is a no-op when no required feature is evaluated. A number applies throughout the required feature chain. Use `stickyFeatures` to supply exact upstream flag, variation, and feature variable results per feature. Sticky features take precedence over `at` for those feature keys. Use `stickyVariables` separately to fix the global variable's own result.
+
+Matrix placeholders are substituted recursively in `at`, nested sticky values, defaults, expected values, detailed evaluation expectations, and child assertions. Complete placeholders preserve structured arrays and objects. Matrices and their axes must be nonempty, every placeholder must name a declared matrix key, and matrix driven environments and Targets must exist. `at` must be a number from 0 to 100 or a complete matrix placeholder backed by values in that range. Detailed expectations accept only documented evaluation fields, must contain at least one field, and compare nested arrays and objects by value.
+
+Child assertions evaluate through a spawned SDK child. They inherit parent context, keep sticky feature and variable maps isolated, and continue using the parent's `at` setting. Give every child at least one of `expectedValue` or `expectedEvaluation`.
+
+A Target assertion must use the exact Target datafile. It must fail when that datafile is unavailable rather than silently evaluating the base datafile. The Node.js matrix expander removes the authoring `matrix` property before delegated language runners receive expanded assertions.
+
+Test linting validates sticky feature keys, static variations, feature variable keys, and sticky global variable keys. Matrix values used by `at` must be numeric and between 0 and 100. Matrix values used by sticky `enabled` and `variation` fields must retain their boolean and string types respectively.

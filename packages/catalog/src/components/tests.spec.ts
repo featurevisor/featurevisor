@@ -1,8 +1,18 @@
 import type { TestFeature, TestSegment, TestVariable } from "@featurevisor/types";
 
-import { expandTestAssertions, getTestAssertionPermalink } from "../testModel";
+import {
+  expandTestAssertions,
+  getTestAssertionPermalink,
+  getTestValuePresence,
+} from "../testModel";
 
 describe("catalog test presentation", () => {
+  it("distinguishes an explicit null from a missing value", () => {
+    expect(getTestValuePresence(undefined)).toBe("missing");
+    expect(getTestValuePresence(null)).toBe("null");
+    expect(getTestValuePresence(false)).toBe("value");
+  });
+
   it("keeps authored assertions without matrices as one numbered assertion", () => {
     const test: TestFeature = {
       key: "checkout-primary",
@@ -156,15 +166,24 @@ describe("catalog test presentation", () => {
       variable: "supportEmail",
       assertions: [
         {
-          matrix: { country: ["nl", "de"] },
+          matrix: { country: ["nl", "de"], at: [25] },
           environment: "production",
+          at: "${{ at }}" as never,
           context: { country: "${{ country }}" },
+          stickyFeatures: { checkout: { enabled: true } },
           defaultVariableValue: "fallback@example.com",
           expectedValue: "${{ country }}@example.com",
           expectedEvaluation: {
             reason: "variable_override_rule",
             variableOverrideIndex: 0,
           },
+          children: [
+            {
+              context: { country: "${{ country }}" },
+              stickyVariables: { supportEmail: "child-${{ country }}@example.com" },
+              expectedValue: "child-${{ country }}@example.com",
+            },
+          ],
         },
       ],
     };
@@ -172,13 +191,22 @@ describe("catalog test presentation", () => {
     expect(expandTestAssertions(test)[0]).toMatchObject({
       label: "1.1",
       assertion: {
+        at: 25,
         context: { country: "nl" },
+        stickyFeatures: { checkout: { enabled: true } },
         defaultVariableValue: "fallback@example.com",
         expectedValue: "nl@example.com",
         expectedEvaluation: {
           reason: "variable_override_rule",
           variableOverrideIndex: 0,
         },
+        children: [
+          {
+            context: { country: "nl" },
+            stickyVariables: { supportEmail: "child-nl@example.com" },
+            expectedValue: "child-nl@example.com",
+          },
+        ],
       },
     });
   });

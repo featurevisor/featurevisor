@@ -1,0 +1,24 @@
+description: Message selected through the signup feature rollout
+tags:
+  - all
+
+type: string
+
+defaultValue: Create your account
+disabledValue: Sign up is unavailable
+
+requiredFeatures: allowSignup
+
+overrides:
+  production:
+    - key: treatment
+      requiredFeatures:
+        - feature: allowSignup
+          variation: treatment
+      value: Sign up with your preferred provider
+
+    - key: control
+      requiredFeatures:
+        - feature: allowSignup
+          variation: control
+      value: Create your account

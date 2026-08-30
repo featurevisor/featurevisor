@@ -31,3 +31,9 @@ assertions:
     expectedValue: sticky-support@example.com
     expectedEvaluation:
       reason: sticky
+
+  - description: reports a missing variable when the target excludes it
+    environment: production
+    target: signup-message
+    expectedEvaluation:
+      reason: variable_not_found

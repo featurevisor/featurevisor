@@ -107,9 +107,45 @@ assertions:
       variableOverrideKey: netherlands
 ```
 
-Variable assertions support `matrix`, `target`, `stickyVariables`, and `defaultVariableValue`.
+Variable assertions support `matrix`, `target`, `at`, `stickyFeatures`, `stickyVariables`, `defaultVariableValue`, and `children`.
 
-They do **not** accept `at`. Global variables are never bucketed, so there is no percentile to pin, and lint rejects the key outright with `Unrecognized key: "at"`. When a global variable declares `requiredFeatures`, the required feature is still bucketed on the same context, so drive that branch with a `userId` that lands where you want it (or one covered by a `force` block) rather than reaching for `at`. Assert the gated fallback with `reason: required_features_unmet`.
+Global variables are never bucketed directly. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. This makes a required feature's rollout and variation allocation deterministic without searching for a particular `userId`. It has no effect when no required feature is evaluated.
+
+Use `stickyFeatures` to supply exact upstream feature results. Sticky features take precedence over `at`. Use `stickyVariables` separately to bypass normal evaluation for the global variable itself.
+
+`at` must be a number from 0 to 100 or a complete matrix placeholder whose values are all in that range. One value applies to every non-sticky feature reached through the required feature chain. A sticky result affects only its own feature, while the remaining required features continue to use `at`.
+
+```yaml
+variable: signupMessage
+assertions:
+  - environment: production
+    at: 75
+    expectedValue: Sign up with your preferred provider
+
+  - environment: production
+    at: 25
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    expectedValue: Sign up with your preferred provider
+```
+
+Child assertions evaluate the same global variable through `f.spawn()`. They inherit the parent context, then apply their own context on top. Child sticky maps are isolated from the parent, so pass `stickyFeatures` or `stickyVariables` in the child when needed. The parent assertion's `at` remains active for child evaluations.
+
+```yaml
+variable: campaignBanner
+assertions:
+  - environment: production
+    context: { country: nl }
+    expectedValue: Welcome
+    children:
+      - context: { city: amsterdam }
+        expectedValue: Welkom
+      - stickyVariables:
+          campaignBanner: Preview
+        expectedValue: Preview
+```
 
 ## Matrix expansion
 
@@ -134,9 +170,11 @@ assertions:
 
 Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix driven fields is fine. Placeholders are replaced recursively inside nested objects and arrays, including context, sticky values, defaults, expected values, detailed expected evaluations, and child assertions. A placeholder used as the complete value preserves its original type.
 
+Matrices and their axes must be nonempty. Every placeholder must name a key in the same assertion's matrix. Matrix driven `environment` and `target` selectors must be complete placeholders whose values name entities that exist in the project. Assertions must contain at least one case, and `expectedEvaluation` must contain at least one field. Expanded JSON from `list --tests --apply-matrix` contains final assertions and omits the original `matrix` property.
+
 ## Testing against target datafiles
 
-The runner builds target datafiles in memory. To imitate a real consumer that loads a target-specific datafile:
+The runner builds target datafiles in memory. A Target assertion must use its exact Target datafile and must fail clearly when that datafile is unavailable. It must never fall back to the base environment datafile. To imitate a real consumer that loads a target-specific datafile:
 
 ```yaml
 assertions:

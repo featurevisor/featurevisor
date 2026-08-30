@@ -1,0 +1,50 @@
+variable: signupMessage
+
+assertions:
+  - description: uses at to test a required feature's control variation
+    environment: production
+    target: signup-message
+    at: 25
+    expectedValue: Create your account
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: control
+
+  - description: uses at to test a required feature's treatment variation
+    environment: production
+    at: 75
+    expectedValue: Sign up with your preferred provider
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: treatment
+
+  - description: sticky feature values take precedence over at
+    environment: production
+    at: 25
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    expectedValue: Sign up with your preferred provider
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: treatment
+    children:
+      - expectedValue: Create your account
+        expectedEvaluation:
+          variableOverrideKey: control
+
+  - description: a sticky disabled feature disables the variable
+    matrix:
+      at: [75]
+      enabled: [false]
+      variation: [control]
+    environment: production
+    at: ${{ at }}
+    stickyFeatures:
+      allowSignup:
+        enabled: ${{ enabled }}
+        variation: ${{ variation }}
+    expectedValue: Sign up is unavailable
+    expectedEvaluation:
+      reason: required_features_unmet

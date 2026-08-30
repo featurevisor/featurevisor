@@ -10,19 +10,29 @@ import type {
 } from "@featurevisor/types";
 
 import { Badge, EmptyState, EntityKey, LabelValueBadge, MarkdownContent } from "./ui";
-import { expandTestAssertions, getTestAssertionPermalink } from "../testModel";
+import {
+  expandTestAssertions,
+  getTestAssertionPermalink,
+  getTestValuePresence,
+} from "../testModel";
 
 function getAssertionElementId(permalink: string) {
   return `assertion-${encodeURIComponent(permalink)}`;
 }
 
 function hasValue(value: unknown) {
-  return value !== undefined && value !== null;
+  return value !== undefined;
 }
 
 function ValueDisplay(props: { value: unknown }) {
-  if (props.value === undefined || props.value === null) {
+  const presence = getTestValuePresence(props.value);
+
+  if (presence === "missing") {
     return <span className="text-faint">not set</span>;
+  }
+
+  if (presence === "null") {
+    return <span className="font-mono text-xs [overflow-wrap:anywhere]">null</span>;
   }
 
   if (typeof props.value === "boolean") {
@@ -207,13 +217,38 @@ function VariableAssertionContent(props: { assertion: VariableAssertion }) {
         {props.assertion.target && (
           <LabelValueBadge label="Target" value={props.assertion.target} compact />
         )}
+        {hasValue(props.assertion.at) && (
+          <LabelValueBadge
+            label="Required feature bucket"
+            value={`${props.assertion.at}%`}
+            compact
+          />
+        )}
       </div>
       <TestDataPanel title="Context" value={props.assertion.context || {}} />
       <TestDataPanel title="Expected" value={expectations} />
       <TestDataPanel title="Defaults" value={defaults} />
+      {props.assertion.stickyFeatures && (
+        <TestDataPanel title="Sticky features" value={props.assertion.stickyFeatures} />
+      )}
       {props.assertion.stickyVariables && (
         <TestDataPanel title="Sticky variables" value={props.assertion.stickyVariables} />
       )}
+      {props.assertion.children?.length ? (
+        <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-faint">
+            Child instances
+          </h4>
+          <div className="space-y-3">
+            {props.assertion.children.map((child, index) => (
+              <div key={index} className="rounded-lg border border-border bg-elevated p-3">
+                <div className="mb-3 text-xs font-semibold text-muted">Child {index + 1}</div>
+                <ValueDisplay value={child} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

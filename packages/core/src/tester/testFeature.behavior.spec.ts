@@ -43,6 +43,34 @@ function createDatasource() {
 }
 
 describe("core: feature tester behavior", () => {
+  it("does not fall back to the base datafile when a target datafile is missing", async () => {
+    const result = await testFeature(
+      createDatasource(),
+      {} as any,
+      {
+        feature: featureKey,
+        assertions: [
+          {
+            description: "target",
+            environment: "production",
+            target: "web",
+            at: 50,
+            expectedToBeEnabled: true,
+          },
+        ],
+      },
+      { quiet: true },
+      new Map([["production", createDatafile()]]),
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.assertions[0].errors).toEqual([
+      expect.objectContaining({
+        message: 'datafile not found for environment "production" and target "web"',
+      }),
+    ]);
+  });
+
   it("lets child context override root context for values and detailed evaluations", async () => {
     const test = {
       key: featureKey,

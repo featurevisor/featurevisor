@@ -15,6 +15,14 @@ export interface ExpandedTestAssertion {
   matrixValues?: Record<string, unknown>;
 }
 
+export function getTestValuePresence(value: unknown): "missing" | "null" | "value" {
+  if (value === undefined) {
+    return "missing";
+  }
+
+  return value === null ? "null" : "value";
+}
+
 function getMatrixCombinations(matrix: AssertionMatrix) {
   const keys = Object.keys(matrix);
 
@@ -150,10 +158,18 @@ function applyCombinationToAssertion(
       variableResult.target,
       combination,
     ) as VariableAssertion["target"];
+    const at = applyCombinationToValue(variableResult.at, combination);
+    variableResult.at = (
+      typeof at === "string" ? (at.includes(".") ? parseFloat(at) : parseInt(at, 10)) : at
+    ) as VariableAssertion["at"];
     variableResult.expectedValue = applyCombinationToValue(
       variableResult.expectedValue,
       combination,
     ) as VariableAssertion["expectedValue"];
+    variableResult.stickyFeatures = applyCombinationToValue(
+      variableResult.stickyFeatures,
+      combination,
+    ) as VariableAssertion["stickyFeatures"];
     variableResult.stickyVariables = applyCombinationToValue(
       variableResult.stickyVariables,
       combination,
@@ -166,6 +182,10 @@ function applyCombinationToAssertion(
       variableResult.expectedEvaluation,
       combination,
     ) as VariableAssertion["expectedEvaluation"];
+    variableResult.children = applyCombinationToValue(
+      variableResult.children,
+      combination,
+    ) as VariableAssertion["children"];
   }
 
   return result;
