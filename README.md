@@ -69,7 +69,7 @@ The core building blocks of a Featurevisor [project](https://featurevisor.com/do
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
 - [Global variables](https://featurevisor.com/docs/global-variables/): independently evaluated configuration values
 
-SDKs evaluate feature values against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application. Independent global variables are currently supported by the JavaScript, React, Vue.js, Node.js, Browser, and JavaScript OpenFeature packages:
+SDKs evaluate feature values against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application. All current Featurevisor SDKs support independent global variables:
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
@@ -96,7 +96,7 @@ Supported SDKs include:
 - [Swift](https://featurevisor.com/docs/sdks/swift/)
 - [Rust](https://featurevisor.com/docs/sdks/rust/)
 - [Elixir](https://featurevisor.com/docs/sdks/elixir/)
-- [OpenFeature providers](https://featurevisor.com/docs/sdks/openfeature/) for Node.js, browsers, and other supported SDK languages
+- [OpenFeature providers](https://featurevisor.com/docs/sdks/openfeature/) for Node.js, browsers, Go, Swift, Java and Kotlin, Ruby, Python, PHP, Rust, and Elixir
 
 ## Using Featurevisor with AI agents
 
