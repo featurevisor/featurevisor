@@ -218,11 +218,22 @@ npx featurevisor evaluate \
   --context='{"userId":"123","country":"nl"}'
 
 # extras
+  --explain                                       # explain the SDK outcome
   --verbose                                       # more log detail
   --json --pretty                                 # JSON output
 ```
 
-Returns the full evaluation chain (sticky → required → force → rules → bucketing → fallback), so you don't have to reason about it by hand.
+Returns final SDK evaluation details. Add `--explain` for a CLI explanation using those results, available SDK diagnostics, compiled selectors, segment definitions, and local authoring information. This is not a complete execution trace. It does not rerun selectors or dependencies, and cannot identify every rejected condition or short circuit.
+
+For nested global variable overrides, the explanation shows the authored key path and value or mutation declarations. These mutations were resolved during building, not applied by the SDK. Feature variable explanations do not claim to contain a mutation history.
+
+Terminal explanations are concise and coloured, with each value printed once. They summarize override paths and mutated field names, and collapse repeated related diagnostic results. Full declarations, observations, and limitations remain available in `--explain --json` without truncation.
+
+Explanations are checked against the SDK result before output. Conflicting result fields or selected value sources fail with exit code 1. JSON errors have code `evaluation_explanation_mismatch`, with conflicting fields in `details.mismatches`. Incomplete diagnostic history is not treated as a contradiction. The check never reruns selectors or dependencies.
+
+`--explain --json --pretty` adds `explanation` alongside the original evaluation fields. For features it contains `flag`, `variation`, and `variables`; for global variables it is one explanation object. Each explanation has `version: 1`, `mode: "outcome"`, `source`, `result`, `summary`, `evidence`, and `limitations`. An absent result has `result.hasValue: false` and no `result.value`; an explicit null has `hasValue: true`. Without `--explain`, JSON output stays unchanged. With repeated Targets, explanations live at each entry's `evaluations.explanation`.
+
+Evaluation builds from the local project and does not fetch deployed datafiles or write allocation state. Explanation metadata identifies the environment, set, and Target. Review configuration and context values before sharing output. `--verbose` prints raw diagnostics only in terminal output, not JSON.
 
 Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
 
