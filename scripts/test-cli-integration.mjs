@@ -263,6 +263,117 @@ function testStandardProject(projectDirectoryPath) {
 
   const context = '{"userId":"123","device":"mobile","country":"nl"}';
   const stateBeforeRuntimeCommands = snapshotStateFiles(projectDirectoryPath);
+  // Inject a contradictory explanation in a child process, never in project files.
+  for (const json of [false, true]) {
+    const script = [
+      "const explanations = require(process.argv[1]);",
+      "const original = explanations.explainEvaluation;",
+      "explanations.explainEvaluation = (...args) => { const result = original(...args); result.result.value = 'incorrect'; return result; };",
+      "process.argv = [process.execPath, process.argv[2], ...process.argv.slice(3)];",
+      "require(process.argv[1]);",
+    ].join("\n");
+    const failed = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        script,
+        join(rootDirectoryPath, "packages/core/lib/evaluate/explain.js"),
+        cliPath,
+        "evaluate",
+        "--variable=supportEmail",
+        "--environment=production",
+        "--explain",
+        ...(json ? ["--json"] : []),
+      ],
+      { cwd: projectDirectoryPath, encoding: "utf8", timeout: 120_000 },
+    );
+    assert.equal(failed.status, 1, `${failed.stdout}\n${failed.stderr}`);
+    assert.equal(failed.stdout.trim(), "");
+    if (json) {
+      const error = JSON.parse(failed.stderr).error;
+      assert.equal(error.code, "evaluation_explanation_mismatch");
+      assert.ok(error.details.mismatches.some((entry) => entry.field === "result.value"));
+    } else {
+      assert.match(failed.stderr, /Explanation does not match the SDK evaluation/);
+    }
+    pass(`evaluate explanation mismatch exits with an error (${json ? "JSON" : "text"})`);
+  }
+  // Explanations augment the real SDK result without changing any evaluation.
+  for (const selection of [
+    ["--feature=foo"],
+    ["--feature=pricing"],
+    ["--feature=testDisabled"],
+    ["--feature=withOverrides"],
+    ["--feature=missing-feature"],
+    ["--variable=campaignBanner"],
+    ["--variable=dependencyMessage"],
+    ["--variable=missing-variable"],
+  ]) {
+    const args = [
+      "evaluate",
+      ...selection,
+      "--environment=production",
+      '--context={"userId":"123","country":"nl","city":"amsterdam","device":"mobile"}',
+      "--json",
+    ];
+    let original;
+    runJson(projectDirectoryPath, args, (result) => {
+      original = result;
+    });
+    runJson(projectDirectoryPath, [...args, "--explain", "--verbose", "--pretty"], (result) => {
+      const { explanation, ...evaluations } = result;
+      assert.deepEqual(evaluations, original);
+      assert.ok(explanation);
+      if (selection[0] === "--variable=campaignBanner") {
+        assert.deepEqual(explanation.result.value, original.variableValue);
+        assert.equal(explanation.mode, "outcome");
+        const construction = explanation.evidence.find(
+          (entry) => entry.title === "Authored value construction (build time)",
+        );
+        assert.deepEqual(
+          construction.details.overrides.map((entry) => entry.path),
+          [["netherlands"], ["netherlands", "amsterdam"], ["netherlands", "amsterdam", "mobile"]],
+        );
+        assert.deepEqual(construction.details.compiledValue, original.variableValue);
+      }
+    });
+  }
+  run(
+    projectDirectoryPath,
+    [
+      "evaluate",
+      "--feature=pricing",
+      "--environment=production",
+      '--context={"userId":"123","country":"nl"}',
+      "--explain",
+    ],
+    (result) => {
+      assert.match(result.stdout, /Value: "control"/);
+      assert.match(result.stdout, /disabledVariationValue/);
+      assert.match(result.stdout, /not a complete execution trace/);
+    },
+  );
+  runJson(
+    projectDirectoryPath,
+    [
+      "evaluate",
+      "--variable=campaignBanner",
+      "--environment=production",
+      "--target=all",
+      "--target=checkout",
+      "--explain",
+      "--json",
+    ],
+    (result) => {
+      assert.deepEqual(
+        result.map((entry) => entry.target),
+        ["all", "checkout"],
+      );
+      assert.equal(result[0].evaluations.explanation.source.target, "all");
+      assert.equal(result[1].evaluations.explanation.source.target, "checkout");
+      assert.equal(result[1].evaluations.explanation.result.reason, "variable_not_found");
+    },
+  );
   runJson(
     projectDirectoryPath,
     ["evaluate", "--feature=foo", "--environment=staging", `--context=${context}`, "--json"],
@@ -518,6 +629,28 @@ function testSetProject(projectDirectoryPath) {
   );
 
   const context = '{"userId":"123","team":"engineering"}';
+  runJson(
+    projectDirectoryPath,
+    [
+      "evaluate",
+      "--set=staging",
+      "--variable=checkoutMessage",
+      "--target=all",
+      `--context=${context}`,
+      "--json",
+      "--explain",
+    ],
+    (result) => {
+      assert.equal(result.explanation.source.set, "staging");
+      assert.equal(result.explanation.source.environment, false);
+      assert.equal(result.explanation.result.value, "Staging checkout for engineers");
+      assert.ok(
+        result.explanation.evidence.some(
+          (entry) => entry.title === "Authored value construction (build time)",
+        ),
+      );
+    },
+  );
   runJson(
     projectDirectoryPath,
     [

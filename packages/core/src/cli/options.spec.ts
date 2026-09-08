@@ -1,6 +1,10 @@
 import { getBuiltinCLIOptions, getCompatibilityCLIOptions } from "./options";
 
 describe("core: CLI options", function () {
+  test("declares explain as an opt in evaluate boolean", function () {
+    expect(getBuiltinCLIOptions("evaluate")?.explain.type).toBe("boolean");
+    expect(getBuiltinCLIOptions("benchmark")?.explain).toBeUndefined();
+  });
   test("declares repeatable target and tag options as arrays", function () {
     expect(getBuiltinCLIOptions("build")?.target.type).toBe("array");
     expect(getBuiltinCLIOptions("generate-code")?.target.type).toBe("array");

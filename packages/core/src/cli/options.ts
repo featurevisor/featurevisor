@@ -87,6 +87,7 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     context: { type: "string", description: "JSON targeting context" },
     inflate: { type: "number", description: "inflate the generated datafile" },
     verbose: { type: "boolean", description: "print detailed evaluation logs" },
+    explain: { type: "boolean", description: "explain SDK outcomes using CLI metadata" },
   },
   "find-duplicate-segments": {
     ...setOption,

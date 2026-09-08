@@ -7,6 +7,9 @@ import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Plugin } from "../cli";
 import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
 import { FeaturevisorCLIError } from "../error";
+import { explainEvaluation, getEvaluationValue, printExplanation } from "./explain";
+import type { ExplanationOptions } from "./explain";
+import { assertExplanationMatchesEvaluation } from "./validateExplanation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
   CLI_COLOR_CYAN,
@@ -64,6 +67,7 @@ export interface EvaluateOptions {
   json?: boolean;
   pretty?: boolean;
   verbose?: boolean;
+  explain?: boolean;
   inflate?: number;
   target?: string | string[];
 }
@@ -72,8 +76,19 @@ async function evaluateFeatureWithDatafile(
   datafileContent: DatafileContent,
   options: EvaluateOptions,
   target?: string,
+  explanationOptions?: ExplanationOptions,
 ) {
   let diagnostics: FeaturevisorDiagnostic[] = [];
+  const explain = (
+    evaluation: Evaluation,
+    entries: FeaturevisorDiagnostic[],
+    variable?: string,
+  ) => {
+    const metadata = { ...explanationOptions, ...options, variable, target };
+    const explanation = explainEvaluation(evaluation, datafileContent, entries, metadata);
+    assertExplanationMatchesEvaluation(evaluation, explanation, datafileContent, metadata);
+    return explanation;
+  };
   const f = createFeaturevisor({
     datafile: datafileContent as DatafileContent,
     logLevel: "debug",
@@ -83,7 +98,11 @@ async function evaluateFeatureWithDatafile(
   if (options.variable && !options.feature) {
     const evaluation = f.evaluateVariable(options.variable, options.context as Context);
     const evaluationDiagnostics = [...diagnostics];
-    if (options.json) return evaluation;
+    const explanation = options.explain
+      ? explain(evaluation, evaluationDiagnostics, options.variable)
+      : undefined;
+    const result = explanation ? { ...evaluation, explanation } : evaluation;
+    if (options.json) return result;
 
     console.log("");
     console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor variable");
@@ -92,10 +111,14 @@ async function evaluateFeatureWithDatafile(
     if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
     console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
     if (options.verbose) printDiagnostics(evaluationDiagnostics);
-    console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(evaluation.variableValue)}`);
-    console.log("\nDetails:\n");
-    printEvaluationDetails(evaluation);
-    return evaluation;
+    if (explanation) {
+      printExplanation(explanation);
+    } else {
+      console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(evaluation.variableValue)}`);
+      console.log("\nDetails:\n");
+      printEvaluationDetails(evaluation);
+    }
+    return result;
   }
 
   const featureKey = options.feature as string;
@@ -136,8 +159,22 @@ async function evaluateFeatureWithDatafile(
     variables: variableEvaluations,
   };
 
+  const explanation = options.explain
+    ? {
+        flag: explain(flagEvaluation, flagEvaluationDiagnostics),
+        variation: explain(variationEvaluation, variationEvaluationDiagnostics),
+        variables: Object.fromEntries(
+          Object.entries(variableEvaluations).map(([key, evaluation]) => [
+            key,
+            explain(evaluation, variableEvaluationDiagnostics[key], key),
+          ]),
+        ),
+      }
+    : undefined;
+  const result = explanation ? { ...allEvaluations, explanation } : allEvaluations;
+
   if (options.json) {
-    return allEvaluations;
+    return result;
   }
 
   console.log("");
@@ -154,13 +191,16 @@ async function evaluateFeatureWithDatafile(
     printDiagnostics(flagEvaluationDiagnostics);
   }
 
-  console.log(
-    flagEvaluation.enabled ? CLI_FORMAT_GREEN : CLI_FORMAT_YELLOW,
-    `Value: ${flagEvaluation.enabled}`,
-  );
-  console.log("\nDetails:\n");
-
-  printEvaluationDetails(flagEvaluation);
+  if (explanation) {
+    printExplanation(explanation.flag);
+  } else {
+    console.log(
+      flagEvaluation.enabled ? CLI_FORMAT_GREEN : CLI_FORMAT_YELLOW,
+      `Value: ${flagEvaluation.enabled}`,
+    );
+    console.log("\nDetails:\n");
+    printEvaluationDetails(flagEvaluation);
+  }
 
   // variation
   printHeader("Variation");
@@ -170,12 +210,19 @@ async function evaluateFeatureWithDatafile(
       printDiagnostics(variationEvaluationDiagnostics);
     }
 
-    console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(variationEvaluation.variation?.value)}`);
-    console.log("\nDetails:\n");
-
-    printEvaluationDetails(variationEvaluation);
+    if (explanation) {
+      printExplanation(explanation.variation, false);
+    } else {
+      console.log(
+        CLI_FORMAT_GREEN,
+        `Value: ${JSON.stringify(getEvaluationValue(variationEvaluation))}`,
+      );
+      console.log("\nDetails:\n");
+      printEvaluationDetails(variationEvaluation);
+    }
   } else {
-    console.log(CLI_FORMAT_YELLOW, "No variations defined.");
+    if (explanation) printExplanation(explanation.variation, false);
+    else console.log(CLI_FORMAT_YELLOW, "No variations defined.");
   }
 
   // variables
@@ -191,10 +238,13 @@ async function evaluateFeatureWithDatafile(
         typeof value.variableValue !== "undefined"
           ? JSON.stringify(value.variableValue)
           : value.variableValue;
-      console.log(CLI_FORMAT_GREEN, `Value: ${variableValue}`);
-      console.log("\nDetails:\n");
-
-      printEvaluationDetails(value);
+      if (explanation) {
+        printExplanation(explanation.variables[key], false);
+      } else {
+        console.log(CLI_FORMAT_GREEN, `Value: ${variableValue}`);
+        console.log("\nDetails:\n");
+        printEvaluationDetails(value);
+      }
     }
   } else {
     printHeader("Variables");
@@ -202,7 +252,7 @@ async function evaluateFeatureWithDatafile(
     console.log(CLI_FORMAT_YELLOW, "No variables defined.");
   }
 
-  return allEvaluations;
+  return result;
 }
 
 export async function evaluateFeature(deps: Dependencies, options: EvaluateOptions) {
@@ -219,9 +269,30 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     inflate: options.inflate,
   });
 
+  const definitionExists = options.explain
+    ? options.variable
+      ? await deps.datasource.variableExists(options.variable)
+      : await deps.datasource.featureExists(options.feature as string)
+    : undefined;
+  const explanationOptions: ExplanationOptions | undefined = options.explain
+    ? {
+        set: deps.datasource.getSet(),
+        definitionExists,
+        authoredVariable:
+          options.variable && definitionExists
+            ? await deps.datasource.readVariable(options.variable)
+            : undefined,
+      }
+    : undefined;
+
   const results = [];
   for (const entry of datafiles) {
-    const evaluations = await evaluateFeatureWithDatafile(entry.datafile, options, entry.target);
+    const evaluations = await evaluateFeatureWithDatafile(
+      entry.datafile,
+      options,
+      entry.target,
+      explanationOptions,
+    );
     results.push({ target: entry.target, evaluations });
   }
 
@@ -257,6 +328,7 @@ export const evaluatePlugin: Plugin = {
           json: parsed.json,
           pretty: parsed.pretty,
           verbose: parsed.verbose,
+          explain: parsed.explain,
           target: parsed.target,
           inflate:
             typeof parsed.inflate !== "undefined"
