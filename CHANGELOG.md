@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.11.0](https://github.com/featurevisor/featurevisor/compare/v3.10.0...v3.11.0) (2026-09-08)
+
+
+### Features
+
+* diffing via CLI ([#429](https://github.com/featurevisor/featurevisor/issues/429)) ([cdf80b1](https://github.com/featurevisor/featurevisor/commit/cdf80b140553e0e5a0423ee0b295755a34c6a6f4))
+
+
+
+
+
 # [3.10.0](https://github.com/featurevisor/featurevisor/compare/v3.9.0...v3.10.0) (2026-09-08)
 
 
