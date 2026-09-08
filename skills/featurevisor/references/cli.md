@@ -72,6 +72,23 @@ Run this after every edit. It catches:
 
 If `enforceCatchAllRule: true` is set in config, lint also requires every feature to end with a `segments: '*'` rule in every environment.
 
+## Compare definitions
+
+```bash
+npx featurevisor diff
+npx featurevisor diff --from=main --to=HEAD
+npx featurevisor diff --from=HEAD --to=working-tree --json --pretty
+npx featurevisor diff --set=production
+```
+
+Use this to review authored changes before committing or reviewing a branch. Uncommitted changes anywhere in the repository take precedence: compare `HEAD` with final working files, including staged, unstaged, deleted, and untracked definitions, but not ignored untracked files. On a clean primary branch there are no changes; on a clean other branch compare the primary branch tip with `HEAD`. Only the selected Featurevisor project is reported.
+
+Explicit references override defaults. `--from` alone ends at `working-tree`; `--to` alone starts at `HEAD`. References resolve to commits, except the reserved `working-tree` endpoint. Comparisons use commit tips, not a merge base. Primary branch discovery is offline and prefers an existing local primary branch. Supply references if the default branch cannot be determined.
+
+The report includes features, global variables, segments, attributes, groups, schemas, targets, tests, and all sets unless `--set` selects one. It ignores formatting, comments, and mapping order, but preserves array order. Terminal output matches rules and overrides by key, variations by value, and feature variables by name. Nested overrides stay beneath their parents. It reports additions, updates, removals, and relative reordering without treating an insertion as updates to every following rule. Missing or duplicate identities use an explicit positional fallback. Added item positions start at one. Arbitrary variable payload arrays are not matched by identity. Renames appear as removal and addition. JSON includes `from`, `to`, `reason`, `warnings`, `summary`, and `changes`; each entity retains positional field `changes` (JSON Pointers with zero based positions) alongside semantic `details`. Exit status is `0` for a successful comparison, including differences, and `1` for errors.
+
+This compares definitions, not evaluated behaviour. It does not fetch, checkout, lint, build datafiles, or write state. Both snapshots use the current parser and directory layout. Configuration changes are reported and differences from current configuration produce warnings: inspect layout changes with `git diff` too. Historical configuration is never executed. Requires the filesystem adapter and an existing Git commit; working tree comparisons reject unresolved merge conflicts.
+
 ## Build datafiles
 
 ```bash
