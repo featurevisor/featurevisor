@@ -77,6 +77,12 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     hashRouter: { type: "boolean", description: "use hash based browser routes" },
   },
   config: outputOptions,
+  diff: {
+    ...outputOptions,
+    ...setOption,
+    from: { type: "string", description: "starting Git reference (or working-tree)" },
+    to: { type: "string", description: "ending Git reference (or working-tree)" },
+  },
   evaluate: {
     ...outputOptions,
     ...setOption,

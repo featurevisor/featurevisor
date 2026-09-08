@@ -120,13 +120,144 @@ function assertFile(path, description) {
 
 function snapshotStateFiles(projectDirectoryPath) {
   const stateDirectoryPath = join(projectDirectoryPath, ".featurevisor");
-  return readdirSync(stateDirectoryPath)
+  if (!existsSync(stateDirectoryPath)) return [];
+  return readdirSync(stateDirectoryPath, { recursive: true })
+    .filter((name) => statSync(join(stateDirectoryPath, name)).isFile())
     .sort()
     .map((name) => {
       const path = join(stateDirectoryPath, name);
       const stat = statSync(path);
       return { name, size: stat.size, modified: stat.mtimeMs, content: readFileSync(path, "utf8") };
     });
+}
+
+function testDefinitionDiff(projectDirectoryPath, sets = false) {
+  console.log(`\nTesting definition diffs (${sets ? "sets" : "example-1"})`);
+  const git = (...args) => {
+    const result = spawnSync("git", args, {
+      cwd: projectDirectoryPath,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  const commit = () => {
+    git("add", ".");
+    git("commit", "-qm", "Integration fixture");
+  };
+  git("init", "-b", "main");
+  git("config", "user.name", "Integration test");
+  git("config", "user.email", "integration@example.com");
+  git("config", "commit.gpgsign", "false");
+  commit();
+  runJson(projectDirectoryPath, ["diff", "--json"], (value) => {
+    assert.equal(value.reason, "primary");
+    assert.deepEqual(value.changes, []);
+  });
+  git("switch", "-c", "review");
+  const definitions = sets ? join(projectDirectoryPath, "sets", "dev") : projectDirectoryPath;
+  const variables = join(definitions, "variables");
+  mkdirSync(variables, { recursive: true });
+  const variableFile = join(variables, "diffExample.yml");
+  writeFileSync(
+    variableFile,
+    "description: Review example\ntype: string\ndefaultValue: Original\n",
+  );
+  commit();
+  runJson(projectDirectoryPath, ["diff", "--json", "--pretty"], (value) => {
+    assert.equal(value.reason, "branch");
+    assert.equal(value.changes.length, 1);
+    assert.equal(value.changes[0].kind, "added");
+    assert.equal(value.changes[0].key, "diffExample");
+    if (sets) assert.equal(value.changes[0].set, "dev");
+  });
+  const index = readFileSync(join(projectDirectoryPath, ".git", "index"));
+  const state = snapshotStateFiles(projectDirectoryPath);
+  writeFileSync(variableFile, "description: Review example\ntype: string\ndefaultValue: Updated\n");
+  runJson(projectDirectoryPath, ["diff", "--json"], (value) => {
+    assert.equal(value.reason, "uncommitted");
+    assert.deepEqual(value.changes[0].changes, [
+      { path: "/defaultValue", kind: "changed", before: "Original", after: "Updated" },
+    ]);
+  });
+  run(projectDirectoryPath, ["diff"], (result) => {
+    assert.match(result.stdout, /variable diffExample/);
+    assert.match(result.stdout, /Original.*Updated/);
+    assert.match(result.stdout, /0 added, 1 changed, 0 removed/);
+  });
+  runJson(projectDirectoryPath, ["diff", "--from=main", "--to=HEAD", "--json"], (value) => {
+    assert.equal(value.reason, "explicit");
+    assert.equal(value.changes[0].changes[0].after.defaultValue, "Original");
+  });
+  if (sets) {
+    runJson(projectDirectoryPath, ["diff", "--set=staging", "--json"], (value) => {
+      assert.deepEqual(value.changes, []);
+    });
+    fail(projectDirectoryPath, ["diff", "--set=missing"], /does not exist/);
+  }
+  const invalid = execute(projectDirectoryPath, ["diff", "--from=missing", "--json"]);
+  assert.equal(invalid.status, 1);
+  assert.equal(JSON.parse(invalid.stderr).error.code, "diff_error");
+  assert.equal(invalid.stdout, "");
+  pass("diff reports structured failures without partial output");
+  assert.deepEqual(readFileSync(join(projectDirectoryPath, ".git", "index")), index);
+  assert.deepEqual(snapshotStateFiles(projectDirectoryPath), state);
+  assert.equal(git("branch", "--show-current"), "review");
+  pass("diff leaves Git index, branch, and build state untouched");
+  run(projectDirectoryPath, ["diff", "--help"], (result) => {
+    assert.match(result.stdout, /--from/);
+    assert.match(result.stdout, /--to/);
+  });
+  const rulesFile = join(definitions, "features", "diffRuleExample.yml");
+  const rulesDocument = (rules) => {
+    const prefix = "description: Rule comparison example\ntags: [all]\nbucketBy: userId\n";
+    const list = rules
+      .map(([key, percentage]) => `- key: ${key}\n  segments: '*'\n  percentage: ${percentage}\n`)
+      .join("");
+    return (
+      prefix +
+      (sets
+        ? "rules:\n" + list.replace(/^/gm, "  ")
+        : "rules:\n  production:\n" + list.replace(/^/gm, "    "))
+    );
+  };
+  writeFileSync(
+    rulesFile,
+    rulesDocument([
+      ["rollout", 10],
+      ["obsolete", 0],
+      ["catchAll", 100],
+    ]),
+  );
+  commit();
+  writeFileSync(
+    rulesFile,
+    rulesDocument([
+      ["newAudience", 5],
+      ["catchAll", 100],
+      ["rollout", 50],
+    ]),
+  );
+  run(projectDirectoryPath, ["diff"], (result) => {
+    assert.match(result.stdout, /Rule "newAudience" added \(position 1\)/);
+    assert.match(result.stdout, /Rule "obsolete" removed/);
+    assert.match(result.stdout, /Rule "rollout" updated/);
+    assert.match(result.stdout, /Rollout percentage: 10 → 50/);
+    assert.match(result.stdout, /Rule order \(reordered\)/);
+    assert.doesNotMatch(result.stdout, /Rule "catchAll" updated|\/rules\//);
+  });
+  runJson(projectDirectoryPath, ["diff", "--json"], (value) => {
+    assert.equal(value.changes[0].key, "diffRuleExample");
+    assert.ok(value.changes[0].changes.some((change) => change.path.startsWith("/rules/")));
+    assert.ok(
+      value.changes[0].details[0].children.some((detail) => detail.label === 'Rule "rollout"'),
+    );
+  });
 }
 
 function testStandardProject(projectDirectoryPath) {
@@ -764,6 +895,9 @@ try {
 
   testStandardProject(standardProject);
   testSetProject(setProject);
+
+  testDefinitionDiff(standardProject);
+  testDefinitionDiff(setProject, true);
 
   console.log(`\nFeaturevisor CLI integration checks passed: ${checks}`);
 } finally {

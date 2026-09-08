@@ -15,6 +15,7 @@ import { assessDistributionPlugin } from "../assess-distribution";
 import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
 import { promotePlugin } from "../promoter";
+import { diffPlugin } from "../diff";
 import { getProjectSetExecutions } from "../sets";
 
 // that do not require an existing project
@@ -35,6 +36,7 @@ export const projectBasedPlugins: Plugin[] = [
   infoPlugin,
   listPlugin,
   promotePlugin,
+  diffPlugin,
   createCatalogPlugin({
     getProjectSetExecutions,
   }),
