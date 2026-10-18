@@ -112,6 +112,25 @@ Use `conditions: '*'` where a selector is required but should always match.
 
 v4 authors only `conditions`. The v3 fields `segments`, `requiredFeatures` and feature `required` are lint errors with a precise replacement, for example `removed_condition_field: Replace segments with conditions. Segment keys stay as strings.` Fix every lint error before building: build does not run full lint and can silently drop an old gate or selector.
 
+### Allowed condition kinds
+
+A project can limit which kinds of leaf each location accepts with `allowedConditions` in `featurevisor.config.js`. Read it before writing a condition:
+
+```js
+module.exports = {
+  allowedConditions: {
+    rules: ['segment'],
+    segments: ['attribute'],
+  },
+}
+```
+
+- **Locations:** `segments`, `features` (feature root), `rules`, `force`, `featureVariableOverrides`, `variables` (global variable root, compositions included) and `variableOverrides` (nested ones included).
+- **Kinds:** `attribute`, `segment`, `feature` (including `{ feature, variable }`) and `variable` (a global variable).
+- **Defaults:** a location the config leaves out accepts every kind. `'*'` is always allowed.
+- **Lint:** reports anything else with `disallowed_condition` and suggests a fix. With `rules: ['segment']`, put attribute logic in a segment and reference it from the rule. Archived definitions are not checked.
+- **Segments are not followed:** each location is checked on its own, so a rule may name a segment that reads a feature unless `segments` excludes `feature`.
+
 ## Root gates
 
 A feature's root `conditions` gate it before bucketing:

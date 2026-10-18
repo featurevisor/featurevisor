@@ -158,6 +158,24 @@ module.exports = {
 
 Older SDKs treat an unknown operator as false, which a `not` group turns into a match. Never rely on unknown syntax failing safely.
 
+v4 also accepts every kind of condition in every location. If the team prefers v3's shape, where rules only name segments, offer `allowedConditions` with what v3 allowed in each location. A project converted as above passes it unchanged, and lint reports anything else with `disallowed_condition` ([conditions.md](conditions.md#allowed-condition-kinds)):
+
+```js
+module.exports = {
+  allowedConditions: {
+    segments: ['attribute'],
+    features: ['feature'],
+    rules: ['segment'],
+    force: ['attribute', 'segment'],
+    featureVariableOverrides: ['attribute', 'segment', 'feature'],
+    variables: ['feature'],
+    variableOverrides: ['attribute', 'segment', 'feature'],
+  },
+}
+```
+
+Relax one location at a time as the team adopts what v4 adds.
+
 ## Mixed versions
 
 If some applications cannot upgrade, keep a separately maintained v3 project and CLI output at a different URL for them, and publish v4 datafiles only to upgraded applications. Targets select definitions, they do not translate syntax for older SDKs. There is no v3 compatible output from the v4 CLI.

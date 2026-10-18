@@ -261,6 +261,24 @@ test("retiring prefers archiving to deleting and warns on deprecated references"
   assert.doesNotMatch(read("references/recipes.md"), /[Aa]rchive or delete|or delete the file/);
 });
 
+test("agents check allowedConditions before writing conditions", () => {
+  assert.match(read("SKILL.md"), /allowedConditions/);
+  const conditions = read("references/conditions.md");
+  for (const location of [
+    "segments",
+    "features",
+    "rules",
+    "force",
+    "featureVariableOverrides",
+    "variables",
+    "variableOverrides",
+  ]) {
+    assert.match(conditions, new RegExp("`" + location + "`"), location);
+  }
+  assert.match(conditions, /disallowed_condition/);
+  assert.match(read("references/upgrading-to-v4.md"), /allowedConditions/);
+});
+
 test("feature specs name sticky feature results stickyFeatures", () => {
   for (const [file, content] of documents) {
     if (/upgrading-to-v[34]\.md$/.test(file)) continue;
