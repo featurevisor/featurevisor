@@ -68,6 +68,6 @@
     "@vue/test-utils": "^2.4.11",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "vue": "^3.5.38"
+    "vue": "^3.5.44"
   }
 }
