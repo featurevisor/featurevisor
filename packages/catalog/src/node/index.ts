@@ -1333,11 +1333,11 @@ function detectDevEditors(): DevEditor[] {
   const editors: DevEditor[] = [];
 
   if (hasKnownEditorInstall("cursor")) {
-    editors.push({ id: "cursor", label: "Cursor", icon: "cursor" });
+    editors.push({ id: "cursor", label: "Cursor" });
   }
 
   if (hasKnownEditorInstall("vscode")) {
-    editors.push({ id: "vscode", label: "VS Code", icon: "vscode" });
+    editors.push({ id: "vscode", label: "VS Code" });
   }
 
   return editors;

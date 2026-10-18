@@ -2878,7 +2878,7 @@ describe("catalog export", () => {
       compactStorage: false,
       copyAssets: false,
       dev: true,
-      devEditors: [{ id: "cursor", label: "Cursor", icon: "cursor" }],
+      devEditors: [{ id: "cursor", label: "Cursor" }],
     });
 
     const manifest = JSON.parse(
@@ -2900,7 +2900,7 @@ describe("catalog export", () => {
       branchKind: "checkout",
       commit: "https://github.com/featurevisor/featurevisor/commit/{{hash}}",
     });
-    expect(manifest.dev.editors).toEqual([{ id: "cursor", label: "Cursor", icon: "cursor" }]);
+    expect(manifest.dev.editors).toEqual([{ id: "cursor", label: "Cursor" }]);
     expect(detail.sourcePath).toBe("features/checkout.yml");
     expect(detail.editLinks.cursor).toMatch(/^cursor:\/\/file\/.+features\/checkout\.yml$/);
   });

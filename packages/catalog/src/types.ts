@@ -16,7 +16,6 @@ export type DevEditorId = "cursor" | "vscode";
 export interface DevEditor {
   id: DevEditorId;
   label: string;
-  icon: DevEditorId;
 }
 
 export interface LastModified {

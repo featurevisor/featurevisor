@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useCatalog } from "../context/CatalogContext";
-import type { DevEditor, EntityDetail } from "../types";
+import type { EntityDetail } from "../types";
 
 function CaretIcon() {
   return (
@@ -13,28 +13,6 @@ function CaretIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-    </svg>
-  );
-}
-
-function EditorIcon(props: { icon: DevEditor["icon"] }) {
-  if (props.icon === "cursor") {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-        <path d="M4 3l16 9-7 2-3 7L4 3Z" fill="#111827" />
-        <path d="M8.2 8.6 15 12.6" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" />
-        <path d="M10.2 12.9 12.6 14.3 10.5 18.8Z" fill="#ffffff" opacity=".92" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-      <path
-        d="M17.2 3.2 9.4 10 5.1 6.7 3 7.8v8.4l2.1 1.1 4.3-3.3 7.8 6.8L21 19V5l-3.8-1.8Z"
-        fill="#007ACC"
-      />
-      <path d="M17.2 8.2v7.6L12.5 12l4.7-3.8Z" fill="#ffffff" opacity=".35" />
     </svg>
   );
 }
@@ -155,7 +133,6 @@ export function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail[
       key: editor.id,
       href: props.editLinks?.[editor.id],
       label: `Open in ${editor.label}`,
-      icon: (<EditorIcon icon={editor.icon} />) as React.ReactNode,
       external: false,
       title: undefined as string | undefined,
     })),
@@ -165,7 +142,6 @@ export function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail[
             key: "view",
             href: viewHref,
             label: viewLabel,
-            icon: null,
             external: true,
             title: undefined,
           },
@@ -177,7 +153,6 @@ export function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail[
             key: "propose",
             href: proposeHref,
             label: "Propose change",
-            icon: null,
             external: true,
             title: proposeTitle,
           },
@@ -197,7 +172,6 @@ export function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail[
         {...externalProps(primary.external)}
         className={`${splitButtonClass} ${menuItems.length ? "rounded-l" : "rounded"}`}
       >
-        {primary.icon}
         {primary.label}
       </a>
       {menuItems.length > 0 && (
@@ -241,7 +215,6 @@ export function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail[
               className={menuItemClass}
               onClick={() => close(false)}
             >
-              {item.icon}
               <span>{item.label}</span>
             </a>
           ))}
