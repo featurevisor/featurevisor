@@ -9,6 +9,10 @@ import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
 import { useVariable } from "./useVariable";
 
+const { createFeaturevisor: createSourceFeaturevisor } = jest.requireActual(
+  "../../sdk/src",
+) as typeof import("@featurevisor/sdk");
+
 function getNewDatafile(colorValue = "red"): DatafileContent {
   return {
     schemaVersion: "2",
@@ -152,6 +156,57 @@ describe("react: useVariable", function () {
 
     await act(async () => f.setStickyVariables({ theme: "red" }));
     await waitFor(() => expect(screen.getByTestId("theme")).toHaveTextContent("red"));
+  });
+
+  test("updates a dependent global variable when only its required variable changes", async () => {
+    const events: string[][] = [];
+    const f = createSourceFeaturevisor({
+      logLevel: "fatal",
+      datafile: {
+        schemaVersion: "2",
+        revision: "1.0",
+        segments: {},
+        features: {},
+        variables: {
+          gate: { hash: "gate-false", type: "boolean", defaultValue: false },
+          message: {
+            hash: "same-dependent-hash",
+            type: "string",
+            defaultValue: "ready",
+            disabledValue: "blocked",
+            conditions: [{ variable: "gate", operator: "equals", value: true }],
+          },
+        },
+      },
+    });
+    f.on("datafile_set", ({ variables }) => events.push(variables));
+
+    function TestComponent() {
+      return <p data-testid="message">{useVariable("message")}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+    expect(screen.getByTestId("message")).toHaveTextContent("blocked");
+
+    await act(async () => {
+      f.setDatafile({
+        schemaVersion: "2",
+        revision: "2.0",
+        segments: {},
+        features: {},
+        variables: {
+          gate: { hash: "gate-true", type: "boolean", defaultValue: true },
+        },
+      });
+    });
+    expect(f.getVariable("message")).toBe("ready");
+    expect(events).toEqual([["gate", "message"]]);
+
+    await waitFor(() => expect(screen.getByTestId("message")).toHaveTextContent("ready"));
   });
 
   test("should update a global variable when a required feature changes", async () => {

@@ -48,32 +48,30 @@ jobs:
       - name: Typecheck
         run: make typecheck
 
+      - name: Check editor schemas and release configuration
+        run: |
+          node scripts/test-editor-schemas.mjs
+          node scripts/test-release-config.mjs
+
       - name: Test
+        # Includes the packed package consumer test through npm test.
         run: make test
 
+      - name: CLI integration
+        run: node scripts/test-cli-integration.mjs
+
+      - name: JavaScript runner conformance
+        run: node scripts/test-runner-conformance.mjs javascript
+
+      - name: JavaScript mutation conformance
+        run: node scripts/test-mutation-conformance.mjs javascript
+
       - name: Bump version
-        continue-on-error: true
-        id: graduateRelease
-        # @NOTE: versioning strategy
-        #   major:   npx lerna version X.0.0 --force-publish --exact --yes --no-push
-        #   regular: npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
+        # Force the initial v4 release, then recognise both ! headers and breaking footers.
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
-
-      - name: Bump version fallback
-        if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
-        # @NOTE: versioning strategy
-        #   major:   npx lerna version X.0.0 --force-publish --exact --yes --no-push
-        #   regular: npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor}}@users.noreply.github.com"
-
-          echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
-          git stash
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
+          node scripts/release-version.mjs
 
       - name: Publish
         run: |

@@ -2,6 +2,22 @@ import type { Schema, SchemaKey, Value } from "@featurevisor/types";
 import { z } from "zod";
 
 import { refineWithMessage } from "./zodHelpers";
+import {
+  formatValueMessage,
+  refineRemovedSchemaType,
+  schemaFormatZodSchema,
+  schemaTypeZodSchema,
+  SCHEMA_FORMATS,
+  valueMatchesFormat,
+} from "./schemaFormats";
+
+export { schemaFormatZodSchema };
+
+/** Lengths and item counts: whole numbers of zero or more. */
+export const countZodSchema = z
+  .number()
+  .int({ error: "Must be a whole number of zero or more." })
+  .min(0, { error: "Must be a whole number of zero or more." });
 
 /** Returns true if value matches the schema type. */
 function valueMatchesType(v: unknown, type: string): boolean {
@@ -12,7 +28,7 @@ function valueMatchesType(v: unknown, type: string): boolean {
       return typeof v === "boolean";
     case "integer":
       return typeof v === "number" && Number.isInteger(v);
-    case "double":
+    case "number":
       return typeof v === "number";
     case "object":
       return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -24,6 +40,7 @@ function valueMatchesType(v: unknown, type: string): boolean {
 }
 
 type SchemaLike = {
+  schema?: string;
   type?: string;
   enum?: unknown[];
   const?: unknown;
@@ -32,6 +49,7 @@ type SchemaLike = {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  format?: string;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
@@ -94,7 +112,7 @@ export function refineEnumMatchesType(
 }
 
 /**
- * Validates that when a schema has type "integer" or "double", minimum <= maximum when both set,
+ * Validates that when a schema has type "integer" or "number", minimum <= maximum when both set,
  * and const/enum values (if present) fall within the range.
  */
 export function refineMinimumMaximum(
@@ -106,7 +124,7 @@ export function refineMinimumMaximum(
   const type = schema.type;
   const min = schema.minimum;
   const max = schema.maximum;
-  const isNumeric = type === "integer" || type === "double";
+  const isNumeric = type === "integer" || type === "number";
   if (isNumeric && min !== undefined && max !== undefined && min > max) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -183,21 +201,116 @@ export function refineMinimumMaximum(
   }
 }
 
-/**
- * Validates that when a schema has type "string", minLength <= maxLength when both set,
- * pattern is a valid RegExp (if set), and const/enum string values satisfy length and pattern.
- */
+function invalidFormatPaths(
+  schema: SchemaLike,
+  value: unknown,
+  path: (string | number)[],
+  schemasByKey: Record<string, Schema>,
+  seen = new Set<SchemaLike>(),
+): (string | number)[][] {
+  const resolved = resolveTimestampSchema(schema, schemasByKey);
+  if (!resolved || seen.has(resolved)) return [];
+  schema = resolved;
+  const nextSeen = new Set(seen).add(schema);
+  if (schema.type === "string" && schema.format !== undefined) {
+    return typeof value === "string" && valueMatchesFormat(schema.format, value) ? [] : [path];
+  }
+  if (schema.oneOf) {
+    const branches = (schema.oneOf as SchemaLike[])
+      .map((branch) => resolveTimestampSchema(branch, schemasByKey))
+      .filter((branch): branch is SchemaLike => branch !== null)
+      .filter((branch) => !branch.type || valueMatchesType(value, branch.type));
+    const results = branches.map((branch) =>
+      invalidFormatPaths(branch, value, path, schemasByKey, nextSeen),
+    );
+    return results.length > 0 && results.every((result) => result.length > 0) ? [path] : [];
+  }
+  if (schema.type === "array" && Array.isArray(value) && schema.items) {
+    return value.flatMap((item, index) =>
+      invalidFormatPaths(schema.items as SchemaLike, item, [...path, index], schemasByKey),
+    );
+  }
+  if (schema.type === "object" && value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value).flatMap(([key, item]) => {
+      const child = schema.properties?.[key] || schema.additionalProperties;
+      return child
+        ? invalidFormatPaths(child as SchemaLike, item, [...path, key], schemasByKey)
+        : [];
+    });
+  }
+  return [];
+}
+
+function resolveTimestampSchema(
+  schema: SchemaLike,
+  schemasByKey: Record<string, Schema>,
+): SchemaLike | null {
+  const seen = new Set<SchemaLike>();
+  while (schema.schema) {
+    if (seen.has(schema)) return null;
+    seen.add(schema);
+    const referenced = schemasByKey[schema.schema];
+    if (!referenced) return null;
+    schema = referenced;
+  }
+  return schema;
+}
+
+/** The format a literal is checked against, following references and single format oneOf branches. */
+function formatAt(schema: SchemaLike, schemasByKey: Record<string, Schema>): string | undefined {
+  const resolved = resolveTimestampSchema(schema, schemasByKey);
+  if (!resolved) return undefined;
+  if (resolved.format) return resolved.format;
+  const formats = (resolved.oneOf as SchemaLike[] | undefined)
+    ?.map((branch) => formatAt(branch, schemasByKey))
+    .filter((format): format is string => !!format);
+  return formats?.length ? formats[0] : undefined;
+}
+
+/** Validate the format declaration and its literal values at this schema node. */
+export function refineSchemaFormat(
+  schema: SchemaLike,
+  pathPrefix: (string | number)[],
+  ctx: z.RefinementCtx,
+  schemasByKey: Record<string, Schema> = {},
+): void {
+  if (!schema || typeof schema !== "object") return;
+  const type = schema.type;
+  const isString = type === "string";
+  if (schema.format !== undefined) {
+    if (!(SCHEMA_FORMATS as readonly string[]).includes(schema.format)) return;
+    if (!isString) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "format is only supported on string schemas.",
+        path: [...pathPrefix, "format"],
+      });
+    }
+  }
+  const checkFormat = (value: unknown, path: (string | number)[]) => {
+    for (const invalidPath of invalidFormatPaths(schema, value, path, schemasByKey)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: formatValueMessage(formatAt(schema, schemasByKey)),
+        path: invalidPath,
+      });
+    }
+  };
+  if (schema.const !== undefined) checkFormat(schema.const, [...pathPrefix, "const"]);
+  schema.enum?.forEach((value, index) => checkFormat(value, [...pathPrefix, "enum", index]));
+}
+
+/** Validate string lengths, patterns and their literal values recursively. */
 export function refineStringLengthPattern(
   schema: SchemaLike,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
 ): void {
   if (!schema || typeof schema !== "object") return;
-  const type = schema.type;
   const minLen = schema.minLength;
   const maxLen = schema.maxLength;
   const patternStr = schema.pattern;
-  const isString = type === "string";
+  const isString = schema.type === "string";
   if (isString && minLen !== undefined && maxLen !== undefined && minLen > maxLen) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -428,19 +541,12 @@ export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   ]),
 );
 
-// @TODO: support "date" in future
-// @TODO: consider "semver" in future
-// @TODO: consider "url" in future
-export const propertyTypeEnum = z.enum([
-  "boolean",
-  "string",
-  "integer",
-  "double",
-  "object",
-  "array",
-]);
+export const propertyTypeEnum = schemaTypeZodSchema();
 
-export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
+export function getSchemaZodSchema(
+  schemaKeys: SchemaKey[] = [],
+  schemasByKey: Record<string, Schema> = {},
+) {
   const schemaZodSchema: z.ZodType<Schema> = z.lazy(() =>
     z
       .object({
@@ -451,12 +557,13 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         const: valueZodSchema.optional(),
         minimum: z.number().optional(),
         maximum: z.number().optional(),
-        minLength: z.number().optional(),
-        maxLength: z.number().optional(),
+        minLength: countZodSchema.optional(),
+        maxLength: countZodSchema.optional(),
         pattern: z.string().optional(),
+        format: schemaFormatZodSchema.optional(),
         items: schemaZodSchema.optional(),
-        minItems: z.number().optional(),
-        maxItems: z.number().optional(),
+        minItems: countZodSchema.optional(),
+        maxItems: countZodSchema.optional(),
         uniqueItems: z.boolean().optional(),
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), schemaZodSchema).optional(),
@@ -471,6 +578,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
         oneOf: z.array(schemaZodSchema).min(2).optional(),
       })
       .strict()
+      .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
       .superRefine((data, ctx) => {
         if (data.type === "array" && data.items === undefined) {
           ctx.addIssue({
@@ -484,6 +592,7 @@ export function getSchemaZodSchema(schemaKeys: SchemaKey[] = []) {
       .superRefine((data, ctx) => refineEnumMatchesType(data, [], ctx))
       .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx))
       .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))
+      .superRefine((data, ctx) => refineSchemaFormat(data, [], ctx, schemasByKey))
       .superRefine((data, ctx) => refineArrayItems(data, [], ctx)),
   );
 

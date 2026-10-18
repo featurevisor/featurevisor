@@ -1,10 +1,4 @@
-import type {
-  Context,
-  FeatureKey,
-  GlobalVariableKey,
-  VariableKey,
-  VariableValue,
-} from "@featurevisor/types";
+import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk.js";
 
@@ -19,11 +13,11 @@ export function useVariable<TValue = VariableValue>(
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  variableKey: GlobalVariableKey,
+  variableKey: VariableKey,
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  featureKeyOrVariableKey: FeatureKey | VariableKey,
   variableKeyOrContext: VariableKey | Context = {},
   context: Context = {},
 ): TValue | null {

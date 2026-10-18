@@ -8,28 +8,28 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: nl-web
-      segments:
+      conditions:
         - netherlands
         - web
       percentage: 100
 
     - key: nl-ios
-      segments:
+      conditions:
         - netherlands
         - ios
       percentage: 100
 
     - key: nl-android
-      segments:
+      conditions:
         - netherlands
         - android
       percentage: 100
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 0

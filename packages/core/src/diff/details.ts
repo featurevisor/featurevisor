@@ -156,6 +156,47 @@ function variables(before: unknown, after: unknown, overrides: boolean): DiffDet
     : changed(overrides ? "Variable overrides" : "Variables", before, after);
 }
 
+function mutations(before: unknown, after: unknown): DiffDetail[] {
+  if (
+    before !== undefined &&
+    after !== undefined &&
+    Array.isArray(before) !== Array.isArray(after)
+  ) {
+    return group("Mutations", [
+      ...changed(
+        "Form",
+        Array.isArray(before) ? "list" : "map",
+        Array.isArray(after) ? "list" : "map",
+      ),
+      ...changed("Entries", before, after),
+    ]);
+  }
+  if (!Array.isArray(before) || !Array.isArray(after)) {
+    return record(before) && record(after)
+      ? group("Mutations", fields(before, after, "plain"))
+      : changed("Mutations", before, after);
+  }
+  // Match whole items, not paths, because a path can occur several times.
+  const remaining = [...before];
+  const reordered =
+    before.length === after.length &&
+    after.every((item) => {
+      const index = remaining.findIndex((previous) => isDeepStrictEqual(previous, item));
+      if (index === -1) return false;
+      remaining.splice(index, 1);
+      return true;
+    });
+  if (reordered) {
+    return group("Mutations", [{ label: "Item order", kind: "reordered", before, after }]);
+  }
+  return group(
+    "Mutations",
+    Array.from({ length: Math.max(before.length, after.length) }, (_, index) =>
+      changed(`Mutation at position ${index + 1}`, before[index], after[index]),
+    ).flat(),
+  );
+}
+
 function fields(before: unknown, after: unknown, context: Context): DiffDetail[] {
   if (isDeepStrictEqual(before, after)) return [];
   if (!record(before) || !record(after)) return changed("Value", before, after);
@@ -175,6 +216,7 @@ function fields(before: unknown, after: unknown, context: Context): DiffDetail[]
       return variables(oldValue, newValue, false);
     if ((context === "rule" || context === "variation") && key === "variableOverrides")
       return variables(oldValue, newValue, true);
+    if (context === "override" && key === "mutate") return mutations(oldValue, newValue);
     if (record(oldValue) && record(newValue)) {
       // Arbitrary variable values never acquire rule or override semantics just from their field names.
       return group(

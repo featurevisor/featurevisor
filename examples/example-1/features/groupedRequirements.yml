@@ -1,0 +1,29 @@
+description: Checkout offered when either supporting feature is enabled
+tags:
+  - all
+bucketBy: userId
+conditions:
+  or:
+    - feature: redesign
+    - feature: sidebar
+variablesSchema:
+  message:
+    type: string
+    defaultValue: Standard checkout
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+      variableOverrides:
+        message:
+          - key: redesigned-without-pricing
+            conditions:
+              - feature: redesign
+              - not:
+                  - feature: pricing
+            value: Redesigned checkout

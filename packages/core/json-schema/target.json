@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "key": { "type": "string" },
+    "promotable": { "type": "boolean" },
+    "description": { "type": "string" },
+    "tag": { "type": "string" },
+    "tags": {
+      "anyOf": [
+        { "minItems": 1, "type": "array", "items": { "type": "string" } },
+        {
+          "type": "object",
+          "properties": { "or": { "minItems": 1, "type": "array", "items": { "type": "string" } } },
+          "required": ["or"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "and": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["and"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "includeFeatures": {
+      "anyOf": [
+        { "type": "string", "const": "*" },
+        { "minItems": 1, "type": "array", "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
+    "excludeFeatures": {
+      "anyOf": [
+        { "type": "string", "const": "*" },
+        { "minItems": 1, "type": "array", "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
+    "includeVariables": {
+      "anyOf": [
+        { "type": "string", "const": "*" },
+        { "minItems": 1, "type": "array", "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
+    "excludeVariables": {
+      "anyOf": [
+        { "type": "string", "const": "*" },
+        { "minItems": 1, "type": "array", "items": { "type": "string", "minLength": 1 } }
+      ]
+    },
+    "context": {
+      "type": "object",
+      "propertyNames": { "type": "string" },
+      "additionalProperties": {
+        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+      }
+    }
+  },
+  "required": ["description"],
+  "additionalProperties": false
+}

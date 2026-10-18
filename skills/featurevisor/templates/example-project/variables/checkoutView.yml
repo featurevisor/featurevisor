@@ -1,0 +1,16 @@
+description: Everything the checkout page reads, assembled into one object
+
+# A composition reads other definitions at evaluation time.
+# Each property names its source: a flag, a variation, a feature variable
+# or a global variable. Its type is inferred from those sources.
+compose:
+  enabled:
+    feature: checkout
+  variation:
+    feature: checkout
+    variation: true
+  paymentMethods:
+    feature: checkout
+    variable: paymentMethods
+  supportEmail:
+    variable: supportEmail

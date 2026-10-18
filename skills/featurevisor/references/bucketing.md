@@ -2,101 +2,79 @@
 
 Full docs:
 
-- Bucketing: <https://featurevisor.com/docs/bucketing>
-- State files: <https://featurevisor.com/docs/state-files>
+- Bucketing: <https://featurevisor.com/docs/bucketing/>
+- State files: <https://featurevisor.com/docs/state-files/>
 
 ## How bucketing works
 
-For each evaluation, the SDK builds a **bucketing key** from:
+For each feature evaluation, the SDK builds a **bucket key** from the `bucketBy` attribute values and the feature key, such as `9b30.checkout`, and hashes it to a number from 0 to 100,000 (0% to 100% with three decimals). That number is the `bucketValue` in evaluation output.
 
-1. The feature key (string)
-2. The value of the feature's `bucketBy` attribute(s) in the provided context
+- The first rule whose `conditions` match is selected. The feature is enabled when the bucket is below the rule's percentage.
+- Variations divide the rule's range by weight, and the bucket picks one.
 
-The key is hashed deterministically to a number in **[0, 100]** (represented internally as an integer 0–100,000, i.e. 3-decimal precision — that's the `bucketValue` you see in evaluation output). Then:
+The hash is the same in every SDK and language, so a user in `treatment` on the web is in `treatment` on the backend and on mobile.
 
-- Rules are evaluated top-to-bottom against `context`. The first rule whose `segments` match wins.
-- If that rule's `percentage` is ≥ the hash, the flag evaluates true; else false.
-- If the feature has `variations`, the same hash space is partitioned by variation `weight`s — the user lands in the variation whose band contains the hash.
+## Choose what to bucket by
 
-Because the hash is deterministic, the **same user** evaluating the **same feature** with the **same `bucketBy` value** always lands in the same place. That's "consistent bucketing." It holds **across SDKs and languages** too — every Featurevisor SDK (JavaScript, Python, Ruby, Go, Java, Kotlin, Swift, PHP, …; see <https://featurevisor.com/docs/sdks>) implements the same hashing, so a user bucketed into a variation on the web gets the same variation on the backend and on mobile.
+| Surface                              | `bucketBy`                                          |
+| ------------------------------------ | --------------------------------------------------- |
+| Signed-in users                      | `userId`                                            |
+| Anonymous visitors                   | `deviceId`                                          |
+| Both                                 | `{ or: [userId, deviceId] }`, the first one present |
+| Everyone in an organization together | `organizationId`                                    |
+| Per user within each organization    | `[organizationId, userId]`                          |
 
-## Picking `bucketBy`
+**Attribute names differ between projects.** Read `attributes/` or `npx featurevisor list --attributes --json`, and ask when it is ambiguous. A feature without `bucketBy` uses `defaultBucketBy` from the configuration, which defaults to `userId`.
 
-| Surface                                 | Use                                           |
-| --------------------------------------- | --------------------------------------------- |
-| Signed-in (you have a user identity)    | `userId`                                      |
-| Anonymous (web/mobile pre-login)        | `deviceId`                                    |
-| Mixed (could be either)                 | `bucketBy: {or: [userId, deviceId]}`          |
-| Org-scoped product (B2B)                | `bucketBy: [organizationId, userId]` (concat) |
-| Org-scoped rollout (everyone in an org) | `bucketBy: organizationId`                    |
+A missing `bucketBy` attribute adds nothing to the key, so every context without a `userId` shares one bucket and is in or out together. With `{ or: [userId, deviceId] }`, a visitor who signs in moves from their device bucket to their user bucket, so their result can change at that moment.
 
-**Attribute names may differ in this project.** Always inspect `attributes/` (or `npx featurevisor list --attributes --json`) and ask the user when ambiguous — don't invent.
+## What changes a user's result
 
-The default if a feature doesn't specify `bucketBy` is `featurevisor.config.js -> defaultBucketBy` (defaults to `userId`).
+A user's bucket never changes for the same key, but their result can:
 
-## What breaks consistency
+- **Lowering a percentage** removes users above the new value.
+- **Lowering a percentage, changing weights or renaming a rule** redivides the variation ranges, so users can switch variations. Ranges are saved per rule key.
+- **Losing the state files** that record those ranges.
+- **Changing `bucketBy` or renaming the feature** changes every bucket key.
+- **Reordering rules** can change which rule matches first.
 
-Each of these silently re-buckets users:
-
-- **Changing `bucketBy`** on an existing feature.
-- **Renaming a rule's `key`** — the key participates in bucketing namespacing for that rule.
-- **Decreasing a rule's `percentage`** — users in `(newPercentage, oldPercentage]` lose the feature.
-- **Reordering rules** such that a different rule now matches first.
-- **Changing variation `weight`s** — users may land in a different variation.
-
-Featurevisor tries to minimize disruption when increasing `percentage` (existing users stay in), but **decreasing** or **reweighting** is fundamentally inconsistent and warned about in the docs.
+Raising a percentage keeps everyone already in, and keeps their variation. Warn the user before any of the changes above, and do not make them silently.
 
 ## State files
 
-Featurevisor maintains state in `<stateDirectoryPath>` (default `.featurevisor/`):
+`.featurevisor/` (or `stateDirectoryPath`) holds:
 
-- `existing-state-<environment>.json` (or `existing-state.json` without environments) — traffic allocation snapshots used so the **next** build preserves bucketing for already-exposed users when percentages change. In sets projects: per set under `.featurevisor/sets/<set>/`.
-- `REVISION` — integer revision number, incremented by every successful `featurevisor build`. Stamped into generated datafiles.
+- `existing-state.json`, or `existing-state-<environment>.json` with environments: each rule's saved variation ranges, so the next build keeps users in their variation as percentages rise. In Sets projects it lives under `.featurevisor/sets/<set>/`.
+- `REVISION`: the revision number each build increments and writes into datafiles.
 
-### Authoring guidance
+**Only the deploying CI build updates and commits state.** A local build must use `--no-state-files`, so neither file changes. Never commit state generated locally, and never edit or delete it to fix an error. On `invalid_saved_allocation`, restore state from the deployed revision, or rename the rule deliberately after reviewing who would switch.
 
-- **Commit state files** to Git from CI (after a successful `build`). The next build needs them to maintain consistency.
-- **Do not commit them from local builds.** When an agent runs `build`, always pass `--no-state-files` so neither `existing-state-*.json` nor `REVISION` changes locally.
-- The user does not edit state files manually.
-
-### Custom revision
-
-CI can pin revisions to a build SHA, semver, or content hash:
+CI can choose the revision:
 
 ```bash
-npx featurevisor build --revision 1.2.3
-npx featurevisor build --revision-from-hash    # per-datafile hash; unchanged content = unchanged revision (cache-friendly)
+npx featurevisor build --revision=1.2.3
+npx featurevisor build --revision-from-hash
 ```
 
-## Sticky values (SDK-side override)
+`--revision-from-hash` derives it from each datafile's content, so unchanged datafiles keep their revision, which suits CDN caching.
 
-Independent of bucketing, the SDK supports **sticky** values. Applications can supply per-feature evaluations and independent global variable values that are consulted before normal datafile evaluation. Sticky state is set from application code, not YAML. See [sdk-javascript.md](sdk-javascript.md#sticky).
+## Sticky values
 
-```js
-f.setStickyFeatures({
-  plan: { enabled: true, variation: 'premium' },
-})
-```
+Applications can supply results before the datafile is evaluated, with `setStickyFeatures` and `setStickyVariables` ([sdk-javascript.md](sdk-javascript.md#sticky)). Sticky state lives in application code, not in the project. To give a known user or QA a result, prefer a reviewed `force` entry ([features.md](features.md#force)). Sticky suits cases where the application already knows the answer, such as a plan returned by an entitlements service.
 
-When the user asks "how do I force a known user into a specific variation?" — prefer authoring a `force:` rule in the feature ([features.md](features.md#force)) over sticky, because YAML is the source of truth and reviewed in PRs. Sticky is best for cases where the application _itself_ already knows the answer (e.g. an entitlements service returned a plan).
-
-## Debugging bucketing
+## Debugging
 
 ```bash
-# what does this evaluation look like for one context?
 npx featurevisor evaluate \
-  --environment=production \
-  --feature=myFeature \
-  --context='{"userId":"u_42","country":"nl"}' \
-  --verbose
+  --feature=checkout \
+  --context='{"userId":"9b30","country":"de"}' \
+  --explain
 
-# at scale: does my 25% rollout really hit 25%?
 npx featurevisor assess-distribution \
-  --environment=production \
-  --feature=myFeature \
-  --context='{"country":"nl"}' \
-  --populateUuid=userId \
+  --feature=checkout \
+  --context='{"country":"de"}' \
+  --populate-uuid=userId \
   --n=10000
 ```
 
-Both commands accept repeatable `--target=<target>` options and run independently against every selected target datafile.
+`--explain` prints the bucket and its key, such as `Bucket: 67208 / 100000 · key "9b30.checkout"`. `assess-distribution` checks that a rollout and its variations split as intended across many generated users. In specs, `at` fixes the bucket so tests do not depend on real IDs ([testing.md](testing.md)).

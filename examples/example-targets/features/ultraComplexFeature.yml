@@ -32,26 +32,26 @@ variations:
     variableOverrides:
       theme:
         - value: dark
-          segments: premiumUsers
+          conditions: premiumUsers
         - value: auto
-          segments: chromeUsers
+          conditions: chromeUsers
         - value: dark
-          segments:
+          conditions:
             and: [premiumUsers, chromeUsers]
       fontSize:
         - value: 16
-          segments: premiumUsers
+          conditions: premiumUsers
         - value: 18
-          segments: premiumChromeUsers
+          conditions: premiumChromeUsers
       layout:
         - value: compact
-          segments:
+          conditions:
             or: [premiumUsers, adminUsers]
         - value: expanded
-          segments: chromeUsers
+          conditions: chromeUsers
       animation:
         - value: fade
-          segments:
+          conditions:
             and: [premiumUsers, chromeUsers]
 
   - value: treatment
@@ -64,21 +64,21 @@ variations:
     variableOverrides:
       theme:
         - value: light
-          segments: premiumUsers
+          conditions: premiumUsers
         - value: dark
-          segments:
+          conditions:
             or: [chromeUsers, firefoxUsers]
       fontSize:
         - value: 18
-          segments: premiumChromeUsers
+          conditions: premiumChromeUsers
         - value: 20
-          segments:
+          conditions:
             and: [premiumUsers, adminUsers]
       layout:
         - value: minimal
-          segments: chromeUsers
+          conditions: chromeUsers
         - value: full
-          segments:
+          conditions:
             or: [premiumUsers, adminUsers]
 
   - value: experimental
@@ -91,76 +91,76 @@ variations:
     variableOverrides:
       theme:
         - value: dark
-          segments: premiumChromeUsers
+          conditions: premiumChromeUsers
       fontSize:
         - value: 16
-          segments:
+          conditions:
             and: [premiumUsers, chromeUsers]
 
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     # Premium Chrome users - highest priority
     - key: premium-chrome-complex
-      segments:
+      conditions:
         and: [premiumUsers, chromeUsers]
       percentage: 100
 
     # Premium OR Admin users
     - key: premium-or-admin
-      segments:
+      conditions:
         or: [premiumUsers, adminUsers]
       percentage: 90
 
     # Premium users on web or mobile
     - key: premium-web-mobile
-      segments: premiumWebOrMobile
+      conditions: premiumWebOrMobile
       percentage: 85
 
     # Chrome OR Firefox browsers
     - key: chrome-or-firefox
-      segments:
+      conditions:
         or: [chromeUsers, chromeOrFirefox]
       percentage: 75
 
     # Non-premium Chrome users
     - key: non-premium-chrome
-      segments: nonPremiumChrome
+      conditions: nonPremiumChrome
       percentage: 65
 
     # Chrome users (simple)
     - key: chrome-simple
-      segments: chromeUsers
+      conditions: chromeUsers
       percentage: 55
 
     # Premium users (simple)
     - key: premium-simple
-      segments: premiumUsers
+      conditions: premiumUsers
       percentage: 45
 
     # Not admin users
     - key: not-admin
-      segments: notAdmin
+      conditions: notAdmin
       percentage: 35
 
     # Complex nested segment
     - key: complex-nested
-      segments: complexNested
+      conditions: complexNested
       percentage: 25
 
     # Everyone else
     - key: everyone-else
-      segments: "*"
+      conditions: "*"
       percentage: 15
 
 force:
   production:
     # Premium Chrome users with admin role get experimental (most specific, must come first)
-    - segments:
+    - conditions:
         and: [premiumChromeUsers, adminUsers]
       enabled: true
       variation: experimental
@@ -170,7 +170,7 @@ force:
         layout: full
 
     # Premium OR Admin on Chrome (must come before general admin)
-    - segments:
+    - conditions:
         and:
           - or: [premiumUsers, adminUsers]
           - chromeUsers
@@ -181,7 +181,7 @@ force:
         fontSize: 18
 
     # Admin users always get treatment (general case, comes last)
-    - segments: adminUsers
+    - conditions: adminUsers
       enabled: true
       variation: treatment
       variables:

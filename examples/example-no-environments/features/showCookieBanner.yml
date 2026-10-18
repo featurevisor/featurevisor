@@ -1,22 +1,11 @@
 description: Show cookie banner to users from the Netherlands
-tags:
-  - all
-
 bucketBy: userId
-
-force:
-  - conditions:
-      - attribute: userId
-        operator: equals
-        value: "123"
-    enabled: true
 
 rules:
   - key: nl
-    segments:
-      - netherlands
+    conditions: netherlands
     percentage: 100
 
   - key: everyone
-    segments: "*" # everyone else
+    conditions: "*"
     percentage: 0

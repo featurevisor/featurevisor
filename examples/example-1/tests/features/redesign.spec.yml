@@ -14,7 +14,7 @@ assertions:
 
   - at: 40
     environment: production
-    sticky:
+    stickyFeatures:
       redesign:
         enabled: true
     context:

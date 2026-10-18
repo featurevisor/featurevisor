@@ -19,4 +19,9 @@ module.exports = {
       lines: 59,
     },
   },
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+    "^@featurevisor/parsers$": "<rootDir>/../parsers/src",
+  },
 };

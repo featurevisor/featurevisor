@@ -17,9 +17,24 @@ import { listPlugin } from "../list";
 import { promotePlugin } from "../promoter";
 import { diffPlugin } from "../diff";
 import { getProjectSetExecutions } from "../sets";
+import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
+import {
+  getCatalogTargetMemberships,
+  reloadCatalogProject,
+  resolveCatalogOverrideValue,
+} from "../catalog";
 
 // that do not require an existing project
 export const nonProjectPlugins: Plugin[] = [initPlugin];
+
+const catalogRuntime = {
+  getTestInputFingerprint,
+  getTestInputStatePaths,
+  getProjectSetExecutions,
+  getCatalogTargetMemberships,
+  reloadCatalogProject,
+  resolveOverrideValue: resolveCatalogOverrideValue,
+};
 
 // that require an existing Featurevisor project
 export const projectBasedPlugins: Plugin[] = [
@@ -37,9 +52,7 @@ export const projectBasedPlugins: Plugin[] = [
   listPlugin,
   promotePlugin,
   diffPlugin,
-  createCatalogPlugin({
-    getProjectSetExecutions,
-  }),
+  createCatalogPlugin(catalogRuntime),
 ];
 
 export const commonPlugins: Plugin[] = [];

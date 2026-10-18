@@ -1,0 +1,5 @@
+description: Kill switch for checkout. Set to true to switch checkout off for everyone.
+
+type: boolean
+
+defaultValue: false

@@ -4,6 +4,10 @@ tags:
 
 bucketBy: userId
 
+conditions:
+  - feature: experimentAllocation
+    variation: qux
+
 variablesSchema:
   fooConfig:
     type: json
@@ -20,16 +24,17 @@ variations:
     weight: 33.33
 
 rules:
+  # New rule keys deliberately reset allocations from the former Group.
   staging:
-    - key: "1"
-      segments: "*"
-      percentage: 50
+    - key: allocated
+      conditions: "*"
+      percentage: 100
   production:
-    - key: "1"
-      segments:
+    - key: allocated-germany
+      conditions:
         - countries.germany
-      percentage: 50
+      percentage: 100
       variation: b
-    - key: "2"
-      segments: "*"
-      percentage: 50
+    - key: allocated-everyone
+      conditions: "*"
+      percentage: 100

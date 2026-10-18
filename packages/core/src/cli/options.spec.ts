@@ -1,9 +1,29 @@
 import { getBuiltinCLIOptions, getCompatibilityCLIOptions } from "./options";
 
 describe("core: CLI options", function () {
+  test("declares the Catalog source branch option", function () {
+    expect(getBuiltinCLIOptions("catalog export")?.branch.type).toBe("string");
+    expect(getBuiltinCLIOptions("build")?.branch).toBeUndefined();
+  });
+  test.each(["lint", "build"])(
+    "declares verbose %s diagnostics without changing the default",
+    function (command) {
+      expect(getBuiltinCLIOptions(command)?.verbose).toEqual({
+        type: "boolean",
+        description: "include error stack traces",
+      });
+    },
+  );
   test("declares explain as an opt in evaluate boolean", function () {
     expect(getBuiltinCLIOptions("evaluate")?.explain.type).toBe("boolean");
     expect(getBuiltinCLIOptions("benchmark")?.explain).toBeUndefined();
+  });
+  test("exposes the v3 mutation order comparison only on lint", function () {
+    const lintOptions = getBuiltinCLIOptions("lint");
+    expect(lintOptions?.v3MutationOrder).toEqual(
+      expect.objectContaining({ type: "boolean", alias: "v3-mutation-order" }),
+    );
+    expect(getBuiltinCLIOptions("build")?.v3MutationOrder).toBeUndefined();
   });
   test("declares repeatable target and tag options as arrays", function () {
     expect(getBuiltinCLIOptions("build")?.target.type).toBe("array");

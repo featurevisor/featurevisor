@@ -1,0 +1,436 @@
+{
+  "version": 2,
+  "capability": "composition-and-overrides",
+  "datafile": {
+    "schemaVersion": "2",
+    "revision": "composition-conformance",
+    "segments": {},
+    "features": {
+      "checkout": {
+        "bucketBy": "userId",
+        "disabledVariationValue": "off",
+        "variations": [{ "value": "control" }],
+        "variablesSchema": {
+          "label": { "type": "string", "defaultValue": "Buy", "disabledValue": "Closed" }
+        },
+        "traffic": [
+          {
+            "key": "all",
+            "segments": "*",
+            "percentage": 100000,
+            "allocation": [{ "range": [0, 100000], "variation": "control" }]
+          }
+        ]
+      }
+    },
+    "variables": {
+      "policy": { "type": "object", "defaultValue": { "limit": 50, "methods": ["card"] } },
+      "raw": { "type": "json", "defaultValue": "{\"decoded\":true}" },
+      "gate": { "type": "boolean", "defaultValue": true },
+      "policyAlias": {
+        "type": "object",
+        "compose": "policy",
+        "overrideProgram": [
+          {
+            "key": "regional",
+            "keyPath": ["regional"],
+            "conditions": { "attribute": "country", "operator": "equals", "value": "nl" },
+            "operations": [{ "op": "set", "path": ["limit"], "value": 80 }],
+            "onMatch": 1,
+            "onMiss": 1
+          }
+        ]
+      },
+      "policyChain": { "type": "object", "compose": "policyAlias" },
+      "booleanAlias": { "type": "boolean", "compose": "gate" },
+      "numberSource": { "type": "integer", "defaultValue": 0 },
+      "numberAlias": { "type": "integer", "compose": "numberSource" },
+      "stringSource": { "type": "string", "defaultValue": "" },
+      "stringAlias": { "type": "string", "compose": "stringSource" },
+      "jsonText": { "type": "json", "defaultValue": "\"null\"" },
+      "jsonAlias": { "type": "json", "compose": "jsonText" },
+      "jsonChain": { "type": "json", "compose": "jsonAlias" },
+      "arraySource": { "type": "array", "defaultValue": ["card"] },
+      "arrayAlias": {
+        "type": "array",
+        "compose": "arraySource",
+        "overrideProgram": [
+          {
+            "key": "extra",
+            "keyPath": ["extra"],
+            "segments": "*",
+            "operations": [{ "op": "appendUnique", "path": [], "value": "ideal" }],
+            "onMatch": 1,
+            "onMiss": 1
+          }
+        ]
+      },
+      "screenAlias": { "type": "object", "compose": "screen" },
+      "aliasMembers": {
+        "type": "object",
+        "compose": [
+          { "key": "policy", "variable": "policyChain" },
+          { "key": "raw", "variable": "jsonChain" }
+        ]
+      },
+      "aliasCycle": { "type": "object", "compose": "aliasCycle" },
+      "missingAlias": { "type": "object", "compose": "missingSource" },
+      "screen": {
+        "type": "object",
+        "compose": [
+          { "key": "enabled", "feature": "checkout" },
+          { "key": "label", "feature": "checkout", "variable": "label" },
+          { "key": "policy", "variable": "policy" },
+          { "key": "raw", "variable": "raw" },
+          { "key": "variation", "feature": "checkout", "variation": true }
+        ],
+        "overrideProgram": [
+          {
+            "key": "netherlands",
+            "keyPath": ["netherlands"],
+            "conditions": { "attribute": "country", "operator": "equals", "value": "nl" },
+            "operations": [{ "op": "set", "path": ["policy", "limit"], "value": 90 }],
+            "onMatch": 1,
+            "onMiss": 2
+          },
+          {
+            "key": "amsterdam",
+            "keyPath": ["netherlands", "amsterdam"],
+            "conditions": { "attribute": "city", "operator": "equals", "value": "Amsterdam" },
+            "operations": [{ "op": "set", "path": ["label"], "value": "Collect" }],
+            "onMatch": 2,
+            "onMiss": 2
+          },
+          {
+            "key": "eligible",
+            "keyPath": ["eligible"],
+            "requiredFeatures": ["checkout"],
+            "conditions": {"and":[{"attribute":"country","operator":"equals","value":"nl"},{"variable":"gate","operator":"equals","value":true}]},
+            "operations": [{ "op": "set", "path": ["policy", "limit"], "value": 100 }],
+            "onMatch": 3,
+            "onMiss": 3
+          }
+        ]
+      },
+      "nested": { "type": "object", "compose": [{ "key": "screen", "variable": "screen" }] },
+      "replacement": {
+        "type": "object",
+        "compose": [
+          { "key": "enabled", "feature": "checkout" },
+          { "key": "label", "feature": "checkout", "variable": "label" },
+          { "key": "policy", "variable": "policy" }
+        ],
+        "overrideProgram": [
+          {
+            "key": "literal",
+            "keyPath": ["literal"],
+            "segments": "*",
+            "operations": [
+              {
+                "op": "set",
+                "path": [],
+                "value": {
+                  "enabled": false,
+                  "label": null,
+                  "policy": { "limit": 25, "methods": ["cash"] }
+                }
+              }
+            ],
+            "onMatch": 1,
+            "onMiss": 1
+          }
+        ]
+      },
+      "cycle": { "type": "object", "compose": [{ "key": "self", "variable": "cycle" }] },
+      "invalidProgram": {
+        "type": "object",
+        "compose": [{ "key": "policy", "variable": "policy" }],
+        "overrideProgram": [
+          {
+            "key": "bad",
+            "segments": "*",
+            "operations": [{ "op": "set", "path": ["policy", "limit"], "value": 1 }],
+            "onMatch": 0,
+            "onMiss": 1
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "string-composition-reads-overridden-map",
+      "variable": "screenAlias",
+      "context": { "country": "nl", "city": "Amsterdam" },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Collect",
+        "policy": { "limit": 100, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "map-composition-reads-final-string-sources",
+      "variable": "aliasMembers",
+      "context": { "country": "nl" },
+      "expectedValue": { "policy": { "limit": 80, "methods": ["card"] }, "raw": "null" },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-preserves-source-object",
+      "variable": "policyAlias",
+      "context": {},
+      "expectedValue": { "limit": 50, "methods": ["card"] },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-mutates-copy-of-source",
+      "variable": "policyAlias",
+      "context": { "country": "nl" },
+      "expectedValue": { "limit": 80, "methods": ["card"] },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverridePaths": [["regional"]]
+      }
+    },
+    {
+      "name": "string-composition-chain-uses-final-overrides",
+      "variable": "policyChain",
+      "context": { "country": "nl" },
+      "expectedValue": { "limit": 80, "methods": ["card"] },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-preserves-false",
+      "variable": "booleanAlias",
+      "context": {},
+      "stickyVariables": { "gate": false },
+      "expectedValue": false,
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-preserves-zero",
+      "variable": "numberAlias",
+      "context": {},
+      "expectedValue": 0,
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-preserves-empty-string",
+      "variable": "stringAlias",
+      "context": {},
+      "expectedValue": "",
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-json-is-decoded-once",
+      "variable": "jsonChain",
+      "context": {},
+      "expectedValue": "null",
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-preserves-source-null",
+      "variable": "policyAlias",
+      "context": { "country": "nl" },
+      "stickyVariables": { "policy": null },
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "variable_override_rule" }
+    },
+    {
+      "name": "string-composition-array-root-operation",
+      "variable": "arrayAlias",
+      "context": {},
+      "expectedValue": ["card", "ideal"],
+      "expectedEvaluation": { "reason": "variable_override_rule" }
+    },
+    {
+      "name": "string-composition-sticky-bypasses-source",
+      "variable": "policyChain",
+      "context": {},
+      "stickyVariables": { "policyChain": null },
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "sticky" }
+    },
+    {
+      "name": "string-composition-missing-source-is-null",
+      "variable": "missingAlias",
+      "context": {},
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "string-composition-cycle-fails-completely",
+      "variable": "aliasCycle",
+      "context": {},
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "error" }
+    },
+    {
+      "name": "unmatched-assembled-value",
+      "variable": "screen",
+      "context": { "userId": "example-user", "country": "us" },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Buy",
+        "policy": { "limit": 50, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "nested-and-continuing-overrides",
+      "variable": "screen",
+      "context": { "userId": "example-user", "country": "nl", "city": "Amsterdam" },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Collect",
+        "policy": { "limit": 100, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverrideKey": "eligible",
+        "variableOverridePath": ["eligible"],
+        "variableOverridePaths": [["netherlands"], ["netherlands", "amsterdam"], ["eligible"]]
+      }
+    },
+    {
+      "name": "child-miss-continues-parent",
+      "variable": "screen",
+      "context": { "country": "nl", "city": "Rotterdam" },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Buy",
+        "policy": { "limit": 100, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverridePaths": [["netherlands"], ["eligible"]]
+      }
+    },
+    {
+      "name": "disabled-feature-source-and-prerequisite",
+      "variable": "screen",
+      "context": { "country": "nl", "city": "Amsterdam" },
+      "stickyFeatures": { "checkout": { "enabled": false } },
+      "expectedValue": {
+        "enabled": false,
+        "label": "Collect",
+        "policy": { "limit": 90, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "off"
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverrideKey": "amsterdam",
+        "variableOverridePaths": [["netherlands"], ["netherlands", "amsterdam"]]
+      }
+    },
+    {
+      "name": "disabled-sources-with-no-override",
+      "variable": "screen",
+      "context": { "country": "us" },
+      "stickyFeatures": { "checkout": { "enabled": false } },
+      "expectedValue": {
+        "enabled": false,
+        "label": "Closed",
+        "policy": { "limit": 50, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "off"
+      },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "variable-prerequisite-gates-only-its-override",
+      "variable": "screen",
+      "context": { "country": "nl" },
+      "stickyVariables": { "gate": false },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Buy",
+        "policy": { "limit": 90, "methods": ["card"] },
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverridePaths": [["netherlands"]]
+      }
+    },
+    {
+      "name": "null-source-remains-null",
+      "variable": "screen",
+      "context": { "country": "nl" },
+      "stickyVariables": { "policy": null },
+      "expectedValue": {
+        "enabled": true,
+        "label": "Buy",
+        "policy": null,
+        "raw": { "decoded": true },
+        "variation": "control"
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverridePaths": [["netherlands"], ["eligible"]]
+      }
+    },
+    {
+      "name": "whole-variable-sticky-bypasses-both-stages",
+      "variable": "screen",
+      "context": { "country": "nl" },
+      "stickyVariables": { "screen": { "pinned": true } },
+      "expectedValue": { "pinned": true },
+      "expectedEvaluation": { "reason": "sticky" }
+    },
+    {
+      "name": "nested-composition-consumes-final-overridden-source",
+      "variable": "nested",
+      "context": { "country": "nl", "city": "Amsterdam" },
+      "expectedValue": {
+        "screen": {
+          "enabled": true,
+          "label": "Collect",
+          "policy": { "limit": 100, "methods": ["card"] },
+          "raw": { "decoded": true },
+          "variation": "control"
+        }
+      },
+      "expectedEvaluation": { "reason": "variable_composed" }
+    },
+    {
+      "name": "literal-replacement-keeps-null-members",
+      "variable": "replacement",
+      "context": {},
+      "expectedValue": {
+        "enabled": false,
+        "label": null,
+        "policy": { "limit": 25, "methods": ["cash"] }
+      },
+      "expectedEvaluation": {
+        "reason": "variable_override_rule",
+        "variableOverridePaths": [["literal"]]
+      }
+    },
+    {
+      "name": "composition-cycle-fails-whole-result",
+      "variable": "cycle",
+      "context": {},
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "error" }
+    },
+    {
+      "name": "bad-program-fails-whole-result",
+      "variable": "invalidProgram",
+      "context": {},
+      "expectedValue": null,
+      "expectedEvaluation": { "reason": "error" }
+    }
+  ]
+}

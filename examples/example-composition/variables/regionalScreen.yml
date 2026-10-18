@@ -1,0 +1,42 @@
+description: Regional overrides applied after the screen is composed
+
+tags: [web]
+
+compose:
+  label:
+    feature: delivery
+    variable: label
+  policy:
+    variable: policy
+
+overrides:
+  - key: netherlands
+    conditions:
+      attribute: country
+      operator: equals
+      value: nl
+    continue: true
+    mutate:
+      policy.limit: 90
+    overrides:
+      - key: amsterdam
+        conditions:
+          attribute: city
+          operator: equals
+          value: Amsterdam
+        mutate:
+          label: Collect today
+  - key: uk
+    conditions:
+      attribute: country
+      operator: equals
+      value: gb
+    value:
+      label: null
+      policy:
+        limit: 25
+  - key: checkout
+    conditions:
+      feature: checkout
+    mutate:
+      policy.limit: 100

@@ -44,7 +44,7 @@
 
 ## How does it work?
 
-Three simple steps to visualize it:
+It works in three steps:
 
 [![Featurevisor](./assets/flow.png)](https://featurevisor.com)
 
@@ -67,14 +67,16 @@ The core building blocks of a Featurevisor [project](https://featurevisor.com/do
 - [Attributes](https://featurevisor.com/docs/attributes/): building block for conditions
 - [Segments](https://featurevisor.com/docs/segments/): reusable conditions for targeting users
 - [Features](https://featurevisor.com/docs/features/): features with flag, variation, and variable definitions
-- [Global variables](https://featurevisor.com/docs/global-variables/): independently evaluated configuration values
+- [Global variables](https://featurevisor.com/docs/variables/#global-variables): independently evaluated configuration values
 
-SDKs evaluate feature values against the [context](https://featurevisor.com/docs/sdks/javascript/#context) provided by your application. All current Featurevisor SDKs support independent global variables:
+SDKs evaluate four kinds of values against the [context](https://featurevisor.com/docs/sdks/javascript/#context) your application provides:
 
 - [Flags](https://featurevisor.com/docs/flags/): on/off values against rules
 - [Variations](https://featurevisor.com/docs/variations/): string values for A/B tests
 - [Feature variables](https://featurevisor.com/docs/variables/): typed values owned by a feature
-- [Global variables](https://featurevisor.com/docs/global-variables/): typed values with their own targeting and lifecycle
+- [Global variables](https://featurevisor.com/docs/variables/#global-variables): typed values with their own targeting and lifecycle
+
+The JavaScript SDK also evaluates [composed variables](https://featurevisor.com/docs/variables/#compose-values), grouping flags, variations and variables into one object with optional overrides after assembly. Deploy a supporting SDK before serving a composed datafile.
 
 ## Where can I use Featurevisor?
 
@@ -104,13 +106,13 @@ Featurevisor ships an official [skill](https://featurevisor.com/docs/skills/) th
 
 Install it in your Featurevisor project (or your app repository) via [skills.sh](https://skills.sh):
 
-```
-$ npx skills add featurevisor/featurevisor
+```bash
+npx skills add featurevisor/featurevisor
 ```
 
 Then prompt your agent naturally:
 
-- "Create a `showWishlist` feature, tagged web, starting at 5% in production"
+- "Create a `showWishlist` feature, tagged web, starting at 5%"
 - "Why is `checkout` disabled for userId 123 in the Netherlands?"
 - "Roll out `newEditor` to employees first, then beta users, then everyone"
 
@@ -125,8 +127,10 @@ Several use cases include:
 - [Decoupling application deployments from feature releases](https://featurevisor.com/docs/use-cases/decouple-releases-from-deployments/)
 - [Progressive delivery with gradual rollout of features](https://featurevisor.com/docs/use-cases/progressive-delivery/)
 - [Testing in production](https://featurevisor.com/docs/use-cases/testing-in-production/)
-- [Experiment with A/B and Multivariate tests](https://featurevisor.com/docs/use-cases/experiments/)
-- [Role-based feature gating](https://featurevisor.com/docs/use-cases/entitlements/)
+- [A/B and multivariate experiments](https://featurevisor.com/docs/use-cases/experiments/)
+- [Mutually exclusive experiments](https://featurevisor.com/docs/use-cases/mutually-exclusive-experiments/)
+- [Role based feature gating](https://featurevisor.com/docs/use-cases/rbac/)
+- [User entitlements](https://featurevisor.com/docs/use-cases/entitlements/)
 - [Remote configuration with advanced variables](https://featurevisor.com/docs/use-cases/remote-configuration/)
 - [Establishing feature ownership and governance](https://featurevisor.com/docs/use-cases/establishing-ownership/)
 - [Trunk based development](https://featurevisor.com/docs/use-cases/trunk-based-development/)

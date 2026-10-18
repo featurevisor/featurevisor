@@ -4,7 +4,7 @@ tags:
 
 bucketBy: userId
 
-requiredFeatures:
+conditions:
   # explicitly require an enabled feature
   - feature: redesign
     enabled: true
@@ -21,9 +21,9 @@ requiredFeatures:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100

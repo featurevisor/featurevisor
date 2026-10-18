@@ -9,5 +9,8 @@ module.exports = {
   collectCoverageFrom: ["src/**/*.ts", "!src/index.ts"],
   coverageProvider: "v8",
   coverageThreshold: { global: { statements: 95, branches: 90, functions: 95, lines: 95 } },
-  moduleNameMapper: { "^(\\.{1,2}/.*)\\.js$": "$1" },
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+  },
 };

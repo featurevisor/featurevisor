@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import process from "node:process";
@@ -67,6 +67,19 @@ function assertRuntimeExports(packageDetails, module, moduleType) {
 }
 
 async function main() {
+  for (const entry of readdirSync(join(rootDirectory, "packages"), { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const directory = entry.name;
+    const manifest = JSON.parse(
+      readFileSync(join(rootDirectory, "packages", directory, "package.json"), "utf8"),
+    );
+    if (manifest.repository?.directory !== `packages/${directory}`) {
+      throw new Error(`${manifest.name} must link to its repository package directory`);
+    }
+    if (["sdk", "react", "vue", "types"].includes(directory) && manifest.sideEffects !== false) {
+      throw new Error(`${manifest.name} must retain its reviewed sideEffects declaration`);
+    }
+  }
   for (const packageDetails of packages) {
     const packageDirectory = join(rootDirectory, "packages", packageDetails.directory);
     const packageJson = JSON.parse(readFileSync(join(packageDirectory, "package.json"), "utf8"));

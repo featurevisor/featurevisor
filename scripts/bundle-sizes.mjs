@@ -15,24 +15,29 @@ const packages = [
     name: "@featurevisor/sdk",
     entry: path.join(rootDir, "packages/sdk/src/index.ts"),
     fileName: "featurevisor-sdk",
+    // Terser plus gzip bytes. Raise deliberately, with the reason in the commit.
+    budget: 14_500,
     external: [],
   },
   {
     name: "@featurevisor/react",
     entry: path.join(rootDir, "packages/react/src/index.ts"),
     fileName: "featurevisor-react",
+    budget: 800,
     external: ["react", "react-dom", "@featurevisor/sdk"],
   },
   {
     name: "@featurevisor/vue",
     entry: path.join(rootDir, "packages/vue/src/index.ts"),
     fileName: "featurevisor-vue",
+    budget: 400,
     external: ["vue", "@featurevisor/sdk"],
   },
   {
     name: "@featurevisor/openfeature-provider-web",
     entry: path.join(rootDir, "packages/openfeature-provider-web/src/index.ts"),
     fileName: "featurevisor-openfeature-provider-web",
+    budget: 22_600,
     external: [
       // "@openfeature/web-sdk"
     ],
@@ -113,12 +118,19 @@ async function minifyPackageWithTerser(content) {
 
 async function main() {
   const rows = [];
+  const overBudget = [];
 
   for (const packageConfig of packages) {
     const originalContent = await bundlePackage(packageConfig, false);
     const original = getSizes(originalContent);
     const esbuild = getSizes(await bundlePackage(packageConfig, "esbuild"));
     const terser = getSizes(await minifyPackageWithTerser(originalContent));
+
+    if (terser.gzippedBytes > packageConfig.budget) {
+      overBudget.push(
+        `${packageConfig.name} is ${terser.gzippedBytes} B after Terser and gzip, over its ${packageConfig.budget} B budget.`,
+      );
+    }
 
     rows.push({
       packageName: packageConfig.name,
@@ -173,6 +185,9 @@ async function main() {
       ].join("  "),
     );
   }
+
+  for (const message of overBudget) console.error(message);
+  if (overBudget.length) process.exitCode = 1;
 }
 
 main().catch((error) => {

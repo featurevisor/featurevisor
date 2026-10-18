@@ -1,20 +1,22 @@
 variable: checkoutPromoBanner
 
-# Global variables are never bucketed directly. An optional `at` controls only
-# feature evaluations reached through requiredFeatures.
+# Global variables are never bucketed. `at` fixes the bucket only for
+# features read through conditions, here checkout.
 assertions:
-  - description: Shown while the required checkout feature is enabled for this user
-    environment: production
+  - key: checkout-on
+    description: Shown while checkout is enabled for this user
+    at: 5
     context:
-      userId: u_qa_1 # forced into checkout by the QA rule
+      userId: shopper_1
       country: us
     expectedValue: Free returns on every order
 
-  - description: Falls back to disabledValue when checkout is not enabled
-    environment: production
+  - key: checkout-off
+    description: Falls back to disabledValue when checkout is disabled
+    at: 50
     context:
-      userId: shopper_1 # buckets above the 10% catch-all rollout
+      userId: shopper_1
       country: us
     expectedValue: ""
     expectedEvaluation:
-      reason: required_features_unmet
+      reason: conditions_unmet

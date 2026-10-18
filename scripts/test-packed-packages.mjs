@@ -189,7 +189,6 @@ const globalVariableKeys = featurevisor.getVariableKeys();
 const featureVariableKeys = featurevisor.getVariableKeys("checkout");
 const featureEvaluations = featurevisor.getFeatureEvaluations({}, ["checkout"]);
 const variableEvaluations = featurevisor.getVariableEvaluations({}, ["supportEmail"]);
-const deprecatedAllEvaluations = featurevisor.getAllEvaluations({}, ["checkout"]);
 
 type _Variation = Assert<IsExact<typeof variation, VariationValue | null>>;
 type _TypedVariation = Assert<
@@ -199,7 +198,7 @@ type _Variable = Assert<IsExact<typeof variable, VariableValue | null>>;
 type _TypedVariable = Assert<IsExact<typeof typedVariable, CheckoutConfig | null>>;
 type _GlobalVariable = Assert<IsExact<typeof globalVariable, VariableValue | null>>;
 type _TypedGlobalVariable = Assert<IsExact<typeof typedGlobalVariable, string | null>>;
-type _ArrayVariable = Assert<IsExact<typeof arrayVariable, string[] | null>>;
+type _ArrayVariable = Assert<IsExact<typeof arrayVariable, unknown[] | null>>;
 type _TypedArrayVariable = Assert<IsExact<typeof typedArrayVariable, number[] | null>>;
 type _ObjectVariable = Assert<IsExact<typeof objectVariable, ObjectValue | null>>;
 type _TypedObjectVariable = Assert<
@@ -211,9 +210,6 @@ type _GlobalVariableKeys = Assert<IsExact<typeof globalVariableKeys, string[]>>;
 type _FeatureVariableKeys = Assert<IsExact<typeof featureVariableKeys, string[]>>;
 type _FeatureEvaluations = Assert<IsExact<typeof featureEvaluations, EvaluatedFeatures>>;
 type _VariableEvaluations = Assert<IsExact<typeof variableEvaluations, EvaluatedVariables>>;
-type _DeprecatedAllEvaluations = Assert<
-  IsExact<typeof deprecatedAllEvaluations, EvaluatedFeatures>
->;
 
 const child = featurevisor.spawn();
 const childBroadVariation = child.getVariation("checkout");

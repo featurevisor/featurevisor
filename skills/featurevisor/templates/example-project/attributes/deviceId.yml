@@ -1,2 +1,3 @@
-description: Anonymous device ID (generated client-side, persisted in localStorage / cookie)
+description: Anonymous device ID, generated and persisted by the client
+
 type: string

@@ -1,14 +1,15 @@
 segment: netherlands
 assertions:
-  - context:
+  - description: Matches users in the Netherlands
+    context:
       country: nl
     expectedToMatch: true
 
-  - context:
+  - description: Does not match users in Germany
+    context:
       country: de
-      someOtherAttribute: someOtherValue
     expectedToMatch: false
 
-  - context:
-      country: notNl
+  - description: Does not match when country is missing
+    context: {}
     expectedToMatch: false

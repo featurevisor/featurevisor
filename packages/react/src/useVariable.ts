@@ -1,16 +1,7 @@
-import { useEffect, useState } from "react";
-
-import type {
-  Context,
-  FeatureKey,
-  GlobalVariableKey,
-  VariableKey,
-  VariableValue,
-} from "@featurevisor/types";
+import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk.js";
-import { onFeatureChange } from "./onFeatureChange.js";
-import { onVariableChange } from "./onVariableChange.js";
+import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
 
 const EMPTY_CONTEXT: Context = {};
 
@@ -25,36 +16,23 @@ export function useVariable<TValue = VariableValue>(
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  variableKey: GlobalVariableKey,
+  variableKey: VariableKey,
   context?: Context,
 ): TValue | null;
 export function useVariable<TValue = VariableValue>(
-  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  featureKeyOrVariableKey: FeatureKey | VariableKey,
   variableKeyOrContext: VariableKey | Context = EMPTY_CONTEXT,
   context: Context = EMPTY_CONTEXT,
 ): TValue | null {
   const sdk = useSdk();
-  const isGlobal = typeof variableKeyOrContext !== "string";
-  const resolvedContext = isGlobal ? variableKeyOrContext : context;
-  const evaluate = () =>
-    isGlobal
-      ? sdk.getVariable<TValue>(featureKeyOrVariableKey, resolvedContext)
-      : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, resolvedContext);
-  const [variableValue, setVariableValue] = useState<TValue | null>(() => evaluate());
+  const isStandaloneVariable = typeof variableKeyOrContext !== "string";
+  const resolvedContext = isStandaloneVariable ? variableKeyOrContext : context;
+  useEvaluationSubscription(sdk, featureKeyOrVariableKey, isStandaloneVariable);
 
-  useEffect(() => {
-    setVariableValue(evaluate());
-
-    const onChange = () => {
-      const newValue = evaluate();
-      setVariableValue((prev) => (newValue !== prev ? newValue : prev));
-    };
-    const unsubscribe = isGlobal
-      ? onVariableChange(sdk, featureKeyOrVariableKey, onChange)
-      : onFeatureChange(sdk, featureKeyOrVariableKey, onChange);
-
-    return unsubscribe;
-  }, [sdk, featureKeyOrVariableKey, variableKeyOrContext, context]);
-
-  return variableValue;
+  // Context and module inputs are evaluated on every render. Runtime programs
+  // can return fresh objects, so storing their results in an effect would loop
+  // with inline contexts. Values, including functions, never enter React state.
+  return isStandaloneVariable
+    ? sdk.getVariable<TValue>(featureKeyOrVariableKey, resolvedContext)
+    : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, resolvedContext);
 }

@@ -1,0 +1,11 @@
+description: Selected layouts
+
+tags: [web]
+
+compose:
+  checkout:
+    feature: checkout
+    variation: true
+  delivery:
+    feature: delivery
+    variation: true

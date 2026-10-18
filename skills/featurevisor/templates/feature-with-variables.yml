@@ -1,6 +1,4 @@
 description: <Feature with variables (remote config)>
-tags:
-  - all
 
 bucketBy: userId
 
@@ -49,27 +47,20 @@ variablesSchema:
 #       bgColor: blue
 #       "hero.subtitle": Welcome to the new design   # mutation key — must be quoted
 
+# With environments configured, nest this list under each environment key.
 rules:
-  staging:
-    - key: everyone
-      segments: "*"
-      percentage: 100
-      variables:
-        bgColor: orange
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variables:
+      bgColor: orange
+      "hero.subtitle": Welkom op onze site # mutation: only this property (quoted key)
+    variableOverrides:
+      bgColor:
+        - key: amsterdam
+          conditions: amsterdam
+          value: red
 
-  production:
-    - key: nl
-      segments: netherlands
-      percentage: 100
-      variables:
-        bgColor: orange
-        "hero.subtitle": Welkom op onze site # mutation: only this property (quoted key)
-      variableOverrides:
-        bgColor:
-          - key: amsterdam
-            segments: amsterdam
-            value: red
-
-    - key: everyone
-      segments: "*"
-      percentage: 0
+  - key: everyone
+    conditions: "*"
+    percentage: 0

@@ -8,20 +8,20 @@ bucketBy:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "desktop"
-      segments:
+      conditions:
         - version_gt5
         - desktop
       percentage: 100
 
     - key: "mobile"
-      segments:
+      conditions:
         - mobile
       percentage: 100
 
     - key: "all"
-      segments: "*"
+      conditions: "*"
       percentage: 0

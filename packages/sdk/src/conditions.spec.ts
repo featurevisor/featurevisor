@@ -7,15 +7,103 @@ import {
   allSegmentsAreMatched,
   parseConditionsIfStringified,
   parseSegmentsIfStringified,
+  getPortableTimestamp,
 } from "./conditions";
 
-const conformance = JSON.parse(
-  readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
+const conformanceSource = readFileSync(
+  resolve(__dirname, "../../../conformance/sdk-v3.json"),
+  "utf8",
 );
+const conformance = JSON.parse(conformanceSource);
 
 describe("sdk: Conditions", function () {
+  it("preserves raw floating point spellings for native conformance parsers", () => {
+    const cases = conformance.conditionCases.filter((testCase: { name: string }) =>
+      /(?:integer actual and floating candidate|floating actual and integer candidate)$/.test(
+        testCase.name,
+      ),
+    );
+    expect(cases).toHaveLength(22);
+    for (const testCase of cases) {
+      const start = conformanceSource.indexOf(`"name": ${JSON.stringify(testCase.name)}`);
+      expect(start).toBeGreaterThan(-1);
+      const next = conformanceSource.indexOf('"name":', start + 1);
+      const source = conformanceSource.slice(start, next === -1 ? undefined : next);
+      const field = testCase.name.includes("floating candidate") ? "value" : "values";
+      expect(source).toMatch(new RegExp(`"${field}":\\s*(?:1\\.0\\s*[,}]|\\[1\\.0\\])`));
+    }
+  });
+  it("preserves epoch and validates native dates without mutating them", () => {
+    const epoch = new Date(0);
+    expect(getPortableTimestamp(epoch)).toBe(0);
+    expect(getPortableTimestamp(new Date(NaN))).toBeNull();
+    expect(getPortableTimestamp(new Date("+010000-01-01T00:00:00Z"))).toBeNull();
+    expect(getPortableTimestamp("1970-01-01T00:00:00Z")).toBe(0);
+    expect(
+      allConditionsAreMatched(
+        { attribute: "date", operator: "before", value: "1970-01-01T00:00:01Z" },
+        { date: epoch },
+      ),
+    ).toBe(true);
+    expect(epoch.getTime()).toBe(0);
+  });
+
+  it.each([
+    "2025-02-30T00:00:00Z",
+    "1900-02-29T00:00:00Z",
+    "2024-04-31T00:00:00Z",
+    "2024-01-01T24:00:00Z",
+    "2024-01-01T00:00:60Z",
+    "2024-01-01T00:00:00.0000000001Z",
+    "2024-01-01T00:00:00+14:01",
+    "2024-01-01T00:00:00+01:60",
+    "0000-01-01T00:00:00Z",
+    "0001-01-01T00:00:00+00:01",
+    "9999-12-31T23:59:59-00:01",
+    "prefix2024-01-01T00:00:00Z",
+    "2024-01-01 00:00:00Z",
+    "2024-01-01T00:00:00Z\n",
+  ])("rejects invalid portable timestamp %s on either side", (value) => {
+    expect(getPortableTimestamp(value)).toBeNull();
+    for (const operator of ["before", "after"] as const) {
+      expect(
+        allConditionsAreMatched(
+          { attribute: "date", operator, value },
+          { date: "2025-01-01T00:00:00Z" },
+        ),
+      ).toBe(false);
+      expect(
+        allConditionsAreMatched(
+          { attribute: "date", operator, value: "2025-01-01T00:00:00Z" },
+          { date: value },
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it.each([
+    ["0001-01-01T00:00:00Z", -62135596800000],
+    ["9999-12-31T23:59:59.999Z", 253402300799999],
+    ["2000-02-29T01:00:00.1+01:00", Date.parse("2000-02-29T00:00:00.100Z")],
+    ["2024-02-29T00:00:00.12Z", Date.parse("2024-02-29T00:00:00.120Z")],
+    ["1970-01-01T00:00:00.1234Z", 123],
+    ["1970-01-01T00:00:00.123456+00:00", 123],
+    ["1970-01-01T00:00:00.1234567Z", 123],
+    ["1970-01-01T01:00:00.123999999+01:00", 123],
+    ["1969-12-31T23:59:59.999999999Z", -1],
+    ["9999-12-31T23:59:59.999999999Z", 253402300799999],
+  ])("accepts portable timestamp %s", (value, expected) => {
+    expect(getPortableTimestamp(value)).toBe(expected);
+  });
+
   it("executes every shared condition conformance case", () => {
-    expect(conformance.version).toBe(6);
+    expect(conformance.version).toBe(15);
+    expect(conformance.conditionCases).toHaveLength(189);
+    expect(
+      conformance.conditionCases.filter((testCase: { condition: Condition }) =>
+        /includesAny|notIncludesAny/.test(JSON.stringify(testCase.condition)),
+      ),
+    ).toHaveLength(73);
 
     for (const testCase of conformance.conditionCases) {
       expect(allConditionsAreMatched(testCase.condition as Condition, testCase.context)).toBe(
@@ -691,19 +779,19 @@ describe("sdk: Conditions", function () {
     it("should not match with empty conditions", function () {
       const conditions: Condition[] = [];
 
-      // match
+      // Empty expressions fail defensively, regardless of context.
       expect(
         allConditionsAreMatched(conditions, {
           browser_type: "chrome",
         }),
-      ).toEqual(true);
+      ).toEqual(false);
 
       // not match
       expect(
         allConditionsAreMatched(conditions, {
           browser_type: "firefox",
         }),
-      ).toEqual(true);
+      ).toEqual(false);
     });
 
     it("should match with extra conditions that are not needed", function () {

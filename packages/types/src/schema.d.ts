@@ -2,21 +2,18 @@ export type SchemaKey = string;
 
 export type ObjectValue = { [key: string]: Value };
 export type Value =
+  | null
   | boolean
   | string
-  | number // covers integer and double
+  | number // covers integer and number
   // | Date // @TODO: support in future
   | ObjectValue
   | Value[];
 
-export type SchemaType =
-  | "boolean"
-  | "string"
-  | "integer"
-  | "double"
-  | "object"
-  // | "date" // @TODO: support in future
-  | "array";
+export type SchemaType = "boolean" | "string" | "integer" | "number" | "object" | "array";
+
+/** Semantic string formats. `semver` is Featurevisor's portable version grammar. */
+export type SchemaFormat = "date-time" | "semver";
 
 // adapted JSON Schema for Featurevisor
 export interface Schema {
@@ -29,7 +26,7 @@ export interface Schema {
   enum?: Value[];
   const?: Value;
 
-  // Numeric validation keywords (when type is "integer" or "double")
+  // Numeric validation keywords (when type is "integer" or "number")
   maximum?: number;
   minimum?: number;
 
@@ -37,6 +34,7 @@ export interface Schema {
   maxLength?: number;
   minLength?: number;
   pattern?: string;
+  format?: SchemaFormat;
 
   // Array validation keywords (when type is "array")
   items?: Schema;

@@ -7,17 +7,17 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: dark-mode-sports
-      segments:
+      conditions:
         and:
           - prefersDarkMode
           - interestedInSports
       percentage: 100
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 0

@@ -1,4 +1,4 @@
 description: Version number of the app
 oneOf:
   - type: string
-  - type: double
+  - type: number

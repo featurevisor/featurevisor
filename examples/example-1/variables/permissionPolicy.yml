@@ -1,0 +1,31 @@
+description: Nested arrays selected by context permissions
+tags: [all]
+type: object
+
+properties:
+  actions:
+    type: array
+    items:
+      type: string
+  candidates:
+    type: array
+    items:
+      type: string
+
+defaultValue:
+  actions: []
+  candidates: [write, admin]
+
+overrides:
+  staging: &overrides
+    - key: writer-policy
+      conditions: writePermissions
+      value:
+        actions: [read, write]
+        candidates: [write, admin]
+    - key: reader-policy
+      conditions: readOnlyPermissions
+      value:
+        actions: [read]
+        candidates: [write, admin]
+  production: *overrides

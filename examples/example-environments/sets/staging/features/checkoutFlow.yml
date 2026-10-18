@@ -6,10 +6,10 @@ bucketBy: userId
 
 rules:
   - key: internal
-    segments:
+    conditions:
       - internal
     percentage: 100
 
   - key: everyone
-    segments: "*"
+    conditions: "*"
     percentage: 0

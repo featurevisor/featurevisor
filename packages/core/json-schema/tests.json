@@ -1,0 +1,3486 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "feature": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/feature___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "environment": { "type": "string" },
+              "target": { "type": "string" },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "defaultVariationValue": { "type": "string" },
+              "defaultVariableValues": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedToBeEnabled": { "type": "boolean" },
+              "expectedVariation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "expectedVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedEvaluations": {
+                "type": "object",
+                "properties": {
+                  "flag": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                      "featureKey": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "bucketKey": { "type": "string" },
+                      "bucketValue": { "type": "number" },
+                      "ruleKey": { "type": "string" },
+                      "error": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "enabled": { "type": "boolean" },
+                      "traffic": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "forceIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "force": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "conditions": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "stickyFeature": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variation": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variationValue": { "type": "string" },
+                      "variableKey": { "type": "string" },
+                      "variableValue": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableSchema": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableOverrideIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "variableOverrideKey": { "type": "string" },
+                      "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                      "variableOverridePaths": {
+                        "type": "array",
+                        "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                      },
+                      "variable": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "variation": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                      "featureKey": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "bucketKey": { "type": "string" },
+                      "bucketValue": { "type": "number" },
+                      "ruleKey": { "type": "string" },
+                      "error": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "enabled": { "type": "boolean" },
+                      "traffic": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "forceIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "force": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "conditions": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "stickyFeature": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variation": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variationValue": { "type": "string" },
+                      "variableKey": { "type": "string" },
+                      "variableValue": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableSchema": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableOverrideIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "variableOverrideKey": { "type": "string" },
+                      "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                      "variableOverridePaths": {
+                        "type": "array",
+                        "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                      },
+                      "variable": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "variables": {
+                    "type": "object",
+                    "propertyNames": { "type": "string" },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                        "featureKey": { "type": "string" },
+                        "reason": { "type": "string" },
+                        "bucketKey": { "type": "string" },
+                        "bucketValue": { "type": "number" },
+                        "ruleKey": { "type": "string" },
+                        "error": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "enabled": { "type": "boolean" },
+                        "traffic": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "forceIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "force": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "conditions": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "stickyFeature": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variation": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variationValue": { "type": "string" },
+                        "variableKey": { "type": "string" },
+                        "variableValue": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableSchema": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableOverrideIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "variableOverrideKey": { "type": "string" },
+                        "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                        "variableOverridePaths": {
+                          "type": "array",
+                          "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                        },
+                        "variable": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "children": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": { "type": "string" },
+                    "stickyFeatures": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "anyOf": [
+                              { "type": "boolean" },
+                              { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                            ]
+                          },
+                          "variation": { "type": "string" },
+                          "variables": {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          }
+                        },
+                        "required": ["enabled"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stickyVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "defaultVariationValue": { "type": "string" },
+                    "defaultVariableValues": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "expectedToBeEnabled": { "type": "boolean" },
+                    "expectedVariation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "expectedVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "expectedEvaluations": {
+                      "type": "object",
+                      "properties": {
+                        "flag": {
+                          "type": "object",
+                          "properties": {
+                            "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                            "featureKey": { "type": "string" },
+                            "reason": { "type": "string" },
+                            "bucketKey": { "type": "string" },
+                            "bucketValue": { "type": "number" },
+                            "ruleKey": { "type": "string" },
+                            "error": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "enabled": { "type": "boolean" },
+                            "traffic": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "forceIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "force": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "conditions": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "stickyFeature": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variation": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variationValue": { "type": "string" },
+                            "variableKey": { "type": "string" },
+                            "variableValue": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableSchema": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableOverrideIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "variableOverrideKey": { "type": "string" },
+                            "variableOverridePath": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "variableOverridePaths": {
+                              "type": "array",
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            },
+                            "variable": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "variation": {
+                          "type": "object",
+                          "properties": {
+                            "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                            "featureKey": { "type": "string" },
+                            "reason": { "type": "string" },
+                            "bucketKey": { "type": "string" },
+                            "bucketValue": { "type": "number" },
+                            "ruleKey": { "type": "string" },
+                            "error": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "enabled": { "type": "boolean" },
+                            "traffic": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "forceIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "force": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "conditions": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "stickyFeature": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variation": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variationValue": { "type": "string" },
+                            "variableKey": { "type": "string" },
+                            "variableValue": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableSchema": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableOverrideIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "variableOverrideKey": { "type": "string" },
+                            "variableOverridePath": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "variableOverridePaths": {
+                              "type": "array",
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            },
+                            "variable": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "variables": {
+                          "type": "object",
+                          "propertyNames": { "type": "string" },
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["flag", "variation", "variable"]
+                              },
+                              "featureKey": { "type": "string" },
+                              "reason": { "type": "string" },
+                              "bucketKey": { "type": "string" },
+                              "bucketValue": { "type": "number" },
+                              "ruleKey": { "type": "string" },
+                              "error": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "enabled": { "type": "boolean" },
+                              "traffic": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "forceIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "force": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "conditions": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "stickyFeature": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variation": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variationValue": { "type": "string" },
+                              "variableKey": { "type": "string" },
+                              "variableValue": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variableSchema": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variableOverrideIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "variableOverrideKey": { "type": "string" },
+                              "variableOverridePath": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              },
+                              "variableOverridePaths": {
+                                "type": "array",
+                                "items": {
+                                  "minItems": 1,
+                                  "type": "array",
+                                  "items": { "type": "string" }
+                                }
+                              },
+                              "variable": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["at", "environment"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["feature", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "segment": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/segment___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "environment": { "type": "string" },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedToMatch": { "type": "boolean" }
+            },
+            "required": ["context", "expectedToMatch"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["segment", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "variable": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/variable___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "environment": { "type": "string" },
+              "target": { "type": "string" },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "defaultVariableValue": {
+                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+              },
+              "expectedValue": {
+                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+              },
+              "expectedEvaluation": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                  "featureKey": { "type": "string" },
+                  "reason": { "type": "string" },
+                  "bucketKey": { "type": "string" },
+                  "bucketValue": { "type": "number" },
+                  "ruleKey": { "type": "string" },
+                  "error": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "enabled": { "type": "boolean" },
+                  "traffic": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "forceIndex": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "force": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "conditions": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "stickyFeature": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variation": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variationValue": { "type": "string" },
+                  "variableKey": { "type": "string" },
+                  "variableValue": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variableSchema": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variableOverrideIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "variableOverrideKey": { "type": "string" },
+                  "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                  "variableOverridePaths": {
+                    "type": "array",
+                    "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                  },
+                  "variable": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "checks": { "allOf": [{ "$ref": "#/definitions/variable___schema1" }] },
+              "children": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": { "type": "string" },
+                    "stickyFeatures": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "anyOf": [
+                              { "type": "boolean" },
+                              { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                            ]
+                          },
+                          "variation": { "type": "string" },
+                          "variables": {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          }
+                        },
+                        "required": ["enabled"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stickyVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "defaultVariableValue": {
+                      "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                    },
+                    "expectedValue": {
+                      "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                    },
+                    "expectedEvaluation": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                        "featureKey": { "type": "string" },
+                        "reason": { "type": "string" },
+                        "bucketKey": { "type": "string" },
+                        "bucketValue": { "type": "number" },
+                        "ruleKey": { "type": "string" },
+                        "error": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "enabled": { "type": "boolean" },
+                        "traffic": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "forceIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "force": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "conditions": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "stickyFeature": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variation": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variationValue": { "type": "string" },
+                        "variableKey": { "type": "string" },
+                        "variableValue": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableSchema": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableOverrideIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "variableOverrideKey": { "type": "string" },
+                        "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                        "variableOverridePaths": {
+                          "type": "array",
+                          "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                        },
+                        "variable": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "checks": { "allOf": [{ "$ref": "#/definitions/variable___schema1" }] }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["environment"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["variable", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "matrix": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": { "$ref": "#/definitions/scenario___schema0" }
+          }
+        },
+        "environment": { "type": "string" },
+        "target": { "type": "string" },
+        "at": {
+          "anyOf": [
+            { "type": "number", "minimum": 0, "maximum": 100 },
+            { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+          ]
+        },
+        "context": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+          }
+        },
+        "stickyFeatures": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "type": "string" },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              }
+            },
+            "required": ["enabled"],
+            "additionalProperties": false
+          }
+        },
+        "stickyVariables": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+          }
+        },
+        "checks": { "allOf": [{ "$ref": "#/definitions/scenario___schema1" }] },
+        "children": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "checks": { "$ref": "#/definitions/scenario___schema1" }
+            },
+            "required": ["checks"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["checks"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "feature": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/plainFeature___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "environment": { "not": {} },
+              "target": { "type": "string" },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "defaultVariationValue": { "type": "string" },
+              "defaultVariableValues": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedToBeEnabled": { "type": "boolean" },
+              "expectedVariation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "expectedVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedEvaluations": {
+                "type": "object",
+                "properties": {
+                  "flag": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                      "featureKey": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "bucketKey": { "type": "string" },
+                      "bucketValue": { "type": "number" },
+                      "ruleKey": { "type": "string" },
+                      "error": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "enabled": { "type": "boolean" },
+                      "traffic": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "forceIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "force": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "conditions": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "stickyFeature": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variation": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variationValue": { "type": "string" },
+                      "variableKey": { "type": "string" },
+                      "variableValue": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableSchema": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableOverrideIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "variableOverrideKey": { "type": "string" },
+                      "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                      "variableOverridePaths": {
+                        "type": "array",
+                        "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                      },
+                      "variable": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "variation": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                      "featureKey": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "bucketKey": { "type": "string" },
+                      "bucketValue": { "type": "number" },
+                      "ruleKey": { "type": "string" },
+                      "error": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "enabled": { "type": "boolean" },
+                      "traffic": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "forceIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "force": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "conditions": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "stickyFeature": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variation": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variationValue": { "type": "string" },
+                      "variableKey": { "type": "string" },
+                      "variableValue": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableSchema": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      },
+                      "variableOverrideIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "variableOverrideKey": { "type": "string" },
+                      "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                      "variableOverridePaths": {
+                        "type": "array",
+                        "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                      },
+                      "variable": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "variables": {
+                    "type": "object",
+                    "propertyNames": { "type": "string" },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                        "featureKey": { "type": "string" },
+                        "reason": { "type": "string" },
+                        "bucketKey": { "type": "string" },
+                        "bucketValue": { "type": "number" },
+                        "ruleKey": { "type": "string" },
+                        "error": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "enabled": { "type": "boolean" },
+                        "traffic": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "forceIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "force": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "conditions": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "stickyFeature": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variation": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variationValue": { "type": "string" },
+                        "variableKey": { "type": "string" },
+                        "variableValue": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableSchema": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableOverrideIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "variableOverrideKey": { "type": "string" },
+                        "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                        "variableOverridePaths": {
+                          "type": "array",
+                          "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                        },
+                        "variable": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "children": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": { "type": "string" },
+                    "stickyFeatures": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "anyOf": [
+                              { "type": "boolean" },
+                              { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                            ]
+                          },
+                          "variation": { "type": "string" },
+                          "variables": {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          }
+                        },
+                        "required": ["enabled"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stickyVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "defaultVariationValue": { "type": "string" },
+                    "defaultVariableValues": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "expectedToBeEnabled": { "type": "boolean" },
+                    "expectedVariation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                    "expectedVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "expectedEvaluations": {
+                      "type": "object",
+                      "properties": {
+                        "flag": {
+                          "type": "object",
+                          "properties": {
+                            "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                            "featureKey": { "type": "string" },
+                            "reason": { "type": "string" },
+                            "bucketKey": { "type": "string" },
+                            "bucketValue": { "type": "number" },
+                            "ruleKey": { "type": "string" },
+                            "error": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "enabled": { "type": "boolean" },
+                            "traffic": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "forceIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "force": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "conditions": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "stickyFeature": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variation": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variationValue": { "type": "string" },
+                            "variableKey": { "type": "string" },
+                            "variableValue": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableSchema": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableOverrideIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "variableOverrideKey": { "type": "string" },
+                            "variableOverridePath": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "variableOverridePaths": {
+                              "type": "array",
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            },
+                            "variable": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "variation": {
+                          "type": "object",
+                          "properties": {
+                            "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                            "featureKey": { "type": "string" },
+                            "reason": { "type": "string" },
+                            "bucketKey": { "type": "string" },
+                            "bucketValue": { "type": "number" },
+                            "ruleKey": { "type": "string" },
+                            "error": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "enabled": { "type": "boolean" },
+                            "traffic": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "forceIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "force": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "conditions": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "stickyFeature": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variation": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variationValue": { "type": "string" },
+                            "variableKey": { "type": "string" },
+                            "variableValue": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableSchema": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            },
+                            "variableOverrideIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "variableOverrideKey": { "type": "string" },
+                            "variableOverridePath": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "variableOverridePaths": {
+                              "type": "array",
+                              "items": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            },
+                            "variable": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "variables": {
+                          "type": "object",
+                          "propertyNames": { "type": "string" },
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["flag", "variation", "variable"]
+                              },
+                              "featureKey": { "type": "string" },
+                              "reason": { "type": "string" },
+                              "bucketKey": { "type": "string" },
+                              "bucketValue": { "type": "number" },
+                              "ruleKey": { "type": "string" },
+                              "error": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "enabled": { "type": "boolean" },
+                              "traffic": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "forceIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "force": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "conditions": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "stickyFeature": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variation": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variationValue": { "type": "string" },
+                              "variableKey": { "type": "string" },
+                              "variableValue": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variableSchema": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              },
+                              "variableOverrideIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "variableOverrideKey": { "type": "string" },
+                              "variableOverridePath": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              },
+                              "variableOverridePaths": {
+                                "type": "array",
+                                "items": {
+                                  "minItems": 1,
+                                  "type": "array",
+                                  "items": { "type": "string" }
+                                }
+                              },
+                              "variable": {
+                                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["at"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["feature", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "segment": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/plainSegment___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "environment": { "not": {} },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "expectedToMatch": { "type": "boolean" }
+            },
+            "required": ["context", "expectedToMatch"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["segment", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "variable": { "type": "string" },
+        "assertions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "promotable": { "type": "boolean" },
+              "matrix": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/plainVariable___schema0" }
+                }
+              },
+              "description": { "type": "string" },
+              "environment": { "not": {} },
+              "target": { "type": "string" },
+              "at": {
+                "anyOf": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "defaultVariableValue": {
+                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+              },
+              "expectedValue": {
+                "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+              },
+              "expectedEvaluation": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                  "featureKey": { "type": "string" },
+                  "reason": { "type": "string" },
+                  "bucketKey": { "type": "string" },
+                  "bucketValue": { "type": "number" },
+                  "ruleKey": { "type": "string" },
+                  "error": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "enabled": { "type": "boolean" },
+                  "traffic": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "forceIndex": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "force": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "conditions": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "stickyFeature": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variation": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variationValue": { "type": "string" },
+                  "variableKey": { "type": "string" },
+                  "variableValue": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variableSchema": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  },
+                  "variableOverrideIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "variableOverrideKey": { "type": "string" },
+                  "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                  "variableOverridePaths": {
+                    "type": "array",
+                    "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                  },
+                  "variable": {
+                    "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "checks": { "allOf": [{ "$ref": "#/definitions/plainVariable___schema1" }] },
+              "children": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "description": { "type": "string" },
+                    "stickyFeatures": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "anyOf": [
+                              { "type": "boolean" },
+                              { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                            ]
+                          },
+                          "variation": { "type": "string" },
+                          "variables": {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                            }
+                          }
+                        },
+                        "required": ["enabled"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "stickyVariables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    },
+                    "defaultVariableValue": {
+                      "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                    },
+                    "expectedValue": {
+                      "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                    },
+                    "expectedEvaluation": {
+                      "type": "object",
+                      "properties": {
+                        "type": { "type": "string", "enum": ["flag", "variation", "variable"] },
+                        "featureKey": { "type": "string" },
+                        "reason": { "type": "string" },
+                        "bucketKey": { "type": "string" },
+                        "bucketValue": { "type": "number" },
+                        "ruleKey": { "type": "string" },
+                        "error": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "enabled": { "type": "boolean" },
+                        "traffic": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "forceIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "force": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "conditions": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "stickyFeature": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variation": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variationValue": { "type": "string" },
+                        "variableKey": { "type": "string" },
+                        "variableValue": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableSchema": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        },
+                        "variableOverrideIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "variableOverrideKey": { "type": "string" },
+                        "variableOverridePath": { "type": "array", "items": { "type": "string" } },
+                        "variableOverridePaths": {
+                          "type": "array",
+                          "items": { "minItems": 1, "type": "array", "items": { "type": "string" } }
+                        },
+                        "variable": {
+                          "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "checks": { "allOf": [{ "$ref": "#/definitions/plainVariable___schema1" }] }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["variable", "assertions"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "promotable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "matrix": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "minItems": 1,
+            "type": "array",
+            "items": { "$ref": "#/definitions/plainScenario___schema0" }
+          }
+        },
+        "environment": { "not": {} },
+        "target": { "type": "string" },
+        "at": {
+          "anyOf": [
+            { "type": "number", "minimum": 0, "maximum": 100 },
+            { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+          ]
+        },
+        "context": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+          }
+        },
+        "stickyFeatures": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "type": "string" },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              }
+            },
+            "required": ["enabled"],
+            "additionalProperties": false
+          }
+        },
+        "stickyVariables": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+          }
+        },
+        "checks": { "allOf": [{ "$ref": "#/definitions/plainScenario___schema1" }] },
+        "children": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "context": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "stickyFeatures": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "anyOf": [
+                        { "type": "boolean" },
+                        { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                      ]
+                    },
+                    "variation": { "type": "string" },
+                    "variables": {
+                      "type": "object",
+                      "propertyNames": { "type": "string" },
+                      "additionalProperties": {
+                        "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                      }
+                    }
+                  },
+                  "required": ["enabled"],
+                  "additionalProperties": false
+                }
+              },
+              "stickyVariables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+                }
+              },
+              "checks": { "$ref": "#/definitions/plainScenario___schema1" }
+            },
+            "required": ["checks"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["checks"],
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "feature___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/feature___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/feature___schema0" }
+        }
+      ]
+    },
+    "segment___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/segment___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/segment___schema0" }
+        }
+      ]
+    },
+    "variable___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/variable___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/variable___schema0" }
+        }
+      ]
+    },
+    "variable___schema1": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "and": { "$ref": "#/definitions/variable___schema1" }
+            },
+            "required": ["and"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "or": { "$ref": "#/definitions/variable___schema1" }
+            },
+            "required": ["or"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "not": { "$ref": "#/definitions/variable___schema1" }
+            },
+            "required": ["not"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "segment": { "type": "string", "minLength": 1 },
+              "matches": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["segment", "matches"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": ["feature", "enabled"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["feature", "variation"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["exists", "notExists", "isNull", "notNull", "empty", "notEmpty"]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/variable___schema2" }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/variable___schema2" },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "variable___schema2": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/variable___schema2" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/variable___schema2" }
+        }
+      ]
+    },
+    "scenario___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/scenario___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/scenario___schema0" }
+        }
+      ]
+    },
+    "scenario___schema1": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "and": { "$ref": "#/definitions/scenario___schema1" }
+            },
+            "required": ["and"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "or": { "$ref": "#/definitions/scenario___schema1" }
+            },
+            "required": ["or"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "not": { "$ref": "#/definitions/scenario___schema1" }
+            },
+            "required": ["not"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "segment": { "type": "string", "minLength": 1 },
+              "matches": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["segment", "matches"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": ["feature", "enabled"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["feature", "variation"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["exists", "notExists", "isNull", "notNull", "empty", "notEmpty"]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/scenario___schema2" }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/scenario___schema2" },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "scenario___schema2": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/scenario___schema2" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/scenario___schema2" }
+        }
+      ]
+    },
+    "plainFeature___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainFeature___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainFeature___schema0" }
+        }
+      ]
+    },
+    "plainSegment___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainSegment___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainSegment___schema0" }
+        }
+      ]
+    },
+    "plainVariable___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainVariable___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainVariable___schema0" }
+        }
+      ]
+    },
+    "plainVariable___schema1": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "and": { "$ref": "#/definitions/plainVariable___schema1" }
+            },
+            "required": ["and"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "or": { "$ref": "#/definitions/plainVariable___schema1" }
+            },
+            "required": ["or"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "not": { "$ref": "#/definitions/plainVariable___schema1" }
+            },
+            "required": ["not"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "segment": { "type": "string", "minLength": 1 },
+              "matches": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["segment", "matches"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": ["feature", "enabled"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["feature", "variation"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["exists", "notExists", "isNull", "notNull", "empty", "notEmpty"]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/plainVariable___schema2" }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/plainVariable___schema2" },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "plainVariable___schema2": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainVariable___schema2" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainVariable___schema2" }
+        }
+      ]
+    },
+    "plainScenario___schema0": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainScenario___schema0" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainScenario___schema0" }
+        }
+      ]
+    },
+    "plainScenario___schema1": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "and": { "$ref": "#/definitions/plainScenario___schema1" }
+            },
+            "required": ["and"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "or": { "$ref": "#/definitions/plainScenario___schema1" }
+            },
+            "required": ["or"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "not": { "$ref": "#/definitions/plainScenario___schema1" }
+            },
+            "required": ["not"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "segment": { "type": "string", "minLength": 1 },
+              "matches": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["segment", "matches"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": ["feature", "enabled"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variation": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "enabled": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["feature", "variation"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["exists", "notExists", "isNull", "notNull", "empty", "notEmpty"]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/plainScenario___schema2" }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "greaterThan",
+                      "greaterThanOrEquals",
+                      "lessThan",
+                      "lessThanOrEquals",
+                      "contains",
+                      "notContains",
+                      "startsWith",
+                      "endsWith",
+                      "semverEquals",
+                      "semverNotEquals",
+                      "semverGreaterThan",
+                      "semverGreaterThanOrEquals",
+                      "semverLessThan",
+                      "semverLessThanOrEquals",
+                      "equals",
+                      "notEquals",
+                      "before",
+                      "after",
+                      "includes",
+                      "notIncludes",
+                      "includesAny",
+                      "notIncludesAny",
+                      "in",
+                      "notIn"
+                    ]
+                  },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "value": { "$ref": "#/definitions/plainScenario___schema2" },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "value"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "feature": { "type": "string", "minLength": 1 },
+              "variable": { "type": "string", "minLength": 1 },
+              "path": {
+                "anyOf": [
+                  { "type": "string" },
+                  {
+                    "type": "array",
+                    "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                  }
+                ]
+              },
+              "operator": {
+                "anyOf": [
+                  { "type": "string", "enum": ["matches", "notMatches"] },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              },
+              "compareTo": {
+                "type": "object",
+                "properties": {
+                  "feature": { "type": "string", "minLength": 1 },
+                  "variable": { "type": "string", "minLength": 1 },
+                  "path": {
+                    "anyOf": [
+                      { "type": "string" },
+                      {
+                        "type": "array",
+                        "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "regexFlags": {
+                "anyOf": [
+                  { "type": "string", "pattern": "^[gims]*$" },
+                  { "type": "string", "pattern": "^\\${{\\s*([^{}]+?)\\s*}}$" }
+                ]
+              }
+            },
+            "required": ["operator", "compareTo"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "plainScenario___schema2": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/definitions/plainScenario___schema2" } },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plainScenario___schema2" }
+        }
+      ]
+    }
+  }
+}

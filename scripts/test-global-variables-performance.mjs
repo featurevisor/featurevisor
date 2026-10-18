@@ -4,6 +4,9 @@ import process from "node:process";
 
 import { createFeaturevisor } from "../packages/sdk/cjs/index.js";
 
+// This is a raw v3 runtime compatibility corpus, not scratch authoring. Keep
+// its released segments and requiredFeatures inputs to exercise normalization.
+
 const FEATURE_COUNT = 250;
 const FEATURE_VARIABLE_COUNT = 20;
 const GLOBAL_VARIABLE_COUNT = 2_000;

@@ -1,29 +1,25 @@
 feature: showCookieBanner
 assertions:
   - at: 10
-    description: "At 10%, the feature should be enabled for NL"
-    environment: production
+    description: "Enabled for users in the Netherlands at bucket position 10"
     context:
       country: nl
     expectedToBeEnabled: true
 
   - at: 70
-    description: "At 70%, the feature should be enabled for NL"
-    environment: production
+    description: "Enabled for users in the Netherlands at bucket position 70"
     context:
       country: nl
     expectedToBeEnabled: true
 
   - at: 90
-    description: "At 90%, the feature should be disabled for US"
-    environment: production
+    description: "Disabled for users in the United States"
     context:
       country: us
     expectedToBeEnabled: false
 
   - at: 90
-    description: "At 90%, the feature should be disabled for Canada"
-    environment: production
+    description: "Disabled for users in Canada"
     context:
       country: ca
     expectedToBeEnabled: false

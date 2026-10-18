@@ -5,7 +5,7 @@ import { flattenVariableOverrides, visitVariableOverrides } from "./variableOver
 function override(key: string, overrides?: ParsedVariableOverride[]): ParsedVariableOverride {
   return {
     key,
-    segments: "*",
+    conditions: "*",
     value: key,
     overrides,
   };

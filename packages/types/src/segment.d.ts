@@ -1,12 +1,12 @@
-import type { Condition } from "./condition";
+import type { Conditions } from "./condition";
 
 export type SegmentKey = string;
 
 export interface Segment {
   archived?: boolean; // only available in YAML files
   promotable?: boolean; // only available in YAML files
-  key?: SegmentKey; // needed for supporting v1 datafile generation
-  conditions: Condition | Condition[]; // string only when stringified for datafile
+  key?: SegmentKey;
+  conditions: Conditions;
   description?: string; // only available in YAML files
 }
 

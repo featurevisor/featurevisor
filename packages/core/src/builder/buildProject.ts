@@ -14,6 +14,8 @@ import type { DatafileContent, Target } from "@featurevisor/types";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, CLI_FORMAT_GREEN, colorize } from "../tester/cliFormat";
 import { resolveTargets } from "../targeting";
+import { resolveBuildEnvironments } from "./environments";
+import { parsePositiveIntegerOption } from "../cli/validation";
 
 export interface BuildCLIOptions {
   revision?: string;
@@ -44,10 +46,6 @@ function getFeaturevisorVersion(): string {
   }
 }
 
-function getEnvironmentLabel(environment: string | false) {
-  return environment === false ? "No environment" : `Environment "${environment}"`;
-}
-
 async function buildForEnvironment({
   projectConfig,
   datasource,
@@ -64,7 +62,9 @@ async function buildForEnvironment({
   cliOptions: BuildCLIOptions;
 }) {
   console.log("");
-  console.log(CLI_FORMAT_BOLD, getEnvironmentLabel(environment));
+  if (environment !== false) {
+    console.log(CLI_FORMAT_BOLD, `Environment "${environment}"`);
+  }
 
   const existingState = await datasource.readState(environment);
   const featurevisorVersion = getFeaturevisorVersion();
@@ -96,7 +96,7 @@ async function buildForEnvironment({
     await datasource.writeState(environment, existingState);
 
     // write revision
-    await datasource.writeRevision(nextRevision);
+    await datasource.writeRevision(nextRevision, cliOptions.datafilesDir);
   }
 }
 
@@ -110,6 +110,7 @@ export async function buildTargetDatafile({
   revisionFromHash,
   inflate,
   featurevisorVersion,
+  dependencyGraph,
 }: {
   projectConfig: ProjectConfig;
   datasource: Datasource;
@@ -120,6 +121,7 @@ export async function buildTargetDatafile({
   revisionFromHash?: boolean;
   inflate?: number;
   featurevisorVersion?: string;
+  dependencyGraph?: Map<string, Set<string>>;
 }): Promise<DatafileContent> {
   const datafileContent = await buildDatafile(
     projectConfig,
@@ -129,6 +131,7 @@ export async function buildTargetDatafile({
       revisionFromHash: target.context ? false : revisionFromHash,
       environment,
       tag: target.tag,
+      compositionTargetKey: target.key,
       tags: target.tags,
       includeFeatures: target.includeFeatures,
       excludeFeatures: target.excludeFeatures,
@@ -136,6 +139,7 @@ export async function buildTargetDatafile({
       excludeVariables: target.excludeVariables,
       inflate,
       featurevisorVersion,
+      dependencyGraph,
     },
     existingState,
   );
@@ -155,10 +159,21 @@ export async function buildTargetDatafile({
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
+  if (cliOptions.inflate !== undefined) {
+    cliOptions = {
+      ...cliOptions,
+      inflate: parsePositiveIntegerOption("--inflate", cliOptions.inflate, 1),
+    };
+  }
   const { projectConfig, datasource } = deps;
+  const environments = resolveBuildEnvironments(
+    projectConfig,
+    cliOptions.environment,
+    cliOptions.json,
+  );
 
   /**
-   * This build process does not write to disk, and prints only to stdout.
+   * JSON builds do not write to disk. Datafiles go to stdout.
    *
    * This is ideally for test runners in other languages,
    * when they wish to get datafile for a single feature and/or environment,
@@ -168,11 +183,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
    * while tests can be run anywhere else.
    */
   if (cliOptions.json) {
-    const environment = cliOptions.environment || false;
-
-    if (Array.isArray(projectConfig.environments) && !cliOptions.environment) {
-      throw new Error("Pass --environment=<environment> when printing a datafile.");
-    }
+    const environment = environments[0];
 
     const targets = await resolveTargets(datasource, cliOptions.target, {
       defaultToAll: false,
@@ -220,7 +231,6 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   /**
    * Regular build process that writes to disk.
    */
-  const { environments } = projectConfig;
   const targets = await resolveTargets(datasource, cliOptions.target);
 
   const currentRevision = await datasource.readRevision();
@@ -231,27 +241,12 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
   const nextRevision =
     (cliOptions.revision && cliOptions.revision.toString()) || getNextRevision(currentRevision);
 
-  // with environments
-  if (Array.isArray(environments)) {
-    for (const environment of environments) {
-      await buildForEnvironment({
-        projectConfig,
-        datasource,
-        nextRevision,
-        environment,
-        targets,
-        cliOptions,
-      });
-    }
-  }
-
-  // no environment
-  if (!Array.isArray(environments)) {
+  for (const environment of environments) {
     await buildForEnvironment({
       projectConfig,
       datasource,
       nextRevision,
-      environment: false,
+      environment,
       targets,
       cliOptions,
     });
@@ -263,7 +258,14 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 }
 
 export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
+  if (cliOptions.inflate !== undefined) {
+    cliOptions = {
+      ...cliOptions,
+      inflate: parsePositiveIntegerOption("--inflate", cliOptions.inflate, 1),
+    };
+  }
   const { projectConfig, datasource } = deps;
+  resolveBuildEnvironments(projectConfig, cliOptions.environment, cliOptions.json);
 
   assertProjectSetJsonSelection(projectConfig, cliOptions.set, cliOptions.json);
 
@@ -309,7 +311,7 @@ export async function buildProjectSets(deps: Dependencies, cliOptions: BuildCLIO
     (typeof cliOptions.stateFiles === "undefined" || cliOptions.stateFiles) &&
     !cliOptions.revision
   ) {
-    await datasource.writeRevision(nextRevision);
+    await datasource.writeRevision(nextRevision, cliOptions.datafilesDir);
     console.log("");
     console.log(CLI_FORMAT_GREEN, "Featurevisor sets built");
     console.log(CLI_FORMAT_BOLD, `Latest project revision: ${nextRevision}`);
@@ -336,27 +338,27 @@ export const buildPlugin: Plugin = {
   examples: [
     {
       command: "build",
-      description: "build datafiles for all environments and targets",
+      description: "Build datafiles for every target, per environment when configured",
     },
     {
       command: "build --revision=123",
-      description: "build datafiles starting with revision value as 123",
+      description: "Build datafiles starting with revision value as 123",
     },
     {
       command: "build --environment=production",
-      description: "build datafiles for production environment",
+      description: "With environments configured: build datafiles for production",
     },
     {
-      command: "build --print --environment=production --feature=featureKey --target=web",
-      description: "print datafile for a feature in production environment",
+      command: "build --print --feature=showCookieBanner --target=all",
+      description: "Print a datafile for a feature",
     },
     {
-      command: "build --print --environment=production --pretty",
-      description: "print datafile with pretty print",
+      command: "build --print --pretty",
+      description: "Print a formatted datafile",
     },
     {
       command: "build --no-state-files",
-      description: "build datafiles without writing state files",
+      description: "Build datafiles without writing state files",
     },
   ],
 };

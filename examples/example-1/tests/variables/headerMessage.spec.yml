@@ -13,7 +13,7 @@ assertions:
       device: tablet
     expectedValue: Header unavailable
     expectedEvaluation:
-      reason: required_features_unmet
+      reason: conditions_unmet
 
   - description: evaluates normally in production when its requirement matches
     environment: production

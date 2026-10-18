@@ -103,7 +103,7 @@ describe("react: onVariableChange", () => {
     const callback = jest.fn();
     const unsubscribe = onVariableChange(sdk, "message", callback);
 
-    sdk.setStickyVariables({ unrelated: "changed" });
+    sdk.setStickyVariables({});
     sdk.setDatafile({
       schemaVersion: "2",
       revision: "2",
@@ -117,6 +117,7 @@ describe("react: onVariableChange", () => {
 
     sdk.setContext({ country: "nl" });
     sdk.setStickyVariables({ message: "sticky" });
+    sdk.setStickyVariables({ unrelated: "changed" });
     sdk.setStickyFeatures({});
     sdk.setStickyFeatures({ checkout: { enabled: true } });
     sdk.setDatafile({
@@ -128,11 +129,11 @@ describe("react: onVariableChange", () => {
         message: { hash: "message-2", type: "string", defaultValue: "changed" },
       },
     });
-    expect(callback).toHaveBeenCalledTimes(4);
+    expect(callback).toHaveBeenCalledTimes(5);
 
     unsubscribe();
     sdk.setContext({ country: "de" });
     sdk.setStickyVariables({ message: "after-unsubscribe" });
-    expect(callback).toHaveBeenCalledTimes(4);
+    expect(callback).toHaveBeenCalledTimes(5);
   });
 });

@@ -6,11 +6,12 @@ import { Parser, parsers } from "@featurevisor/parsers";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import type { Plugin } from "../cli";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
+import { comparisonOperators } from "../linter/comparisonOperators";
+import { assertNoGroupDefinitions, REMOVED_GROUPS_MESSAGE } from "./removedGroups";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
 export const ATTRIBUTES_DIRECTORY_NAME = "attributes";
-export const GROUPS_DIRECTORY_NAME = "groups";
 export const SCHEMAS_DIRECTORY_NAME = "schemas";
 export const VARIABLES_DIRECTORY_NAME = "variables";
 export const TARGETS_DIRECTORY_NAME = "targets";
@@ -45,7 +46,6 @@ export interface ProjectConfig {
   featuresDirectoryPath: string;
   segmentsDirectoryPath: string;
   attributesDirectoryPath: string;
-  groupsDirectoryPath: string;
   schemasDirectoryPath: string;
   variablesDirectoryPath: string;
   targetsDirectoryPath: string;
@@ -55,6 +55,7 @@ export interface ProjectConfig {
   datafileNamePattern: string;
   revisionFileName: string;
   catalogDirectoryPath: string;
+  catalogBasePath?: string;
   setsDirectoryPath: string;
 
   environments?: string[];
@@ -71,7 +72,11 @@ export interface ProjectConfig {
   prettyState: boolean;
   prettyDatafile: boolean;
   stringify: boolean;
-  allowFeatureAndGlobalVariableKeyCollisions?: boolean;
+  /** Resolve ordinary global override mutations during building. Defaults to true. */
+  precomputeMutations?: boolean;
+  /** Comparison operators forbidden in authored conditions, requirements and checks. */
+  disallowOperators?: string[];
+  allowFeatureAndVariableKeyCollisions?: boolean;
   requireOverrideKeysInFeatures?: boolean;
 
   enforceCatchAllRule?: boolean;
@@ -97,7 +102,9 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     prettyState: DEFAULT_PRETTY_STATE,
     prettyDatafile: DEFAULT_PRETTY_DATAFILE,
     stringify: true,
-    allowFeatureAndGlobalVariableKeyCollisions: false,
+    precomputeMutations: true,
+    disallowOperators: [],
+    allowFeatureAndVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
 
     adapter: FilesystemAdapter,
@@ -106,7 +113,6 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     setsDirectoryPath: path.join(rootDirectoryPath, SETS_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(rootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(rootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
-    groupsDirectoryPath: path.join(rootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(rootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
     variablesDirectoryPath: path.join(rootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(rootDirectoryPath, TARGETS_DIRECTORY_NAME),
@@ -116,6 +122,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     datafileNamePattern: DATAFILE_NAME_PATTERN,
     revisionFileName: REVISION_FILE_NAME,
     catalogDirectoryPath: path.join(rootDirectoryPath, CATALOG_DIRECTORY_NAME),
+    catalogBasePath: "/",
 
     enforceCatchAllRule: false,
     plugins: [],
@@ -135,12 +142,21 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     mergedConfig[key] =
       typeof customConfig[key] !== "undefined" ? customConfig[key] : baseConfig[key];
 
-    if (key.endsWith("Path") && mergedConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1) {
+    if (
+      key !== "catalogBasePath" &&
+      key.endsWith("Path") &&
+      mergedConfig[key].indexOf(ROOT_DIR_PLACEHOLDER) !== -1
+    ) {
       mergedConfig[key] = mergedConfig[key].replace(ROOT_DIR_PLACEHOLDER, rootDirectoryPath);
     }
   });
 
   const finalConfig = mergedConfig as ProjectConfig;
+
+  if ("groupsDirectoryPath" in customConfig) {
+    throw new Error(`${REMOVED_GROUPS_MESSAGE} Remove groupsDirectoryPath from configuration.`);
+  }
+  assertNoGroupDefinitions(path.join(rootDirectoryPath, "groups"));
 
   if (typeof finalConfig.parser === "string") {
     const allowedParsers = Object.keys(parsers);
@@ -151,13 +167,59 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     finalConfig.parser = parsers[finalConfig.parser];
   }
 
+  const parser = finalConfig.parser;
+  if (!parser || typeof parser !== "object" || Array.isArray(parser)) {
+    throw new Error("Invalid parser: expected a built-in parser name or a custom parser object.");
+  }
+  if (typeof parser.extension !== "string" || parser.extension.trim().length === 0) {
+    throw new Error("Invalid custom parser: extension must be a nonempty string.");
+  }
+  if (typeof parser.parse !== "function") {
+    throw new Error("Invalid custom parser: parse must be a function.");
+  }
+  if (typeof parser.stringify !== "function") {
+    throw new Error(
+      "Invalid custom parser: stringify must be a function. It is required when writing definitions, including promotions.",
+    );
+  }
+
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);
   }
 
-  if (typeof finalConfig.allowFeatureAndGlobalVariableKeyCollisions !== "boolean") {
+  if (
+    typeof finalConfig.catalogBasePath !== "string" ||
+    !/^(?:\/|\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/?)$/.test(finalConfig.catalogBasePath) ||
+    finalConfig.catalogBasePath
+      .split("/")
+      .some((component) => component === "." || component === "..")
+  ) {
     throw new Error(
-      `Invalid allowFeatureAndGlobalVariableKeyCollisions: ${finalConfig.allowFeatureAndGlobalVariableKeyCollisions}. It must be a boolean.`,
+      "Invalid catalogBasePath: use an absolute URL path such as / or /flags.web/ with letters, numbers, dots, underscores and hyphens. Whole . and .. components are not allowed.",
+    );
+  }
+  finalConfig.catalogBasePath = finalConfig.catalogBasePath.replace(/\/$/, "") + "/";
+
+  if (typeof finalConfig.precomputeMutations !== "boolean") {
+    throw new Error(
+      `Invalid precomputeMutations: ${finalConfig.precomputeMutations}. It must be a boolean.`,
+    );
+  }
+
+  if (!Array.isArray(finalConfig.disallowOperators)) {
+    throw new Error("Invalid disallowOperators: expected an array of comparison operator names.");
+  }
+  finalConfig.disallowOperators.forEach((operator: unknown, index: number) => {
+    if (typeof operator !== "string" || !comparisonOperators.includes(operator)) {
+      throw new Error(
+        `Invalid disallowOperators[${index}]: ${String(operator)}. Expected an exact known comparison operator name.`,
+      );
+    }
+  });
+
+  if (typeof finalConfig.allowFeatureAndVariableKeyCollisions !== "boolean") {
+    throw new Error(
+      `Invalid allowFeatureAndVariableKeyCollisions: ${finalConfig.allowFeatureAndVariableKeyCollisions}. It must be a boolean.`,
     );
   }
 
@@ -197,10 +259,25 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
       );
     }
 
+    if (finalConfig.environments.length === 0) {
+      throw new Error(
+        "Invalid environments: omit environments for a project without environments.",
+      );
+    }
+    const seenEnvironments = new Set<string>();
     finalConfig.environments.forEach((environment: unknown, index: number) => {
       if (typeof environment !== "string") {
         throw new Error(`Invalid environments[${index}]: ${environment}. It must be a string.`);
       }
+      if (!environment.length || environment.trim() !== environment) {
+        throw new Error(
+          `Invalid environments[${index}]: expected a nonempty name without surrounding whitespace.`,
+        );
+      }
+      if (seenEnvironments.has(environment)) {
+        throw new Error(`Invalid environments: duplicate name "${environment}".`);
+      }
+      seenEnvironments.add(environment);
     });
   }
 
@@ -248,13 +325,13 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
 export function getProjectConfigForSet(projectConfig: ProjectConfig, set: string): ProjectConfig {
   const setRootDirectoryPath = path.join(projectConfig.setsDirectoryPath, set);
+  assertNoGroupDefinitions(path.join(setRootDirectoryPath, "groups"));
 
   return {
     ...projectConfig,
     featuresDirectoryPath: path.join(setRootDirectoryPath, FEATURES_DIRECTORY_NAME),
     segmentsDirectoryPath: path.join(setRootDirectoryPath, SEGMENTS_DIRECTORY_NAME),
     attributesDirectoryPath: path.join(setRootDirectoryPath, ATTRIBUTES_DIRECTORY_NAME),
-    groupsDirectoryPath: path.join(setRootDirectoryPath, GROUPS_DIRECTORY_NAME),
     schemasDirectoryPath: path.join(setRootDirectoryPath, SCHEMAS_DIRECTORY_NAME),
     variablesDirectoryPath: path.join(setRootDirectoryPath, VARIABLES_DIRECTORY_NAME),
     targetsDirectoryPath: path.join(setRootDirectoryPath, TARGETS_DIRECTORY_NAME),
@@ -312,15 +389,15 @@ export const configPlugin: Plugin = {
   examples: [
     {
       command: "config",
-      description: "show the project configuration",
+      description: "Show the project configuration",
     },
     {
       command: "config --json",
-      description: "show the project configuration as JSON",
+      description: "Show the project configuration as JSON",
     },
     {
       command: "config --json --pretty",
-      description: "show the project configuration (as pretty JSON)",
+      description: "Show the project configuration as formatted JSON",
     },
   ],
 };

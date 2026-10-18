@@ -7,14 +7,14 @@ bucketBy: deviceId
 rules:
   staging:
     - key: "everyone"
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: "netherlands"
-      segments: "countries.netherlands"
+      conditions: "countries.netherlands"
       percentage: 0
 
     - key: "everyone"
-      segments: "*"
+      conditions: "*"
       percentage: 100

@@ -1,0 +1,21 @@
+description: Checkout screen
+
+tags: [source]
+
+bucketBy: userId
+
+variablesSchema:
+  label:
+    type: string
+    defaultValue: Buy
+
+variations:
+  - value: standard
+    weight: 100
+    variables:
+      label: Buy now
+
+rules:
+  - key: everyone
+    conditions: "*"
+    percentage: 100

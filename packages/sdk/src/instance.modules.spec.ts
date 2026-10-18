@@ -34,8 +34,8 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     const makeModule = (name: string): FeaturevisorModule => ({
       name,
       setup: () => calls.push(`${name}:setup`),
-      before: (options) => {
-        calls.push(`${name}:before`);
+      beforeEvaluation: (options) => {
+        calls.push(`${name}:beforeEvaluation`);
         return options;
       },
       bucketKey: ({ bucketKey }) => {
@@ -46,8 +46,8 @@ describe("Featurevisor public API: modules and diagnostics", () => {
         calls.push(`${name}:bucketValue`);
         return bucketValue;
       },
-      after: (evaluation) => {
-        calls.push(`${name}:after`);
+      afterEvaluation: (evaluation) => {
+        calls.push(`${name}:afterEvaluation`);
         return evaluation;
       },
     });
@@ -62,8 +62,8 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     expect(calls).toEqual([
       "first:setup",
       "second:setup",
-      "first:before",
-      "second:before",
+      "first:beforeEvaluation",
+      "second:beforeEvaluation",
       "first:bucketKey",
       "second:bucketKey",
       "first:bucketValue",
@@ -72,8 +72,8 @@ describe("Featurevisor public API: modules and diagnostics", () => {
       "second:bucketKey",
       "first:bucketValue",
       "second:bucketValue",
-      "first:after",
-      "second:after",
+      "first:afterEvaluation",
+      "second:afterEvaluation",
     ]);
   });
 
@@ -83,10 +83,6 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     const modules = ["first", "second"].map(
       (name): FeaturevisorModule => ({
         name,
-        before: (options) => {
-          featureCalls.push(`before:${name}`);
-          return options;
-        },
         beforeEvaluation: (options) => {
           const calls = "featureKey" in options ? featureCalls : globalCalls;
           calls.push(`beforeEvaluation:${name}`);
@@ -95,10 +91,6 @@ describe("Featurevisor public API: modules and diagnostics", () => {
         afterEvaluation: (evaluation, options) => {
           const calls = "featureKey" in options ? featureCalls : globalCalls;
           calls.push(`afterEvaluation:${name}`);
-          return evaluation;
-        },
-        after: (evaluation) => {
-          featureCalls.push(`after:${name}`);
           return evaluation;
         },
       }),
@@ -114,7 +106,12 @@ describe("Featurevisor public API: modules and diagnostics", () => {
 
     expect(sdk.isEnabled("experiment")).toBe(true);
     expect(sdk.getVariable("message")).toBe("hello");
-    expect(featureCalls).toEqual(conformance.modulePipeline.featureOrder);
+    expect(featureCalls).toEqual([
+      "beforeEvaluation:first",
+      "beforeEvaluation:second",
+      "afterEvaluation:first",
+      "afterEvaluation:second",
+    ]);
     expect(globalCalls).toEqual(conformance.modulePipeline.globalOrder);
   });
 
@@ -144,7 +141,10 @@ describe("Featurevisor public API: modules and diagnostics", () => {
         { name: "bucket-b", bucketValue: ({ bucketValue }) => bucketValue + 50000 },
         {
           name: "after",
-          after: (evaluation) => ({ ...evaluation, variationValue: `${evaluation.type}-override` }),
+          afterEvaluation: (evaluation) => ({
+            ...evaluation,
+            variationValue: `${evaluation.type}-override`,
+          }),
         },
       ],
     });
@@ -171,7 +171,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     const sdk = createFeaturevisor({ logLevel: "fatal", datafile });
     const unsubscribe = sdk.addModule({
       name: "dynamic",
-      before: (options) => {
+      beforeEvaluation: (options) => {
         calls += 1;
         return options;
       },
@@ -185,7 +185,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     sdk.isEnabled("experiment", { userId: "two" });
     sdk.addModule({
       name: "dynamic",
-      before: (options) => ((calls += 10), options),
+      beforeEvaluation: (options) => ((calls += 10), options),
       close: () => {
         closed.push("dynamic-again");
       },
@@ -202,7 +202,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
     const closed: string[] = [];
     const sdk = createFeaturevisor({ logLevel: "fatal", datafile });
     const unsubscribe = sdk.addModule({
-      before: (options) => {
+      beforeEvaluation: (options) => {
         calls += 1;
         return options;
       },
@@ -357,8 +357,10 @@ describe("Featurevisor public API: modules and diagnostics", () => {
         onDiagnostic(() => undefined);
         throw new Error("broken-setup");
       },
-      before: (options) => {
-        throw new Error(`should not run ${options.featureKey}`);
+      beforeEvaluation: (options) => {
+        throw new Error(
+          `should not run ${"featureKey" in options ? options.featureKey : "global"}`,
+        );
       },
       close: () => {
         closed.push("broken-setup");
@@ -512,7 +514,7 @@ describe("Featurevisor public API: modules and diagnostics", () => {
       modules: [
         {
           name: "broken",
-          before: () => {
+          beforeEvaluation: () => {
             throw new Error("broken-before");
           },
         },

@@ -1,369 +1,275 @@
-# Featurevisor CLI reference
+# CLI
 
-Run commands with `npx featurevisor <command>`. The CLI walks up from the current directory to find `featurevisor.config.js`, so commands also work inside nested project directories. Use `--rootDirectoryPath=<path>` or `--root-directory-path <path>` to select another project. Use either `<command> --help` or `help <command>` for command help.
+Full docs: <https://featurevisor.com/docs/cli/>
 
-Built in commands reject unknown options and extra positional arguments. Treat these failures as likely spelling mistakes. Error output is structured when `--json` is active. Existing project plugins remain permissive unless they declare their `options` map.
+Inside a project with `@featurevisor/cli` installed, run `npx featurevisor <command>`. The CLI finds `featurevisor.config.js` by walking up from the current directory. `--root-directory-path=<path>` selects another project. `npx featurevisor <command> --help` lists a command's options.
 
-Source of truth: <https://featurevisor.com/docs/cli>
+Built in commands reject unknown options and extra arguments, so an error usually means a misspelled flag. Write options in kebab case, such as `--key-pattern`, as the docs do. With `--json`, errors are structured too.
+
+Examples omit environments. When the project configures them, add `--environment=<name>` to `evaluate`, `benchmark`, `assess-distribution` and `build --print`. In a Sets project, add `--set=<set>`, which `--json` output requires.
 
 ## Setup
 
-Before scaffolding, run the setup interview in SKILL.md (environments? sets? tags/targets? format? bucketing identity?) — then pick the example that matches:
-
 ```bash
-# inside an empty directory
-npx @featurevisor/cli init                      # default: yml, staging+production, one `all` tag/target
-npx @featurevisor/cli init --example=<name>
+npx @featurevisor/cli init
+npx @featurevisor/cli init --example=with-environments
 npm install
 ```
 
-| `--example=`        | Matches                                                             |
-| ------------------- | -------------------------------------------------------------------- |
-| `yml` (default)     | YAML, `staging` + `production` environments, single tree             |
-| `json`              | Same but JSON definitions                                             |
-| `toml`              | Custom-parser (TOML) demo                                             |
-| `no-environments`   | No environments — rules are direct lists                              |
-| `sets`              | Sets as surfaces (`storefront` / `admin`), with environments          |
-| `environments`      | Sets as release lanes (`dev` / `staging` / `production`), no `environments`, no promotion flows |
-| `test-environments` | Same release lanes, plus `promotionFlows` constraining dev → staging → production |
-| `targets`           | Many targets/tag-selector shapes demo                                 |
-| `namespace-slash`   | `namespaceCharacter: "/"` demo                                        |
+| `--example=`        | Project                                                           |
+| ------------------- | ----------------------------------------------------------------- |
+| `yml` (default)     | YAML, no environments, an `all` target without selectors          |
+| `with-environments` | YAML with `staging` and `production` environment keyed rules      |
+| `json`              | JSON definitions                                                  |
+| `toml`              | a custom TOML parser                                              |
+| `no-environments`   | the same shape as the default, stated explicitly                  |
+| `environments`      | Sets as release lanes, promoted from dev to staging to production |
+| `sets`              | Sets as independent surfaces, `storefront` and `admin`            |
+| `test-environments` | release lanes with more test examples                             |
+| `targets`           | many target and tag selector shapes                               |
+| `namespace-slash`   | `namespaceCharacter: "/"`                                         |
+| `composition`       | composed global variables in every form                           |
 
-The two lane examples are the ones to reach for when someone says "we want dev/staging/production" but means *independently promoted copies* rather than per-environment rules on one definition — read [sets-promotions.md](sets-promotions.md) before picking either.
+`environments` means Sets as lanes, not environment keyed rules. For staging and production rules in one tree, use `with-environments`. Read [sets-promotions.md](sets-promotions.md) before choosing a Sets example.
 
-`init` downloads the matching `examples/example-<name>` project from the Featurevisor GitHub repo into the current directory (network required). Each scaffold is a working project out of the box — adjust `featurevisor.config.js` to the user's answers afterwards.
+`init` never overwrites existing files. When entries would collide, it stops and lists them.
 
-## Lint
+## lint
 
 ```bash
 npx featurevisor lint
-npx featurevisor lint --json --pretty                       # machine-readable
-npx featurevisor lint --keyPattern="myKey"                  # filter by key
-npx featurevisor lint --entityType=feature                  # feature | variable | segment | attribute | group | schema | target | test
-npx featurevisor lint --keyPattern="my" --entityType=feature
-npx featurevisor lint --set=storefront                      # one set only (sets projects)
+npx featurevisor lint --json --pretty
+npx featurevisor lint --entity-type=feature
+npx featurevisor lint --key-pattern="checkout"
 ```
 
-The `--json` output has a stable shape:
+Validates every definition and spec: schemas, references, types, operators, formats, cycles, weights, mutations and test expectations. Entity types: `feature`, `segment`, `attribute`, `schema`, `target`, `variable`, `test`, `scenario`.
+
+With `--json`, the report is `{ "errors": [...], "warnings": [...] }`, and each entry has `filePath`, `entityType`, `key`, `message`, `path` and `code`:
 
 ```json
 {
-  "errors": [
-    {
-      "filePath": "segments/my-segment.yml",
-      "entityType": "segment",
-      "key": "my-segment",
-      "message": "Required",
-      "path": ["conditions", 0, "attribute"],
-      "code": "invalid_type"
-    }
-  ]
+  "filePath": "segments/old.yml",
+  "entityType": "segment",
+  "key": "old",
+  "message": "when operator is \"semverGreaterThan\", value must be a version the operators can compare, such as 5.5.0, 5.5 or v5.5.0",
+  "path": ["conditions", 2, "value"],
+  "code": "custom"
 }
 ```
 
-Run this after every edit. It catches:
+Messages usually state the fix, for example `Replace segments with conditions` or `"checkout" is a feature: use { feature: checkout }`. After fixing, run lint again: some errors only surface once earlier ones in the same file are fixed.
 
-- Unknown segments/attributes referenced in features
-- Variation weight sums ≠ 100
-- Group slot percentage sums ≠ 100
-- Rule percentages exceeding group slot caps
-- Variable type mismatches against `variablesSchema`
-- Missing required environments / tags
+Warnings do not fail lint. The common ones: `context_value_mismatch` (a test context does not fit an attribute), `dependency_depth` (a long dependency chain), `deprecated_reference` (an active definition uses a deprecated one), and the [composition warnings](global-variables.md#composition-warnings).
 
-If `enforceCatchAllRule: true` is set in config, lint also requires every feature to end with a `segments: '*'` rule in every environment.
+`--v3-mutation-order` shows values that change because v4 applies mutations in authored order. It is for upgrades from v3.
 
-## Compare definitions
+## test
+
+```bash
+npx featurevisor test
+npx featurevisor test --key-pattern="checkout"
+npx featurevisor test --json --pretty
+npx featurevisor test --case='<case id from a failure>'
+npx featurevisor test --uncovered
+npx featurevisor test --coverage
+```
+
+See [testing.md](testing.md#run) for every option, reading failures, and reruns.
+
+## evaluate
+
+```bash
+npx featurevisor evaluate --feature=checkout --context='{"userId":"8f2a","country":"nl"}'
+npx featurevisor evaluate --feature=checkout --context='{"userId":"8f2a","country":"nl"}' --explain
+npx featurevisor evaluate --variable=supportEmail --context='{"country":"nl"}' --explain
+npx featurevisor evaluate --feature=checkout --context='{"userId":"8f2a"}' --json --pretty
+```
+
+Builds the datafile in memory from the local project and evaluates it with the SDK. `--feature` reports the flag, the variation and every feature variable together. `--variable` evaluates a global variable. Pass one or the other, never both.
+
+`--explain` adds why:
+
+- the deciding force entry, rule or override, with its conditions,
+- a pass or fail probe for every leaf of root, force and rule conditions, keeping their `and`, `or` and `not` structure,
+- the bucket value and bucket key, such as `Bucket: 75177 / 100000 · key "u1.checkout"`,
+- for a composition, each member's source and value.
+
+The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
+
+`evaluate` warns when the context does not fit declared attribute types or constraints, without changing the result. Unknown feature or variable keys fail with a spelling suggestion. Repeat `--target=<target>` to evaluate against specific target datafiles.
+
+## diff
 
 ```bash
 npx featurevisor diff
 npx featurevisor diff --from=main --to=HEAD
 npx featurevisor diff --from=HEAD --to=working-tree --json --pretty
-npx featurevisor diff --set=production
 ```
 
-Use this to review authored changes before committing or reviewing a branch. Uncommitted changes anywhere in the repository take precedence: compare `HEAD` with final working files, including staged, unstaged, deleted, and untracked definitions, but not ignored untracked files. On a clean primary branch there are no changes; on a clean other branch compare the primary branch tip with `HEAD`. Only the selected Featurevisor project is reported.
+Compares authored definitions between Git references, semantically:
 
-Explicit references override defaults. `--from` alone ends at `working-tree`; `--to` alone starts at `HEAD`. References resolve to commits, except the reserved `working-tree` endpoint. Comparisons use commit tips, not a merge base. Primary branch discovery is offline and prefers an existing local primary branch. Supply references if the default branch cannot be determined.
+```text
+Comparing HEAD → working-tree
 
-The report includes features, global variables, segments, attributes, groups, schemas, targets, tests, and all sets unless `--set` selects one. It ignores formatting, comments, and mapping order, but preserves array order. Terminal output matches rules and overrides by key, variations by value, and feature variables by name. Nested overrides stay beneath their parents. It reports additions, updates, removals, and relative reordering without treating an insertion as updates to every following rule. Missing or duplicate identities use an explicit positional fallback. Added item positions start at one. Arbitrary variable payload arrays are not matched by identity. Renames appear as removal and addition. JSON includes `from`, `to`, `reason`, `warnings`, `summary`, and `changes`; each entity retains positional field `changes` (JSON Pointers with zero based positions) alongside semantic `details`. Exit status is `0` for a successful comparison, including differences, and `1` for errors.
+~ feature checkout
+  Rules
+    Rule "everyone" updated
+      Rollout percentage: 10 → 25
 
-This compares definitions, not evaluated behaviour. It does not fetch, checkout, lint, build datafiles, or write state. Both snapshots use the current parser and directory layout. Configuration changes are reported and differences from current configuration produce warnings: inspect layout changes with `git diff` too. Historical configuration is never executed. Requires the filesystem adapter and an existing Git commit; working tree comparisons reject unresolved merge conflicts.
++ variable maintenanceMode
+  Definition added
 
-## Build datafiles
+1 added, 1 changed, 0 removed
+```
+
+- Without options it compares `HEAD` with the working tree when there are uncommitted changes, otherwise the current branch with the primary branch.
+- Rules and overrides match by key, variations by value and variables by name, so inserting a rule is one addition rather than changes to every rule after it. Formatting, comments and key order are ignored.
+- It reads definitions only. It does not evaluate, lint or build.
+
+Use it to summarize your own changes for the user, and to review a branch.
+
+## build
 
 ```bash
 npx featurevisor build --no-state-files
-npx featurevisor build --no-state-files --set=storefront   # one set only (sets projects)
-npx featurevisor build --no-state-files --target=web --target=mobile
+npx featurevisor build --no-state-files --target=web
+npx featurevisor build --print --pretty --feature=checkout
 ```
 
-Bare `build` is meant for **CI**, where incrementing `.featurevisor/REVISION` and updating `existing-state-*.json` is the point (CI commits them back). For **local development — yours or the user's — default to `--no-state-files`**: identical datafile output and build confirmation, no revision/state side effects. See [building-datafiles.md](building-datafiles.md).
+Bare `build` is for CI: it increments `.featurevisor/REVISION` and updates state files, which the deploying pipeline commits. Locally, always pass `--no-state-files`. See [building-datafiles.md](building-datafiles.md) for every option.
 
-Datafiles end up in `<datafilesDirectoryPath>` organized (in sets projects) by set, then environment, then target.
+An `invalid_saved_allocation` error means a rule's saved variation ranges no longer fit. Restore state from the deployed revision, or deliberately rename the rule after reviewing who would switch variations. Never delete state as a quick fix.
 
-## Test
+## list
 
-```bash
-npx featurevisor test
-npx featurevisor test --keyPattern="myFeature"
-npx featurevisor test --keyPattern="myFeature" --assertionPattern="in NL"
-npx featurevisor test --entityType=feature       # or variable | segment
-npx featurevisor test --verbose                   # SDK trace per assertion
-npx featurevisor test --quiet                     # suppress SDK warnings
-npx featurevisor test --onlyFailures
-npx featurevisor test --showDatafile              # combine with --keyPattern
-npx featurevisor test --set=storefront            # one set only (sets projects)
-npx featurevisor test --target=web --target=mobile # selected target assertions and untargeted assertions
-```
-
-Non-zero exit on failure.
-
-## List
-
-`list` is the agent's primary tool for discovery. Always pass `--json` (and `--pretty` while debugging) to get parseable output. Select exactly one of `--datafiles`, `--features`, `--variables`, `--segments`, `--groups`, `--schemas`, `--attributes`, `--targets`, or `--tests`.
-
-Archived features, segments, and attributes are excluded by default. Use `--archived=true` for archived definitions and `--archived=false` to request active definitions explicitly. Definition selectors support `--promotable=true` and `--promotable=false` where relevant.
-
-### Datafiles
-
-```bash
-npx featurevisor list --datafiles --json --pretty
-```
-
-Lists generated datafile paths relative to `datafiles/` with uncompressed and gzip-compressed sizes in aligned columns, excluding `REVISION` and hidden files. Sizes are right-aligned with two decimal places, and padded `B` suffixes align with `kB`/`mB`; `dev*` directories appear first and `prod*` directories last. `--json` returns `{ path, size, gzipSize }` items with byte sizes in the same order. Run `build` first when you need freshly generated output.
-
-### Features
+Always pass `--json` (and `--pretty` when reading it yourself). Select one kind:
 
 ```bash
 npx featurevisor list --features --json --pretty
+npx featurevisor list --segments --json
+npx featurevisor list --attributes --json
+npx featurevisor list --variables --json
+npx featurevisor list --schemas --json
+npx featurevisor list --targets --json
+npx featurevisor list --tests --json
+npx featurevisor list --scenarios --json
+npx featurevisor list --datafiles --json
 ```
 
-Filter flags (combine as needed):
+Feature filters combine with AND:
 
-| Flag                                         | Effect                                   |
-| -------------------------------------------- | ---------------------------------------- |
-| `--archived=true|false`                      | by archived status                       |
-| `--description=<pattern>`                    | description regex                        |
-| `--disabledIn=<env>`                         | feature disabled in env (no rule, or 0%) |
-| `--enabledIn=<env>`                          | feature has any rule >0% in env          |
-| `--keyPattern=<regex>`                       | feature key regex                        |
-| `--promotable=<true or false>`               | promotion eligibility                    |
-| `--tag=<tag>`                                | includes a tag                           |
-| `--target=<target>`                          | selected by target; repeatable union     |
-| `--variable=<key>`                           | has variable in its schema               |
-| `--variation=<value>`                        | has a variation with given value         |
-| `--with-tests` / `--without-tests`           | has any `.spec.yml` / has none           |
-| `--with-variables` / `--without-variables`   | has / has not                            |
-| `--with-variations` / `--without-variations` | has / has not                            |
+| Flag                                             | Keeps features                                              |
+| ------------------------------------------------ | ----------------------------------------------------------- |
+| `--tag=<tag>`                                    | with the tag. Repeat for several                            |
+| `--target=<target>`                              | selected by the target. Repeat for a union                  |
+| `--variable=<key>`                               | declaring the feature variable                              |
+| `--variation=<value>`                            | with the variation value                                    |
+| `--with-variations`, `--without-variations`      | with or without variations                                  |
+| `--with-variables`, `--without-variables`        | with or without feature variables                           |
+| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                          |
+| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment |
+| `--enabled`, `--disabled`                        | the same, in a project without environments                 |
+| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                 |
+| `--archived=true`                                | archived ones, which are excluded by default                |
 
-### Segments
+Use `--enabled-in` and `--disabled-in` in projects with environments, and `--enabled` and `--disabled` in projects without them. The CLI rejects the wrong pair, and unknown environment names, with `invalid_environment`. Force entries and root conditions are not considered, only rule percentages.
 
-```bash
-npx featurevisor list --segments --json --pretty
-```
-
-Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`, `--with-tests`, `--without-tests`.
-
-### Attributes
-
-```bash
-npx featurevisor list --attributes --json --pretty
-```
-
-Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`.
-
-### Global variables
-
-```bash
-npx featurevisor list --variables --json --pretty
-npx featurevisor list --variables --target=checkout --with-tests
-```
-
-Flags: `--archived`, `--description`, `--keyPattern`, `--promotable`, repeatable `--tag`, repeatable `--target`, `--with-tests`, `--without-tests`.
-
-### Groups, schemas, and targets
-
-```bash
-npx featurevisor list --groups --json --pretty
-npx featurevisor list --schemas --json --pretty
-npx featurevisor list --targets --json --pretty
-```
-
-All three support `--description`, `--keyPattern`, and `--promotable`.
-
-### Tests
-
-```bash
-npx featurevisor list --tests --json --pretty
-npx featurevisor list --tests --applyMatrix       # expand matrices into individual assertions
-```
-
-Flags: `--applyMatrix`, `--assertionPattern`, `--entityType=feature|variable|segment`, `--keyPattern`, `--promotable`.
-
-Opposing filters such as `--with-tests` and `--without-tests` are rejected instead of silently producing confusing output. Invalid regular expressions are reported as option errors.
+Segments, attributes, variables, schemas and targets take `--key-pattern`, `--description`, `--archived` and `--promotable`. Variables also take `--tag`, `--target` and `--with-tests` or `--without-tests`. `list --tests --apply-matrix --json` expands matrices into individual assertions. `list --datafiles` shows built datafiles with their sizes, so run `build` first.
 
 ## find-usage
 
-Find where entities are referenced. Append `--authors` to also list the `git log` authors who touched each.
-
 ```bash
-npx featurevisor find-usage --segment=<key>
-npx featurevisor find-usage --attribute=<key>
-npx featurevisor find-usage --feature=<key>
-npx featurevisor find-usage --variable=<key> # global variable dependencies
-npx featurevisor find-usage --unusedSegments
-npx featurevisor find-usage --unusedAttributes
+npx featurevisor find-usage --segment=netherlands
+npx featurevisor find-usage --attribute=country
+npx featurevisor find-usage --feature=checkout
+npx featurevisor find-usage --variable=supportEmail
+npx featurevisor find-usage --unused-segments
+npx featurevisor find-usage --unused-attributes
+npx featurevisor find-usage --segment=netherlands --authors
 ```
+
+One query per call. `--feature` lists the features and global variables referencing it. `--variable` lists what the variable depends on and what references it. `--authors` adds the Git authors of each file. Archived users are marked `(archived)`, and the unused lists ignore archived definitions on both sides. Run it before renaming, archiving or deleting anything. Application code is not part of the project, so search it separately.
 
 ## find-duplicate-segments
 
 ```bash
 npx featurevisor find-duplicate-segments
-npx featurevisor find-duplicate-segments --authors
 ```
 
-Finds segments with structurally identical `conditions`. Common in large projects; not necessarily a bug, but a candidate for consolidation.
-
-## evaluate (debug)
-
-The agent's main tool for "why did this evaluate that way?".
-
-```bash
-npx featurevisor evaluate \
-  --environment=production \
-  --feature=my_feature \
-  --context='{"userId":"123","country":"nl"}'
-
-# extras
-  --explain                                       # explain the SDK outcome
-  --verbose                                       # more log detail
-  --json --pretty                                 # JSON output
-```
-
-Returns final SDK evaluation details. Add `--explain` for a CLI explanation using those results, available SDK diagnostics, compiled selectors, segment definitions, and local authoring information. This is not a complete execution trace. It does not rerun selectors or dependencies, and cannot identify every rejected condition or short circuit.
-
-For nested global variable overrides, the explanation shows the authored key path and value or mutation declarations. These mutations were resolved during building, not applied by the SDK. Feature variable explanations do not claim to contain a mutation history.
-
-Terminal explanations are concise and coloured, with each value printed once. They summarize override paths and mutated field names, and collapse repeated related diagnostic results. Full declarations, observations, and limitations remain available in `--explain --json` without truncation.
-
-Explanations are checked against the SDK result before output. Conflicting result fields or selected value sources fail with exit code 1. JSON errors have code `evaluation_explanation_mismatch`, with conflicting fields in `details.mismatches`. Incomplete diagnostic history is not treated as a contradiction. The check never reruns selectors or dependencies.
-
-`--explain --json --pretty` adds `explanation` alongside the original evaluation fields. For features it contains `flag`, `variation`, and `variables`; for global variables it is one explanation object. Each explanation has `version: 1`, `mode: "outcome"`, `source`, `result`, `summary`, `evidence`, and `limitations`. An absent result has `result.hasValue: false` and no `result.value`; an explicit null has `hasValue: true`. Without `--explain`, JSON output stays unchanged. With repeated Targets, explanations live at each entry's `evaluations.explanation`.
-
-Evaluation builds from the local project and does not fetch deployed datafiles or write allocation state. Explanation metadata identifies the environment, set, and Target. Review configuration and context values before sharing output. `--verbose` prints raw diagnostics only in terminal output, not JSON.
-
-Use repeatable `--target=<target>` options to evaluate each selected target datafile independently. With `--json`, repeated targets return an array of target and evaluation entries.
-
-With `--feature`, the command reports flag, variation, and feature variable evaluations together. Use `--variable=<key>` without `--feature` to evaluate a global variable.
+Lists segments with identical conditions, candidates for consolidation.
 
 ## assess-distribution
 
-Simulate many users to verify a rollout's actual distribution.
-
 ```bash
 npx featurevisor assess-distribution \
-  --environment=production \
-  --feature=my_feature \
-  --context='{"country":"nl"}' \
-  --populateUuid=userId \
-  --n=1000 \
-  [--verbose]
+  --feature=checkout \
+  --context='{"country":"de"}' \
+  --populate-uuid=userId \
+  --n=10000
 ```
 
-- `--populateUuid=<attr>` generates a fresh UUID per iteration for that attribute (repeatable for multiple attrs like `--populateUuid=userId --populateUuid=deviceId`).
-- `--n` higher = more accurate.
-- `--target=<target>` assesses one target datafile and can be repeated.
-
-Use this when the user asks "is my 25% rollout really going to hit 25%?" or "will my variation weights actually split traffic 50/50?".
-
-`--n` and `--inflate` must be positive integers. `--context` must contain a JSON object. The same validation applies to the corresponding benchmark and evaluate options.
+Evaluates many generated users and reports how they split across enabled, disabled and variations. `--populate-uuid` fills an attribute with a fresh UUID per evaluation and can be repeated. Higher `--n` gives tighter numbers.
 
 ## benchmark
 
-Measure SDK evaluation latency.
-
 ```bash
-npx featurevisor benchmark --environment=production --feature=my_feature --context='{"userId":"123"}' --n=1000
-npx featurevisor benchmark --environment=production --feature=my_feature --variation --context='{}' --n=1000
-npx featurevisor benchmark --environment=production --feature=my_feature --variable=bgColor --context='{}' --n=1000
-npx featurevisor benchmark --environment=production --variable=supportEmail --context='{}' --n=1000
+npx featurevisor benchmark --feature=checkout --context='{"userId":"8f2a"}' --n=1000
+npx featurevisor benchmark --feature=checkout --variation --context='{"userId":"8f2a"}' --n=1000
+npx featurevisor benchmark --feature=checkout --variable=paymentMethods --context='{"userId":"8f2a"}' --n=1000
+npx featurevisor benchmark --variable=supportEmail --context='{"country":"nl"}' --n=1000
 ```
 
-Use repeatable `--target=<target>` options to benchmark each selected target datafile independently.
+Measures SDK evaluation time.
 
-## config
+## config and info
 
 ```bash
-npx featurevisor config
 npx featurevisor config --json --pretty
-```
-
-Always run this once at the start of a session to discover envs, tags, parser, sets, defaultBucketBy, and directory overrides.
-
-## info
-
-```bash
 npx featurevisor info
 ```
 
-Quick counts of features/segments/attributes/tests/groups/schemas. Useful sanity check.
-
-With repeatable `--target=<target>` options, it prints feature, segment, variable, and datafile size information per selected target and environment.
+`config` prints the resolved configuration. `info` counts definitions, and with `--target` it reports per target datafile contents and sizes.
 
 ## generate-code
 
 ```bash
-npx featurevisor generate-code --language typescript --out-dir ./src
-npx featurevisor generate-code --language typescript --out-dir ./src --tag=shared --target=web --target=mobile
+npx featurevisor generate-code --language typescript --out-dir ./src/featurevisor
+npx featurevisor generate-code --language typescript --out-dir ./src/featurevisor --target=web --react
 ```
 
-Generates typed accessors from feature and global variable definitions. Repeatable `--tag` and `--target` selectors form a union across both entity types. Other languages: see <https://featurevisor.com/docs/code-generation>.
+TypeScript bindings for features, global variables and context. See [code-generation.md](code-generation.md).
 
-## promote (sets projects only)
+## promote (Sets only)
 
 ```bash
-npx featurevisor promote --from=dev --to=staging                       # preview
-npx featurevisor promote --from=dev --to=staging --apply               # write destination files
-npx featurevisor promote --from=dev --to=staging --target=web          # target and its feature dependency closure
-npx featurevisor promote --from=dev --to=staging --tag=web             # tagged features and their dependencies
-npx featurevisor promote --from=dev --to=staging --includeFeatures="checkout*"
-npx featurevisor promote --from=dev --to=staging --excludeFeatures="experimental*"
-npx featurevisor promote --from=dev --to=staging --conflicts=fail      # source | destination | fail (default source)
-npx featurevisor promote --from=dev --to=staging --apply --audit=markdown
+npx featurevisor promote --from=dev --to=staging
+npx featurevisor promote --from=dev --to=staging --include-features="checkout"
+npx featurevisor promote --from=dev --to=staging --apply
 ```
 
-Copies definitions and their dependencies between sets. `--target` applies the target's tag and feature selectors and includes the target definition. `--tag` selects features carrying that tag. Positive selectors combine with AND semantics, exclusions take precedence, and dependency closure includes required features, groups, segments, attributes, schemas, and tests. Allowed directions can be constrained by `promotionFlows` in the config.
-
-**This is the one CLI command that writes definition files** (with `--apply`) — preview first, show the user the summary, and lint + test afterwards. Full semantics, `promotable: false` protection, and the release-lane workflow: [sets-promotions.md](sets-promotions.md).
+Previews by default. `--apply` writes destination files, the only command that edits definitions. See [sets-promotions.md](sets-promotions.md).
 
 ## catalog
 
-Read-only web UI for browsing the whole project, including features, global variables, segments, attributes, targets, groups, schemas, relationships, tests, and Git history. It is useful for sharing with non-engineers and for live visual review during authoring sessions. The no-subcommand form watches the project and reloads the browser after file changes.
-
 ```bash
-npx featurevisor catalog                          # export, serve at http://127.0.0.1:3000, and watch (live reload)
-npx featurevisor catalog --port=4000              # (-p also works)
-npx featurevisor catalog export                   # build static output to catalogDirectoryPath (default catalog/)
-npx featurevisor catalog export --outDir=./out    # write elsewhere
-npx featurevisor catalog export --hash-router     # for static hosts without an index.html fallback
-npx featurevisor catalog serve [-p 3000]          # serve an existing export (exports first if missing)
-npx featurevisor catalog export --no-assets       # project data only, without the Catalog UI assets
+npx featurevisor catalog
+npx featurevisor catalog --port=4000
+npx featurevisor catalog export
+npx featurevisor catalog export --out-dir=./out --hash-router
+npx featurevisor catalog serve
 ```
 
-`--outDir` overrides `catalogDirectoryPath` for one invocation. Use `--no-assets` only when something else manages the compiled Catalog interface.
-
-Full docs: <https://featurevisor.com/docs/catalog>
+`catalog` exports, serves at `http://127.0.0.1:3000` and reloads on every saved change. `catalog export` writes a static site to `catalog/` for hosting. `--hash-router` suits static hosts without a fallback to `index.html`. `--test-report=<file>` shows results from a saved `test --json` report. Set `catalogBasePath` in the configuration to host it under a path. Full docs: <https://featurevisor.com/docs/catalog/>.
 
 ## version
 
 ```bash
-npx featurevisor version
 npx featurevisor --version
-npx featurevisor -v
 ```
 
-Prints the installed `@featurevisor/cli` and `@featurevisor/core` versions. Worth checking first when a documented flag isn't recognized, or when the project may still be on v2 ([upgrading-to-v3.md](upgrading-to-v3.md)).
+Prints the installed CLI and core versions. Check it first when a documented option is not recognized.
 
-## Custom commands (plugins)
+## Project plugins
 
-Projects can register their own CLI subcommands via `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they're project plugins, so read their source before running them, since a plugin can write definition files. Writing one (and the `datasource` API it uses): [plugins-datasource.md](plugins-datasource.md).
+Projects can add their own commands through `plugins` in `featurevisor.config.js`. If `npx featurevisor --help` shows commands not listed here, they are project plugins: read their source before running them, since a plugin can write files. See [plugins-datasource.md](plugins-datasource.md).

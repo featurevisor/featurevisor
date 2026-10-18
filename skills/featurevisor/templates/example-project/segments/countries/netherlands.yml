@@ -1,4 +1,5 @@
-description: Users in The Netherlands
+description: Users in the Netherlands
+
 conditions:
   - attribute: country
     operator: equals

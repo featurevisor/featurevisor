@@ -3,28 +3,30 @@ import * as path from "path";
 
 import type {
   Attribute,
-  Condition,
   EntityType,
   FeatureAssertion,
-  GroupSegment,
   ParsedFeature,
   Rule,
   RulesByEnvironment,
   Schema,
+  Scenario,
+  ScenarioAssertion,
   Segment,
   SegmentAssertion,
   VariableAssertion,
-  Group,
   Target,
   Test,
+  TestCheckReference,
   ParsedVariable,
   ParsedVariableOverride,
   VariableOverride,
   Variation,
 } from "@featurevisor/types";
 
+import type { CustomParser } from "@featurevisor/parsers";
+
 import type { ProjectConfig } from "../config";
-import type { Datasource } from "../datasource";
+import { Datasource } from "../datasource";
 import { lintProject, type LintErrorItem } from "../linter";
 import {
   CLI_COLOR_CYAN,
@@ -36,13 +38,18 @@ import {
   colorize,
 } from "../tester/cliFormat";
 import { prettyDuration } from "../tester/prettyDuration";
+import { getCheckReferences } from "../tester/checks";
 import type { Plugin } from "../cli";
+import { applyCombinationToValue, getMatrixCombinations } from "../list/matrix";
 import { extractSchemaReferences } from "../utils/schemaReferences";
+import { classifyTestSpec } from "../datasource/testSpecs";
+import { conditionLeaves, definitionConditionLeaves } from "../utils/conditionReferences";
 import {
-  getRequiredFeatureKey,
-  normalizeFeatureRequirements,
-  normalizeRequiredFeatures,
-} from "../datasource/requiredFeatures";
+  collectDependencyClosure,
+  buildDependencyGraph,
+  featureFlagNode,
+  variableNode,
+} from "../datasource/dependencies";
 
 type ConflictPolicy = "source" | "destination" | "fail";
 type PromotionAuditFormat = "json" | "markdown";
@@ -50,11 +57,11 @@ type EntityValue =
   | Attribute
   | Segment
   | ParsedFeature
-  | Group
   | Record<string, unknown>
   | Schema
   | Target
   | Test
+  | Scenario
   | ParsedVariable;
 
 interface PromotionConflict {
@@ -136,11 +143,20 @@ function deepMergeWithPolicy(
   policy: ConflictPolicy,
   conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
   pathSegments: string[] = [],
+  selectorFields = true,
+  conditionExpression = false,
 ): unknown {
   if (typeof destination === "undefined") return source;
   if (typeof source === "undefined") return destination;
 
   const conflictPath = pathSegments.join(".") || "<root>";
+
+  // A selector is a complete boolean expression, never a partial object patch.
+  if (conditionExpression) {
+    if (!deepEqual(destination, source))
+      conflicts.push({ path: conflictPath, source, destination });
+    return policy === "destination" ? destination : source;
+  }
 
   if (Array.isArray(destination) && Array.isArray(source)) {
     if (!deepEqual(destination, source)) {
@@ -154,10 +170,28 @@ function deepMergeWithPolicy(
     const result: Record<string, unknown> = { ...destination };
 
     for (const key of Object.keys(source)) {
-      result[key] = deepMergeWithPolicy(result[key], source[key], policy, conflicts, [
-        ...pathSegments,
-        key,
-      ]);
+      result[key] = deepMergeWithPolicy(
+        result[key],
+        source[key],
+        policy,
+        conflicts,
+        [...pathSegments, key],
+        selectorFields &&
+          ![
+            "value",
+            "defaultValue",
+            "disabledValue",
+            "mutate",
+            "variables",
+            "variablesSchema",
+            "compose",
+            "properties",
+            "items",
+            "enum",
+            "const",
+          ].includes(key),
+        selectorFields && key === "conditions",
+      );
     }
 
     return result;
@@ -168,6 +202,34 @@ function deepMergeWithPolicy(
   }
 
   return policy === "destination" ? destination : source;
+}
+
+/** Switching an override's form replaces that form, rather than combining selectors or actions. */
+function mergeOverrideBody(
+  destination: unknown,
+  source: unknown,
+  policy: ConflictPolicy,
+  conflicts: Array<Omit<PromotionConflict, "type" | "key">>,
+  pathSegments: string[],
+): unknown {
+  if (!isPlainObject(destination) || !isPlainObject(source))
+    return deepMergeWithPolicy(destination, source, policy, conflicts, pathSegments);
+  const from = { ...source };
+  const to = { ...destination };
+  for (const names of [["value", "mutate"]]) {
+    const sourceField = names.find((name) => from[name] !== undefined);
+    const destinationField = names.find((name) => to[name] !== undefined);
+    if (sourceField && destinationField && sourceField !== destinationField) {
+      conflicts.push({
+        path: [...pathSegments, sourceField].join("."),
+        source: { [sourceField]: from[sourceField] },
+        destination: { [destinationField]: to[destinationField] },
+      });
+      if (policy === "destination") delete from[sourceField];
+      else delete to[destinationField];
+    }
+  }
+  return deepMergeWithPolicy(to, from, policy, conflicts, pathSegments);
 }
 
 function matchesPattern(key: string, patterns: string[]) {
@@ -263,7 +325,7 @@ function mergeVariableOverrideArray(
     const destinationWithoutOverrides =
       index === -1 ? undefined : { ...result[index], overrides: undefined };
     const localConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
-    const merged = deepMergeWithPolicy(
+    const merged = mergeOverrideBody(
       destinationWithoutOverrides,
       sourceWithoutOverrides,
       policy,
@@ -288,6 +350,36 @@ function mergeVariableOverrideArray(
     if (index === -1) result.push(merged);
     else result[index] = merged;
   }
+  const movable = source.filter(
+    (entry) =>
+      isPromotable(entry) && isPromotable(destination?.find((item) => item.key === entry.key)),
+  );
+  const movableKeys = new Set(movable.map((entry) => entry.key));
+  const previousOrder = (destination || [])
+    .filter((entry) => movableKeys.has(entry.key))
+    .map((entry) => entry.key);
+  const sourceOrder = movable
+    .filter((entry) => destination?.some((item) => item.key === entry.key))
+    .map((entry) => entry.key);
+  if (!deepEqual(previousOrder, sourceOrder)) {
+    conflicts.push({
+      type: "variable",
+      key: variableKey,
+      path: [...pathSegments, "order"].join("."),
+      source: sourceOrder,
+      destination: previousOrder,
+    });
+  }
+  if (policy !== "destination") {
+    const byKey = new Map(result.map((entry) => [entry.key, entry]));
+    const ordered = movable.map((entry) => byKey.get(entry.key)!);
+    let index = 0;
+    // Protected and destination only entries keep their positions. The remaining
+    // slots follow source order, including newly introduced overrides.
+    for (let position = 0; position < result.length; position++) {
+      if (movableKeys.has(result[position].key)) result[position] = ordered[index++];
+    }
+  }
   return result;
 }
 
@@ -302,6 +394,10 @@ function mergeVariable(
   const destinationWithoutOverrides = destination
     ? { ...destination, overrides: undefined }
     : undefined;
+  if (source.compose !== undefined) {
+    sourceWithoutOverrides.compose = undefined;
+    if (destinationWithoutOverrides) destinationWithoutOverrides.compose = undefined;
+  }
   const localConflicts: Array<Omit<PromotionConflict, "type" | "key">> = [];
   const merged = deepMergeWithPolicy(
     destinationWithoutOverrides,
@@ -309,6 +405,29 @@ function mergeVariable(
     policy,
     localConflicts,
   ) as ParsedVariable;
+
+  if (typeof source.compose === "string") {
+    merged.compose = deepMergeWithPolicy(
+      destination?.compose,
+      source.compose,
+      policy,
+      localConflicts,
+      ["compose"],
+    ) as string;
+  } else if (source.compose !== undefined) {
+    const compose = { ...(typeof destination?.compose === "object" ? destination.compose : {}) };
+    for (const [alias, reference] of Object.entries(source.compose)) {
+      if (compose[alias] !== undefined && !deepEqual(compose[alias], reference)) {
+        localConflicts.push({
+          path: `compose.${alias}`,
+          source: reference,
+          destination: compose[alias],
+        });
+      }
+      if (compose[alias] === undefined || policy !== "destination") compose[alias] = reference;
+    }
+    merged.compose = compose;
+  }
   conflicts.push(
     ...localConflicts.map((conflict) => ({ type: "variable" as const, key, ...conflict })),
   );
@@ -398,6 +517,60 @@ async function assertSetLintsClean(
   }
 }
 
+async function assertPromotionLintsClean(
+  set: string,
+  destination: Datasource,
+  plans: EntityPlan[],
+) {
+  const config = destination.getConfig();
+  const OriginalAdapter = config.adapter;
+  const definitions = plans.map((plan) => ({
+    ...plan,
+    type:
+      plan.type === "test" || plan.type === "scenario"
+        ? ((classifyTestSpec(plan.merged) === "scenario" ? "scenario" : "test") as EntityType)
+        : plan.type,
+  }));
+  const entries = new Map(
+    definitions.map((plan) => [JSON.stringify([plan.type, plan.key]), plan.merged]),
+  );
+  const replacedSpec = (type: EntityType, key: string) =>
+    (type === "test" || type === "scenario") &&
+    entries.has(JSON.stringify([type === "test" ? "scenario" : "test", key]));
+  class PlannedAdapter extends OriginalAdapter {
+    async listEntities(type: EntityType): Promise<string[]> {
+      return [
+        ...new Set([
+          ...(await super.listEntities(type)).filter((key) => !replacedSpec(type, key)),
+          ...definitions.filter((plan) => plan.type === type).map((plan) => plan.key),
+        ]),
+      ].sort();
+    }
+    async entityExists(type: EntityType, key: string): Promise<boolean> {
+      if (replacedSpec(type, key)) return false;
+      return entries.has(JSON.stringify([type, key])) || super.entityExists(type, key);
+    }
+    async readEntity<T>(type: EntityType, key: string): Promise<T> {
+      const id = JSON.stringify([type, key]);
+      if (!entries.has(id)) return super.readEntity(type, key);
+      // Lint what will be written, not the in memory plan. Serialize and parse
+      // it the way writeEntity will, so a value the parser cannot represent,
+      // such as undefined, is checked in its written form.
+      const parser = config.parser as CustomParser;
+      const filePath = this.getEntityPath?.(type, key);
+      return parser.parse<T>(
+        parser.stringify(structuredClone(entries.get(id)), filePath),
+        filePath,
+      );
+    }
+  }
+  const planned = new Datasource(
+    { ...config, adapter: PlannedAdapter },
+    destination.getRootDirectoryPath(),
+  );
+  await assertSetLintsClean(`${set} (promotion result)`, config, planned);
+}
+
 function assertAllowedPromotionFlow(projectConfig: ProjectConfig, from: string, to: string) {
   const allowedFlows = projectConfig.promotionFlows;
 
@@ -418,157 +591,66 @@ function assertAllowedPromotionFlow(projectConfig: ProjectConfig, from: string, 
   );
 }
 
-function collectGroupSegmentKeys(
-  value: GroupSegment | GroupSegment[] | "*" | undefined,
-  result: Set<string>,
-) {
-  if (!value || value === "*") return;
-  if (typeof value === "string") {
-    result.add(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectGroupSegmentKeys(entry, result));
-    return;
-  }
-  if ("and" in value) value.and.forEach((entry) => collectGroupSegmentKeys(entry, result));
-  if ("or" in value) value.or.forEach((entry) => collectGroupSegmentKeys(entry, result));
-  if ("not" in value) value.not.forEach((entry) => collectGroupSegmentKeys(entry, result));
-}
-
 function collectConditionDependencies(
-  value: Condition | Condition[] | "*" | undefined,
+  value: unknown,
   segments: Set<string>,
   attributes: Set<string>,
 ) {
-  if (!value || value === "*") return;
-  if (typeof value === "string") {
-    segments.add(value);
-    return;
+  for (const leaf of conditionLeaves(value)) {
+    if (typeof leaf === "string") segments.add(leaf);
+    else if ("attribute" in leaf) attributes.add(leaf.attribute.split(".")[0]);
   }
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectConditionDependencies(entry, segments, attributes));
-    return;
-  }
-  if ("attribute" in value) {
-    attributes.add(value.attribute.split(".")[0]);
-    return;
-  }
-  if ("and" in value)
-    value.and.forEach((entry) => collectConditionDependencies(entry, segments, attributes));
-  if ("or" in value)
-    value.or.forEach((entry) => collectConditionDependencies(entry, segments, attributes));
-  if ("not" in value)
-    value.not.forEach((entry) => collectConditionDependencies(entry, segments, attributes));
 }
 
 function collectFeatureDependencies(
   feature: ParsedFeature,
-  features: Record<string, ParsedFeature>,
-  featureKeys: Set<string>,
+  _features: Record<string, ParsedFeature>,
+  _featureKeys: Set<string>,
   segmentKeys: Set<string>,
   attributeKeys: Set<string>,
   schemaKeys: Set<string>,
 ) {
-  if (typeof feature.bucketBy === "string") {
-    attributeKeys.add(feature.bucketBy);
-  } else if (Array.isArray(feature.bucketBy)) {
-    feature.bucketBy.forEach((attributeKey) => attributeKeys.add(attributeKey));
-  } else if (feature.bucketBy && "or" in feature.bucketBy) {
-    feature.bucketBy.or.forEach((attributeKey) => attributeKeys.add(attributeKey));
+  if (typeof feature.bucketBy === "string") attributeKeys.add(feature.bucketBy);
+  else if (Array.isArray(feature.bucketBy))
+    feature.bucketBy.forEach((key) => attributeKeys.add(key));
+  else feature.bucketBy?.or.forEach((key) => attributeKeys.add(key));
+  Object.values(feature.variablesSchema || {}).forEach((schema) =>
+    extractSchemaReferences(schema).forEach((key) => schemaKeys.add(key)),
+  );
+  for (const leaf of definitionConditionLeaves(promotableFeature(feature))) {
+    if (typeof leaf === "string") segmentKeys.add(leaf);
+    else if ("attribute" in leaf) attributeKeys.add(leaf.attribute.split(".")[0]);
   }
+}
 
-  Object.values(feature.variablesSchema || {}).forEach((schema) => {
-    extractSchemaReferences(schema).forEach((key) => schemaKeys.add(key));
-  });
-
-  for (const required of normalizeFeatureRequirements(feature)) {
-    const requiredKey = getRequiredFeatureKey(required);
-    if (!featureKeys.has(requiredKey)) {
-      featureKeys.add(requiredKey);
-      const requiredFeature = features[requiredKey];
-      if (requiredFeature) {
-        collectFeatureDependencies(
-          requiredFeature,
-          features,
-          featureKeys,
-          segmentKeys,
-          attributeKeys,
-          schemaKeys,
+/** Protection applies before the structural graph visits rules and their overrides. */
+function promotableFeature(feature: ParsedFeature): ParsedFeature {
+  const overrides = (value: Record<string, VariableOverride[]> | undefined) =>
+    value &&
+    Object.fromEntries(
+      Object.entries(value).map(([key, entries]) => [key, entries.filter(isPromotable)]),
+    );
+  const rules = (entries: any[]) =>
+    entries.filter(isPromotable).map((rule) => ({
+      ...rule,
+      variableOverrides: overrides(rule.variableOverrides),
+    }));
+  const groups = (value: any, filter: (entries: any[]) => any[]) =>
+    Array.isArray(value)
+      ? filter(value)
+      : value &&
+        Object.fromEntries(
+          Object.entries(value).map(([key, entries]) => [key, filter(entries as any[])]),
         );
-      }
-    }
-  }
-
-  for (const rules of Object.values((feature.rules || {}) as any)) {
-    const ruleEntries = Array.isArray(rules) ? rules : [rules];
-    for (const rule of ruleEntries) {
-      if (!isPromotable(rule)) {
-        continue;
-      }
-
-      collectGroupSegmentKeys(rule?.segments, segmentKeys);
-      Object.values(rule?.variableOverrides || {}).forEach((overrides: any) => {
-        (overrides || []).forEach((override: any) => {
-          if (!isPromotable(override)) return;
-          collectGroupSegmentKeys(override.segments, segmentKeys);
-          collectConditionDependencies(override.conditions, segmentKeys, attributeKeys);
-          normalizeRequiredFeatures(override.requiredFeatures).forEach((required) => {
-            const requiredKey = getRequiredFeatureKey(required);
-            if (!featureKeys.has(requiredKey)) {
-              featureKeys.add(requiredKey);
-              const requiredFeature = features[requiredKey];
-              if (requiredFeature) {
-                collectFeatureDependencies(
-                  requiredFeature,
-                  features,
-                  featureKeys,
-                  segmentKeys,
-                  attributeKeys,
-                  schemaKeys,
-                );
-              }
-            }
-          });
-        });
-      });
-    }
-  }
-
-  for (const variation of feature.variations || []) {
-    Object.values(variation.variableOverrides || {}).forEach((overrides) => {
-      overrides.forEach((override) => {
-        if (!isPromotable(override)) return;
-        collectGroupSegmentKeys(override.segments, segmentKeys);
-        collectConditionDependencies(override.conditions, segmentKeys, attributeKeys);
-        normalizeRequiredFeatures(override.requiredFeatures).forEach((required) => {
-          const requiredKey = getRequiredFeatureKey(required);
-          if (!featureKeys.has(requiredKey)) {
-            featureKeys.add(requiredKey);
-            const requiredFeature = features[requiredKey];
-            if (requiredFeature) {
-              collectFeatureDependencies(
-                requiredFeature,
-                features,
-                featureKeys,
-                segmentKeys,
-                attributeKeys,
-                schemaKeys,
-              );
-            }
-          }
-        });
-      });
-    });
-  }
-
-  for (const force of Object.values((feature.force || {}) as any)) {
-    const forceEntries = Array.isArray(force) ? force : [force];
-    for (const forceEntry of forceEntries) {
-      collectGroupSegmentKeys(forceEntry?.segments, segmentKeys);
-      collectConditionDependencies(forceEntry?.conditions, segmentKeys, attributeKeys);
-    }
-  }
+  return {
+    ...feature,
+    rules: groups(feature.rules, rules),
+    force: groups(feature.force, (entries) => entries.filter(isPromotable)),
+    variations: feature.variations?.map((variation) => ({
+      ...variation,
+      variableOverrides: overrides(variation.variableOverrides),
+    })),
+  };
 }
 
 function hasOverridePromotion(overrides: Record<string, VariableOverride[]> | undefined): boolean {
@@ -608,7 +690,7 @@ function mergeFeatureVariableOverrideArray(
     if (!isPromotable(sourceOverride)) continue;
     const index = result.findIndex((entry) => entry.key === sourceOverride.key);
     if (index !== -1 && !isPromotable(result[index])) continue;
-    const merged = deepMergeWithPolicy(
+    const merged = mergeOverrideBody(
       index === -1 ? undefined : result[index],
       sourceOverride,
       policy,
@@ -689,34 +771,83 @@ function mergeRuleArray(
       .map((rule) => mergeRule(undefined, rule, policy, conflicts, [...pathSegments, rule.key]));
   }
 
-  const mergedRuleKeys = new Set<string>();
-  const mergedRules: Rule[] = [];
+  // Start from the destination's order. Rules only the destination has, and
+  // protected destination rules, keep their slots, because the first matching
+  // rule decides and moving one changes who gets the feature.
+  const result = [...destination];
+  const added = new Set<string>();
 
   for (const sourceRule of source) {
-    if (!isPromotable(sourceRule)) {
+    if (!isPromotable(sourceRule)) continue;
+    const index = result.findIndex((rule) => rule.key === sourceRule.key);
+    if (index !== -1) {
+      if (!isPromotable(result[index])) continue;
+      result[index] = mergeRule(result[index], sourceRule, policy, conflicts, [
+        ...pathSegments,
+        sourceRule.key,
+      ]);
       continue;
     }
 
-    const destinationRule = destination.find((rule) => rule.key === sourceRule.key);
-    mergedRuleKeys.add(sourceRule.key);
-
-    if (destinationRule && !isPromotable(destinationRule)) {
-      mergedRules.push(destinationRule);
-      continue;
+    // A new rule goes before the next source rule the result already has, so
+    // it keeps its place relative to the source and never lands after a
+    // catch all it preceded. Without one, it follows the previous such rule.
+    const merged = mergeRule(undefined, sourceRule, policy, conflicts, [
+      ...pathSegments,
+      sourceRule.key,
+    ]);
+    const sourceIndex = source.indexOf(sourceRule);
+    const next = source
+      .slice(sourceIndex + 1)
+      .find((rule) => result.some((entry) => entry.key === rule.key));
+    const previous = source
+      .slice(0, sourceIndex)
+      .reverse()
+      .find((rule) => result.some((entry) => entry.key === rule.key));
+    if (next) {
+      result.splice(
+        result.findIndex((entry) => entry.key === next.key),
+        0,
+        merged,
+      );
+    } else if (previous) {
+      result.splice(result.findIndex((entry) => entry.key === previous.key) + 1, 0, merged);
+    } else {
+      result.push(merged);
     }
-
-    mergedRules.push(
-      mergeRule(destinationRule, sourceRule, policy, conflicts, [...pathSegments, sourceRule.key]),
-    );
+    added.add(sourceRule.key);
   }
 
-  for (const destinationRule of destination) {
-    if (!mergedRuleKeys.has(destinationRule.key)) {
-      mergedRules.push(destinationRule);
+  // Rules both sides have, and may move, follow the conflict policy. A change
+  // in their relative order is a conflict, as it is for global overrides.
+  const movable = source.filter(
+    (rule) =>
+      !added.has(rule.key) &&
+      isPromotable(rule) &&
+      destination.some((entry) => entry.key === rule.key && isPromotable(entry)),
+  );
+  const movableKeys = new Set(movable.map((rule) => rule.key));
+  const previousOrder = destination
+    .filter((rule) => movableKeys.has(rule.key))
+    .map((rule) => rule.key);
+  const sourceOrder = movable.map((rule) => rule.key);
+  if (!deepEqual(previousOrder, sourceOrder)) {
+    conflicts.push({
+      path: [...pathSegments, "order"].join("."),
+      source: sourceOrder,
+      destination: previousOrder,
+    });
+    if (policy !== "destination") {
+      const byKey = new Map(result.map((rule) => [rule.key, rule]));
+      const ordered = sourceOrder.map((key) => byKey.get(key)!);
+      let next = 0;
+      for (let position = 0; position < result.length; position++) {
+        if (movableKeys.has(result[position].key)) result[position] = ordered[next++];
+      }
     }
   }
 
-  return mergedRules;
+  return result;
 }
 
 function isRulesByEnvironment(value: ParsedFeature["rules"]): value is RulesByEnvironment {
@@ -858,14 +989,73 @@ function mergeFeature(
     })),
   );
 
-  return {
-    ...mergedFeature,
-    rules: mergedRules,
-    variations: mergedVariations,
-  };
+  const result: ParsedFeature = { ...mergedFeature };
+  // Leave absent fields out rather than writing them as undefined
+  if (typeof mergedRules !== "undefined") result.rules = mergedRules;
+  if (typeof mergedVariations !== "undefined") result.variations = mergedVariations;
+  return result;
 }
 
-type TestAssertion = FeatureAssertion | SegmentAssertion | VariableAssertion;
+type TestAssertion = FeatureAssertion | SegmentAssertion | VariableAssertion | ScenarioAssertion;
+
+function getTestCheckReferences(test: Test): TestCheckReference[] {
+  if (!("variable" in test)) {
+    return [];
+  }
+
+  const owner = test.variable;
+  return test.assertions.flatMap((assertion) => {
+    const combinations = assertion.matrix ? getMatrixCombinations(assertion.matrix) : [{}];
+    return combinations.flatMap((combination) => {
+      const expanded = applyCombinationToValue(assertion, combination);
+      return [
+        ...(expanded.checks ? getCheckReferences(expanded.checks, owner) : []),
+        ...(expanded.children || []).flatMap((child) =>
+          child.checks ? getCheckReferences(child.checks, owner) : [],
+        ),
+      ];
+    });
+  });
+}
+
+function getScenarioCheckReferences(scenario: Scenario): TestCheckReference[] {
+  const combinations = scenario.matrix ? getMatrixCombinations(scenario.matrix) : [{}];
+
+  return combinations.flatMap((combination) => {
+    const expanded = applyCombinationToValue(scenario, combination);
+
+    return [
+      ...getCheckReferences(expanded.checks),
+      ...(expanded.children || []).flatMap((child) => getCheckReferences(child.checks)),
+    ];
+  });
+}
+
+function getTestTargetReferences(test: Test): string[] {
+  return test.assertions.flatMap((assertion) => {
+    const combinations = assertion.matrix ? getMatrixCombinations(assertion.matrix) : [{}];
+
+    return combinations.flatMap((combination) => {
+      const expanded = applyCombinationToValue(assertion, combination);
+      return "target" in expanded && typeof expanded.target === "string" ? [expanded.target] : [];
+    });
+  });
+}
+
+function getScenarioTargetReferences(scenario: Scenario): string[] {
+  const combinations = scenario.matrix ? getMatrixCombinations(scenario.matrix) : [{}];
+
+  return combinations.flatMap((combination) => {
+    const expanded = applyCombinationToValue(scenario, combination);
+    return typeof expanded.target === "string" ? [expanded.target] : [];
+  });
+}
+
+function getSpecTargetReferences(spec: Test | Scenario): string[] {
+  return classifyTestSpec(spec) === "scenario"
+    ? getScenarioTargetReferences(spec as Scenario)
+    : getTestTargetReferences(spec as Test);
+}
 
 function assertionsAreKeyed(
   assertions: TestAssertion[],
@@ -1011,38 +1201,37 @@ async function getPromotionPlan(
     featureKeys,
     segmentKeys,
     attributeKeys,
-    groupKeys,
     schemaKeys,
     targetKeys,
     variableKeys,
     testKeys,
+    scenarioKeys,
   ] = await Promise.all([
     sourceDatasource.listFeatures(),
     sourceDatasource.listSegments(),
     sourceDatasource.listAttributes(),
-    sourceDatasource.listGroups(),
     sourceDatasource.listSchemas(),
     sourceDatasource.listTargets(),
     sourceDatasource.listVariables(),
     sourceDatasource.listTests(),
+    sourceDatasource.listScenarios(),
   ]);
 
-  const [features, segments, attributes, groups, schemas, targets, variables, tests] =
+  const [features, segments, attributes, schemas, targets, variables, tests, scenarios] =
     await Promise.all([
       safeRead<ParsedFeature>(featureKeys, (key) => sourceDatasource.readFeature(key)),
       safeRead<Segment>(segmentKeys, (key) => sourceDatasource.readSegment(key)),
       safeRead<Attribute>(attributeKeys, (key) => sourceDatasource.readAttribute(key)),
-      safeRead<Group>(groupKeys, (key) => sourceDatasource.readGroup(key)),
       safeRead<Schema>(schemaKeys, (key) => sourceDatasource.readSchema(key)),
       safeRead<Target>(targetKeys, (key) => sourceDatasource.readTarget(key)),
       safeRead<ParsedVariable>(variableKeys, (key) => sourceDatasource.readVariable(key)),
       safeRead<Test>(testKeys, (key) => sourceDatasource.readTest(key)),
+      safeRead<Scenario>(scenarioKeys, (key) => sourceDatasource.readScenario(key)),
     ]);
 
   const promotedFeatureKeys = new Set<string>();
   const promotedSegmentKeys = new Set<string>();
   const promotedAttributeKeys = new Set<string>();
-  const promotedGroupKeys = new Set<string>();
   const promotedSchemaKeys = new Set<string>();
   const promotedTargetKeys = new Set<string>();
   const promotedVariableKeys = new Set<string>();
@@ -1063,7 +1252,6 @@ async function getPromotionPlan(
     featureKeys.forEach((key) => promotedFeatureKeys.add(key));
     segmentKeys.forEach((key) => promotedSegmentKeys.add(key));
     attributeKeys.forEach((key) => promotedAttributeKeys.add(key));
-    groupKeys.forEach((key) => promotedGroupKeys.add(key));
     schemaKeys.forEach((key) => promotedSchemaKeys.add(key));
     targetKeys.forEach((key) => promotedTargetKeys.add(key));
     variableKeys.forEach((key) => promotedVariableKeys.add(key));
@@ -1097,25 +1285,47 @@ async function getPromotionPlan(
       }
     }
 
+    const promotionGraph = await buildDependencyGraph(
+      {
+        listFeatures: async () => featureKeys,
+        readFeature: async (key) => promotableFeature(features[key]),
+        listSegments: async () => segmentKeys,
+        readSegment: async (key) => segments[key],
+        listVariables: async () => variableKeys,
+        readVariable: async (key) => ({
+          ...variables[key],
+          overrides: getAllPromotableVariableOverrides(variables[key]).map((override) => ({
+            ...override,
+            overrides: undefined,
+          })),
+        }),
+      },
+      { includeOverride: isPromotable },
+    );
+    const structural = await collectDependencyClosure(
+      sourceDatasource,
+      [
+        ...Array.from(promotedFeatureKeys, featureFlagNode),
+        ...Array.from(promotedVariableKeys, variableNode),
+      ],
+      { graph: promotionGraph },
+    );
+    structural.features.forEach((key) => promotedFeatureKeys.add(key));
+    structural.variables.forEach((key) => promotedVariableKeys.add(key));
+    structural.segments.forEach((key) => promotedSegmentKeys.add(key));
+
     for (const key of promotedVariableKeys) {
       const variable = variables[key];
-      const promotableOverrides = getAllPromotableVariableOverrides(variable);
-      const required = [
-        ...normalizeRequiredFeatures(variable.requiredFeatures),
-        ...promotableOverrides.flatMap((override) =>
-          normalizeRequiredFeatures(override.requiredFeatures),
-        ),
-      ];
-      required.forEach((entry) => promotedFeatureKeys.add(getRequiredFeatureKey(entry)));
-      extractSchemaReferences(variable).forEach((schemaKey) => promotedSchemaKeys.add(schemaKey));
-      promotableOverrides.forEach((override) => {
-        collectGroupSegmentKeys(override.segments, promotedSegmentKeys);
+      if (!variable) continue;
+      extractSchemaReferences(variable).forEach((schema) => promotedSchemaKeys.add(schema));
+      collectConditionDependencies(variable.conditions, promotedSegmentKeys, promotedAttributeKeys);
+      getAllPromotableVariableOverrides(variable).forEach((override) =>
         collectConditionDependencies(
           override.conditions,
           promotedSegmentKeys,
           promotedAttributeKeys,
-        );
-      });
+        ),
+      );
     }
 
     if (promotedFeatureKeys.size === 0 && promotedVariableKeys.size === 0 && !options.allowEmpty) {
@@ -1138,18 +1348,6 @@ async function getPromotionPlan(
           promotedAttributeKeys,
           promotedSchemaKeys,
         );
-      }
-    }
-
-    for (const key of groupKeys) {
-      const group = groups[key];
-      const groupFeatureKeys = group.slots
-        .map((slot) => slot.feature)
-        .filter((featureKey): featureKey is string => typeof featureKey === "string");
-
-      if (groupFeatureKeys.some((featureKey) => promotedFeatureKeys.has(featureKey))) {
-        promotedGroupKeys.add(key);
-        groupFeatureKeys.forEach((featureKey) => promotedFeatureKeys.add(featureKey));
       }
     }
   }
@@ -1188,12 +1386,82 @@ async function getPromotionPlan(
     }
   }
 
+  const [
+    destinationFeatureKeys,
+    destinationVariableKeys,
+    destinationSegmentKeys,
+    destinationTargetKeys,
+  ] = hasNoFilters
+    ? [[], [], [], []]
+    : await Promise.all([
+        destinationDatasource.listFeatures(),
+        destinationDatasource.listVariables(),
+        destinationDatasource.listSegments(),
+        destinationDatasource.listTargets(),
+      ]);
+  const destinationFeatures = hasNoFilters
+    ? {}
+    : await safeRead<ParsedFeature>(destinationFeatureKeys, (key) =>
+        destinationDatasource.readFeature(key),
+      );
+  const destinationVariables = new Set(destinationVariableKeys);
+  const destinationSegments = new Set(destinationSegmentKeys);
+  const destinationTargets = new Set(destinationTargetKeys);
+  const referenceIsPromoted = (reference: TestCheckReference, owner?: string) =>
+    reference.segment
+      ? promotedSegmentKeys.has(reference.segment)
+      : reference.feature
+        ? promotedFeatureKeys.has(reference.feature)
+        : promotedVariableKeys.has(reference.variable || owner!);
+  const referenceExistsInDestination = (reference: TestCheckReference, owner?: string) => {
+    if (reference.segment) return destinationSegments.has(reference.segment);
+    if (reference.feature) {
+      if (reference.variable === undefined) {
+        return Object.prototype.hasOwnProperty.call(destinationFeatures, reference.feature);
+      }
+
+      return Boolean(
+        Object.prototype.hasOwnProperty.call(
+          destinationFeatures[reference.feature]?.variablesSchema || {},
+          reference.variable,
+        ),
+      );
+    }
+
+    const variableKey = reference.variable || owner;
+    return Boolean(variableKey && destinationVariables.has(variableKey));
+  };
+
   const promotedTestKeys = testKeys.filter((key) => {
-    const test = tests[key] as any;
-    return (
-      promotedFeatureKeys.has(test.feature) ||
-      promotedSegmentKeys.has(test.segment) ||
-      promotedVariableKeys.has(test.variable)
+    if (hasNoFilters) return true;
+
+    const test = tests[key];
+    const ownerIsPromoted =
+      ("feature" in test && promotedFeatureKeys.has(test.feature)) ||
+      ("segment" in test && promotedSegmentKeys.has(test.segment)) ||
+      ("variable" in test && promotedVariableKeys.has(test.variable));
+    if (!ownerIsPromoted) return false;
+
+    const owner = "variable" in test ? test.variable : undefined;
+    const references = getTestCheckReferences(test);
+
+    return references.every(
+      (reference) =>
+        referenceIsPromoted(reference, owner) || referenceExistsInDestination(reference, owner),
+    );
+  });
+  const promotedScenarioKeys = scenarioKeys.filter((key) => {
+    const scenario = scenarios[key];
+    if (!isPromotable(scenario)) return false;
+    if (hasNoFilters) return true;
+
+    const references = getScenarioCheckReferences(scenario);
+    if (!references.some((reference) => referenceIsPromoted(reference))) {
+      return false;
+    }
+
+    return references.every(
+      (reference) => referenceIsPromoted(reference) || referenceExistsInDestination(reference),
     );
   });
 
@@ -1221,110 +1489,167 @@ async function getPromotionPlan(
 
       return merged;
     },
-  ) {
+  ): Promise<EntityPlan> {
     const cleanedSource = withoutKey(source as any) as T;
     const destination = await readDestination<T>(key, readDestinationEntity);
     const cleanedDestination = destination ? (withoutKey(destination as any) as T) : undefined;
 
     if (cleanedDestination && (!isPromotable(cleanedSource) || !isPromotable(cleanedDestination))) {
-      plans.push({
+      return {
         type,
         key,
         source: cleanedSource,
         destination: cleanedDestination,
         merged: cleanedDestination,
         conflicts: [],
-      });
-
-      return;
+      };
     }
 
     const conflicts: PromotionConflict[] = [];
-    const merged = merge(cleanedDestination, cleanedSource, conflicts);
+    const changesTestKind =
+      (type === "test" || type === "scenario") &&
+      cleanedDestination &&
+      classifyTestSpec(cleanedDestination) !== classifyTestSpec(cleanedSource);
+    const variableKind = (variable: ParsedVariable) =>
+      variable.compose === undefined
+        ? "ordinary"
+        : typeof variable.compose === "string"
+          ? "alias"
+          : "map";
+    const changesVariableKind =
+      type === "variable" &&
+      cleanedDestination &&
+      variableKind(cleanedDestination as ParsedVariable) !==
+        variableKind(cleanedSource as ParsedVariable);
+    let merged: T;
+    if (changesTestKind || changesVariableKind) {
+      // Distinct definition kinds must never be merged into a hybrid spec.
+      conflicts.push({
+        type,
+        key,
+        path: "",
+        source: cleanedSource,
+        destination: cleanedDestination,
+      });
+      merged = options.conflicts === "source" ? cleanedSource : cleanedDestination;
+    } else {
+      merged = merge(cleanedDestination, cleanedSource, conflicts);
+    }
 
-    plans.push({
+    return {
       type,
       key,
       source: cleanedSource,
       destination: cleanedDestination,
       merged,
       conflicts,
-    });
+    };
   }
 
   for (const key of Array.from(promotedAttributeKeys).sort()) {
     if (attributes[key])
-      await plan("attribute", key, attributes[key], (entryKey) =>
-        destinationDatasource.readAttribute(entryKey),
+      plans.push(
+        await plan("attribute", key, attributes[key], (entryKey) =>
+          destinationDatasource.readAttribute(entryKey),
+        ),
       );
   }
 
   for (const key of Array.from(promotedSegmentKeys).sort()) {
     if (segments[key])
-      await plan("segment", key, segments[key], (entryKey) =>
-        destinationDatasource.readSegment(entryKey),
-      );
-  }
-
-  for (const key of Array.from(promotedGroupKeys).sort()) {
-    if (groups[key])
-      await plan(
-        "group",
-        key,
-        groups[key] as any,
-        (entryKey) => destinationDatasource.readGroup(entryKey) as any,
+      plans.push(
+        await plan("segment", key, segments[key], (entryKey) =>
+          destinationDatasource.readSegment(entryKey),
+        ),
       );
   }
 
   for (const key of Array.from(promotedSchemaKeys).sort()) {
     if (schemas[key])
-      await plan("schema", key, schemas[key], (entryKey) =>
-        destinationDatasource.readSchema(entryKey),
+      plans.push(
+        await plan("schema", key, schemas[key], (entryKey) =>
+          destinationDatasource.readSchema(entryKey),
+        ),
       );
   }
 
   for (const key of Array.from(promotedFeatureKeys).sort()) {
     if (features[key])
-      await plan(
-        "feature",
-        key,
-        features[key],
-        (entryKey) => destinationDatasource.readFeature(entryKey),
-        (destination, source, conflicts) =>
-          mergeFeature(key, destination, source, options.conflicts, conflicts),
+      plans.push(
+        await plan(
+          "feature",
+          key,
+          features[key],
+          (entryKey) => destinationDatasource.readFeature(entryKey),
+          (destination, source, conflicts) =>
+            mergeFeature(key, destination, source, options.conflicts, conflicts),
+        ),
       );
   }
 
   for (const key of Array.from(promotedVariableKeys).sort()) {
     if (variables[key])
-      await plan(
-        "variable",
-        key,
-        variables[key],
-        (entryKey) => destinationDatasource.readVariable(entryKey),
-        (destination, source, conflicts) =>
-          mergeVariable(key, destination, source, options.conflicts, conflicts),
+      plans.push(
+        await plan(
+          "variable",
+          key,
+          variables[key],
+          (entryKey) => destinationDatasource.readVariable(entryKey),
+          (destination, source, conflicts) =>
+            mergeVariable(key, destination, source, options.conflicts, conflicts),
+        ),
       );
+  }
+
+  const testPlans: EntityPlan[] = [];
+  const scenarioPlans: EntityPlan[] = [];
+
+  for (const key of promotedTestKeys.sort()) {
+    if (tests[key])
+      testPlans.push(
+        await plan(
+          "test",
+          key,
+          tests[key],
+          (entryKey) => destinationDatasource.readTest(entryKey),
+          (destination, source, conflicts) =>
+            mergeTest(key, destination, source, options.conflicts, conflicts),
+        ),
+      );
+  }
+
+  for (const key of promotedScenarioKeys.sort()) {
+    if (scenarios[key])
+      scenarioPlans.push(
+        await plan("scenario", key, scenarios[key], (entryKey) =>
+          destinationDatasource.readScenario(entryKey),
+        ),
+      );
+  }
+
+  const targetReferences = [...testPlans, ...scenarioPlans].flatMap((entry) =>
+    getSpecTargetReferences(entry.merged as Test | Scenario).map((target) => ({ entry, target })),
+  );
+  for (const { entry, target } of targetReferences) {
+    if (destinationTargets.has(target)) continue;
+    if (!targets[target]) {
+      throw new Error(
+        `Cannot promote ${entry.type} "${entry.key}" because target "${target}" is missing from both source and destination.`,
+      );
+    }
+    promotedTargetKeys.add(target);
   }
 
   for (const key of Array.from(promotedTargetKeys).sort()) {
     if (targets[key])
-      await plan("target", key, targets[key], (entryKey) =>
-        destinationDatasource.readTarget(entryKey),
+      plans.push(
+        await plan("target", key, targets[key], (entryKey) =>
+          destinationDatasource.readTarget(entryKey),
+        ),
       );
   }
 
-  for (const key of promotedTestKeys.sort()) {
-    if (tests[key])
-      await plan(
-        "test",
-        key,
-        tests[key],
-        (entryKey) => destinationDatasource.readTest(entryKey),
-        (destination, source, conflicts) =>
-          mergeTest(key, destination, source, options.conflicts, conflicts),
-      );
-  }
+  plans.push(...testPlans, ...scenarioPlans);
 
   return plans;
 }
@@ -1339,11 +1664,6 @@ async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[])
       await destinationDatasource.writeAttribute(plan.key, plan.merged as Attribute);
     if (plan.type === "segment")
       await destinationDatasource.writeSegment(plan.key, plan.merged as Segment);
-    if (plan.type === "group")
-      await destinationDatasource.writeGroup(
-        plan.key,
-        plan.merged as Record<string, unknown> as any,
-      );
     if (plan.type === "schema")
       await destinationDatasource.writeSchema(plan.key, plan.merged as Schema);
     if (plan.type === "target")
@@ -1353,6 +1673,8 @@ async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[])
     if (plan.type === "variable")
       await destinationDatasource.writeVariable(plan.key, plan.merged as ParsedVariable);
     if (plan.type === "test") await destinationDatasource.writeTest(plan.key, plan.merged as Test);
+    if (plan.type === "scenario")
+      await destinationDatasource.writeScenario(plan.key, plan.merged as Scenario);
   }
 }
 
@@ -1401,22 +1723,29 @@ function getTimestamp() {
   ].join("");
 }
 
-function getEntityFilePath(projectConfig: ProjectConfig, type: EntityType, key: string) {
+function getEntityFilePath(
+  projectConfig: ProjectConfig,
+  type: EntityType,
+  key: string,
+  datasource?: Datasource,
+) {
+  if (type === "scenario" && datasource) return datasource.getScenarioSourcePath(key);
+  if (type === "test" && datasource) return datasource.getTestSourcePath(key);
   const directories: Record<EntityType, string> = {
     attribute: projectConfig.attributesDirectoryPath,
     segment: projectConfig.segmentsDirectoryPath,
     feature: projectConfig.featuresDirectoryPath,
-    group: projectConfig.groupsDirectoryPath,
     schema: projectConfig.schemasDirectoryPath,
     target: projectConfig.targetsDirectoryPath,
     variable: projectConfig.variablesDirectoryPath,
     test: projectConfig.testsDirectoryPath,
+    scenario: projectConfig.testsDirectoryPath,
   };
   const extension = (projectConfig.parser as any).extension || "yml";
   const pathSegments = key.split(projectConfig.namespaceCharacter);
 
   if (
-    type === "test" &&
+    (type === "test" || type === "scenario") &&
     pathSegments.length > 1 &&
     pathSegments[pathSegments.length - 1] === "spec"
   ) {
@@ -1491,10 +1820,10 @@ function stringifyMarkdownAudit(result: PromoteProjectSetsResult) {
     `- Segments: ${result.dependencies.segment}`,
     `- Features: ${result.dependencies.feature}`,
     `- Variables: ${result.dependencies.variable}`,
-    `- Groups: ${result.dependencies.group}`,
     `- Schemas: ${result.dependencies.schema}`,
     `- Targets: ${result.dependencies.target}`,
     `- Tests: ${result.dependencies.test}`,
+    `- Scenarios: ${result.dependencies.scenario}`,
     "",
     "## Files",
     "",
@@ -1599,6 +1928,7 @@ export async function promoteProjectSets(
     );
   }
 
+  await assertPromotionLintsClean(options.to, destinationDatasource, plans);
   if (options.apply === true) {
     await writePlan(destinationDatasource, plans);
   }
@@ -1608,7 +1938,12 @@ export async function promoteProjectSets(
     .map((plan) =>
       formatProjectPath(
         projectConfig,
-        getEntityFilePath(destinationDatasource.getConfig(), plan.type, plan.key),
+        getEntityFilePath(
+          destinationDatasource.getConfig(),
+          plan.type,
+          plan.key,
+          destinationDatasource,
+        ),
       ),
     );
   const updated = plans
@@ -1616,7 +1951,12 @@ export async function promoteProjectSets(
     .map((plan) =>
       formatProjectPath(
         projectConfig,
-        getEntityFilePath(destinationDatasource.getConfig(), plan.type, plan.key),
+        getEntityFilePath(
+          destinationDatasource.getConfig(),
+          plan.type,
+          plan.key,
+          destinationDatasource,
+        ),
       ),
     );
   const unchanged = plans
@@ -1624,7 +1964,12 @@ export async function promoteProjectSets(
     .map((plan) =>
       formatProjectPath(
         projectConfig,
-        getEntityFilePath(destinationDatasource.getConfig(), plan.type, plan.key),
+        getEntityFilePath(
+          destinationDatasource.getConfig(),
+          plan.type,
+          plan.key,
+          destinationDatasource,
+        ),
       ),
     );
 
@@ -1632,11 +1977,11 @@ export async function promoteProjectSets(
     attribute: plans.filter((plan) => plan.type === "attribute").length,
     segment: plans.filter((plan) => plan.type === "segment").length,
     feature: plans.filter((plan) => plan.type === "feature").length,
-    group: plans.filter((plan) => plan.type === "group").length,
     schema: plans.filter((plan) => plan.type === "schema").length,
     target: plans.filter((plan) => plan.type === "target").length,
     variable: plans.filter((plan) => plan.type === "variable").length,
     test: plans.filter((plan) => plan.type === "test").length,
+    scenario: plans.filter((plan) => plan.type === "scenario").length,
   };
 
   const result: PromoteProjectSetsResult = {
@@ -1719,7 +2064,7 @@ function printPromoteResult(
   console.log(`  Conflict policy: ${result.filters.conflicts}`);
   console.log("");
   console.log(
-    `  Dependencies: ${result.dependencies.attribute} attributes, ${result.dependencies.segment} segments, ${result.dependencies.feature} features, ${result.dependencies.variable} variables, ${result.dependencies.group} groups, ${result.dependencies.schema} schemas, ${result.dependencies.target} targets, ${result.dependencies.test} tests`,
+    `  Dependencies: ${result.dependencies.attribute} attributes, ${result.dependencies.segment} segments, ${result.dependencies.feature} features, ${result.dependencies.variable} variables, ${result.dependencies.schema} schemas, ${result.dependencies.target} targets, ${result.dependencies.test} tests, ${result.dependencies.scenario} scenarios`,
   );
   console.log(`  Created:   ${result.files.created.length}`);
   console.log(`  Updated:   ${result.files.updated.length}`);
@@ -1745,6 +2090,7 @@ function printPromoteResult(
 
 export const promotePlugin: Plugin = {
   command: "promote",
+  description: "Preview or apply a promotion between project sets",
   handler: async ({ projectConfig, datasource, parsed }) => {
     const result = await promoteProjectSets(projectConfig, datasource, {
       from: parsed.from,
@@ -1766,35 +2112,35 @@ export const promotePlugin: Plugin = {
   examples: [
     {
       command: "promote --from=dev --to=staging",
-      description: "preview definitions that can be promoted from one set to another",
+      description: "Preview definitions that can be promoted from one set to another",
     },
     {
       command: "promote --from=dev --to=staging --target=web",
-      description: "preview the target and every definition needed to build its datafile",
+      description: "Preview the target and every definition needed to build its datafile",
     },
     {
       command: "promote --from=dev --to=staging --tag=web",
-      description: "preview definitions affecting features with a tag",
+      description: "Preview definitions affecting features with a tag",
     },
     {
-      command: 'promote --from=dev --to=staging --includeFeatures="checkout*"',
-      description: "preview definitions affecting matching features",
+      command: 'promote --from=dev --to=staging --include-features="checkout*"',
+      description: "Preview definitions affecting matching features",
     },
     {
       command: "promote --from=dev --to=staging --conflicts=fail",
-      description: "fail instead of overwriting conflicting destination fields",
+      description: "Fail instead of overwriting conflicting destination fields",
     },
     {
       command: "promote --from=dev --to=staging --apply",
-      description: "apply a promotion and write destination files",
+      description: "Apply a promotion and write destination files",
     },
     {
       command: "promote --from=dev --to=staging --apply --audit=markdown",
-      description: "write a promotion audit file",
+      description: "Write a promotion audit file",
     },
     {
-      command: "promote --from=dev --to=staging --showUnchanged",
-      description: "preview a promotion and include unchanged entries",
+      command: "promote --from=dev --to=staging --show-unchanged",
+      description: "Preview a promotion and include unchanged entries",
     },
   ],
 };

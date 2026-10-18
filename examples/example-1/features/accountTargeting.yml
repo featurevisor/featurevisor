@@ -7,17 +7,17 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: pro-accounts
-      segments:
+      conditions:
         and:
           - proAccounts
           - admins
       percentage: 100
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 0

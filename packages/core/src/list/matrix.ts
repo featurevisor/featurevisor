@@ -3,6 +3,7 @@ import type {
   FeatureAssertion,
   SegmentAssertion,
   VariableAssertion,
+  ScenarioAssertion,
 } from "@featurevisor/types";
 
 function generateCombinations(
@@ -74,6 +75,23 @@ export function applyCombinationToValue(value: any, combination: any) {
 }
 
 /**
+ * Substitutes placeholders in the fields an assertion actually has. Absent
+ * fields stay absent, so an expectation the author left out is never
+ * created as `undefined` and then compared.
+ */
+function applyCombinationToFields<T extends object>(
+  assertion: T,
+  fields: readonly (keyof T)[],
+  combination: any,
+) {
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(assertion, field)) {
+      assertion[field] = applyCombinationToValue(assertion[field], combination);
+    }
+  }
+}
+
+/**
  * Features
  */
 export function applyCombinationToFeatureAssertion(
@@ -83,9 +101,21 @@ export function applyCombinationToFeatureAssertion(
   const flattenedAssertion = { ...assertion };
   delete flattenedAssertion.matrix;
 
-  // environment
-  flattenedAssertion.environment = applyCombinationToValue(
-    flattenedAssertion.environment,
+  applyCombinationToFields(
+    flattenedAssertion,
+    [
+      "environment",
+      "target",
+      "stickyFeatures",
+      "stickyVariables",
+      "defaultVariationValue",
+      "defaultVariableValues",
+      "expectedToBeEnabled",
+      "expectedVariation",
+      "expectedVariables",
+      "expectedEvaluations",
+      "children",
+    ],
     combination,
   );
 
@@ -112,38 +142,6 @@ export function applyCombinationToFeatureAssertion(
       combination,
     );
   }
-
-  // target
-  if (flattenedAssertion.target) {
-    flattenedAssertion.target = applyCombinationToValue(flattenedAssertion.target, combination);
-  }
-
-  flattenedAssertion.sticky = applyCombinationToValue(flattenedAssertion.sticky, combination);
-  flattenedAssertion.defaultVariationValue = applyCombinationToValue(
-    flattenedAssertion.defaultVariationValue,
-    combination,
-  );
-  flattenedAssertion.defaultVariableValues = applyCombinationToValue(
-    flattenedAssertion.defaultVariableValues,
-    combination,
-  );
-  flattenedAssertion.expectedToBeEnabled = applyCombinationToValue(
-    flattenedAssertion.expectedToBeEnabled,
-    combination,
-  );
-  flattenedAssertion.expectedVariation = applyCombinationToValue(
-    flattenedAssertion.expectedVariation,
-    combination,
-  );
-  flattenedAssertion.expectedVariables = applyCombinationToValue(
-    flattenedAssertion.expectedVariables,
-    combination,
-  );
-  flattenedAssertion.expectedEvaluations = applyCombinationToValue(
-    flattenedAssertion.expectedEvaluations,
-    combination,
-  );
-  flattenedAssertion.children = applyCombinationToValue(flattenedAssertion.children, combination);
 
   return flattenedAssertion;
 }
@@ -209,6 +207,14 @@ export function applyCombinationToSegmentAssertion(
   const flattenedAssertion = { ...assertion };
   delete flattenedAssertion.matrix;
 
+  applyCombinationToFields(
+    flattenedAssertion,
+    ["environment", "target", "at", "stickyFeatures", "stickyVariables"],
+    combination,
+  );
+  if (typeof flattenedAssertion.at === "string")
+    flattenedAssertion.at = Number(flattenedAssertion.at);
+
   // context
   flattenedAssertion.context = Object.keys(flattenedAssertion.context).reduce((acc, key) => {
     acc[key] = applyCombinationToValue(flattenedAssertion.context[key], combination);
@@ -261,46 +267,45 @@ export function getSegmentAssertionsFromMatrix(
   return assertions;
 }
 
-export function getVariableAssertionsFromMatrix(
+export function getVariableAssertionsFromMatrix<T extends VariableAssertion | ScenarioAssertion>(
   aIndex: number,
-  assertionWithMatrix: VariableAssertion,
-): VariableAssertion[] {
-  const combinations = assertionWithMatrix.matrix
-    ? getMatrixCombinations(assertionWithMatrix.matrix)
-    : [{}];
+  assertionWithMatrix: T,
+  kind: "assertion" | "scenario" = "assertion",
+): T[] {
+  const matrixValue = (assertionWithMatrix as { matrix?: unknown }).matrix;
+  const hasMatrix =
+    Object.prototype.hasOwnProperty.call(assertionWithMatrix, "matrix") &&
+    matrixValue !== undefined;
+  if (hasMatrix) {
+    if (!matrixValue || typeof matrixValue !== "object" || Array.isArray(matrixValue)) {
+      throw new Error("Matrix must be an object");
+    }
+    const keys = Object.keys(matrixValue);
+    if (!keys.length) throw new Error("Matrix must contain at least one key");
+    keys.forEach((key) => {
+      const values = (matrixValue as Record<string, unknown>)[key];
+      if (!Array.isArray(values)) throw new Error(`Matrix values for "${key}" must be arrays`);
+      if (!values.length) throw new Error(`Matrix values for "${key}" cannot be empty`);
+    });
+  }
+  const combinations = hasMatrix ? getMatrixCombinations(matrixValue as AssertionMatrix) : [{}];
 
-  return combinations.map((combination) => {
-    const assertion = { ...assertionWithMatrix };
+  return combinations.map((combination, caseIndex) => {
+    const assertion = applyCombinationToValue({ ...assertionWithMatrix }, combination) as T;
     delete assertion.matrix;
-    assertion.environment = applyCombinationToValue(assertion.environment, combination);
-    assertion.context = Object.keys(assertion.context || {}).reduce((acc, key) => {
-      acc[key] = applyCombinationToValue(assertion.context?.[key], combination);
-      return acc;
-    }, {});
-    if (assertion.target) {
-      assertion.target = applyCombinationToValue(assertion.target, combination);
-    }
-    if (assertion.description) {
-      assertion.description = applyCombinationToValue(assertion.description, combination);
-    }
-    const at = applyCombinationToValue(assertion.at, combination);
+    assertion.context = assertion.context || {};
+    const at = assertion.at as number | string | undefined;
     assertion.at =
       typeof at === "string" ? (at.indexOf(".") > -1 ? parseFloat(at) : parseInt(at, 10)) : at;
-    assertion.expectedValue = applyCombinationToValue(assertion.expectedValue, combination);
-    assertion.stickyFeatures = applyCombinationToValue(assertion.stickyFeatures, combination);
-    assertion.stickyVariables = applyCombinationToValue(assertion.stickyVariables, combination);
-    assertion.defaultVariableValue = applyCombinationToValue(
-      assertion.defaultVariableValue,
-      combination,
-    );
-    assertion.expectedEvaluation = applyCombinationToValue(
-      assertion.expectedEvaluation,
-      combination,
-    );
-    assertion.children = applyCombinationToValue(assertion.children, combination);
-    assertion.description = `Assertion #${aIndex + 1}${
-      assertion.description ? `: ${assertion.description}` : ""
-    }`;
+    if (kind === "scenario") {
+      assertion.description = hasMatrix
+        ? `Case ${caseIndex + 1} of ${combinations.length}${assertion.description ? `: ${assertion.description}` : ""}`
+        : assertion.description || "Checks";
+    } else {
+      assertion.description = `Assertion #${aIndex + 1}${
+        assertion.description ? `: ${assertion.description}` : ""
+      }`;
+    }
     return assertion;
   });
 }

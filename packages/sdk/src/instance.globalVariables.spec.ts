@@ -196,7 +196,7 @@ describe("global variables", () => {
   it("handles required features, disabled values, defaults, and variation requirements", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
 
-    expect(f.evaluateVariable("gated").reason).toBe("required_features_unmet");
+    expect(f.evaluateVariable("gated").reason).toBe("conditions_unmet");
     expect(f.getVariable("gated")).toBe("disabled");
     expect(f.getVariable("gatedDefault")).toBe(5);
     expect(f.getVariable("gated", { access: true })).toBe("enabled");
@@ -291,13 +291,38 @@ describe("global variables", () => {
     expect(f.getVariable("union", { kind: "object" })).toEqual({ colour: "green" });
   });
 
+  it("reads number variables and earlier double variables the same way", () => {
+    const f = createFeaturevisor({
+      datafile: {
+        schemaVersion: "4",
+        revision: "1",
+        segments: {},
+        features: {},
+        variables: {
+          rate: { type: "number", defaultValue: 2.5 },
+          ratio: { type: "double", defaultValue: 1.5 },
+          count: { type: "number", defaultValue: 3 },
+        },
+      },
+      logLevel: "fatal",
+    });
+
+    expect(f.getVariableNumber("rate")).toBe(2.5);
+    expect(f.getVariableNumber("ratio")).toBe(1.5);
+    expect(f.getVariableNumber("count")).toBe(3);
+    expect(f.getVariable("rate")).toBe(2.5);
+    expect(f.getVariableInteger("count")).toBe(3);
+    // getVariableDouble was removed in v4. Datafile double types still read as numbers.
+    expect("getVariableDouble" in f).toBe(false);
+  });
+
   it("supports every typed convenience method for global variables", () => {
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
 
     expect(f.getVariableBoolean("enabled")).toBe(true);
     expect(f.getVariableString("supportEmail")).toBe("help@example.com");
     expect(f.getVariableInteger("count")).toBe(3);
-    expect(f.getVariableDouble("ratio")).toBe(1.5);
+    expect(f.getVariableNumber("ratio")).toBe(1.5);
     expect(f.getVariableArray("items")).toEqual(["one"]);
     expect(f.getVariableObject<{ colour: string }>("object")).toEqual({ colour: "blue" });
     expect(f.getVariableJSON<{ colour: string }>("config")).toEqual({ colour: "blue" });
@@ -324,7 +349,7 @@ describe("global variables", () => {
       expect.arrayContaining([
         expect.objectContaining({
           level: "warn",
-          code: "variable_deprecated",
+          code: "deprecated_variable",
           details: expect.objectContaining({ variableKey: "retired" }),
         }),
         expect.objectContaining({
@@ -336,29 +361,29 @@ describe("global variables", () => {
     );
   });
 
-  it("uses unified module callbacks and keeps deprecated feature callbacks feature-only", () => {
-    const before = jest.fn((options) => options);
-    const after = jest.fn((evaluation) => evaluation);
+  it("uses unified module callbacks for global and feature evaluations", () => {
+    const beforeEvaluation = jest.fn((options) =>
+      !("featureKey" in options)
+        ? { ...options, context: { ...options.context, continent: "eu" } }
+        : options,
+    );
+    const afterEvaluation = jest.fn((evaluation) =>
+      !evaluation.featureKey
+        ? { ...evaluation, variableValue: `${evaluation.variableValue}!` }
+        : evaluation,
+    );
     const module: FeaturevisorModule = {
-      before,
-      after,
-      beforeEvaluation: (options) =>
-        !("featureKey" in options)
-          ? { ...options, context: { ...options.context, continent: "eu" } }
-          : options,
-      afterEvaluation: (evaluation) =>
-        !evaluation.featureKey
-          ? { ...evaluation, variableValue: `${evaluation.variableValue}!` }
-          : evaluation,
+      beforeEvaluation,
+      afterEvaluation,
     };
     const f = createFeaturevisor({ datafile: datafile(), modules: [module], logLevel: "fatal" });
 
     expect(f.getVariable("supportEmail")).toBe("help-eu@example.com!");
-    expect(before).not.toHaveBeenCalled();
-    expect(after).not.toHaveBeenCalled();
+    expect(beforeEvaluation).toHaveBeenCalledTimes(1);
+    expect(afterEvaluation).toHaveBeenCalledTimes(1);
     f.isEnabled("access", { access: true });
-    expect(before).toHaveBeenCalled();
-    expect(after).toHaveBeenCalled();
+    expect(beforeEvaluation).toHaveBeenCalledTimes(2);
+    expect(afterEvaluation).toHaveBeenCalledTimes(2);
   });
 
   it("returns a safe evaluation when a unified module callback throws", () => {
@@ -403,7 +428,7 @@ describe("global variables", () => {
   });
 
   it.each(globalVariableConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(6);
+    expect(conformance.version).toBe(15);
     const f = createFeaturevisor({
       datafile: conformance.globalVariables.datafile,
       stickyVariables: testCase.stickyVariables,

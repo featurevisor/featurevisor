@@ -27,7 +27,8 @@ assertions:
   - at: 10
     environment: production
     defaultVariationValue: treatment
-    defaultVariableValues: # this is being tested here
+    defaultVariableValues:
+      # this is being tested here
       foo: "default foo value"
     expectedToBeEnabled: false
     expectedVariation: treatment

@@ -19,7 +19,7 @@ variablesSchema:
     defaultValue: 0
 
   score:
-    type: double
+    type: number
     defaultValue: 0.0
 
   enabled:
@@ -114,7 +114,7 @@ variablesSchema:
           type: object
           properties:
             score:
-              type: double
+              type: number
     defaultValue:
       - id: "1"
         name: "First"
@@ -354,42 +354,42 @@ variations:
     # Path-map style variableOverrides (resolveMutationsForSingleVariable)
     variableOverrides:
       title:
-        - segments: countries.germany
+        - conditions: countries.germany
           value: "Behandlung (DE)"
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value: "Behandeling (NL)"
       config:
-        - segments: countries.germany
+        - conditions: countries.germany
           value:
             theme: dark
             compact: true
             width: 1400
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value:
             theme: dark
             width: 1800
       settings:
-        - segments: countries.germany
+        - conditions: countries.germany
           value:
             "display.fontSize": 20
             "layout.width": 280
       items:
-        - segments: countries.germany
+        - conditions: countries.germany
           value:
             "[0].name": "Erste"
             "[1].meta.score": 1.0
       # Schema-ref variables: path-map overrides (resolved via referenced schema)
       primaryLink:
-        - segments: countries.germany
+        - conditions: countries.germany
           value:
             title: "Startseite (DE)"
             url: /de
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value:
             title: "Start (NL)"
             url: /nl
       page:
-        - segments: countries.germany
+        - conditions: countries.germany
           value:
             "mainLink.title": "Dokumentation"
             "mainLink.url": /de/docs
@@ -397,7 +397,7 @@ variations:
 rules:
   staging:
     - key: germany
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       # Mix of full keys and dot-notation / array-index mutation keys
       variables:
@@ -466,7 +466,7 @@ rules:
           label: de-nav
 
     - key: nl_or_ch
-      segments:
+      conditions:
         or:
           - countries.netherlands
           - countries.switzerland
@@ -495,7 +495,7 @@ rules:
         "page.label": "nl-ch-nav"
 
     - key: mobile_eu
-      segments:
+      conditions:
         and:
           - mobile
           - eu
@@ -515,12 +515,12 @@ rules:
         "page.mainLink.title": "Mobile Docs"
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: germany
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       variables:
         title: "Germany (Production)"
@@ -533,7 +533,7 @@ rules:
         "featuredProduct.price.currency": EUR
 
     - key: nl_or_ch
-      segments:
+      conditions:
         or:
           - countries.netherlands
           - countries.switzerland
@@ -544,5 +544,5 @@ rules:
         "tags": ["prod", "nl-ch"]
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100

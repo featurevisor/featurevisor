@@ -1,6 +1,4 @@
 description: <Feature with A/B test>
-tags:
-  - all
 
 bucketBy: userId
 
@@ -18,13 +16,8 @@ variations:
 # Optional: return a specific variation (instead of null) when the flag is off.
 # disabledVariationValue: control
 
+# With environments configured, nest this list under each environment key.
 rules:
-  staging:
-    - key: everyone
-      segments: "*"
-      percentage: 100
-
-  production:
-    - key: everyone
-      segments: "*"
-      percentage: 0 # ramp up; never rename the key
+  - key: everyone
+    conditions: "*"
+    percentage: 0 # ramp up; never rename the key

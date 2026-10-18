@@ -1,51 +1,62 @@
 # Example Featurevisor project
 
-A small but realistic Featurevisor project demonstrating the shapes the skill writes most often. Copy this into a new directory, `npm install @featurevisor/cli`, and `npx featurevisor lint && npx featurevisor test` should pass.
+A small Featurevisor v4 project showing the shapes the skill writes most often. Copy this directory, run `npm install`, and `npx featurevisor lint` and `npx featurevisor test` both pass.
 
 ## Layout
 
 ```
 .
-├── featurevisor.config.js       # tags + environments
+├── featurevisor.config.js      # no environments, the default scaffold
 ├── attributes/
-│   ├── userId.yml               # string id (signed-in)
-│   ├── deviceId.yml             # string id (anonymous)
-│   ├── country.yml              # string, enum-validated
-│   └── plan.yml                 # string, enum-validated
+│   ├── userId.yml              # signed-in identity
+│   ├── deviceId.yml            # anonymous identity
+│   ├── country.yml             # string with a pattern
+│   ├── plan.yml                # string with an enum
+│   └── appVersion.yml          # string with format: semver
 ├── segments/
 │   ├── countries/
-│   │   └── netherlands.yml      # namespaced: key is countries.netherlands
-│   └── qa.yml                   # force-target QA
+│   │   └── netherlands.yml     # namespaced key: countries.netherlands
+│   ├── modernApp.yml           # semver condition
+│   └── qa.yml                  # or group, used by force
 ├── features/
-│   └── checkout.yml             # flag + variations + variables + force
+│   ├── checkout.yml            # A/B test, variables, force, root gate on a variable
+│   └── liveChat.yml            # rollout gated by app version
 ├── variables/
-│   ├── supportEmail.yml         # global variable + environment override
-│   └── checkoutPromoBanner.yml  # global variable gated on a required feature
+│   ├── supportEmail.yml        # global variable with an override
+│   ├── maintenanceMode.yml     # kill switch read by checkout's conditions
+│   ├── checkoutPromoBanner.yml # gated on the checkout feature
+│   └── checkoutView.yml        # composition of a flag, variation and variables
 ├── targets/
-│   └── all.yml                  # builds one datafile from the `all` tag
+│   └── all.yml                 # no selectors: every active definition
 └── tests/
     ├── features/
-    │   └── checkout.spec.yml
     ├── segments/
-    │   └── netherlands.spec.yml
-    └── variables/
-        ├── supportEmail.spec.yml
-        └── checkoutPromoBanner.spec.yml
+    ├── variables/
+    └── scenarios/
+        └── maintenance.spec.yml
 ```
 
-## What it demonstrates
+## What it shows
 
-- Two environments (`staging`, `production`) and two tags (`web`, `all`).
-- Signed-in + anonymous bucketing via `bucketBy: {or: [userId, deviceId]}`.
-- A namespaced segment (`countries.netherlands` — directory name + default `.` separator).
-- A QA `force:` block so a known segment always sees the feature regardless of rollout %.
-- A `targets/all.yml` so `npx featurevisor build` produces a `featurevisor-all.json` datafile per environment.
-- A/B test with two variations (`control`/`treatment`).
-- Variables of multiple types (string, boolean, array of strings, object).
-- A per-rule variable override (NL gets a different `paymentMethods` array).
-- A per-variation variable override using **mutation syntax** (`"hero.subtitle"`).
-- Two **global variables** under `variables/`, owned by no single feature: one with a
-  production-only override reusing the `countries.netherlands` segment, one gated with
-  `requiredFeatures` so it returns its `disabledValue` when `checkout` is off for that user.
-- Tests covering: catch-all rule, country-specific rule, force, a matrix expansion, and both
-  global variables (including the `required_features_unmet` fallback).
+- Bucketing that falls back from `userId` to `deviceId` with `bucketBy: { or: [userId, deviceId] }`.
+- Unified `conditions` with all four leaf kinds: attribute, segment (a bare string), feature and variable.
+- A root gate on a global variable: setting `maintenanceMode` to `true` disables `checkout` with reason `conditions_unmet`. Force entries run before the gate, so QA keeps access.
+- An A/B test whose treatment changes one property of an object variable through a mutation key.
+- Rule variables and a keyed `variableOverrides` entry inside a rule.
+- A version gate on a `format: semver` attribute, with quoted versions.
+- A global variable gated on a feature, which returns its `disabledValue` when the feature is off.
+- A `compose` map that reads a flag, a variation, a feature variable and a global variable in one call.
+- Specs with stable assertion `key`s, a matrix, global variable `checks`, a feature assertion that switches the kill switch on with `stickyVariables`, and a standalone scenario that checks everything built on checkout at once.
+
+## Try it
+
+```bash
+npx featurevisor lint
+npx featurevisor test
+npx featurevisor evaluate --feature=checkout --context='{"userId":"8f2a","country":"nl"}' --explain
+npx featurevisor evaluate --variable=checkoutView --context='{"userId":"8f2a","country":"nl"}' --explain
+npx featurevisor build --no-state-files
+npx featurevisor catalog
+```
+
+With environments configured, nest each `rules`, `force` and global `overrides` list under its environment key, and add `environment` to tests.

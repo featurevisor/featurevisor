@@ -1,0 +1,7 @@
+description: JSON configuration
+
+tags: [source]
+
+type: json
+
+defaultValue: '{"source":"example"}'

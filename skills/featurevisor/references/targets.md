@@ -1,108 +1,100 @@
 # Targets
 
-Full docs: <https://featurevisor.com/docs/targets>
+Full docs: <https://featurevisor.com/docs/targets/>
 
-Targets define the datafiles Featurevisor builds. They live under `targets/`.
+A target defines one datafile. Targets live in `targets/<key>.yml`, and the build writes `featurevisor-<key>.json` for each, per environment when environments are configured.
 
 ```yaml
-description: Web app datafile
-tag: web
-context:
-  platform: web
+description: All features and global variables
 ```
 
-Only `description` is required. Without selectors, a Target includes every active feature and global variable.
+A target without selectors, like the scaffold's `targets/all.yml`, includes every active feature and global variable. No `all` tag is needed.
 
-## Tags
+## One datafile per application
 
-Use `tag` for one tag, or `tags` for multiple tag selectors like `{ or: [...] }` and `{ and: [...] }`. The arrays must not be empty.
-
-Supported shapes:
+Select by tag, after declaring the tags in the configuration and tagging definitions ([tags.md](tags.md)):
 
 ```yaml
+description: Web app
+
 tag: web
 ```
 
 ```yaml
+description: Mobile apps
+
 tags:
   or:
     - ios
     - android
 ```
 
-```yaml
-tags:
-  and:
-    - web
-    - checkout
-```
+`tag` takes one tag. `tags` takes `{ or: [...] }` or `{ and: [...] }`, nonempty. Use one or the other. Tags select both features and global variables.
 
-`tag` and `tags` are mutually exclusive. Omit both when the target should not narrow by tag.
-
-## Features
-
-Use `includeFeatures` and `excludeFeatures` to select features by key. Patterns use glob style `*` matching:
+## Narrow by key
 
 ```yaml
-description: Checkout datafile
+description: Checkout frontend
+
 includeFeatures:
   - checkout*
-  - shared.navigation
 excludeFeatures:
   - checkout.internal*
-```
-
-Exclusions take precedence over inclusions. If `includeFeatures` is omitted, all features are candidates. To state that explicitly, `*` can be used directly:
-
-```yaml
-description: All features
-includeFeatures: "*"
-```
-
-Pattern arrays must not be empty. Patterns must not have surrounding spaces or repeated `**`. A direct string value is only valid when it is exactly `*`.
-
-Feature and tag selectors are combined with **AND** semantics. If both `tag`/`tags` and `includeFeatures`/`excludeFeatures` are present, a feature must satisfy the tag selector and the feature-key selector to be included.
-
-```yaml
-description: Web checkout features
-tag: web
-includeFeatures:
-  - checkout*
-```
-
-In this example, a `checkout` feature without the `web` tag is not included, even though its key matches `checkout*`.
-
-## Global variables
-
-Use `includeVariables` and `excludeVariables` for glob-like global variable key filtering. They follow the same pattern rules as feature selectors:
-
-```yaml
-description: Checkout datafile
 includeVariables:
   - checkout*
-excludeVariables:
-  - checkout.internal*
 ```
 
-`includeFeatures` and `excludeFeatures` only affect features. `includeVariables` and `excludeVariables` only affect global variables. Tags apply to both. Tags and the matching entity key selectors use AND semantics.
+- Patterns use `*` as a wildcard. Exclusions win over inclusions.
+- `includeFeatures` and `excludeFeatures` affect features only. `includeVariables` and `excludeVariables` affect global variables only.
+- Tag and key selectors combine with AND: a feature must match both.
 
-If all selectors are omitted, the target includes every non-archived feature and global variable.
+## What comes along
 
-## Context
+The build adds everything the selected definitions need, even when selectors or tags would leave it out:
 
-Target `context` represents values known at build time. Featurevisor applies this context while building the target datafile and removes redundant rules or segments where possible.
+- features and variables referenced in `conditions`, and their own dependencies,
+- segments used anywhere, with their references,
+- every source of a composition.
 
-In a sets project, a target can carry `promotable: false` to protect an existing destination target from later [promotion](https://featurevisor.com/docs/promotions) updates. A missing destination target is still created.
+Every branch of an `and`, `or` or `not` counts. The exception is `expose: false`, which keeps a feature out, so never hide a prerequisite. For a composition, a hidden or archived source fails the build. Target filtering is not a confidentiality boundary: dependencies arrive as whole definitions.
 
-Use `target` in feature test assertions:
+## Known context
+
+When every user of a datafile shares some context, give it to the target. The build resolves what that context decides, and the datafile gets smaller:
 
 ```yaml
+description: Dutch web storefront
+
+tag: web
+
+context:
+  country: nl
+```
+
+Serve such a datafile only to users matching that context. Its results assume it, so a German user evaluated against it would be treated as Dutch.
+
+## Test and inspect
+
+```yaml
+feature: checkout
+
 assertions:
-  - target: web
-    environment: production
+  - key: web
+    target: web
     at: 50
-    context: { userId: "123" }
+    context:
+      country: nl
     expectedToBeEnabled: true
 ```
 
-Use optional, repeatable `--target=<target>` options with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info`. Runtime commands process each selected target datafile independently. Without this option they keep their normal project-wide behavior. A normal build builds every target, while `build --json` and `build --print` accept at most one target.
+A `target` assertion evaluates against that target's datafile, as the application would. A definition the target leaves out evaluates as missing. Commands that take repeatable `--target=<key>`:
+
+```bash
+npx featurevisor build --no-state-files --target=web
+npx featurevisor test --target=web
+npx featurevisor evaluate --target=web --feature=checkout --context='{"country":"nl"}'
+npx featurevisor list --features --target=web --json
+npx featurevisor info --target=web
+```
+
+In a Sets project, `promotable: false` on a target protects the destination's version during promotion.

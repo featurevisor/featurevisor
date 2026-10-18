@@ -2,12 +2,12 @@ import type { CatalogEntityType, EntityPath } from "./types";
 
 export const entityPaths: EntityPath[] = [
   "features",
-  "segments",
-  "attributes",
-  "targets",
-  "groups",
-  "schemas",
   "variables",
+  "attributes",
+  "segments",
+  "targets",
+  "schemas",
+  "tests",
 ];
 
 export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
@@ -15,7 +15,6 @@ export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
   segments: "segment",
   attributes: "attribute",
   targets: "target",
-  groups: "group",
   schemas: "schema",
   tests: "test",
   variables: "variable",
@@ -26,7 +25,6 @@ export const entityTypeToPath: Record<CatalogEntityType, EntityPath> = {
   segment: "segments",
   attribute: "attributes",
   target: "targets",
-  group: "groups",
   schema: "schemas",
   test: "tests",
   variable: "variables",
@@ -37,7 +35,6 @@ export const entityLabels: Record<CatalogEntityType, { singular: string; plural:
   segment: { singular: "Segment", plural: "Segments" },
   attribute: { singular: "Attribute", plural: "Attributes" },
   target: { singular: "Target", plural: "Targets" },
-  group: { singular: "Group", plural: "Groups" },
   schema: { singular: "Schema", plural: "Schemas" },
   test: { singular: "Test", plural: "Tests" },
   variable: { singular: "Variable", plural: "Variables" },
@@ -72,6 +69,10 @@ export function getBasePath(setKey?: string) {
 
 export function getEntityRoute(type: CatalogEntityType, key: string, setKey?: string) {
   return `${getBasePath(setKey)}/${entityTypeToPath[type]}/${encodeRouteSegment(key)}`;
+}
+
+export function getEntityListRoute(type: CatalogEntityType, setKey?: string) {
+  return `${getBasePath(setKey)}/${entityTypeToPath[type]}`;
 }
 
 export function getDataBasePath(setKey?: string) {

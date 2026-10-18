@@ -3,7 +3,8 @@ packages/*/lib
 
 examples/*/src
 
-**/.catalog-dev/**
+**/.catalog-dev*/**
+**/.catalog-dev*.json
 examples/*/catalog/**
 
 CHANGELOG.md

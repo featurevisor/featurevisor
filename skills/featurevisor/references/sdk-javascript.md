@@ -1,14 +1,10 @@
-# JavaScript / TypeScript SDK
+# JavaScript and TypeScript SDK
 
-Full docs: <https://featurevisor.com/docs/sdks/javascript>
+Full docs: <https://featurevisor.com/docs/sdks/javascript/>
 
-`@featurevisor/sdk` is universal — the same package works in Node.js, browsers, edge runtimes, and React Native. It evaluates features locally against a loaded [datafile](building-datafiles.md); **no network call happens at evaluation time**, so evaluations are synchronous and fast.
+`@featurevisor/sdk` is universal: the same package runs in Node.js, browsers, edge runtimes and React Native. It evaluates a loaded [datafile](building-datafiles.md) locally. **No network call happens at evaluation time**, so evaluations are synchronous.
 
-Framework wrappers: [sdk-react.md](sdk-react.md) (React / React Native), [sdk-vue.md](sdk-vue.md) (Vue).
-
-**Featurevisor SDKs are cross-platform.** Python, Ruby, Go, Java, Kotlin, Swift, PHP, and more, see [sdk-other-languages.md](sdk-other-languages.md). All SDKs consume the same datafiles, expose the same concepts, and are verified against a shared conformance contract, so the same user gets the same variation in every language. Everything in this file transfers conceptually; only syntax differs.
-
-Prefer the standard [OpenFeature](openfeature.md) API instead of Featurevisor's own? Providers exist for Node.js, browsers, and most other languages.
+Framework wrappers: [sdk-react.md](sdk-react.md) and [sdk-vue.md](sdk-vue.md). Other languages: [sdk-other-languages.md](sdk-other-languages.md). The vendor neutral alternative: [openfeature.md](openfeature.md). Upgrading an application from v3: [upgrading-to-v4.md](upgrading-to-v4.md#applications).
 
 ## Install and initialize
 
@@ -19,179 +15,201 @@ npm install --save @featurevisor/sdk
 ```js
 import { createFeaturevisor } from '@featurevisor/sdk'
 
-const datafileUrl = 'https://cdn.yoursite.com/production/featurevisor-web.json'
-const datafile = await fetch(datafileUrl).then((res) => res.json())
+const response = await fetch('https://cdn.yoursite.com/featurevisor-all.json')
+const datafile = await response.json()
 
 const f = createFeaturevisor({ datafile })
 ```
 
-`createFeaturevisor()` accepts:
+| Option            | Purpose                                                           |
+| ----------------- | ----------------------------------------------------------------- |
+| `datafile`        | Datafile content, as an object or JSON string. Can be set later   |
+| `context`         | Initial [context](#context)                                       |
+| `stickyFeatures`  | Feature results consulted before the datafile ([Sticky](#sticky)) |
+| `stickyVariables` | Global variable values consulted before the datafile              |
+| `logLevel`        | `fatal`, `error`, `warn`, `info` (default) or `debug`             |
+| `onDiagnostic`    | Handler replacing console output ([Diagnostics](#diagnostics))    |
+| `modules`         | Evaluation interceptors ([Modules](#modules))                     |
 
-| Option            | Purpose                                                                          |
-| ----------------- | -------------------------------------------------------------------------------- |
-| `datafile`        | Datafile content (object or JSON string). Can also be set later.                 |
-| `context`         | Initial [context](#context) values                                               |
-| `stickyFeatures`  | Per-feature overrides consulted before evaluation (see [Sticky](#sticky))        |
-| `stickyVariables` | Global variable overrides consulted before evaluation                            |
-| `logLevel`        | `fatal` \| `error` \| `warn` \| `info` (default) \| `debug`                      |
-| `onDiagnostic`    | Custom handler instead of console output (see [Diagnostics](#diagnostics))       |
-| `modules`         | Evaluation interceptors (see [Modules](#modules) and [tracking.md](tracking.md)) |
-
-Create **one instance per application** and share it — don't create a new instance per evaluation. For server-side per-request isolation, see [Child instances](#child-instances-server-side).
+Create **one instance per application** and share it. On servers, [spawn a child per request](#child-instances-server-side).
 
 ## Context
 
-Context is the plain object of [attribute](attributes.md) values that evaluations run against — the same attributes referenced by the project's segment conditions.
+Context is the object of [attribute](attributes.md) values evaluations run against.
 
 ```js
-// at init
-const f = createFeaturevisor({ context: { deviceId: 'abc', country: 'nl' } })
+const f = createFeaturevisor({
+  context: {
+    deviceId: 'd-123',
+    country: 'nl',
+  },
+})
 
-// merge in more later (e.g. after login)
-f.setContext({ userId: '123' })
+// merge more later, for example after signing in
+f.setContext({ userId: '8f2a' })
 
-// replace entirely (second arg true)
-f.setContext({ deviceId: 'abc', userId: '123' }, true)
+// replace entirely
+f.setContext({ deviceId: 'd-123', userId: '8f2a' }, true)
 
-// or pass per evaluation — merged on top of instance context for that call only
-f.isEnabled('checkout', { country: 'de' })
+// or per evaluation, merged over the instance context for that call only
+const context = {
+  country: 'de',
+}
+
+f.isEnabled('checkout', context)
 ```
 
-Attribute names and value types must match the project's `attributes/` definitions — check with `npx featurevisor list --attributes --json` when in doubt; don't invent attribute names in application code.
+Attribute names and types must match the project's `attributes/`. Check with `npx featurevisor list --attributes --json` instead of guessing. The SDK does not validate context, so a wrong type silently fails to match.
 
-**Date attributes need a `Date` or a full ISO 8601 string with timezone** (`new Date()`, `'2026-11-28T10:00:00Z'`). A date-only string like `'2026-11-28'` makes date conditions silently not match, so the feature quietly falls through to the next rule. Numeric attribute values are stringified canonically for bucketing, so the same number buckets identically across SDKs.
+- **Timestamps** for `format: date-time` attributes: pass a `Date` or a full ISO 8601 string with a timezone, such as `'2026-11-28T10:00:00Z'`. A date only string makes `before` and `after` false.
+- **Versions**: pass strings such as `'5.5.0'`.
+- **Objects**: pass the object, such as `account: { plan: 'paid' }`, for dotted attribute paths.
 
-## Evaluating
-
-Three evaluation types, mirroring what features define in YAML:
+## Evaluate
 
 ```js
-// flag — boolean
-if (f.isEnabled('checkout')) { /* ... */ }
+const context = {
+  userId: '8f2a',
+  country: 'nl',
+}
 
-// variation — string or null (A/B tests)
-const variation = f.getVariation('checkout')
-if (variation === 'treatment') { /* ... */ }
+// flag: boolean
+if (f.isEnabled('checkout', context)) {
+  // ...
+}
 
-// variable — typed value or null (remote config)
-const methods = f.getVariable('checkout', 'paymentMethods')
+// variation: string or null
+const variation = f.getVariation('pricing', context)
 
-// global variable, with no feature key
-const supportEmail = f.getVariable('supportEmail', { country: 'nl' })
+// feature variable: typed value or null
+const label = f.getVariable('buyButton', 'label', context)
+
+// global variable: two arguments
+const supportEmail = f.getVariable('supportEmail', context)
 ```
 
-Type-specific variable getters return `null` when the stored value doesn't match the requested type (no coercion — `"1"` is not an integer, `"true"` is not a boolean):
+Typed getters return `null` when the stored value does not match the requested type, without coercion:
 
 ```ts
 f.getVariableBoolean(featureKey, variableKey, context?)
 f.getVariableString(featureKey, variableKey, context?)
 f.getVariableInteger(featureKey, variableKey, context?)
-f.getVariableDouble(featureKey, variableKey, context?)
-f.getVariableArray<T>(featureKey, variableKey, context?)
+f.getVariableNumber(featureKey, variableKey, context?)
+f.getVariableArray<T = unknown>(featureKey, variableKey, context?)
 f.getVariableObject<T>(featureKey, variableKey, context?)
 f.getVariableJSON<T>(featureKey, variableKey, context?)
 ```
 
-Every type-specific getter also accepts `(globalVariableKey, context?)`. The shorter `getVariable(globalVariableKey, context?)` overload is also available.
+Each also takes `(globalVariableKey, context?)` for a global variable. `getVariableNumber` reads `number` variables, including `double` variables in datafiles built by v3.
 
-Namespaced features use the full key with the project's separator (default `.`): `f.isEnabled('checkout.promo')`.
+Namespaced keys use the project's separator: `f.isEnabled('checkout.promo')`.
 
-### Per-call defaults instead of null
-
-`getVariation` and the variable getters accept an options object with fallback values, so call sites don't need null-handling:
+### Fallbacks per call
 
 ```js
-f.getVariation('checkout', context, { defaultVariationValue: 'control' })
-f.getVariable('checkout', 'paymentMethods', context, { defaultVariableValue: ['creditCard'] })
+f.getVariation('pricing', context, { defaultVariationValue: 'control' })
+f.getVariable('checkout', 'paymentMethods', context, { defaultVariableValue: ['card'] })
 ```
 
-Defaults are **presence-based**: what matters is whether the option was supplied, not whether its value is truthy. `""`, `0`, `false`, and `null` are therefore valid explicit defaults and are honored as written. Don't wrap them in `||` fallbacks — `getVariable(...) || 'x'` throws away a deliberate `false` or `0`.
+Defaults are presence based: `""`, `0`, `false` and `null` are honoured as written. Do not write `getVariable(...) || 'x'`, which discards a deliberate `false` or `0`. Prefer `defaultValue`, `disabledValue` and `useDefaultWhenDisabled` in the project. Per call defaults are the application's safety net.
 
-Prefer defining sane `defaultValue` (and `useDefaultWhenDisabled`) in the project's `variablesSchema` — per-call defaults are the app-side safety net, not the source of truth.
-
-### Multiple evaluations at once
+### Several at once
 
 ```js
 const features = f.getFeatureEvaluations(context)
-// { checkout: { enabled: true, variation: 'control', variables: {…} }, … }
+// { checkout: { enabled: true, variation: 'control', variables: { … } }, … }
 
 const variables = f.getVariableEvaluations(context)
 // { supportEmail: 'support@example.com', … }
 ```
 
-The optional second argument filters either method to selected keys. Both maps can be passed directly to a client instance as `stickyFeatures` and `stickyVariables`. `getAllEvaluations()` is a deprecated alias of `getFeatureEvaluations()`.
+An optional second argument limits either to selected keys. Both maps can be passed straight to another instance as `stickyFeatures` and `stickyVariables`, which is how [SSR handoff](#ssr-handoff) works.
+
+### Global variables and compositions
+
+Global variables, aliases and compositions all read through the two argument getters. A string alias such as `compose: supportEmail` returns its source's type, so use the source's getter, such as `getVariableString`. A `compose` map returns an object: read it with `getVariable` or `getVariableObject`. Returned objects and arrays may be shared with the SDK's internal state, so treat them as read only.
 
 ### Why did it evaluate that way?
 
 ```js
-const evaluation = f.evaluateFlag('checkout', context)
-const evaluation = f.evaluateVariation('checkout', context)
-const evaluation = f.evaluateVariable('checkout', 'paymentMethods', context)
-const globalEvaluation = f.evaluateVariable('supportEmail', context)
+f.evaluateFlag('checkout', context)
+f.evaluateVariation('pricing', context)
+f.evaluateVariable('buyButton', 'label', context)
+f.evaluateVariable('supportEmail', context)
 ```
 
-Every evaluation object has `type` and `reason` (`sticky`, `required`, `required_features_unmet`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `disabled`, `feature_not_found`, `error`, …), plus context-dependent fields like `bucketValue` (0–100,000), `ruleKey`, `enabled`, `variationValue`, `variableValue`, and `variableSchema`. Feature evaluations have `featureKey`; global variable evaluations use `type: "variable"` without it. A matched nested global variable override also exposes its authored `variableOverridePath`. When debugging **authored definitions** rather than app code, prefer `npx featurevisor evaluate` in the project repo ([querying.md](querying.md)).
+Each returns an evaluation with `type` and `reason`, plus fields such as `bucketValue` (0 to 100,000), `ruleKey`, `enabled`, `variation`, `variableValue`, `variableOverrideKey` and `variableOverridePath`. Reasons:
 
-### Inspecting the loaded datafile
+| Reason                                                     | Meaning                                                               |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| `sticky`                                                   | a sticky value supplied the result                                    |
+| `forced`                                                   | a force entry matched                                                 |
+| `rule`                                                     | a rule matched, or set the variation or variable                      |
+| `allocated`                                                | the bucket fell in a variation's range                                |
+| `conditions_unmet`                                         | the root gate failed                                                  |
+| `no_match`                                                 | no rule matched, or the bucket is above the matched rule's percentage |
+| `disabled`, `variation_disabled`, `variable_disabled`      | the feature is disabled, so the disabled fallback applies             |
+| `variable_default`                                         | the variable's default applied                                        |
+| `variable_override_rule`, `variable_override_variation`    | a variable override matched                                           |
+| `variable_composed`                                        | a composition was assembled                                           |
+| `feature_not_found`, `variable_not_found`, `no_variations` | missing from the datafile or schema                                   |
+| `error`                                                    | evaluation failed, for example a dependency cycle                     |
+
+When debugging definitions rather than application code, use `npx featurevisor evaluate --explain` in the project ([querying.md](querying.md)).
+
+### Inspect the loaded datafile
 
 ```js
-f.getRevision()               // which datafile revision this instance is running
-f.getSchemaVersion()          // "2"
-f.getFeatureKeys()            // every feature key present in the datafile
-f.getFeature('checkout')      // raw definition, or undefined
-f.getSegment('countries.netherlands')
-f.getVariableKeys()                    // global variables
-f.getVariableKeys('checkout')          // variables owned by checkout
+f.getRevision() // the datafile revision this instance runs
+f.getSchemaVersion() // "4" for v4 datafiles
+f.getFeatureKeys()
+f.getFeature('checkout') // raw definition, or undefined
+f.getVariableKeys() // global variables
+f.getVariableKeys('checkout') // feature variables of checkout
 f.hasVariations('checkout')
 ```
 
-**`getRevision()` is the first thing to check** when an app and the project disagree about a feature: the app is usually holding a stale datafile, not evaluating incorrectly. Log it alongside flag-related bug reports. `getFeature('key') === undefined` likewise tells you the feature isn't in _this_ target's datafile, which is a tag or target problem ([targets.md](targets.md)), not a rule problem.
+**Check `getRevision()` first** when an application and the project disagree. The application is usually holding an older datafile. `getFeature(key) === undefined` means the feature is not in this target's datafile: a target or tag question, not a rule question.
 
-## Setting and updating the datafile
+## Set and refresh the datafile
 
 ```js
-f.setDatafile(datafile)        // merge (default)
-f.setDatafile(datafile, true)  // replace
+f.setDatafile(datafile) // merge (default)
+f.setDatafile(datafile, true) // replace
 ```
 
-**Merging is the default**: incoming features, segments, and global variables override matching keys, missing ones are kept, and `revision` comes from the incoming datafile. This enables loading multiple [target](targets.md) datafiles on demand into one instance:
+`setDatafile` returns `true` when accepted, including unchanged content, and `false` when rejected or the instance is closed. A rejected update keeps the previous datafile.
+
+Merging, the default, overrides matching keys and keeps the rest, so several target datafiles can be loaded into one instance on demand:
 
 ```js
 const f = createFeaturevisor({})
 
-async function loadDatafile(target) {
-  const datafile = await fetch(
-    `https://cdn.yoursite.com/production/featurevisor-${target}.json`,
-  ).then((res) => res.json())
-  f.setDatafile(datafile) // merges into whatever was loaded before
+async function load(target) {
+  const response = await fetch(`https://cdn.yoursite.com/featurevisor-${target}.json`)
+  f.setDatafile(await response.json())
 }
 
-await loadDatafile('products')
-// later, when the user reaches checkout:
-await loadDatafile('checkout')
+await load('products')
+// later, when the user reaches checkout
+await load('checkout')
 ```
 
-When **refreshing** the same datafile (rather than adding another), pass `true` to replace, so features removed upstream don't linger.
-
-### Keeping the datafile fresh
-
-The SDK does not fetch anything itself — the application decides when to refetch:
+When **refreshing** the same datafile, replace with `true`, so definitions removed upstream do not linger. The SDK never fetches on its own:
 
 ```js
 setInterval(async () => {
-  const datafile = await fetch(datafileUrl).then((res) => res.json())
-  f.setDatafile(datafile, true)
+  const response = await fetch(datafileUrl)
+  if (response.ok) f.setDatafile(await response.json(), true)
 }, 5 * 60 * 1000)
 ```
-
-Or trigger refetch from a push signal (websocket / SSE) sent by the deploy pipeline. Either way, react to updates via the `datafile_set` event below.
 
 ## Events
 
 ```js
 const unsubscribe = f.on('datafile_set', ({ revision, previousRevision, revisionChanged, features, variables, replaced }) => {
-  // The arrays include direct changes and entities affected through
-  // segment or required feature dependencies.
+  // features and variables list everything whose result may have changed,
+  // including through segments, conditions and compositions
 })
 
 f.on('context_set', ({ context, replaced }) => {})
@@ -199,180 +217,156 @@ f.on('sticky_features_set', ({ features, replaced }) => {})
 f.on('sticky_variables_set', ({ variables, replaced }) => {})
 f.on('error', ({ diagnostic }) => {})
 
-unsubscribe() // every f.on() returns an unsubscribe function
+unsubscribe()
 ```
-
-Required feature dependencies are followed transitively. A datafile that updates only a segment or prerequisite feature still reports every feature and global variable whose evaluation may have changed. This dependency propagation is the same whether the datafile is merged or replaces the stored datafile. Use these arrays to limit application updates to affected values.
 
 ## Sticky
 
-Sticky values are application supplied feature evaluations or global variable values consulted **before** normal datafile evaluation. Use them when the application already knows the answer, or to freeze experiences during a session:
+Sticky values are application supplied results consulted before the datafile. Use them when the application already knows the answer, to freeze an experience during a session, or for SSR handoff:
 
 ```js
 f.setStickyFeatures({
   checkout: {
     enabled: true,
-    variation: 'treatment',                  // optional
-    variables: { paymentMethods: ['ideal'] } // optional
+    variation: 'treatment',
+    variables: { paymentMethods: ['ideal'] },
   },
 })
-// second arg true replaces instead of merging
 
-f.setStickyVariables({ supportEmail: 'fixed@example.com' })
+f.setStickyVariables({ supportEmail: 'help@example.com' })
+// a second argument of true replaces instead of merging
 ```
 
-Both maps can supply values before a datafile is available, which is useful during startup and in application unit tests.
+To force a known user or QA into a result, prefer a reviewed `force` entry in the project ([features.md](features.md#force)). Sticky is application state.
 
-For forcing specific users/QA from the **project side**, prefer a `force:` rule in YAML ([features.md](features.md#force)) — it's reviewed in PRs and visible to everyone. Sticky is application-side state.
+## Child instances (server side)
 
-## Child instances (server-side)
-
-A browser app has one user, but a server handles many concurrent requests. `spawn()` creates a cheap child instance with request-scoped context layered over the parent's:
+A server handles many users at once. `spawn()` creates a cheap child with request scoped context:
 
 ```js
-// once, at server startup
+// once, at startup
 const f = createFeaturevisor({ datafile })
 
 // per request
 app.get('/dashboard', (req, res) => {
-  const childF = f.spawn({ userId: req.user.id, country: req.user.country })
+  const child = f.spawn({ userId: req.user.id, country: req.user.country })
 
   try {
-    if (childF.isEnabled('newDashboard')) { /* ... */ }
+    if (child.isEnabled('newDashboard')) {
+      // ...
+    }
   } finally {
-    childF.close() // release listeners delegated to the parent
+    child.close()
   }
 })
 ```
 
-Children support the same evaluation methods, including the detailed `evaluateFlag`, `evaluateVariation`, and `evaluateVariable`, plus `setContext`, `setStickyFeatures`, `setStickyVariables`, `getFeatureEvaluations`, `getVariableEvaluations`, `on`, and `close`. `spawn(context, { stickyFeatures, stickyVariables })` also accepts child scoped sticky values. Datafile updates on the parent are visible to children automatically.
+Children have every evaluation method, `setContext`, `setStickyFeatures`, `setStickyVariables`, `getFeatureEvaluations`, `getVariableEvaluations`, `on` and `close`. `spawn(context, { stickyFeatures, stickyVariables })` sets child sticky values. Children do not inherit sticky values from the parent, and see parent datafile updates automatically.
 
-Child sticky state does not inherit from the parent. A child spawned without `stickyFeatures` or `stickyVariables` starts with empty sticky maps. Pass either map in the spawn options when the child needs those values.
+Context model, the same in every SDK: a child snapshots the parent context at spawn time, keeps inheriting parent keys added later, and its own keys always win.
 
-**Context model** (identical in every SDK): a child _snapshots_ the parent context keys that exist at spawn time, keeps inheriting parent keys introduced _later_, and its own keys always win. Per-evaluation context merges on top for that call only.
-
-```js
-// parent at spawn: { country: 'nl', plan: 'free' }
-const child = f.spawn({ country: 'de' })
-
-f.setContext({ country: 'us', plan: 'pro', region: 'eu' })
-
-// child evaluates with: { country: 'de', plan: 'free', region: 'eu' }
-//   country → child's own value wins
-//   plan    → snapshot from spawn time, unaffected by the later parent change
-//   region  → new parent key, inherited
-```
-
-That's what keeps a request's context stable while still letting genuinely new shared fields flow through.
-
-**Always `close()` a child** when the request finishes. It removes the child's own listeners _and_ the subscriptions it delegated to the parent — skipping it leaks listeners on the long-lived parent instance.
+**Always `close()` a child** when the request ends, or its listeners leak on the long lived parent.
 
 ### SSR handoff
 
-For server-rendered apps, avoid client/server mismatch (and flag "flicker" on load) by evaluating once on the server and handing the results to the client as sticky values:
+Evaluate once on the server and hand the results to the client as sticky values, so the first client render matches:
 
 ```js
-// server (per request)
-const childF = f.spawn({ userId: req.user.id })
-const stickyFeatures = childF.getFeatureEvaluations()
-const stickyVariables = childF.getVariableEvaluations()
-// serialize both maps into the rendered page
+// server, per request
+const child = f.spawn({ userId: req.user.id })
+const stickyFeatures = child.getFeatureEvaluations()
+const stickyVariables = child.getVariableEvaluations()
+// serialize both into the page
 
-// client (at startup)
+// client, at startup
 const f = createFeaturevisor({
   stickyFeatures: window.__FEATURES__,
   stickyVariables: window.__VARIABLES__,
 })
-// render matches the server exactly; later, once a datafile is loaded,
-// clear either sticky map to release it back to live rules
+// once a datafile is loaded, clear the sticky maps to return to live rules
 ```
 
 ## Resilience
 
-Evaluations never throw: `isEnabled` returns `false`, `getVariation`/`getVariable` return `null`, and errors surface as diagnostics — so a missing or stale datafile degrades to "features off", not a crash. Still, plan for the fetch failing:
+Evaluations never throw: `isEnabled` returns `false` and the getters return `null`, with a diagnostic. Plan for a failed fetch:
 
-- Write app code so the **disabled path is always the safe path** (that's also what un-shipped datafiles mean).
-- For critical UIs, bundle a datafile snapshot at build time as a fallback, then refresh from the CDN: `createFeaturevisor({ datafile: bundledSnapshot })` followed by a fetched `setDatafile(fresh, true)`.
-- Watch the `error` event / diagnostics in your observability system so silent fallback doesn't go unnoticed.
+- Make the disabled path the safe path in application code.
+- For critical screens, bundle a datafile snapshot as a fallback, then replace it with a fetched one.
+- Route the `error` event or diagnostics to monitoring, so silent fallback is noticed.
 
 ## Testing application code
 
-To unit-test code that consumes flags, you don't need datafile fixtures — an instance with only **sticky** values forces any state:
+Unit tests do not need a datafile. Sticky values force any result:
 
 ```js
 const f = createFeaturevisor({
   stickyFeatures: {
-    checkout: { enabled: true, variation: 'treatment', variables: { paymentMethods: ['ideal'] } },
+    checkout: { enabled: true, variation: 'treatment' },
     newDashboard: { enabled: false },
   },
+  stickyVariables: {
+    supportEmail: 'test@example.com',
+  },
 })
-// f.isEnabled('checkout') === true — no datafile involved
 ```
 
-Sticky is consulted before the datafile, so this works for every evaluation method. For closer-to-production tests, generate a real datafile from the project (`npx featurevisor build --environment=<env> --print`) and pass it as `datafile`. Note this tests _your app's branching_; the project's own rules are tested with spec files in the project repo ([testing.md](testing.md)).
-
-The older `sticky` option, `setSticky` method, and `sticky_set` event are deprecated compatibility aliases. Prefer the feature and variable specific names. A `sticky_set` event caused by `setStickyVariables` has `features: []`; it does not mean sticky features were cleared.
+For tests closer to production, print a datafile from the project with `npx featurevisor build --print` and pass it as `datafile`. The project's own rules are tested with its specs ([testing.md](testing.md)).
 
 ## Diagnostics
 
-By default the SDK logs to the console (prefix `[Featurevisor]`) at `info` and above. Tune or capture:
-
 ```js
 const f = createFeaturevisor({
-  logLevel: 'debug', // very verbose; explains every evaluation step
+  logLevel: 'debug', // explains every evaluation step
   onDiagnostic: ({ level, code, message, details, originalError }) => {
-    // route to your observability system instead of console
+    // route to your observability system instead of the console
   },
 })
 
-f.setLogLevel('debug') // also adjustable at runtime
+f.setLogLevel('warn')
 ```
 
-A throwing diagnostic handler never breaks evaluations — the SDK reports the handler failure and continues.
+A throwing diagnostic handler never breaks evaluation. Codes worth knowing:
+
+- `deprecated_feature` and `deprecated_variable`: something deprecated is still read, at `warn` level. A feature variable's details include `featureKey`, a global variable's do not.
+- `conditions_parse_error`: malformed stringified selector JSON in the datafile. It is reported at error level once per selector per datafile load, on first read for v4 datafiles and during `setDatafile()` for v3 datafiles, with details `{ conditions: raw, entityType, entityKey }` where `entityType` is `'feature'`, `'segment'` or `'variable'`. The whole selector returns false, even under NOT referencing a malformed segment, and other entities keep working. Replacing an entity lets its diagnostic fire again. Retained entities do not repeat it.
+- `evaluation_error`: a dependency cycle or too deep a chain. The getter returns `false` or `null` with reason `error`.
 
 ## Modules
 
-Modules intercept evaluation — the mechanism behind analytics activation tracking ([tracking.md](tracking.md)), context enrichment, and custom bucketing:
+Modules intercept evaluation. They power analytics ([tracking.md](tracking.md)), context enrichment and custom bucketing:
 
 ```js
 const myModule = {
   name: 'my-module',
   setup({ getRevision, onDiagnostic, reportDiagnostic }) {},
-  beforeEvaluation(options) { return options },              // mutate context/options pre-evaluation
-  afterEvaluation(evaluation, options) { return evaluation }, // observe/adjust result
-  bucketKey({ featureKey, context, bucketBy, bucketKey }) { return bucketKey },
-  bucketValue({ featureKey, context, bucketKey, bucketValue }) { return bucketValue },
+  beforeEvaluation(options) {
+    return options // may adjust context
+  },
+  afterEvaluation(evaluation, options) {
+    return evaluation // always return it
+  },
+  bucketKey({ featureKey, context, bucketBy, bucketKey }) {
+    return bucketKey
+  },
+  bucketValue({ featureKey, context, bucketKey, bucketValue }) {
+    return bucketValue
+  },
   close() {},
 }
 
 const f = createFeaturevisor({ modules: [myModule] })
-// or later: const remove = f.addModule(myModule); await f.removeModule('my-module')
+// or later
+const remove = f.addModule(myModule)
 ```
 
-`beforeEvaluation` and `afterEvaluation` run for **both** feature and global variable evaluations. A variable evaluation without a `featureKey` is a global variable, so branch on that when a module should only act on one kind:
+- `beforeEvaluation` and `afterEvaluation` run for feature and global variable evaluations. A variable evaluation without `featureKey` is a global variable.
+- **Always return** the options or evaluation from every branch. Returning nothing turns every flag off.
+- Dependency reads from conditions arrive with `options.dependencyPurpose === 'condition'` and `dependencyOf`. Skip them when recording exposure. Reads for a composition arrive with `'composition'` and are real exposures.
+- `bucketKey` and `bucketValue` apply to features only. Global variables are never bucketed.
 
-```js
-afterEvaluation(evaluation) {
-  if (evaluation.type === 'variable' && !evaluation.featureKey) {
-    // global variable
-  }
-  return evaluation
-}
-```
-
-The older `before` and `after` callbacks still run, but only for feature evaluations, and they are deprecated. Write new modules against `beforeEvaluation` and `afterEvaluation`; migrate existing ones when you touch them, since a module using `after` silently misses every global variable evaluation.
-
-`bucketKey` and `bucketValue` are feature-only by nature: global variables are deterministic and never bucketed ([global-variables.md](global-variables.md)).
-
-## Cleanup
-
-```js
-await f.close() // removes listeners, closes modules; instance becomes inert
-```
+`await f.close()` removes listeners and closes modules when the application shuts down.
 
 ## TypeScript
-
-All types ship with the package:
 
 ```ts
 import {
@@ -380,22 +374,20 @@ import {
   type Featurevisor,
   type FeaturevisorOptions,
   type FeaturevisorModule,
-  type FeaturevisorDiagnostic,
   type Evaluation,
   type Context,
   type DatafileContent,
 } from '@featurevisor/sdk'
 ```
 
-For compile-time-checked feature keys, variable keys, and context attribute types, generate typed bindings from the project — see [code-generation.md](code-generation.md).
+For compile time checked keys and value types, generate bindings from the project ([code-generation.md](code-generation.md)).
 
 ## Integration checklist
 
-When wiring Featurevisor into an application:
-
-1. Find the datafile URL (ask the user, or derive from the project's CI/CDN setup; the file is `featurevisor-<target>.json` per environment).
-2. Pick the right environment's datafile per app environment (staging app → staging datafile).
-3. Initialize **one** shared instance; set context as identity becomes known (`deviceId` at startup, `userId` after login — match the project's attribute names).
-4. Guard code with `isEnabled` / branch on `getVariation` / read config from `getVariable`.
-5. Decide a refresh strategy (interval or push) if flags must change without redeploying the app.
-6. Server-side: `spawn()` a child per request instead of mutating shared context.
+1. Find the datafile URL from the project's deployment. The default scaffold builds `datafiles/featurevisor-all.json`. Targets and environments add others.
+2. Choose the datafile for this application: its target, and its environment when configured.
+3. Create **one** instance. Set context as identity becomes known: `deviceId` at startup, `userId` after sign in, with the project's attribute names.
+4. Branch with `isEnabled` and `getVariation`, and read configuration with the variable getters.
+5. Decide a refresh strategy if changes must arrive without redeploying the application.
+6. On servers, `spawn()` a child per request instead of changing shared context.
+7. Check the installed SDK version against the [compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) for the capabilities the project uses.

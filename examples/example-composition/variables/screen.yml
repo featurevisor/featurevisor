@@ -1,0 +1,17 @@
+description: Screen configuration
+
+tags: [web]
+
+compose:
+  flag:
+    feature: delivery
+  variation:
+    feature: delivery
+    variation: true
+  label:
+    feature: delivery
+    variable: label
+  flags:
+    variable: flags
+  config:
+    variable: config

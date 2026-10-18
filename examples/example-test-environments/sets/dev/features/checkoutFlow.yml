@@ -6,5 +6,5 @@ bucketBy: userId
 
 rules:
   - key: everyone
-    segments: "*"
+    conditions: "*"
     percentage: 100

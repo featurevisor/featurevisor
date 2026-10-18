@@ -1,5 +1,7 @@
 import type { VariableSchema, VariableValue } from "@featurevisor/types";
 import { mutate } from "./mutator";
+import { applyVariableOperations } from "@featurevisor/sdk";
+import { compileVariableMutation } from "./variableOverrideProgram";
 
 const schema: VariableSchema = {
   type: "object",
@@ -7,6 +9,64 @@ const schema: VariableSchema = {
 };
 
 describe("mutator", function () {
+  describe("build and SDK parity", () => {
+    const base = {
+      tags: ["a", "a", "1"],
+      items: [
+        { id: "a", tags: ["x"] },
+        { id: "b", tags: [] },
+      ],
+      matrix: [["x"]],
+    };
+    test.each([
+      ["tags:appendUnique", "a", { ...base, tags: ["a", "a", "1"] }],
+      ["tags:appendUnique", 1, { ...base, tags: ["a", "a", "1", 1] }],
+      ["tags:removeValue", "a", { ...base, tags: ["1"] }],
+      ["tags:removeValue", 1, base],
+      ["items[0]:before", { id: "new" }, { ...base, items: [{ id: "new" }, ...base.items] }],
+      [
+        "items[0]:after",
+        { id: "new" },
+        { ...base, items: [base.items[0], { id: "new" }, base.items[1]] },
+      ],
+      ["items[id=b]", { id: "new" }, { ...base, items: [base.items[0], { id: "new" }] }],
+      ["items[id=a].tags:appendUnique", "x", base],
+      [
+        "items[id=a].tags:removeValue",
+        "x",
+        { ...base, items: [{ id: "a", tags: [] }, base.items[1]] },
+      ],
+      ["matrix[0]:appendUnique", "x", base],
+      ["matrix[0]:removeValue", "x", { ...base, matrix: [[]] }],
+      ["items[id=absent]", { id: "new" }, base],
+      ["items[99]", { id: "new" }, base],
+    ])("%s", (notation, value, expected) => {
+      const original = JSON.stringify(base);
+      const actual = mutate(schema, base, notation as string, value as VariableValue);
+      expect(actual).toEqual(expected);
+      expect(actual).toEqual(
+        applyVariableOperations(base, [compileVariableMutation(notation as string, value)]),
+      );
+      expect(JSON.stringify(base)).toBe(original);
+    });
+    test.each(["appendUnique", "removeValue"])("supports %s on root arrays", (op) => {
+      expect(mutate(schema, ["a", "a"], `:${op}`, "a")).toEqual(
+        op === "appendUnique" ? ["a", "a"] : [],
+      );
+    });
+    test.each([
+      "x[-1]",
+      "x[01]",
+      "x[1.5]",
+      "x:before",
+      "x:after",
+      "x..y",
+      "__proto__.x",
+      "x[constructor=a]",
+    ])("rejects invalid notation %s", (notation) => {
+      expect(() => mutate(schema, base, notation, "x")).toThrow("Invalid mutation notation");
+    });
+  });
   describe("mutate", function () {
     test("is a function", function () {
       expect(mutate).toBeInstanceOf(Function);
@@ -41,9 +101,9 @@ describe("mutator", function () {
       expect(mutate(schema, value, "c", 3)).toEqual({ a: 1, b: 2, c: 3 });
     });
 
-    test("sets key to undefined (allows clearing)", function () {
+    test("rejects undefined assignments; use remove or an explicit null instead", function () {
       const value = { a: 1, b: 2 };
-      expect(mutate(schema, value, "a", undefined)).toEqual({ a: undefined, b: 2 });
+      expect(() => mutate(schema, value, "a", undefined)).toThrow("requires a value");
     });
 
     test("sets key with string, number, boolean, object, array", function () {

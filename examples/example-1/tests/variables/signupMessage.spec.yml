@@ -9,6 +9,10 @@ assertions:
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: control
+    checks:
+      - feature: allowSignup
+        enabled: true
+        variation: control
 
   - description: uses at to test a required feature's treatment variation
     environment: production
@@ -17,6 +21,10 @@ assertions:
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: treatment
+    checks:
+      - feature: allowSignup
+        enabled: true
+        variation: treatment
 
   - description: sticky feature values take precedence over at
     environment: production
@@ -29,10 +37,16 @@ assertions:
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: treatment
+    checks:
+      - feature: allowSignup
+        variation: treatment
     children:
       - expectedValue: Create your account
         expectedEvaluation:
           variableOverrideKey: control
+        checks:
+          - feature: allowSignup
+            variation: control
 
   - description: a sticky disabled feature disables the variable
     matrix:
@@ -47,4 +61,7 @@ assertions:
         variation: ${{ variation }}
     expectedValue: Sign up is unavailable
     expectedEvaluation:
-      reason: required_features_unmet
+      reason: conditions_unmet
+    checks:
+      - feature: allowSignup
+        enabled: false

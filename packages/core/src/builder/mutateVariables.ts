@@ -1,13 +1,27 @@
-import type { VariableSchema, VariableValue } from "@featurevisor/types";
+import type { VariableMutations, VariableSchema, VariableValue } from "@featurevisor/types";
 import { mutate } from "./mutator";
+import { mutationEntries } from "./mutationEntries";
 
-const MUTATION_OP_SUFFIX = /:((?:append|prepend|after|before|remove))$/;
+const MUTATION_OP_SUFFIX = /:((?:append|prepend|appendUnique|removeValue|after|before|remove))$/;
 
 /**
  * Get the root variable name from an override key (e.g. "tags:append" -> "tags", "payload.rows:append" -> "payload").
  */
-function rootVariableFromOverrideKey(overrideKey: string): string {
+export function rootVariableFromOverrideKey(
+  overrideKey: string,
+  variablesSchema?: Record<string, unknown>,
+): string {
   const withoutSuffix = overrideKey.replace(MUTATION_OP_SUFFIX, "").trim();
+  const exactDeclaredRoot = Object.keys(variablesSchema || {})
+    .filter(
+      (key) =>
+        withoutSuffix === key ||
+        withoutSuffix.startsWith(key + ".") ||
+        withoutSuffix.startsWith(key + "[") ||
+        overrideKey.startsWith(key + ":"),
+    )
+    .sort((a, b) => b.length - a.length)[0];
+  if (exactDeclaredRoot) return exactDeclaredRoot;
   const firstSegment = withoutSuffix.includes(".") ? withoutSuffix.split(".")[0] : withoutSuffix;
   return firstSegment.replace(/\s*\[.*\]\s*$/, "").trim();
 }
@@ -31,7 +45,7 @@ export function resolveMutationsForMultipleVariables(
 
   const variableKeysToOutput = new Set<string>();
   for (const overrideKey of Object.keys(overrides)) {
-    const variableKey = rootVariableFromOverrideKey(overrideKey);
+    const variableKey = rootVariableFromOverrideKey(overrideKey, variablesSchema);
     if (variableKey && variablesSchema[variableKey]) {
       variableKeysToOutput.add(variableKey);
     }
@@ -46,16 +60,14 @@ export function resolveMutationsForMultipleVariables(
         ? (JSON.parse(JSON.stringify(schema.defaultValue)) as VariableValue)
         : undefined;
 
-    const keysForThisVariable = Object.keys(overrides)
-      .filter(
-        (k) =>
-          rootVariableFromOverrideKey(k) === variableKey &&
-          (k === variableKey ||
-            k.startsWith(variableKey + ".") ||
-            k.startsWith(variableKey + "[") ||
-            k.startsWith(variableKey + ":")),
-      )
-      .sort((a, b) => a.length - b.length);
+    const keysForThisVariable = Object.keys(overrides).filter(
+      (k) =>
+        rootVariableFromOverrideKey(k, variablesSchema) === variableKey &&
+        (k === variableKey ||
+          k.startsWith(variableKey + ".") ||
+          k.startsWith(variableKey + "[") ||
+          k.startsWith(variableKey + ":")),
+    );
 
     for (const overrideKey of keysForThisVariable) {
       const overrideValue = overrides[overrideKey];
@@ -88,25 +100,23 @@ export function resolveMutationsForMultipleVariables(
 export function resolveMutationsForSingleVariable(
   variablesSchema: Record<string, VariableSchema> | undefined,
   variableKey: string,
-  overrideValue: VariableValue,
+  overrideValue: VariableValue | VariableMutations,
   baseValue?: VariableValue,
+  explicitMutations = false,
 ): VariableValue {
   if (!variablesSchema || !variablesSchema[variableKey]) return overrideValue;
   if (overrideValue === null || overrideValue === undefined) return overrideValue;
-  if (typeof overrideValue !== "object" || Array.isArray(overrideValue)) {
+  if (typeof overrideValue !== "object" || (Array.isArray(overrideValue) && !explicitMutations)) {
     return overrideValue;
   }
 
-  const pathMap = overrideValue as Record<string, VariableValue>;
-  const flat: Record<string, VariableValue> = {};
-
-  if (typeof baseValue !== "undefined") {
-    flat[variableKey] = JSON.parse(JSON.stringify(baseValue)) as VariableValue;
+  const entries = mutationEntries(overrideValue as VariableMutations);
+  if (entries.length === 0) return baseValue === undefined ? {} : baseValue;
+  const schema = variablesSchema[variableKey];
+  let value = baseValue === undefined ? schema.defaultValue : baseValue;
+  // Mutation maps are ordered, just like global override operations. Do not sort paths.
+  for (const [key, mutationValue] of entries) {
+    value = key === variableKey ? mutationValue : mutate(schema, value, key, mutationValue);
   }
-
-  for (const [k, v] of Object.entries(pathMap)) {
-    flat[k === variableKey ? variableKey : variableKey + "." + k] = v;
-  }
-  const resolved = resolveMutationsForMultipleVariables(variablesSchema, flat);
-  return resolved && variableKey in resolved ? resolved[variableKey] : overrideValue;
+  return value;
 }

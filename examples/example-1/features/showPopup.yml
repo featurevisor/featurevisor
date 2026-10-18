@@ -6,7 +6,7 @@ bucketBy: userId
 
 force:
   staging:
-    - segments: qa
+    - conditions: qa
       enabled: true
 
     - conditions:
@@ -18,12 +18,12 @@ force:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 0
 
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 0
 
 expose:

@@ -2,39 +2,66 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
+import type {
+  Attribute,
+  ParsedFeature,
+  Segment,
+  ParsedVariable,
+  Schema,
+} from "@featurevisor/types";
 import type { ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema } from "./conditionSchema";
+import { getArchivedReferenceIssues, getDeprecatedReferenceWarnings } from "./definitionReferences";
+import type { ReferenceIndex, ReferringEntityType } from "./definitionReferences";
 import { getSegmentZodSchema } from "./segmentSchema";
-import { getGroupZodSchema } from "./groupSchema";
 import { getFeatureZodSchema } from "./featureSchema";
+import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
 import { getSchemaZodSchema } from "./schema";
-import { getTestsZodSchema } from "./testSchema";
+import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
 import { getVariableZodSchema } from "./variableSchema";
 
-import { checkForCircularDependencyInRequired } from "./checkCircularDependency";
-import { checkForFeatureExceedingGroupSlotPercentage } from "./checkPercentageExceedingSlot";
-import { getLintIssuesFromZodError, printZodError } from "./printError";
+import { getLintIssuesFromZodError, printLintIssues } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
-import { normalizeFeatureRequirements } from "../datasource/requiredFeatures";
+import {
+  isDependencyCycleError,
+  findDependencyCycles,
+  buildDependencyGraph,
+} from "../datasource/dependencies";
 import { DEFAULT_RESERVED_KEYS } from "../config";
+import { estimateDependencyExpansion } from "./requiredVariableCost";
+import { findInheritedPropertyNames, getInheritedPropertyNameError } from "./reservedNames";
+import {
+  DEPENDENCY_HANDOFF_LIMIT,
+  PORTABLE_DEPENDENCY_HANDOFFS,
+  describeDependencyChain,
+  findDeepDependencyChains,
+} from "./dependencyDepth";
+import { getMutationOrderChanges } from "./mutationOrder";
+import { getTestContextWarnings } from "./contextWarnings";
+import { createCompositionWarningInspector } from "./compositionWarnings";
+import { diagnosticParseOptions } from "./diagnostics";
+import { EntityParseError } from "../datasource/parseError";
+import {
+  ATTRIBUTE_NAMESPACE_MESSAGE,
+  AttributeNamespaceError,
+} from "../datasource/attributeNamespaces";
 
 export type LintEntityType =
   | "attribute"
   | "segment"
   | "feature"
-  | "group"
   | "schema"
   | "target"
   | "variable"
-  | "test";
+  | "test"
+  | "scenario";
 
 export interface LintProjectOptions {
   keyPattern?: string;
@@ -42,6 +69,8 @@ export interface LintProjectOptions {
   authors?: boolean;
   json?: boolean;
   pretty?: boolean;
+  v3MutationOrder?: boolean;
+  verbose?: boolean;
 }
 
 export interface LintErrorItem {
@@ -57,14 +86,16 @@ export interface LintErrorItem {
 export interface LintResult {
   hasError: boolean;
   errors: LintErrorItem[];
+  warnings?: LintErrorItem[];
 }
 
 const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
 const ENTITY_NAME_REGEX_ERROR =
   "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
 
+const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-]+$/;
 const ATTRIBUTE_NAME_REGEX_ERROR =
-  "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
+  "Attribute names must be alphanumeric and can contain _ and -. Dots, directory separators and the configured namespace character are not allowed.";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -91,7 +122,7 @@ function getPathSegmentsFromKey(
   const pathSegments = key.split(namespaceCharacter);
 
   if (
-    entityType === "test" &&
+    (entityType === "test" || entityType === "scenario") &&
     pathSegments.length > 1 &&
     ["spec", "feature", "segment"].includes(pathSegments[pathSegments.length - 1])
   ) {
@@ -112,7 +143,7 @@ function getReservedNameCheckValue(
   let value =
     isFile && name.endsWith(`.${extension}`) ? name.slice(0, -extension.length - 1) : name;
 
-  if (entityType === "test" && isFile) {
+  if ((entityType === "test" || entityType === "scenario") && isFile) {
     for (const suffix of [".spec", ".feature", ".segment"]) {
       if (value.endsWith(suffix)) {
         value = value.slice(0, -suffix.length);
@@ -158,14 +189,21 @@ export async function lintProject(
   options: LintProjectOptions = {},
 ): Promise<LintResult> {
   const { projectConfig, datasource } = deps;
+  await assertNoLegacyDatasourceGroups(datasource);
 
   const isJsonMode = options.json === true;
   const errors: LintErrorItem[] = [];
+  const warnings: LintErrorItem[] = [];
+  const reportedParseErrors = new Set<string>();
 
   function log(...args: unknown[]) {
     if (!isJsonMode) {
       console.log(...args);
     }
+  }
+
+  function logProgress(count: number, entityType: LintEntityType) {
+    log(`Linting ${count} ${entityType}${count === 1 ? "" : "s"}...\n`);
   }
 
   function getFullPathFromKey(type: LintEntityType, key: string, relative = false) {
@@ -175,13 +213,14 @@ export async function lintProject(
     let fullPath = "";
 
     if (type === "attribute") {
-      fullPath = path.join(projectConfig.attributesDirectoryPath, fileName);
+      fullPath = path.join(
+        projectConfig.attributesDirectoryPath,
+        `${key}.${datasource.getExtension()}`,
+      );
     } else if (type === "segment") {
       fullPath = path.join(projectConfig.segmentsDirectoryPath, fileName);
     } else if (type === "feature") {
       fullPath = path.join(projectConfig.featuresDirectoryPath, fileName);
-    } else if (type === "group") {
-      fullPath = path.join(projectConfig.groupsDirectoryPath, fileName);
     } else if (type === "schema") {
       fullPath = path.join(projectConfig.schemasDirectoryPath, fileName);
     } else if (type === "target") {
@@ -208,9 +247,6 @@ export async function lintProject(
     }
     if (type === "feature") {
       return projectConfig.featuresDirectoryPath;
-    }
-    if (type === "group") {
-      return projectConfig.groupsDirectoryPath;
     }
     if (type === "schema") {
       return projectConfig.schemasDirectoryPath;
@@ -286,6 +322,14 @@ export async function lintProject(
     errors.push(error);
   }
 
+  function reportWarning(warning: LintErrorItem) {
+    warnings.push(warning);
+    if (!isJsonMode)
+      console.log(
+        `  => Warning: ${warning.message} (${warning.entityType} ${warning.key}: ${warning.path.join(".")})`,
+      );
+  }
+
   async function reportSimpleError({
     entityType,
     key,
@@ -340,6 +384,30 @@ export async function lintProject(
         : undefined;
     const targetPath = pathFromError || fullPath;
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof EntityParseError) {
+      if (reportedParseErrors.has(targetPath)) return;
+      reportedParseErrors.add(targetPath);
+      for (const type of [
+        "attribute",
+        "segment",
+        "feature",
+        "variable",
+        "schema",
+        "target",
+        "test",
+        "scenario",
+      ] as const) {
+        if (targetPath === fullPath) break;
+        const relativePath = path.relative(getEntityDirectoryPath(type), targetPath);
+        if (relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) continue;
+        entityType = type;
+        key = relativePath
+          .slice(0, -(datasource.getExtension().length + 1))
+          .split(path.sep)
+          .join(projectConfig.namespaceCharacter);
+        break;
+      }
+    }
 
     recordError({
       filePath: path.relative(process.cwd(), targetPath),
@@ -352,8 +420,11 @@ export async function lintProject(
 
     if (!isJsonMode) {
       await printEntityHeader(entityType, key, targetPath);
+      console.log(CLI_FORMAT_RED, `  => Error: ${message}`);
+      if (options.verbose || deps.options.verbose) {
+        console.log(error instanceof EntityParseError ? error.cause : error);
+      }
       console.log("");
-      console.log(error);
     }
   }
 
@@ -362,8 +433,12 @@ export async function lintProject(
     key: string,
     fullPath: string,
     error: ZodError,
+    { ignoreUnknownReferences = false }: { ignoreUnknownReferences?: boolean } = {},
   ) {
-    const issues = getLintIssuesFromZodError(error);
+    const issues = getLintIssuesFromZodError(error).filter(
+      (issue) => !(ignoreUnknownReferences && issue.unknownReference),
+    );
+    if (issues.length === 0) return;
 
     const issuesWithTargetPath: {
       issue: (typeof issues)[0];
@@ -404,7 +479,7 @@ export async function lintProject(
           await printEntityHeader(entityType, key, targetPathKey);
           for (const { issue, pathRelativeToFile } of groupItems) {
             console.log(CLI_FORMAT_RED, `  => Error: ${issue.message}`);
-            console.log("     Path:", pathRelativeToFile.join("."));
+            console.log("     Path:", pathRelativeToFile.join(".") || "(root)");
             if (typeof issue.value !== "undefined" && issue.value !== "undefined") {
               console.log("     Value:", issue.value);
             }
@@ -413,7 +488,7 @@ export async function lintProject(
         }
       } else {
         await printEntityHeader(entityType, key, fullPath);
-        printZodError(error);
+        printLintIssues(issues);
       }
     }
   }
@@ -440,7 +515,22 @@ export async function lintProject(
   }
 
   // lint attributes
-  const attributes = await datasource.listAttributes();
+  let attributes: string[];
+  try {
+    attributes = await datasource.listAttributes();
+  } catch (error) {
+    if (!(error instanceof AttributeNamespaceError)) throw error;
+    attributes = error.validKeys;
+    for (const { key, filePath } of error.invalidAttributes) {
+      await reportSimpleError({
+        entityType: "attribute",
+        key,
+        fullPath: filePath,
+        message: ATTRIBUTE_NAMESPACE_MESSAGE,
+        code: "invalid_attribute_namespace",
+      });
+    }
+  }
   const attributeZodSchema = getAttributeZodSchema();
   const attributesByKey: Record<string, Attribute> = {};
 
@@ -453,20 +543,18 @@ export async function lintProject(
   }
 
   if (!options.entityType || options.entityType === "attribute") {
-    await lintReservedNamespaceCharacterInEntityPaths("attribute");
-
     const filteredKeys = !keyPattern
       ? attributes
       : attributes.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} attributes...\n`);
+      logProgress(filteredKeys.length, "attribute");
     }
 
     for (const key of filteredKeys) {
       const fullPath = getFullPathFromKey("attribute", key);
 
-      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+      if (!ATTRIBUTE_NAME_REGEX.test(key)) {
         await reportSimpleError({
           entityType: "attribute",
           key,
@@ -477,9 +565,30 @@ export async function lintProject(
         });
       }
 
+      const reservedName = getInheritedPropertyNameError(key, "Attribute name");
+      if (reservedName) {
+        await reportSimpleError({
+          entityType: "attribute",
+          key,
+          fullPath,
+          message: reservedName,
+          code: "reserved_name",
+        });
+      }
+
       try {
         const parsed = attributesByKey[key] ?? (await datasource.readAttribute(key));
-        const result = attributeZodSchema.safeParse(parsed);
+        for (const property of findInheritedPropertyNames(parsed)) {
+          await reportSimpleError({
+            entityType: "attribute",
+            key,
+            fullPath,
+            message: getInheritedPropertyNameError(property.name, "Property name")!,
+            pathParts: property.path,
+            code: "reserved_name",
+          });
+        }
+        const result = attributeZodSchema.safeParse(parsed, diagnosticParseOptions);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("attribute", key, fullPath, result.error);
@@ -501,10 +610,104 @@ export async function lintProject(
   }
   const flattenedAttributes = Array.from(explicitAttributePaths);
 
+  // Load both key spaces before linting either one so a focused feature or
+  // variable lint can report collisions independently.
+  const variables = await datasource.listVariables();
+  const variablesByKey: Record<string, ParsedVariable> = {};
+  for (const key of variables) {
+    try {
+      variablesByKey[key] = await datasource.readVariable(key);
+    } catch {
+      // Variable read failures are reported during variable linting below.
+    }
+  }
+
+  // lint features
+  const features = await datasource.listFeatures();
+  const featuresByKey: Record<string, ParsedFeature> = {};
+  for (const key of features) {
+    try {
+      featuresByKey[key] = await datasource.readFeature(key);
+    } catch {
+      // Feature read failures are reported during feature linting below.
+    }
+  }
   // lint segments
   const segments = await datasource.listSegments();
-  const conditionsZodSchema = getConditionsZodSchema(projectConfig, attributesByKey, schemasByKey);
+  const segmentsByKey: Record<string, Segment> = {};
+  for (const key of segments) {
+    try {
+      segmentsByKey[key] = await datasource.readSegment(key);
+    } catch {
+      // Read errors are reported alongside the segment's schema diagnostics.
+    }
+  }
+  const referenceIndex: ReferenceIndex = {
+    attributes: attributesByKey,
+    segments: segmentsByKey,
+    features: featuresByKey,
+    variables: variablesByKey,
+  };
+  async function reportArchivedReferences(
+    entityType: ReferringEntityType,
+    key: string,
+    fullPath: string,
+    definition: unknown,
+  ) {
+    for (const issue of getArchivedReferenceIssues(entityType, definition, referenceIndex)) {
+      await reportSimpleError({
+        entityType,
+        key,
+        fullPath,
+        message: issue.message,
+        pathParts: issue.path,
+        code: "archived_reference",
+      });
+    }
+  }
+
+  function reportDeprecatedReferences(
+    entityType: "segment" | "feature" | "variable",
+    key: string,
+    fullPath: string,
+    definition: unknown,
+  ) {
+    for (const warning of getDeprecatedReferenceWarnings(entityType, definition, referenceIndex)) {
+      reportWarning({
+        filePath: path.relative(process.cwd(), fullPath),
+        entityType,
+        key,
+        path: warning.path,
+        code: "deprecated_reference",
+        message: warning.message,
+      });
+    }
+  }
+  const isArchived = (definition: unknown) =>
+    !!definition &&
+    typeof definition === "object" &&
+    (definition as { archived?: unknown }).archived === true;
+
+  const conditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    attributesByKey,
+    schemasByKey,
+    featuresByKey,
+    variablesByKey,
+    segments,
+  );
   const segmentZodSchema = getSegmentZodSchema(projectConfig, conditionsZodSchema);
+  // Archived definitions never reach a datafile. Lint checks their shape alone, resolving
+  // no attribute, segment, feature or global variable, so what they used can change or go.
+  const isolatedConditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    {},
+    schemasByKey,
+    {},
+    {},
+    [],
+  );
+  const isolatedSegmentZodSchema = getSegmentZodSchema(projectConfig, isolatedConditionsZodSchema);
 
   if (!options.entityType || options.entityType === "segment") {
     await lintReservedNamespaceCharacterInEntityPaths("segment");
@@ -512,7 +715,7 @@ export async function lintProject(
     const filteredKeys = !keyPattern ? segments : segments.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} segments...\n`);
+      logProgress(filteredKeys.length, "segment");
     }
 
     for (const key of filteredKeys) {
@@ -531,31 +734,25 @@ export async function lintProject(
 
       try {
         const parsed = await datasource.readSegment(key);
-        const result = segmentZodSchema.safeParse(parsed);
+        const archived = isArchived(parsed);
+        const result = (archived ? isolatedSegmentZodSchema : segmentZodSchema).safeParse(
+          parsed,
+          diagnosticParseOptions,
+        );
 
         if (!result.success && "error" in result) {
-          await reportZodValidationError("segment", key, fullPath, result.error);
+          await reportZodValidationError("segment", key, fullPath, result.error, {
+            ignoreUnknownReferences: archived,
+          });
         }
+        await reportArchivedReferences("segment", key, fullPath, parsed);
+        reportDeprecatedReferences("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       }
     }
   }
 
-  // Load both key spaces before linting either one so a focused feature or
-  // variable lint can report collisions independently.
-  const variables = await datasource.listVariables();
-
-  // lint features
-  const features = await datasource.listFeatures();
-  const featuresByKey: Record<string, ParsedFeature> = {};
-  for (const key of features) {
-    try {
-      featuresByKey[key] = await datasource.readFeature(key);
-    } catch {
-      // Feature read failures are reported during feature linting below.
-    }
-  }
   const featureZodSchema = getFeatureZodSchema(
     projectConfig,
     conditionsZodSchema,
@@ -565,6 +762,18 @@ export async function lintProject(
     schemas,
     schemasByKey,
     featuresByKey,
+    variablesByKey,
+  );
+  const isolatedFeatureZodSchema = getFeatureZodSchema(
+    projectConfig,
+    isolatedConditionsZodSchema,
+    [] as unknown as [string, ...string[]],
+    [] as unknown as [string, ...string[]],
+    [] as unknown as [string, ...string[]],
+    schemas,
+    schemasByKey,
+    {},
+    {},
   );
 
   if (!options.entityType || options.entityType === "feature") {
@@ -573,7 +782,7 @@ export async function lintProject(
     const filteredKeys = !keyPattern ? features : features.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} features...\n`);
+      logProgress(filteredKeys.length, "feature");
     }
 
     for (const key of filteredKeys) {
@@ -592,7 +801,7 @@ export async function lintProject(
 
       if (
         options.entityType === "feature" &&
-        !projectConfig.allowFeatureAndGlobalVariableKeyCollisions &&
+        !projectConfig.allowFeatureAndVariableKeyCollisions &&
         variables.includes(key)
       ) {
         await reportSimpleError({
@@ -601,7 +810,7 @@ export async function lintProject(
           fullPath,
           message: `Feature "${key}" conflicts with a global variable using the same key`,
           detail:
-            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
+            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
           code: "feature_variable_key_collision",
         });
       }
@@ -621,52 +830,70 @@ export async function lintProject(
 
       try {
         parsed = featuresByKey[key] ?? (await datasource.readFeature(key));
+        const archived = isArchived(parsed);
 
-        const result = featureZodSchema.safeParse(parsed);
+        const result = (archived ? isolatedFeatureZodSchema : featureZodSchema).safeParse(
+          parsed,
+          diagnosticParseOptions,
+        );
 
         if (!result.success && "error" in result) {
-          await reportZodValidationError("feature", key, fullPath, result.error);
+          await reportZodValidationError("feature", key, fullPath, result.error, {
+            ignoreUnknownReferences: archived,
+          });
+        }
+        await reportArchivedReferences("feature", key, fullPath, parsed);
+        reportDeprecatedReferences("feature", key, fullPath, parsed);
+        if (options.v3MutationOrder) {
+          for (const change of getMutationOrderChanges(parsed)) {
+            reportWarning({
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "feature",
+              key,
+              path: change.path,
+              code: "mutation_order_changed",
+              message: change.message,
+            });
+          }
         }
       } catch (error) {
         await reportThrownError("feature", key, fullPath, error);
-      }
-
-      if (parsed && (parsed.required || parsed.requiredFeatures)) {
-        try {
-          await checkForCircularDependencyInRequired(
-            datasource,
-            key,
-            normalizeFeatureRequirements(parsed),
-          );
-        } catch (error) {
-          await reportSimpleError({
-            entityType: "feature",
-            key,
-            fullPath,
-            message: error instanceof Error ? error.message : String(error),
-            code: error instanceof Error ? error.name : "error",
-          });
-        }
       }
     }
   }
 
   // lint global variables
+  const getCompositionWarnings = createCompositionWarningInspector(
+    featuresByKey,
+    variablesByKey,
+    schemasByKey,
+  );
+  let currentVariableKey = "value";
   const variableZodSchema = getVariableZodSchema(
     projectConfig,
     attributesByKey,
     segments,
     featuresByKey,
     schemasByKey,
+    variablesByKey,
+    () => currentVariableKey,
   );
-
+  const isolatedVariableZodSchema = getVariableZodSchema(
+    projectConfig,
+    {},
+    [],
+    {},
+    schemasByKey,
+    {},
+    () => currentVariableKey,
+  );
   if (!options.entityType || options.entityType === "variable") {
     await lintReservedNamespaceCharacterInEntityPaths("variable");
 
     const filteredKeys = !keyPattern ? variables : variables.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} variables...\n`);
+      logProgress(filteredKeys.length, "variable");
     }
 
     for (const key of filteredKeys) {
@@ -683,14 +910,14 @@ export async function lintProject(
         });
       }
 
-      if (!projectConfig.allowFeatureAndGlobalVariableKeyCollisions && features.includes(key)) {
+      if (!projectConfig.allowFeatureAndVariableKeyCollisions && features.includes(key)) {
         await reportSimpleError({
           entityType: "variable",
           key,
           fullPath,
           message: `Variable "${key}" conflicts with a feature using the same key`,
           detail:
-            "Rename either entity, or set allowFeatureAndGlobalVariableKeyCollisions to true in featurevisor.config.js.",
+            "Rename either entity, or set allowFeatureAndVariableKeyCollisions to true in featurevisor.config.js.",
           code: "feature_variable_key_collision",
         });
       }
@@ -707,11 +934,29 @@ export async function lintProject(
       }
 
       try {
-        const parsed = await datasource.readVariable(key);
-        const result = variableZodSchema.safeParse(parsed);
+        const parsed = variablesByKey[key] ?? (await datasource.readVariable(key));
+        currentVariableKey = key;
+        const archived = isArchived(parsed);
+        const result = (archived ? isolatedVariableZodSchema : variableZodSchema).safeParse(
+          parsed,
+          diagnosticParseOptions,
+        );
+        await reportArchivedReferences("variable", key, fullPath, parsed);
+        reportDeprecatedReferences("variable", key, fullPath, parsed);
 
         if (!result.success && "error" in result) {
-          await reportZodValidationError("variable", key, fullPath, result.error);
+          await reportZodValidationError("variable", key, fullPath, result.error, {
+            ignoreUnknownReferences: archived,
+          });
+        } else if (result.success && !archived) {
+          for (const warning of getCompositionWarnings(result.data)) {
+            reportWarning({
+              ...warning,
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "variable",
+              key,
+            });
+          }
         }
       } catch (error) {
         await reportThrownError("variable", key, fullPath, error);
@@ -719,67 +964,8 @@ export async function lintProject(
     }
   }
 
-  // lint groups
-  const groups = await datasource.listGroups();
-  const groupZodSchema = getGroupZodSchema(projectConfig, datasource, features);
-
-  if (!options.entityType || options.entityType === "group") {
-    await lintReservedNamespaceCharacterInEntityPaths("group");
-
-    const filteredKeys = !keyPattern ? groups : groups.filter((key) => keyPattern.test(key));
-
-    if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} groups...\n`);
-    }
-
-    for (const key of filteredKeys) {
-      const fullPath = getFullPathFromKey("group", key);
-
-      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
-        await reportSimpleError({
-          entityType: "group",
-          key,
-          fullPath,
-          message: `Invalid name: "${key}"`,
-          detail: ENTITY_NAME_REGEX_ERROR,
-          code: "invalid_name",
-        });
-      }
-
-      let parsed;
-
-      try {
-        parsed = await datasource.readGroup(key);
-
-        const result = groupZodSchema.safeParse(parsed);
-
-        if (!result.success && "error" in result) {
-          await reportZodValidationError("group", key, fullPath, result.error);
-        }
-      } catch (error) {
-        await reportThrownError("group", key, fullPath, error);
-      }
-
-      if (parsed) {
-        try {
-          await checkForFeatureExceedingGroupSlotPercentage(datasource, parsed, features);
-        } catch (error) {
-          await reportSimpleError({
-            entityType: "group",
-            key,
-            fullPath,
-            message: error instanceof Error ? error.message : String(error),
-            code: error instanceof Error ? error.name : "error",
-          });
-        }
-      }
-    }
-  }
-
-  // @TODO: feature cannot exist in multiple groups
-
   // lint schemas (schemas and schemasByKey already loaded above for feature linting)
-  const schemaZodSchema = getSchemaZodSchema(schemas);
+  const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey);
 
   if (!options.entityType || options.entityType === "schema") {
     await lintReservedNamespaceCharacterInEntityPaths("schema");
@@ -787,7 +973,7 @@ export async function lintProject(
     const filteredKeys = !keyPattern ? schemas : schemas.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} schemas...\n`);
+      logProgress(filteredKeys.length, "schema");
     }
 
     for (const key of filteredKeys) {
@@ -807,7 +993,7 @@ export async function lintProject(
       try {
         const parsed = await datasource.readSchema(key);
 
-        const result = schemaZodSchema.safeParse(parsed);
+        const result = schemaZodSchema.safeParse(parsed, diagnosticParseOptions);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
@@ -828,7 +1014,7 @@ export async function lintProject(
     const filteredKeys = !keyPattern ? targets : targets.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} targets...\n`);
+      logProgress(filteredKeys.length, "target");
     }
 
     for (const key of filteredKeys) {
@@ -848,11 +1034,12 @@ export async function lintProject(
       try {
         const parsed = await datasource.readTarget(key);
 
-        const result = targetZodSchema.safeParse(parsed);
+        const result = targetZodSchema.safeParse(parsed, diagnosticParseOptions);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("target", key, fullPath, result.error);
         }
+        await reportArchivedReferences("target", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("target", key, fullPath, error);
       }
@@ -869,6 +1056,7 @@ export async function lintProject(
     targets as [string, ...string[]],
     variables as [string, ...string[]],
     featuresByKey,
+    segmentsByKey,
   );
 
   if (!options.entityType || options.entityType === "test") {
@@ -877,11 +1065,13 @@ export async function lintProject(
     const filteredKeys = !keyPattern ? tests : tests.filter((key) => keyPattern.test(key));
 
     if (filteredKeys.length > 0) {
-      log(`Linting ${filteredKeys.length} tests...\n`);
+      logProgress(filteredKeys.length, "test");
     }
 
     for (const key of filteredKeys) {
-      const fullPath = getFullPathFromKey("test", key);
+      const fullPath = datasource.getTestSourcePath
+        ? datasource.getTestSourcePath(key)
+        : getFullPathFromKey("test", key);
 
       if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
         await reportSimpleError({
@@ -897,20 +1087,201 @@ export async function lintProject(
       try {
         const parsed = await datasource.readTest(key);
 
-        const result = testsZodSchema.safeParse(parsed);
+        for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey)) {
+          reportWarning({
+            filePath: path.relative(process.cwd(), fullPath),
+            entityType: "test",
+            key,
+            path: warning.path,
+            code: "context_value_mismatch",
+            message: warning.message,
+          });
+        }
+
+        const result = testsZodSchema.safeParse(parsed, diagnosticParseOptions);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("test", key, fullPath, result.error);
         }
+        await reportArchivedReferences("test", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("test", key, fullPath, error);
       }
     }
   }
 
+  // lint scenarios
+  const scenarios = await datasource.listScenarios();
+  const scenariosZodSchema = getScenariosZodSchema(
+    projectConfig,
+    features as [string, ...string[]],
+    segments as [string, ...string[]],
+    targets as [string, ...string[]],
+    variables as [string, ...string[]],
+    featuresByKey,
+  );
+
+  if (!options.entityType || options.entityType === "scenario") {
+    if (options.entityType === "scenario") {
+      await lintReservedNamespaceCharacterInEntityPaths("scenario");
+    }
+
+    const filteredKeys = !keyPattern ? scenarios : scenarios.filter((key) => keyPattern.test(key));
+
+    if (filteredKeys.length > 0) {
+      logProgress(filteredKeys.length, "scenario");
+    }
+
+    for (const key of filteredKeys) {
+      let fullPath = getFullPathFromKey("scenario", key);
+      try {
+        fullPath = datasource.getScenarioSourcePath(key);
+      } catch {
+        // Custom adapters may not expose a source path.
+      }
+
+      if (!isValidEntityKey(key, projectConfig.namespaceCharacter)) {
+        await reportSimpleError({
+          entityType: "scenario",
+          key,
+          fullPath,
+          message: `Invalid name: "${key}"`,
+          detail: ENTITY_NAME_REGEX_ERROR,
+          code: "invalid_name",
+        });
+      }
+
+      try {
+        const parsed = await datasource.readScenario(key);
+        for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey, true)) {
+          reportWarning({
+            filePath: path.relative(process.cwd(), fullPath),
+            entityType: "scenario",
+            key,
+            path: warning.path,
+            code: "context_value_mismatch",
+            message: warning.message,
+          });
+        }
+        const result = scenariosZodSchema.safeParse(parsed, diagnosticParseOptions);
+
+        if (!result.success && "error" in result) {
+          await reportZodValidationError("scenario", key, fullPath, result.error);
+        }
+        await reportArchivedReferences("scenario", key, fullPath, parsed);
+      } catch (error) {
+        await reportThrownError("scenario", key, fullPath, error);
+      }
+    }
+  }
+
+  if (
+    !options.entityType ||
+    options.entityType === "feature" ||
+    options.entityType === "variable" ||
+    options.entityType === "segment"
+  ) {
+    const reportDependencyError = async (error: unknown) => {
+      const cycleError = isDependencyCycleError(error) ? error : null;
+      const cycleOrigin = cycleError?.origin;
+      const entityType: LintEntityType = cycleOrigin
+        ? cycleOrigin[0] === "variable"
+          ? "variable"
+          : cycleOrigin[0] === "segment"
+            ? "segment"
+            : "feature"
+        : variables.length > 0
+          ? "variable"
+          : "feature";
+      const key = cycleOrigin
+        ? cycleOrigin[1]
+        : entityType === "variable"
+          ? variables[0] || ""
+          : features[0] || "";
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof EntityParseError) {
+        await reportThrownError(entityType, key, getFullPathFromKey(entityType, key), error);
+      } else if (
+        !message.startsWith("Legacy feature `required` was removed") ||
+        !errors.some((item) => item.path.join(".") === "required")
+      ) {
+        await reportSimpleError({
+          entityType,
+          key,
+          fullPath: key ? getFullPathFromKey(entityType, key) : process.cwd(),
+          message,
+          pathParts: cycleError ? cycleError.path : [],
+          code: cycleError ? cycleError.code : "dependency_validation_failed",
+        });
+      }
+    };
+    try {
+      const graph = await buildDependencyGraph(datasource);
+      const cycles = await findDependencyCycles(datasource, graph);
+      for (const cycle of cycles) await reportDependencyError(cycle);
+      // Depth and cost estimation are useful only for an acyclic evaluation graph.
+      const deepChains = cycles.length
+        ? []
+        : findDeepDependencyChains(graph, PORTABLE_DEPENDENCY_HANDOFFS);
+      for (const chain of deepChains) {
+        const node = JSON.parse(chain.root) as string[];
+        const entityType: LintEntityType = node[0] === "variable" ? "variable" : "feature";
+        const key = node[1];
+        if (options.entityType && options.entityType !== entityType) continue;
+        const location =
+          node[0] === "feature-variable"
+            ? ["variablesSchema", node[2]]
+            : entityType === "variable" && variablesByKey[key]?.compose
+              ? ["compose"]
+              : ["conditions"];
+        const description = describeDependencyChain(chain.nodes);
+        if (chain.handoffs > DEPENDENCY_HANDOFF_LIMIT) {
+          await reportSimpleError({
+            entityType,
+            key,
+            fullPath: getFullPathFromKey(entityType, key),
+            message: `Evaluation needs ${chain.handoffs} dependency handoffs, more than the runtime limit of ${DEPENDENCY_HANDOFF_LIMIT}, so SDKs fail it: ${description}. Shorten the chain.`,
+            pathParts: location,
+            code: "dependency_depth_exceeded",
+          });
+        } else {
+          reportWarning({
+            filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
+            entityType,
+            key,
+            path: location,
+            code: "dependency_depth",
+            message: `Evaluation needs ${chain.handoffs} dependency handoffs: ${description}. Small native thread stacks, such as 512 KB mobile threads, can fail deep chains. Keep chains at ${PORTABLE_DEPENDENCY_HANDOFFS} or fewer where you can.`,
+          });
+        }
+      }
+      for (const estimate of cycles.length ? [] : estimateDependencyExpansion(graph)) {
+        const node = JSON.parse(estimate.root) as string[];
+        const entityType: LintEntityType =
+          node[0] === "variable" ? "variable" : node[0] === "segment" ? "segment" : "feature";
+        const key = node[1];
+        if (options.entityType && options.entityType !== entityType) continue;
+        reportWarning({
+          filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
+          entityType,
+          key,
+          path:
+            entityType === "variable" && variablesByKey[key]?.compose
+              ? ["compose"]
+              : ["conditions"],
+          code: "dependency_expansion_cost",
+          message: `More than 1000 distinct dependency edges are reachable from this request (estimate capped at 1001). Memoization avoids counting shared paths repeatedly.`,
+        });
+      }
+    } catch (error) {
+      await reportDependencyError(error);
+    }
+  }
+
   return {
     hasError: errors.length > 0,
     errors,
+    ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
 
@@ -940,11 +1311,13 @@ export const lintPlugin: Plugin = {
           authors: parsed.authors,
           json: parsed.json,
           pretty: parsed.pretty,
+          v3MutationOrder: parsed.v3MutationOrder,
+          verbose: parsed.verbose,
         },
       );
 
       if (parsed.json) {
-        const payload = { errors: result.errors };
+        const payload = { errors: result.errors, warnings: result.warnings || [] };
         console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
       }
 
@@ -965,39 +1338,43 @@ export const lintPlugin: Plugin = {
   examples: [
     {
       command: "lint",
-      description: "lint all entities",
+      description: "Lint all entities",
     },
     {
-      command: "lint --entityType=feature",
-      description: "lint only features",
+      command: "lint --v3-mutation-order",
+      description: "Show values that change because v4 applies mutations in authored order",
     },
     {
-      command: "lint --entityType=segment",
-      description: "lint only segments",
+      command: "lint --entity-type=feature",
+      description: "Lint only features",
     },
     {
-      command: "lint --entityType=group",
-      description: "lint only groups",
+      command: "lint --entity-type=segment",
+      description: "Lint only segments",
     },
     {
-      command: "lint --entityType=schema",
-      description: "lint only schemas",
+      command: "lint --entity-type=schema",
+      description: "Lint only schemas",
     },
     {
-      command: "lint --entityType=test",
-      description: "lint only tests",
+      command: "lint --entity-type=test",
+      description: "Lint only tests",
     },
     {
-      command: 'lint --keyPattern="abc"',
-      description: `lint only entities with keys containing "abc"`,
+      command: "lint --entity-type=scenario",
+      description: "Lint only scenarios",
+    },
+    {
+      command: 'lint --key-pattern="abc"',
+      description: `Lint only entities with keys containing "abc"`,
     },
     {
       command: "lint --json",
-      description: "print lint errors as JSON",
+      description: "Print lint errors as JSON",
     },
     {
       command: "lint --json --pretty",
-      description: "print lint errors as pretty JSON",
+      description: "Print lint errors as pretty JSON",
     },
   ],
 };

@@ -13,20 +13,49 @@ import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
-function getPortableDate(value: unknown): Date | null {
+/**
+ * Parse the shared calendar, timezone and millisecond date comparison format.
+ * @internal Shared with the CLI, not a supported application API.
+ */
+export function getPortableTimestamp(value: unknown): number | null {
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
+    const timestamp = value.getTime();
+    return timestamp >= -62135596800000 && timestamp <= 253402300799999 ? timestamp : null;
   }
-
+  if (typeof value !== "string") return null;
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/.exec(
+      value,
+    );
+  if (!parts) return null;
+  const year = +parts[1],
+    month = +parts[2],
+    day = +parts[3];
+  const offsetHour = +(parts[10] || 0),
+    offsetMinute = +(parts[11] || 0);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   if (
-    typeof value !== "string" ||
-    !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+\-]\d{2}:\d{2})$/.test(value)
-  ) {
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > days[month - 1] ||
+    +parts[4] > 23 ||
+    +parts[5] > 59 ||
+    +parts[6] > 59 ||
+    offsetHour > 14 ||
+    offsetMinute > 59 ||
+    (offsetHour === 14 && offsetMinute !== 0)
+  )
     return null;
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const date = new Date(0);
+  // setUTCFullYear preserves years 0001 to 0099, unlike the Date.UTC shortcut.
+  date.setUTCFullYear(year, month - 1, day);
+  const timestamp =
+    date.setUTCHours(+parts[4], +parts[5], +parts[6], +((parts[7] || "") + "000").slice(0, 3)) -
+    (offsetHour * 60 + offsetMinute) * (parts[9] === "-" ? -60000 : 60000);
+  return timestamp >= -62135596800000 && timestamp <= 253402300799999 ? timestamp : null;
 }
 
 export function getValueFromContext(obj: Context, path: string): AttributeValue {
@@ -47,8 +76,40 @@ export function conditionIsMatched(
   context: Context,
   getRegex: GetRegex,
 ): boolean {
-  const { attribute, operator, value, regexFlags } = condition;
-  const contextValueFromPath = getValueFromContext(context, attribute) as AttributeValue;
+  return valueIsMatched(getValueFromContext(context, condition.attribute), condition, getRegex);
+}
+
+/** Shared comparisons for context conditions and evaluated variable requirements. */
+export function valueIsMatched(
+  contextValueFromPath: unknown,
+  condition: Pick<PlainCondition, "operator" | "value" | "regexFlags">,
+  getRegex: GetRegex,
+): boolean {
+  const { operator, value, regexFlags } = condition;
+
+  if (operator === "isNull") return contextValueFromPath === null;
+  if (operator === "notNull")
+    return contextValueFromPath !== undefined && contextValueFromPath !== null;
+
+  if (operator === "empty" || operator === "notEmpty") {
+    let size = -1;
+    if (typeof contextValueFromPath === "string" || Array.isArray(contextValueFromPath)) {
+      size = contextValueFromPath.length;
+    } else if (
+      contextValueFromPath &&
+      Object.prototype.toString.call(contextValueFromPath) === "[object Object]"
+    ) {
+      size = 0;
+      // Only presence matters. Do not count or allocate all object keys.
+      for (const key in contextValueFromPath as object) {
+        if (Object.prototype.hasOwnProperty.call(contextValueFromPath, key)) {
+          size = 1;
+          break;
+        }
+      }
+    }
+    return size >= 0 && (operator === "empty" ? size === 0 : size > 0);
+  }
 
   if (operator === "equals") {
     return contextValueFromPath === value;
@@ -56,10 +117,10 @@ export function conditionIsMatched(
     return contextValueFromPath !== value;
   } else if (operator === "before" || operator === "after") {
     // date comparisons
-    const dateInContext = getPortableDate(contextValueFromPath);
-    const dateInCondition = getPortableDate(value);
+    const dateInContext = getPortableTimestamp(contextValueFromPath);
+    const dateInCondition = getPortableTimestamp(value);
 
-    if (!dateInContext || !dateInCondition) {
+    if (dateInContext === null || dateInCondition === null) {
       return false;
     }
 
@@ -129,21 +190,32 @@ export function conditionIsMatched(
     return typeof contextValueFromPath !== "undefined";
   } else if (operator === "notExists") {
     return typeof contextValueFromPath === "undefined";
-  } else if (
-    Array.isArray(contextValueFromPath) &&
-    (typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean" ||
-      value === null)
-  ) {
-    // includes / notIncludes (where context value is an array of primitive values)
-    const valueInContext = contextValueFromPath as Array<string | number | boolean | null>;
-    const primitiveValue = value as string | number | boolean | null;
-
-    if (operator === "includes") {
-      return valueInContext.indexOf(primitiveValue) > -1;
-    } else if (operator === "notIncludes") {
-      return valueInContext.indexOf(primitiveValue) === -1;
+  } else if (Array.isArray(contextValueFromPath)) {
+    if (operator === "includes" || operator === "notIncludes") {
+      return (
+        (value === null ||
+          typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean") &&
+        (contextValueFromPath.indexOf(value) !== -1) === (operator === "includes")
+      );
+    } else if (
+      Array.isArray(value) &&
+      (operator === "includesAny" || operator === "notIncludesAny")
+    ) {
+      // Validate the complete candidate list before a positive or negative match.
+      for (let i = 0; i < value.length; i++) {
+        const candidate = value[i];
+        if (
+          candidate !== null &&
+          typeof candidate !== "string" &&
+          typeof candidate !== "number" &&
+          typeof candidate !== "boolean"
+        )
+          return false;
+      }
+      const matched = value.some((candidate) => contextValueFromPath.indexOf(candidate) !== -1);
+      return matched === (operator === "includesAny");
     }
   }
 
@@ -165,7 +237,7 @@ export function parseConditionsIfStringified(
     return conditions;
   }
 
-  if (conditions === "*") {
+  if (!/^[{[\"]/.test(conditions)) {
     return conditions;
   }
 
@@ -200,6 +272,8 @@ export function allConditionsAreMatched(
   getRegex: GetRegex = getUncachedRegex,
   reportDiagnostic?: FeaturevisorDiagnosticReporter,
 ): boolean {
+  if (!conditions || (typeof conditions !== "object" && typeof conditions !== "string"))
+    return false;
   if (typeof conditions === "string") {
     return conditions === "*";
   }
@@ -221,8 +295,9 @@ export function allConditionsAreMatched(
   }
 
   if ("and" in conditions && Array.isArray(conditions.and)) {
-    return conditions.and.every((c) =>
-      allConditionsAreMatched(c, context, getRegex, reportDiagnostic),
+    return (
+      conditions.and.length > 0 &&
+      conditions.and.every((c) => allConditionsAreMatched(c, context, getRegex, reportDiagnostic))
     );
   }
 
@@ -244,7 +319,10 @@ export function allConditionsAreMatched(
   }
 
   if (Array.isArray(conditions)) {
-    return conditions.every((c) => allConditionsAreMatched(c, context, getRegex, reportDiagnostic));
+    return (
+      conditions.length > 0 &&
+      conditions.every((c) => allConditionsAreMatched(c, context, getRegex, reportDiagnostic))
+    );
   }
 
   return false;

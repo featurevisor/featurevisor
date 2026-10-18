@@ -1,0 +1,40 @@
+feature: permissionMembership
+
+assertions:
+  - description: any matching permission selects the writer variation
+    environment: staging
+    at: 50
+    context:
+      userId: writer
+      permissions: [read, admin]
+    expectedToBeEnabled: true
+    expectedVariation: writer
+    expectedVariables:
+      actions: [read, write]
+
+  - description: no matching permissions select the reader variation
+    environment: production
+    at: 50
+    context:
+      userId: reader
+      permissions: [read]
+    expectedToBeEnabled: true
+    expectedVariation: reader
+    expectedVariables:
+      actions: [read]
+
+  - description: an empty array also has none of the listed permissions
+    environment: staging
+    at: 50
+    context:
+      userId: empty
+      permissions: []
+    expectedToBeEnabled: true
+    expectedVariation: reader
+
+  - description: missing context does not match either operator
+    environment: staging
+    at: 50
+    context:
+      userId: missing
+    expectedToBeEnabled: false

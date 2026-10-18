@@ -15,6 +15,177 @@ import {
   propertyTypeEnum,
 } from "./schema";
 
+describe("portable timestamp format", () => {
+  const timestampSchema = { type: "string", format: "date-time" };
+
+  it.each(["enum", "const"])("validates unused referenced timestamps in schema %s", (keyword) => {
+    const schemas = {
+      timestamp: { type: "string" as const, format: "date-time" as const },
+      alias: { schema: "timestamp" },
+    };
+    const valid = { when: "1970-01-01T00:00:00Z" };
+    const invalid = { when: "soon" };
+    const result = getSchemaZodSchema(Object.keys(schemas), schemas).safeParse({
+      type: "object",
+      properties: { when: { schema: "alias" } },
+      [keyword]: keyword === "enum" ? [valid, invalid] : invalid,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        [keyword, ...(keyword === "enum" ? [1] : []), "when"],
+      ]);
+  });
+
+  it.each([
+    [{ type: "array", items: { schema: "alias" }, const: ["soon"] }, ["const", 0]],
+    [
+      { type: "object", additionalProperties: { schema: "alias" }, enum: [{ when: "soon" }] },
+      ["enum", 0, "when"],
+    ],
+    [
+      {
+        oneOf: [{ schema: "alias" }, { schema: "integer" }],
+        enum: ["1970-01-01T00:00:00Z", "soon", 1],
+      },
+      ["enum", 1],
+    ],
+    [
+      { type: "object", properties: { when: { schema: "alias", const: "soon" } } },
+      ["properties", "when", "const"],
+    ],
+  ])("validates recursive reference literals in %j", (schema, path) => {
+    const schemas = {
+      timestamp: { type: "string" as const, format: "date-time" as const },
+      alias: { schema: "timestamp" },
+      integer: { type: "integer" as const },
+    };
+    const result = getSchemaZodSchema(Object.keys(schemas), schemas).safeParse(schema);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map((issue) => issue.path)).toEqual([path]);
+  });
+
+  it("does not recurse forever on cyclic references while checking format literals", () => {
+    const schemas = { first: { schema: "second" }, second: { schema: "first" } };
+    expect(() =>
+      getSchemaZodSchema(Object.keys(schemas), schemas).safeParse({
+        type: "object",
+        properties: { when: { schema: "first" } },
+        const: { when: "soon" },
+      }),
+    ).not.toThrow();
+  });
+
+  it("bounds recursive oneOf references while retaining sibling timestamp diagnostics", () => {
+    const schemas = {
+      recursive: { oneOf: [{ schema: "recursive" }, { type: "integer" as const }] },
+      timestamp: { type: "string" as const, format: "date-time" as const },
+    };
+    const result = getSchemaZodSchema(Object.keys(schemas), schemas).safeParse({
+      type: "object",
+      properties: { recursive: { schema: "recursive" }, when: { schema: "timestamp" } },
+      const: { recursive: "anything", when: "soon" },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([["const", "when"]]);
+  });
+
+  it.each(["boolean", "integer", "number", "object", "array", undefined])(
+    "rejects format on %s schemas",
+    (type) => {
+      const result = getSchemaZodSchema().safeParse({
+        type,
+        format: "date-time",
+        ...(type === "array" ? { items: { type: "string" } } : {}),
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual([
+          expect.objectContaining({
+            path: ["format"],
+            message: "format is only supported on string schemas.",
+          }),
+        ]);
+      }
+    },
+  );
+
+  it.each(["email", "date", "", 42, null, true, {}])("rejects format %j", (format) => {
+    expect(getSchemaZodSchema().safeParse({ type: "string", format }).success).toBe(false);
+  });
+
+  it.each([
+    "1970-01-01T00:00:00Z",
+    "0001-01-01T00:00:00Z",
+    "9999-12-31T23:59:59.999999999Z",
+    "2024-02-29T12:34:56.1+14:00",
+    "2026-01-01T00:00:00.123456789-05:30",
+  ])("accepts portable const and enum %s", (value) => {
+    expect(
+      getSchemaZodSchema().safeParse({ ...timestampSchema, const: value, enum: [value] }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    "soon",
+    "2026-01-01",
+    "2026-01-01T00:00:00",
+    "2026-02-29T00:00:00Z",
+    "2026-01-01T24:00:00Z",
+    "2026-01-01T00:00:60Z",
+    "2026-01-01T00:00:00+14:01",
+    "2026-01-01T00:00:00.1234567890Z",
+    "0000-01-01T00:00:00Z",
+    "0001-01-01T00:00:00+00:01",
+  ])("rejects nonportable const and enum %s", (value) => {
+    const result = getSchemaZodSchema().safeParse({
+      ...timestampSchema,
+      const: value,
+      enum: ["1970-01-01T00:00:00Z", value],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([["const"], ["enum", 1]]);
+  });
+
+  it.each([
+    [
+      { type: "object", properties: { when: { ...timestampSchema, const: "soon" } } },
+      ["properties", "when", "const"],
+    ],
+    [{ type: "array", items: { ...timestampSchema, const: "soon" } }, ["items", "const"]],
+    [
+      { type: "object", additionalProperties: { ...timestampSchema, const: "soon" } },
+      ["additionalProperties", "const"],
+    ],
+    [
+      { oneOf: [{ ...timestampSchema, const: "soon" }, { type: "integer" }] },
+      ["oneOf", 0, "const"],
+    ],
+  ])("reports one precise nested issue for %j", (schema, path) => {
+    const result = getSchemaZodSchema().safeParse(schema);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map((issue) => issue.path)).toEqual([path]);
+  });
+
+  it.each(["const", "enum"])("checks timestamp leaves inside structured %s values", (keyword) => {
+    const value = { dates: ["soon"], extra: "2026-01-01" };
+    const result = getSchemaZodSchema().safeParse({
+      type: "object",
+      properties: { dates: { type: "array", items: timestampSchema } },
+      additionalProperties: timestampSchema,
+      [keyword]: keyword === "enum" ? [value] : value,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        [keyword, ...(keyword === "enum" ? [0] : []), "dates", 0],
+        [keyword, ...(keyword === "enum" ? [0] : []), "extra"],
+      ]);
+  });
+});
+
 /** Build a refinement context that collects issues for assertion. */
 function createRefinementCtx(): { issues: z.ZodIssue[]; ctx: z.RefinementCtx } {
   const issues: z.ZodIssue[] = [];
@@ -63,8 +234,65 @@ describe("schema.ts :: valueZodSchema and propertyTypeEnum", () => {
     });
 
     it("rejects invalid type", () => {
-      expect(propertyTypeEnum.safeParse("date").success).toBe(false);
+      expect(propertyTypeEnum.safeParse("strng").success).toBe(false);
     });
+
+    it.each([
+      ["double", "Replace `type: double` with `type: number`."],
+      ["date", "Replace `type: date` with `type: string` and `format: date-time`."],
+      ["semver", "Replace `type: semver` with `type: string` and `format: semver`."],
+    ])("explains how to migrate removed type %s", (type, message) => {
+      const result = getSchemaZodSchema().safeParse({ type });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual([
+          expect.objectContaining({
+            path: ["type"],
+            message,
+            params: { code: "removed_schema_type" },
+          }),
+        ]);
+      }
+    });
+
+    it.each([
+      ["date", "Use `format: date-time`"],
+      ["email", "Featurevisor supports format: date-time and semver."],
+    ])("rejects unsupported format %s", (format, message) => {
+      const result = getSchemaZodSchema().safeParse({ type: "string", format });
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues[0].message).toContain(message);
+    });
+
+    it("checks semver literals against the version grammar", () => {
+      const ok = getSchemaZodSchema().safeParse({
+        type: "string",
+        format: "semver",
+        enum: ["5.5.0", "5.5", "v5.5.0"],
+      });
+      expect(ok.success).toBe(true);
+      const bad = getSchemaZodSchema().safeParse({
+        type: "string",
+        format: "semver",
+        const: "5.5,0",
+      });
+      expect(bad.success).toBe(false);
+      if (!bad.success) expect(bad.error.issues[0].path).toEqual(["const"]);
+    });
+
+    it.each(["minLength", "maxLength", "minItems", "maxItems"])(
+      "requires %s to be a whole number of zero or more",
+      (field) => {
+        for (const value of [-1, 1.5]) {
+          const result = getSchemaZodSchema().safeParse({
+            type: field.endsWith("Items") ? "array" : "string",
+            ...(field.endsWith("Items") ? { items: { type: "string" } } : {}),
+            [field]: value,
+          });
+          expect(result.success).toBe(false);
+        }
+      },
+    );
   });
 });
 
@@ -185,7 +413,7 @@ describe("schema.ts :: refineMinimumMaximum", () => {
 
   it("adds issue when minimum > maximum for double", () => {
     const { issues, ctx } = createRefinementCtx();
-    refineMinimumMaximum({ type: "double", minimum: 1.5, maximum: 1.0 }, [], ctx);
+    refineMinimumMaximum({ type: "number", minimum: 1.5, maximum: 1.0 }, [], ctx);
     expect(issues).toHaveLength(1);
   });
 
@@ -591,7 +819,7 @@ describe("schema.ts :: getSchemaZodSchema", () => {
   it("accepts double type with minimum and maximum", () => {
     const Schema = getSchemaZodSchema([]);
     const result = Schema.safeParse({
-      type: "double",
+      type: "number",
       minimum: 0,
       maximum: 1,
     });

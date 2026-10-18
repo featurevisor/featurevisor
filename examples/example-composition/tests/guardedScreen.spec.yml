@@ -1,0 +1,44 @@
+variable: guardedScreen
+
+assertions:
+  - description: A nonnull source is refined without changing the source
+    target: guarded
+    expectedValue:
+      policy:
+        limit: 90
+    checks:
+      - variable: nullablePolicy
+        path: [limit]
+        operator: equals
+        value: 10
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverridePaths:
+        - [available]
+  - description: An unmet source prerequisite skips the guarded override
+    target: guarded
+    stickyFeatures:
+      checkout:
+        enabled: false
+    expectedValue:
+      policy: null
+    expectedEvaluation:
+      reason: variable_composed
+  - description: A nonnull sticky source still follows the normal getter pipeline
+    target: guarded
+    stickyFeatures:
+      checkout:
+        enabled: false
+    stickyVariables:
+      nullablePolicy:
+        limit: 7
+    expectedValue:
+      policy:
+        limit: 90
+    checks:
+      - variable: nullablePolicy
+        path: [limit]
+        operator: equals
+        value: 7
+    expectedEvaluation:
+      reason: variable_override_rule

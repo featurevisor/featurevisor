@@ -4,6 +4,8 @@ Full docs: <https://featurevisor.com/docs/migrations/v3>
 
 Use this when the user is on Featurevisor v2 and asks to upgrade, or when you find v2-only shapes in a project (`scopes:` in the config, an `environments/` definition directory, `createInstance` in app code).
 
+The current major version is v4. Upgrade v2 projects to the latest v3 first, following this guide, then continue with [upgrading-to-v4.md](upgrading-to-v4.md). Do not jump straight from v2 to v4.
+
 **First establish which version they're actually on.** Don't assume:
 
 ```bash
@@ -31,23 +33,23 @@ npx featurevisor lint       # the error list is your worklist
 
 Work through lint output, then re-run until clean. What changes:
 
-| v2                                              | v3                                                                                              |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `staging` + `production` assumed by default     | **No environments unless declared.** Add `environments: ['staging', 'production']` to keep them   |
-| `environments: false`                           | Remove the key entirely                                                                           |
-| `splitByEnvironment` + `environments/<env>/*.yml` | Removed. Move per-env `rules`/`force`/`expose` into the feature file, keyed by environment       |
-| `scopes:` in `featurevisor.config.js`           | One file per scope in `targets/` ([targets.md](targets.md)). Leftover `scopes` is silently ignored |
-| Datafiles built per tag automatically           | **Built from targets only.** No target, no datafile. Minimum: `targets/all.yml` with a description |
-| `featurevisor-tag-web.json`                     | `featurevisor-<target>.json`. Name the target `tag-web` if consumers' URLs must not change        |
-| Namespaced keys used `/`                        | Default separator is now `.` (`checkout/promo` → `checkout.promo`). Set `namespaceCharacter: '/'` to keep the old keys |
-| `site` command, `out/` directory                | `catalog` command, `catalog/` directory; `siteExportDirectoryPath` → `catalogDirectoryPath`       |
-| `--schema-version` flag                         | Removed (ignored if passed); output is always schema version 2                                    |
-| Test assertion `scope:` / `tag:`                | Single `target:` property ([testing.md](testing.md))                                              |
-| Generated `*Feature.ts` namespaces              | Shared typed functions only; `--no-individual-features` removed. Delete old output before regenerating ([code-generation.md](code-generation.md)) |
+| v2                                                | v3                                                                                                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `staging` + `production` assumed by default       | **No environments unless declared.** Add `environments: ['staging', 'production']` to keep them                                                   |
+| `environments: false`                             | Remove the key entirely                                                                                                                           |
+| `splitByEnvironment` + `environments/<env>/*.yml` | Removed. Move per-env `rules`/`force`/`expose` into the feature file, keyed by environment                                                        |
+| `scopes:` in `featurevisor.config.js`             | One file per scope in `targets/` ([targets.md](targets.md)). Leftover `scopes` is silently ignored                                                |
+| Datafiles built per tag automatically             | **Built from targets only.** No target, no datafile. Minimum: `targets/all.yml` with a description                                                |
+| `featurevisor-tag-web.json`                       | `featurevisor-<target>.json`. Name the target `tag-web` if consumers' URLs must not change                                                        |
+| Namespaced keys used `/`                          | Default separator is now `.` (`checkout/promo` → `checkout.promo`). Set `namespaceCharacter: '/'` to keep the old keys                            |
+| `site` command, `out/` directory                  | `catalog` command, `catalog/` directory. `siteExportDirectoryPath` → `catalogDirectoryPath`                                                       |
+| `--schema-version` flag                           | Removed (ignored if passed). Output is always schema version 2                                                                                    |
+| Test assertion `scope:` / `tag:`                  | Single `target:` property ([testing.md](testing.md))                                                                                              |
+| Generated `*Feature.ts` namespaces                | Shared typed functions only. `--no-individual-features` removed. Delete old output before regenerating ([code-generation.md](code-generation.md)) |
 
 Two definition-level rules also tightened, and lint now rejects what used to pass:
 
-- **Portable regex and dates.** Only `g`, `i`, `m`, `s` flags; `before`/`after` need a full ISO 8601 timestamp with timezone. See [operators.md](operators.md#portable-conditions-cross-sdk-subset).
+- **Portable regex and dates.** Only `g`, `i`, `m`, `s` flags. `before`/`after` need a full ISO 8601 timestamp with timezone. See [operators.md](operators.md#dates).
 - **Empty `and` / `or` / `not` arrays are rejected.** Common in generated or placeholder definitions.
 
 New in v3 and worth mentioning if it fits their problem: [sets and promotions](sets-promotions.md) (independent trees for release lanes or surfaces) and `promotable: false` protection on definitions.
@@ -60,12 +62,16 @@ The one change that alters evaluation for already-deployed users. In `segments:`
 # ambiguous across versions, don't leave this in place
 segments:
   not: [premium, internal]
+```
 
+```yaml
 # "none of these match" (what v2 did)
 segments:
   not:
     - or: [premium, internal]
+```
 
+```yaml
 # "not all of these match"
 segments:
   not:
@@ -100,22 +106,22 @@ npm install --save @featurevisor/sdk@3   # plus @featurevisor/react / @featurevi
 
 Renames (mechanical, do these first):
 
-| v2                          | v3                    |
-| --------------------------- | --------------------- |
-| `createInstance`            | `createFeaturevisor`  |
-| `FeaturevisorInstance` type | `Featurevisor`        |
-| `InstanceOptions` type      | `FeaturevisorOptions` |
+| v2                           | v3                                             |
+| ---------------------------- | ---------------------------------------------- |
+| `createInstance`             | `createFeaturevisor`                           |
+| `FeaturevisorInstance` type  | `Featurevisor`                                 |
+| `InstanceOptions` type       | `FeaturevisorOptions`                          |
 | `hooks` / `addHook` / `Hook` | `modules` / `addModule` / `FeaturevisorModule` |
-| `logger` + `createLogger`   | `logLevel` + `onDiagnostic` |
+| `logger` + `createLogger`    | `logLevel` + `onDiagnostic`                    |
 
 Behaviour changes that renaming won't catch. Check each one deliberately:
 
-- **`setDatafile` merges by default.** Code that refreshes the *same* datafile must now pass `true` to replace, or features deleted upstream will linger: `f.setDatafile(fresh, true)`. ([sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile))
+- **`setDatafile` merges by default.** Code that refreshes the _same_ datafile must now pass `true` to replace, or features deleted upstream will linger: `f.setDatafile(fresh, true)`. ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile))
 - **Per-evaluation `sticky` is gone.** `f.isEnabled(key, ctx, { sticky })` → `f.setStickyFeatures(...)` on the instance, or `f.spawn(ctx, { stickyFeatures })` for isolated state.
 - **Child instances snapshot parent context** at spawn and must be `close()`d. ([sdk-javascript.md](sdk-javascript.md#child-instances-server-side))
 - **Explicit defaults preserve falsey values.** `false`, `0`, `""`, and `null` are honoured. Strip `|| fallback` wrappers that were compensating for the old behaviour.
 - **Internal helpers are no longer exported**: `DatafileReader`, logger/emitter/evaluator internals, and the v1-only types. Replace reader calls with instance methods (`f.getRevision()`, `f.getFeature()`, `f.getFeatureKeys()`, `f.getVariableKeys()`, `f.hasVariations()`, `f.getSegment()`, `f.getSchemaVersion()`).
-- **Vue** dropped `useStatus` and `activateFeature`; track exposure with a [module](sdk-javascript.md#modules) instead ([tracking.md](tracking.md)). **React**'s provider still takes an already-created instance.
+- **Vue** dropped `useStatus` and `activateFeature`. Track exposure with a [module](sdk-javascript.md#modules) instead ([tracking.md](tracking.md)). **React**'s provider still takes an already-created instance.
 
 ### Other languages
 
@@ -130,20 +136,20 @@ Same story, idiomatic names ([sdk-other-languages.md](sdk-other-languages.md)):
 | Python | `create_instance`              | `create_featurevisor`              |
 | PHP    | `Featurevisor::createInstance` | `Featurevisor::createFeaturevisor` |
 
-Go: `Options` → `FeaturevisorOptions`. Java: `Featurevisor.Options` → `Featurevisor.FeaturevisorOptions`. Swift and Python: `FeaturevisorInstance` → `Featurevisor`. **PHP now requires 8.0+**, so a team stuck on 7.4 stays on the v2 PHP SDK until their runtime moves. Custom logger injection is gone everywhere; use `logLevel` / `onDiagnostic`.
+Go: `Options` → `FeaturevisorOptions`. Java: `Featurevisor.Options` → `Featurevisor.FeaturevisorOptions`. Swift and Python: `FeaturevisorInstance` → `Featurevisor`. **PHP now requires 8.0+**, so a team stuck on 7.4 stays on the v2 PHP SDK until their runtime moves. Custom logger injection is gone everywhere. Use `logLevel` / `onDiagnostic`.
 
 ## Checklist
 
 Project, in order:
 
-1. Upgrade `@featurevisor/cli`; declare `environments` explicitly if the project uses them.
+1. Upgrade `@featurevisor/cli`. Declare `environments` explicitly if the project uses them.
 2. Fold `environments/<env>/*.yml` back into feature files (or model them as [sets](sets-promotions.md) if they were really independent copies).
-3. Convert every scope to a target; ensure at least one target exists.
+3. Convert every scope to a target. Ensure at least one target exists.
 4. Decide dots vs slashes for namespaced keys, remembering that application code and test specs use those keys too.
-5. Rewrite multi-child `not`; delete empty logical arrays.
+5. Rewrite multi-child `not`. Delete empty logical arrays.
 6. Fix regex flags and date values.
-7. Replace assertion `scope`/`tag` with `target`; run the full test suite.
-8. Build and inspect every target × environment datafile; check the deployed filenames against what apps fetch.
+7. Replace assertion `scope`/`tag` with `target`. Run the full test suite.
+8. Build and inspect every target × environment datafile. Check the deployed filenames against what apps fetch.
 9. Update CI, Catalog, and code-generation commands and output paths.
 
 Then per application: rename factory/types, replace logger and hook integrations, review `setDatafile`, sticky ownership, child cleanup, explicit defaults, and removed imports, then run the app's tests against the same v3 datafiles that will be deployed.

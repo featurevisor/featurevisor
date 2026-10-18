@@ -8,52 +8,72 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ## Initialize
 
-```
-$ mkdir example-1
-$ cd example-1
-$ npx @featurevisor/cli init
+```sh
+mkdir example-1
+cd example-1
+npx @featurevisor/cli init --example=1
 ```
 
 ## Installation
 
-```
-$ npm install
+```sh
+npm install
 ```
 
 ## Usage
 
-### Lint YAMLs
+### Validate definitions
 
-```
-$ npm run lint
+```sh
+npm run lint
 ```
 
 ### Build datafiles
 
-```
-$ npm run build
-```
-
-### Test features
-
-```
-$ npm test
+```sh
+npm run build
 ```
 
-### Start local server
+### Run tests
+
+```sh
+npm test
+```
+
+### Global mutation parity
+
+The `mutationConformance` global variable exercises all mutation operations,
+nested overrides, literal replacements and feature or variable prerequisites.
+Its staging overrides use first match selection. Its production overrides also
+demonstrate continuation. The `mutation-conformance` Target selects this variable
+and its dependencies.
+
+Run its focused spec with:
+
+```sh
+npx featurevisor test --entity-type=variable --key-pattern='^mutationConformance$'
+```
+
+From the monorepo root, `make test-mutation-conformance RUNNERS="javascript go"`
+compares the same spec with global mutations precomputed and computed at runtime.
+Omit `RUNNERS` to include all native SDKs after building their CLI runners. The
+comparison uses temporary project copies and does not change this project's
+configuration.
+
+### Browse the Catalog
 
 Generates and serves the project catalog:
 
-```
-$ npm start
+```sh
+npm start
 ```
 
 ### Generate code
 
-For additional type safety and autocompletion, you can generate TypeScript code from your YAMLs:
+For additional type safety and autocompletion, you can generate TypeScript code from your definitions:
 
-```
-$ npm run generate-code
+```sh
+npm run generate-code
 ```
 
 See output in `./src` directory.

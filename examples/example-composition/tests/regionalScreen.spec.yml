@@ -1,0 +1,58 @@
+variable: regionalScreen
+
+assertions:
+  - description: Assembles live sources before first matching override
+    expectedValue:
+      label: Not available
+      policy:
+        limit: 100
+    expectedEvaluation:
+      reason: variable_override_rule
+  - description: Nested refinement and continuing parent
+    target: regional
+    context:
+      country: nl
+      city: Amsterdam
+    expectedValue:
+      label: Collect today
+      policy:
+        limit: 100
+    checks:
+      - variable: policy
+        path: [limit]
+        operator: equals
+        value: 75
+    expectedEvaluation:
+      variableOverridePaths:
+        - [netherlands]
+        - [netherlands, amsterdam]
+        - [checkout]
+  - description: Source sticky values supply the input without being overwritten
+    stickyFeatures:
+      checkout:
+        enabled: false
+    stickyVariables:
+      policy:
+        limit: 7
+    expectedValue:
+      label: Not available
+      policy:
+        limit: 7
+    expectedEvaluation:
+      reason: variable_composed
+  - description: Complete replacement preserves aliases and nullable source types
+    target: regional
+    context:
+      country: gb
+    expectedValue:
+      label: null
+      policy:
+        limit: 25
+    checks:
+      - variable: policy
+        path: [limit]
+        operator: equals
+        value: 50
+    expectedEvaluation:
+      variableOverridePaths:
+        - [uk]

@@ -3,7 +3,7 @@ type: object
 
 properties:
   amount:
-    type: double
+    type: number
   currency:
     type: string
 

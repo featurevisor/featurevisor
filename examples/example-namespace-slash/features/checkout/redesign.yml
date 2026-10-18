@@ -3,7 +3,7 @@ tags:
   - all
   - checkout
 
-bucketBy: user/id
+bucketBy: user.id
 disabledVariationValue: control
 
 variations:
@@ -15,13 +15,13 @@ variations:
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: netherlands
-      segments: audience/netherlands
+      conditions: audience/netherlands
       percentage: 100
       variation: redesigned
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 50

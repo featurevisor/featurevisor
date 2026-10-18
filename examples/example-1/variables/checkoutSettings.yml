@@ -20,7 +20,7 @@ defaultValue:
 overrides:
   staging:
     - key: staging-paypal
-      segments: "*"
+      conditions: "*"
       mutate:
         paymentMethods:
           - visa
@@ -28,13 +28,13 @@ overrides:
           - paypal
   production:
     - key: netherlands
-      segments: countries.netherlands
+      conditions: countries.netherlands
       mutate:
         paymentMethods:
           - ideal
           - paypal
     - key: default
-      segments: "*"
+      conditions: "*"
       value:
         currency: EUR
         paymentMethods:

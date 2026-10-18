@@ -1,86 +1,72 @@
-# Recipes — common Featurevisor use cases
+# Recipes
 
-Patterns for the most common things users build with Featurevisor. Each section is self-contained — read just the one(s) relevant to the user's request.
+Patterns for what people most often build with Featurevisor. Each section stands alone: read the one that matches the request, then adapt it to the project's attribute names, segments and environments.
 
-Source docs (the authoritative versions): <https://featurevisor.com/docs/use-cases/>
+Source guides: [Progressive delivery](https://featurevisor.com/docs/use-cases/progressive-delivery/), [Experiments](https://featurevisor.com/docs/use-cases/experiments/), [Remote configuration](https://featurevisor.com/docs/use-cases/remote-configuration/), [Entitlements](https://featurevisor.com/docs/use-cases/entitlements/), [Dependencies](https://featurevisor.com/docs/use-cases/dependencies/) and [Scheduled releases](https://featurevisor.com/docs/use-cases/scheduled-releases/).
 
-| Recipe                                                                             | When                                                            |
-| ---------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [Progressive delivery / gradual rollout](#progressive-delivery--gradual-rollout)   | Boolean flag, ramping 1% → 100% over days/weeks                 |
-| [A/B test (two variations)](#ab-test-two-variations)                               | One control vs one treatment                                    |
-| [Multivariate test (3+ variations + variables)](#multivariate-test-with-variables) | Headline + CTA combinations                                     |
-| [Mutually exclusive experiments](#mutually-exclusive-experiments)                  | Two experiments running simultaneously, no user sees both       |
-| [Feature dependencies](#feature-dependencies)                                      | Feature B should only evaluate if feature A is enabled          |
-| [Remote configuration](#remote-configuration)                                      | Use Featurevisor as a typed config store, no rollout/experiment |
-| [User entitlements / plans](#user-entitlements--plans)                             | Map plans → permissions, with per-user overrides                |
-| [Testing in production / QA force](#testing-in-production--qa-force)               | QA team gets a feature production users don't                   |
-| [Deprecating a feature safely](#deprecating-a-feature-safely)                      | Wind down a flag without breaking existing consumers            |
-| [Trunk-based development](#trunk-based-development)                                | Merge incomplete code daily behind 0% flags                     |
-| [Microfrontends](#microfrontends)                                                  | Single Featurevisor project, one datafile per microfrontend     |
-| [Decouple release from deploy](#decouple-release-from-deploy)                      | Ship code anytime, expose features independently                |
-| [Establishing ownership](#establishing-ownership)                                  | CODEOWNERS for feature/segment files                            |
-| [Kill switch / operational flags](#kill-switch--operational-flags)                 | Instantly disable a risky surface or degraded dependency        |
-| [Scheduled releases / time windows](#scheduled-releases--time-windows)             | Launch at a date/time, Black Friday campaigns, limited events   |
-| [Staged rollout ladder](#staged-rollout-ladder)                                    | Employees → beta users → everyone                               |
-| [App version gating](#app-version-gating)                                          | Only clients on version ≥ X get the feature (semver)            |
-| [Backend migrations (strangler pattern)](#backend-migrations-strangler-pattern)    | Ramp traffic from an old implementation to a new one            |
-| [Cleaning up stale flags](#cleaning-up-stale-flags)                                | Find and retire flags that finished their job                   |
+Recipes use the default scaffold: direct lists for `rules`, `force` and `overrides`, and no `environment` in tests. With environments configured, put each list under its environment key.
 
-Three further patterns live elsewhere: **RBAC / roles-and-permissions** is the [entitlements recipe](#user-entitlements--plans) with roles as variations (docs: <https://featurevisor.com/docs/use-cases/rbac>); **loading datafiles on demand** (start small, merge more target datafiles as the user navigates) is an SDK pattern — see [sdk-javascript.md](sdk-javascript.md#setting-and-updating-the-datafile); and **release lanes with promotion gates** (dev → staging → production as independent trees, QA-owned production) is the sets workflow — see [sets-promotions.md](sets-promotions.md#release-lane-workflow-canonical-shape).
+| Recipe                                                                      | When                                                 |
+| --------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Gradual rollout](#gradual-rollout)                                         | a flag ramped from 1% to 100%                        |
+| [A/B test](#ab-test)                                                        | control against one treatment                        |
+| [Multivariate test](#multivariate-test)                                     | several variations changing variables                |
+| [Mutually exclusive experiments](#mutually-exclusive-experiments)           | experiments that must not overlap                    |
+| [Feature dependencies](#feature-dependencies)                               | one feature requires another                         |
+| [Remote configuration](#remote-configuration)                               | typed values changed without a release               |
+| [One read for a screen](#one-read-for-a-screen)                             | an object assembled from several flags and values    |
+| [Rename a global variable](#rename-a-global-variable)                       | change a key without breaking consumers              |
+| [Kill switch](#kill-switch)                                                 | switch something off during an incident              |
+| [Testing in production](#testing-in-production)                             | QA sees a feature real users do not                  |
+| [Staged rollout](#staged-rollout)                                           | employees, then beta users, then everyone            |
+| [Scheduled releases and time windows](#scheduled-releases-and-time-windows) | launch at a time, or for a period                    |
+| [App version gate](#app-version-gate)                                       | only builds that contain the code                    |
+| [Entitlements](#entitlements)                                               | capabilities per plan, with grants                   |
+| [Role based access](#role-based-access)                                     | features for some roles                              |
+| [Backend migration](#backend-migration)                                     | ramp traffic from an old implementation to a new one |
+| [Deprecating a feature](#deprecating-a-feature)                             | wind a flag down safely                              |
+| [Cleaning up stale flags](#cleaning-up-stale-flags)                         | retire flags that finished their job                 |
+| [Trunk based development](#trunk-based-development)                         | merge unfinished work behind 0% flags                |
+| [Microfrontends](#microfrontends)                                           | one datafile per frontend                            |
+| [Establishing ownership](#establishing-ownership)                           | require the right reviewers                          |
 
 ---
 
-## Progressive delivery / gradual rollout
-
-A boolean flag rolled out gradually. The most common Featurevisor shape.
+## Gradual rollout
 
 ```yaml
-# features/wishlist.yml
-description: Wishlist for product detail pages
-tags:
-  - web
+description: Wishlist on product pages
+
 bucketBy: userId
 
 rules:
-  staging:
-    - key: everyone
-      segments: '*'
-      percentage: 100
-
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 1                      # day 1: 1%
-                                         # increase to 5, 10, 25, 50, 100 over days
-                                         # NEVER rename the key
+  - key: everyone
+    conditions: '*'
+    percentage: 1
 ```
 
-Guidance:
-
-- Increase `percentage` only forward. Decreasing re-buckets.
-- Keep the same `key` ("everyone") across all percentage changes.
-- If you need to narrow targeting, **add a new rule above** the catch-all rather than mutating the catch-all:
+- Raise `percentage` over time and keep the key. Users already in stay in.
+- Lowering it takes users out, so warn before doing so.
+- To target an audience first, add a rule **above** the catch-all rather than changing it:
 
 ```yaml
 rules:
-  production:
-    - key: nl                            # target NL first at 100%
-      segments: countries.netherlands
-      percentage: 100
-    - key: everyone                      # then ramp the rest
-      segments: '*'
-      percentage: 0
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 1
 ```
 
 ---
 
-## A/B test (two variations)
+## A/B test
 
 ```yaml
-# features/heroCopy.yml
-description: Hero copy A/B test
-tags:
-  - web
+description: Hero copy experiment
+
 bucketBy: userId
 
 variations:
@@ -90,587 +76,639 @@ variations:
     weight: 50
 
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100                    # 100% are in the experiment;
-                                         # split 50/50 by weight
+  - key: everyone
+    conditions: '*'
+    percentage: 100
 ```
-
-In the application:
 
 ```js
-const v = f.getVariation('heroCopy', { userId })
-if (v === 'treatment') renderNew(); else renderOld()
+const context = {
+  userId: '8f2a',
+}
+
+const variation = f.getVariation('heroCopy', context)
+
+if (variation === 'treatment') {
+  renderNewHero()
+} else {
+  renderHero()
+}
 ```
 
-Track activation with the [tracking module](tracking.md). Don't rename `control`/`treatment` after launch — your analytics dashboards key off these strings.
+Record exposure with a [tracking module](tracking.md). Do not rename variation values after launch, because analytics joins on them. Test each variation with `at` inside its weight range: `at: 25` for control, `at: 75` for treatment.
 
 ---
 
-## Multivariate test with variables
+## Multivariate test
 
-Variables let one A/B test cover multiple UI knobs without code branching per combination.
+Variables let one experiment change several things without a code branch per combination:
 
 ```yaml
-# features/hero.yml
-description: Hero multivariate
-tags:
-  - web
+description: Hero multivariate test
+
 bucketBy: deviceId
 
 variablesSchema:
   headline:
     type: string
     defaultValue: Welcome to our site
-  ctaButtonText:
+  ctaText:
     type: string
     defaultValue: Learn more
 
 variations:
   - value: control
     weight: 25
-  - value: treatment1
+  - value: newCta
     weight: 25
     variables:
-      ctaButtonText: Get started
-
-  - value: treatment2
-    weight: 25
-    variables:
-      headline: Hello there
-
-  - value: treatment3
+      ctaText: Get started
+  - value: newHeadline
     weight: 25
     variables:
       headline: Hello there
-      ctaButtonText: Get started
+  - value: both
+    weight: 25
+    variables:
+      headline: Hello there
+      ctaText: Get started
 
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100
+  - key: everyone
+    conditions: '*'
+    percentage: 100
 ```
 
-App reads `f.getVariable('hero', 'headline', ctx)` etc. — no need to branch on variation value.
+The application reads `f.getVariable('hero', 'headline', context)` and `f.getVariable('hero', 'ctaText', context)` without branching on the variation.
 
 ---
 
 ## Mutually exclusive experiments
 
-Two experiments must never overlap on the same user. Use a [group](groups.md).
+A shared allocation feature at 100% divides users into cohorts, and each experiment requires its cohort in root `conditions`:
 
 ```yaml
-# groups/checkoutExperiments.yml
-description: Mutually exclusive checkout experiments
-slots:
-  - feature: oneClickCheckout
-    percentage: 50
-  - feature: expressShipping
-    percentage: 50
+conditions:
+  - feature: experimentAllocation
+    variation: first
 ```
 
-Then each member feature's percentage can go up to its slot cap (50% here):
-
-```yaml
-# features/oneClickCheckout.yml
-rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 50                     # ≤ slot percentage
-```
-
-Plan slot sizes up front; resizing slots re-buckets everyone in the group.
+Complete definitions, priority exclusion and tests: [mutual-exclusion.md](mutual-exclusion.md).
 
 ---
 
 ## Feature dependencies
 
-Feature B should only evaluate if feature A is enabled (and optionally a specific variation).
-
 ```yaml
-# features/expressShipping.yml
-description: Express shipping
-tags:
-  - checkout
+description: Express shipping, only with one click checkout
+
 bucketBy: userId
 
-requiredFeatures:
-  - oneClickCheckout                     # must be enabled
-
-  # OR variation-specific:
-  # - feature: oneClickCheckout
-  #   variation: treatment
+conditions:
+  - feature: oneClickCheckout
 
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100
+  - key: everyone
+    conditions: '*'
+    percentage: 100
 ```
 
-Lint catches circular dependencies. A required and its dependent feature can't share a [group](groups.md).
+`expressShipping` is disabled whenever `oneClickCheckout` is, with reason `conditions_unmet`. Require a variation with `variation: treatment`, or require a feature to be off with `enabled: false`. Lint rejects cycles. Keep prerequisites exposed. See [conditions.md](conditions.md).
 
 ---
 
 ## Remote configuration
 
-Use Featurevisor purely as a typed, gradual-rollout-aware config store. The flag is essentially always-on; the value lives in variables.
+When a value belongs to no single feature, such as a support address or a retry limit, make it a [global variable](global-variables.md):
 
 ```yaml
-# features/checkoutConfig.yml
-description: Checkout flow configuration (remote config, not an experiment)
-tags:
-  - checkout
+description: Maximum items in the cart
+
+type: integer
+
+defaultValue: 50
+
+overrides:
+  - key: paying
+    conditions: payingAccounts
+    value: 200
+```
+
+When the value belongs to a feature, follows its variations, or needs a percentage rollout, use feature variables:
+
+```yaml
+description: Checkout configuration
+
 bucketBy: userId
 
 variablesSchema:
   paymentMethods:
     type: array
-    defaultValue: [creditCard, paypal, applePay, googlePay]
+    defaultValue: [card, paypal]
+    useDefaultWhenDisabled: true
   allowDiscountCode:
     type: boolean
     defaultValue: false
+    useDefaultWhenDisabled: true
 
 rules:
-  production:
-    - key: nl
-      segments: countries.netherlands
-      percentage: 100
-      variables:
-        paymentMethods: [paypal, ideal]
-        allowDiscountCode: true
-    - key: everyone
-      segments: '*'
-      percentage: 100                    # always on, just to expose variables
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variables:
+      paymentMethods: [ideal, paypal]
+      allowDiscountCode: true
+
+  - key: everyone
+    conditions: '*'
+    percentage: 100
 ```
 
-When the feature is conceptually always-on, set `useDefaultWhenDisabled: true` (or `disabledValue:`) per variable so consumers never get `null` even in edge cases.
+`useDefaultWhenDisabled` keeps consumers from getting `null` if the feature is ever disabled.
 
 ---
 
-## User entitlements / plans
+## One read for a screen
 
-Map plans → permissions. Use `variations` for plans, variables for the entitlement list. Combine with SDK sticky on the application side.
+A screen that reads a flag, a variation and several values can read one composed object instead:
 
 ```yaml
-# features/plan.yml
-description: Plans and entitlements
-tags:
-  - all
-bucketBy: userId
+description: Everything the checkout page reads
 
-variablesSchema:
-  entitlements:
-    type: array
-    defaultValue: [likePosts, commentOnPosts]
-
-variations:
-  - value: free
-    weight: 100
-  - value: premium
-    weight: 0                            # not bucketed by weight;
-    variables:                           # the *application* sets variation via sticky
-      entitlements: [likePosts, commentOnPosts, createPosts]
-
-rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100
+compose:
+  enabled: { feature: checkout }
+  pricing: { feature: pricing, variation: true }
+  label: { feature: buyButton, variable: label }
+  support: { variable: supportEmail }
 ```
-
-App side (sketch, for context only):
 
 ```js
-f.setStickyFeatures({
-  plan: { enabled: true, variation: userProfile.plan }
-})
-const ents = f.getVariable('plan', 'entitlements', ctx)
+const view = f.getVariableObject('checkoutView', context)
+// { enabled: true, pricing: 'control', label: 'Buy', support: 'support@example.com' }
 ```
 
-For geo-restricted entitlements, use `variableOverrides` on the variation — see [variables-schemas.md](variables-schemas.md#from-a-variation).
-
-**Always re-check entitlements server-side** — client checks are UX, not security.
+Every member is evaluated on each read, so reading it exposes the user to every experiment it references. Compose only values the screen always uses. Requires v4 SDKs in every consumer. Details: [global-variables.md](global-variables.md#compose-values).
 
 ---
 
-## Testing in production / QA force
+## Rename a global variable
 
-QA team can exercise a feature that's at 0% rollout for everyone else.
+Move the definition to the new key and leave an alias at the old one:
+
+```yaml
+# variables/supportEmail.yml, the old key
+description: Previous key, use contactEmail
+
+compose: contactEmail
+
+deprecated: true
+```
+
+Applications reading `supportEmail` keep working and log deprecation diagnostics. Update them to `contactEmail`, then archive the alias once `npx featurevisor find-usage --variable=supportEmail` and a search of application code find nothing.
+
+Features cannot be renamed this way. A feature rename changes every bucket key and is a new feature for analytics. Create the new feature, migrate callers, then deprecate the old one.
+
+---
+
+## Kill switch
+
+Two shapes. A **flag** around a risky path, normally at 100%:
+
+```yaml
+description: Route payments through Provider X. Set the percentage to 0 to fall back.
+
+bucketBy: userId
+
+rules:
+  - key: everyone
+    conditions: '*'
+    percentage: 100
+```
+
+```js
+if (f.isEnabled('paymentsProviderX', context)) {
+  payWithProviderX()
+} else {
+  payWithFallback()
+}
+```
+
+Or a **global variable** that switches off several features at once:
+
+```yaml
+# variables/maintenanceMode.yml
+description: Set to true to switch off checkout and everything built on it
+
+type: boolean
+
+defaultValue: false
+```
+
+```yaml
+# in each affected feature
+conditions:
+  - variable: maintenanceMode
+    operator: equals
+    value: false
+```
+
+Compare with `false` rather than wrapping `true` in `not`, so a missing value keeps the features on. Force entries still apply during maintenance, so QA keeps access. Test it in each feature's spec with `stickyVariables: { maintenanceMode: true }` and `expectedToBeEnabled: false`, or in one scenario that checks every affected feature ([testing.md](testing.md#scenarios)).
+
+- Keep kill switches boring: no variations or variables.
+- Lowering to 0 is fine here. The warnings about moving users protect experiments, and an infrastructure switch has no experience to preserve.
+- Propagation takes merge, CI build and deploy, then each application's next datafile refresh. If seconds matter, applications must refresh often ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)).
+- State the emergency procedure in the `description`.
+
+---
+
+## Testing in production
+
+QA exercises a feature that is at 0% for everyone else:
 
 ```yaml
 # segments/qa.yml
 description: QA team
+
 conditions:
   or:
     - attribute: userId
       operator: in
-      value: [u_qa_1, u_qa_2, u_qa_3]
+      value: [u_qa_1, u_qa_2]
     - attribute: deviceId
       operator: in
       value: [dev_qa_1, dev_qa_2]
 ```
 
 ```yaml
-# features/wishlist.yml
-# ...
 force:
-  production:
-    - segments: qa
-      enabled: true
+  - conditions: qa
+    enabled: true
+    variation: treatment
 
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 0                      # off for real users
+  - key: everyone
+    conditions: '*'
+    percentage: 0
 ```
 
-Once QA signs off, increase `percentage`. Leave the `force:` block to keep the segment usable across future features.
-
-For force on a single user, use `conditions:` inline:
-
-```yaml
-force:
-  production:
-    - conditions:
-        - attribute: userId
-          operator: equals
-          value: u_42
-      enabled: true
-      variation: treatment
-      variables:
-        bgColor: purple
-```
+Once QA signs off, raise the percentage. For one user, use an attribute leaf in the force `conditions` instead of a segment.
 
 ---
 
-## Deprecating a feature safely
+## Staged rollout
+
+Employees, then opted-in beta users, then everyone. First match wins, so the order expresses the stages:
 
 ```yaml
-# features/oldThing.yml
-deprecated: true                         # SDK logs warnings; still evaluable
-# ...rest unchanged
-```
-
-Workflow:
-
-1. Set `deprecated: true`.
-2. Communicate the deprecation to consuming teams; agree on a grace window.
-3. Consumers remove their calls to the feature.
-4. Verify with `npx featurevisor find-usage --feature=oldThing` and by checking application logs for SDK warnings.
-5. When confirmed unused: either `archived: true` (drops from datafiles) or delete the YAML.
-
-A variable can be deprecated the same way:
-
-```yaml
-variablesSchema:
-  bgColor:
-    type: string
-    defaultValue: red
-    deprecated: true
-```
-
----
-
-## Trunk-based development
-
-Merge incomplete code into `main` daily behind 0%-rolled-out flags. Featurevisor is the killer enabler:
-
-1. Create the feature on day 1 with `percentage: 0` in production.
-2. Each PR adds a small slice of code guarded by `f.isEnabled('myFeature')`.
-3. Use `force:` for a QA segment so QA can exercise the in-progress feature without changing real-user rollout.
-4. When ready, ramp the percentage.
-
-Combines well with [Testing in production](#testing-in-production--qa-force) and [Progressive delivery](#progressive-delivery--gradual-rollout).
-
----
-
-## Microfrontends
-
-Single Featurevisor project; one Target datafile per microfrontend, usually selected by tags.
-
-```js
-// featurevisor.config.js
-module.exports = {
-  environments: ['staging', 'production'],
-  tags: ['products', 'signup', 'signin', 'checkout', 'account'],
-}
-```
-
-```yaml
-# targets/products.yml
-description: Products microfrontend
-tag: products
-```
-
-```yaml
-# targets/checkout.yml
-description: Checkout microfrontend
-tag: checkout
-```
-
-Each feature tags itself with the MF(s) it belongs to:
-
-```yaml
-tags:
-  - products
-  - checkout                             # used by both MFs → included in both bundles
-```
-
-For MFs that serve both anonymous and authenticated users:
-
-```yaml
-bucketBy:
-  or:
-    - userId                             # use userId if present (authenticated)
-    - deviceId                           # else deviceId (anonymous)
-```
-
-This keeps logged-in users on the same variation across devices/sessions while still bucketing anonymous traffic.
-
----
-
-## Decouple release from deploy
-
-The thesis Featurevisor is built on. Pattern:
-
-- App code is shipped routinely (multiple deploys/day if you want).
-- Every new functionality is wrapped in a feature flag from day 1.
-- Featurevisor (a separate Git repo) controls when each functionality is exposed to which users.
-- Datafiles are deployed from the Featurevisor repo to a CDN; apps pick up changes via polling or push.
-
-No special YAML — this is the workflow that emerges from using Featurevisor consistently. Don't ship code without a flag; don't expose a flag without a PR.
-
----
-
-## Establishing ownership
-
-Use GitHub `CODEOWNERS` to require specific teams to approve changes to specific files.
-
-```
-# .github/CODEOWNERS
-features/checkout/* @yourorg/checkout-team
-features/payments/* @yourorg/payments-team
-segments/qa.yml     @yourorg/qa-team
-attributes/*        @yourorg/platform-team
-```
-
-Use [sets](sets-promotions.md) if QA owns production rollout decisions:
-
-```
-sets/dev/features/payment/*        @yourorg/payments-team
-sets/staging/features/payment/*    @yourorg/payments-team
-sets/production/features/payment/* @yourorg/qa-team
-```
-
-Pair with branch protection ("Require review from Code Owners") to enforce.
-
----
-
-## Kill switch / operational flags
-
-Wrap risky surfaces — a third-party payment provider, a recommendation service, an expensive background job — in a flag that is normally on for everyone, so it can be turned off instantly during an incident without deploying anything.
-
-```yaml
-# features/paymentsProviderX.yml
-description: 'KILL SWITCH — route payments through Provider X. Set percentage to 0 to fall back.'
-tags:
-  - all
-bucketBy: userId
-
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100    # incident? change to 0, merge, done
-```
+  - key: employees
+    conditions: employees
+    percentage: 100
 
-App side falls back when disabled:
+  - key: beta
+    conditions: betaUsers
+    percentage: 100
 
-```js
-if (f.isEnabled('paymentsProviderX')) { payWithProviderX() } else { payWithFallback() }
-```
-
-Guidance:
-
-- **Keep kill switches boring**: no variations, no variables, one catch-all rule. Anything cleverer slows down the 3 a.m. responder.
-- **Know your propagation time**: the change goes live after merge → CI datafile build/deploy → each app's next datafile refresh. If the user needs sub-minute reaction, make sure their apps refresh the datafile frequently ([sdk-javascript.md](sdk-javascript.md#keeping-the-datafile-fresh)).
-- **Decreasing to 0 is fine here.** The re-bucketing warnings elsewhere in this skill protect *user-experience consistency* in experiments; a kill switch on an infrastructure path has no experience to preserve — turning it off for everyone is the whole point.
-- Make the emergency procedure discoverable: state it in the feature's `description`.
-
----
-
-## Scheduled releases / time windows
-
-Featurevisor has no clock — **the application passes the current date into context**, and segments compare against it with the `before` / `after` operators. This powers launch moments, Black Friday campaigns, and limited-time events without anyone editing YAML at midnight.
-
-```yaml
-# attributes/date.yml
-description: Current date, passed by the application as ISO 8601 string or Date object
-type: date
+  - key: everyone
+    conditions: '*'
+    percentage: 0
 ```
 
 ```yaml
-# segments/blackFridayWeekend.yml
-description: Black Friday weekend 2026
-conditions:
-  and:
-    - attribute: date
-      operator: after
-      value: "2026-11-27T00:00:00Z" # full ISO 8601 with timezone, quoted
-    - attribute: date
-      operator: before
-      value: "2026-11-30T00:00:00Z"
-```
+# segments/employees.yml
+description: Employees, by email domain
 
-Date values must be complete ISO 8601 timestamps **with an explicit timezone** — `2026-11-27` and `2026-11-27T00:00:00` both fail lint. Quote them so YAML keeps them as strings. See [operators.md](operators.md#dates-full-iso-8601-with-an-explicit-timezone).
-
-```yaml
-# features/promoBanner.yml (rules excerpt)
-rules:
-  production:
-    - key: bf
-      segments: blackFridayWeekend
-      percentage: 100
-    - key: everyone
-      segments: '*'
-      percentage: 0
-```
-
-App side supplies the date on every evaluation (or in instance context refreshed periodically):
-
-```js
-f.isEnabled('promoBanner', { date: new Date() })
-```
-
-Guidance:
-
-- **Pass a `Date` or a full ISO 8601 string with timezone.** A date-only string like `'2026-11-28'` never matches and fails *silently* — the rule is skipped and evaluation falls through to the catch-all. This is the single most common reason a scheduled feature "never turns on"; reproduce with `npx featurevisor evaluate --context='{"date":"…"}'`.
-- The window boundaries are only as sharp as the app's evaluation cadence — long-lived SPAs should re-evaluate on navigation or on an interval, not once at startup.
-- Merge and deploy the definitions **ahead of time**; the date condition does the launching. This is the calm way to ship a marketing moment.
-- Combine freely with other targeting (`and` a country segment for regional campaigns).
-
----
-
-## Staged rollout ladder
-
-The classic product-engineering sequence: employees first, then opted-in beta users, then everyone. First-match-wins rule ordering expresses it directly.
-
-```yaml
-# segments/internalUsers.yml
-description: Employees (by email domain)
 conditions:
   - attribute: email
     operator: endsWith
     value: '@yourcompany.com'
 ```
 
-```yaml
-# segments/betaUsers.yml
-description: Users who opted into the beta program
-conditions:
-  - attribute: betaOptIn
-    operator: equals
-    value: true
-```
-
-```yaml
-# features/newEditor.yml (rules excerpt)
-rules:
-  production:
-    - key: internal            # stage 1: employees, day one
-      segments: internalUsers
-      percentage: 100
-    - key: beta                # stage 2: beta cohort
-      segments: betaUsers
-      percentage: 100
-    - key: everyone            # stage 3: ramp the general public
-      segments: '*'
-      percentage: 0            # → 5 → 25 → 100 over time
-```
-
-Each stage is its own rule with its own stable key, so ramping `everyone` never disturbs employees or beta users. Attribute names (`email`, `betaOptIn`) must exist in `attributes/` and be supplied by the app in context.
+Each stage has its own stable key, so ramping `everyone` never disturbs the earlier stages. `email` and `betaOptIn` must be declared attributes that the application passes.
 
 ---
 
-## App version gating
+## Scheduled releases and time windows
 
-Mobile (and desktop) clients run many versions at once. Gate features on the client version with semver operators so only builds that actually contain the code light up:
+Featurevisor has no clock. The application passes the current time as an attribute. Use a trusted server clock for anything that matters, since browser clocks and context are under the user's control.
 
 ```yaml
-# segments/appVersion55Plus.yml
-description: App version 5.5.0 or newer
+# attributes/now.yml
+description: Current time, supplied by the application
+
+type: string
+
+format: date-time
+```
+
+```yaml
+# segments/blackFridayWeekend.yml
+description: Black Friday weekend 2026
+
 conditions:
-  - attribute: appVersion
-    operator: semverGreaterThanOrEquals
-    value: 5.5.0
+  - attribute: now
+    operator: after
+    value: '2026-11-26T23:59:59.999Z'
+  - attribute: now
+    operator: before
+    value: '2026-11-30T00:00:00Z'
 ```
 
-```yaml
-# features/newOnboarding.yml (rules excerpt)
-rules:
-  production:
-    - key: v55
-      segments: appVersion55Plus
-      percentage: 100
-    - key: everyone
-      segments: '*'
-      percentage: 0
-```
-
-The pattern to internalize: **ship the code dark in version X, flip the flag when adoption of X is high enough**, and the flag+version gate together guarantee old builds never half-render a feature they don't contain.
-
----
-
-## Backend migrations (strangler pattern)
-
-Moving reads from an old service/datastore to a new one? Put the routing decision behind a flag and ramp it — with server-side [child instances](sdk-javascript.md#child-instances-server-side) giving per-request evaluation:
+Both operators are strict, so the start is one millisecond before launch to include the launch instant, and the end instant is excluded.
 
 ```yaml
-# features/ordersFromNewService.yml
-description: Route order reads to the new orders service
-tags:
-  - backend
-bucketBy: requestId    # or userId if per-user consistency matters during migration
-
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 1     # 1 → 10 → 50 → 100 as confidence grows
+  - key: black-friday
+    conditions: blackFridayWeekend
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 0
 ```
 
 ```js
-const childF = f.spawn({ requestId: req.id })
-const orders = childF.isEnabled('ordersFromNewService')
-  ? await newOrdersService.get(userId)
-  : await legacyOrders.get(userId)
+const context = {
+  userId: '8f2a',
+  now: new Date(),
+}
+
+f.isEnabled('promoBanner', context)
 ```
 
-Guidance:
+- Pass a fresh time on every evaluation. An old `Date` does not advance.
+- Missing or invalid dates make `before` and `after` false, and `not` can turn that into a match.
+- Test just before, exactly at, and after each boundary with fixed timestamps in the spec context.
+- Deploy the schedule ahead of time. Turning it off after launch means deploying a change, not restoring an older datafile.
 
-- Bucket by a **request-scoped attribute** when the migration is stateless — then ramping down after a bad deploy is completely safe (no user-visible consistency to break).
-- Bucket by `userId` instead if the new path has user-visible differences that shouldn't flap between requests.
-- When the migration completes at 100%, follow [Cleaning up stale flags](#cleaning-up-stale-flags) — delete the legacy branch from code, then the flag.
+---
+
+## App version gate
+
+Ship the code dark in a build, then enable it for builds that contain it:
+
+```yaml
+# attributes/appVersion.yml
+description: Version of the mobile app
+
+type: string
+
+format: semver
+```
+
+```yaml
+# segments/modernApp.yml
+description: App 5.5 or newer
+
+conditions:
+  - attribute: appVersion
+    operator: semverGreaterThanOrEquals
+    value: '5.5.0'
+```
+
+```yaml
+rules:
+  - key: modern-app
+    conditions: modernApp
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 0
+```
+
+Quote versions. `5.10.0` is newer than `5.9.0`, and `5.5` equals `5.5.0`. Test with a matrix of versions on both sides of the boundary.
+
+---
+
+## Entitlements
+
+Accumulate capabilities from a plan and individual grants in one global variable:
+
+```yaml
+# variables/entitlements.yml
+description: Activities available to the current user
+
+type: array
+
+items:
+  type: string
+
+defaultValue: []
+
+overrides:
+  - key: premium
+    conditions:
+      attribute: plan
+      operator: equals
+      value: premium
+    continue: true
+    value: [likePosts, commentOnPosts, createPosts]
+
+  - key: free
+    conditions:
+      attribute: plan
+      operator: equals
+      value: free
+    continue: true
+    value: [likePosts, commentOnPosts]
+
+  - key: premium-us
+    conditions:
+      - attribute: plan
+        operator: equals
+        value: premium
+      - attribute: country
+        operator: equals
+        value: us
+    continue: true
+    mutate:
+      ':appendUnique': uploadVideos
+
+  - key: posting-grant
+    conditions:
+      attribute: postingGrant
+      operator: equals
+      value: true
+    mutate:
+      ':appendUnique': createPosts
+```
+
+`continue: true` lets later matches add to the value. A free user with the grant gets `[likePosts, commentOnPosts, createPosts]`. `:appendUnique` prevents duplicates. Accumulation needs SDKs that support override programs ([compatibility](https://featurevisor.com/docs/sdks/compatibility/)).
+
+```yaml
+# tests/variables/entitlements.spec.yml
+variable: entitlements
+
+assertions:
+  - key: free
+    context: { plan: free }
+    expectedValue: [likePosts, commentOnPosts]
+
+  - key: premium-us
+    context: { plan: premium, country: us }
+    expectedValue: [likePosts, commentOnPosts, createPosts, uploadVideos]
+
+  - key: free-with-grant
+    context: { plan: free, postingGrant: true }
+    expectedValue: [likePosts, commentOnPosts, createPosts]
+    expectedEvaluation:
+      variableOverrideKey: posting-grant
+
+  - key: unknown-plan
+    context: { plan: unknown }
+    expectedValue: []
+```
+
+Evaluate entitlements on the server from trusted profile data. A browser evaluation controls presentation only and never authorizes anything.
+
+---
+
+## Role based access
+
+Pass roles as an array attribute and list the roles that grant access:
+
+```yaml
+# attributes/roles.yml
+description: Roles assigned by the trusted backend
+
+type: array
+
+items:
+  type: string
+  enum: [viewer, editor, admin]
+```
+
+```yaml
+description: Bulk export for editors and admins
+
+bucketBy: userId
+
+rules:
+  - key: contributors
+    conditions:
+      - attribute: roles
+        operator: includesAny
+        value: [editor, admin]
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 0
+```
+
+List granting roles rather than negating a viewer role: a negated condition also matches visitors without roles. Test missing roles, an empty list, and users with several roles. Enforce protected operations on the server.
+
+---
+
+## Backend migration
+
+Route reads from an old service to a new one behind a flag, evaluated per request with a [child instance](sdk-javascript.md#child-instances-server-side):
+
+```yaml
+description: Read orders from the new orders service
+
+bucketBy: requestId
+
+rules:
+  - key: everyone
+    conditions: '*'
+    percentage: 1
+```
+
+```js
+const child = f.spawn({ requestId: req.id })
+
+const orders = child.isEnabled('ordersFromNewService')
+  ? await newOrders.get(userId)
+  : await legacyOrders.get(userId)
+
+child.close()
+```
+
+Bucket by a request identifier when the migration is invisible to users, so ramping down is safe. Bucket by `userId` when users would notice flapping between implementations. At 100%, remove the old path, then [clean up](#cleaning-up-stale-flags).
+
+---
+
+## Deprecating a feature
+
+1. Set `deprecated: true`. SDKs report `deprecated_feature` diagnostics when it is evaluated.
+2. Agree a grace period with consuming teams.
+3. Consumers remove their calls.
+4. Confirm with `npx featurevisor find-usage --feature=<key>`, a search of application code, and the absence of deprecation diagnostics.
+5. Set `archived: true`, delete its specs, then lint. Keep the archived file, so the key is never reused.
+
+A feature variable is deprecated the same way, with `deprecated: true` in its `variablesSchema` entry.
 
 ---
 
 ## Cleaning up stale flags
 
-Flags that reached 100% everywhere and stopped mattering are debt: dead branches in code, noise in the project, misleading dashboards. Sweep periodically:
+Flags at 100% everywhere with no experiment are debt.
 
-1. **Find candidates** — enabled everywhere, no experiment attached:
-   ```bash
-   npx featurevisor list --features --enabledIn=production --without-variations --json --pretty
-   ```
-   Cross-check age with Git history and confirm every environment sits at an unconditional 100%.
-2. **Confirm nothing depends on them**: `npx featurevisor find-usage --feature=<key>` (other features' `requiredFeatures`, deprecated `required`, and groups).
-3. **Mark `deprecated: true`** — SDKs log warnings so consuming teams notice ([deprecation recipe](#deprecating-a-feature-safely)).
-4. **Remove the flag checks from application code** — the `isEnabled` calls and the dead `else` branches. This is the step that pays the debt down.
-5. **Archive or delete** the feature file once code no longer references it, then `npx featurevisor lint`.
+1. **Find candidates.** `npx featurevisor list --features --enabled --without-variations --json --pretty`, or `--enabled-in=production` with environments. Confirm the last rule is `conditions: '*'` at 100 everywhere, and check age in Git.
+2. **Check dependents** with `npx featurevisor find-usage --feature=<key>`.
+3. **Deprecate it**, so remaining callers surface.
+4. **Remove the checks from application code**, including the dead branch. This is what pays the debt.
+5. **Archive** the feature and delete its specs, then lint and test.
 
-Offer this sweep when you notice a project with many long-lived 100% flags — most teams want it, few remember to ask.
+Offer this sweep when you see many long lived 100% flags.
+
+---
+
+## Trunk based development
+
+1. Create the feature on the first day at 0%.
+2. Each pull request adds a slice of code behind `f.isEnabled('<key>')`.
+3. Force it on for a QA segment so the work can be exercised in production.
+4. When ready, ramp the percentage.
+
+---
+
+## Microfrontends
+
+One project, one target datafile per frontend, selected by tag:
+
+```js
+// featurevisor.config.js
+module.exports = {
+  tags: ['products', 'checkout', 'account'],
+}
+```
+
+```yaml
+# targets/checkout.yml
+description: Checkout frontend
+
+tag: checkout
+```
+
+```yaml
+# a feature used by two frontends
+tags:
+  - products
+  - checkout
+```
+
+Each frontend loads its own datafile, and features carrying both tags appear in both. For frontends serving anonymous and signed-in users, use `bucketBy: { or: [userId, deviceId] }`.
+
+---
+
+## Establishing ownership
+
+Use `CODEOWNERS` to require reviews from the right teams:
+
+```
+# .github/CODEOWNERS
+features/checkout/  @yourorg/checkout-team
+segments/qa.yml     @yourorg/qa-team
+attributes/         @yourorg/platform-team
+```
+
+With Sets as release lanes, a different team can own production:
+
+```
+sets/production/    @yourorg/release-owners
+```
+
+Pair it with branch protection that requires code owner review.

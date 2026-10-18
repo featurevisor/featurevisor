@@ -26,9 +26,12 @@ function copyComments(source: Pair, target: Pair): void {
     const t = tgtKey as {
       comment?: string | null;
       commentBefore?: string | null;
+      spaceBefore?: boolean;
     };
     if (srcKey.comment != null) t.comment = srcKey.comment;
     if (srcKey.commentBefore != null) t.commentBefore = srcKey.commentBefore;
+    // A blank line above a map entry is recorded on its key
+    if ((srcKey as { spaceBefore?: boolean }).spaceBefore) t.spaceBefore = true;
   }
   const srcVal = source.value as
     | { comment?: string | null; commentBefore?: string | null }
@@ -89,11 +92,17 @@ function createValueWithComments(
       }
     }
     const newSeq = creator.createNode([]) as YAMLSeq;
-    for (const el of newValue) {
+    newValue.forEach((el, index) => {
       const oldItem = oldItemsByValue.get(primitiveValueKey(el));
       const itemNode = createValueWithComments(creator, oldItem, el);
+      // Blank lines between items follow their position, so an updated item
+      // keeps the layout of the one it replaces
+      const atPosition = oldSeq?.items[index] as { spaceBefore?: boolean } | undefined;
+      if (index > 0 && atPosition?.spaceBefore && itemNode && typeof itemNode === "object") {
+        (itemNode as { spaceBefore?: boolean }).spaceBefore = true;
+      }
       newSeq.add(itemNode);
-    }
+    });
     return newSeq;
   }
   // newValue is a plain object; preserve comments from old map if present
@@ -108,6 +117,8 @@ function createValueWithComments(
   const newMap = creator.createNode({}) as YAMLMap;
   const obj = newValue as Record<string, unknown>;
   for (const k of Object.keys(obj)) {
+    // An undefined property is absent, as in a plain YAML or JSON write
+    if (typeof obj[k] === "undefined") continue;
     const oldPair = oldPairsByKey.get(k);
     const childOldNode = oldPair ? oldPair.value : undefined;
     const childNewValue = createValueWithComments(creator, childOldNode, obj[k]);
@@ -115,6 +126,7 @@ function createValueWithComments(
     if (oldPair) copyComments(oldPair, newPair);
     newMap.add(newPair);
   }
+  applyEntrySpacing(oldMap, newMap);
   const result = newMap as { comment?: string | null; commentBefore?: string | null };
   const oldVal = oldNode as { comment?: string | null; commentBefore?: string | null } | undefined;
   if (oldVal && result) {
@@ -122,6 +134,30 @@ function createValueWithComments(
     if (oldVal.commentBefore != null) result.commentBefore = oldVal.commentBefore;
   }
   return result;
+}
+
+function keySpaceBefore(pair: Pair): boolean {
+  return Boolean((pair.key as { spaceBefore?: boolean } | null)?.spaceBefore);
+}
+
+/**
+ * Keys copied from the old map keep their own blank lines. When the old map
+ * put a blank line above every entry after the first, as Featurevisor's
+ * definitions do, new entries get one too. The first entry never does.
+ */
+function applyEntrySpacing(oldMap: YAMLMap | null, newMap: YAMLMap): void {
+  const oldPairs = (oldMap?.items || []) as Pair[];
+  const spacedThroughout = oldPairs.length > 1 && oldPairs.slice(1).every(keySpaceBefore);
+  const oldKeys = new Set(oldPairs.map((pair) => getKeyString(pair.key)));
+  (newMap.items as Pair[]).forEach((pair, index) => {
+    const key = pair.key as { spaceBefore?: boolean } | null;
+    if (!key || typeof key !== "object") return;
+    if (index === 0) {
+      delete key.spaceBefore;
+    } else if (spacedThroughout && !oldKeys.has(getKeyString(pair.key))) {
+      key.spaceBefore = true;
+    }
+  });
 }
 
 function replaceContentsPreservingComments(
@@ -144,12 +180,14 @@ function replaceContentsPreservingComments(
 
   const newMap = doc.createNode({}) as YAMLMap;
   for (const key of Object.keys(newContent)) {
+    if (typeof newContent[key] === "undefined") continue;
     const oldPair = oldPairsByKey.get(key);
     const valueNode = createValueWithComments(doc, oldPair?.value, newContent[key]);
     const newPair = doc.createPair(key, valueNode);
     if (oldPair) copyComments(oldPair, newPair);
     newMap.add(newPair);
   }
+  applyEntrySpacing(oldRoot as YAMLMap, newMap);
 
   (doc as { contents: unknown }).contents = newMap;
 }

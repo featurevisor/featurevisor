@@ -1,0 +1,11 @@
+description: Screen labels
+
+tags: [web]
+
+compose:
+  checkout:
+    feature: checkout
+    variable: label
+  delivery:
+    feature: delivery
+    variable: label

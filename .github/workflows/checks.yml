@@ -20,7 +20,7 @@ jobs:
   ci:
     name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -48,5 +48,27 @@ jobs:
       - name: Typecheck
         run: make typecheck
 
+      - name: Check editor schemas and release configuration
+        run: |
+          node scripts/test-editor-schemas.mjs
+          node scripts/test-release-config.mjs
+
       - name: Test
+        # Includes packed consumers and the isolated React 16.8.0 smoke through npm test.
         run: make test
+
+      - name: CLI integration
+        run: node scripts/test-cli-integration.mjs
+
+      - name: JavaScript runner conformance
+        run: node scripts/test-runner-conformance.mjs javascript
+
+      - name: JavaScript mutation conformance
+        run: node scripts/test-mutation-conformance.mjs javascript
+
+      - name: Bundle size budgets
+        run: make bundle-sizes
+
+      - name: Catalog browser
+        # Ubuntu runners include Google Chrome.
+        run: npm run test:catalog-browser

@@ -6,7 +6,7 @@ assertions:
   - context:
       browser:
         name: firefox
-        version: 100.0
+        version: "100.0"
     expectedToMatch: true
 
   ##
@@ -15,7 +15,7 @@ assertions:
   - context:
       browser:
         name: chrome
-        version: 100.0
+        version: "100.0"
     expectedToMatch: false
 
   - context:

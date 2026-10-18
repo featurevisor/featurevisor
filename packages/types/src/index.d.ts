@@ -4,7 +4,6 @@ export * from "./condition";
 export * from "./context";
 export * from "./datafile";
 export * from "./feature";
-export * from "./group";
 export * from "./segment";
 export * from "./history";
 export * from "./state";

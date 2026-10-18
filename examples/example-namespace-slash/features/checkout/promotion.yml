@@ -3,7 +3,7 @@ tags:
   - all
   - checkout
 
-bucketBy: user/id
+bucketBy: user.id
 
 variablesSchema:
   headline:
@@ -19,17 +19,17 @@ variablesSchema:
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
       variables:
         showCountdown: true
   production:
     - key: netherlands
-      segments: audience/netherlands
+      conditions: audience/netherlands
       percentage: 100
       variables:
         headline: Special offer for the Netherlands
         discountPercentage: 20
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100

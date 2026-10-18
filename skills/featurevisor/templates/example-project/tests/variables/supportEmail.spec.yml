@@ -1,8 +1,8 @@
 variable: supportEmail
 
 assertions:
-  - description: Production — NL shoppers get the local address
-    environment: production
+  - key: nl
+    description: Dutch shoppers reach the local support desk
     context:
       country: nl
     expectedValue: support-nl@example.com
@@ -10,14 +10,13 @@ assertions:
       reason: variable_override_rule
       variableOverrideKey: netherlands
 
-  - description: Production — everyone else gets the default
-    environment: production
+  - key: default
+    description: Everyone else gets the default
     context:
       country: us
     expectedValue: support@example.com
-
-  - description: Staging has no overrides, so the default applies in NL too
-    environment: staging
-    context:
-      country: nl
-    expectedValue: support@example.com
+    checks:
+      - key: trusted-domain
+        description: Every support address stays on our domain
+        operator: matches
+        value: '@example\.com$'

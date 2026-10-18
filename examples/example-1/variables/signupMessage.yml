@@ -7,18 +7,19 @@ type: string
 defaultValue: Create your account
 disabledValue: Sign up is unavailable
 
-requiredFeatures: allowSignup
+conditions:
+  feature: allowSignup
 
 overrides:
   production:
     - key: treatment
-      requiredFeatures:
+      conditions:
         - feature: allowSignup
           variation: treatment
       value: Sign up with your preferred provider
 
     - key: control
-      requiredFeatures:
+      conditions:
         - feature: allowSignup
           variation: control
       value: Create your account

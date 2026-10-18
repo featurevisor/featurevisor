@@ -29,13 +29,13 @@ variations:
       baz: baz_here
     variableOverrides:
       bar:
-        - segments:
+        - conditions:
             or:
               - countries.germany
               - countries.switzerland
           value: bar for DE or CH
       baz:
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value: baz for NL
 
 force:
@@ -61,11 +61,11 @@ force:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "1"
-      segments:
+      conditions:
         and:
           - mobile
           - or:
@@ -75,5 +75,5 @@ rules:
       variables:
         qux: true
     - key: "2"
-      segments: "*"
+      conditions: "*"
       percentage: 50

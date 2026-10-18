@@ -1,0 +1,31 @@
+# A scenario checks several definitions together. Root `checks`, no owner.
+# Its key comes from the file path: tests/scenarios/<name>.spec.yml
+description: Checkout values stay consistent
+
+# Add `environment: <name>` only when the project configures environments.
+
+context:
+  country: nl
+
+# Optional: fix the bucket for features, and supply upstream values.
+# at: 50
+# stickyVariables:
+#   maintenanceMode: true
+
+checks:
+  - key: currency-consistency
+    description: Global and feature currencies agree
+    variable: checkoutPolicy
+    path: currency
+    operator: equals
+    compareTo:
+      feature: checkout
+      variable: currency
+
+  - key: checkout-on
+    feature: checkout
+    enabled: true
+
+  - key: in-netherlands
+    segment: netherlands
+    matches: true

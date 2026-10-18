@@ -2,11 +2,11 @@ export type EntityType =
   | "attribute"
   | "segment"
   | "feature"
-  | "group"
   | "schema"
   | "variable"
   | "target"
-  | "test";
+  | "test"
+  | "scenario";
 
 export type CommitHash = string;
 
@@ -19,6 +19,7 @@ export interface HistoryEntry {
   commit: CommitHash;
   author: string;
   timestamp: string;
+  subject?: string;
   entities: HistoryEntity[];
 }
 

@@ -1,0 +1,12 @@
+description: A release controlled by the current date supplied by the application
+
+tags: [all]
+
+bucketBy: userId
+
+rules:
+  staging: &rules
+    - key: release-window
+      conditions: scheduledReleaseWindow
+      percentage: 100
+  production: *rules

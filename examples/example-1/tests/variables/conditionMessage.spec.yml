@@ -1,0 +1,22 @@
+variable: conditionMessage
+assertions:
+  - description: the child matches after its ancestor
+    environment: production
+    at: 75
+    context: { country: nl, device: mobile, loggedIn: true }
+    expectedValue: Treatment member
+  - description: a matching child cannot bypass an unmet ancestor
+    environment: production
+    at: 75
+    context: { country: nl, device: mobile, loggedIn: false }
+    expectedValue: Visitor
+  - description: the root gate precedes all overrides
+    environment: production
+    at: 25
+    context: { country: nl, device: mobile, loggedIn: true }
+    expectedValue: Unavailable
+    expectedEvaluation: { reason: conditions_unmet, conditions: conditionAudience }
+  - description: whole variable stickies bypass the root gate
+    environment: staging
+    stickyVariables: { conditionMessage: Sticky message }
+    expectedValue: Sticky message

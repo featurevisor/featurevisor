@@ -4,8 +4,8 @@ import type {
   RuleKey,
   Traffic,
   Force,
-  Required,
-  RequiredFeature,
+  Conditions,
+  StickyVariables,
   Variation,
   VariationValue,
   VariableKey,
@@ -15,31 +15,37 @@ import type {
   StickyFeatures,
   Allocation,
   Feature,
-  Condition,
-  GroupSegment,
   DatafileVariable,
-  GlobalVariableKey,
 } from "@featurevisor/types";
 
 import type { FeaturevisorModule } from "./modules.js";
 import { getBucketKey, getBucketedNumber } from "./bucketer.js";
 import type { BucketKey, BucketValue } from "./bucketer.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
-import { parseSegmentsIfStringified } from "./conditions.js";
+import {
+  beginEvaluation,
+  endEvaluation,
+  updateEvaluation,
+  DependencyError,
+  type DependencyOf,
+} from "./session.js";
+
+function hasOwn(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
 
 export type EvaluationReason =
   | "feature_not_found"
   | "disabled"
-  | "required"
-  | "out_of_range"
   | "no_variations"
   | "variation_disabled"
   | "variable_not_found"
   | "variable_default"
+  | "variable_composed"
   | "variable_disabled"
   | "variable_override_variation"
   | "variable_override_rule"
-  | "required_features_unmet"
+  | "conditions_unmet"
   | "no_match"
   | "forced"
   | "sticky"
@@ -58,15 +64,15 @@ export interface ForceResult {
 // Keep this small so ports can mirror the evaluation hot path without exposing
 // every stored-datafile helper as public SDK API.
 export interface EvaluationDataProvider {
+  /** Current membership for a later callback phase. */
+  readonly modules: FeaturevisorModule[];
   getFeature(featureKey: FeatureKey): Feature | undefined;
-  allConditionsAreMatched(conditions: Condition[] | Condition, context: Context): boolean;
-  allSegmentsAreMatched(
-    groupSegments: GroupSegment | GroupSegment[] | "*",
-    context: Context,
-  ): boolean;
-  getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined;
-  getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined;
-  getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult;
+  conditionsAreMatched(conditions: Conditions, dependencies: EvaluateDependencies): boolean;
+  getMatchedTraffic(traffic: Traffic[], dependencies: EvaluateDependencies): Traffic | undefined;
+  getMatchedForce(
+    featureKey: FeatureKey | Feature,
+    dependencies: EvaluateDependencies,
+  ): ForceResult;
   evaluateRequiredFeature(
     type: "flag" | "variation",
     featureKey: FeatureKey,
@@ -90,18 +96,15 @@ export interface Evaluation {
   traffic?: Traffic;
   forceIndex?: number;
   force?: Force;
-  required?: Required[];
-  requiredFeatures?: RequiredFeature[];
+  conditions?: Conditions;
   stickyFeature?: EvaluatedFeature;
-  /** @deprecated Use `stickyFeature`. */
-  sticky?: EvaluatedFeature;
 
   // variation
   variation?: Variation;
   variationValue?: VariationValue;
 
   // variable
-  variableKey?: VariableKey | GlobalVariableKey;
+  variableKey?: VariableKey;
   variableValue?: VariableValue;
   variableSchema?: ResolvedVariableSchema;
   variableOverrideIndex?: number;
@@ -109,12 +112,18 @@ export interface Evaluation {
   variableOverrideKey?: string;
   /** Authored key route when a global variable override matched. */
   variableOverridePath?: string[];
+  /** Ordered matched paths in an accumulating global override program, including parent overrides. */
+  variableOverridePaths?: string[][];
   /** Present when evaluating a global variable. */
   variable?: DatafileVariable;
 }
 
 export interface EvaluateDependencies {
   context: Context;
+  /** Immediate requester for an internal dependency, absent on application calls. */
+  dependencyOf?: DependencyOf;
+  /** Whether the dependency gates eligibility or supplies a consumed composition value. */
+  dependencyPurpose?: "condition" | "composition";
 
   reportDiagnostic: FeaturevisorDiagnosticReporter;
   modules: FeaturevisorModule[];
@@ -122,6 +131,7 @@ export interface EvaluateDependencies {
 
   // OverrideOptions
   stickyFeatures?: StickyFeatures;
+  stickyVariables?: StickyVariables;
 
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
@@ -135,14 +145,27 @@ export interface EvaluateParams {
 
 export type EvaluateOptions = EvaluateParams & EvaluateDependencies;
 
-export interface GlobalVariableEvaluateOptions {
+export interface VariableEvaluateOptions {
   type: "variable";
-  variableKey: GlobalVariableKey;
+  variableKey: VariableKey;
   context: Context;
   defaultVariableValue?: VariableValue;
+  /** Immediate requester for an internal dependency, absent on application calls. */
+  dependencyOf?: DependencyOf;
+  /** Whether the dependency gates eligibility or supplies a consumed composition value. */
+  dependencyPurpose?: "condition" | "composition";
 }
 
-export type EvaluationOptions = EvaluateOptions | GlobalVariableEvaluateOptions;
+export type EvaluationOptions = EvaluateOptions | VariableEvaluateOptions;
+
+function getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
+  if (!traffic.allocation) return undefined;
+  for (const allocation of traffic.allocation) {
+    const [start, end] = allocation.range;
+    if (allocation.range && start <= bucketValue && end >= bucketValue) return allocation;
+  }
+  return undefined;
+}
 
 function reportEvaluationDiagnostic(
   reportDiagnostic: FeaturevisorDiagnosticReporter,
@@ -165,130 +188,90 @@ function reportEvaluationDiagnostic(
   });
 }
 
-function requiredFeaturesAreMatched(
-  requirements: RequiredFeature[] | RequiredFeature | Required[] | undefined,
-  datafile: EvaluationDataProvider,
-  options: EvaluateOptions,
-): boolean {
-  if (typeof requirements === "undefined") return true;
-  const items = Array.isArray(requirements) ? requirements : [requirements];
-
-  return items.every((required) => {
-    let requiredKey: FeatureKey;
-    let requiredEnabled = true;
-    let requiredVariation: VariationValue | undefined;
-
-    if (typeof required === "string") {
-      requiredKey = required;
-    } else if ("feature" in required) {
-      requiredKey = required.feature;
-      requiredEnabled = required.enabled ?? true;
-      requiredVariation = required.variation;
-    } else {
-      requiredKey = required.key;
-      requiredVariation = required.variation;
-    }
-
-    const requiredEvaluation = datafile.evaluateRequiredFeature("flag", requiredKey, options);
-    if ((requiredEvaluation.enabled === true) !== requiredEnabled) return false;
-    if (typeof requiredVariation === "undefined") return true;
-
-    const variationEvaluation = datafile.evaluateRequiredFeature("variation", requiredKey, options);
-    return (
-      (variationEvaluation.variationValue || variationEvaluation.variation?.value) ===
-      requiredVariation
-    );
-  });
-}
-
-export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
-  try {
-    const { modules } = opts;
-
-    // run before modules
-    let options = opts;
-    for (const module of modules) {
-      if (module.before) {
-        options = module.before(options);
-      }
-    }
-    for (const module of modules) {
-      if (module.beforeEvaluation) {
-        options = module.beforeEvaluation(options);
-      }
-    }
-
-    // evaluate
-    let evaluation = evaluate(options);
-
-    // default: variation
-    if (
-      typeof options.defaultVariationValue !== "undefined" &&
-      evaluation.type === "variation" &&
-      typeof evaluation.variationValue === "undefined" &&
-      typeof evaluation.variation === "undefined"
-    ) {
-      evaluation.variationValue = options.defaultVariationValue;
-    }
-
-    // default: variable
-    if (
-      typeof options.defaultVariableValue !== "undefined" &&
-      evaluation.type === "variable" &&
-      typeof evaluation.variableValue === "undefined"
-    ) {
-      evaluation.variableValue = options.defaultVariableValue;
-    }
-
-    // run unified after modules
-    for (const module of modules) {
-      if (module.afterEvaluation) {
-        evaluation = module.afterEvaluation(evaluation, options) as Evaluation;
-      }
-    }
-
-    // run deprecated feature-only after modules
-    for (const module of modules) {
-      if (module.after) {
-        evaluation = module.after(evaluation, options);
-      }
-    }
-
-    return evaluation;
-  } catch (e) {
-    const { type, featureKey, variableKey, reportDiagnostic } = opts;
-
-    const evaluation: Evaluation = {
-      type,
-      featureKey,
-      variableKey,
-      reason: "error",
-      error: e instanceof Error ? e : new Error(String(e)),
-    };
-
-    reportEvaluationDiagnostic(
-      reportDiagnostic,
-      evaluation,
-      "Error during evaluation",
-      "error",
-      "evaluation_error",
-    );
-
-    return evaluation;
-  }
-}
-
-function evaluate(options: EvaluateOptions): Evaluation {
-  const {
+function evaluationError(
+  options: Pick<EvaluateOptions, "type" | "featureKey" | "variableKey" | "reportDiagnostic">,
+  error: unknown,
+  report = true,
+): Evaluation {
+  const { type, featureKey, variableKey, reportDiagnostic } = options;
+  const evaluation: Evaluation = {
     type,
     featureKey,
     variableKey,
-    context,
+    reason: "error",
+    error: error instanceof Error ? error : new Error(String(error)),
+  };
+  if (!report) return evaluation;
+  reportEvaluationDiagnostic(
     reportDiagnostic,
-    datafile,
-    stickyFeatures,
-    modules,
-  } = options;
+    evaluation,
+    "Error during evaluation",
+    "error",
+    "evaluation_error",
+  );
+  return evaluation;
+}
+
+export function beforeEvaluation<TOptions extends EvaluationOptions>(
+  modules: FeaturevisorModule[],
+  options: TOptions,
+): TOptions {
+  for (const module of modules) {
+    if (module.beforeEvaluation) {
+      beginEvaluation(options);
+      const next = module.beforeEvaluation(options) as TOptions;
+      updateEvaluation(options, next);
+      options = next;
+    }
+  }
+  return options;
+}
+
+export function afterEvaluation(
+  modules: FeaturevisorModule[],
+  evaluation: Evaluation,
+  options: EvaluationOptions,
+): Evaluation {
+  if (evaluation.error instanceof DependencyError) throw evaluation.error;
+  if (
+    evaluation.type === "variation" &&
+    typeof evaluation.variationValue === "undefined" &&
+    typeof evaluation.variation === "undefined" &&
+    typeof (options as EvaluateOptions).defaultVariationValue !== "undefined"
+  ) {
+    evaluation.variationValue = (options as EvaluateOptions).defaultVariationValue;
+  }
+  if (
+    evaluation.type === "variable" &&
+    typeof evaluation.variableValue === "undefined" &&
+    typeof options.defaultVariableValue !== "undefined"
+  ) {
+    evaluation.variableValue = options.defaultVariableValue;
+  }
+  for (const module of modules) {
+    if (module.afterEvaluation) evaluation = module.afterEvaluation(evaluation, options);
+  }
+  return evaluation;
+}
+
+export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
+  let options = opts;
+  try {
+    options = beforeEvaluation(opts.modules, opts);
+    const evaluation = evaluate(options);
+    return afterEvaluation(opts.datafile.modules, evaluation, options);
+  } catch (e) {
+    // A dependency failure fails the complete public call. Nested getters
+    // rethrow it, so only the outermost evaluation reports it.
+    return evaluationError(opts, e, !(e instanceof DependencyError && opts.dependencyOf));
+  } finally {
+    endEvaluation(options);
+  }
+}
+
+function evaluate(options: EvaluateOptions, flagOnly = false): Evaluation {
+  const { featureKey, variableKey, context, reportDiagnostic, datafile, stickyFeatures } = options;
+  const type = flagOnly ? "flag" : options.type;
 
   let evaluation: Evaluation;
 
@@ -299,10 +282,8 @@ function evaluate(options: EvaluateOptions): Evaluation {
     let flag: Evaluation;
     if (type !== "flag") {
       // needed by variation and variable evaluations
-      flag = evaluate({
-        ...options,
-        type: "flag",
-      });
+      flag = evaluate(options, true);
+      if (flag.error instanceof DependencyError) throw flag.error;
 
       if (flag.enabled === false) {
         evaluation = {
@@ -319,7 +300,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
             feature &&
             variableKey &&
             feature.variablesSchema &&
-            feature.variablesSchema[variableKey]
+            hasOwn(feature.variablesSchema, variableKey)
           ) {
             const variableSchema = feature.variablesSchema[variableKey];
 
@@ -369,16 +350,17 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Sticky
      */
-    if (stickyFeatures && stickyFeatures[featureKey]) {
+    const stickyFeature =
+      stickyFeatures && hasOwn(stickyFeatures, featureKey) ? stickyFeatures[featureKey] : undefined;
+    if (stickyFeature) {
       // flag
-      if (type === "flag" && typeof stickyFeatures[featureKey].enabled !== "undefined") {
+      if (type === "flag" && typeof stickyFeature.enabled !== "undefined") {
         evaluation = {
           type,
           featureKey,
           reason: "sticky",
-          stickyFeature: stickyFeatures[featureKey],
-          sticky: stickyFeatures[featureKey],
-          enabled: stickyFeatures[featureKey].enabled,
+          stickyFeature,
+          enabled: stickyFeature.enabled,
         };
 
         reportEvaluationDiagnostic(reportDiagnostic, evaluation, "using sticky enabled");
@@ -388,7 +370,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variation
       if (type === "variation") {
-        const variationValue = stickyFeatures[featureKey].variation;
+        const variationValue = stickyFeature.variation;
 
         if (typeof variationValue !== "undefined") {
           evaluation = {
@@ -406,9 +388,9 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // variable
       if (variableKey) {
-        const variables = stickyFeatures[featureKey].variables;
+        const variables = stickyFeature.variables;
 
-        if (variables) {
+        if (variables && hasOwn(variables, variableKey)) {
           const result = variables[variableKey];
 
           if (typeof result !== "undefined") {
@@ -466,7 +448,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
     let variableSchema: ResolvedVariableSchema | undefined;
 
     if (variableKey) {
-      if (feature.variablesSchema && feature.variablesSchema[variableKey]) {
+      if (feature.variablesSchema && hasOwn(feature.variablesSchema, variableKey)) {
         variableSchema = feature.variablesSchema[variableKey];
       }
 
@@ -522,7 +504,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
     /**
      * Forced
      */
-    const { force, forceIndex } = datafile.getMatchedForce(feature, context);
+    const { force, forceIndex } = datafile.getMatchedForce(feature, options);
 
     if (force) {
       // flag
@@ -562,7 +544,12 @@ function evaluate(options: EvaluateOptions): Evaluation {
       }
 
       // variable
-      if (variableKey && force.variables && typeof force.variables[variableKey] !== "undefined") {
+      if (
+        variableKey &&
+        force.variables &&
+        hasOwn(force.variables, variableKey) &&
+        typeof force.variables[variableKey] !== "undefined"
+      ) {
         evaluation = {
           type,
           featureKey,
@@ -581,30 +568,22 @@ function evaluate(options: EvaluateOptions): Evaluation {
     }
 
     /**
-     * Required
+     * Root gate, after force and before bucketing.
      */
-    const requiredFeatures = feature.requiredFeatures || feature.required;
-    if (type === "flag" && requiredFeatures && requiredFeatures.length > 0) {
-      const requiredFeaturesAreEnabled = requiredFeaturesAreMatched(
-        requiredFeatures,
-        datafile,
-        options,
-      );
-
-      if (!requiredFeaturesAreEnabled) {
-        evaluation = {
-          type,
-          featureKey,
-          reason: "required",
-          required: feature.required,
-          requiredFeatures: feature.requiredFeatures,
-          enabled: requiredFeaturesAreEnabled,
-        };
-
-        reportEvaluationDiagnostic(reportDiagnostic, evaluation, "required features not enabled");
-
-        return evaluation;
-      }
+    if (
+      type === "flag" &&
+      feature.conditions !== undefined &&
+      !datafile.conditionsAreMatched(feature.conditions, options)
+    ) {
+      evaluation = {
+        type,
+        featureKey,
+        enabled: false,
+        reason: "conditions_unmet",
+        conditions: feature.conditions,
+      };
+      reportEvaluationDiagnostic(reportDiagnostic, evaluation, "root conditions did not match");
+      return evaluation;
     }
 
     /**
@@ -618,7 +597,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       reportDiagnostic,
     });
-    for (const module of modules) {
+    for (const module of datafile.modules) {
       if (module.bucketKey) {
         bucketKey = module.bucketKey({
           featureKey,
@@ -632,7 +611,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
     // bucketValue
     let bucketValue = getBucketedNumber(bucketKey);
 
-    for (const module of modules) {
+    for (const module of datafile.modules) {
       if (module.bucketValue) {
         bucketValue = module.bucketValue({
           featureKey,
@@ -647,13 +626,13 @@ function evaluate(options: EvaluateOptions): Evaluation {
     let matchedAllocation: Allocation | undefined;
 
     if (type !== "flag") {
-      matchedTraffic = datafile.getMatchedTraffic(feature.traffic, context);
+      matchedTraffic = datafile.getMatchedTraffic(feature.traffic, options);
 
       if (matchedTraffic) {
-        matchedAllocation = datafile.getMatchedAllocation(matchedTraffic, bucketValue);
+        matchedAllocation = getMatchedAllocation(matchedTraffic, bucketValue);
       }
     } else {
-      matchedTraffic = datafile.getMatchedTraffic(feature.traffic, context);
+      matchedTraffic = datafile.getMatchedTraffic(feature.traffic, options);
     }
 
     if (matchedTraffic) {
@@ -677,46 +656,6 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
       // flag
       if (type === "flag") {
-        // flag: check if mutually exclusive
-        if (feature.ranges && feature.ranges.length > 0) {
-          const matchedRange = feature.ranges.find((range) => {
-            return bucketValue >= range[0] && bucketValue < range[1];
-          });
-
-          // matched
-          if (matchedRange) {
-            evaluation = {
-              type,
-              featureKey,
-              reason: "allocated",
-              bucketKey,
-              bucketValue,
-              ruleKey: matchedTraffic.key,
-              traffic: matchedTraffic,
-              enabled:
-                typeof matchedTraffic.enabled === "undefined" ? true : matchedTraffic.enabled,
-            };
-
-            reportEvaluationDiagnostic(reportDiagnostic, evaluation, "matched");
-
-            return evaluation;
-          }
-
-          // no match
-          evaluation = {
-            type,
-            featureKey,
-            reason: "out_of_range",
-            bucketKey,
-            bucketValue,
-            enabled: false,
-          };
-
-          reportEvaluationDiagnostic(reportDiagnostic, evaluation, "not matched");
-
-          return evaluation;
-        }
-
         // flag: override from rule
         if (typeof matchedTraffic.enabled !== "undefined") {
           evaluation = {
@@ -807,34 +746,16 @@ function evaluate(options: EvaluateOptions): Evaluation {
       // override from rule
       if (matchedTraffic) {
         // "variableOverrides"
-        if (matchedTraffic.variableOverrides && matchedTraffic.variableOverrides[variableKey]) {
+        if (
+          matchedTraffic.variableOverrides &&
+          hasOwn(matchedTraffic.variableOverrides, variableKey)
+        ) {
           const overrides = matchedTraffic.variableOverrides[variableKey];
 
-          const overrideIndex = overrides.findIndex((o) => {
-            if (
-              o.requiredFeatures &&
-              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
-            ) {
-              return false;
-            }
-            if (o.conditions) {
-              return datafile.allConditionsAreMatched(
-                typeof o.conditions === "string" && o.conditions !== "*"
-                  ? JSON.parse(o.conditions)
-                  : o.conditions,
-                context,
-              );
-            }
-
-            if (o.segments) {
-              return datafile.allSegmentsAreMatched(
-                parseSegmentsIfStringified(o.segments),
-                context,
-              );
-            }
-
-            return typeof o.requiredFeatures !== "undefined";
-          });
+          const overrideIndex = overrides.findIndex(
+            (o) =>
+              o.conditions !== undefined && datafile.conditionsAreMatched(o.conditions, options),
+          );
 
           if (overrideIndex !== -1) {
             const override = overrides[overrideIndex];
@@ -863,6 +784,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
         // from "variables"
         if (
           matchedTraffic.variables &&
+          hasOwn(matchedTraffic.variables, variableKey) &&
           typeof matchedTraffic.variables[variableKey] !== "undefined"
         ) {
           evaluation = {
@@ -898,34 +820,17 @@ function evaluate(options: EvaluateOptions): Evaluation {
       if (variationValue && Array.isArray(feature.variations)) {
         const variation = feature.variations.find((v) => v.value === variationValue);
 
-        if (variation && variation.variableOverrides && variation.variableOverrides[variableKey]) {
+        if (
+          variation &&
+          variation.variableOverrides &&
+          hasOwn(variation.variableOverrides, variableKey)
+        ) {
           const overrides = variation.variableOverrides[variableKey];
 
-          const overrideIndex = overrides.findIndex((o) => {
-            if (
-              o.requiredFeatures &&
-              !requiredFeaturesAreMatched(o.requiredFeatures, datafile, options)
-            ) {
-              return false;
-            }
-            if (o.conditions) {
-              return datafile.allConditionsAreMatched(
-                typeof o.conditions === "string" && o.conditions !== "*"
-                  ? JSON.parse(o.conditions)
-                  : o.conditions,
-                context,
-              );
-            }
-
-            if (o.segments) {
-              return datafile.allSegmentsAreMatched(
-                parseSegmentsIfStringified(o.segments),
-                context,
-              );
-            }
-
-            return typeof o.requiredFeatures !== "undefined";
-          });
+          const overrideIndex = overrides.findIndex(
+            (o) =>
+              o.conditions !== undefined && datafile.conditionsAreMatched(o.conditions, options),
+          );
 
           if (overrideIndex !== -1) {
             const override = overrides[overrideIndex];
@@ -958,6 +863,7 @@ function evaluate(options: EvaluateOptions): Evaluation {
         if (
           variation &&
           variation.variables &&
+          hasOwn(variation.variables, variableKey) &&
           typeof variation.variables[variableKey] !== "undefined"
         ) {
           evaluation = {
@@ -1042,22 +948,11 @@ function evaluate(options: EvaluateOptions): Evaluation {
 
     return evaluation;
   } catch (e) {
-    evaluation = {
-      type,
-      featureKey,
-      variableKey,
-      reason: "error",
-      error: e instanceof Error ? e : new Error(String(e)),
-    };
-
-    reportEvaluationDiagnostic(
-      reportDiagnostic,
-      evaluation,
-      "Error during evaluation",
-      "error",
-      "evaluation_error",
+    // afterEvaluation rethrows dependency failures to the enclosing call.
+    return evaluationError(
+      { type, featureKey, variableKey, reportDiagnostic },
+      e,
+      !(e instanceof DependencyError),
     );
-
-    return evaluation;
   }
 }

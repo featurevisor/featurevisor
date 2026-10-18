@@ -6,6 +6,50 @@ import {
 } from "./matrix";
 
 describe("core :: tester :: matrix", function () {
+  test("leaves feature expectations the author omitted absent", () => {
+    const [assertion] = getFeatureAssertionsFromMatrix(0, {
+      matrix: { country: ["nl"] },
+      at: 50,
+      context: { country: "${{ country }}" },
+      expectedVariation: "treatment",
+    });
+
+    expect(assertion).not.toHaveProperty("expectedToBeEnabled");
+    expect(assertion).not.toHaveProperty("defaultVariationValue");
+    expect(assertion).not.toHaveProperty("environment");
+    expect(assertion).not.toHaveProperty("stickyFeatures");
+    expect(assertion).toMatchObject({ context: { country: "nl" }, expectedVariation: "treatment" });
+  });
+
+  test("leaves segment settings the author omitted absent", () => {
+    const [assertion] = getSegmentAssertionsFromMatrix(0, {
+      matrix: { country: ["nl"] },
+      context: { country: "${{ country }}" },
+      expectedToMatch: true,
+    });
+
+    expect(assertion).not.toHaveProperty("environment");
+    expect(assertion).not.toHaveProperty("stickyFeatures");
+    expect(assertion).toMatchObject({ context: { country: "nl" }, expectedToMatch: true });
+  });
+
+  test("substitutes segment dependency evaluation settings", () => {
+    const result = getSegmentAssertionsFromMatrix(0, {
+      matrix: { environment: ["production"], at: [25], enabled: [true] },
+      environment: "${{ environment }}",
+      at: "${{ at }}" as never,
+      stickyFeatures: { rollout: { enabled: "${{ enabled }}" as never } },
+      stickyVariables: { permission: "${{ enabled }}" },
+      context: {},
+      expectedToMatch: true,
+    });
+    expect(result[0]).toMatchObject({
+      environment: "production",
+      at: 25,
+      stickyFeatures: { rollout: { enabled: true } },
+      stickyVariables: { permission: true },
+    });
+  });
   test("should empty array when no keys are available", function () {
     const matrix = {};
     const combinations = getMatrixCombinations(matrix);
@@ -50,6 +94,39 @@ describe("core :: tester :: matrix", function () {
       { a: 2, b: "y", c: true },
       { a: 2, b: "y", c: false },
     ]);
+  });
+
+  test("allows absent or explicitly undefined variable and scenario matrices", function () {
+    expect(
+      getVariableAssertionsFromMatrix(0, {
+        environment: "production",
+        expectedValue: "configured",
+      }),
+    ).toHaveLength(1);
+    expect(
+      getVariableAssertionsFromMatrix(0, {
+        environment: "production",
+        matrix: undefined,
+        checks: [{ variable: "settings", operator: "exists" }],
+      } as any),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    ["null", null],
+    ["false", false],
+    ["an empty object", {}],
+    ["an array", []],
+    ["an empty axis", { value: [] }],
+    ["a nonarray axis", { value: "configured" }],
+  ])("rejects %s as a present matrix before expansion", (_name, matrix) => {
+    expect(() =>
+      getVariableAssertionsFromMatrix(0, {
+        environment: "production",
+        matrix,
+        checks: [{ variable: "settings", operator: "exists" }],
+      } as any),
+    ).toThrow("Matrix");
   });
 
   test("substitutes nested global variable assertion values", function () {
@@ -127,12 +204,79 @@ describe("core :: tester :: matrix", function () {
     expect(assertions.every((assertion) => typeof assertion.matrix === "undefined")).toBe(true);
   });
 
+  test("substitutes scenario checks and child checks without changing native values", function () {
+    const assertions = getVariableAssertionsFromMatrix(1, {
+      environment: "${{ environment }}",
+      target: "${{ target }}",
+      matrix: {
+        environment: ["production"],
+        target: ["web"],
+        at: [75],
+        variable: ["settings"],
+        path: [["items", 0, "limit"]],
+        expected: [4],
+        enabled: [true],
+      },
+      at: "${{ at }}" as never,
+      description: "${{ variable }} at ${{ at }}",
+      context: { enabled: "${{ enabled }}" },
+      stickyVariables: { settings: { enabled: "${{ enabled }}" } },
+      checks: [
+        {
+          variable: "${{ variable }}",
+          path: "${{ path }}",
+          operator: "equals",
+          value: "${{ expected }}",
+        },
+      ],
+      children: [
+        {
+          context: { enabled: "${{ enabled }}" },
+          checks: [
+            {
+              variable: "${{ variable }}",
+              operator: "notNull",
+            },
+          ],
+        },
+      ],
+    } as any);
+
+    expect(assertions).toHaveLength(1);
+    expect(assertions[0]).toMatchObject({
+      description: "Assertion #2: settings at 75",
+      environment: "production",
+      target: "web",
+      at: 75,
+      context: { enabled: true },
+      stickyVariables: { settings: { enabled: true } },
+      checks: [
+        {
+          variable: "settings",
+          path: ["items", 0, "limit"],
+          operator: "equals",
+          value: 4,
+        },
+      ],
+      children: [
+        {
+          context: { enabled: true },
+          checks: [{ variable: "settings", operator: "notNull" }],
+        },
+      ],
+    });
+    expect(assertions[0].matrix).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(assertions[0], "expectedValue")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(assertions[0], "expectedEvaluation")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(assertions[0], "defaultVariableValue")).toBe(false);
+  });
+
   test("substitutes nested feature and child assertion values", function () {
     const assertions = getFeatureAssertionsFromMatrix(0, {
       environment: "staging",
       at: 50,
       matrix: { value: ["configured"], enabled: [true] },
-      sticky: {
+      stickyFeatures: {
         checkout: { enabled: true, variables: { settings: { value: "${{ value }}" } } },
       },
       defaultVariableValues: { settings: { value: "${{ value }}" } },
@@ -149,7 +293,9 @@ describe("core :: tester :: matrix", function () {
     });
 
     expect(assertions[0]).toMatchObject({
-      sticky: { checkout: { enabled: true, variables: { settings: { value: "configured" } } } },
+      stickyFeatures: {
+        checkout: { enabled: true, variables: { settings: { value: "configured" } } },
+      },
       defaultVariableValues: { settings: { value: "configured" } },
       expectedToBeEnabled: true,
       expectedEvaluations: {

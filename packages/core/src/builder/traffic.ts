@@ -9,6 +9,57 @@ import type {
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { getAllocation, getUpdatedAvailableRangesAfterFilling } from "./allocator";
+import { FeaturevisorCLIError } from "../error";
+
+function validateSavedAllocation(
+  traffic: ExistingFeature["traffic"][number],
+  variations: Variation[],
+  feature?: string,
+  stateFile?: string,
+) {
+  const fail = () => {
+    throw new FeaturevisorCLIError(
+      `Invalid saved variation allocation for feature "${feature || "(unknown)"}", rule "${traffic.key}".${stateFile ? ` State file: ${stateFile}.` : ""} Restore valid allocation state or deliberately rename this rule to create a new allocation. Existing audiences may change when allocating again. See https://featurevisor.com/docs/state-files/#traffic-allocation`,
+      {
+        code: "invalid_saved_allocation",
+        details: { feature, rule: traffic.key, ...(stateFile ? { stateFile } : {}) },
+      },
+    );
+  };
+  if (
+    !Number.isFinite(traffic.percentage) ||
+    traffic.percentage < 0 ||
+    traffic.percentage > MAX_BUCKETED_NUMBER
+  )
+    fail();
+  const allocations = traffic.allocation || [];
+  if (!Array.isArray(allocations)) fail();
+  const ranges = allocations
+    .map((allocation) => {
+      if (!allocation || typeof allocation !== "object") fail();
+      const { variation, range } = allocation;
+      if (
+        !variations.some(({ value }) => value === variation) ||
+        !Array.isArray(range) ||
+        range.length !== 2 ||
+        !range.every(Number.isFinite) ||
+        range[0] < 0 ||
+        range[1] > MAX_BUCKETED_NUMBER ||
+        range[1] < range[0]
+      )
+        fail();
+      return range;
+    })
+    .sort((a, b) => a[0] - b[0]);
+  let end = 0;
+  // Shared endpoints are intentional. Only gaps and overlapping interiors are invalid.
+  const tolerance = 1e-8;
+  for (const range of ranges) {
+    if (Math.abs(range[0] - end) > tolerance) fail();
+    end = range[1];
+  }
+  if (Math.abs(end - traffic.percentage) > tolerance) fail();
+}
 
 export function detectIfVariationsChanged(
   yamlVariations: Variation[] | undefined, // as exists in latest YAML
@@ -52,42 +103,25 @@ export function getRulePercentageDiff(
   return trafficPercentage - existingPercentage;
 }
 
-export function detectIfRangesChanged(
-  availableRanges: Range[], // as exists in latest YAML
-  existingFeature?: ExistingFeature, // from state file
-): boolean {
-  if (!existingFeature) {
-    return false;
-  }
-
-  if (!existingFeature.ranges) {
-    return false;
-  }
-
-  return JSON.stringify(existingFeature.ranges) !== JSON.stringify(availableRanges);
-}
-
 export function getTraffic(
   // from current YAML
   variations: Variation[] | undefined,
   parsedRules: Rule[],
   // from previous release
   existingFeature: ExistingFeature | undefined,
-  // ranges from group slots
-  ranges?: Range[],
+  featureKey?: string,
+  stateFile?: string,
 ): Traffic[] {
   const result: Traffic[] = [];
 
-  // @NOTE: may be pass from builder directly?
-  const availableRanges =
-    ranges && ranges.length > 0 ? ranges : ([[0, MAX_BUCKETED_NUMBER]] as Range[]);
+  const availableRanges: Range[] = [[0, MAX_BUCKETED_NUMBER]];
 
   parsedRules.forEach(function (parsedRule) {
     const rulePercentage = parsedRule.percentage; // 0 - 100
 
     const traffic: Traffic = {
       key: parsedRule.key,
-      segments: parsedRule.segments,
+      conditions: parsedRule.conditions,
       percentage: rulePercentage * (MAX_BUCKETED_NUMBER / 100),
       allocation: [],
       variationWeights: parsedRule.variationWeights,
@@ -107,13 +141,11 @@ export function getTraffic(
     const variationsChanged = detectIfVariationsChanged(variations, existingFeature);
     const existingTrafficRule = existingFeature?.traffic.find((t) => t.key === parsedRule.key);
     const rulePercentageDiff = getRulePercentageDiff(traffic.percentage, existingTrafficRule);
-    const rangesChanged = detectIfRangesChanged(availableRanges, existingFeature);
 
     const needsRebucketing =
       !existingTrafficRule || // new rule
       variationsChanged || // variations changed
       rulePercentageDiff < 0 || // percentage decreased
-      rangesChanged || // belongs to a group, and group ranges changed
       // @NOTE: this means, if variationWeights is present, it will always rebucket.
       // worth checking if we can maintain consistent bucketing for this use case as well.
       // but this use case is unlikely to hit in practice because it doesn't matter if the feature itself is 100% rolled out.
@@ -121,6 +153,9 @@ export function getTraffic(
 
     let updatedAvailableRanges = JSON.parse(JSON.stringify(availableRanges));
 
+    if (existingTrafficRule && !needsRebucketing && variations?.length && !traffic.variation) {
+      validateSavedAllocation(existingTrafficRule, variations, featureKey, stateFile);
+    }
     if (existingTrafficRule && existingTrafficRule.allocation && !needsRebucketing) {
       // increase: build on top of existing allocations
       let existingSum = 0;

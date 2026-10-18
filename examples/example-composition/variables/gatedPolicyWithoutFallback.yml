@@ -1,0 +1,10 @@
+description: An unmet composition gate returns null without disabledValue
+
+tags: [web]
+
+compose: policy
+
+conditions:
+  attribute: country
+  operator: equals
+  value: nl

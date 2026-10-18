@@ -6,4 +6,5 @@ properties:
   name:
     type: string
   version:
-    type: semver
+    type: string
+    format: semver

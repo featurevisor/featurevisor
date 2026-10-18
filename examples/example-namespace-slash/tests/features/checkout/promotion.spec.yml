@@ -4,8 +4,9 @@ assertions:
     at: 50
     environment: production
     context:
-      user/id: user-123
-      user/country: nl
+      user:
+        id: user-123
+        country: nl
     expectedToBeEnabled: true
     expectedVariables:
       headline: Special offer for the Netherlands

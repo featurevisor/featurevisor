@@ -1,0 +1,23 @@
+description: Shipping policy
+
+tags: [source]
+
+type: object
+
+properties:
+  limit:
+    type: integer
+
+required: [limit]
+
+defaultValue:
+  limit: 50
+
+overrides:
+  - key: netherlands
+    conditions:
+      attribute: country
+      operator: equals
+      value: nl
+    value:
+      limit: 75

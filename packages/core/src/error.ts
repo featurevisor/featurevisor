@@ -29,7 +29,7 @@ export function getFeaturevisorCLIErrorMessage(error: unknown) {
 
 export function formatFeaturevisorCLIError(
   error: unknown,
-  options: { json?: boolean; pretty?: boolean } = {},
+  options: { json?: boolean; pretty?: boolean; verbose?: boolean } = {},
 ) {
   const message = getFeaturevisorCLIErrorMessage(error) || "An unexpected error occurred.";
   const cliError = error instanceof FeaturevisorCLIError ? error : undefined;
@@ -44,6 +44,13 @@ export function formatFeaturevisorCLIError(
     };
 
     return options.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload);
+  }
+
+  if (options.verbose && error instanceof Error) {
+    const cause = "cause" in error ? error.cause : undefined;
+    return [error.stack || message, cause instanceof Error ? cause.stack : undefined]
+      .filter(Boolean)
+      .join("\nCaused by: ");
   }
 
   return message;

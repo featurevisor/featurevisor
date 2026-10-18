@@ -15,7 +15,6 @@ function minimalProjectConfig(): ProjectConfig {
     featuresDirectoryPath: "",
     segmentsDirectoryPath: "",
     attributesDirectoryPath: "",
-    groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
     variablesDirectoryPath: "",
@@ -63,7 +62,7 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
   },
   version: {
     description: "Version",
-    oneOf: [{ type: "string" }, { type: "double" }],
+    oneOf: [{ type: "string" }, { type: "number" }],
   },
   traits: {
     description: "Traits",

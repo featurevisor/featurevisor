@@ -47,21 +47,84 @@ import { FeaturevisorOpenFeatureProvider } from ${JSON.stringify(
 const featurevisor = createFeaturevisor({
   logLevel: "fatal",
   datafile: {
-    schemaVersion: "2",
+    schemaVersion: "4",
     revision: "browser",
     segments: {},
     features: {
+      portableDate: {
+        bucketBy: "userId",
+        force: [{ conditions: { attribute: "date", operator: "before", value: "2024-03-01T00:00:00Z" }, enabled: true }],
+      },
       smoke: {
         key: "smoke",
         bucketBy: "userId",
-        traffic: [{ key: "all", segments: "*", percentage: 100000, enabled: true }],
+        conditions: [{ variable: "policy", path: [0, "enabled"], operator: "equals", value: true }],
+        traffic: [{ key: "all", conditions: "*", percentage: 100000, enabled: true }],
+      },
+    },
+    variables: {
+      view: {
+        type: "object",
+        compose: [{ key: "enabled", feature: "smoke" }, { key: "methods", variable: "methods" }],
+      },
+      patchedView: {
+        type: "object",
+        compose: [{ key: "enabled", feature: "smoke" }, { key: "methods", variable: "methods" }],
+        overrideProgram: [{ key: "add", keyPath: ["add"], segments: "*", onMatch: 1, onMiss: 1,
+          operations: [{ op: "appendUnique", path: ["methods"], value: "cash" }] }],
+      },
+      literalView: {
+        type: "object", compose: [{ key: "enabled", feature: "smoke" }],
+        overrideProgram: [{ key: "literal", keyPath: ["literal"], segments: "*", onMatch: 1, onMiss: 1,
+          operations: [{ op: "set", path: [], value: { enabled: false } }] }],
+      },
+      methods: {
+        type: "array",
+        defaultValue: ["card", "paypal", "paypal"],
+        overrideProgram: [
+          { key: "methods", keyPath: ["methods"], segments: "*", onMatch: 1, onMiss: 1,
+            operations: [
+              { op: "appendUnique", path: [], value: "card" },
+              { op: "appendUnique", path: [], value: "ideal" },
+              { op: "removeValue", path: [], value: "paypal" },
+            ] },
+        ],
+      },
+      policy: {
+        type: "array",
+        defaultValue: [],
+        overrideProgram: [
+          { key: "add", keyPath: ["add"], segments: "*", onMatch: 1, onMiss: 1,
+            operations: [{ op: "append", path: [], value: { id: "item", enabled: false } }] },
+          { key: "update", keyPath: ["update"], segments: "*", onMatch: 2, onMiss: 2,
+            operations: [{ op: "set", path: [{ select: { property: "id", values: ["item"] } }, "enabled"], value: true }] },
+        ],
       },
     },
   },
 });
 const provider = new FeaturevisorOpenFeatureProvider({ featurevisor });
+const specialContext = JSON.parse('{"__proto__":{"injected":true}}');
+featurevisor.setContext(specialContext);
+const child = featurevisor.spawn(specialContext);
+child.setContext(specialContext);
+const safeContext = child.getContext({});
 document.body.dataset.result =
+  Object.getPrototypeOf(safeContext) === Object.prototype &&
+  Object.prototype.hasOwnProperty.call(safeContext, "__proto__") &&
+  safeContext.injected === undefined &&
   featurevisor.isEnabled("smoke", { userId: "browser" }) &&
+  featurevisor.isEnabled("portableDate", { date: "2024-02-29T23:59:59.999Z" }) &&
+  !featurevisor.isEnabled("portableDate", { date: "2024-02-30T00:00:00Z" }) &&
+  JSON.stringify(featurevisor.getVariable("policy")) === '[{"id":"item","enabled":true}]' &&
+  JSON.stringify(featurevisor.getVariable("methods")) === '["card","ideal"]' &&
+  JSON.stringify(featurevisor.getVariable("view")) === '{"enabled":true,"methods":["card","ideal"]}' &&
+  Object.getPrototypeOf(featurevisor.getVariable("view")) === Object.prototype &&
+  JSON.stringify(featurevisor.getVariable("patchedView")) === '{"enabled":true,"methods":["card","ideal","cash"]}' &&
+  featurevisor.getVariable("literalView").enabled === false &&
+  featurevisor.getVariable("literalView") !== featurevisor.getVariable("literalView") &&
+  JSON.stringify(featurevisor.getVariable("methods")) === '["card","ideal"]' &&
+  featurevisor.isEnabled("smoke", { userId: "browser-again" }) &&
   provider.featurevisor === featurevisor
     ? "passed"
     : "failed";
@@ -95,6 +158,7 @@ document.body.dataset.result =
     browser,
     [
       "--headless=new",
+      `--user-data-dir=${join(temporaryDirectory, "browser-profile")}`,
       "--no-sandbox",
       "--disable-gpu",
       "--disable-background-networking",

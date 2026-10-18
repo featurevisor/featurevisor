@@ -7,14 +7,14 @@ bucketBy: userId
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: "1"
-      segments: countries.netherlands
+      conditions: countries.netherlands
       percentage: 100
 
     - key: "2"
-      segments: "*"
+      conditions: "*"
       percentage: 0

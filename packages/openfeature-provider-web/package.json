@@ -37,6 +37,7 @@
     "browser"
   ],
   "repository": {
+    "directory": "packages/openfeature-provider-web",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },
@@ -54,9 +55,9 @@
     "@featurevisor/sdk": "3.8.0"
   },
   "peerDependencies": {
-    "@openfeature/web-sdk": "^1.9.0"
+    "@openfeature/web-sdk": "^1.10.0"
   },
   "devDependencies": {
-    "@openfeature/web-sdk": "^1.9.0"
+    "@openfeature/web-sdk": "^1.10.0"
   }
 }

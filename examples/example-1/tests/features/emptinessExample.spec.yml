@@ -1,0 +1,36 @@
+feature: emptinessExample
+assertions:
+  - description: enables the flag and selects its feature variable for empty values
+    environment: staging
+    at: 50
+    context:
+      userId: empty-user
+      phone: ""
+      interests: []
+      preferences: {}
+    expectedToBeEnabled: true
+    expectedVariables:
+      status: All values are empty
+
+  - description: enables the flag and selects its feature variable for populated values
+    environment: production
+    at: 50
+    context:
+      userId: populated-user
+      phone: " "
+      interests: [sports]
+      preferences:
+        theme: null
+    expectedToBeEnabled: true
+    expectedVariables:
+      status: All values are populated
+
+  - description: does not match when only some values are empty
+    environment: production
+    at: 50
+    context:
+      userId: mixed-user
+      phone: ""
+      interests: [sports]
+      preferences: {}
+    expectedToBeEnabled: false

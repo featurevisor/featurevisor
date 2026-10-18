@@ -1,5 +1,5 @@
 import type { FeatureKey, RuleKey, VariationValue, Weight } from "./feature";
-import type { Percentage, Allocation, Range } from "./datafile";
+import type { Percentage, Allocation } from "./datafile";
 
 export interface ExistingFeature {
   hash?: string;
@@ -12,7 +12,6 @@ export interface ExistingFeature {
     percentage: Percentage;
     allocation?: Allocation[];
   }[];
-  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface ExistingFeatures {

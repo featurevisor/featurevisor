@@ -1,0 +1,15 @@
+description: Guard a nullable source before mutating its fields
+
+tags: [web]
+
+compose:
+  policy:
+    variable: nullablePolicy
+
+overrides:
+  - key: available
+    conditions:
+      variable: nullablePolicy
+      operator: notNull
+    mutate:
+      policy.limit: 90

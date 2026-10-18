@@ -31,7 +31,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
               },
             ],
@@ -97,9 +97,7 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "mobile" });
 
       expect(result.segments.web).toBeDefined();
-      expect(result.segments.web.conditions).toEqual([
-        { attribute: "platform", operator: "equals", value: "web" },
-      ]);
+      expect(result.segments.web.conditions).toEqual({ or: [] });
     });
 
     test("segment with * condition is removed", function () {
@@ -273,7 +271,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: "web",
+                conditions: "web",
                 variation: "treatment",
               },
             ],
@@ -283,7 +281,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("force with non-matching segments remains", function () {
@@ -301,7 +299,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: "web",
+                conditions: "web",
                 variation: "treatment",
               },
             ],
@@ -311,7 +309,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "mobile" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("web");
+      expect(result.features.feature1.force?.[0].conditions).toEqual({ or: [] });
     });
 
     test("force with matching conditions becomes *", function () {
@@ -359,9 +357,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "mobile" });
 
-      expect(result.features.feature1.force?.[0].conditions).toEqual([
-        { attribute: "platform", operator: "equals", value: "web" },
-      ]);
+      expect(result.features.feature1.force?.[0].conditions).toEqual({ or: [] });
     });
 
     test("force with array of segments - all match", function () {
@@ -382,7 +378,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: ["web", "chrome"],
+                conditions: ["web", "chrome"],
                 variation: "treatment",
               },
             ],
@@ -392,7 +388,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("force with array of segments - partial match", function () {
@@ -413,7 +409,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: ["web", "chrome"],
+                conditions: ["web", "chrome"],
                 variation: "treatment",
               },
             ],
@@ -423,7 +419,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual(["chrome"]);
+      expect(result.features.feature1.force?.[0].conditions).toEqual(["chrome"]);
     });
 
     test("force with AND group segments", function () {
@@ -444,7 +440,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: { and: ["web", "chrome"] },
+                conditions: { and: ["web", "chrome"] },
                 variation: "treatment",
               },
             ],
@@ -454,7 +450,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("force with OR group segments", function () {
@@ -475,7 +471,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: { or: ["web", "mobile"] },
+                conditions: { or: ["web", "mobile"] },
                 variation: "treatment",
               },
             ],
@@ -485,7 +481,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("force with AND conditions", function () {
@@ -564,11 +560,11 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: "web",
+                conditions: "web",
                 variation: "treatment",
               },
               {
-                segments: "mobile",
+                conditions: "mobile",
                 variation: "control",
               },
             ],
@@ -578,8 +574,8 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[1].segments).toEqual("mobile");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[1].conditions).toEqual({ or: [] });
     });
   });
 
@@ -599,7 +595,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
@@ -609,7 +605,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("traffic with non-matching segments remains", function () {
@@ -627,7 +623,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
@@ -637,7 +633,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "mobile" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("web");
+      expect(result.features.feature1.traffic[0].conditions).toEqual({ or: [] });
     });
 
     test("traffic with array of segments - all match", function () {
@@ -658,7 +654,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: ["web", "chrome"],
+                conditions: ["web", "chrome"],
                 percentage: 100000,
               },
             ],
@@ -668,7 +664,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("traffic with array of segments - partial match", function () {
@@ -689,7 +685,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: ["web", "chrome"],
+                conditions: ["web", "chrome"],
                 percentage: 100000,
               },
             ],
@@ -699,7 +695,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual(["chrome"]);
+      expect(result.features.feature1.traffic[0].conditions).toEqual(["chrome"]);
     });
 
     test("traffic with AND group segments", function () {
@@ -720,7 +716,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: { and: ["web", "chrome"] },
+                conditions: { and: ["web", "chrome"] },
                 percentage: 100000,
               },
             ],
@@ -730,7 +726,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("traffic with OR group segments", function () {
@@ -751,7 +747,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: { or: ["web", "mobile"] },
+                conditions: { or: ["web", "mobile"] },
                 percentage: 100000,
               },
             ],
@@ -761,7 +757,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("multiple traffic entries", function () {
@@ -782,12 +778,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 50000,
               },
               {
                 key: "rule2",
-                segments: "mobile",
+                conditions: "mobile",
                 percentage: 50000,
               },
             ],
@@ -797,8 +793,8 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.traffic[1].segments).toEqual("mobile");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature1.traffic[1].conditions).toEqual({ or: [] });
     });
 
     test("consecutive traffic entries with * segments - second is removed", function () {
@@ -816,12 +812,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 50000,
               },
               {
                 key: "rule2",
-                segments: "*",
+                conditions: "*",
                 percentage: 50000,
               },
             ],
@@ -850,7 +846,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 25000,
               },
             ],
@@ -862,7 +858,7 @@ describe("core: applyContextToDatafile", function () {
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("non-consecutive traffic entries with * segments - both remain", function () {
@@ -883,17 +879,17 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 33333,
               },
               {
                 key: "rule2",
-                segments: "mobile",
+                conditions: "mobile",
                 percentage: 33333,
               },
               {
                 key: "rule3",
-                segments: "*",
+                conditions: "*",
                 percentage: 33334,
               },
             ],
@@ -921,12 +917,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 50000,
               },
               {
                 key: "rule2",
-                segments: "web",
+                conditions: "web",
                 percentage: 50000,
               },
             ],
@@ -957,10 +953,10 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
-                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                  config: [{ conditions: "mobile", value: { source: "mobile" } }],
                 },
               },
             ],
@@ -970,7 +966,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { device: "mobile" });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
         "*",
       );
     });
@@ -990,10 +986,10 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
-                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                  config: [{ conditions: "mobile", value: { source: "mobile" } }],
                 },
               },
             ],
@@ -1003,9 +999,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { device: "desktop" });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
-        "mobile",
-      );
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual({
+        or: [],
+      });
     });
 
     test("traffic variableOverride with matching conditions becomes *", function () {
@@ -1019,7 +1015,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
                   config: [
@@ -1053,7 +1049,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
                   config: [
@@ -1071,9 +1067,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { country: "de" });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual([
-        { attribute: "country", operator: "equals", value: "nl" },
-      ]);
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual({
+        or: [],
+      });
     });
 
     test("traffic variableOverride supports array/group segments and conditions", function () {
@@ -1094,12 +1090,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
                   config: [
                     {
-                      segments: { and: ["mobile", "touch"] },
+                      conditions: { and: ["mobile", "touch"] },
                       value: { source: "group-segments" },
                     },
                     {
@@ -1126,7 +1122,7 @@ describe("core: applyContextToDatafile", function () {
         tier: "premium",
       });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
         "*",
       );
       expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
@@ -1152,12 +1148,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
                   config: [
                     {
-                      segments: JSON.stringify({ and: ["mobile", "touch"] }),
+                      conditions: JSON.stringify({ and: ["mobile", "touch"] }),
                       value: { source: "stringified-segments" },
                     },
                     {
@@ -1180,7 +1176,7 @@ describe("core: applyContextToDatafile", function () {
         country: "nl",
       });
 
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
         "*",
       );
       expect(result.features.feature1.traffic[0].variableOverrides?.config[1].conditions).toEqual(
@@ -1206,18 +1202,18 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 50000,
                 variableOverrides: {
-                  config: [{ segments: "mobile", value: { source: "rule1" } }],
+                  config: [{ conditions: "mobile", value: { source: "rule1" } }],
                 },
               },
               {
                 key: "rule2",
-                segments: "web",
+                conditions: "web",
                 percentage: 50000,
                 variableOverrides: {
-                  config: [{ segments: "mobile", value: { source: "rule2" } }],
+                  config: [{ conditions: "mobile", value: { source: "rule2" } }],
                 },
               },
             ],
@@ -1232,7 +1228,7 @@ describe("core: applyContextToDatafile", function () {
 
       expect(result.features.feature1.traffic).toHaveLength(1);
       expect(result.features.feature1.traffic[0].key).toEqual("rule1");
-      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].segments).toEqual(
+      expect(result.features.feature1.traffic[0].variableOverrides?.config[0].conditions).toEqual(
         "*",
       );
     });
@@ -1252,10 +1248,10 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100000,
                 variableOverrides: {
-                  config: [{ segments: "mobile", value: { source: "mobile" } }],
+                  config: [{ conditions: "mobile", value: { source: "mobile" } }],
                 },
               },
             ],
@@ -1292,7 +1288,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1304,9 +1300,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("variableOverride with non-matching segments remains", function () {
@@ -1329,7 +1325,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1341,9 +1337,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "mobile" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "web",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual({ or: [] });
     });
 
     test("variableOverride with matching conditions becomes *", function () {
@@ -1409,7 +1405,7 @@ describe("core: applyContextToDatafile", function () {
 
       expect(
         result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
-      ).toEqual([{ attribute: "platform", operator: "equals", value: "web" }]);
+      ).toEqual({ or: [] });
     });
 
     test("variableOverride with array of segments", function () {
@@ -1435,7 +1431,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: ["web", "chrome"],
+                      conditions: ["web", "chrome"],
                     },
                   ],
                 },
@@ -1447,9 +1443,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("variableOverride with AND group segments", function () {
@@ -1475,7 +1471,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: { and: ["web", "chrome"] },
+                      conditions: { and: ["web", "chrome"] },
                     },
                   ],
                 },
@@ -1487,9 +1483,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("variableOverride with OR group segments", function () {
@@ -1515,7 +1511,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: { or: ["web", "mobile"] },
+                      conditions: { or: ["web", "mobile"] },
                     },
                   ],
                 },
@@ -1527,9 +1523,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("variableOverride with AND conditions", function () {
@@ -1631,11 +1627,11 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                     {
                       value: "blue",
-                      segments: "mobile",
+                      conditions: "mobile",
                     },
                   ],
                 },
@@ -1647,12 +1643,12 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[1].segments).toEqual(
-        "mobile",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[1].conditions,
+      ).toEqual({ or: [] });
     });
 
     test("multiple variables with variableOverrides", function () {
@@ -1675,13 +1671,13 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                   size: [
                     {
                       value: "large",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1693,12 +1689,12 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
-      expect(result.features.feature1.variations?.[0].variableOverrides?.size[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.size[0].conditions,
+      ).toEqual("*");
     });
 
     test("multiple variations with variableOverrides", function () {
@@ -1724,7 +1720,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1735,7 +1731,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "blue",
-                      segments: "mobile",
+                      conditions: "mobile",
                     },
                   ],
                 },
@@ -1747,12 +1743,12 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
-      expect(result.features.feature1.variations?.[1].variableOverrides?.color[0].segments).toEqual(
-        "mobile",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[1].variableOverrides?.color[0].conditions,
+      ).toEqual({ or: [] });
     });
   });
 
@@ -1775,13 +1771,13 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
             force: [
               {
-                segments: "chrome",
+                conditions: "chrome",
                 variation: "treatment",
               },
             ],
@@ -1792,7 +1788,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1804,11 +1800,11 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("multiple features with different scoping results", function () {
@@ -1829,7 +1825,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
@@ -1839,7 +1835,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "mobile",
+                conditions: "mobile",
                 percentage: 100000,
               },
             ],
@@ -1849,8 +1845,8 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature2.traffic[0].segments).toEqual("mobile");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature2.traffic[0].conditions).toEqual({ or: [] });
     });
 
     test("segment used in multiple places - context applied everywhere", function () {
@@ -1868,13 +1864,13 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
             force: [
               {
-                segments: "web",
+                conditions: "web",
                 variation: "treatment",
               },
             ],
@@ -1885,7 +1881,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -1898,11 +1894,11 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
 
     test("nested AND/OR segments in force and traffic", function () {
@@ -1926,7 +1922,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: {
+                conditions: {
                   and: ["web", "chrome"],
                 },
                 percentage: 100000,
@@ -1934,7 +1930,7 @@ describe("core: applyContextToDatafile", function () {
             ],
             force: [
               {
-                segments: {
+                conditions: {
                   or: ["web", "mobile"],
                 },
                 variation: "treatment",
@@ -1946,8 +1942,8 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
     test("nested AND/OR conditions in force and variableOverrides", function () {
@@ -2122,7 +2118,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: [],
+                      conditions: [],
                     },
                   ],
                 },
@@ -2134,12 +2130,12 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, {});
 
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual({ or: [] });
     });
 
-    test("force with both segments and conditions - segments take precedence", function () {
+    test("force combines segment and attribute conditions with AND", function () {
       const datafile: DatafileContent = {
         schemaVersion: "2",
         revision: "unknown",
@@ -2154,8 +2150,8 @@ describe("core: applyContextToDatafile", function () {
             traffic: [],
             force: [
               {
-                segments: "web",
-                conditions: [{ attribute: "browser", operator: "equals", value: "chrome" }],
+                conditions: ["web", { attribute: "browser", operator: "equals", value: "chrome" }],
+
                 variation: "treatment",
               },
             ],
@@ -2165,8 +2161,9 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].conditions).toBeDefined();
+      expect(result.features.feature1.force?.[0].conditions).toEqual([
+        { attribute: "browser", operator: "equals", value: "chrome" },
+      ]);
     });
 
     test("traffic with * segments initially - consecutive removal still works", function () {
@@ -2180,12 +2177,12 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "*",
+                conditions: "*",
                 percentage: 50000,
               },
               {
                 key: "rule2",
-                segments: "*",
+                conditions: "*",
                 percentage: 50000,
               },
             ],
@@ -2213,7 +2210,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
@@ -2224,7 +2221,7 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
     });
 
     test("context with extra attributes not in segments", function () {
@@ -2306,22 +2303,22 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 25000,
               },
               {
                 key: "rule2",
-                segments: "web",
+                conditions: "web",
                 percentage: 25000,
               },
               {
                 key: "rule3",
-                segments: "web",
+                conditions: "web",
                 percentage: 25000,
               },
               {
                 key: "rule4",
-                segments: "web",
+                conditions: "web",
                 percentage: 25000,
               },
             ],
@@ -2355,7 +2352,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -2368,9 +2365,9 @@ describe("core: applyContextToDatafile", function () {
       const result = applyContextToDatafile(datafile, { platform: "web" });
 
       expect(result.segments).toEqual({});
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
     });
   });
 
@@ -2396,13 +2393,13 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
             force: [
               {
-                segments: "chrome",
+                conditions: "chrome",
                 variation: "treatment",
               },
             ],
@@ -2413,7 +2410,7 @@ describe("core: applyContextToDatafile", function () {
                   color: [
                     {
                       value: "red",
-                      segments: "web",
+                      conditions: "web",
                     },
                   ],
                 },
@@ -2425,7 +2422,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "mobile",
+                conditions: "mobile",
                 percentage: 100000,
               },
             ],
@@ -2439,13 +2436,13 @@ describe("core: applyContextToDatafile", function () {
       expect(result.segments.chrome).toBeUndefined();
       expect(result.segments.mobile).toBeDefined();
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
-      expect(result.features.feature1.force?.[0].segments).toEqual("*");
-      expect(result.features.feature1.variations?.[0].variableOverrides?.color[0].segments).toEqual(
-        "*",
-      );
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
+      expect(result.features.feature1.force?.[0].conditions).toEqual("*");
+      expect(
+        result.features.feature1.variations?.[0].variableOverrides?.color[0].conditions,
+      ).toEqual("*");
 
-      expect(result.features.feature2.traffic[0].segments).toEqual("mobile");
+      expect(result.features.feature2.traffic[0].conditions).toEqual({ or: [] });
     });
 
     test("datafile with deeply nested conditions and segments", function () {
@@ -2466,7 +2463,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: {
+                conditions: {
                   and: [
                     "web",
                     {
@@ -2499,7 +2496,7 @@ describe("core: applyContextToDatafile", function () {
 
       const result = applyContextToDatafile(datafile, { platform: "web", browser: "chrome" });
 
-      expect(result.features.feature1.traffic[0].segments).toEqual("*");
+      expect(result.features.feature1.traffic[0].conditions).toEqual("*");
       expect(result.features.feature1.force?.[0].conditions).toEqual("*");
     });
 
@@ -2521,14 +2518,14 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "not-web",
-                segments: {
+                conditions: {
                   not: ["web"],
                 },
                 percentage: 100000,
               },
               {
                 key: "not-web-and-chrome",
-                segments: {
+                conditions: {
                   not: ["web", "chrome"],
                 },
                 percentage: 100000,
@@ -2540,10 +2537,8 @@ describe("core: applyContextToDatafile", function () {
 
       const webResult = applyContextToDatafile(datafile, { platform: "web" });
 
-      expect(webResult.features.feature1.traffic[0].segments).toEqual({
-        not: ["*"],
-      });
-      expect(webResult.features.feature1.traffic[1].segments).toEqual({
+      expect(webResult.features.feature1.traffic[0].conditions).toEqual({ or: [] });
+      expect(webResult.features.feature1.traffic[1].conditions).toEqual({
         not: ["chrome"],
       });
 
@@ -2552,11 +2547,11 @@ describe("core: applyContextToDatafile", function () {
         browser: "chrome",
       });
 
-      expect(webChromeResult.features.feature1.traffic[0].segments).toEqual({
-        not: ["*"],
+      expect(webChromeResult.features.feature1.traffic[0].conditions).toEqual({
+        or: [],
       });
-      expect(webChromeResult.features.feature1.traffic[1].segments).toEqual({
-        not: ["*"],
+      expect(webChromeResult.features.feature1.traffic[1].conditions).toEqual({
+        or: [],
       });
     });
 
@@ -2575,7 +2570,7 @@ describe("core: applyContextToDatafile", function () {
             traffic: [
               {
                 key: "rule1",
-                segments: "web",
+                conditions: "web",
                 percentage: 100000,
               },
             ],
@@ -2656,8 +2651,8 @@ describe("core: applyContextToDatafile", function () {
               {
                 key: "mobile",
                 keyPath: ["netherlands", "mobile"],
-                conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
-                segments: "mobile",
+                conditions: [{ attribute: "country", operator: "equals", value: "nl" }, "mobile"],
+
                 value: "Welkom",
               },
             ],
@@ -2672,7 +2667,7 @@ describe("core: applyContextToDatafile", function () {
       const override = result.variables?.banner.overrides?.[0];
 
       expect(override?.conditions).toBe("*");
-      expect(override?.segments).toBe("*");
+      expect(override?.conditions).toBe("*");
       expect(override?.keyPath).toEqual(["netherlands", "mobile"]);
     });
   });

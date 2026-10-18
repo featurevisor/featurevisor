@@ -115,7 +115,7 @@ variablesSchema:
         type: object
         properties:
           score:
-            type: double
+            type: number
           items:
             type: array
             items:
@@ -132,9 +132,9 @@ variablesSchema:
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 50
   production:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 50

@@ -3,6 +3,10 @@ import { performance } from "node:perf_hooks";
 
 import { createFeaturevisor } from "../packages/sdk/cjs/index.js";
 
+// Raw v3 runtime inputs deliberately exercise legacy normalization and dependency
+// indexing. These are not authored definitions. No unreleased variable selector
+// fields are used, so every feature gate remains active in the v4 SDK.
+
 const SEGMENT_COUNT = 100;
 const FEATURE_COUNT = 1_000;
 const GLOBAL_VARIABLE_COUNT = 1_000;
@@ -63,7 +67,7 @@ function createDatafile(variant) {
     features[`feature${index}`] = {
       hash: `feature-${index}-${variant}`,
       bucketBy: "userId",
-      required: index === 0 ? undefined : [`feature${index - 1}`],
+      requiredFeatures: index === 0 ? undefined : [`feature${index - 1}`],
       traffic: [
         {
           key: "eligible",
@@ -232,10 +236,12 @@ const context = {
 };
 
 printResult({
+  inputContract:
+    "Legacy v3 schema 2 datafiles with released segments and requiredFeatures; normalization included",
   scale: {
     segments: Object.keys(datafileA.segments).length,
     features: Object.keys(datafileA.features).length,
-    globalVariables: Object.keys(datafileA.variables).length,
+    variables: Object.keys(datafileA.variables).length,
   },
   datafile: { initial, fullReplacement, firstPartialUpdate, cachedPartialUpdate },
   evaluation: {

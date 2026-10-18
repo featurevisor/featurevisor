@@ -1,0 +1,17 @@
+description: Policy available only while checkout is enabled
+
+tags: [source]
+
+type: object
+
+properties:
+  limit:
+    type: integer
+
+required: [limit]
+
+defaultValue:
+  limit: 10
+
+conditions:
+  feature: checkout

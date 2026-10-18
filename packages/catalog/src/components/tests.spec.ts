@@ -1,12 +1,56 @@
-import type { TestFeature, TestSegment, TestVariable } from "@featurevisor/types";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
+import type { TestFeature, TestScenario, TestSegment, TestVariable } from "@featurevisor/types";
 
+jest.mock("react-markdown", () => () => null);
+
+import { EntityTests } from "./tests";
 import {
   expandTestAssertions,
   getTestAssertionPermalink,
+  getTestCheckDisplayLabel,
+  getTestCheckPath,
+  getTestCheckPermalink,
   getTestValuePresence,
 } from "../testModel";
 
 describe("catalog test presentation", () => {
+  it("renders unified condition reasons and expectation fields", () => {
+    const tests: Array<TestFeature | TestVariable> = [
+      {
+        feature: "checkout",
+        assertions: [
+          {
+            at: 50,
+            expectedToBeEnabled: false,
+            expectedEvaluations: {
+              flag: { reason: "conditions_unmet", conditions: [{ feature: "prerequisite" }] },
+              variation: { reason: "disabled" },
+              variables: { message: { reason: "variable_disabled" } },
+            },
+          },
+        ],
+      },
+      {
+        variable: "message",
+        assertions: [
+          {
+            expectedValue: "blocked",
+            expectedEvaluation: { reason: "conditions_unmet" },
+          },
+        ],
+      },
+    ];
+    const html = renderToStaticMarkup(
+      React.createElement(MemoryRouter, {}, React.createElement(EntityTests, { tests })),
+    );
+    expect(html).toContain("conditions_unmet");
+    expect(html).not.toMatch(/required_features_unmet|required_variables_unmet|requiredFeatures/);
+    expect(html).toContain("variable_disabled");
+    expect(html).toContain("conditions");
+  });
+
   it("distinguishes an explicit null from a missing value", () => {
     expect(getTestValuePresence(undefined)).toBe("missing");
     expect(getTestValuePresence(null)).toBe("null");
@@ -21,6 +65,7 @@ describe("catalog test presentation", () => {
         {
           environment: "staging",
           context: { country: "nl" },
+          at: 0,
           expectedToBeEnabled: true,
         },
       ],
@@ -76,6 +121,7 @@ describe("catalog test presentation", () => {
         {
           environment: "staging",
           context: {},
+          at: 0,
           expectedToBeEnabled: true,
         },
         {
@@ -160,6 +206,38 @@ describe("catalog test presentation", () => {
     );
   });
 
+  it("uses named check paths for stable nested permalinks with numeric fallbacks", () => {
+    expect(getTestCheckDisplayLabel({ variable: "settings", operator: "exists" }, 1)).toBe("2");
+    expect(
+      getTestCheckDisplayLabel(
+        { key: "enabled", feature: "checkout", enabled: true },
+        0,
+        "availability",
+      ),
+    ).toBe("availability.enabled");
+    expect(
+      getTestCheckPermalink("checkout", "production.2", [
+        ["key", "availability"],
+        ["key", "enabled"],
+      ]),
+    ).toBe('checkout:production.2:check:[["key","availability"],["key","enabled"]]');
+  });
+
+  it("keeps dotted, numeric-looking, nested, and child check identities distinct", () => {
+    const paths = [
+      getTestCheckPath({ key: "a.b", variable: "settings", operator: "exists" }, 0),
+      getTestCheckPath({ key: "b", variable: "settings", operator: "exists" }, 0, [["key", "a"]]),
+      getTestCheckPath({ key: "2", variable: "settings", operator: "exists" }, 0),
+      getTestCheckPath({ variable: "settings", operator: "exists" }, 1),
+      getTestCheckPath({ key: "a.b", variable: "settings", operator: "exists" }, 0, [["child", 0]]),
+    ];
+    const permalinks = paths.map((checkPath) =>
+      getTestCheckPermalink("checkout", "production", checkPath),
+    );
+
+    expect(new Set(permalinks).size).toBe(permalinks.length);
+  });
+
   it("preserves global variable defaults and detailed expectations in matrix cases", () => {
     const test: TestVariable = {
       key: "support-email",
@@ -225,4 +303,181 @@ describe("catalog test presentation", () => {
 
     expect(expandTestAssertions(test)).toEqual([]);
   });
+
+  it("renders variable checks and scenario specs without treating them as segments", () => {
+    const variableTest: TestVariable = {
+      key: "support-email",
+      variable: "supportEmail",
+      assertions: [
+        {
+          checks: [
+            {
+              operator: "equals",
+              compareTo: { variable: "backupEmail" },
+            },
+          ],
+        },
+      ],
+    };
+    const scenarioTest: TestScenario = {
+      key: "checkout-readiness",
+      scenario: "checkout readiness",
+      assertions: [
+        {
+          checks: [
+            {
+              variable: "supportEmail",
+              operator: "notEquals",
+              value: "",
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        {},
+        React.createElement(EntityTests, { tests: [variableTest, scenarioTest] }),
+      ),
+    );
+
+    expect(html.match(/>Checks<\/h4>/g)).toHaveLength(2);
+    expect(html).toContain("Scenario");
+    expect(html).toContain("checkout readiness");
+    expect(html).not.toContain("Does not match segment");
+    expect(html).not.toContain(">Expected</h4>");
+  });
+
+  it("shows an explicitly empty expected value while omitting absent expectations", () => {
+    const test: TestVariable = {
+      key: "settings",
+      variable: "settings",
+      assertions: [{ checks: [{ operator: "exists" }] }, { expectedValue: "" }],
+    };
+    const html = renderToStaticMarkup(
+      React.createElement(MemoryRouter, {}, React.createElement(EntityTests, { tests: [test] })),
+    );
+
+    expect(html.match(/>Expected<\/h4>/g)).toHaveLength(1);
+    expect(html).toContain("value");
+  });
+
+  it("presents scenario checks consistently without renaming payload fields", () => {
+    const scenarioTest: TestScenario = {
+      key: "checkout-readiness.spec",
+      scenario: "checkout readiness",
+      assertions: [
+        {
+          context: { checks: "root context checks" },
+          checks: [{ feature: "checkout", enabled: true }],
+          children: [
+            {
+              context: { checks: "child context checks" },
+              checks: [{ feature: "pricing", variation: "control" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        {},
+        React.createElement(EntityTests, { tests: [scenarioTest] }),
+      ),
+    );
+
+    expect(html.match(/>Checks<\/h4>/g)).toHaveLength(2);
+    expect(html.match(/>checks<\/dt>/g)).toHaveLength(2);
+    expect(html).toContain("root context checks");
+    expect(html).toContain("child context checks");
+    expect(scenarioTest.assertions[0]).toHaveProperty("checks");
+    expect(scenarioTest.assertions[0].children?.[0]).toHaveProperty("checks");
+  });
+
+  it("renders named root and nested checks with stable permalinks", () => {
+    const scenarioTest: TestScenario = {
+      key: "checkout-readiness",
+      scenario: "checkout readiness",
+      assertions: [
+        {
+          key: "production",
+          checks: [
+            {
+              key: "availability",
+              description: "Checkout stays available",
+              and: [
+                { key: "enabled", feature: "checkout", enabled: true },
+                { feature: "pricing", variation: "control" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        {},
+        React.createElement(EntityTests, { tests: [scenarioTest] }),
+      ),
+    );
+
+    // Named checks show their key beside the sentence. Unnamed ones are just the sentence.
+    expect(html).toContain(">availability</span>");
+    expect(html).toContain(">enabled</span>");
+    expect(html).toContain("All of these hold");
+    expect(html).toContain('aria-label="Link to check availability.2"');
+    expect(html).not.toContain("check 2");
+    expect(html).toContain(
+      `assertion-${encodeURIComponent(
+        getTestCheckPermalink("checkout-readiness", "production", [["key", "availability"]]),
+      )}`,
+    );
+    expect(html).toContain(
+      `assertion-${encodeURIComponent(
+        getTestCheckPermalink("checkout-readiness", "production", [
+          ["key", "availability"],
+          ["key", "enabled"],
+        ]),
+      )}`,
+    );
+    expect(html).toContain('aria-label="Link to check availability"');
+    expect(html).toContain('title="Link to this check"');
+  });
+
+  it.each(["quality/gate.spec", "constructor.spec"])(
+    "disambiguates test and scenario permalinks for %s",
+    (key) => {
+      const featureTest: TestFeature = {
+        key,
+        feature: "checkout",
+        assertions: [{ environment: "production", context: {}, at: 0, expectedToBeEnabled: true }],
+      };
+      const scenarioTest: TestScenario = {
+        key,
+        scenario: "Quality gate",
+        assertions: [{ checks: [{ feature: "checkout", enabled: true }] }],
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(
+          MemoryRouter,
+          {},
+          React.createElement(EntityTests, { tests: [featureTest, scenarioTest] }),
+        ),
+      );
+
+      expect(html).toContain(`assertion-${encodeURIComponent(`test:${key}:1`)}`);
+      expect(html).toContain(`assertion-${encodeURIComponent(`scenario:${key}:1`)}`);
+      expect(html).toContain("Assertion 1</button></h3>");
+      expect(html).toContain("Case 1</button></h3>");
+      expect(html).toContain('aria-label="Link to assertion 1"');
+      expect(html).toContain('aria-label="Link to case 1"');
+    },
+  );
 });

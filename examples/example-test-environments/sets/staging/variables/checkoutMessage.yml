@@ -5,8 +5,8 @@ type: string
 defaultValue: Staging checkout
 overrides:
   - key: internal
-    segments: internal
+    conditions: internal
     value: Staging checkout for engineers
   - key: default
-    segments: "*"
+    conditions: "*"
     value: Staging checkout

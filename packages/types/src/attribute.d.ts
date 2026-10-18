@@ -1,4 +1,4 @@
-import type { SchemaKey, Value } from "./schema";
+import type { SchemaFormat, SchemaKey, Value } from "./schema";
 
 export type AttributeKey = string;
 
@@ -17,15 +17,7 @@ export type AttributeValue =
   | AttributeObjectValue
   | Record<string, unknown>;
 
-export type AttributeType =
-  | "boolean"
-  | "string"
-  | "integer"
-  | "double"
-  | "date"
-  | "semver"
-  | "object"
-  | "array";
+export type AttributeType = "boolean" | "string" | "integer" | "number" | "object" | "array";
 
 export interface AttributeSchema {
   description?: string; // only available in YAML files
@@ -36,6 +28,7 @@ export interface AttributeSchema {
   maxLength?: number;
   minLength?: number;
   pattern?: string;
+  format?: SchemaFormat;
   items?: AttributeProperty;
   maxItems?: number;
   minItems?: number;

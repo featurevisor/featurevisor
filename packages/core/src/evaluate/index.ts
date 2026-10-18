@@ -1,4 +1,4 @@
-import type { Context, DatafileContent } from "@featurevisor/types";
+import type { Attribute, Context, DatafileContent, Schema } from "@featurevisor/types";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 
@@ -7,9 +7,12 @@ import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
 import { Plugin } from "../cli";
 import { parseJsonObjectOption, parsePositiveIntegerOption } from "../cli/validation";
 import { FeaturevisorCLIError } from "../error";
+import { suggestKey } from "../linter/diagnostics";
+import { getContextWarnings } from "../linter/contextWarnings";
 import { explainEvaluation, getEvaluationValue, printExplanation } from "./explain";
 import type { ExplanationOptions } from "./explain";
 import { assertExplanationMatchesEvaluation } from "./validateExplanation";
+import { probeConditions } from "./probeConditions";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import {
   CLI_COLOR_CYAN,
@@ -34,7 +37,9 @@ function printEvaluationDetails(evaluation: Evaluation) {
 
     if (key === "variableSchema") {
       console.log(`  ${colorize("variableType", CLI_COLOR_CYAN)}:`, value.type);
-      console.log(`  ${colorize("defaultValue", CLI_COLOR_CYAN)}:`, value.defaultValue);
+      if (Object.prototype.hasOwnProperty.call(value, "defaultValue")) {
+        console.log(`  ${colorize("defaultValue", CLI_COLOR_CYAN)}:`, value.defaultValue);
+      }
       continue;
     }
 
@@ -77,6 +82,7 @@ async function evaluateFeatureWithDatafile(
   options: EvaluateOptions,
   target?: string,
   explanationOptions?: ExplanationOptions,
+  warnings: Array<{ attribute: string; message: string }> = [],
 ) {
   let diagnostics: FeaturevisorDiagnostic[] = [];
   const explain = (
@@ -84,7 +90,40 @@ async function evaluateFeatureWithDatafile(
     entries: FeaturevisorDiagnostic[],
     variable?: string,
   ) => {
-    const metadata = { ...explanationOptions, ...options, variable, target };
+    const featureKey = evaluation.featureKey || options.feature;
+    const feature = featureKey ? datafileContent.features[featureKey] : undefined;
+    const conditions = featureKey
+      ? feature?.conditions
+      : datafileContent.variables?.[evaluation.variableKey ?? variable ?? ""]?.conditions;
+    const conditionsProbe =
+      conditions !== undefined
+        ? probeConditions(datafileContent, options.context as Context, conditions)
+        : undefined;
+    const selectionProbes = [
+      ...(feature?.force || [])
+        .filter((entry) => entry.conditions !== undefined)
+        .map((entry, index) => ({
+          ...probeConditions(datafileContent, options.context as Context, entry.conditions!),
+          scope: "force" as const,
+          index,
+        })),
+      ...(feature?.traffic || [])
+        .filter((entry) => entry.conditions !== undefined)
+        .map((entry, index) => ({
+          ...probeConditions(datafileContent, options.context as Context, entry.conditions!),
+          scope: "rule" as const,
+          key: entry.key,
+          index,
+        })),
+    ];
+    const metadata = {
+      ...explanationOptions,
+      ...options,
+      variable,
+      target,
+      conditionsProbe,
+      selectionProbes,
+    };
     const explanation = explainEvaluation(evaluation, datafileContent, entries, metadata);
     assertExplanationMatchesEvaluation(evaluation, explanation, datafileContent, metadata);
     return explanation;
@@ -101,20 +140,50 @@ async function evaluateFeatureWithDatafile(
     const explanation = options.explain
       ? explain(evaluation, evaluationDiagnostics, options.variable)
       : undefined;
-    const result = explanation ? { ...evaluation, explanation } : evaluation;
+    const result = {
+      ...evaluation,
+      ...(explanation ? { explanation } : {}),
+      ...(warnings.length ? { warnings } : {}),
+    };
     if (options.json) return result;
 
     console.log("");
     console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor variable");
     console.log(`  ${colorize("Variable", CLI_COLOR_CYAN)}: ${options.variable}`);
-    console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+    if (options.environment)
+      console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment}`);
     if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
     console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
+    if (warnings.length) {
+      printHeader("Warnings");
+      warnings.forEach((warning) => console.log(CLI_FORMAT_YELLOW, warning.message));
+    }
     if (options.verbose) printDiagnostics(evaluationDiagnostics);
     if (explanation) {
       printExplanation(explanation);
     } else {
       console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(evaluation.variableValue)}`);
+      const composition = datafileContent.variables?.[options.variable]?.compose;
+      if (composition && evaluation.reason !== "conditions_unmet") {
+        console.log("\nComposition:\n");
+        const value = evaluation.variableValue;
+        if (typeof composition === "string") {
+          console.log(`  Alias source: ${composition}`);
+          console.log(
+            `  SDK result${evaluation.reason === "variable_override_rule" ? " after overrides" : ""}: ${value !== undefined ? JSON.stringify(value) : "unavailable"}`,
+          );
+        } else {
+          for (const { key, ...source } of composition) {
+            const hasValue =
+              value !== null &&
+              typeof value === "object" &&
+              Object.prototype.hasOwnProperty.call(value, key);
+            console.log(
+              `  ${key}: ${JSON.stringify(source)} = ${hasValue ? JSON.stringify((value as Record<string, unknown>)[key]) : "unavailable"}`,
+            );
+          }
+        }
+      }
       console.log("\nDetails:\n");
       printEvaluationDetails(evaluation);
     }
@@ -171,7 +240,11 @@ async function evaluateFeatureWithDatafile(
         ),
       }
     : undefined;
-  const result = explanation ? { ...allEvaluations, explanation } : allEvaluations;
+  const result = {
+    ...allEvaluations,
+    ...(explanation ? { explanation } : {}),
+    ...(warnings.length ? { warnings } : {}),
+  };
 
   if (options.json) {
     return result;
@@ -180,9 +253,14 @@ async function evaluateFeatureWithDatafile(
   console.log("");
   console.log(CLI_FORMAT_BOLD, "Evaluating Featurevisor feature");
   console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${featureKey}`);
-  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  if (options.environment)
+    console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment}`);
   if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Context", CLI_COLOR_CYAN)}: ${JSON.stringify(options.context)}`);
+  if (warnings.length) {
+    printHeader("Warnings");
+    warnings.forEach((warning) => console.log(CLI_FORMAT_YELLOW, warning.message));
+  }
 
   // flag
   printHeader("Is enabled?");
@@ -262,6 +340,20 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
       details: { feature: options.feature, variable: options.variable },
     });
   }
+  const definitionExists = options.variable
+    ? await deps.datasource.variableExists(options.variable)
+    : await deps.datasource.featureExists(options.feature as string);
+  if (!definitionExists) {
+    const entityType = options.variable ? "variable" : "feature";
+    const key = (options.variable || options.feature) as string;
+    const keys = options.variable
+      ? await deps.datasource.listVariables()
+      : await deps.datasource.listFeatures();
+    throw new FeaturevisorCLIError(`Unknown ${entityType} "${key}".${suggestKey(key, keys)}`, {
+      code: `unknown_${entityType}`,
+      details: { entityType, key },
+    });
+  }
   const datafiles = await buildRuntimeDatafiles(deps, {
     environment: options.environment || false,
     target: options.target,
@@ -269,11 +361,6 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     inflate: options.inflate,
   });
 
-  const definitionExists = options.explain
-    ? options.variable
-      ? await deps.datasource.variableExists(options.variable)
-      : await deps.datasource.featureExists(options.feature as string)
-    : undefined;
   const explanationOptions: ExplanationOptions | undefined = options.explain
     ? {
         set: deps.datasource.getSet(),
@@ -285,6 +372,32 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
       }
     : undefined;
 
+  const attributes: Record<string, Attribute> = Object.create(null);
+  const schemas: Record<string, Schema> = Object.create(null);
+  if (Object.keys(options.context).length) {
+    await Promise.all(
+      (await deps.datasource.listAttributes()).map(async (key) => {
+        try {
+          attributes[key] = await deps.datasource.readAttribute(key);
+        } catch {
+          // Unreadable definitions remain lint's responsibility.
+        }
+      }),
+    );
+    await Promise.all(
+      (await deps.datasource.listSchemas()).map(async (key) => {
+        try {
+          schemas[key] = await deps.datasource.readSchema(key);
+        } catch {
+          // Missing schema metadata must not introduce an evaluation gate.
+        }
+      }),
+    );
+  }
+  const warnings = getContextWarnings(options.context, attributes, schemas).map(
+    ({ attribute, message }) => ({ attribute, message }),
+  );
+
   const results = [];
   for (const entry of datafiles) {
     const evaluations = await evaluateFeatureWithDatafile(
@@ -292,6 +405,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
       options,
       entry.target,
       explanationOptions,
+      warnings,
     );
     results.push({ target: entry.target, evaluations });
   }
@@ -304,6 +418,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
 
 export const evaluatePlugin: Plugin = {
   command: "evaluate",
+  description: "Evaluate a feature or global variable against provided context",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
     assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
 
@@ -340,14 +455,22 @@ export const evaluatePlugin: Plugin = {
   },
   examples: [
     {
-      command:
-        'evaluate --environment=production --feature=my_feature --context=\'{"userId": "123"}\'',
-      description: "evaluate a feature against provided context",
+      command: 'evaluate --feature=showCookieBanner --context=\'{"country":"nl"}\'',
+      description: "Evaluate a feature against provided context",
+    },
+    {
+      command: 'evaluate --feature=sidebar --context=\'{"userId":"123"}\'',
+      description:
+        "For a project defining sidebar: evaluate its flag, variation and feature variables",
+    },
+    {
+      command: 'evaluate --variable=supportEmail --context=\'{"country":"nl"}\'',
+      description: "For a project defining supportEmail: evaluate a global variable",
     },
     {
       command:
-        'evaluate --environment=production --variable=supportEmail --context=\'{"country": "nl"}\'',
-      description: "evaluate a global variable against provided context",
+        'evaluate --feature=showCookieBanner --environment=production --context=\'{"country":"nl"}\'',
+      description: "With environments configured: evaluate a feature in production",
     },
   ],
 };

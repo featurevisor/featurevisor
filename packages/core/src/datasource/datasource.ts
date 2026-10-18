@@ -1,8 +1,9 @@
+import * as path from "path";
+
 import type {
   ParsedFeature,
   Segment,
   Attribute,
-  Group,
   FeatureKey,
   Test,
   EnvironmentKey,
@@ -16,7 +17,8 @@ import type {
   Target,
   TargetKey,
   ParsedVariable,
-  GlobalVariableKey,
+  VariableKey,
+  Scenario,
 } from "@featurevisor/types";
 
 import { getProjectConfigForSet, ProjectConfig } from "../config";
@@ -24,13 +26,13 @@ import type { CustomParser } from "@featurevisor/parsers";
 
 import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 import {
-  collectRequiredFeatureKeys,
-  getFeatureVariableOverrideRequirements,
-  getRequiredFeatureKey,
-  normalizeFeatureRequirements,
-  normalizeRequiredFeatures,
-} from "./requiredFeatures";
-import { flattenVariableOverrides } from "./variableOverrides";
+  collectDependencyClosure,
+  buildDependencyGraph,
+  findDependencyCycles,
+  featureFlagNode,
+  variableNode,
+} from "./dependencies";
+import { assertFlatAttributeKeys } from "./attributeNamespaces";
 
 export class Datasource {
   private adapter: Adapter;
@@ -48,6 +50,10 @@ export class Datasource {
 
   getConfig() {
     return this.config;
+  }
+
+  getRootDirectoryPath() {
+    return this.rootDirectoryPath;
   }
 
   getSet() {
@@ -74,7 +80,34 @@ export class Datasource {
   }
 
   writeState(environment: EnvironmentKey | false, existingState: ExistingState) {
-    return this.adapter.writeState(environment, existingState);
+    // Persist only the current state contract, including entries not visited by
+    // a selected build. Preserve their assignments without retaining unknown metadata.
+    const state: ExistingState = {
+      features: Object.fromEntries(
+        Object.entries(existingState.features).map(([key, feature]) => [
+          key,
+          {
+            ...(feature.hash !== undefined ? { hash: feature.hash } : {}),
+            ...(feature.variations !== undefined
+              ? { variations: feature.variations.map(({ value, weight }) => ({ value, weight })) }
+              : {}),
+            traffic: feature.traffic.map(({ key, percentage, allocation }) => ({
+              key,
+              percentage,
+              ...(allocation !== undefined
+                ? {
+                    allocation: allocation.map(({ variation, range }) => ({
+                      variation,
+                      range: [range[0], range[1]],
+                    })),
+                  }
+                : {}),
+            })),
+          },
+        ]),
+      ),
+    };
+    return this.adapter.writeState(environment, state);
   }
 
   /**
@@ -84,8 +117,8 @@ export class Datasource {
     return this.adapter.readRevision();
   }
 
-  writeRevision(revision: string) {
-    return this.adapter.writeRevision(revision);
+  writeRevision(revision: string, datafilesDir?: string) {
+    return this.adapter.writeRevision(revision, datafilesDir);
   }
 
   /**
@@ -116,6 +149,13 @@ export class Datasource {
     return this.adapter.entityExists("feature", featureKey);
   }
 
+  /** See `Adapter.getEntityFingerprint`. Undefined when the adapter cannot provide one. */
+  async getEntityFingerprint(entityType: EntityType, entityKey: string) {
+    return this.adapter.getEntityFingerprint
+      ? this.adapter.getEntityFingerprint(entityType, entityKey)
+      : undefined;
+  }
+
   readFeature(featureKey: FeatureKey) {
     return this.adapter.readEntity<ParsedFeature>("feature", featureKey);
   }
@@ -133,54 +173,16 @@ export class Datasource {
       throw new Error(`Feature not found: ${featureKey}`);
     }
 
-    const feature = await this.readFeature(featureKey);
-    const featureCache = new Map<FeatureKey, ParsedFeature>([[featureKey, feature]]);
-    const cachedDatasource = {
-      featureExists: (key: FeatureKey) => this.featureExists(key),
-      readFeature: async (key: FeatureKey) => {
-        const cached = featureCache.get(key);
-        if (cached) return cached;
-        const value = await this.readFeature(key);
-        featureCache.set(key, value);
-        return value;
-      },
-    };
-
-    const result = await collectRequiredFeatureKeys(
-      cachedDatasource,
-      featureKey,
-      normalizeFeatureRequirements(feature),
-    );
-    const processed = new Set<FeatureKey>();
-    const queue = Array.from(result);
-
-    while (queue.length > 0) {
-      const currentKey = queue.shift()!;
-      if (processed.has(currentKey)) continue;
-      processed.add(currentKey);
-
-      const current = await cachedDatasource.readFeature(currentKey);
-      for (const required of getFeatureVariableOverrideRequirements(current)) {
-        const requiredKey = getRequiredFeatureKey(required);
-        if (!(await this.featureExists(requiredKey))) {
-          throw new Error(`required feature "${requiredKey}" not found`);
-        }
-        const requiredFeature = await cachedDatasource.readFeature(requiredKey);
-        const chain = await collectRequiredFeatureKeys(
-          cachedDatasource,
-          requiredKey,
-          normalizeFeatureRequirements(requiredFeature),
-        );
-        for (const key of chain) {
-          if (!result.has(key)) {
-            result.add(key);
-            queue.push(key);
-          }
-        }
-      }
+    const graph = await buildDependencyGraph(this);
+    const cycles = await findDependencyCycles(this, graph);
+    if (cycles.length) throw cycles[0];
+    const structural = await collectDependencyClosure(this, [featureFlagNode(featureKey)], {
+      graph,
+    });
+    for (const key of structural.features) {
+      if (!(await this.featureExists(key))) throw new Error(`required feature "${key}" not found`);
     }
-
-    return result;
+    return structural.features;
   }
 
   // segments
@@ -205,8 +207,19 @@ export class Datasource {
   }
 
   // attributes
-  listAttributes() {
-    return this.adapter.listEntities("attribute");
+  private assertAttributeKeys(keys: string[]) {
+    assertFlatAttributeKeys(
+      keys,
+      this.config.attributesDirectoryPath,
+      this.config.namespaceCharacter,
+      this.getExtension(),
+    );
+  }
+
+  async listAttributes() {
+    const keys = await this.adapter.listEntities("attribute");
+    this.assertAttributeKeys(keys);
+    return keys;
   }
 
   async listFlattenedAttributes() {
@@ -230,41 +243,24 @@ export class Datasource {
     return result;
   }
 
-  attributeExists(attributeKey: AttributeKey) {
+  async attributeExists(attributeKey: AttributeKey) {
+    this.assertAttributeKeys([attributeKey]);
     return this.adapter.entityExists("attribute", attributeKey);
   }
 
-  readAttribute(attributeKey: AttributeKey) {
+  async readAttribute(attributeKey: AttributeKey) {
+    this.assertAttributeKeys([attributeKey]);
     return this.adapter.readEntity<Attribute>("attribute", attributeKey);
   }
 
-  writeAttribute(attributeKey: AttributeKey, attribute: Attribute) {
+  async writeAttribute(attributeKey: AttributeKey, attribute: Attribute) {
+    this.assertAttributeKeys([attributeKey]);
     return this.adapter.writeEntity<Attribute>("attribute", attributeKey, attribute);
   }
 
-  deleteAttribute(attributeKey: AttributeKey) {
+  async deleteAttribute(attributeKey: AttributeKey) {
+    this.assertAttributeKeys([attributeKey]);
     return this.adapter.deleteEntity("attribute", attributeKey);
-  }
-
-  // groups
-  listGroups() {
-    return this.adapter.listEntities("group");
-  }
-
-  groupExists(groupKey: string) {
-    return this.adapter.entityExists("group", groupKey);
-  }
-
-  readGroup(groupKey: string) {
-    return this.adapter.readEntity<Group>("group", groupKey);
-  }
-
-  writeGroup(groupKey: string, group: Group) {
-    return this.adapter.writeEntity<Group>("group", groupKey, group);
-  }
-
-  deleteGroup(groupKey: string) {
-    return this.adapter.deleteEntity("group", groupKey);
   }
 
   // schemas
@@ -293,45 +289,29 @@ export class Datasource {
     return this.adapter.listEntities("variable");
   }
 
-  variableExists(variableKey: GlobalVariableKey) {
+  variableExists(variableKey: VariableKey) {
     return this.adapter.entityExists("variable", variableKey);
   }
 
-  readVariable(variableKey: GlobalVariableKey) {
+  readVariable(variableKey: VariableKey) {
     return this.adapter.readEntity<ParsedVariable>("variable", variableKey);
   }
 
-  writeVariable(variableKey: GlobalVariableKey, variable: ParsedVariable) {
+  writeVariable(variableKey: VariableKey, variable: ParsedVariable) {
     return this.adapter.writeEntity<ParsedVariable>("variable", variableKey, variable);
   }
 
-  deleteVariable(variableKey: GlobalVariableKey) {
+  deleteVariable(variableKey: VariableKey) {
     return this.adapter.deleteEntity("variable", variableKey);
   }
 
-  async getRequiredFeaturesChainForVariable(
-    variableKey: GlobalVariableKey,
-  ): Promise<Set<FeatureKey>> {
+  async getRequiredFeaturesChainForVariable(variableKey: VariableKey): Promise<Set<FeatureKey>> {
     if (!(await this.variableExists(variableKey))) {
       throw new Error(`Variable not found: ${variableKey}`);
     }
 
-    const variable = await this.readVariable(variableKey);
-    const result = new Set<FeatureKey>();
-    const requirements = [
-      ...normalizeRequiredFeatures(variable.requiredFeatures),
-      ...flattenVariableOverrides(variable.overrides).flatMap((override) =>
-        normalizeRequiredFeatures(override.requiredFeatures),
-      ),
-    ];
-
-    for (const required of requirements) {
-      const featureKey = getRequiredFeatureKey(required);
-      const chain = await this.getRequiredFeaturesChain(featureKey);
-      chain.forEach((key) => result.add(key));
-    }
-
-    return result;
+    const structural = await collectDependencyClosure(this, [variableNode(variableKey)]);
+    return structural.features;
   }
 
   // targets
@@ -374,6 +354,47 @@ export class Datasource {
 
   getTestSpecName(testKey: string) {
     return `${testKey}.${this.getExtension()}`;
+  }
+
+  getTestSourcePath(testKey: string) {
+    if (this.adapter.getTestSourcePath) return this.adapter.getTestSourcePath(testKey);
+    if (this.adapter.getEntityPath) return this.adapter.getEntityPath("test", testKey);
+    const parts = this.config.namespaceCharacter
+      ? testKey.split(this.config.namespaceCharacter)
+      : [testKey];
+    if (parts.length > 1 && ["spec", "feature", "segment"].includes(parts[parts.length - 1])) {
+      const suffix = parts.pop();
+      parts[parts.length - 1] += `.${suffix}`;
+    }
+    return path.join(this.config.testsDirectoryPath, ...parts) + `.${this.getExtension()}`;
+  }
+
+  // scenarios
+  getScenarioSourcePath(scenarioKey: string) {
+    if (!this.adapter.getScenarioSourcePath) {
+      throw new Error("This datasource adapter does not expose scenario source paths");
+    }
+    return this.adapter.getScenarioSourcePath(scenarioKey);
+  }
+
+  listScenarios() {
+    return this.adapter.listEntities("scenario");
+  }
+
+  scenarioExists(scenarioKey: string) {
+    return this.adapter.entityExists("scenario", scenarioKey);
+  }
+
+  readScenario(scenarioKey: string) {
+    return this.adapter.readEntity<Scenario>("scenario", scenarioKey);
+  }
+
+  writeScenario(scenarioKey: string, scenario: Scenario) {
+    return this.adapter.writeEntity<Scenario>("scenario", scenarioKey, scenario);
+  }
+
+  deleteScenario(scenarioKey: string) {
+    return this.adapter.deleteEntity("scenario", scenarioKey);
   }
 
   // history

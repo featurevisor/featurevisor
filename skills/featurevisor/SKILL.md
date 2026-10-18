@@ -1,317 +1,329 @@
 ---
 name: featurevisor
-description: Author, query, and integrate Featurevisor — Git-based feature flags, A/B experiments, and remote config. Use whenever the user mentions Featurevisor, works in a project containing featurevisor.config.js, edits files under attributes/, segments/, features/, variables/, groups/, schemas/, targets/, sets/, or tests/, runs `featurevisor` CLI commands, or asks to add/roll out/ramp/target/A-B test/force-enable a feature flag, set up remote config or entitlements, define a shared/global configuration value that is not owned by any single feature, or asks where a feature/segment is used or why it evaluated that way. Also use when consuming Featurevisor from app code — @featurevisor/sdk, @featurevisor/react, @featurevisor/vue, the Go/Python/Ruby/Java/Kotlin/Swift/PHP SDKs, OpenFeature providers, datafiles, createFeaturevisor, isEnabled/getVariation/getVariable. Covers starting a project from scratch, features (flags, variations, variables), global variables defined under variables/, segments, attributes, schemas, groups, required feature dependencies, test specs, linting, building/deploying datafiles, evaluation debugging, the Catalog, upgrading a project or app from Featurevisor v2 to v3, and extending the CLI with plugins.
+description: Author, test, query and integrate Featurevisor feature flags, A/B experiments and remote configuration. Use in Featurevisor projects (featurevisor.config.js) for features, segments, attributes, global variables and compositions, conditions, rollouts, test specs and scenarios, datafiles, targets, Sets and promotions, the Catalog and the CLI, and for explaining why a context gets a value. Also use for Featurevisor SDKs in JavaScript, React, Vue and other languages, OpenFeature providers, CLI plugins, and upgrades from v2 or v3. A generic feature flag request outside a Featurevisor project is not enough on its own.
 ---
 
 # Featurevisor
 
-You are helping the user with [Featurevisor](https://featurevisor.com) — a Git-based feature management tool. A Featurevisor **project** is a repository of YAML (default) or JSON definitions that compile into static JSON **datafiles**, which applications evaluate locally through SDKs. There are two sides to every task:
+You are helping the user with [Featurevisor](https://featurevisor.com), feature management through Git. A Featurevisor **project** is a repository of YAML (default) or JSON definitions. The CLI lints and tests them and builds static JSON **datafiles**, which applications evaluate locally through SDKs. Every task sits on one of two sides:
 
-- **Project side** — authoring/querying the definitions repo (features, segments, attributes, tests) and running the `featurevisor` CLI.
-- **Application side** — consuming datafiles via SDKs (`@featurevisor/sdk`, React, Vue, or other languages).
+- **Project side**: authoring and querying definitions (features, segments, attributes, global variables, tests) and running the `featurevisor` CLI.
+- **Application side**: loading datafiles and evaluating them through an SDK (`@featurevisor/sdk`, React, Vue or another language).
 
-This skill covers both. The compact documentation index is at <https://featurevisor.com/llms.txt> and the complete feed at <https://featurevisor.com/llms-full.txt> — fetch on demand if a topic isn't covered in this skill's references.
+This skill covers both, for Featurevisor v4. The documentation index is at <https://featurevisor.com/llms.txt>, with the complete text at <https://featurevisor.com/llms-full.txt>. Fetch them when a topic is not covered by the references below.
 
 ## Know your audience
 
-Featurevisor is used by engineers, product managers, marketers, and people who describe what they want without knowing the YAML. Calibrate:
+Engineers, product managers, marketers and people who describe what they want without knowing the YAML all use Featurevisor. Calibrate:
 
-- **Not sure of the vocabulary?** Someone asking to "turn on the banner for 10% of Dutch users" wants a rollout rule — don't make them learn the words `segment`, `bucketBy`, or `percentage` first. Do the mapping for them, then show the result in their language: what changed, who is affected, what happens next.
-- **Safe vs. risky changes.** Ramping a percentage up, adding a new rule, adding a feature, force-enabling for QA — routine; do them confidently. Renaming rule keys, changing `bucketBy`, resizing group slots, decreasing percentages — these silently re-bucket users; warn plainly ("some users would lose the feature mid-session") before proceeding.
-- **Always close the loop.** After any change, say in one or two sentences what will happen when it ships (e.g. "once this merges and CI deploys the datafile, ~10% of users in NL will see the banner; the rest see nothing").
-- For anyone who wants to *see* the project, offer the **Catalog** — a browsable read-only UI with live reload (see [Visual review with Catalog](#visual-review-with-catalog)).
+- **Translate intent.** "Turn on the banner for 10% of Dutch users" is a rollout rule. Do the mapping yourself, then report the result in their words: what changed, who is affected, and what happens next.
+- **Routine changes:** raising a percentage, adding a rule above the catch-all, adding a feature, forcing a feature on for QA. Do these confidently.
+- **Risky changes:** renaming a rule key, changing `bucketBy`, changing variation weights, lowering a percentage, archiving something still referenced. These move users between results. Say so plainly ("some users would lose the feature mid-session") and confirm before proceeding.
+- **Close the loop.** After a change, say in one or two sentences what happens once it ships. For example: "once this merges and CI deploys the datafile, about 10% of users in the Netherlands see the banner, everyone else sees nothing."
+- **Offer the Catalog** to anyone who wants to see the project rather than read YAML ([Visual review with the Catalog](#visual-review-with-the-catalog)).
 
 ## Orient yourself first
 
+Examples in this skill use the default scaffold, which has no environments. When the project configures environments, add `--environment=<name>` to `evaluate`, `benchmark`, `assess-distribution` and `build --print`. A normal file build covers every environment.
+
 ### No project yet? Interview, then scaffold
 
-**If there is no `featurevisor.config.js`** anywhere in the working tree, there is no Featurevisor project yet. If the user is in an **application repo** consuming Featurevisor, this is SDK work — see [Application integration](#application-integration-sdks); author definitions in the project repo, not here. If they want a new project, **ask a few setup questions before scaffolding** — these choices shape every file written afterwards and are annoying to retrofit:
+Without a `featurevisor.config.js` in the working tree there is no Featurevisor project. If the user is in an **application repository**, this is SDK work: see [Application integration](#application-integration-sdks), and author definitions in the project repository, not here. If they want a new project, ask these first, because every file written afterwards depends on them:
 
-1. **Environments?** Classic `staging` + `production` (recommended default), a custom list, or none (single-environment tools, internal apps — rules become direct lists instead of per-env maps).
-2. **Sets?** Default **no** — one tree is right for most projects. Offer sets only if they want independent trees: release lanes with promotion gates (dev → staging → production) or fully separate surfaces (storefront/admin). See [sets-promotions.md](references/sets-promotions.md) for the trade-off; sets add real structure overhead.
-3. **Consumers → tags and targets?** Who loads datafiles: one app (single `all` tag + one `all` target is fine) or several surfaces (a tag per surface — `web`, `ios`, `android` — and a target per datafile they'll load)?
+1. **Environments?** The default has none, and rules are direct lists. `--example=with-environments` gives explicit `staging` and `production`.
+2. **Sets?** Default **no**. Offer Sets only for independently reviewed trees: release lanes promoted from dev to staging to production, or unrelated surfaces such as a storefront and an admin. Read [sets-promotions.md](references/sets-promotions.md) first.
+3. **Consumers?** One application can use the default `all` target, which has no selectors and includes every active definition. Several surfaces usually get tags such as `web`, `ios` and `android`, and a target per surface.
 4. **File format?** YAML (default) or JSON.
-5. **What identifies a user?** `userId`, `deviceId`, or both (`{or: [userId, deviceId]}`) — this becomes `defaultBucketBy` and the first attributes.
+5. **What identifies a user?** `userId`, `deviceId`, or both (`bucketBy: { or: [userId, deviceId] }`). This becomes `defaultBucketBy` and the first attributes.
 
-Then scaffold in an empty directory — a **separate repo** from application code (review flags like code, deploy datafiles independently — that separation is the point of the tool):
+Scaffold in an empty directory, in its own repository, separate from application code:
 
 ```bash
-npx @featurevisor/cli init                # yml default; --example=json | no-environments | sets | test-environments (release lanes) | toml | namespace-slash
+npx @featurevisor/cli init
 npm install
 ```
 
-Pick the `--example` closest to their answers, then adjust `featurevisor.config.js` to match exactly. [templates/example-project/](templates/example-project/) is an alternative lint-clean starting point.
+`--example=with-environments` gives environment keyed rules, `--example=environments` gives Sets as release lanes, and `--example=sets` gives independent surfaces. The [CLI setup table](references/cli.md#setup) lists every example. Then adjust `featurevisor.config.js` to the interview answers. [templates/example-project/](templates/example-project/) is a complete v4 project that passes lint and test, useful as a reference for how the pieces fit together.
 
-### Existing project? Detect the setup before touching anything
+### Existing project? Detect the version and shape before touching anything
 
-**Always run these once at the start:**
+Confirm the project has an installed `@featurevisor/cli` in its package manifest and lockfile, and with `npm ls @featurevisor/cli`. Then run the installed CLI from the project:
+
+```bash
+npx featurevisor --version
+```
+
+It must resolve the project's own binary. If it is missing or `npx` offers to download a package, stop and ask about restoring the project's locked dependencies. Do not install a remote CLI or upgrade dependencies just to detect a version.
+
+- **4.x**: everything in this skill applies.
+- **3.x**: v3 syntax differs. It uses `segments` in rules and `requiredFeatures` instead of unified `conditions`, and lacks variable conditions, compositions, `continue`, test `checks`, scenarios and several operators. Do not write v4 syntax into a v3 project. Stay within what [upgrading-to-v4.md](references/upgrading-to-v4.md#working-in-a-v3-project) lists as v3 syntax, and offer the upgrade when the request needs v4.
+- **2.x**: shapes such as `scopes:`, an `environments/` directory or `createInstance` in application code. Offer [upgrading-to-v3.md](references/upgrading-to-v3.md) first.
+
+**Consumers decide what you can publish.** v4 datafiles need v4 SDKs: v3 SDKs do not understand unified `conditions`, so rules stop matching. The datafile `schemaVersion` is informational and does not make an old SDK reject the file. Before introducing a runtime capability such as accumulating overrides or a newer operator, confirm the SDK version of every application consuming that datafile. Ask the user when this is unknown. Check each against the [SDK compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/). Native version numbers differ, so do not assume every compatible SDK is numbered 4.x. CLI lint success alone does not establish runtime support. Test checks and scenarios require compatible CLI runners, which is a separate question from what consumers support.
+
+Then read the configuration:
 
 ```bash
 npx featurevisor config --json --pretty
 npx featurevisor info
 ```
 
-Four config values change the **shape of everything you write** — get them wrong and files won't lint or, worse, will mean something else:
+Four values change the **shape of everything you write**:
 
-- `sets` — if `true`, every path moves under `sets/<set>/…` and you must author in the right set and scope commands with `--set`. Read [sets-promotions.md](references/sets-promotions.md) before doing anything in such a project.
-- `environments` — if present, `rules`, `force`, and `expose` are maps keyed by env; **if omitted, they are direct lists** with no env level at all.
-- `parser` — if `"json"` author in JSON; otherwise YAML.
-- `namespaceCharacter` — separator for directory-namespaced keys. **Default `.`** (`features/checkout/promo.yml` → `checkout.promo`); some projects use `/` (→ `checkout/promo`). Every key you write — in `segments:` of rules, `required:`, test specs, SDK calls — must use the project's separator. Confirm against reality, not assumption: `npx featurevisor list --segments --json` shows keys exactly as the project spells them.
+- `sets`: when `true`, every definition lives under `sets/<set>/` and commands take `--set`. Read [sets-promotions.md](references/sets-promotions.md) first.
+- `environments`: when declared, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list.
+- `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
+- `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note: `tags` (must include any tag you put on a feature), `defaultBucketBy` (default `userId`), and directory-path overrides (`featuresDirectoryPath`, etc.).
+Also note `tags` (every tag you use must be declared), `defaultBucketBy` (default `userId`), `disallowOperators`, and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
-**Still on v2?** `npm ls @featurevisor/cli` tells you. v2-only shapes such as `scopes:` in the config, an `environments/` definition directory, `splitByEnvironment`, slash-separated namespaced keys, or `createInstance` in app code mean this skill's guidance won't match what lints. Point that out and offer the upgrade: [upgrading-to-v3.md](references/upgrading-to-v3.md).
+## How Featurevisor fits together
 
-Then read one or two existing entities (a feature, a segment) to match local style — indentation, quoting, comment density, key ordering — before adding new ones.
+| Definition      | Path                   | Purpose                                                                               |
+| --------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| Attribute       | `attributes/<key>.yml` | Declares a context key and its type. Never namespaced.                                |
+| Segment         | `segments/<key>.yml`   | Names an audience through `conditions`.                                               |
+| Feature         | `features/<key>.yml`   | A flag, optional variations and feature variables, with rollout rules. Bucketed.      |
+| Global variable | `variables/<key>.yml`  | A typed value with ordered overrides, or a `compose` of other values. Never bucketed. |
+| Schema          | `schemas/<key>.yml`    | A reusable variable shape.                                                            |
+| Target          | `targets/<key>.yml`    | Which definitions go into a datafile.                                                 |
+| Test spec       | `tests/**/*.spec.yml`  | Feature, segment and variable assertions, and standalone scenarios.                   |
 
-## When to load which reference
+**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole expression.
 
-This file is loaded eagerly. The files below are loaded only when relevant — read them in full **before** authoring or debugging in that area, don't rely on the summary in this file.
+```yaml
+conditions:
+  - attribute: country
+    operator: equals
+    value: nl
+  - payingAccounts # a bare string is always a segment key
+  - feature: liveChat # requires liveChat to be enabled
+  - variable: maintenanceMode
+    operator: equals
+    value: false
+```
 
-| Task                                                                                                                                          | Read                                                              |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Create or edit a feature (flags, variations, variables, etc.)                                                                                 | [features.md](references/features.md)                             |
-| Write or change segment conditions                                                                                                            | [segments.md](references/segments.md)                             |
-| Look up a condition operator                                                                                                                  | [operators.md](references/operators.md)                           |
-| Define or change an attribute                                                                                                                 | [attributes.md](references/attributes.md)                         |
-| Variables, JSON-Schema-ish types, reusable `schemas/`                                                                                         | [variables-schemas.md](references/variables-schemas.md)           |
-| Define or evaluate independent global variables under `variables/`                                                                            | [global-variables.md](references/global-variables.md)              |
-| Variable overrides with deep merge (`mutations`)                                                                                              | [variables-schemas.md](references/variables-schemas.md#mutations) |
-| Mutually-exclusive experiments via `groups/`                                                                                                  | [groups.md](references/groups.md)                                 |
-| Bucketing, `bucketBy`, state files, sticky                                                                                                    | [bucketing.md](references/bucketing.md)                           |
-| Tags: feature and global variable metadata used by targets                                                                                   | [tags.md](references/tags.md)                                     |
-| Targets — generated datafile definitions                                                                                                      | [targets.md](references/targets.md)                               |
-| Namespaces — directory-based feature/segment key prefixes                                                                                     | [namespaces.md](references/namespaces.md)                         |
-| `featurevisor.config.js`, environments, directory overrides                                                                                  | [configuration.md](references/configuration.md)                   |
-| **Sets** (independent trees: release lanes, surfaces) and **promotions** between them                                                        | [sets-promotions.md](references/sets-promotions.md)               |
-| JSON / TOML / other format projects                                                                                                           | [custom-parsers.md](references/custom-parsers.md)                 |
-| Build datafiles, deploy to CDN, CI pipeline                                                                                                   | [building-datafiles.md](references/building-datafiles.md)         |
-| Write a `.spec.yml` test, run `featurevisor test`                                                                                             | [testing.md](references/testing.md)                               |
-| Any CLI invocation, flags, `list`/`find-usage`/`evaluate`                                                                                     | [cli.md](references/cli.md)                                       |
-| Answer "what's enabled where / who uses X"; browse via Catalog                                                                               | [querying.md](references/querying.md)                             |
-| **Use the SDK in an app** — JS/TS/Node/browser/edge, context, refresh, server-side                                                           | [sdk-javascript.md](references/sdk-javascript.md)                 |
-| React or React Native integration (`useFlag` etc.)                                                                                           | [sdk-react.md](references/sdk-react.md)                           |
-| Vue integration                                                                                                                               | [sdk-vue.md](references/sdk-vue.md)                               |
-| Go, Python, Ruby, Java, Kotlin, Swift, PHP, and running your specs through them                                                               | [sdk-other-languages.md](references/sdk-other-languages.md)       |
-| **OpenFeature** providers (`@featurevisor/openfeature-provider-*`, other languages)                                                          | [openfeature.md](references/openfeature.md)                       |
-| Code generation (typed TS bindings)                                                                                                           | [code-generation.md](references/code-generation.md)               |
-| Analytics activation modules (GA4 / Segment / etc.)                                                                                           | [tracking.md](references/tracking.md)                             |
-| **Upgrading v2 → v3** — project or application                                                                                               | [upgrading-to-v3.md](references/upgrading-to-v3.md)               |
-| Custom CLI commands (`plugins`), the datasource API, custom adapters                                                                          | [plugins-datasource.md](references/plugins-datasource.md)         |
-| **Common patterns** — A/B, multivariate, entitlements, kill switches, scheduled releases, staged rollouts, version gating, migrations, testing-in-prod, deprecation/cleanup, microfrontends, ownership, trunk-based dev | [recipes.md](references/recipes.md)                               |
-| Terminology refresher                                                                                                                         | [glossary.md](references/glossary.md)                             |
-
-Per-entity templates live in [templates/](templates/) — copy and adapt rather than writing from memory.
-
-A **complete end-to-end mini project** lives in [templates/example-project/](templates/example-project/). It passes `lint` and `test` as-is — use it as the source of truth for "show me how a realistic Featurevisor project hangs together" requests.
+**Evaluation order.** A feature's flag checks a sticky value, then whether the feature is in the datafile, then the first matching force entry, then root `conditions`, then the first rule whose conditions match, and finally that rule's percentage against the user's bucket. A percentage miss does not fall through to the next rule. A global variable checks a sticky value, then root `conditions`, then composition sources if any, then the first matching override, then its default. Details: [features.md](references/features.md#evaluation-flow) and [global-variables.md](references/global-variables.md#evaluation-order).
 
 ## Core authoring rules
 
-These apply to every change. Internalize them; the references add depth, they do not override these.
+The references add depth, but they never override these.
 
-### 1. Bucketing and rule keys are append-only contracts
+### 1. Bucketing and rule keys are contracts
 
-- `bucketBy` is what keeps a user's experience consistent as percentages ramp. Pick once, never silently change it.
-- Default for signed-in users: `userId`. For anonymous users: `deviceId` (or whatever the project calls it). **The attribute names may differ in this project — read the `attributes/` directory and ask the user which to use if it isn't obvious.** Do not invent attribute names.
-- Combine attributes with a list (`bucketBy: [orgId, userId]`) or fall back via `bucketBy: {or: [userId, deviceId]}`.
-- Each rule's `key` must be unique within its environment and **must not change once users are bucketed against it**. Renaming a rule key re-buckets users — the same user can lose or gain the feature. Add a new rule rather than renaming.
-- Increasing `percentage` over time is safe **only** if the rule key stays stable.
+- `bucketBy` keeps each user's result stable while percentages change. Pick it once and never change it silently.
+- Signed-in surfaces bucket by `userId`, anonymous ones by `deviceId`, mixed ones by `{ or: [userId, deviceId] }`. **Attribute names vary between projects**: read `attributes/` and ask which to use when it is not obvious. Never invent attribute names.
+- Rule keys must be unique per list (per environment when configured) and must not change once users are bucketed. State files store each rule's variation ranges by key, so a rename reallocates them. Add a new rule instead of renaming.
 
 ### 2. First matching rule wins
 
-Rules are evaluated top-to-bottom per environment. Put narrow targeting (e.g. country-specific rollouts at 100%) before the catch-all `segments: '*'` rule.
+Rules run top to bottom. Put narrow rules, such as a country at 100%, above the catch-all `conditions: '*'` rule. Once a rule matches, its percentage decides, and users above it do not fall through to later rules.
 
-### 3. Don't author rules that target unknown segments or attributes
+### 3. Reference only what exists
 
-Before referencing `segments: foo` in a rule, confirm the segment exists (or create it). Same for attributes referenced inside segment conditions. Run `npx featurevisor lint` after edits — it catches dangling refs, percentage-sum errors in groups and variations, and schema mismatches.
+Confirm every attribute, segment, feature and variable you reference exists, or create it. Lint rejects unknown references. It also rejects, with `archived_reference`, any reference to an archived definition from a definition or spec that is not archived itself. An archived definition is dropped from datafiles, so a reference to it would silently stop matching, and under `not` would match everyone. Lint checks archived definitions for their shape only, so what they used can later change or go. A reference to a deprecated definition is a `deprecated_reference` warning. Run `npx featurevisor find-usage` before archiving, renaming or deleting anything, and prefer archiving to deleting: the archived file reserves the key.
 
-### 4. Variations weights sum to 100; group slot percentages sum to 100
+### 4. Variation weights sum to 100
 
-And a feature in a group cannot use a rollout `percentage` higher than its slot's percentage.
+Each value is unique. `control` and `treatment` are conventions only. For mutually exclusive experiments, see [mutual-exclusion.md](references/mutual-exclusion.md).
 
-### 5. Conditions must stay portable across SDKs
+### 5. Conditions stay portable across SDKs
 
-Definitions are evaluated by SDKs in many languages, so lint enforces a portable subset — worth knowing before writing conditions:
+Every SDK evaluates the same datafile, so lint enforces a portable subset:
 
-- **Dates** (`before`/`after`) need a full ISO 8601 timestamp **with timezone**, quoted: `"2026-11-27T00:00:00Z"`. Date-only or zone-less values fail lint.
-- **Regex** (`matches`/`notMatches`) allows only `g`, `i`, `m`, `s` flags and rejects every `(?…)` construct — including non-capturing `(?:…)`, which is the usual surprise — plus backreferences and possessive quantifiers.
-- Operators are checked against the attribute's declared type (numeric operators need `integer`/`double`, `includes` needs an `array`, etc.).
+- **Dates** (`before`, `after`) take a full ISO 8601 timestamp with a timezone, quoted: `'2026-11-27T00:00:00Z'`. Date-only and zoneless values fail lint. Both operators are strict.
+- **Versions** (`semver*`) are quoted strings such as `'5.5'` or `'5.5.0'`, so YAML keeps them as text.
+- **Regular expressions** (`matches`, `notMatches`) allow only the `g`, `i`, `m` and `s` flags, and reject every `(?` construct, including non-capturing `(?:…)`, plus backreferences and possessive quantifiers.
+- Operators are checked against declared types. A `type: string` attribute with `format: date-time` only takes `before`, `after` and presence operators, and `in` takes a string list.
 
-Details and lint messages: [operators.md](references/operators.md#portable-conditions-cross-sdk-subset).
+Details and lint messages: [operators.md](references/operators.md).
 
-### 6. After any edit, lint
+### 6. Match the project's shape
 
-```bash
-npx featurevisor lint
-```
+Environments, Sets, parser and namespace separator change how the same request is written. Templates use the default shape without environments. In a project with environments, put each `rules`, `force` or global `overrides` list under its environment key, and add `environment` to tests.
 
-If you wrote or changed a test spec, also run:
+## Definition of done
 
-```bash
-npx featurevisor test --keyPattern=<theKey>
-```
+Run this loop after every change. It is how you prove a change does what the user asked, and it gives you the evidence to report back.
 
-## CLI: run freely
+1. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
+2. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
+3. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
+4. **Coverage gaps.** `npx featurevisor test --uncovered` lists features and global variables without specs.
+5. **Summarize the change.** `npx featurevisor diff` reports semantic changes against `HEAD`, such as `Rule "everyone" updated, Rollout percentage: 10 → 25`. Use it for your summary to the user.
 
-All `featurevisor` CLI commands are local and safe to run without confirmation, with two caveats:
+`npx featurevisor build --no-state-files` confirms the datafiles build, and a running `npx featurevisor catalog` shows every change as it is saved.
 
-- Bare `build` is a **CI command** — it increments `.featurevisor/REVISION` and updates state files, which only CI should commit. For local builds (yours *and* the user's), default to `--no-state-files`: same datafiles, same success/failure confirmation, no state side effects.
-- `promote --apply` (sets projects) **writes definition files** — preview first and treat applying like any other edit ([sets-promotions.md](references/sets-promotions.md)).
+## CLI: run freely, with two exceptions
 
-```bash
-npx featurevisor build --no-state-files
-```
+Every CLI command is local and safe to run without asking, except:
 
-The most useful commands for an authoring agent (full reference in [cli.md](references/cli.md)):
+- Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
+- `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
 
-| Command                                                                                                               | Purpose                                               |
-| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `npx featurevisor config --json --pretty`                                                                             | Project configuration                                 |
-| `npx featurevisor info`                                                                                                | Counts of features / segments / attributes / tests    |
-| `npx featurevisor lint`                                                                                               | Validate definitions (run after every edit)           |
-| `npx featurevisor list --features --json [--filters…]`                                                                | Find features by tag, env, variable, archived, etc.   |
-| `npx featurevisor list --datafiles --json`                                                                            | List generated datafile paths                         |
-| `npx featurevisor list --segments --json`                                                                             | List segments                                         |
-| `npx featurevisor list --attributes --json`                                                                           | List attributes                                       |
-| `npx featurevisor list --variables --json`                                                                            | List global variables                                 |
-| `npx featurevisor list --groups --json`                                                                               | List exclusion groups                                 |
-| `npx featurevisor list --schemas --json`                                                                              | List reusable schemas                                 |
-| `npx featurevisor list --targets --json`                                                                              | List targets                                          |
-| `npx featurevisor find-usage --segment=<key>`                                                                         | Where a segment is used                               |
-| `npx featurevisor find-usage --attribute=<key>`                                                                       | Where an attribute is used                            |
-| `npx featurevisor find-usage --feature=<key>`                                                                         | Feature usage details                                 |
-| `npx featurevisor find-usage --variable=<key>`                                                                        | What a global variable depends on                     |
-| `npx featurevisor find-usage --unusedSegments`                                                                        | Dead segments                                         |
-| `npx featurevisor find-usage --unusedAttributes`                                                                      | Dead attributes                                       |
-| `npx featurevisor find-duplicate-segments`                                                                            | Segments with identical conditions                    |
-| `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}'`                                           | Why a feature evaluates the way it does (debug)       |
-| `npx featurevisor evaluate --environment=<e> --variable=<k> --context='{…}'`                                          | Why a global variable has its value                   |
-| `npx featurevisor assess-distribution --environment=<e> --feature=<k> --context='{…}' --populateUuid=userId --n=1000` | Simulate rollout distribution                         |
-| `npx featurevisor test [--keyPattern=…] [--assertionPattern=…]`                                                       | Run test specs                                        |
-| `npx featurevisor build --no-state-files`                                                                             | Build datafiles without touching local revision/state |
-| `npx featurevisor catalog`                                                                                             | Browsable read-only UI of the whole project           |
+| Command                                                                                   | Purpose                                                              |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `npx featurevisor config --json --pretty`                                                 | Project configuration                                                |
+| `npx featurevisor info`                                                                   | Counts of every definition kind                                      |
+| `npx featurevisor lint [--json]`                                                          | Validate definitions and specs                                       |
+| `npx featurevisor test [--key-pattern=…] [--json]`                                        | Run specs, with exact reruns through `--case`                        |
+| `npx featurevisor test --uncovered` / `--coverage`                                        | Definitions without specs, and rules or overrides the specs selected |
+| `npx featurevisor evaluate --feature=<k> --context='{…}' --explain`                       | Why a feature has its flag, variation and variables                  |
+| `npx featurevisor evaluate --variable=<k> --context='{…}' --explain`                      | Why a global variable has its value                                  |
+| `npx featurevisor diff [--from=<ref>] [--to=<ref>]`                                       | Semantic definition changes between Git references                   |
+| `npx featurevisor list --features --json [filters]`                                       | Find features by tag, variable, variation, tests or target           |
+| `npx featurevisor find-usage --segment=<k>` (or `--attribute`, `--feature`, `--variable`) | What references a definition, and what it depends on                 |
+| `npx featurevisor find-usage --unused-segments` (or `--unused-attributes`)                | Dead definitions                                                     |
+| `npx featurevisor find-duplicate-segments`                                                | Segments with identical conditions                                   |
+| `npx featurevisor assess-distribution --feature=<k> --populate-uuid=userId --n=10000`     | Check that a rollout splits as intended                              |
+| `npx featurevisor generate-code --language typescript --out-dir ./src`                    | Typed bindings for applications                                      |
+| `npx featurevisor build --no-state-files`                                                 | Build datafiles without touching state                               |
+| `npx featurevisor catalog`                                                                | Browsable read-only project UI with live reload                      |
 
-**Prefer the CLI over grepping** when answering questions like "what features use segment X?", "which features are enabled in production?", or "why does feature F evaluate to disabled for this context?". The CLI's `--json` output is parseable and authoritative.
+**Prefer the CLI to reading YAML by hand** for questions such as "what uses segment X?" or "why is this feature off for me?". Its `--json` output is authoritative and parseable. Repeatable `--target=<target>` options evaluate, test or list against specific target datafiles. Full reference: [cli.md](references/cli.md). Question playbook: [querying.md](references/querying.md).
 
-Use optional, repeatable `--target=<target>` selection with `build`, `test`, `evaluate`, `benchmark`, `assess-distribution`, `list --features`, and `info` when the question concerns deployed target datafiles. Runtime commands process each selected target independently. `build --json` and `build --print` accept only one target because they emit one datafile.
+## When to load which reference
 
-## Changes ship through Git
+Read the matching file in full **before** authoring or debugging in that area. Do not rely on the summary here.
 
-Featurevisor is GitOps: nothing you write takes effect until it travels the pipeline —
+| Task                                                                                                         | Read                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Create or edit a feature: rules, force, variations, variables, root conditions, expose                       | [features.md](references/features.md)                                                                         |
+| Write conditions: leaves, groups, dependencies, paths, evaluation order                                      | [conditions.md](references/conditions.md)                                                                     |
+| Look up an operator, or a date, version or regex rule                                                        | [operators.md](references/operators.md)                                                                       |
+| Write or change a segment                                                                                    | [segments.md](references/segments.md)                                                                         |
+| Declare an attribute, its type, format and constraints                                                       | [attributes.md](references/attributes.md)                                                                     |
+| Feature variables, types, reusable schemas and mutations                                                     | [variables-schemas.md](references/variables-schemas.md)                                                       |
+| Global variables: overrides, nesting, accumulation, `compose`                                                | [global-variables.md](references/global-variables.md)                                                         |
+| Mutually exclusive experiments and priority exclusion                                                        | [mutual-exclusion.md](references/mutual-exclusion.md)                                                         |
+| Bucketing, `bucketBy`, state files, sticky values                                                            | [bucketing.md](references/bucketing.md)                                                                       |
+| Tags, targets and namespaces                                                                                 | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
+| `featurevisor.config.js`, environments, project options                                                      | [configuration.md](references/configuration.md)                                                               |
+| Sets and promotions                                                                                          | [sets-promotions.md](references/sets-promotions.md)                                                           |
+| JSON, TOML or another file format                                                                            | [custom-parsers.md](references/custom-parsers.md)                                                             |
+| Build and deploy datafiles, CI                                                                               | [building-datafiles.md](references/building-datafiles.md)                                                     |
+| Write specs, checks and scenarios, read reports                                                              | [testing.md](references/testing.md)                                                                           |
+| Any CLI command and its options                                                                              | [cli.md](references/cli.md)                                                                                   |
+| Answer questions about a project, debug an evaluation, browse the Catalog                                    | [querying.md](references/querying.md)                                                                         |
+| JavaScript or TypeScript SDK in any runtime                                                                  | [sdk-javascript.md](references/sdk-javascript.md)                                                             |
+| React or React Native                                                                                        | [sdk-react.md](references/sdk-react.md)                                                                       |
+| Vue                                                                                                          | [sdk-vue.md](references/sdk-vue.md)                                                                           |
+| Go, Python, Ruby, Java, Kotlin, Swift, PHP, Rust, Elixir, and running specs through them                     | [sdk-other-languages.md](references/sdk-other-languages.md)                                                   |
+| OpenFeature providers                                                                                        | [openfeature.md](references/openfeature.md)                                                                   |
+| Typed TypeScript bindings                                                                                    | [code-generation.md](references/code-generation.md)                                                           |
+| Analytics and experiment exposure                                                                            | [tracking.md](references/tracking.md)                                                                         |
+| Upgrade from v3 to v4                                                                                        | [upgrading-to-v4.md](references/upgrading-to-v4.md)                                                           |
+| Upgrade from v2 to v3                                                                                        | [upgrading-to-v3.md](references/upgrading-to-v3.md)                                                           |
+| Custom CLI commands, the datasource API, adapters                                                            | [plugins-datasource.md](references/plugins-datasource.md)                                                     |
+| Named patterns: rollouts, A/B tests, kill switches, scheduled launches, entitlements, version gates, cleanup | [recipes.md](references/recipes.md)                                                                           |
+| Terminology                                                                                                  | [glossary.md](references/glossary.md)                                                                         |
 
-**edit → PR review → merge → CI (lint, test, build) → datafile deployed to CDN → each app's next datafile refresh.**
+### Templates
 
-Practical consequences:
+Starting files without environments. Replace placeholder keys, and create anything they reference, before linting.
 
-- **Don't commit or push unless asked.** Editing files and running the CLI is your job; landing the change is the user's (or their CI's).
-- Keep one logical change per branch/PR (a rollout bump, a new feature, a cleanup) — flags get reviewed like code, and small diffs get approved fast.
-- Update or add the matching `.spec.yml` in the same change when behavior expectations shift.
-- When the user asks **"when will this be live?"**, walk that pipeline: after merge, CI deploys the datafile, and apps pick it up on their next refresh (an app polling every 5 minutes lags up to 5 minutes). For emergency paths, see the kill-switch recipe in [recipes.md](references/recipes.md).
+| Shape                              | Template                                                                                                                                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Attribute                          | [attribute.yml](templates/attribute.yml)                                                                                                                                                                                         |
+| Segment                            | [segment.yml](templates/segment.yml), [segment-complex.yml](templates/segment-complex.yml)                                                                                                                                       |
+| Feature flag                       | [feature.yml](templates/feature.yml)                                                                                                                                                                                             |
+| A/B test                           | [feature-with-variations.yml](templates/feature-with-variations.yml)                                                                                                                                                             |
+| Feature variables and overrides    | [feature-with-variables.yml](templates/feature-with-variables.yml)                                                                                                                                                               |
+| Feature gated on other definitions | [feature-with-conditions.yml](templates/feature-with-conditions.yml)                                                                                                                                                             |
+| Global variable                    | [variable.yml](templates/variable.yml), [variable-structured.yml](templates/variable-structured.yml)                                                                                                                             |
+| Composition                        | [variable-composition.yml](templates/variable-composition.yml)                                                                                                                                                                   |
+| Specs                              | [test-feature.spec.yml](templates/test-feature.spec.yml), [test-segment.spec.yml](templates/test-segment.spec.yml), [test-variable.spec.yml](templates/test-variable.spec.yml), [scenario.spec.yml](templates/scenario.spec.yml) |
+| A whole project                    | [example-project/](templates/example-project/)                                                                                                                                                                                   |
 
-## Common authoring flows
+## Common flows
 
-### Starting a brand-new project
+### Starting a new project
 
-1. Run the setup interview from [Orient yourself first](#no-project-yet-interview-then-scaffold) — environments, sets or not, tags/targets, format, bucketing identity.
-2. Scaffold in an empty directory (a new repo, separate from app code) with the closest `init --example=…`, then `npm install`.
-3. Adjust `featurevisor.config.js` until it matches the interview answers exactly (`environments`, `tags`, `sets`, `defaultBucketBy`, parser).
-4. Replace the scaffolded example entities with the user's first real attribute → segment → feature, in that order (features reference segments; segments reference attributes), and matching targets.
-5. `npx featurevisor lint && npx featurevisor test && npx featurevisor build --no-state-files` to prove the pipeline.
-6. Offer the CI/CDN deployment setup from [building-datafiles.md](references/building-datafiles.md) when they're ready to ship — and `npx featurevisor catalog` so they can see what they built.
+1. Run the interview in [Orient yourself first](#no-project-yet-interview-then-scaffold).
+2. Scaffold with the closest `init --example=…` and `npm install`.
+3. Adjust `featurevisor.config.js` to the answers: `environments`, `tags`, `sets`, `defaultBucketBy`, `parser`.
+4. Replace the scaffolded definitions with the user's own, in dependency order: attributes, then segments, then features and global variables, then targets.
+5. Run `npx featurevisor lint`, `npx featurevisor test` and `npx featurevisor build --no-state-files`.
+6. Offer CI and CDN deployment ([building-datafiles.md](references/building-datafiles.md)) and `npx featurevisor catalog`.
 
-### Adding a new feature flag
+### Adding a feature flag
 
-1. Read the existing `features/` directory to match conventions (file naming, comment style).
-2. Confirm the attribute used for `bucketBy` exists in `attributes/`; ask the user which to use if multiple plausible options exist (e.g. `userId` vs `deviceId`).
-3. Create `features/<key>.yml` from [templates/feature.yml](templates/feature.yml).
-4. If targeting specific segments, ensure each referenced segment exists in `segments/` — create it from [templates/segment.yml](templates/segment.yml) if not.
-5. Run `npx featurevisor lint`.
-6. Offer (don't force): "I can add a `tests/features/<key>.spec.yml` covering this — want me to?" If yes, use [templates/test-feature.spec.yml](templates/test-feature.spec.yml).
+1. Read existing `features/` to match naming and style.
+2. Confirm the `bucketBy` attribute exists. Ask when several are plausible.
+3. Create `features/<key>.yml` from [templates/feature.yml](templates/feature.yml). Keys become permanent identifiers in application code and analytics, so choose deliberately (camelCase by convention).
+4. Create any missing segment from [templates/segment.yml](templates/segment.yml).
+5. Add `tests/features/<key>.spec.yml` from [templates/test-feature.spec.yml](templates/test-feature.spec.yml), covering inside and outside each audience. Ask first when the project has no specs at all.
+6. Run the [definition of done](#definition-of-done).
 
-### Adding variations (A/B test)
+### A/B tests and variables
 
-Read [features.md](references/features.md) on variations, then use [templates/feature-with-variations.yml](templates/feature-with-variations.yml). Remind the user that weights sum to 100 and the `control`/`treatment` names are conventional only. If they ask how results get measured, that's [tracking.md](references/tracking.md).
+For variations read [features.md](references/features.md#variations) and start from [templates/feature-with-variations.yml](templates/feature-with-variations.yml). For feature variables read [variables-schemas.md](references/variables-schemas.md) and start from [templates/feature-with-variables.yml](templates/feature-with-variables.yml). Measuring results is application work: [tracking.md](references/tracking.md).
 
-### Adding variables (remote config)
+### Global variables and compositions
 
-Read [variables-schemas.md](references/variables-schemas.md) — covers all variable types, the inline JSON-Schema-ish form, reusable `schemas/`, variation-level variables, rule-level `variables:` and `variableOverrides:`, and the `mutations` feature for deep-merge overrides. Use [templates/feature-with-variables.yml](templates/feature-with-variables.yml) as the starting shape.
+Ask whether a configurable value belongs to a feature or stands on its own. A support address, a retry limit or a CDN base URL belongs to no single flag, so it goes in `variables/<key>.yml` as a **global variable** ([templates/variable.yml](templates/variable.yml)). Feature variables suit values that follow a variation or need a percentage rollout. Global variables are never bucketed: the first matching override wins for everyone it matches.
 
-### Adding a global variable (config no single feature owns)
+`compose` builds a global variable from other evaluated values. `compose: supportEmail` is an alias, useful for renaming. A `compose` map assembles an object from flags, variations, feature variables and global variables, so an application reads one value instead of several ([templates/variable-composition.yml](templates/variable-composition.yml)). Read [global-variables.md](references/global-variables.md) before writing either. Applications read global variables with `getVariable(variableKey, context)`. Go, Rust and Elixir use `GetGlobalVariable` or `get_global_variable` ([sdk-other-languages.md](references/sdk-other-languages.md#global-variables)).
 
-**Ask this first whenever someone wants a configurable value:** is the value owned by a feature, or does it stand on its own? A support address, a retry limit, a CDN base URL, a rate limit shared by four services. None of these is an attribute of any one flag, and hanging them off an unrelated feature is the mistake to head off. Those belong in `variables/<key>.yml` as **global variables**.
+### Dependencies between definitions
 
-Read [global-variables.md](references/global-variables.md) and start from [templates/variable.yml](templates/variable.yml). The differences from feature variables that catch people out:
+A feature leaf (`{ feature: liveChat }`) requires another feature's flag or variation. A variable leaf requires a value, such as a kill switch `maintenanceMode` that must be `false`. Put them in root `conditions` to gate a whole feature or global variable, or in a rule or override to narrow it. An unmet root gate reports `conditions_unmet`. Lint rejects cycles. Read [conditions.md](references/conditions.md).
 
-- **Never bucketed.** No `bucketBy`, no `percentage`, no variations. The first matching override wins for everyone it matches, so the value is deterministic for a given context. There is no way to roll one out to 10% of users; if that is what they want, they want a feature.
-- **`requiredFeatures` instead of a parent.** Gate the value on one or more features (`{ feature, enabled?, variation? }`, `enabled` defaults to `true`). When unmet the SDK returns `disabledValue`, or `defaultValue` with `useDefaultWhenDisabled: true`, and reports `reason: required_features_unmet`.
-- **Overrides may nest**, unlike the flat overrides on feature rules and variations. They follow the same environment rule as `rules` and `force`: a map keyed by environment when the project declares `environments`, a direct list when it does not. Give every override a `key` and keep those keys unique across the whole tree for one environment.
-- **Read them with the two-argument SDK call**, `getVariable(variableKey, context)`, not the three-argument feature form. Go, Rust, and Elixir cannot dispatch on that, so they expose `GetGlobalVariable` / `get_global_variable` instead ([sdk-other-languages.md](references/sdk-other-languages.md#global-variables)).
+### Complex targeting
 
-Before changing or deleting one, run `npx featurevisor find-usage --variable=<key>` for what it depends on; consuming applications are found by searching app code, not the project ([querying.md](references/querying.md)).
+`and`, `or` and `not` nest everywhere conditions appear ([segments.md](references/segments.md), [templates/segment-complex.yml](templates/segment-complex.yml)). `not` negates the AND of its children: `not: [A, B]` means "not both". For "neither", write `not: [{ or: [A, B] }]`.
 
-### Complex targeting (and/or/not)
+### Forcing a feature for QA or a specific user
 
-Both segment `conditions` and feature rule `segments` support `and`, `or`, `not` with nesting. See [segments.md](references/segments.md) and [templates/segment-complex.yml](templates/segment-complex.yml).
+Use `force` on the feature, not a rule. Force entries need `conditions`, have no key or percentage, and run before root conditions and rules ([features.md](references/features.md#force)).
 
-Important `not` rule: multiple direct children are treated as an implicit **AND** and then negated. So `not: [A, B]` means `not (A and B)`, not `not A and not B`. For "none of these match", wrap them in `or`: `not: [{ or: [A, B] }]`.
+### Promoting between Sets
 
-### Mutual-exclusion experiments
-
-Read [groups.md](references/groups.md). Plan slot percentages **before** adding rules — once users are bucketed in a group, changing slot percentages re-buckets them. Use [templates/group.yml](templates/group.yml).
-
-### Force-enabling for QA / a specific user
-
-Use `force:` on the feature (per-environment), not `rules`. No `key`/`percentage` needed. See [features.md](references/features.md#force).
-
-### Promoting between sets ("move X to staging/production")
-
-Only in sets projects. Read [sets-promotions.md](references/sets-promotions.md), then: preview with `npx featurevisor promote --from=<a> --to=<b> --includeFeatures="<key>"`, show the user the created/updated/conflicts summary, apply with `--apply` on their go-ahead, and lint + test the destination set. Use `promotable: false` to protect lane-specific definitions, feature rules, and keyed test assertions from being overwritten.
+Only in Sets projects. Preview with `npx featurevisor promote --from=<a> --to=<b> --include-features="<key>"`, show the created, updated and conflicting files, apply with `--apply` on the user's go ahead, then lint and test the destination set ([sets-promotions.md](references/sets-promotions.md)).
 
 ### Debugging an evaluation
 
-Use `npx featurevisor evaluate --environment=<e> --feature=<k> --context='{…}' --verbose` rather than reading the YAML and reasoning by hand. The evaluation flow (sticky → required → forced → rules → bucketing) is documented in [features.md](references/features.md#evaluation-flow). If the surprise is in an application rather than the project, also check the app's actual context and datafile revision ([sdk-javascript.md](references/sdk-javascript.md#why-did-it-evaluate-that-way)).
+Run `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` rather than reasoning from YAML. It names the deciding rule or force entry, prints the bucket, and probes each condition leaf. When the surprise is in an application, also compare the application's actual context and datafile revision ([querying.md](references/querying.md#why-does-this-context-get-this-value)).
 
-### Querying ("what's enabled where?", "who uses this segment?")
+### Visual review with the Catalog
 
-See [querying.md](references/querying.md). It shows the right `list`/`find-usage`/`evaluate` invocations for the common questions a developer asks about an existing project, plus the Catalog for browsing.
+`npx featurevisor catalog` serves a read-only UI of the whole project at `http://127.0.0.1:3000` and reloads on every saved change. For sessions with several changes, or users who prefer not to read YAML, start it once in the background and open the URL in your browser tool if you have one, or give it to the user. Use `--port=<n>` if 3000 is taken.
 
-### Visual review with Catalog
+### Upgrades
 
-`npx featurevisor catalog` serves a read-only UI of the whole project at `http://127.0.0.1:3000` **in watch mode** — it rebuilds and reloads the browser whenever definition files change. That makes it the ideal companion to an authoring session:
+v3 to v4: [upgrading-to-v4.md](references/upgrading-to-v4.md). v2 to v3: [upgrading-to-v3.md](references/upgrading-to-v3.md). Both start with the installed CLI's `lint` output as the worklist, and both keep the project and its applications on a safe deployment order.
 
-1. Start it once as a background process (it's local and read-only — safe to leave running).
-2. If you have a browser tool, open `http://127.0.0.1:3000` in it; otherwise give the user the URL.
-3. Author changes as usual — every edit shows up in the Catalog on save, so the user watches features, rules, variables, and test coverage evolve visually while they prompt you.
+### Named patterns
 
-Offer this proactively when a session involves several authoring changes or when the user is less comfortable reading YAML — prompting plus a live Catalog is the best way to experience Featurevisor. Details in [querying.md](references/querying.md).
+Progressive rollouts, A/B and multivariate tests, kill switches, scheduled launches, staged rollouts from employees to everyone, app version gates, entitlements, backend migrations and flag cleanup each have a recipe in [recipes.md](references/recipes.md).
 
-### Upgrading a v2 project or application to v3
+## Changes ship through Git
 
-Read [upgrading-to-v3.md](references/upgrading-to-v3.md). Do the **project repo first, applications after**: the datafile schema is unchanged, so v2 SDKs keep reading v3-generated datafiles and each app can upgrade on its own schedule. The one thing to fix before publishing v3 datafiles is multi-child `not:` in rule segments, whose meaning changed. Lead with `npx featurevisor lint` after upgrading the CLI: its errors are the worklist.
+Nothing takes effect until it travels the pipeline: **edit, review, merge, CI (lint, test, build), datafile deployed, each application's next datafile refresh.**
 
-### Recipes for higher-level use cases
-
-When the request matches a named pattern — A/B test, multivariate, mutual exclusion, dependencies, remote config, entitlements/RBAC, kill switch, scheduled/time-window release, staged rollout ladder (employees → beta → everyone), app version gating, backend migration, stale-flag cleanup, testing in production, deprecation, trunk-based development, microfrontends, decoupling release from deploy, ownership — open [recipes.md](references/recipes.md) and adapt the matching section. It links back to the granular references for shape details.
+- **Do not commit or push unless asked.** Editing files and running the CLI is your job. Landing the change belongs to the user and their CI.
+- Keep one logical change per pull request, with its spec updates.
+- When asked "when will this be live?", walk that pipeline. An application refreshing every five minutes can lag up to five minutes after deployment.
 
 ## Application integration (SDKs)
 
-When the task is consuming features from application code:
+- **JavaScript or TypeScript** in Node.js, browsers, edge runtimes or React Native: read [sdk-javascript.md](references/sdk-javascript.md) in full.
+- **React**: [sdk-react.md](references/sdk-react.md). **Vue**: [sdk-vue.md](references/sdk-vue.md).
+- **Typed keys and values**: [code-generation.md](references/code-generation.md).
+- **Other languages**: [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK reads the same datafile and buckets identically, and each ships a CLI that runs the project's specs through that language.
+- **OpenFeature**: [openfeature.md](references/openfeature.md).
+- **Frameworks**: [Next.js](https://featurevisor.com/docs/frameworks/nextjs/), [Express](https://featurevisor.com/docs/frameworks/express/), [Fastify](https://featurevisor.com/docs/frameworks/fastify/), [Astro](https://featurevisor.com/docs/frameworks/astro/), [Nuxt](https://featurevisor.com/docs/frameworks/nuxt/).
 
-- **JavaScript / TypeScript / Node / browser / edge** → read [sdk-javascript.md](references/sdk-javascript.md) in full. It covers install, context, all evaluation methods, datafile refresh and on-demand loading, events, sticky, server-side child instances (`spawn`), diagnostics, and modules.
-- **React / React Native** → [sdk-react.md](references/sdk-react.md). **Vue** → [sdk-vue.md](references/sdk-vue.md).
-- **Type-safe bindings** (generated `isEnabled`/`getVariation` with compile-checked keys) → [code-generation.md](references/code-generation.md).
-- **Other languages** — SDKs are **cross-platform**: Go, Python, Ruby, Java, Kotlin/Android, Swift, PHP, and more → [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK consumes the same datafiles and is verified against a shared conformance contract, so a user bucketed into `treatment` in a browser gets `treatment` on the backend and on mobile too — one project can serve an entire polyglot stack. That file also covers each SDK's CLI for running the project's own test specs through that language.
-- **OpenFeature** — if the team standardizes on the vendor-neutral [OpenFeature](https://openfeature.dev/) API, providers exist for Node.js, browsers, Go, Swift, Java, Ruby, Python, and PHP → [openfeature.md](references/openfeature.md). Optional: the native SDKs are unaffected and remain the simpler choice when Featurevisor is the only flag system.
-- **Framework guides** (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>.
-
-Key facts that prevent most integration mistakes: evaluations are local and synchronous (no network at evaluation time); the app must load a **datafile** (built and deployed from the project repo) and decide its own refresh strategy; feature keys, variable keys, and attribute names must match the project's definitions exactly — verify against the project (or its Catalog) rather than guessing.
+Evaluations are local and synchronous, with no network call. The application loads a datafile and decides when to refresh it. Feature keys, variable keys and attribute names must match the project exactly: check them against the project or its Catalog rather than guessing.
 
 ## What not to do
 
-- Do not change a feature's `bucketBy` or a rule's `key` "to clean things up" — that re-buckets users.
-- Do not invent attribute, segment, or feature key names — in YAML or in application code. Verify they exist; create them explicitly if needed.
-- Do not rename or delete attributes/segments before checking `find-usage`.
-- Do not add `expose:` unless the user asks — it's a short-term migration tool.
-- Do not run bare `build` locally — incrementing REVISION and state files is CI's job. Local builds always get `--no-state-files`.
-- Do not skip `npx featurevisor lint` after edits.
-- Do not author project definitions inside an application repo — they belong in the Featurevisor project repo.
+- Do not change a feature's `bucketBy` or a rule's `key` to tidy up. It moves users.
+- Do not invent attribute, segment, feature or variable keys, in YAML or in application code.
+- Do not archive, rename or delete a definition before `find-usage` shows nothing active depends on it.
+- Do not delete a retired definition when archiving will do. A reused key brings back the old bucketing and history.
+- Do not write v4 syntax into a v3 project, or publish v4 datafiles to applications still on v3 SDKs.
+- Do not add `expose` unless asked. It is a temporary migration tool.
+- Do not run bare `build` locally. Use `--no-state-files`.
+- Do not skip lint and tests, or report a change as done without the [definition of done](#definition-of-done).
+- Do not author project definitions inside an application repository.

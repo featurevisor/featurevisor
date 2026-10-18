@@ -48,28 +48,28 @@ variations:
       sections: ["home", "about", "contact"]
     variableOverrides:
       color:
-        - segments:
+        - conditions:
             - countries.germany
           value: yellow
-        - segments:
+        - conditions:
             - countries.switzerland
           value: white
       sections:
-        - segments:
+        - conditions:
             - countries.germany
           value: ["home", "about", "contact", "imprint"]
-        - segments:
+        - conditions:
             - countries.netherlands
           value: ["home", "about", "contact", "bitterballen"]
 
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
       variables:
         title: Sidebar Title for production

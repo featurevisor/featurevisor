@@ -5,6 +5,15 @@ import {
 } from "./error";
 
 describe("core: CLI errors", function () {
+  test("includes parser stacks only in verbose text output", function () {
+    const cause = new Error("parser failed");
+    const error = Object.assign(new Error("features/broken.yml: parser failed"), { cause });
+    expect(formatFeaturevisorCLIError(error, { verbose: true })).toContain(cause.stack);
+    expect(formatFeaturevisorCLIError(error)).not.toContain("Caused by:");
+    expect(
+      JSON.parse(formatFeaturevisorCLIError(error, { json: true, verbose: true })).error,
+    ).toEqual({ code: "unexpected_error", message: error.message, details: {} });
+  });
   test("formats regular errors without exposing a stack", function () {
     expect(formatFeaturevisorCLIError(new Error("failed"))).toBe("failed");
     expect(getFeaturevisorCLIErrorMessage("failed")).toBe("failed");

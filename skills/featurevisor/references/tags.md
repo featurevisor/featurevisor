@@ -1,89 +1,70 @@
 # Tags
 
-Full docs: <https://featurevisor.com/docs/tags>
+Full docs: <https://featurevisor.com/docs/tags/>
 
-Tags mark features so targets can build per-application bundles. Each app downloads the target datafile relevant to it — smaller payloads, less memory, faster evaluation.
+Tags mark which applications use a feature or global variable, so [targets](targets.md) can build a datafile per application. Smaller datafiles mean less to download and hold in memory.
 
-## Configure
+## Declare
 
-Declare the universe of tags up front in `featurevisor.config.js`:
+Every tag must be listed in `featurevisor.config.js`:
 
 ```js
 module.exports = {
-  tags: ['web', 'ios', 'android', 'internal-tools'],
-  environments: ['staging', 'production'],
+  tags: ['web', 'ios', 'android'],
 }
 ```
 
-Lint rejects any feature with a tag not listed here, so add the tag to config first if you're introducing a new one.
+Lint rejects a definition using an undeclared tag, so add the tag to the configuration first.
 
-## Tag a feature
+## Tag definitions
 
 ```yaml
-description: Show banner
+description: Live chat widget
+
 tags:
   - web
   - ios
-# ...
 ```
 
-Features and global variables may carry multiple tags. Targets decide which tagged definitions become part of a datafile.
+Features and global variables both take `tags`. A tag means nothing until a target selects it: the default `all` target has no selectors and ignores tags.
 
-## Build output with targets
+## Select by tag
 
-```bash
-npx featurevisor build --no-state-files
+```yaml
+# targets/web.yml
+description: Web app
+
+tag: web
 ```
 
-Define `targets/web.yml` with `tag: web` to produce `datafiles/<environment>/featurevisor-web.json`.
+This builds `datafiles/featurevisor-web.json`, or one per environment when environments are configured. A global variable needs the tag too, or a tag selected target leaves it out, unless a selected definition references it.
 
 ## Choosing tags
 
-| Strategy                     | Use when                                                 |
-| ---------------------------- | -------------------------------------------------------- |
-| By **surface** (`web`/`ios`) | One Featurevisor project serves several client platforms |
-| By **microfrontend**         | Each MF needs its own bundle; tags map to MF names       |
-| By **service**               | Backend services consuming feature flags                 |
-| `all` catch-all              | Cross-cutting features used by every consumer            |
+| Tag by                           | When                                        |
+| -------------------------------- | ------------------------------------------- |
+| Surface: `web`, `ios`, `android` | one project serves several client platforms |
+| Microfrontend                    | each frontend loads its own datafile        |
+| Service                          | backend services each read a subset         |
 
-Common convention: include an `all` tag in config and tag features that every consumer uses.
+## Hide a feature from some tags
 
-## Testing against a target
+`expose: [web]` on a feature restricts which tag selected targets include it, without removing its tags. It is a temporary tool, mostly for migrations ([features.md](features.md#expose)).
 
-Add `target:` to a feature test assertion to evaluate against the target datafile:
+## Adding, renaming or removing a tag
 
-```yaml
-feature: showBanner
-assertions:
-  - environment: production
-    at: 90
-    context: { country: nl }
-    target: web
-    expectedToBeEnabled: true
-```
+1. Add it to `tags` in the configuration.
+2. Add it to the definitions that need it.
+3. Create or update the target that selects it.
+4. Run `npx featurevisor lint` and `npx featurevisor build --no-state-files`.
+5. Point the application at the new datafile URL.
 
-```bash
-npx featurevisor test
-```
+To rename, change the configuration, every definition's `tags`, and the targets. To remove, remove it from definitions and targets before the configuration, or lint fails.
 
-## Tags vs targets vs namespaces
+`npx featurevisor list --features --tag=web --json` lists what carries a tag.
 
-- **Tags**: feature and global variable metadata used by targets.
-- **[Targets](targets.md)**: generated datafile definitions with optional tag filters, feature key filters (`includeFeatures` / `excludeFeatures`), global variable key filters (`includeVariables` / `excludeVariables`), and build time context.
-- **[Namespaces](namespaces.md)**: organize feature/segment keys via directories. Pure organization, no runtime effect.
+## Tags, targets and namespaces
 
-You typically tag features by consumer surface, namespace freely, and create targets for the actual datafiles consumers load.
-
-## Adding a new tag
-
-1. Add to `featurevisor.config.js -> tags`.
-2. Add it to relevant features' `tags:` lists.
-3. `npx featurevisor lint`.
-4. `npx featurevisor build --no-state-files`.
-5. Create or update a target that selects the tag.
-6. Point the consumer at the new URL.
-
-## Renaming or removing a tag
-
-- **Renaming**: change config + every feature's `tags:` + affected target files.
-- **Removing**: drop the tag from config and from every feature. Don't remove from config alone — lint fails.
+- **Tags**: metadata on definitions that targets select.
+- **[Targets](targets.md)**: the datafiles that get built, selected by tags, keys and known context.
+- **[Namespaces](namespaces.md)**: key prefixes from subdirectories. Organization only, with no effect on which datafile a definition lands in.

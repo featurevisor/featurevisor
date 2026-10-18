@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { createFeaturevisor } from "./instance";
+import type { Evaluation } from "./evaluate";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
 
 const conformance = JSON.parse(
@@ -15,8 +16,135 @@ interface RequiredFeaturesConformanceCase {
   expectedEnabled: boolean;
 }
 
+interface RequiredFeaturesEvaluationCase {
+  name: string;
+  type: "flag" | "variation" | "variable";
+  feature?: string;
+  variable?: string;
+  expected: Partial<Evaluation>;
+}
+
 const requiredFeaturesConformanceCases = conformance.requiredFeatures
   .cases as RequiredFeaturesConformanceCase[];
+
+describe("portable prerequisite evaluation reasons", () => {
+  it("requires the complete versioned reason contract", () => {
+    expect(conformance.version).toBe(15);
+    expect(conformance.requiredFeatures.evaluationCases).toHaveLength(9);
+  });
+
+  it.each(conformance.requiredFeatures.evaluationCases as RequiredFeaturesEvaluationCase[])(
+    "$name",
+    async (testCase) => {
+      const sdk = createFeaturevisor({
+        datafile: JSON.parse(JSON.stringify(conformance.requiredFeatures.datafile)),
+        logLevel: "fatal",
+      });
+      try {
+        for (let repetition = 0; repetition < 2; repetition++) {
+          const evaluation =
+            testCase.type === "flag"
+              ? sdk.evaluateFlag(testCase.feature!)
+              : testCase.type === "variation"
+                ? sdk.evaluateVariation(testCase.feature!)
+                : testCase.feature
+                  ? sdk.evaluateVariable(testCase.feature, testCase.variable!)
+                  : sdk.evaluateVariable(testCase.variable!);
+          expect(evaluation).toMatchObject(testCase.expected);
+        }
+      } finally {
+        await sdk.close();
+      }
+    },
+  );
+});
+
+describe("prerequisite evaluation reason names", () => {
+  it("distinguishes feature and variable gates without changing disabled result policies", async () => {
+    const diagnostics: Array<{ code: string; details: Record<string, unknown> }> = [];
+    const sdk = createFeaturevisor({
+      logLevel: "debug",
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      datafile: createDatafile({
+        features: {
+          prerequisite: createFeature({ traffic: [] }),
+          byFeature: createFeature({
+            requiredFeatures: ["prerequisite"],
+            variablesSchema: { message: { type: "string", defaultValue: "ready" } },
+          }),
+          byVariable: createFeature({
+            conditions: [{ variable: "gate", operator: "equals", value: true }],
+            variablesSchema: { message: { type: "string", defaultValue: "ready" } },
+          }),
+          disabledValues: createFeature({
+            requiredFeatures: ["prerequisite"],
+            disabledVariationValue: "off",
+            variablesSchema: {
+              message: { type: "string", defaultValue: "ready", disabledValue: "blocked" },
+              fallback: { type: "string", defaultValue: "fallback", useDefaultWhenDisabled: true },
+            },
+          }),
+        },
+        variables: {
+          gate: { type: "boolean", defaultValue: false },
+          byFeature: {
+            type: "string",
+            defaultValue: "ready",
+            disabledValue: "blocked",
+            requiredFeatures: ["prerequisite"],
+          },
+          byVariable: {
+            type: "string",
+            defaultValue: "ready",
+            disabledValue: "blocked",
+            conditions: [{ variable: "gate", operator: "equals", value: true }],
+          },
+        },
+      }),
+    });
+    try {
+      for (const [key, reason] of [
+        ["byFeature", "conditions_unmet"],
+        ["byVariable", "conditions_unmet"],
+      ]) {
+        expect(sdk.isEnabled(key)).toBe(false);
+        expect(sdk.evaluateFlag(key)).toMatchObject({ reason, enabled: false });
+        expect(sdk.evaluateVariation(key)).toMatchObject({ type: "variation", reason: "disabled" });
+        expect(sdk.evaluateVariable(key, "message")).toMatchObject({
+          type: "variable",
+          reason: "disabled",
+        });
+        expect(sdk.evaluateVariable(key)).toMatchObject({ reason, variableValue: "blocked" });
+        expect(sdk.getVariable(key)).toBe("blocked");
+        expect(sdk.getVariation(key)).toBeNull();
+        expect(sdk.getVariable(key, "message")).toBeNull();
+      }
+      expect(sdk.evaluateVariation("disabledValues")).toMatchObject({
+        reason: "variation_disabled",
+        variationValue: "off",
+      });
+      expect(sdk.evaluateVariable("disabledValues", "message")).toMatchObject({
+        reason: "variable_disabled",
+        variableValue: "blocked",
+      });
+      expect(sdk.evaluateVariable("disabledValues", "fallback")).toMatchObject({
+        reason: "variable_default",
+        variableValue: "fallback",
+      });
+      expect(diagnostics).toContainEqual(
+        expect.objectContaining({
+          details: expect.objectContaining({
+            featureKey: "byFeature",
+            reason: "conditions_unmet",
+            evaluation: expect.objectContaining({ reason: "conditions_unmet" }),
+          }),
+        }),
+      );
+    } finally {
+      await sdk.close();
+    }
+  });
+});
 
 function requiredFeaturesDatafile(): DatafileContent {
   return createDatafile({
@@ -62,7 +190,7 @@ function requiredFeaturesDatafile(): DatafileContent {
           { feature: "disabled", enabled: false, variation: "control" },
         ],
       }),
-      legacyRequirement: createFeature({ required: ["enabled"] }),
+      canonicalRequirement: createFeature({ requiredFeatures: ["enabled"] }),
       featureOverrides: createFeature({
         variablesSchema: {
           message: { type: "string", defaultValue: "default" },
@@ -194,7 +322,7 @@ describe("requiredFeatures", () => {
     "disabledVariationRequirement",
     "missingDisabledRequirement",
     "mixedRequirements",
-    "legacyRequirement",
+    "canonicalRequirement",
   ])("enables %s when every requirement matches", (featureKey) => {
     expect(f.isEnabled(featureKey)).toBe(true);
   });
@@ -204,7 +332,7 @@ describe("requiredFeatures", () => {
     (featureKey) => {
       expect(f.isEnabled(featureKey)).toBe(false);
       expect(f.evaluateFlag(featureKey)).toEqual(
-        expect.objectContaining({ reason: "required", enabled: false }),
+        expect.objectContaining({ reason: "conditions_unmet", enabled: false }),
       );
     },
   );
@@ -227,7 +355,7 @@ describe("requiredFeatures", () => {
       ),
     ).toEqual(
       expect.objectContaining({
-        reason: "required_features_unmet",
+        reason: "conditions_unmet",
         variableValue: "unavailable",
       }),
     );
@@ -322,7 +450,7 @@ describe("requiredFeatures", () => {
   });
 
   it.each(requiredFeaturesConformanceCases)("conformance: $name", (testCase) => {
-    expect(conformance.version).toBe(6);
+    expect(conformance.version).toBe(15);
     const sdk = createFeaturevisor({
       datafile: conformance.requiredFeatures.datafile,
       logLevel: "fatal",

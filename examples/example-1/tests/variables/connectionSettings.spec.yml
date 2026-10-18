@@ -1,0 +1,53 @@
+variable: connectionSettings
+assertions:
+  - key: bounds
+    description: Bounds remain ordered in ${{ environment }} for ${{ country }}
+    matrix:
+      environment: [staging, production]
+      country: [gb, nl]
+    environment: ${{ environment }}
+    context:
+      country: ${{ country }}
+    checks:
+      - key: minimum-below-maximum
+        description: Minimum remains below maximum
+        path: minimum
+        operator: lessThan
+        compareTo:
+          path: maximum
+      - path: retryDelays.0
+        operator: lessThan
+        compareTo:
+          path: [retryDelays, 1]
+      - variable: connectionLimit
+        operator: lessThanOrEquals
+        compareTo:
+          path: maximum
+
+  - key: exact-and-relational
+    description: Exact expectations can be combined with checks
+    environment: staging
+    expectedValue:
+      minimum: 2
+      maximum: 20
+      retryDelays: [100, 500]
+    checks:
+      - key: positive-minimum
+        description: Minimum stays positive
+        path: minimum
+        operator: greaterThan
+        value: 0
+      - segment: countries.netherlands
+        matches: false
+    children:
+      - context:
+          country: nl
+        checks:
+          - segment: countries.netherlands
+            matches: true
+          - key: child-capacity
+            description: Child capacity fits within the configured maximum
+            path: maximum
+            operator: greaterThanOrEquals
+            compareTo:
+              variable: connectionLimit

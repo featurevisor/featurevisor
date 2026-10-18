@@ -1,9 +1,50 @@
 import * as path from "path";
 
-import type { Commit, EntityDiff, EntityType } from "@featurevisor/types";
+import type { Commit, EntityDiff, EntityType, HistoryEntity } from "@featurevisor/types";
 import { CustomParser } from "@featurevisor/parsers";
 
 import { ProjectConfig } from "../config";
+import { isScenarioSpec, testSpecKeyFromStorageKey } from "../datasource/testSpecs";
+
+interface HistoryOptions {
+  rootDirectoryPath: string;
+  projectConfig: ProjectConfig;
+}
+
+export function getHistoryEntity(
+  file: string,
+  { rootDirectoryPath, projectConfig }: HistoryOptions,
+  namespaceCharacter = "/",
+): HistoryEntity | undefined {
+  const absolutePath = path.resolve(rootDirectoryPath, file);
+  const extension = "." + (projectConfig.parser as CustomParser).extension;
+  if (!absolutePath.endsWith(extension)) return;
+
+  const directories: Array<[EntityType, string]> = [
+    ["attribute", projectConfig.attributesDirectoryPath],
+    ["segment", projectConfig.segmentsDirectoryPath],
+    ["feature", projectConfig.featuresDirectoryPath],
+    ["schema", projectConfig.schemasDirectoryPath],
+    ["variable", projectConfig.variablesDirectoryPath],
+    ["target", projectConfig.targetsDirectoryPath],
+    ["test", projectConfig.testsDirectoryPath],
+  ];
+  for (const [type, directory] of directories) {
+    if (!isWithinDirectory(directory, path.dirname(absolutePath))) continue;
+    return {
+      type,
+      key: path
+        .relative(directory, absolutePath)
+        .slice(0, -extension.length)
+        .split(path.sep)
+        .join(namespaceCharacter),
+    };
+  }
+}
+
+function unquoteGitPath(value: string): string {
+  return value.startsWith('"') ? JSON.parse(value) : value;
+}
 
 function isWithinDirectory(directoryPath: string, fileDirectoryPath: string): boolean {
   return (
@@ -39,7 +80,8 @@ function parseGitCommitShowOutput(gitShowOutput: string) {
         // Finish capturing the previous file's diff
         parsingDiffs = false;
       }
-      currentFile = line.split(" ")[2].substring(2);
+      const paths = /^diff --git ("a\/.*"|a\/.*?) ("b\/.*"|b\/.*)$/.exec(line);
+      currentFile = paths ? unquoteGitPath(paths[1]).substring(2) : "";
       result.diffs[currentFile] = line + "\n"; // Include the diff --git line
       parsingDiffs = true;
       parsingMessage = false; // Stop parsing commit message
@@ -68,10 +110,11 @@ function analyzeFileChange(diff) {
 
 export function getCommit(
   gitShowOutput: string,
-  options: { rootDirectoryPath: string; projectConfig: ProjectConfig },
+  options: HistoryOptions & {
+    readTestSpec?: (revision: string, filePath: string) => unknown;
+  },
 ): Commit {
   const parsed = parseGitCommitShowOutput(gitShowOutput);
-  const { rootDirectoryPath, projectConfig } = options;
 
   const commit: Commit = {
     hash: parsed.hash,
@@ -84,80 +127,58 @@ export function getCommit(
     const diff = parsed.diffs[file];
     const status = analyzeFileChange(diff);
 
-    const absolutePath = path.join(rootDirectoryPath, file);
-    const relativeDir = path.dirname(absolutePath);
+    const renamedTo = /^rename to (.+)$/m.exec(diff)?.[1];
+    const changes = renamedTo
+      ? [
+          { file, status: "deleted" },
+          { file: unquoteGitPath(renamedTo), status: "created" },
+        ]
+      : [{ file, status }];
 
-    // get entity type
-    let type: EntityType = "attribute";
-    if (isWithinDirectory(projectConfig.attributesDirectoryPath, relativeDir)) {
-      type = "attribute";
-    } else if (isWithinDirectory(projectConfig.segmentsDirectoryPath, relativeDir)) {
-      type = "segment";
-    } else if (isWithinDirectory(projectConfig.featuresDirectoryPath, relativeDir)) {
-      type = "feature";
-    } else if (isWithinDirectory(projectConfig.groupsDirectoryPath, relativeDir)) {
-      type = "group";
-    } else if (isWithinDirectory(projectConfig.schemasDirectoryPath, relativeDir)) {
-      type = "schema";
-    } else if (isWithinDirectory(projectConfig.variablesDirectoryPath, relativeDir)) {
-      type = "variable";
-    } else if (isWithinDirectory(projectConfig.targetsDirectoryPath, relativeDir)) {
-      type = "target";
-    } else if (isWithinDirectory(projectConfig.testsDirectoryPath, relativeDir)) {
-      type = "test";
-    } else {
-      // unknown type
-      return;
+    for (const change of changes) {
+      const entity = getHistoryEntity(change.file, options);
+      if (!entity) continue;
+      if (entity.type === "test" && options.readTestSpec) {
+        const readKind = (revision: string): EntityType | undefined => {
+          try {
+            const value = options.readTestSpec!(revision, change.file);
+            if (typeof value === "undefined") return;
+            return isScenarioSpec(value) ? "scenario" : "test";
+          } catch {
+            // A diff alone cannot classify unreadable historical content. Keep the test change.
+            return "test";
+          }
+        };
+        const before = change.status !== "created" ? readKind(`${parsed.hash}^`) : undefined;
+        const after = change.status !== "deleted" ? readKind(parsed.hash) : undefined;
+        if (before && after && before !== after) {
+          commit.entities.push(
+            {
+              ...entity,
+              type: before,
+              key: testSpecKeyFromStorageKey(entity.key),
+              content: diff,
+              deleted: true,
+            },
+            {
+              ...entity,
+              type: after,
+              key: testSpecKeyFromStorageKey(entity.key),
+              content: diff,
+              created: true,
+            },
+          );
+          continue;
+        }
+        entity.type = after || before || "test";
+        entity.key = testSpecKeyFromStorageKey(entity.key);
+      }
+      const entityDiff: EntityDiff = { ...entity, content: diff };
+      if (change.status === "created") entityDiff.created = true;
+      else if (change.status === "deleted") entityDiff.deleted = true;
+      else entityDiff.updated = true;
+      commit.entities.push(entityDiff);
     }
-
-    // get entity key
-    const fileName = absolutePath.split(path.sep).pop() as string;
-    const extensionWithDot = "." + (projectConfig.parser as CustomParser).extension;
-
-    if (!fileName.endsWith(extensionWithDot)) {
-      // unknown extension
-      return;
-    }
-
-    let key = fileName.replace(extensionWithDot, "");
-
-    if (
-      (type === "feature" || type === "target" || type === "variable") &&
-      absolutePath.startsWith(
-        (type === "feature"
-          ? projectConfig.featuresDirectoryPath
-          : type === "target"
-            ? projectConfig.targetsDirectoryPath
-            : projectConfig.variablesDirectoryPath) + path.sep,
-      )
-    ) {
-      const entityDirectoryPath =
-        type === "feature"
-          ? projectConfig.featuresDirectoryPath
-          : type === "target"
-            ? projectConfig.targetsDirectoryPath
-            : projectConfig.variablesDirectoryPath;
-      key = absolutePath
-        .replace(entityDirectoryPath + path.sep, "")
-        .replace(extensionWithDot, "")
-        .replace(/\\/g, "/");
-    }
-
-    const entityDiff: EntityDiff = {
-      type,
-      key,
-      content: diff,
-    };
-
-    if (status === "created") {
-      entityDiff.created = true;
-    } else if (status === "deleted") {
-      entityDiff.deleted = true;
-    } else {
-      entityDiff.updated = true;
-    }
-
-    commit.entities.push(entityDiff);
   });
 
   return commit;

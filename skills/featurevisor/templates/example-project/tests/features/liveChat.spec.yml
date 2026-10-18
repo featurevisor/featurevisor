@@ -1,0 +1,27 @@
+feature: liveChat
+
+assertions:
+  - key: modern-builds
+    matrix:
+      appVersion: ["5.5", 5.5.0, 5.10.1, v6.0.0]
+    description: App ${{ appVersion }} has live chat
+    at: 50
+    context:
+      userId: test-user-1
+      appVersion: ${{ appVersion }}
+    expectedToBeEnabled: true
+
+  - key: older-builds
+    description: App 5.4.9 does not contain the widget
+    at: 50
+    context:
+      userId: test-user-1
+      appVersion: 5.4.9
+    expectedToBeEnabled: false
+
+  - key: web
+    description: Without an app version, the web stays at 0%
+    at: 50
+    context:
+      userId: test-user-1
+    expectedToBeEnabled: false

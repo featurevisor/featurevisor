@@ -1,0 +1,23 @@
+description: Connection bounds shared by service clients
+tags: [all]
+type: object
+properties:
+  minimum:
+    type: integer
+  maximum:
+    type: integer
+  retryDelays:
+    type: array
+    items:
+      type: integer
+required: [minimum, maximum, retryDelays]
+defaultValue:
+  minimum: 2
+  maximum: 20
+  retryDelays: [100, 500]
+overrides:
+  production:
+    - key: netherlands
+      conditions: countries.netherlands
+      mutate:
+        maximum: 40

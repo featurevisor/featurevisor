@@ -2,39 +2,81 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "archived": {
-      "type": "boolean",
-      "description": "Indicates whether the attribute is archived or not."
-    },
+    "archived": { "type": "boolean" },
+    "promotable": { "type": "boolean" },
     "type": {
       "type": "string",
-      "description": "Type of attribute.",
-      "enum": ["boolean", "string", "integer", "double", "date", "semver", "object", "array"]
+      "enum": ["boolean", "string", "integer", "number", "object", "array"]
     },
-    "description": {
-      "type": "string",
-      "description": "Human readable description of the attribute for documentation purposes."
-    },
+    "description": { "type": "string" },
+    "enum": { "type": "array", "items": { "$ref": "#/definitions/__schema0" } },
+    "const": { "allOf": [{ "$ref": "#/definitions/__schema0" }] },
+    "minimum": { "type": "number" },
+    "maximum": { "type": "number" },
+    "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "pattern": { "type": "string" },
+    "format": { "type": "string", "enum": ["date-time", "semver"] },
+    "items": { "allOf": [{ "$ref": "#/definitions/__schema1" }] },
+    "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "uniqueItems": { "type": "boolean" },
+    "required": { "type": "array", "items": { "type": "string" } },
     "properties": {
       "type": "object",
-      "description": "Optional property definitions for object attributes.",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["boolean", "string", "integer", "double", "date", "semver", "array"]
-          },
-          "description": {
-            "type": "string"
-          }
-        },
-        "required": ["type"],
-        "additionalProperties": false
-      }
-    }
+      "propertyNames": { "type": "string" },
+      "additionalProperties": { "$ref": "#/definitions/__schema1" }
+    },
+    "additionalProperties": { "allOf": [{ "$ref": "#/definitions/__schema1" }] },
+    "oneOf": { "minItems": 2, "type": "array", "items": { "$ref": "#/definitions/__schema1" } }
   },
-  "required": ["description", "type"],
+  "required": ["description"],
   "additionalProperties": false,
-  "description": "JSON Schema for creating Featurevisor attribute, expressed in YAML"
+  "definitions": {
+    "__schema0": {
+      "anyOf": [
+        { "type": "boolean" },
+        { "type": "string" },
+        { "type": "number" },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/__schema0" }
+        },
+        { "type": "array", "items": { "$ref": "#/definitions/__schema0" } }
+      ]
+    },
+    "__schema1": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "string", "integer", "number", "object", "array"]
+        },
+        "enum": { "type": "array", "items": { "$ref": "#/definitions/__schema0" } },
+        "const": { "allOf": [{ "$ref": "#/definitions/__schema0" }] },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "pattern": { "type": "string" },
+        "format": { "type": "string", "enum": ["date-time", "semver"] },
+        "items": { "allOf": [{ "$ref": "#/definitions/__schema1" }] },
+        "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uniqueItems": { "type": "boolean" },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "properties": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/__schema1" }
+        },
+        "additionalProperties": { "allOf": [{ "$ref": "#/definitions/__schema1" }] },
+        "schema": { "type": "string" },
+        "oneOf": { "minItems": 2, "type": "array", "items": { "$ref": "#/definitions/__schema1" } }
+      },
+      "additionalProperties": false
+    }
+  }
 }

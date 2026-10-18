@@ -1,0 +1,7 @@
+description: Select aliases and include their transitive sources
+
+includeVariables: [policyChain, rawAlias]
+
+excludeVariables: [policy, policyAlias, raw]
+
+excludeFeatures: "*"

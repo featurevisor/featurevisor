@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @config "../tailwind.config.mts";
 
+/* `data-theme` on <html> is always resolved to "light" or "dark" by theme.ts. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   color-scheme: light;
 
@@ -18,11 +21,81 @@
   --mv-color-header-active: #374151;
   --mv-color-header-text: #f9fafb;
   --mv-color-pill: #cbd5e1;
-  --mv-color-faint: #9ca3af;
+  --mv-color-faint: #767e8c;
   --mv-color-success-surface: #bbf7d0;
   --mv-color-warning-surface: #fed7aa;
   --mv-color-danger-surface: #fee2e2;
   --mv-shadow-soft: 0 10px 30px rgb(15 23 42 / 0.08);
+}
+
+/*
+ * Dark theme. Besides the Catalog tokens, the Tailwind palette shades the UI uses
+ * are remapped here, so tinted badges and slate chips invert without per-component
+ * dark classes: slate runs dark to light, and each hue's pale tint becomes a
+ * translucent wash with light text.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --mv-color-background: #0b0f16;
+  --mv-color-surface: #121822;
+  --mv-color-elevated: #181f2b;
+  --mv-color-border: #263041;
+  --mv-color-text: #e2e8f0;
+  --mv-color-muted: #a0aabb;
+  --mv-color-faint: #7f8a9c;
+  --mv-color-primary: #cbd5e1;
+  --mv-color-success: #4ade80;
+  --mv-color-warning: #fb923c;
+  --mv-color-danger: #f87171;
+  --mv-color-header: #0f141d;
+  --mv-color-header-active: #3a4557;
+  --mv-color-header-text: #f8fafc;
+  --mv-color-pill: #334155;
+  --mv-color-success-surface: rgb(74 222 128 / 0.15);
+  --mv-color-warning-surface: rgb(251 146 60 / 0.15);
+  --mv-color-danger-surface: rgb(248 113 113 / 0.15);
+  --mv-shadow-soft: 0 10px 30px rgb(0 0 0 / 0.4);
+
+  --color-slate-50: #161d28;
+  --color-slate-100: #1e2634;
+  --color-slate-200: #2a3343;
+  --color-slate-300: #3a4557;
+  --color-slate-400: #556176;
+  --color-slate-500: #8b96a8;
+  --color-slate-600: #a7b0bf;
+  --color-slate-700: #c5ccd7;
+  --color-slate-800: #dfe4eb;
+
+  --color-sky-50: rgb(56 189 248 / 0.12);
+  --color-sky-100: rgb(56 189 248 / 0.2);
+  --color-sky-200: rgb(56 189 248 / 0.3);
+  --color-sky-800: #7dd3fc;
+
+  --color-emerald-50: rgb(52 211 153 / 0.12);
+  --color-emerald-200: rgb(52 211 153 / 0.3);
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #6ee7b7;
+
+  --color-amber-50: rgb(251 191 36 / 0.1);
+  --color-amber-100: rgb(251 191 36 / 0.22);
+  --color-amber-200: rgb(251 191 36 / 0.3);
+  --color-amber-800: #fcd34d;
+  --color-amber-900: #fde68a;
+
+  --color-rose-50: rgb(251 113 133 / 0.12);
+  --color-rose-200: rgb(251 113 133 / 0.3);
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fda4af;
+  --color-rose-900: #fecdd3;
+
+  --color-violet-50: rgb(167 139 250 / 0.14);
+  --color-violet-200: rgb(167 139 250 / 0.32);
+  --color-violet-800: #c4b5fd;
+}
+
+:root[data-theme="dark"] header.bg-header {
+  box-shadow: inset 0 -1px 0 var(--mv-color-border);
 }
 
 body {
@@ -56,4 +129,16 @@ a {
 
 .variable-schema-col-description {
   width: 28%;
+}
+
+/* Honour the system setting for reduced motion across every animation and transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

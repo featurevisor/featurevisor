@@ -4,7 +4,7 @@ Full docs: <https://featurevisor.com/docs/namespaces>
 
 Namespaces are purely **organizational**: putting a feature, segment, global variable, or related test inside a subdirectory turns the directory name into a key prefix. They have no runtime effect beyond changing the key.
 
-The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead. **Adapt to the project — never assume**: check `npx featurevisor config --json --pretty`, then confirm against real keys (`npx featurevisor list --segments --json`, `list --features --json`) before writing any namespaced reference. A key written with the wrong separator fails lint at best, or silently creates a new un-namespaced entity at worst.
+The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead. **Adapt to the project and never assume.** Check `npx featurevisor config --json --pretty`, then confirm against real keys (`npx featurevisor list --segments --json`, `list --features --json`) before writing any namespaced reference. A key written with the wrong separator fails lint at best, or silently creates a new un-namespaced entity at worst.
 
 ## Layout (default `.` separator)
 
@@ -25,6 +25,8 @@ segments/
 
 Nested directories are allowed and stack: `features/checkout/v2/promo.yml` → key `checkout.v2.promo`.
 
+Attributes are the exception. Keep their files directly in the configured attributes directory, also within Sets. `attributes/geo/country.yml` and dotted names such as `attributes/geo.country.yml` are rejected regardless of the namespace separator. The configured file extension is allowed. For nested context, declare an object in `attributes/geo.yml` and use `attribute: geo.country`. This dot is an object property path, not a namespace. See [attributes.md](attributes.md).
+
 With `namespaceCharacter: "/"` configured, the same files produce `checkout/promo`, `countries/netherlands`, etc.
 
 ## Referencing namespaced keys
@@ -32,14 +34,13 @@ With `namespaceCharacter: "/"` configured, the same files produce `checkout/prom
 Wherever an entity key appears, use the full namespaced form:
 
 ```yaml
-# features/checkout/express.yml
-requiredFeatures: checkout.oneClick  # depend on another checkout feature
+conditions:
+  feature: checkout.oneClick
 
 rules:
-  production:
-    - key: nl
-      segments: countries.netherlands
-      percentage: 100
+  - key: nl
+    conditions: countries.netherlands
+    percentage: 100
 ```
 
 In SDK calls:
@@ -69,13 +70,13 @@ segment: countries.netherlands
 
 ## What namespaces are **not**
 
-- Not a substitute for [tags](tags.md) — tags drive datafile bundling per consumer; namespaces don't change which datafile a feature lands in.
-- Not a substitute for [environments](configuration.md) — namespaces don't gate rules per env.
-- Not a security boundary — they're directories.
+- Not a substitute for [tags](tags.md): tags drive datafile bundling per consumer. Namespaces don't change which datafile a feature lands in.
+- Not a substitute for [environments](configuration.md): namespaces don't gate rules per env.
+- Not a security boundary: they're directories.
 
 ## Authoring tips
 
-- Choose namespace names that describe **what** the features are about, not **who** owns them today (ownership rotates; intent doesn't).
-- Stay shallow. One or two levels handles most projects; deep nests make keys unwieldy in SDK calls.
-- Keep test spec paths mirroring source paths (`tests/features/checkout/promo.spec.yml` for `features/checkout/promo.yml`) — convention, not enforced.
-- Once a feature is referenced by key in application code or other features, **don't rename the namespace or change `namespaceCharacter`** — either one rewrites every key inside it and breaks consumers.
+- Choose namespace names that describe **what** the features are about, not **who** owns them today (ownership rotates, but intent doesn't).
+- Stay shallow. One or two levels handles most projects. Deep nests make keys unwieldy in SDK calls.
+- Keep test spec paths mirroring source paths (`tests/features/checkout/promo.spec.yml` for `features/checkout/promo.yml`). This is a convention, not enforced.
+- Once a feature is referenced by key in application code or other features, **don't rename the namespace or change `namespaceCharacter`**: either one rewrites every key inside it and breaks consumers.

@@ -1,0 +1,24 @@
+description: Connections fit within bounds in ${{ environment }} for ${{ country }}
+matrix:
+  environment: [staging, production]
+  country: [gb, nl]
+environment: ${{ environment }}
+target: connection-tests
+context:
+  country: ${{ country }}
+  userId: customer-1
+checks:
+  - key: minimum-capacity
+    description: Capacity meets the configured minimum
+    variable: connectionLimit
+    operator: greaterThanOrEquals
+    compareTo:
+      variable: connectionSettings
+      path: minimum
+
+  # Named and unnamed sibling checks are both accepted.
+  - variable: connectionLimit
+    operator: lessThanOrEquals
+    compareTo:
+      variable: connectionSettings
+      path: maximum

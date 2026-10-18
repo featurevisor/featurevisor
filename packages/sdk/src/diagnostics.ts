@@ -6,8 +6,6 @@ export type FeaturevisorDiagnosticCode =
   | "context_set"
   | "sticky_features_set"
   | "sticky_variables_set"
-  /** @deprecated Use `sticky_features_set` or `sticky_variables_set`. */
-  | "sticky_set"
   | "invalid_datafile"
   | "duplicate_module"
   | "module_setup_error"

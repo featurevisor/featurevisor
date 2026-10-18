@@ -1,9 +1,20 @@
-import type { DatafileContent, ParsedVariable, ParsedVariableOverride } from "@featurevisor/types";
+import type {
+  ComposeReference,
+  Conditions,
+  DatafileContent,
+  DatafileVariableOverrideStep,
+  ParsedVariable,
+  ParsedVariableOverride,
+  VariableMutations,
+} from "@featurevisor/types";
 import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
 import { colorize } from "../tester/cliFormat";
+import { mutationEntries } from "../builder/mutationEntries";
+import { getConditionReferences } from "../datasource/conditions";
+import type { ConditionsProbe, ConditionProbeNode } from "./probeConditions";
 
 export interface ExplanationEvidence {
-  basis: "sdk-result" | "sdk-diagnostic" | "definition";
+  basis: "sdk-result" | "sdk-diagnostic" | "definition" | "cli-probe";
   title: string;
   details: Record<string, unknown>;
 }
@@ -39,6 +50,9 @@ export interface ExplanationOptions {
   definitionExists?: boolean;
   /** The definition is read through the project's configured datasource. */
   authoredVariable?: ParsedVariable;
+  /** Separate CLI checks, never observations from the authoritative call. */
+  conditionsProbe?: ConditionsProbe;
+  selectionProbes?: ConditionsProbe[];
 }
 
 export function getEvaluationValue(evaluation: Evaluation): unknown {
@@ -65,30 +79,32 @@ export function summarizeEvaluation(evaluation: Evaluation): string {
       return evaluation.enabled === false
         ? "The feature is disabled. useDefaultWhenDisabled supplied the variable's defaultValue."
         : "The SDK returned the variable's defaultValue.";
-    case "required":
-      return "A required feature did not satisfy its enabled or variation requirement.";
-    case "required_features_unmet":
-      return "The global variable's required features were not satisfied. Its disabled value policy supplied the result, if any.";
+    case "variable_composed":
+      return "The SDK assembled the composition from its referenced sources.";
+    case "conditions_unmet":
+      return evaluation.featureKey
+        ? "The feature's root conditions were not satisfied."
+        : "The global variable's root conditions were not satisfied. Its disabled value policy supplied the result, if any.";
     case "forced":
       return "A force entry supplied the result.";
     case "sticky":
       return "A sticky value supplied the result.";
     case "no_variations":
       return "The feature has no variations to evaluate.";
-    case "out_of_range":
-      return "The bucket value is outside the feature's allocated group ranges.";
     case "no_match":
-      return "No eligible result was selected. A selector, rollout boundary, or variation allocation can cause this result.";
+      return evaluation.type === "flag"
+        ? "No rule's conditions matched, or the bucket is above the first matching rule's percentage. A bucket above the percentage does not fall through to later rules."
+        : "No eligible result was selected. A selector, rollout boundary, or variation allocation can cause this result.";
     case "variable_override_rule":
       return evaluation.featureKey
         ? "A variable override on the matched feature rule supplied the value."
-        : "A global variable override supplied the value.";
+        : (evaluation.variableOverridePaths?.length ?? 0) > 1
+          ? "Global variable overrides supplied the value."
+          : "A global variable override supplied the value.";
     case "variable_override_variation":
       return "A variable override on the selected variation supplied the value.";
     case "allocated":
-      return evaluation.type === "flag"
-        ? "The SDK enabled the feature within its allocated group range."
-        : "The selected variation supplied the result.";
+      return "The selected variation supplied the result.";
     case "rule":
       return evaluation.traffic?.percentage === 0
         ? "The matched rule has a rollout percentage of 0, so the feature is disabled."
@@ -110,15 +126,9 @@ function readableSelector(value: unknown): unknown {
   }
 }
 
-function selectors(value: {
-  conditions?: unknown;
-  segments?: unknown;
-  requiredFeatures?: unknown;
-}): Record<string, unknown> {
+function selectors(value: { conditions?: unknown }): Record<string, unknown> {
   return {
     ...(value.conditions !== undefined && { conditions: readableSelector(value.conditions) }),
-    ...(value.segments !== undefined && { segments: readableSelector(value.segments) }),
-    ...(value.requiredFeatures !== undefined && { requiredFeatures: value.requiredFeatures }),
   };
 }
 
@@ -142,6 +152,64 @@ function authoredPath(
   return result;
 }
 
+function samePath(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((key, index) => key === right[index]);
+}
+
+function programStepDetails(
+  program: DatafileVariableOverrideStep[],
+  path: string[],
+): Record<string, unknown> {
+  const index = program.findIndex((step) => samePath(step.keyPath || [step.key], path));
+  if (index === -1) return { path, presentInProgram: false };
+  const step = program[index];
+  return {
+    index,
+    key: step.key,
+    path: step.keyPath || [step.key],
+    operations: step.operations,
+    onMatch: step.onMatch,
+    onMiss: step.onMiss,
+  };
+}
+
+export function getCompositionSourceKind(source: ComposeReference, datafile: DatafileContent) {
+  if (source.feature !== undefined) {
+    if (source.variable !== undefined) return "feature variable";
+    return source.variation ? "variation" : "flag";
+  }
+  const composition = datafile.variables?.[source.variable]?.compose;
+  return typeof composition === "string"
+    ? "alias"
+    : composition
+      ? "composition"
+      : "global variable";
+}
+
+export const ROLLOUT_BOUNDARY_TITLE = "Rollout boundary (supplementary CLI probe)";
+
+/**
+ * A flag with `no_match` either matched no rule or landed above the matched
+ * rule's percentage. The SDK reports both the same way. When a reliable probe
+ * shows the first matching rule, name it and compare its percentage with the
+ * SDK's bucket.
+ */
+export function getRolloutBoundary(
+  evaluation: Evaluation,
+  feature: DatafileContent["features"][string] | undefined,
+  options: Pick<ExplanationOptions, "selectionProbes">,
+): Record<string, unknown> | undefined {
+  if (evaluation.type !== "flag" || evaluation.reason !== "no_match") return undefined;
+  if (typeof evaluation.bucketValue !== "number") return undefined;
+  const rules = (options.selectionProbes || []).filter((probe) => probe.scope === "rule");
+  // An unreliable probe before the first passing one could hide an earlier match.
+  const first = rules.find((probe) => !probe.reliable || probe.passed);
+  if (!first?.reliable) return undefined;
+  const rule = feature?.traffic?.find((entry) => entry.key === first.key);
+  if (!rule || evaluation.bucketValue <= rule.percentage) return undefined;
+  return { rule: rule.key, percentage: rule.percentage, bucketValue: evaluation.bucketValue };
+}
+
 /** Augment an existing result. This function never calls or reimplements the SDK. */
 export function explainEvaluation(
   evaluation: Evaluation,
@@ -162,6 +230,11 @@ export function explainEvaluation(
     "This explains the SDK outcome, not a complete execution trace. Individual failed checks and short circuits are not recorded.",
     "Definitions and compiled selectors are supporting information, not additional evaluations. Local definitions may differ from deployed datafiles.",
   ];
+  if (options.conditionsProbe) {
+    limitations.push(
+      "Condition probes include leaves and rules skipped by SDK short circuiting. They use a separate SDK instance with no application modules and are not an execution trace.",
+    );
+  }
   if (options.target) {
     limitations.push(
       "Target context can simplify selectors during building. Authored selectors are shown as provenance, not replayed against the supplied context.",
@@ -172,17 +245,7 @@ export function explainEvaluation(
 
   const describeSelectors = (candidate: Parameters<typeof selectors>[0]) => {
     const details = selectors(candidate);
-    const keys = new Set<string>();
-    const visit = (expression: unknown) => {
-      if (typeof expression === "string" && expression !== "*") keys.add(expression);
-      else if (Array.isArray(expression)) expression.forEach(visit);
-      else if (expression && typeof expression === "object") {
-        for (const key of ["and", "or", "not"]) {
-          if (key in expression) visit((expression as Record<string, unknown>)[key]);
-        }
-      }
-    };
-    visit(details.segments);
+    const keys = getConditionReferences(candidate.conditions as Conditions | undefined).segments;
     if (keys.size) {
       details.segmentDefinitions = Array.from(keys, (key) => ({
         key,
@@ -227,27 +290,72 @@ export function explainEvaluation(
   if (evaluation.force) {
     add("sdk-result", "Selected force", {
       index: evaluation.forceIndex,
-      ...evaluation.force,
+      enabled: evaluation.force.enabled,
+      variation: evaluation.force.variation,
+      variables: evaluation.force.variables,
       ...describeSelectors(evaluation.force),
     });
   }
-  const requirements =
-    evaluation.requiredFeatures ??
-    evaluation.required ??
-    variable?.requiredFeatures ??
-    feature?.requiredFeatures ??
-    feature?.required;
-  if (requirements !== undefined) {
-    add("definition", "Declared root requirements (not a per requirement trace)", {
-      requiredFeatures: requirements,
+  const conditions = evaluation.conditions ?? variable?.conditions ?? feature?.conditions;
+  if (conditions !== undefined) {
+    add("definition", "Declared root conditions (not an execution trace)", {
+      conditions: readableSelector(conditions),
     });
+  }
+  if (options.conditionsProbe) {
+    add("cli-probe", "Supplementary CLI condition probe (not an execution trace)", {
+      ...structuredClone(options.conditionsProbe),
+    });
+  }
+  for (const probe of options.selectionProbes || []) {
+    add("cli-probe", "Supplementary CLI selection condition probe (not an execution trace)", {
+      ...structuredClone(probe),
+    });
+  }
+  const boundary = getRolloutBoundary(evaluation, feature, options);
+  if (boundary) {
+    add("cli-probe", ROLLOUT_BOUNDARY_TITLE, boundary);
   }
   if (evaluation.type === "variation" && value !== undefined) {
     add("sdk-result", "Returned variation", { value });
   }
   if (evaluation.type === "variable") {
     const schema = evaluation.variableSchema ?? variable;
-    if (schema) {
+    if (variable?.compose && evaluation.reason !== "conditions_unmet") {
+      if (variable.overrideProgram)
+        limitations.push(
+          typeof variable.compose === "string"
+            ? "Composed overrides start from runtime getter results. Their paths and operations are verified, but the CLI does not replay a starting value by evaluating sources again."
+            : "Composed overrides start from runtime getter results. Their paths and operations are verified, but the CLI does not replay a starting object by evaluating sources again.",
+        );
+      if (typeof variable.compose === "string") {
+        const source = { variable: variable.compose };
+        add("sdk-result", "Composition source", {
+          afterOverrides: evaluation.reason === "variable_override_rule",
+          source,
+          sourceKind: getCompositionSourceKind(source, datafile),
+          hasValue: value !== undefined,
+          value,
+        });
+      } else {
+        add("sdk-result", "Composition members", {
+          afterOverrides: evaluation.reason === "variable_override_rule",
+          members: variable.compose.map(({ key, ...source }) => ({
+            property: key,
+            source,
+            sourceKind: getCompositionSourceKind(source, datafile),
+            hasValue:
+              value !== null &&
+              typeof value === "object" &&
+              Object.prototype.hasOwnProperty.call(value, key),
+            value:
+              value !== null && typeof value === "object"
+                ? (value as Record<string, unknown>)[key]
+                : undefined,
+          })),
+        });
+      }
+    } else if (schema) {
       add("definition", "Variable value policy", {
         type: schema.type,
         defaultValue: schema.defaultValue,
@@ -265,45 +373,57 @@ export function explainEvaluation(
         compiledIndex: evaluation.variableOverrideIndex,
       });
     }
-    const selected =
-      variable?.overrides?.[evaluation.variableOverrideIndex ?? -1] ??
-      (evaluation.reason === "variable_override_rule" && variableKey
-        ? evaluation.traffic?.variableOverrides?.[variableKey]?.[
-            evaluation.variableOverrideIndex ?? -1
-          ]
-        : undefined);
+    const program = variable?.overrideProgram;
+    const selected = program
+      ? program[evaluation.variableOverrideIndex ?? -1]
+      : (variable?.overrides?.[evaluation.variableOverrideIndex ?? -1] ??
+        (evaluation.reason === "variable_override_rule" && variableKey
+          ? evaluation.traffic?.variableOverrides?.[variableKey]?.[
+              evaluation.variableOverrideIndex ?? -1
+            ]
+          : undefined));
     if (selected) {
       add("definition", "Selected compiled override selectors", describeSelectors(selected));
       if (variable) {
         add("definition", "Global override selection policy", {
-          policy:
-            "The SDK selects the first matching compiled override. Nested descendants precede their parent fallbacks. Mutations are resolved during building, not in the SDK.",
+          policy: program
+            ? "The SDK follows the compiled runtime override program. Its jumps preserve authored first match and continuation rules. Recorded paths and operations below are runtime facts; selectors are not replayed here."
+            : "The SDK selects the first matching compiled override. Nested descendants precede their parent fallbacks. Mutations are resolved during building, not in the SDK.",
         });
-        const path =
-          evaluation.variableOverridePath ??
-          (evaluation.variableOverrideKey !== undefined ? [evaluation.variableOverrideKey] : []);
-        const authored =
-          options.authoredVariable && path.length > 0
-            ? authoredPath(options.authoredVariable, options.environment, path)
-            : undefined;
-        if (authored) {
-          add("definition", "Authored value construction (build time)", {
-            defaultValue: options.authoredVariable?.defaultValue,
-            overrides: authored.map((override, index) => ({
-              path: path.slice(0, index + 1),
-              ...selectors(override),
-              ...(override.mutate !== undefined
-                ? { mutate: override.mutate }
-                : { value: override.value }),
-            })),
-            compiledValue: selected.value,
-          });
-        } else if (options.authoredVariable) {
-          limitations.push(
-            "The selected compiled override could not be mapped to an authored override path.",
-          );
+        if (!program && "value" in selected) {
+          const path =
+            evaluation.variableOverridePath ??
+            (evaluation.variableOverrideKey !== undefined ? [evaluation.variableOverrideKey] : []);
+          const authored =
+            options.authoredVariable && path.length > 0
+              ? authoredPath(options.authoredVariable, options.environment, path)
+              : undefined;
+          if (authored) {
+            add("definition", "Authored value construction (build time)", {
+              defaultValue: options.authoredVariable?.defaultValue,
+              overrides: authored.map((override, index) => ({
+                path: path.slice(0, index + 1),
+                ...selectors(override),
+                ...(override.mutate !== undefined
+                  ? { mutate: override.mutate }
+                  : { value: override.value }),
+              })),
+              compiledValue: selected.value,
+            });
+          } else if (options.authoredVariable) {
+            limitations.push(
+              "The selected compiled override could not be mapped to an authored override path.",
+            );
+          }
         }
       }
+    }
+    if (program && evaluation.reason === "variable_override_rule") {
+      const paths = evaluation.variableOverridePaths || [];
+      add("sdk-result", "Applied runtime global variable overrides", {
+        paths,
+        steps: paths.map((path) => programStepDetails(program, path)),
+      });
     }
     if (featureKey) {
       limitations.push(
@@ -375,6 +495,13 @@ function compact(value: unknown): string {
 }
 
 // Describe declarations, never claim that these individual checks were executed.
+function describeFeatureResult(value: unknown): string {
+  if (!value || typeof value !== "object") return "unavailable";
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, entry]) => `${key} ${compact(entry)}`)
+    .join(", ");
+}
+
 function describeSelector(value: unknown): string {
   if (value === "*") return "everyone";
   if (typeof value === "string") return value;
@@ -399,9 +526,21 @@ function describeSelector(value: unknown): string {
       lessThanOrEquals: "<=",
       notExists: "is absent",
       exists: "is present",
+      empty: "is empty",
+      notEmpty: "is not empty",
+      includesAny: "includes any of",
+      notIncludesAny: "includes none of",
     };
     const operator = String(group.operator);
     return `${group.attribute} ${operators[operator] ?? operator}${group.value !== undefined ? ` ${compact(group.value)}` : ""}`;
+  }
+  if (typeof group.variable === "string") {
+    const owner = group.feature ? `${group.feature}.` : "global ";
+    const path = Array.isArray(group.path) ? group.path.map(String).join(".") : group.path;
+    return `${owner}${group.variable}${path ? ` at ${path}` : ""} ${group.operator}${group.value !== undefined ? ` ${compact(group.value)}` : ""}`;
+  }
+  if (typeof group.feature === "string") {
+    return `${group.feature} ${group.enabled === false ? "disabled" : "enabled"}${group.variation !== undefined ? `, variation ${compact(group.variation)}` : ""}`;
   }
   return compact(value);
 }
@@ -415,6 +554,34 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
   const value = result.hasValue ? JSON.stringify(result.value, null, 2) : "No value returned";
   console.log(`\n  ${paint(`Value: ${value.replace(/\n/g, "\n  ")}`, resultColour)}`);
   console.log(`  Explanation: ${explanation.summary}`);
+  const composition = detail("Composition members");
+  const alias = detail("Composition source");
+  if (alias) {
+    line("Alias source:", `${(alias.source as ComposeReference).variable}, ${alias.sourceKind}`);
+    line(
+      alias.afterOverrides ? "SDK result after overrides:" : "SDK result:",
+      alias.hasValue ? compact(alias.value) : "unavailable",
+    );
+  }
+  if (composition) {
+    if (composition.afterOverrides) line("Composition:", "final property values after overrides");
+    for (const member of composition.members as Array<{
+      property: string;
+      source: ComposeReference;
+      sourceKind: string;
+      hasValue: boolean;
+      value?: unknown;
+    }>) {
+      const source =
+        member.source.feature !== undefined
+          ? `${member.source.feature}${member.source.variable !== undefined ? ` / ${member.source.variable}` : ""}`
+          : member.source.variable;
+      line(
+        `${member.property}:`,
+        `${member.hasValue ? compact(member.value) : "unavailable"} (source: ${source}, ${member.sourceKind})`,
+      );
+    }
+  }
 
   const rule = detail("Matched rule");
   if (rule)
@@ -424,21 +591,37 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
     );
   const force = detail("Selected force");
   if (force) line("Force:", `entry ${Number(force.index) + 1}`);
+  const runtimeOverrides = detail("Applied runtime global variable overrides");
   const override = detail("Selected variable override");
   if (override)
     line(
-      "Override:",
+      runtimeOverrides ? "Last override:" : "Override:",
       Array.isArray(override.path)
         ? override.path.join(" → ")
         : String(override.key ?? `compiled entry ${Number(override.compiledIndex) + 1}`),
     );
+  if (runtimeOverrides) {
+    const paths = (runtimeOverrides.paths ?? []) as string[][];
+    if (paths.length > 3) {
+      line("Applied overrides:", `${paths.length} matched paths`);
+      paths.forEach((path) => console.log(`    ${path.join(" → ")}`));
+    } else {
+      line("Applied overrides:", paths.map((path) => path.join(" → ")).join("; ") || "none");
+    }
+    const operationCount = (
+      (runtimeOverrides.steps ?? []) as Array<Record<string, unknown>>
+    ).reduce((count, step) => count + ((step.operations ?? []) as unknown[]).length, 0);
+    if (operationCount)
+      line(
+        "Operations:",
+        `${operationCount} compiled mutation${operationCount === 1 ? "" : "s"} (details: --explain --json)`,
+      );
+  }
 
   const selection = detail("Selected compiled override selectors") ?? force ?? rule;
   if (selection) {
     if (selection.conditions !== undefined)
       line("Conditions (definition):", describeSelector(selection.conditions));
-    if (selection.segments !== undefined)
-      line("Segments (definition):", describeSelector(selection.segments));
     const segments = (selection.segmentDefinitions ?? []) as Array<Record<string, unknown>>;
     for (const segment of segments.slice(0, 4)) {
       console.log(
@@ -451,24 +634,73 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
     if (segments.length > 4)
       console.log(paint(`    +${segments.length - 4} segment definitions in JSON`, 2));
   }
-  const root = detail("Declared root requirements (not a per requirement trace)");
-  const requirements = (label: string, input: unknown) => {
-    if (input === undefined) return;
-    const items = Array.isArray(input) ? input : [input];
-    line(
-      label,
-      items
-        .map((item) =>
-          typeof item === "string"
-            ? `${item} enabled`
-            : `${item.feature ?? item.key} ${item.enabled === false ? "disabled" : "enabled"}${item.variation !== undefined ? `, variation ${compact(item.variation)}` : ""}`,
-        )
-        .join("; "),
-    );
-  };
-  requirements("Requires (definition):", root?.requiredFeatures);
-  requirements("Override requires (definition):", selection?.requiredFeatures);
+  const root = detail("Declared root conditions (not an execution trace)");
+  if (root?.conditions !== undefined)
+    line("Root conditions (definition):", describeSelector(root.conditions));
 
+  const probes = explanation.evidence.filter(
+    (entry) => entry.basis === "cli-probe" && entry.details.expression !== undefined,
+  );
+  for (const { details: probe } of probes) {
+    const state = (node: ConditionProbeNode) =>
+      node.reliable
+        ? node.passed
+          ? paint("PASS", 32)
+          : paint("FAIL", 31)
+        : paint("INCONCLUSIVE", 33);
+    const name =
+      probe.scope === "root"
+        ? "root"
+        : probe.scope === "rule"
+          ? `rule ${probe.key ?? probe.index}`
+          : `force ${probe.index}`;
+    line(
+      `CLI probe, ${name}:`,
+      `${state(probe.expression as ConditionProbeNode)}${probe.reliable ? "" : " (UNRELIABLE)"}`,
+    );
+    const printNode = (node: ConditionProbeNode, depth: number) => {
+      const prefix = `    ${"  ".repeat(depth)}${state(node)} `;
+      if (node.kind !== "leaf") {
+        console.log(`${prefix}${node.kind.toUpperCase()}`);
+      } else {
+        const identity =
+          node.attribute ??
+          node.segment ??
+          (node.variable
+            ? `${node.feature ? `${node.feature}.` : "global "}${node.variable}${node.path?.length ? ` at ${node.path.map(String).join(".")}` : ""}`
+            : (node.feature ?? "*"));
+        const error = node.error ? ` (${node.error})` : "";
+        if (node.leafKind === "wildcard") {
+          console.log(`${prefix}* matches every context${error}`);
+        } else if (node.leafKind === "feature") {
+          console.log(
+            `${prefix}feature ${identity}: ${describeFeatureResult(node.operandPresent ? node.operand : undefined)}, expected ${describeFeatureResult(node.expectedPresent ? node.expected : undefined)}${error}`,
+          );
+        } else {
+          const operand = node.operandPresent
+            ? compact(node.operand)
+            : node.leafKind === "segment"
+              ? String(node.passed)
+              : "<missing path>";
+          const expected = node.expectedPresent ? ` ${compact(node.expected)}` : "";
+          console.log(
+            `${prefix}${identity}: ${operand}${node.operator ? ` ${node.operator}` : ""}${expected}${error}`,
+          );
+        }
+      }
+      node.children?.forEach((child) => printNode(child, depth + 1));
+    };
+    printNode(probe.expression as ConditionProbeNode, 0);
+  }
+  if (probes.length)
+    console.log(paint("  Supplementary CLI probes; not an SDK execution trace.", 2));
+
+  const boundary = detail(ROLLOUT_BOUNDARY_TITLE);
+  if (boundary)
+    line(
+      "Rollout:",
+      `rule ${paint(String(boundary.rule), 36)} matched, but bucket ${Number(boundary.bucketValue) / 1000} is above its ${Number(boundary.percentage) / 1000}% rollout`,
+    );
   const bucket = detail("Bucketing reported by the SDK");
   if (bucket)
     console.log(
@@ -480,12 +712,10 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
   const construction = detail("Authored value construction (build time)");
   if (construction) {
     const steps = construction.overrides as Array<Record<string, unknown>>;
-    const fields = Array.from(
-      new Set(
-        steps.flatMap((step) =>
-          step.mutate && typeof step.mutate === "object" ? Object.keys(step.mutate) : [],
-        ),
-      ),
+    const fields = steps.flatMap((step) =>
+      step.mutate && typeof step.mutate === "object"
+        ? mutationEntries(step.mutate as VariableMutations).map(([path]) => path)
+        : [],
     );
     const replacements = steps.filter((step) =>
       Object.prototype.hasOwnProperty.call(step, "value"),

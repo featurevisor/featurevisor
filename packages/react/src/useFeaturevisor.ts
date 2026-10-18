@@ -11,7 +11,7 @@ export const BOUND_METHODS = [
   "getVariableBoolean",
   "getVariableString",
   "getVariableInteger",
-  "getVariableDouble",
+  "getVariableNumber",
   "getVariableArray",
   "getVariableObject",
   "getVariableJSON",
@@ -21,7 +21,6 @@ export const BOUND_METHODS = [
 
   "setStickyFeatures",
   "setStickyVariables",
-  "setSticky",
 ] as const satisfies readonly (keyof Featurevisor)[];
 
 type FeaturevisorHookApi = Pick<Featurevisor, (typeof BOUND_METHODS)[number]>;

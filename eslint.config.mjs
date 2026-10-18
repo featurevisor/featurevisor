@@ -15,6 +15,7 @@ export default [
       "**/node-esm/",
       "**/lib/",
       "**/coverage/",
+      "**/.catalog-dev*/",
       "**/out/",
       "tools/",
 

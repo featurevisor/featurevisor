@@ -13,6 +13,111 @@ import { FeaturevisorProvider } from "./provider";
 const conformance = JSON.parse(
   readFileSync(resolve(__dirname, "../../../conformance/sdk-v3.json"), "utf8"),
 );
+const providerConformance = JSON.parse(
+  readFileSync(resolve(__dirname, "../../../conformance/openfeature-provider.json"), "utf8"),
+);
+
+describe("shared OpenFeature provider conformance", () => {
+  it("resolves the SDK from sibling source", () => {
+    expect(require.resolve("@featurevisor/sdk")).toBe(require.resolve("../../sdk/src"));
+  });
+
+  it("runs every versioned resolution case", () => {
+    expect(providerConformance.kind).toBe("featurevisor.openfeature-provider");
+    expect(providerConformance.schemaVersion).toBe(1);
+    const provider = new FeaturevisorProvider({ datafile: providerConformance.datafile });
+    for (const testCase of providerConformance.cases) {
+      const result = provider.resolve(
+        testCase.flagKey,
+        testCase.default,
+        testCase.context,
+        testCase.type,
+      );
+      expect(result.value).toEqual(testCase.expected.value);
+      if (testCase.expected.reason) expect(result.reason).toBe(testCase.expected.reason);
+      if (testCase.expected.variant) expect(result.variant).toBe(testCase.expected.variant);
+      if (testCase.expected.errorCode) expect(result.errorCode).toBe(testCase.expected.errorCode);
+      else expect(result.errorCode).toBeUndefined();
+    }
+    provider.close();
+  });
+
+  it("maps targeting keys by presence without mutating input", () => {
+    const captured: Record<string, unknown>[] = [];
+    const provider = new FeaturevisorProvider({
+      datafile: providerConformance.datafile,
+      modules: [
+        {
+          name: "capture-targeting",
+          beforeEvaluation: (options) => {
+            captured.push(options.context);
+            return options;
+          },
+        },
+      ],
+    });
+    for (const testCase of providerConformance.targetingCases) {
+      const before = structuredClone(testCase.context);
+      const result = provider.resolve("targetOnly", false, testCase.context, "boolean");
+      expect(captured[captured.length - 1]?.userId).toBe(testCase.expectedUserId);
+      expect(result.value).toBe(testCase.expectedValue);
+      expect(testCase.context).toEqual(before);
+    }
+    provider.close();
+    const custom: Record<string, unknown>[] = [];
+    const customProvider = new FeaturevisorProvider({
+      datafile: providerConformance.datafile,
+      targetingKeyField: "accountId",
+      modules: [
+        {
+          name: "capture-custom",
+          beforeEvaluation: (options) => {
+            custom.push(options.context);
+            return options;
+          },
+        },
+      ],
+    });
+    const customCase = providerConformance.customTargetingCase;
+    const result = customProvider.resolve(customCase.flagKey, false, customCase.context, "boolean");
+    expect(custom[custom.length - 1]?.accountId).toBe("");
+    expect(result.value).toBe(customCase.expectedValue);
+    expect(result.reason).toBe(customCase.expectedReason);
+    customProvider.close();
+  });
+
+  it("maps finite numeric targeting keys from untyped JavaScript contexts", () => {
+    const captured: Record<string, unknown>[] = [];
+    const provider = new FeaturevisorProvider({
+      datafile: providerConformance.datafile,
+      modules: [
+        {
+          name: "capture-numeric-targeting",
+          beforeEvaluation: (options) => {
+            captured.push(options.context);
+            return options;
+          },
+        },
+      ],
+    });
+    for (const [targetingKey, expectedUserId, expectedValue] of [
+      [0, 0, false],
+      [42, 42, false],
+      [Number.NaN, "forced", true],
+      [Number.POSITIVE_INFINITY, "forced", true],
+      [Number.NEGATIVE_INFINITY, "forced", true],
+      [true, "forced", true],
+    ] as const) {
+      const context = { targetingKey, userId: "forced" };
+      expect(provider.resolve("targetOnly", false, context as any, "boolean").value).toBe(
+        expectedValue,
+      );
+      expect(captured[captured.length - 1]?.userId).toBe(expectedUserId);
+      expect(context.userId).toBe("forced");
+    }
+    provider.close();
+  });
+});
 
 function feature(overrides: Partial<Feature> = {}): Feature {
   return {
@@ -88,6 +193,347 @@ function datafile(): DatafileContent {
 }
 
 describe("Featurevisor OpenFeature mapping", () => {
+  describe.each([false, true])("composed override replacement=%s", (replacement) => {
+    it.each([false, true])(
+      "resolves projections and TARGETING_MATCH with borrowed SDK=%s",
+      async (borrowed) => {
+        const payload = datafile();
+        payload.segments.regional = {
+          conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+        };
+        payload.features.overrideGate = feature();
+        payload.variables!.overridePolicy = { type: "boolean", defaultValue: true };
+        payload.variables!.screen = {
+          type: "object",
+          hash: "unchanged-composition",
+          compose: [
+            { key: "enabled", feature: "checkout" },
+            { key: "title", feature: "checkout", variable: "title" },
+            { key: "config", feature: "checkout", variable: "config" },
+          ],
+          overrideProgram: [
+            {
+              key: "regional",
+              keyPath: ["regional"],
+              segments: JSON.stringify(["regional"]),
+              requiredFeatures: ["overrideGate"],
+              conditions: [{ variable: "overridePolicy", operator: "equals", value: true }],
+              operations: replacement
+                ? [
+                    {
+                      op: "set",
+                      path: [],
+                      value: {
+                        enabled: false,
+                        title: "replaced",
+                        config: { color: "replacement" },
+                      },
+                    },
+                  ]
+                : [
+                    { op: "set", path: ["enabled"], value: false },
+                    { op: "set", path: ["title"], value: "mutated" },
+                    { op: "set", path: ["config", "color"], value: "green" },
+                  ],
+              onMatch: 1,
+              onMiss: 2,
+            },
+            {
+              key: "final",
+              keyPath: ["regional", "final"],
+              segments: "*",
+              operations: [{ op: "set", path: ["config", "final"], value: true }],
+              onMatch: 2,
+              onMiss: 2,
+            },
+          ],
+        };
+        const sdk = borrowed
+          ? createFeaturevisor({ datafile: payload, logLevel: "fatal" })
+          : undefined;
+        const provider = new FeaturevisorProvider(
+          sdk ? { featurevisor: sdk } : { datafile: payload, logLevel: "fatal" },
+        );
+        if (sdk) expect(provider.featurevisor).toBe(sdk);
+        const close = jest.spyOn(provider.featurevisor, "close");
+        const context = { targetingKey: "user", country: "nl" };
+        expect(provider.resolve("checkout", false, context, "boolean").value).toBe(true);
+        expect(provider.resolve("checkout:title", "fallback", context, "string").value).toBe(
+          "Hello",
+        );
+        expect(provider.resolve("checkout:config", {}, context, "object").value).toEqual({
+          color: "blue",
+        });
+        const result = provider.resolve("variable:screen", {}, context, "object");
+        expect(result).toMatchObject({
+          value: {
+            enabled: false,
+            title: replacement ? "replaced" : "mutated",
+            config: { color: replacement ? "replacement" : "green", final: true },
+          },
+          reason: StandardResolutionReasons.TARGETING_MATCH,
+          flagMetadata: { variableKey: "screen", featurevisorReason: "variable_override_rule" },
+        });
+        expect(result.errorCode).toBeUndefined();
+        expect(
+          provider.resolve("variable:screen", {}, { ...context, country: "us" }, "object"),
+        ).toMatchObject({
+          value: { enabled: true, title: "Hello", config: { color: "blue" } },
+          reason: StandardResolutionReasons.TARGETING_MATCH,
+          flagMetadata: { featurevisorReason: "variable_composed" },
+        });
+        // Composed mutations must not alter the ordinary boolean, string or object projections.
+        expect(provider.resolve("checkout", false, context, "boolean").value).toBe(true);
+        expect(provider.resolve("checkout:title", "fallback", context, "string").value).toBe(
+          "Hello",
+        );
+        expect(provider.resolve("checkout:config", {}, context, "object").value).toEqual({
+          color: "blue",
+        });
+        await provider.close();
+        if (sdk) {
+          expect(close).not.toHaveBeenCalled();
+          expect(sdk.getVariable("screen", { userId: "user", country: "nl" })).toEqual(
+            result.value,
+          );
+          await sdk.close();
+        } else {
+          expect(close).toHaveBeenCalledTimes(1);
+        }
+      },
+    );
+  });
+
+  it("resolves a composed object through the normal variable key with consumed-source tracking", () => {
+    const payload = datafile();
+    payload.variables!.screen = {
+      type: "object",
+      compose: [
+        { key: "enabled", feature: "checkout" },
+        { key: "variation", feature: "checkout", variation: true },
+        { key: "title", feature: "checkout", variable: "title" },
+        { key: "email", variable: "supportEmail" },
+        { key: "missing", variable: "absent" },
+      ],
+    };
+    const consumed: unknown[] = [];
+    const f = createFeaturevisor({
+      datafile: payload,
+      logLevel: "fatal",
+      modules: [
+        {
+          name: "tracking",
+          afterEvaluation(e, options) {
+            if (options.dependencyPurpose === "composition") consumed.push(options.dependencyOf);
+            return e;
+          },
+        },
+      ],
+    });
+    const provider = new FeaturevisorProvider({ featurevisor: f });
+    const result = provider.resolve("variable:screen", {}, { country: "nl" }, "object");
+    expect(result.value).toEqual({
+      enabled: true,
+      variation: "on",
+      title: "Hello",
+      email: "support-nl@example.com",
+      missing: null,
+    });
+    expect(result.reason).toBe(StandardResolutionReasons.TARGETING_MATCH);
+    expect(result.flagMetadata?.featurevisorReason).toBe("variable_composed");
+    expect(consumed).toEqual(Array(5).fill({ type: "variable", variableKey: "screen" }));
+    provider.close();
+    f.close();
+  });
+  it.each([
+    ["boolean", false, true],
+    ["number", 0, 1],
+    ["string", "", "fallback"],
+    ["object", { limit: 10 }, {}],
+    ["object", ["card"], []],
+  ])("resolves a string composition as an OpenFeature %s value", (type, value, fallback) => {
+    const payload = datafile();
+    payload.variables!.source = { type: "object", defaultValue: value } as any;
+    payload.variables!.alias = { type: "object", compose: "source" };
+    const provider = new FeaturevisorProvider({ datafile: payload });
+    const result = provider.resolve("variable:alias", fallback, {}, type as any);
+    expect(result.value).toEqual(value);
+    expect(result.reason).toBe(StandardResolutionReasons.TARGETING_MATCH);
+    expect(result.flagMetadata?.featurevisorReason).toBe("variable_composed");
+    expect(result.errorCode).toBeUndefined();
+    provider.close();
+  });
+  it.each(["plain text", "null", "true", "123", '{"enabled":true}'])(
+    "does not decode a JSON alias result again in the provider: %s",
+    (value) => {
+      const payload = datafile();
+      payload.variables!.source = { type: "json", defaultValue: JSON.stringify(value) };
+      payload.variables!.alias = { type: "json", compose: "source" };
+      payload.variables!.chain = { type: "json", compose: "alias" };
+      const provider = new FeaturevisorProvider({ datafile: payload });
+      const result = provider.resolve("variable:chain", "fallback", {}, "string");
+      expect(result.value).toBe(value);
+      expect(result.reason).toBe(StandardResolutionReasons.TARGETING_MATCH);
+      expect(result.errorCode).toBeUndefined();
+      provider.close();
+    },
+  );
+  it("uses the ordinary provider fallback policy for a null alias", () => {
+    const payload = datafile();
+    payload.variables!.source = { type: "json", defaultValue: "null" };
+    payload.variables!.alias = { type: "json", compose: "source" };
+    const provider = new FeaturevisorProvider({ datafile: payload });
+    const result = provider.resolve("variable:alias", { fallback: true }, {}, "object");
+    expect(result.value).toEqual({ fallback: true });
+    expect(result.reason).toBe(StandardResolutionReasons.TARGETING_MATCH);
+    expect(result.errorCode).toBeUndefined();
+    provider.close();
+  });
+  it("preserves prototype-shaped JSON keys without introducing inherited targeting data", () => {
+    const contexts: any[] = [];
+    const input = JSON.parse(
+      '{"__proto__":{"injected":true},"targetingKey":"user","profile":{"__proto__":{"role":"admin"},"constructor":"literal"},"items":[{"__proto__":{"extra":true}}]}',
+    );
+    const before = JSON.stringify(input);
+    const provider = new FeaturevisorProvider({
+      datafile: {
+        schemaVersion: "2",
+        revision: "prototype-keys",
+        features: {
+          gate: {
+            bucketBy: "userId",
+            traffic: [{ key: "admin", segments: ["admin"], percentage: 100000 }],
+          },
+        },
+        segments: {
+          admin: {
+            conditions: [{ attribute: "profile.role", operator: "equals", value: "admin" }],
+          },
+        },
+      },
+      modules: [
+        {
+          name: "capture",
+          beforeEvaluation: (options) => {
+            contexts.push(options.context);
+            return options;
+          },
+        },
+      ],
+    });
+    expect(provider.resolve("gate", true, input, "boolean").value).toBe(false);
+    const normalized = contexts[0];
+    expect(Object.getPrototypeOf(normalized)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(normalized, "__proto__")).toBe(true);
+    expect(normalized.injected).toBeUndefined();
+    expect(Object.getPrototypeOf(normalized.profile)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(normalized.items[0])).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(normalized.profile, "__proto__")).toBe(true);
+    expect(normalized.profile.__proto__).toEqual({ role: "admin" });
+    expect(normalized.profile.constructor).toBe("literal");
+    expect(normalized.profile.role).toBeUndefined();
+    expect(normalized.items[0].extra).toBeUndefined();
+    expect(JSON.stringify(input)).toBe(before);
+    expect(normalized.profile).not.toBe(input.profile);
+    expect(normalized.items).not.toBe(input.items);
+    provider.close();
+  });
+
+  it("forwards targeting keys safely even with a prototype-shaped field name", () => {
+    let captured: any;
+    const provider = new FeaturevisorProvider({
+      datafile: datafile(),
+      targetingKeyField: "__proto__",
+      modules: [
+        {
+          name: "capture",
+          beforeEvaluation: (options) => {
+            captured = options.context;
+            return options;
+          },
+        },
+      ],
+    });
+    provider.resolve("checkout", false, { targetingKey: "user" }, "boolean");
+    expect(Object.getPrototypeOf(captured)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(captured, "__proto__")).toBe(true);
+    expect(captured.__proto__).toBe("user");
+    provider.close();
+  });
+
+  it.each(["error", "fatal"] as const)(
+    "tracks initial failures and recovery at log level %s",
+    (logLevel) => {
+      for (const invalid of [
+        "{",
+        "",
+        { schemaVersion: "2", revision: "bad", features: null, segments: {} },
+      ]) {
+        const onDiagnostic = jest.fn();
+        const provider = new FeaturevisorProvider({
+          datafile: invalid as any,
+          logLevel,
+          onDiagnostic,
+        });
+        expect(provider.getDatafileError()).toBe("Could not parse datafile");
+        expect(provider.resolve("checkout", false, {}, "boolean").errorCode).toBe(
+          ErrorCode.PARSE_ERROR,
+        );
+        expect(onDiagnostic).toHaveBeenCalledTimes(logLevel === "fatal" ? 0 : 1);
+        provider.featurevisor.setDatafile(datafile(), true);
+        expect(provider.getDatafileError()).toBeUndefined();
+        expect(provider.resolve("checkout", false, {}, "boolean").errorCode).toBeUndefined();
+        provider.featurevisor.setDatafile("{");
+        expect(provider.getDatafileError()).toBe("Could not parse datafile");
+        provider.close();
+      }
+    },
+  );
+
+  it("preserves module setup and diagnostic delivery during owned initialization", async () => {
+    const revisions: string[] = [];
+    const moduleDiagnostics: string[] = [];
+    const onDiagnostic = jest.fn();
+    const close = jest.fn();
+    const provider = new FeaturevisorProvider({
+      datafile: datafile(),
+      onDiagnostic,
+      modules: [
+        {
+          name: "observer",
+          setup: (api) => {
+            revisions.push(api.getRevision());
+            api.onDiagnostic((diagnostic) => moduleDiagnostics.push(diagnostic.code));
+          },
+          close,
+        },
+      ],
+    });
+    expect(revisions).toEqual(["unknown"]);
+    expect(provider.featurevisor.getRevision()).toBe("revision-1");
+    expect(moduleDiagnostics.filter((code) => code === "datafile_set")).toHaveLength(1);
+    expect(
+      onDiagnostic.mock.calls.filter(([diagnostic]) => diagnostic.code === "datafile_set"),
+    ).toHaveLength(1);
+    await provider.close();
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("observes malformed updates and recovery on a caller-owned instance", () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    const provider = new FeaturevisorProvider({ featurevisor: f });
+    f.setDatafile("{");
+    expect(provider.resolve("checkout", false, {}, "boolean").errorCode).toBe(
+      ErrorCode.PARSE_ERROR,
+    );
+    f.setDatafile(datafile(), true);
+    expect(provider.resolve("checkout", false, {}, "boolean").errorCode).toBeUndefined();
+    provider.close();
+    f.setDatafile("{");
+    expect(provider.resolve("checkout", false, {}, "boolean").errorCode).toBeUndefined();
+    f.close();
+  });
+
   it("resolves flags, variations, and every OpenFeature value type", () => {
     const provider = new FeaturevisorProvider({ datafile: datafile() });
     const context = { targetingKey: "user-1" };
@@ -131,7 +577,7 @@ describe("Featurevisor OpenFeature mapping", () => {
       modules: [
         {
           name: "capture",
-          before: (options) => {
+          beforeEvaluation: (options) => {
             contexts.push(options.context);
             return options;
           },
@@ -278,9 +724,26 @@ describe("Featurevisor OpenFeature mapping", () => {
     );
   });
 
+  it("maps unmet feature prerequisites to DISABLED while retaining the SDK reason", () => {
+    const content = datafile();
+    content.features.prerequisite = feature({ traffic: [] });
+    content.features.checkout.requiredFeatures = ["prerequisite"];
+    const sdk = createFeaturevisor({ datafile: content, logLevel: "fatal" });
+    expect(sdk.evaluateFlag("checkout").reason).toBe("conditions_unmet");
+    const result = new FeaturevisorProvider({ featurevisor: sdk }).resolve(
+      "checkout",
+      true,
+      {},
+      "boolean",
+    );
+    expect(result.value).toBe(false);
+    expect(result.reason).toBe(StandardResolutionReasons.DISABLED);
+    expect(result.flagMetadata?.featurevisorReason).toBe("conditions_unmet");
+  });
+
   it.each([
-    ["required", StandardResolutionReasons.TARGETING_MATCH],
-    ["required_features_unmet", conformance.openFeature.reasonMappings.required_features_unmet],
+    ["conditions_unmet", conformance.openFeature.reasonMappings.conditions_unmet],
+    ["conditions_unmet", StandardResolutionReasons.DISABLED],
     ["forced", StandardResolutionReasons.TARGETING_MATCH],
     ["sticky", StandardResolutionReasons.TARGETING_MATCH],
     ["rule", StandardResolutionReasons.TARGETING_MATCH],
@@ -290,17 +753,17 @@ describe("Featurevisor OpenFeature mapping", () => {
     ["disabled", StandardResolutionReasons.DISABLED],
     ["variation_disabled", StandardResolutionReasons.DISABLED],
     ["variable_disabled", StandardResolutionReasons.DISABLED],
-    ["out_of_range", StandardResolutionReasons.DEFAULT],
     ["no_match", StandardResolutionReasons.DEFAULT],
     ["variable_default", StandardResolutionReasons.DEFAULT],
-  ] satisfies Array<[EvaluationReason, string]>)(
+    ["variable_composed", StandardResolutionReasons.TARGETING_MATCH],
+  ] satisfies Array<[EvaluationReason | "conditions_unmet", string]>)(
     "maps the %s evaluation reason to %s",
     (reason, expectedReason) => {
       const featurevisor = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
       jest.spyOn(featurevisor, "evaluateFlag").mockReturnValue({
         type: "flag",
         featureKey: "checkout",
-        reason,
+        reason: reason as EvaluationReason,
         enabled: true,
       });
 

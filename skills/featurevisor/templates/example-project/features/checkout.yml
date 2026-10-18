@@ -1,14 +1,19 @@
-description: New checkout flow — A/B test with remote-configured payment methods
-tags:
-  - all
-  - web
+description: New checkout flow with an A/B test and configurable payment methods
 
-# Authenticated users get consistent bucketing across devices via userId;
-# anonymous traffic falls back to deviceId.
+# Signed-in users keep their result across devices through userId.
+# Anonymous traffic falls back to deviceId.
 bucketBy:
   or:
     - userId
     - deviceId
+
+# Root gate. While the maintenanceMode global variable is true, checkout is
+# disabled for everyone with reason conditions_unmet. Force entries are checked
+# before this gate, so QA keeps access during maintenance.
+conditions:
+  - variable: maintenanceMode
+    operator: equals
+    value: false
 
 variablesSchema:
   paymentMethods:
@@ -41,38 +46,38 @@ variations:
     weight: 50
 
   - value: treatment
-    description: New checkout with redesigned hero
+    description: New checkout with a redesigned hero
     weight: 50
     variables:
-      "hero.subtitle": Faster, simpler checkout # mutation: replace just subtitle
+      # Mutation key: changes one property and keeps the rest of the object.
+      "hero.subtitle": Faster, simpler checkout
 
-# QA team always sees the treatment, regardless of rollout percentage.
+# QA always sees the treatment, whatever the rollout percentage.
+# With environments configured, nest each force and rules list under its environment key.
 force:
-  staging:
-    - segments: qa
-      enabled: true
-      variation: treatment
-  production:
-    - segments: qa
-      enabled: true
-      variation: treatment
+  - conditions: qa
+    enabled: true
+    variation: treatment
 
 rules:
-  staging:
-    - key: everyone
-      segments: "*"
-      percentage: 100
+  - key: nl
+    description: The Netherlands gets local payment methods
+    conditions: countries.netherlands
+    percentage: 100
+    variables:
+      paymentMethods: [paypal, ideal]
+      allowDiscountCode: true
+    # Narrow a value within the rule. The first matching override wins.
+    variableOverrides:
+      allowDiscountCode:
+        - key: free-plan
+          conditions:
+            - attribute: plan
+              operator: equals
+              value: free
+          value: false
 
-  production:
-    - key: nl
-      description: Netherlands gets local payment methods only
-      segments: countries.netherlands
-      percentage: 100
-      variables:
-        paymentMethods: [paypal, ideal]
-        allowDiscountCode: true
-
-    - key: everyone
-      description: Catch-all rollout — ramp this up over time, never rename the key
-      segments: "*"
-      percentage: 10
+  - key: everyone
+    description: General rollout. Raise the percentage over time and keep the key.
+    conditions: "*"
+    percentage: 10

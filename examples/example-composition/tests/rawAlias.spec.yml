@@ -1,0 +1,14 @@
+variable: rawAlias
+
+assertions:
+  - description: Returns the decoded source object directly
+    target: aliases
+    expectedValue:
+      source: example
+    expectedEvaluation:
+      reason: variable_composed
+  - description: Decodes a string result exactly once
+    target: aliases
+    stickyVariables:
+      raw: '"null"'
+    expectedValue: "null"

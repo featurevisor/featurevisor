@@ -4,12 +4,13 @@
  * rules, force). Ensures every place a variable value can be set is validated against
  * the variable's schema.
  */
-import type { Attribute, ParsedFeature, Schema } from "@featurevisor/types";
+import type { Attribute, ParsedFeature, ParsedVariable, Schema } from "@featurevisor/types";
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { getConditionsZodSchema } from "./conditionSchema";
-import { getFeatureZodSchema } from "./featureSchema";
+import { getFeatureZodSchema, valueMatchesSchema } from "./featureSchema";
+import { getVariableZodSchema } from "./variableSchema";
 
 /** Minimal project config for feature schema tests (no file paths used for variable validation). */
 function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectConfig {
@@ -17,7 +18,6 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     featuresDirectoryPath: "",
     segmentsDirectoryPath: "",
     attributesDirectoryPath: "",
-    groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
     variablesDirectoryPath: "",
@@ -68,7 +68,7 @@ const TEST_ATTRIBUTES: Record<string, Attribute> = {
   },
   version: {
     description: "Version",
-    oneOf: [{ type: "string" }, { type: "double" }],
+    oneOf: [{ type: "string" }, { type: "number" }],
   },
   traits: {
     description: "Traits",
@@ -117,6 +117,9 @@ const TEST_SCHEMAS_BY_KEY: Record<string, Schema> = {
   link: linkSchemaResolved,
   slugSchema: slugSchemaResolved,
 };
+const TEST_VARIABLES_BY_KEY = {
+  globalGate: { type: "boolean", defaultValue: true },
+} as unknown as Record<string, ParsedVariable>;
 
 function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
   const projectConfig = minimalProjectConfig(projectConfigOverrides);
@@ -130,6 +133,7 @@ function getFeatureSchema(projectConfigOverrides: Partial<ProjectConfig> = {}) {
     TEST_SCHEMA_KEYS,
     TEST_SCHEMAS_BY_KEY,
     TEST_FEATURES_BY_KEY,
+    TEST_VARIABLES_BY_KEY,
   );
 }
 
@@ -140,44 +144,790 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
     tags: ["all"],
     bucketBy: "userId",
     rules: {
-      staging: [{ key: "r1", segments: "*", percentage: 100 }],
-      production: [{ key: "r1", segments: "*", percentage: 100 }],
+      staging: [{ key: "r1", conditions: "*", percentage: 100 }],
+      production: [{ key: "r1", conditions: "*", percentage: 100 }],
     },
     ...overrides,
   };
 }
 
-describe("requiredFeatures", () => {
-  it.each([
-    "dependency",
-    ["dependency"],
-    [{ feature: "dependency" }],
-    [{ feature: "dependency", enabled: false }],
-    [{ feature: "dependency", enabled: false, variation: "control" }],
-  ])("accepts canonical requirement %j", (requiredFeatures) => {
-    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures })).success).toBe(true);
+describe("disabled variation fallbacks", () => {
+  it.each([{ variations: undefined }, { variations: [] }])(
+    "allows a standalone fallback with $variations",
+    ({ variations }) => {
+      expect(
+        getFeatureSchema().safeParse(baseFeature({ disabledVariationValue: "off", variations }))
+          .success,
+      ).toBe(true);
+    },
+  );
+  it("still rejects a fallback outside declared variation values", () => {
+    const result = getFeatureSchema().safeParse(
+      baseFeature({ disabledVariationValue: "off", variations: [{ value: "on", weight: 100 }] }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ path: ["disabledVariationValue"] }),
+      );
+  });
+});
+
+describe("variable diagnostic ownership", () => {
+  const cases = [
+    { name: "type", schema: { type: "integer", defaultValue: 1 }, invalid: "nope" },
+    {
+      name: "length",
+      schema: { type: "string", minLength: 5, defaultValue: "abcdef" },
+      invalid: "ab",
+    },
+    { name: "enum", schema: { type: "string", enum: ["a", "b"], defaultValue: "a" }, invalid: "c" },
+    {
+      name: "format",
+      schema: { type: "string", format: "date-time", defaultValue: "2026-01-01T00:00:00Z" },
+      invalid: "tomorrow",
+    },
+  ];
+  const locations = [
+    "variation",
+    "rule",
+    "force",
+    "variation override",
+    "rule override",
+    "default",
+    "disabled",
+    "global default",
+    "global disabled",
+    "global override",
+    "global child override",
+  ];
+
+  test.each(cases.flatMap((entry) => locations.map((location) => ({ ...entry, location }))))(
+    "reports one $name error at $location",
+    ({ schema, invalid, location }) => {
+      let result;
+      if (location.startsWith("global")) {
+        const definition = { description: "Value", ...schema };
+        const additions =
+          location === "global default"
+            ? { defaultValue: invalid }
+            : location === "global disabled"
+              ? { disabledValue: invalid }
+              : {
+                  overrides: {
+                    staging: [
+                      {
+                        key: "parent",
+                        conditions: "*",
+                        value: location === "global child override" ? schema.defaultValue : invalid,
+                        ...(location === "global child override"
+                          ? { overrides: [{ key: "child", conditions: "*", value: invalid }] }
+                          : {}),
+                      },
+                    ],
+                  },
+                };
+        result = getVariableZodSchema(
+          minimalProjectConfig(),
+          TEST_ATTRIBUTES,
+          TEST_SEGMENTS,
+          TEST_FEATURES_BY_KEY,
+          {},
+        ).safeParse({ ...definition, ...additions });
+      } else {
+        const variableSchema = {
+          ...schema,
+          ...(location === "default" ? { defaultValue: invalid } : {}),
+          ...(location === "disabled" ? { disabledValue: invalid } : {}),
+        };
+        const assignment = location.includes("override")
+          ? { variableOverrides: { code: [{ conditions: "*", value: invalid }] } }
+          : { variables: { code: invalid } };
+        const additions = location.startsWith("variation")
+          ? { variations: [{ value: "control", weight: 100, ...assignment }] }
+          : location.startsWith("rule")
+            ? {
+                rules: {
+                  staging: [{ key: "everyone", conditions: "*", percentage: 100, ...assignment }],
+                },
+              }
+            : location === "force"
+              ? { force: { staging: [{ conditions: "*", ...assignment }] } }
+              : {};
+        result = getFeatureSchema().safeParse(
+          baseFeature({ variablesSchema: { code: variableSchema }, ...additions }),
+        );
+      }
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues).toHaveLength(1);
+    },
+  );
+
+  it("reports one invalid operand without a second mutation error from its invalid parent", () => {
+    const result = getFeatureSchema().safeParse(
+      baseFeature({
+        variablesSchema: {
+          config: {
+            type: "object",
+            properties: { count: { type: "integer" } },
+            defaultValue: { count: 1 },
+          },
+        },
+        rules: {
+          staging: [
+            {
+              key: "all",
+              conditions: "*",
+              percentage: 100,
+              variables: { config: "bad", "config.count": 2 },
+            },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues).toHaveLength(1);
+  });
+
+  test.each(
+    cases.flatMap((entry) =>
+      ["variation", "rule", "global", "global continued", "global child"].flatMap((location) =>
+        [true, false].flatMap((precomputeMutations) =>
+          [true, false].map((ordered) => ({ ...entry, location, precomputeMutations, ordered })),
+        ),
+      ),
+    ),
+  )(
+    "reports one $name mutation issue in $location (ordered=$ordered, precompute=$precomputeMutations)",
+    ({ schema: leafSchema, invalid, location, ordered, precomputeMutations }) => {
+      const { defaultValue, ...leaf } = leafSchema;
+      const schema = {
+        type: "object",
+        properties: { when: leaf },
+        defaultValue: { when: defaultValue },
+      };
+      const override = {
+        key: "bad",
+        conditions: "*",
+        mutate: ordered ? [{ when: invalid }] : { when: invalid },
+      };
+      let result;
+      if (location.startsWith("global")) {
+        const overrides =
+          location === "global child"
+            ? [
+                {
+                  key: "parent",
+                  conditions: "*",
+                  value: schema.defaultValue,
+                  overrides: [override],
+                },
+              ]
+            : [{ ...override, ...(location === "global continued" ? { continue: true } : {}) }];
+        result = getVariableZodSchema(
+          minimalProjectConfig({ precomputeMutations }),
+          TEST_ATTRIBUTES,
+          TEST_SEGMENTS,
+          TEST_FEATURES_BY_KEY,
+          {},
+        ).safeParse({ description: "Config", ...schema, overrides: { staging: overrides } });
+      } else {
+        const variableOverrides = { config: [override] };
+        result = getFeatureSchema({ precomputeMutations }).safeParse(
+          baseFeature({
+            variablesSchema: { config: schema },
+            ...(location === "variation"
+              ? { variations: [{ value: "control", weight: 100, variableOverrides }] }
+              : {
+                  rules: {
+                    staging: [{ key: "all", conditions: "*", percentage: 100, variableOverrides }],
+                  },
+                }),
+          }),
+        );
+      }
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues).toHaveLength(1);
+    },
+  );
+});
+
+describe("variable timestamp format", () => {
+  const valid = "1970-01-01T00:00:00Z";
+  const timestamp = { type: "string", format: "date-time" };
+  it("checks unused inline feature enum entries through nested references", () => {
+    const config = minimalProjectConfig();
+    const schemas = { timestamp: timestamp as Schema };
+    const validate = getFeatureZodSchema(
+      config,
+      getConditionsZodSchema(config, TEST_ATTRIBUTES),
+      TEST_ATTRIBUTE_KEYS,
+      TEST_SEGMENTS,
+      TEST_FEATURES,
+      Object.keys(schemas),
+      schemas,
+      TEST_FEATURES_BY_KEY,
+      TEST_VARIABLES_BY_KEY,
+    );
+    const result = validate.safeParse(
+      baseFeature({
+        variablesSchema: {
+          schedule: {
+            type: "object",
+            properties: { when: { schema: "timestamp" } },
+            defaultValue: { when: valid },
+            enum: [{ when: valid }, { when: "soon" }],
+          },
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        ["variablesSchema", "schedule", "enum", 1, "when"],
+      ]);
+  });
+  const feature = (overrides: Record<string, unknown> = {}) =>
+    baseFeature({
+      variablesSchema: { when: { ...timestamp, defaultValue: valid } },
+      ...overrides,
+    });
+
+  it.each(["defaultValue", "disabledValue", "const", "enum"])("validates %s", (field) => {
+    for (const value of [valid, "soon", "2026-02-29T00:00:00Z"]) {
+      const result = getFeatureSchema().safeParse(
+        feature({
+          variablesSchema: {
+            when: {
+              ...timestamp,
+              defaultValue: valid,
+              [field]: field === "enum" ? [value] : value,
+            },
+          },
+        }),
+      );
+      expect(result.success).toBe(value === valid);
+      if (!result.success)
+        expect(
+          result.error.issues.some(
+            (issue) => issue.path.includes(field) && issue.message.includes("portable timestamp"),
+          ),
+        ).toBe(true);
+    }
+  });
+
+  it.each(["email", 1, null])("rejects unsupported feature format %j", (format) => {
+    expect(
+      getFeatureSchema().safeParse(
+        feature({
+          variablesSchema: { when: { type: "string", format, defaultValue: valid } },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it.each(["integer", "boolean", "json", "object"])(
+    "rejects nonstring feature format on %s",
+    (type) => {
+      const result = getFeatureSchema().safeParse(
+        feature({
+          variablesSchema: { when: { type, format: "date-time", defaultValue: valid } },
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success)
+        expect(
+          result.error.issues.some(
+            (issue) =>
+              issue.path.join(".") === "variablesSchema.when.format" &&
+              issue.message === "format is only supported on string schemas.",
+          ),
+        ).toBe(true);
+    },
+  );
+
+  it.each(["const", "enum"])("does not let a matching %s bypass the timestamp check", (keyword) => {
+    const schema = { ...timestamp, [keyword]: keyword === "enum" ? ["soon"] : "soon" };
+    expect(valueMatchesSchema(schema, "soon")).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(
+        feature({
+          variablesSchema: { when: { ...schema, defaultValue: "soon" } },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("counts only valid timestamp branches in oneOf", () => {
+    const schema = { oneOf: [timestamp, { type: "integer" }] };
+    expect(valueMatchesSchema(schema, valid)).toBe(true);
+    expect(valueMatchesSchema(schema, "soon")).toBe(false);
+    expect(valueMatchesSchema(schema, 1)).toBe(true);
+    expect(valueMatchesSchema({ oneOf: [timestamp, { type: "string" }] }, valid)).toBe(false);
+  });
+
+  it.each(["variation", "rule", "force", "override", "ruleOverride"])(
+    "validates %s values through the existing feature pathway",
+    (location) => {
+      for (const value of [valid, "soon"]) {
+        const variables = { when: value };
+        const variableOverrides = { when: [{ conditions: "*", value }] };
+        const changes = {
+          variation: { variations: [{ value: "control", weight: 100, variables }] },
+          rule: {
+            rules: { staging: [{ key: "all", conditions: "*", percentage: 100, variables }] },
+          },
+          force: { force: { staging: [{ conditions: "*", enabled: true, variables }] } },
+          override: { variations: [{ value: "control", weight: 100, variableOverrides }] },
+          ruleOverride: {
+            rules: {
+              staging: [{ key: "all", conditions: "*", percentage: 100, variableOverrides }],
+            },
+          },
+        }[location];
+        const result = getFeatureSchema().safeParse(feature(changes));
+        expect(result.success).toBe(value === valid);
+        if (!result.success)
+          expect(
+            result.error.issues.some((issue) => issue.message.includes("portable timestamp")),
+          ).toBe(true);
+      }
+    },
+  );
+
+  it.each([true, false])(
+    "validates mutation operands and final results with precomputeMutations=%s",
+    (precomputeMutations) => {
+      for (const mutate of [{ when: "soon" }, [{ when: "soon" }]]) {
+        const result = getFeatureSchema({ precomputeMutations }).safeParse(
+          baseFeature({
+            variablesSchema: {
+              config: {
+                type: "object",
+                properties: { when: timestamp },
+                defaultValue: { when: valid },
+              },
+            },
+            rules: {
+              staging: [
+                {
+                  key: "all",
+                  conditions: "*",
+                  percentage: 100,
+                  variableOverrides: { config: [{ conditions: "*", mutate }] },
+                },
+              ],
+            },
+          }),
+        );
+        expect(result.success).toBe(false);
+        if (!result.success)
+          expect(
+            result.error.issues.some((issue) => issue.message.includes("portable timestamp")),
+          ).toBe(true);
+      }
+      expect(
+        getFeatureSchema({ precomputeMutations }).safeParse(
+          baseFeature({
+            variablesSchema: {
+              config: {
+                type: "object",
+                properties: { when: timestamp },
+                defaultValue: { when: valid },
+              },
+            },
+            rules: {
+              staging: [
+                {
+                  key: "all",
+                  conditions: "*",
+                  percentage: 100,
+                  variableOverrides: {
+                    config: [{ conditions: "*", mutate: [{ when: valid }, { when: valid }] }],
+                  },
+                },
+              ],
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    },
+  );
+
+  it("validates reusable schemas, nested global values and child overrides", () => {
+    const schemas = { instant: { schema: "timestampLeaf" }, timestampLeaf: timestamp as Schema };
+    const validate = getVariableZodSchema(
+      minimalProjectConfig(),
+      TEST_ATTRIBUTES,
+      TEST_SEGMENTS,
+      TEST_FEATURES_BY_KEY,
+      schemas,
+      {},
+    );
+    for (const schema of [
+      { schema: "instant" },
+      { type: "array", items: { schema: "instant" } },
+      { type: "object", properties: { when: { schema: "instant" } } },
+      { type: "object", additionalProperties: { schema: "instant" } },
+      { oneOf: [{ schema: "instant" }, { type: "integer" }] },
+    ]) {
+      const wrap = (value: string) =>
+        schema.type === "array" ? [value] : schema.type === "object" ? { when: value } : value;
+      expect(
+        validate.safeParse({ description: "Timestamp", ...schema, defaultValue: wrap(valid) })
+          .success,
+      ).toBe(true);
+      expect(
+        validate.safeParse({ description: "Timestamp", ...schema, defaultValue: wrap("soon") })
+          .success,
+      ).toBe(false);
+      expect(
+        validate.safeParse({
+          description: "Timestamp",
+          ...schema,
+          defaultValue: wrap(valid),
+          disabledValue: wrap("soon"),
+        }).success,
+      ).toBe(false);
+      expect(
+        validate.safeParse({
+          description: "Timestamp",
+          ...schema,
+          defaultValue: wrap(valid),
+          overrides: {
+            staging: [
+              {
+                key: "parent",
+                conditions: "*",
+                value: wrap(valid),
+                overrides: [{ key: "child", conditions: "*", value: wrap("soon") }],
+              },
+            ],
+          },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it.each([true, false])(
+    "checks completed feature timestamp mutation results with precomputeMutations=%s",
+    (precomputeMutations) => {
+      const config = {
+        type: "object",
+        properties: { when: timestamp },
+        enum: [{ when: valid }],
+        defaultValue: { when: valid },
+      };
+      const feature = (mutate: unknown) =>
+        baseFeature({
+          variablesSchema: { config },
+          rules: {
+            staging: [
+              {
+                key: "all",
+                conditions: "*",
+                percentage: 100,
+                variableOverrides: { config: [{ conditions: "*", mutate }] },
+              },
+            ],
+          },
+        });
+      const later = "2026-01-01T00:00:00Z";
+      const result = getFeatureSchema({ precomputeMutations }).safeParse(feature({ when: later }));
+      expect(result.success).toBe(false);
+      if (!result.success)
+        expect(
+          result.error.issues.some(
+            (issue) =>
+              issue.message.includes("allowed enum values") && issue.path.includes("mutate"),
+          ),
+        ).toBe(true);
+      expect(
+        getFeatureSchema({ precomputeMutations }).safeParse(
+          feature([{ when: later }, { when: valid }]),
+        ).success,
+      ).toBe(true);
+    },
+  );
+
+  it.each([true, false])(
+    "validates global mutation values through referenced timestamp leaves with precomputeMutations=%s",
+    (precomputeMutations) => {
+      const schemas = { instant: timestamp as Schema };
+      const validate = getVariableZodSchema(
+        minimalProjectConfig({ precomputeMutations }),
+        TEST_ATTRIBUTES,
+        TEST_SEGMENTS,
+        TEST_FEATURES_BY_KEY,
+        schemas,
+        {},
+      );
+      const schema = {
+        type: "object",
+        properties: {
+          dates: { type: "array", items: { schema: "instant" } },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { id: { type: "string" }, when: { schema: "instant" } },
+            },
+          },
+        },
+      };
+      for (const path of [
+        "dates:append",
+        "dates:appendUnique",
+        "dates:removeValue",
+        "rows[id=absent].when",
+      ]) {
+        for (const value of [valid, "soon"]) {
+          const result = validate.safeParse({
+            description: "Dates",
+            ...schema,
+            defaultValue: { dates: [valid], rows: [] },
+            overrides: { staging: [{ key: "all", conditions: "*", mutate: { [path]: value } }] },
+          });
+          expect(result.success).toBe(value === valid);
+          if (!result.success)
+            expect(
+              result.error.issues.some(
+                (issue) =>
+                  issue.message.includes("portable timestamp") && issue.path.includes(path),
+              ),
+            ).toBe(true);
+        }
+      }
+    },
+  );
+
+  it("rejects native dates and epochs rather than broadening variable string types", () => {
+    for (const value of [new Date(valid), 0, null]) {
+      expect(valueMatchesSchema(timestamp, value)).toBe(false);
+      expect(
+        getFeatureSchema().safeParse(
+          feature({
+            variablesSchema: {
+              when: { ...timestamp, defaultValue: value },
+            },
+          }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  it("keeps timestamp format conjunctive with existing string constraints", () => {
+    expect(valueMatchesSchema({ ...timestamp, minLength: 21 }, valid)).toBe(false);
+    expect(valueMatchesSchema({ ...timestamp, maxLength: 19 }, valid)).toBe(false);
+    expect(valueMatchesSchema({ ...timestamp, pattern: "^2026" }, valid)).toBe(false);
+    expect(
+      valueMatchesSchema({ ...timestamp, minLength: 20, maxLength: 20, pattern: "Z$" }, valid),
+    ).toBe(true);
+    expect(valueMatchesSchema({ type: "string", enum: ["soon"] }, "soon")).toBe(true);
+    expect(
+      getFeatureSchema().safeParse(
+        feature({
+          variablesSchema: {
+            when: { type: "string", defaultValue: "soon" },
+          },
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("keeps before and after legal on unannotated string requirements", () => {
+    for (const operator of ["before", "after"]) {
+      expect(
+        getFeatureSchema().safeParse(
+          baseFeature({
+            conditions: { variable: "globalGate", operator, value: valid },
+          }),
+        ).success,
+      ).toBe(false);
+      const config = minimalProjectConfig();
+      const variable = { type: "string", defaultValue: "soon" } as ParsedVariable;
+      const validate = getFeatureZodSchema(
+        config,
+        getConditionsZodSchema(config, TEST_ATTRIBUTES),
+        TEST_ATTRIBUTE_KEYS,
+        TEST_SEGMENTS,
+        TEST_FEATURES,
+        [],
+        {},
+        {},
+        { when: variable },
+      );
+      expect(
+        validate.safeParse(
+          baseFeature({ conditions: { variable: "when", operator, value: valid } }),
+        ).success,
+      ).toBe(true);
+    }
+  });
+});
+describe("conditions", () => {
+  it("reports migration for legacy authored required without affecting schema required", () => {
+    const legacy = getFeatureSchema().safeParse(baseFeature({ required: [{ key: "dependency" }] }));
+    expect(legacy.success).toBe(false);
+    if (!legacy.success) {
+      expect(legacy.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["required"],
+            message: expect.stringContaining("Use `conditions`"),
+          }),
+        ]),
+      );
+    }
+    const schemaRequired = baseFeature({
+      variablesSchema: {
+        settings: {
+          type: "object",
+          properties: { title: { type: "string" } },
+          required: ["title"],
+          defaultValue: { title: "ok" },
+        },
+      },
+    });
+    expect(getFeatureSchema().safeParse(schemaRequired).success).toBe(true);
+  });
+  it.each(["rule", "variation", "force", "override"])(
+    "checks final array constraints for %s mutations",
+    (location) => {
+      const variablesSchema = {
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          maxItems: 2,
+          defaultValue: ["x"],
+        },
+      };
+      for (const [op, value] of [
+        ["removeValue", "x"],
+        ["appendUnique", "z"],
+      ]) {
+        const variables = {
+          tags: op === "appendUnique" ? ["x", "y"] : ["x"],
+          [`tags:${op}`]: value,
+        };
+        const changes =
+          location === "rule"
+            ? { rules: { staging: [{ key: "all", conditions: "*", percentage: 100, variables }] } }
+            : location === "variation"
+              ? { variations: [{ value: "a", weight: 100, variables }] }
+              : location === "force"
+                ? { force: { staging: [{ conditions: "*", enabled: true, variables }] } }
+                : {
+                    rules: {
+                      staging: [
+                        {
+                          key: "all",
+                          conditions: "*",
+                          percentage: 100,
+                          variables: { tags: op === "appendUnique" ? ["x", "y"] : ["x"] },
+                          variableOverrides: {
+                            tags: [{ conditions: "*", mutate: { [`:${op}`]: value } }],
+                          },
+                        },
+                      ],
+                    },
+                  };
+        const result = parseFeature(baseFeature({ variablesSchema, ...changes }));
+        expect(result.success).toBe(false);
+        if (!result.success)
+          expect(result.error.issues.some((issue) => /minItems|maxItems/.test(issue.message))).toBe(
+            true,
+          );
+      }
+    },
+  );
+  it.each(["appendUnique", "removeValue"])(
+    "validates %s for feature mutations and override arrays",
+    (op) => {
+      const variablesSchema = {
+        tags: { type: "array", items: { type: "string" }, defaultValue: ["x"] },
+      };
+      for (const value of ["x", {}, [], null, 3]) {
+        for (const changes of [
+          { variables: { [`tags:${op}`]: value } },
+          { variableOverrides: { tags: [{ conditions: "*", mutate: { [`:${op}`]: value } }] } },
+        ]) {
+          const result = parseFeature(
+            baseFeature({
+              variablesSchema,
+              rules: {
+                staging: [{ key: "all", conditions: "*", percentage: 100, ...changes }],
+                production: [{ key: "all", conditions: "*", percentage: 100 }],
+              },
+            }),
+          );
+          expect(result.success).toBe(value === "x");
+        }
+      }
+    },
+  );
+  it.each(
+    [
+      { feature: "dependency" },
+      [{ feature: "dependency" }],
+      [{ feature: "dependency" }],
+      [{ feature: "dependency", enabled: false }],
+      [{ feature: "dependency", enabled: false, variation: "control" }],
+    ].map((value) => [value]),
+  )("accepts canonical condition %j", (conditions) => {
+    expect(getFeatureSchema().safeParse(baseFeature({ conditions })).success).toBe(true);
   });
 
   it("rejects empty, unknown, invalid variation, and mixed legacy definitions", () => {
-    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: [] })).success).toBe(false);
-    expect(getFeatureSchema().safeParse(baseFeature({ requiredFeatures: "missing" })).success).toBe(
-      false,
-    );
+    expect(getFeatureSchema().safeParse(baseFeature({ conditions: [] })).success).toBe(false);
+    expect(
+      getFeatureSchema().safeParse(baseFeature({ conditions: { feature: "missing" } })).success,
+    ).toBe(false);
     expect(
       getFeatureSchema().safeParse(
-        baseFeature({ requiredFeatures: [{ feature: "dependency", variation: "missing" }] }),
+        baseFeature({ conditions: [{ feature: "dependency", variation: "missing" }] }),
       ).success,
     ).toBe(false);
     expect(
       getFeatureSchema().safeParse(
-        baseFeature({ requiredFeatures: [{ feature: "noVariations", variation: "control" }] }),
+        baseFeature({ conditions: [{ feature: "noVariations", variation: "control" }] }),
       ).success,
     ).toBe(false);
     expect(
       getFeatureSchema().safeParse(
-        baseFeature({ required: ["dependency"], requiredFeatures: "dependency" }),
+        baseFeature({ required: ["dependency"], conditions: { feature: "dependency" } }),
       ).success,
     ).toBe(false);
+  });
+});
+describe("conditions", () => {
+  it("supports feature roots and variable overrides alongside conditions", () => {
+    expect(
+      getFeatureSchema().safeParse(
+        baseFeature({
+          conditions: { variable: "globalGate", operator: "equals", value: true },
+          variablesSchema: { message: { type: "string", defaultValue: "Hello" } },
+          variations: [
+            {
+              value: "control",
+              weight: 100,
+              variableOverrides: {
+                message: [
+                  {
+                    conditions: [
+                      { attribute: "country", operator: "equals", value: "nl" },
+                      { variable: "globalGate", operator: "notNull" },
+                    ],
+                    value: "Hallo",
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(true);
   });
 });
 
@@ -222,7 +972,10 @@ function expectParseFailure(
 /** Assert that an intentional mistake produces an error at the expected path with expected message. */
 function expectErrorSurfaces(
   feature: unknown,
-  opts: { pathContains: string[]; messageContains: string },
+  opts: {
+    pathContains: string[];
+    messageContains: string;
+  },
 ): void {
   const err = expectParseFailure(feature, opts.messageContains);
   const pathStrings = err.issues.map((i) => i.path.join("."));
@@ -250,7 +1003,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
     });
 
     it("rejects duplicate tags", () => {
-      expectParseFailure(baseFeature({ tags: ["all", "all"] }), "Duplicate tags found: all, all");
+      expectParseFailure(baseFeature({ tags: ["all", "all"] }), 'Duplicate tag "all".');
     });
   });
 
@@ -259,8 +1012,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       expectParseFailure(
         baseFeature({
           rules: {
-            staging: [{ key: "r1", segments: { and: [] }, percentage: 100 }],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            staging: [{ key: "r1", conditions: { and: [] }, percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -268,8 +1021,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       expectParseFailure(
         baseFeature({
           rules: {
-            staging: [{ key: "r1", segments: { or: [] }, percentage: 100 }],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            staging: [{ key: "r1", conditions: { or: [] }, percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -277,8 +1030,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       expectParseFailure(
         baseFeature({
           rules: {
-            staging: [{ key: "r1", segments: { not: [] }, percentage: 100 }],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            staging: [{ key: "r1", conditions: { not: [] }, percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -791,8 +1544,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               variables: { slug: "treatment" },
               variableOverrides: {
                 slug: [
-                  { segments: "countries.germany", value: "de" },
-                  { segments: "countries.france", value: "fr" },
+                  { conditions: "countries.germany", value: "de" },
+                  { conditions: "countries.france", value: "fr" },
                 ],
               },
             },
@@ -813,7 +1566,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                slug: [{ segments: "countries.germany", value: "de" }],
+                slug: [{ conditions: "countries.germany", value: "de" }],
               },
             },
           ],
@@ -839,7 +1592,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                slug: [{ segments: "*", value: "UPPERCASE" }],
+                slug: [{ conditions: "*", value: "UPPERCASE" }],
               },
             },
           ],
@@ -860,7 +1613,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                notDefined: [{ segments: "*", value: "x" }],
+                notDefined: [{ conditions: "*", value: "x" }],
               },
             },
           ],
@@ -881,7 +1634,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                slug: [{ segments: "*", value: "toolongvalue" }],
+                slug: [{ conditions: "*", value: "toolongvalue" }],
               },
             },
           ],
@@ -910,7 +1663,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                config: [{ segments: "*", value: { theme: "dark" } }],
+                config: [{ conditions: "*", value: { theme: "dark" } }],
               },
             },
           ],
@@ -928,15 +1681,15 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100 },
+              { key: "r1", conditions: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries.germany",
+                conditions: "countries.germany",
                 percentage: 100,
                 variables: { title: "Germany" },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -950,15 +1703,15 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100 },
+              { key: "r1", conditions: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries.germany",
+                conditions: "countries.germany",
                 percentage: 100,
                 variables: { count: 100 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         "maximum",
@@ -973,15 +1726,15 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100 },
+              { key: "r1", conditions: "*", percentage: 100 },
               {
                 key: "r2",
-                segments: "countries.germany",
+                conditions: "countries.germany",
                 percentage: 100,
                 variables: { unknownVar: "x" },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         "not defined in",
@@ -992,11 +1745,11 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       expectParseFailure(
         baseFeature({
           rules: {
-            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+            staging: [{ key: "r1", conditions: "*", percentage: 100 }],
             production: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 80,
                 variables: { blah123: "some value" },
               },
@@ -1009,6 +1762,34 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
   });
 
   describe("rules: variableOverrides", () => {
+    it("accepts an exact namespaced variablesSchema key before mutation notation", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            "config.policy": {
+              type: "object",
+              properties: { retries: { type: "integer" } },
+              defaultValue: { retries: 1 },
+            },
+          },
+          rules: {
+            staging: [
+              {
+                key: "r1",
+                conditions: "*",
+                percentage: 100,
+                variables: { "config.policy": { retries: 2 } },
+                variableOverrides: {
+                  "config.policy": [{ conditions: "*", value: { retries: 3 } }],
+                },
+              },
+            ],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
+          },
+        }),
+      );
+    });
+
     it("accepts rule variableOverrides with values matching variablesSchema", () => {
       expectParseSuccess(
         baseFeature({
@@ -1034,12 +1815,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
                   config: [
                     {
-                      segments: "countries.germany",
+                      conditions: "countries.germany",
                       value: {
                         "nested.count": 5,
                       },
@@ -1048,7 +1829,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1068,7 +1849,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
                   config: [
@@ -1076,8 +1857,8 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                       key: "german-treatment",
                       description: "German treatment configuration",
                       promotable: true,
-                      conditions: { attribute: "country", operator: "equals", value: "de" },
-                      requiredFeatures: [
+                      conditions: [
+                        { attribute: "country", operator: "equals", value: "de" },
                         {
                           feature: "dependency",
                           enabled: true,
@@ -1088,14 +1869,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                     },
                     {
                       key: "dependency-only",
-                      requiredFeatures: "dependency",
+                      conditions: { feature: "dependency" },
                       value: { title: "Dependency", compact: true },
                     },
                   ],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1115,14 +1896,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
-                  config: [{ segments: "*", value: { title: "Legacy" } }],
+                  config: [{ conditions: "*", value: { title: "Legacy" } }],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1138,14 +1919,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
-                  label: [{ segments: "countries.germany", value: "de" }],
+                  label: [{ conditions: "countries.germany", value: "de" }],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         "must have a key when `requireOverrideKeysInFeatures` is enabled",
@@ -1165,7 +1946,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                label: [{ key: "variation-germany", segments: "countries.germany", value: "de" }],
+                label: [{ key: "variation-germany", conditions: "countries.germany", value: "de" }],
               },
             },
           ],
@@ -1173,14 +1954,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
-                  label: [{ key: "rule-germany", segments: "countries.germany", value: "de" }],
+                  label: [{ key: "rule-germany", conditions: "countries.germany", value: "de" }],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         { requireOverrideKeysInFeatures: true },
@@ -1191,26 +1972,26 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       {
         name: "missing selector",
         override: { key: "invalid", value: "x" },
-        message: "must define `conditions`, `segments`, or `requiredFeatures`",
+        message: "must define `conditions`",
       },
       {
         name: "conditions and segments together",
-        override: { key: "invalid", conditions: [], segments: "*", value: "x" },
-        message: "cannot define both `conditions` and `segments`",
+        override: { key: "invalid", conditions: "*", segments: "*", value: "x" },
+        message: "Combine `segments`, `conditions`",
       },
       {
         name: "value and mutate together",
-        override: { key: "invalid", segments: "*", value: "x", mutate: { title: "x" } },
+        override: { key: "invalid", conditions: "*", value: "x", mutate: { title: "x" } },
         message: "exactly one of `value` or `mutate`",
       },
       {
         name: "neither value nor mutate",
-        override: { key: "invalid", segments: "*" },
+        override: { key: "invalid", conditions: "*" },
         message: "exactly one of `value` or `mutate`",
       },
       {
         name: "promotable without key",
-        override: { promotable: false, segments: "*", value: "x" },
+        override: { promotable: false, conditions: "*", value: "x" },
         message: "key is required when `promotable` is set",
       },
     ])("rejects $name", ({ override, message }) => {
@@ -1221,12 +2002,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: { label: [override] },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         message,
@@ -1240,18 +2021,18 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           staging: [
             {
               key: "r1",
-              segments: "*",
+              conditions: "*",
               percentage: 100,
               variableOverrides: {
                 label: [
-                  { key: "same", promotable: false, segments: "*", value: "first" },
-                  { key: "same", conditions: [], value: "second" },
-                  { segments: "*", value: "legacy" },
+                  { key: "same", promotable: false, conditions: "*", value: "first" },
+                  { key: "same", conditions: "*", value: "second" },
+                  { conditions: "*", value: "legacy" },
                 ],
               },
             },
           ],
-          production: [{ key: "r1", segments: "*", percentage: 100 }],
+          production: [{ key: "r1", conditions: "*", percentage: 100 }],
         },
       });
       expectParseFailure(feature, "Duplicate variable override keys");
@@ -1268,14 +2049,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
-                  unknown: [{ segments: "*", value: "x" }],
+                  unknown: [{ conditions: "*", value: "x" }],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         "not defined in",
@@ -1296,14 +2077,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
-                  "config.title": [{ segments: "*", value: "y" }],
+                  "config.title": [{ conditions: "*", value: "y" }],
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         "must be a declared variable key",
@@ -1324,12 +2105,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
                   config: [
                     {
-                      segments: "*",
+                      conditions: "*",
                       value: {
                         "nested.missing": "x",
                       },
@@ -1338,20 +2119,21 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
-        "invalid for variable",
+        'Path "nested.missing" does not exist in the schema of variable "config".',
       );
     });
 
-    it("rejects non-null payload for :remove in rule variableOverrides", () => {
-      expectParseFailure(
+    it("ignores the placeholder payload for :remove like global overrides", () => {
+      expectParseSuccess(
         baseFeature({
           variablesSchema: {
             config: {
               type: "object",
               properties: { title: { type: "string" }, optional: { type: "string" } },
+              required: ["title"],
               defaultValue: { title: "x", optional: "y" },
             },
           },
@@ -1359,7 +2141,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variableOverrides: {
                   config: [
@@ -1373,10 +2155,9 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
-        "must use `null` as value",
       );
     });
   });
@@ -1462,12 +2243,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       expectParseSuccess(
         baseFeature({
           expose: true,
-          force: [{ segments: "*", variation: "control" }],
+          force: [{ conditions: "*", variation: "control" }],
           variations: [
             { value: "control", weight: 50 },
             { value: "treatment", weight: 50 },
           ],
-          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+          rules: [{ key: "r1", conditions: "*", percentage: 100 }],
         }),
         { environments: undefined },
       );
@@ -1480,14 +2261,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: true,
           },
           force: {
-            staging: [{ segments: "*", variation: "control" }],
+            staging: [{ conditions: "*", variation: "control" }],
           },
           variations: [
             { value: "control", weight: 50 },
             { value: "treatment", weight: 50 },
           ],
           rules: {
-            staging: [{ key: "r1", segments: "*", percentage: 100 }],
+            staging: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1496,7 +2277,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
     it("rejects direct rules when environments are configured", () => {
       const err = expectParseFailure(
         baseFeature({
-          rules: [{ key: "r1", segments: "*", percentage: 100 }],
+          rules: [{ key: "r1", conditions: "*", percentage: 100 }],
         }),
       );
 
@@ -1507,7 +2288,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       const err = expectParseFailure(
         baseFeature({
           rules: {
-            qa: [{ key: "r1", segments: "*", percentage: 100 }],
+            qa: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1675,6 +2456,23 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
       );
     });
 
+    it("treats object properties as optional when required is absent, as in JSON Schema", () => {
+      expectParseSuccess(
+        baseFeature({
+          variablesSchema: {
+            settings: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                compact: { type: "boolean" },
+              },
+              defaultValue: { compact: true },
+            },
+          },
+        }),
+      );
+    });
+
     it("rejects inline object variable when defaultValue is missing required property", () => {
       expectParseFailure(
         baseFeature({
@@ -1822,14 +2620,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: {
                   singleLink: { title: "DE Link", url: "/de" },
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1848,14 +2646,14 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: {
                   singleLink: { title: "Missing url" },
                 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -1946,7 +2744,7 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
               value: "treatment",
               weight: 50,
               variableOverrides: {
-                slug: [{ segments: "*", value: "INVALID-UPPERCASE" }],
+                slug: [{ conditions: "*", value: "INVALID-UPPERCASE" }],
               },
             },
           ],
@@ -1973,12 +2771,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: { count: 100 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         {
@@ -2110,12 +2908,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: { "config.theme": "dark", "config.width": 1200 },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -2133,9 +2931,9 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100, variables: { "tags[0]": "first" } },
+              { key: "r1", conditions: "*", percentage: 100, variables: { "tags[0]": "first" } },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
       );
@@ -2149,9 +2947,9 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100, variables: { "unknownVar.foo": "x" } },
+              { key: "r1", conditions: "*", percentage: 100, variables: { "unknownVar.foo": "x" } },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         {
@@ -2175,15 +2973,19 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: { "config.unknownProp": "x" },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
-        { pathContains: ["rules", "variables"], messageContains: "path does not exist" },
+        {
+          pathContains: ["rules", "variables"],
+          messageContains:
+            'Path "config.unknownProp" does not exist in the schema of variable "config".',
+        },
       );
     });
 
@@ -2199,9 +3001,9 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
           },
           rules: {
             staging: [
-              { key: "r1", segments: "*", percentage: 100, variables: { "config:append": "x" } },
+              { key: "r1", conditions: "*", percentage: 100, variables: { "config:append": "x" } },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         { pathContains: ["rules", "variables"], messageContains: "only allowed on array" },
@@ -2226,12 +3028,12 @@ describe("featureSchema.ts :: getFeatureZodSchema (variablesSchema and variable 
             staging: [
               {
                 key: "r1",
-                segments: "*",
+                conditions: "*",
                 percentage: 100,
                 variables: { "config.compact:remove": null },
               },
             ],
-            production: [{ key: "r1", segments: "*", percentage: 100 }],
+            production: [{ key: "r1", conditions: "*", percentage: 100 }],
           },
         }),
         {

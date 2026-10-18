@@ -1,7 +1,8 @@
 {
   "name": "@featurevisor/vue",
+  "sideEffects": false,
   "version": "3.8.0",
-  "description": "Vue.js package for Featurevisor",
+  "description": "Vue functions for Featurevisor flags, variations and configuration",
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "types": "cjs/index.d.ts",
@@ -43,6 +44,7 @@
     "vue"
   ],
   "repository": {
+    "directory": "packages/vue",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },

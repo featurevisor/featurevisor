@@ -5,7 +5,6 @@ import type {
   VariableValue,
   Weight,
   FeatureKey,
-  Required,
   RequiredFeature,
   VariableKey,
   ResolvedVariableSchema,
@@ -14,7 +13,8 @@ import type {
   VariableOverride,
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
-import type { DatafileVariable, GlobalVariableKey } from "./variable";
+import type { DatafileVariable } from "./variable";
+import type { Conditions } from "./condition";
 
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
 
@@ -27,7 +27,9 @@ export interface Allocation {
 
 export interface Traffic {
   key: RuleKey;
-  segments: GroupSegment | GroupSegment[] | "*";
+  conditions?: Conditions;
+  /** @deprecated Legacy v3 datafile selector, normalized when loaded. */
+  segments?: GroupSegment | GroupSegment[] | "*";
   percentage: Percentage;
 
   enabled?: boolean;
@@ -46,11 +48,11 @@ export interface Traffic {
 }
 
 export interface Feature {
+  conditions?: Conditions;
   key?: FeatureKey; // available while building, omitted from generated datafiles
   hash?: string;
   deprecated?: boolean;
-  /** @deprecated Read for compatibility with older datafiles. */
-  required?: Required[];
+  /** @deprecated Legacy v3 datafile gate, normalized when loaded. */
   requiredFeatures?: RequiredFeature[];
   variablesSchema?: Record<VariableKey, ResolvedVariableSchema>;
   disabledVariationValue?: VariationValue;
@@ -58,7 +60,6 @@ export interface Feature {
   bucketBy: BucketBy;
   traffic: Traffic[];
   force?: Force[];
-  ranges?: Range[]; // if in a Group (mutex), these are the available slot ranges
 }
 
 export interface DatafileContent {
@@ -73,6 +74,6 @@ export interface DatafileContent {
   };
   /** Optional for compatibility with datafiles generated before global variables. */
   variables?: {
-    [key: GlobalVariableKey]: DatafileVariable;
+    [key: VariableKey]: DatafileVariable;
   };
 }

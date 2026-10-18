@@ -37,6 +37,7 @@
     "nodejs"
   ],
   "repository": {
+    "directory": "packages/openfeature-provider-node",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },
@@ -54,9 +55,9 @@
     "@featurevisor/sdk": "3.8.0"
   },
   "peerDependencies": {
-    "@openfeature/server-sdk": "^1.22.0"
+    "@openfeature/server-sdk": "^1.23.0"
   },
   "devDependencies": {
-    "@openfeature/server-sdk": "^1.22.0"
+    "@openfeature/server-sdk": "^1.23.0"
   }
 }

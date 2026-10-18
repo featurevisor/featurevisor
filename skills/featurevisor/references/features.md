@@ -1,294 +1,288 @@
-# Features reference
+# Features
 
-Full docs: <https://featurevisor.com/docs/features>
+Full docs: <https://featurevisor.com/docs/features/>
 
-A feature in Featurevisor produces three evaluable outputs:
+A feature produces three kinds of result:
 
-- **flag** — boolean enabled/disabled
-- **variation** — string (for A/B tests)
-- **variables** — typed key/value pairs (for remote config)
+- **flag**: enabled or disabled
+- **variation**: a string, for A/B tests
+- **variables**: typed values, for remote configuration
 
-Features live in `features/<key>.yml` by default. The filename usually matches the feature key.
-
-Choose keys deliberately — they become permanent identifiers in application code and analytics (docs convention: camelCase, e.g. `showWishlist`, `checkoutRedesign`). Renaming a shipped feature key breaks every consumer.
+Features live in `features/<key>.yml`. A subdirectory adds a namespace to the key ([namespaces.md](namespaces.md)). Keys become permanent identifiers in application code and analytics, so choose them deliberately. The docs use camelCase, such as `checkout` or `showCookieBanner`.
 
 ## Minimal feature
 
 ```yaml
-description: Sidebar
-tags:
-  - all
+description: Checkout redesign
 
 bucketBy: userId
 
 rules:
-  production:
-    - key: everyone
-      segments: '*'
-      percentage: 100
+  - key: everyone
+    conditions: '*'
+    percentage: 100
 ```
 
-## Top-level properties
+## Properties
 
-| Property                 | Required                                 | Notes                                                                             |
-| ------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------- |
-| `description`            | yes                                      | Human-readable                                                                    |
-| `tags`                   | no                                       | When present, must be subset of `tags` in `featurevisor.config.js`                |
-| `bucketBy`               | yes (unless `defaultBucketBy` covers it) | string, array, or `{or: [...]}` — see Bucketing                                   |
-| `rules`                  | yes                                      | Map of env → ordered rule list when environments are enabled                      |
-| `variations`             | no                                       | A/B test variations                                                               |
-| `variablesSchema`        | no                                       | Variables this feature exposes (see [variables-schemas.md](variables-schemas.md)) |
-| `requiredFeatures`       | no                                       | Feature enabled and variation requirements                                        |
-| `force`                  | no                                       | Per-env force rules (override percentage logic)                                   |
-| `expose`                 | no                                       | Per-env / per-tag inclusion control                                               |
-| `disabledVariationValue` | no                                       | Variation value when feature is disabled (defaults to `null`)                     |
-| `deprecated`             | no                                       | `true` → still evaluable, logs warning                                            |
-| `archived`               | no                                       | `true` → excluded from datafiles entirely                                         |
-| `promotable`             | no                                       | `false` protects an existing destination during set [promotions](https://featurevisor.com/docs/promotions); rule entries use omit or preserve behavior |
+Examples use the default scaffold without environments.
 
-## Bucketing (`bucketBy`)
+| Property                 | Required                                | Notes                                                                          |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `description`            | yes                                     |                                                                                |
+| `bucketBy`               | yes, unless `defaultBucketBy` covers it | attribute, list of attributes, or `{ or: [...] }`                              |
+| `rules`                  | yes                                     | ordered list, or a map of environment to list when environments are configured |
+| `conditions`             | no                                      | root gate ([conditions.md](conditions.md#root-gates))                          |
+| `force`                  | no                                      | ordered list, or an environment map                                            |
+| `variations`             | no                                      | A/B test values with weights                                                   |
+| `variablesSchema`        | no                                      | feature variables ([variables-schemas.md](variables-schemas.md))               |
+| `disabledVariationValue` | no                                      | variation returned while disabled, instead of `null`                           |
+| `tags`                   | no                                      | must be declared in the project configuration                                  |
+| `expose`                 | no                                      | boolean or tag list, or an environment map                                     |
+| `deprecated`             | no                                      | still evaluated, SDKs log a warning                                            |
+| `archived`               | no                                      | left out of every datafile                                                     |
+| `promotable`             | no                                      | `false` protects the destination during Set promotions                         |
 
-Determines what attribute the consistent-hash uses to assign the same user to the same percentage band each time.
+## Bucketing
 
 ```yaml
-bucketBy: userId                       # single
-bucketBy: [organizationId, userId]     # concatenated
-bucketBy:                              # first attribute available in context wins
-  or:
-    - userId
-    - deviceId
+bucketBy: userId # one attribute
 ```
 
-Guidance:
+```yaml
+bucketBy: [organizationId, userId] # combined
+```
 
-- Signed-in user surface → use `userId` (or whatever the project calls it; check `attributes/`).
-- Anonymous surface → use `deviceId` or similar.
-- **Don't change `bucketBy` on an existing feature** — it re-buckets every user.
+```yaml
+bucketBy:
+  or: [userId, deviceId] # the first one present
+```
+
+Never change `bucketBy` on a live feature: every user gets a new bucket. See [bucketing.md](bucketing.md).
 
 ## Rules
 
-Rule entries may use `promotable: false` in a sets project. A source rule with it is omitted from promotion. An existing destination rule with it is preserved when the source contains a rule with the same key. This protection applies only to rules, not to force entries, variable overrides, variations, or variables.
+```yaml
+rules:
+  - key: nl
+    description: The Netherlands first
+    conditions: netherlands
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 25
+```
+
+- Rules run top to bottom. The first rule whose `conditions` match decides.
+- `percentage` (0 to 100, up to two decimals) is then checked against the user's bucket. A miss disables the feature and does **not** fall through to later rules.
+- `key` is unique within the list and stays stable while the percentage changes. Raising a percentage keeps everyone already in. Renaming or reweighting reallocates variations.
+- `conditions` is required. Use `'*'` for everyone ([conditions.md](conditions.md)).
+
+Rules can also fix a variation, change weights, and set variables for their audience:
+
+```yaml
+rules:
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variation: treatment # everyone in this rule gets treatment
+    variables:
+      bgColor: orange
+
+  - key: de
+    conditions: germany
+    percentage: 100
+    variationWeights: # this rule's own split
+      control: 70
+      treatment: 30
+
+  - key: everyone
+    conditions: '*'
+    percentage: 100
+```
+
+### With environments
+
+When the project declares `environments`, key each list by environment:
 
 ```yaml
 rules:
   staging:
     - key: everyone
-      segments: '*'
+      conditions: '*'
       percentage: 100
-
   production:
-    - key: nl
-      description: Netherlands first
-      segments: netherlands
-      percentage: 50
-
     - key: everyone
-      segments: '*'
-      percentage: 100
+      conditions: '*'
+      percentage: 25
 ```
 
-- Rules are evaluated **top to bottom**, first match wins.
-- `key` must be unique within the env's rule list and **must stay stable** as percentages change — renaming re-buckets users.
-- `segments` can be a single name, the wildcard `'*'`, or a logical combo (see below).
-- `percentage` is 0–100 with up to 2 decimal places.
-- Optional `description` for documentation.
-
-### Segments in rules
-
-```yaml
-# single
-segments: netherlands
-
-# everyone
-segments: '*'
-
-# and
-segments:
-  and:
-    - germany
-    - iphoneUsers
-
-# or
-segments:
-  or:
-    - netherlands
-    - germany
-
-# not
-segments:
-  not:
-    - germany
-
-# "not" negates the implicit AND of its direct children:
-# this matches users who are not both mobileUsers and netherlands
-segments:
-  not:
-    - mobileUsers
-    - netherlands
-
-# for "none of these segments match", wrap the children in `or`
-segments:
-  not:
-    - or:
-        - mobileUsers
-        - desktopUsers
-
-# combined (implicit and across siblings)
-segments:
-  - and:
-      - iphoneUsers
-      - adultUsers
-  - or:
-      - netherlands
-      - germany
-  - not:
-      - newsletterSubscribers
-
-# nested
-segments:
-  - and:
-      - iphoneUsers
-      - or:
-          - netherlands
-          - germany
-```
-
-### Per-rule variable / variation overrides
-
-```yaml
-rules:
-  production:
-    - key: nl
-      segments: netherlands
-      percentage: 100
-      variation: control            # pin variation for this rule
-      variables:
-        bgColor: orange
-      variationWeights:             # or override weights for this rule
-        control: 70
-        treatment: 30
-      variableOverrides:            # further conditional overrides
-        bgColor:
-          - key: amsterdam
-            segments: amsterdam
-            value: red
-          - key: rotterdam
-            conditions:
-              - attribute: city
-                operator: equals
-                value: rotterdam
-            requiredFeatures: checkout
-            value: blue
-```
+An environment without a list has no rules, so the feature is disabled there unless a force entry applies. An explicit empty list such as `staging: []` fails lint, so omit the key instead.
 
 ## Variations
 
 ```yaml
 variations:
   - value: control
-    description: Default
     weight: 50
 
   - value: treatment
     weight: 50
-    variables:                       # variables override when this variation is bucketed
+    variables:
       bgColor: blue
-    variableOverrides:               # conditional overrides per variation
-      bgColor:
-        - key: netherlands
-          segments: netherlands
-          value: orange
 ```
 
-Feature variable overrides are checked in order. Each entry needs at least one selector from `conditions`, `segments`, or `requiredFeatures`, and exactly one of `value` or `mutate`. Conditions and segments are mutually exclusive. Requirements may be used alone or with either selector, using AND semantics. Stable keys are recommended and are required when `promotable` is set. Existing unkeyed entries and legacy mutation maps under `value` remain supported. Prefer explicit `mutate` for new partial updates.
+- Weights sum to 100, with up to two decimals each.
+- Values are unique strings. `control` and `treatment` are conventions only. Analytics keys off these values, so do not rename them once tracked.
+- A variation can only set variables declared in `variablesSchema`.
+- `disabledVariationValue: control` returns `control` instead of `null` while the feature is disabled. It needs no `variations` list, and when one exists it must name one of its values.
 
-- Weights must sum to **100** (up to 2 decimals each).
-- `control`/`treatment` is convention only; any unique string is fine.
-- `disabledVariationValue: control` at the feature level controls what is returned when the feature is disabled.
+## Feature variable overrides
 
-## Required features
+Rules and variations can narrow a variable further with `variableOverrides`. The first matching entry wins, and the rule's or variation's `variables` value applies otherwise.
 
 ```yaml
-requiredFeatures:
-  - checkoutRedesign                 # must be enabled
-
-  - feature: someFeature             # must be enabled and in this variation
-    variation: treatment
-
-  - feature: legacyFeature           # must be disabled with this returned variation
-    enabled: false
-    variation: control
+rules:
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variables:
+      bgColor: orange
+    variableOverrides:
+      bgColor:
+        - key: amsterdam
+          conditions:
+            - attribute: city
+              operator: equals
+              value: amsterdam
+          value: red
+        - key: checkout-users
+          conditions:
+            - feature: checkout
+          value: blue
 ```
 
-For one enabled dependency, `requiredFeatures: checkoutRedesign` is equivalent to a one item array. `enabled` defaults to `true` and compares with `isEnabled()`. `variation` compares with `getVariation()`. All supplied checks and all entries use AND semantics. The older `required` property remains supported but is deprecated. Never declare both.
+Each override needs `conditions` and exactly one of `value` or `mutate` ([variables-schemas.md](variables-schemas.md#mutations)). A stable `key` is recommended: it appears in evaluation details and is required for promotion protection. Feature variable overrides are flat. Nesting and `continue` are only for global variables.
+
+## Root conditions
+
+Root `conditions` gate the whole feature before bucketing. Use a feature leaf when one feature only makes sense with another, or a variable leaf for a kill switch:
+
+```yaml
+description: File upload inside chat
+
+bucketBy: userId
+
+conditions:
+  - feature: liveChat
+  - variable: maintenanceMode
+    operator: equals
+    value: false
+
+rules:
+  - key: everyone
+    conditions: '*'
+    percentage: 100
+```
+
+An unmet gate disables the feature with reason `conditions_unmet`. Force entries run before the gate. Lint rejects cycles. See [conditions.md](conditions.md) for every leaf kind and [mutual-exclusion.md](mutual-exclusion.md) for `enabled: false` priority exclusion.
 
 ## Force
 
-Force overrides rules for matching context. Used for QA/testing-in-production.
+Force sets a result for matching contexts, typically QA or one user, ahead of the root gate and rules:
 
 ```yaml
 force:
-  production:
-    - conditions:
-        - attribute: userId
-          operator: equals
-          value: '123'
-      enabled: true
-      variation: treatment
-      variables:
-        bgColor: purple
+  - conditions: qa
+    enabled: true
+    variation: treatment
 
-    - segments: QATeam
-      enabled: true
-      variation: treatment
+  - conditions:
+      - attribute: userId
+        operator: equals
+        value: '9b30'
+    enabled: true
+    variables:
+      bgColor: purple
 ```
 
-No `key` or `percentage` for force entries. First matching force entry wins, evaluated before rules.
+Force entries need `conditions`, have no `key` or `percentage`, and the first match wins. Prefer a reviewed `force` entry over SDK sticky values for QA access.
 
 ## Expose
 
-Limit which environments / tags include this feature in their datafiles. Treat as short-term migration tool only.
+`expose: false` leaves the feature out of generated datafiles. A tag list such as `expose: [web]` restricts which tag selected targets include it, and has no effect on targets without tag selectors. With environments configured, key it by environment: `expose: { production: false }`.
+
+Use `expose` only for temporary needs such as migrating from another tool. Never hide a feature that others depend on: an unexposed prerequisite is missing from the datafile, which satisfies `enabled: false` and fails `enabled: true` checks. Lint does not warn about this.
+
+## Deprecating and archiving
 
 ```yaml
-expose:
-  production: false                  # exclude from production datafiles entirely
-
-# or per-tag
-expose:
-  production:
-    - web
-    - ios
-    # android excluded
+deprecated: true # still in datafiles, SDKs log a warning on every evaluation
 ```
-
-## Deprecate / archive
 
 ```yaml
-deprecated: true   # still works, SDK logs warning
-archived: true     # excluded from datafiles entirely
+archived: true # left out of every datafile, SDKs evaluate it as disabled
 ```
+
+Lint rejects a reference to an archived feature, in `conditions`, as a composition source or in a spec, from anything that is not archived itself (`archived_reference`). Targets cannot name it by exact key either. Run `npx featurevisor find-usage --feature=<key>` first, remove each reference or archive its owner too, and delete the feature's specs. Lint checks an archived feature for its shape only. Keep the archived file: a new feature reusing the key would bucket every user exactly as the old one did.
+
+A reference to a deprecated feature, or to a deprecated variable in its `variablesSchema`, is a `deprecated_reference` lint warning in active definitions that are not deprecated themselves. Feature variables can be deprecated individually inside `variablesSchema`.
 
 ## Evaluation flow
 
-For each evaluation type (flag / variation / variable), the SDK runs through this chain. The same logic powers `npx featurevisor evaluate`.
+The first step that gives an answer wins. `npx featurevisor evaluate --explain` shows which one did.
 
 ### Flag
 
-1. SDK sticky override (if present)
-2. Feature not in datafile → disabled
-3. First matching `force` entry's `enabled`
-4. `requiredFeatures` dependencies fail → disabled
-5. First matching rule's `percentage` + bucketing
-6. No match → disabled
+1. A sticky `enabled` value.
+2. A feature missing from the datafile is disabled (`feature_not_found`).
+3. The first matching force entry that sets `enabled` (`forced`).
+4. Unmet root conditions disable it (`conditions_unmet`).
+5. Compute the bucket.
+6. The first rule whose conditions match, then its percentage. Inside it, the feature is enabled (`rule`). A rule at 0% disables it with `rule` and its `ruleKey`.
+7. A bucket above the matched rule's percentage disables it without falling through to later rules. This reports `no_match` without a `ruleKey`, the same as when no rule matches at all. Compare `bucketValue` with the rule's percentage to tell them apart.
 
 ### Variation
 
-1. SDK sticky override
-2. If flag is false → `null` or `disabledVariationValue`
-3. If flag is true → first matching `force` → first matching rule's `variation` → bucketed variation per weights
+1. The flag is evaluated first. When disabled, the result is `disabledVariationValue` if set, otherwise `null`.
+2. A sticky variation.
+3. A feature without variations returns `null`.
+4. The first matching force entry's `variation`.
+5. The matched rule's `variation`.
+6. The variation whose weight range contains the bucket (`allocated`).
 
 ### Variable
 
-1. SDK sticky override
-2. If flag is false → `null`, or `defaultValue` if `useDefaultWhenDisabled`, or `disabledValue`
-3. If flag is true → matching `force.variables` → matching rule's `variables` / `variableOverrides` → bucketed variation's `variables`/`variableOverrides` → `defaultValue`
+1. The flag is evaluated first. When disabled, the result is the variable's `disabledValue` if set, its `defaultValue` with `useDefaultWhenDisabled: true`, or `null`.
+2. A sticky variable value.
+3. A variable missing from `variablesSchema` returns `null`.
+4. The first matching force entry's `variables` value.
+5. The matched rule's first matching `variableOverrides` entry, then its `variables` value.
+6. The selected variation's first matching `variableOverrides` entry, then its `variables` value.
+7. The variable's `defaultValue`.
+
+## Testing a feature
+
+Feature specs fix the bucket with `at`, so rollouts are tested without searching for user IDs:
+
+```yaml
+feature: checkout
+
+assertions:
+  - key: nl
+    description: Dutch users are always in
+    at: 90
+    context:
+      country: nl
+    expectedToBeEnabled: true
+
+  - key: outside-rollout
+    description: Others are out above 25
+    at: 90
+    context:
+      country: de
+    expectedToBeEnabled: false
+```
+
+See [testing.md](testing.md#feature-specs).

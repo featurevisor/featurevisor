@@ -1,6 +1,5 @@
 import type { Context } from "./context";
-import type { FeatureKey, Tag } from "./feature";
-import type { GlobalVariableKey } from "./variable";
+import type { FeatureKey, Tag, VariableKey } from "./feature";
 
 export type TargetKey = string;
 
@@ -14,7 +13,7 @@ export interface TargetAndTags {
 
 export type TargetTags = Tag[] | TargetOrTags | TargetAndTags;
 export type TargetFeatures = "*" | FeatureKey[];
-export type TargetVariables = "*" | GlobalVariableKey[];
+export type TargetVariables = "*" | VariableKey[];
 
 export interface Target {
   key?: TargetKey;

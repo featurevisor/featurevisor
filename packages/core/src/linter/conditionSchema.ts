@@ -1,8 +1,22 @@
-import type { Attribute, AttributeProperty, Schema } from "@featurevisor/types";
+import type {
+  Attribute,
+  AttributeProperty,
+  Conditions,
+  ParsedFeature,
+  ParsedVariable,
+  Schema,
+} from "@featurevisor/types";
 import { z } from "zod";
+import { getPortableTimestamp, isValidVersion } from "@featurevisor/sdk";
+import { getBacktrackingError } from "./regexSafety";
+import { getSchemaKind, valueMatchesFormat } from "./schemaFormats";
 
 import { ProjectConfig } from "../config";
-import { refineWithMessage } from "./zodHelpers";
+import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
+import { diagnosticParseOptions, suggestKey } from "./diagnostics";
+import { findDisallowedOperators } from "./comparisonOperators";
+import { getFeatureConditionZodSchema } from "./requiredFeaturesSchema";
+import { getVariableConditionZodSchema } from "./requiredVariablesSchema";
 
 const commonOperators: [string, ...string[]] = ["equals", "notEquals"];
 const numericOperators = ["greaterThan", "greaterThanOrEquals", "lessThan", "lessThanOrEquals"];
@@ -25,9 +39,10 @@ const semverOperators = [
 const dateOperators = ["before", "after"];
 const arrayMembershipOperators = ["in", "notIn"];
 const arrayOperators = ["includes", "notIncludes"];
-const operatorsWithoutValue = ["exists", "notExists"];
-
-const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|([+\-]\d{2}:\d{2}))$/;
+const arrayListOperators = ["includesAny", "notIncludesAny"];
+const emptinessOperators = ["empty", "notEmpty"];
+const operatorsWithoutValue = ["exists", "notExists", "isNull", "notNull", ...emptinessOperators];
+const emptinessTypes = ["primitive", "string", "semver", "date-time", "array", "object", "json"];
 
 type SchemaNode = Attribute | AttributeProperty | Schema;
 type ResolvedLeaf =
@@ -36,7 +51,7 @@ type ResolvedLeaf =
   | { kind: "flat-array-item" };
 
 function isIsoDateString(value: string): boolean {
-  return isoDateRegex.test(value);
+  return getPortableTimestamp(value) !== null;
 }
 
 function isPrimitiveAttributeValue(value: unknown): boolean {
@@ -111,7 +126,7 @@ function getLeafType(resolvedLeaf: ResolvedLeaf): string | undefined {
     return "primitive";
   }
 
-  return "type" in resolvedLeaf.schema ? resolvedLeaf.schema.type : undefined;
+  return getSchemaKind(resolvedLeaf.schema);
 }
 
 function getLeafTypes(resolvedLeaf: ResolvedLeaf, schemasByKey: Record<string, Schema>): string[] {
@@ -121,6 +136,7 @@ function getLeafTypes(resolvedLeaf: ResolvedLeaf, schemasByKey: Record<string, S
 
   const resolved = resolveSchemaRefs(resolvedLeaf.schema, schemasByKey) as SchemaNode & {
     type?: string;
+    format?: string;
     oneOf?: unknown[];
   };
 
@@ -134,7 +150,8 @@ function getLeafTypes(resolvedLeaf: ResolvedLeaf, schemasByKey: Record<string, S
     );
   }
 
-  return resolved.type ? [resolved.type] : [];
+  const kind = getSchemaKind(resolved);
+  return kind ? [kind] : [];
 }
 
 function resolveAttributePath(
@@ -143,7 +160,9 @@ function resolveAttributePath(
   schemasByKey: Record<string, Schema>,
 ): ResolvedLeaf | null {
   const [rootKey, ...rest] = attributePath.split(".");
-  const rootAttribute = attributesByKey[rootKey];
+  const rootAttribute = Object.prototype.hasOwnProperty.call(attributesByKey, rootKey)
+    ? attributesByKey[rootKey]
+    : undefined;
 
   if (!rootAttribute) {
     return null;
@@ -172,7 +191,11 @@ function resolveAttributePath(
     const additionalProperties =
       "additionalProperties" in current ? current.additionalProperties : undefined;
 
-    if (properties && typeof properties === "object" && properties[segment]) {
+    if (
+      properties &&
+      typeof properties === "object" &&
+      Object.prototype.hasOwnProperty.call(properties, segment)
+    ) {
       current = properties[segment];
       continue;
     }
@@ -192,10 +215,11 @@ function resolveAttributePath(
   return { kind: "schema", schema: resolveSchemaRefs(current, schemasByKey) };
 }
 
-function matchesSchemaValue(
+export function matchesSchemaValue(
   schema: SchemaNode,
   value: unknown,
   schemasByKey: Record<string, Schema>,
+  nativeDates = false,
 ): boolean {
   const resolved = resolveSchemaRefs(schema, schemasByKey) as SchemaNode & {
     type?: string;
@@ -209,6 +233,7 @@ function matchesSchemaValue(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    format?: string;
     minimum?: number;
     maximum?: number;
     minItems?: number;
@@ -218,17 +243,37 @@ function matchesSchemaValue(
 
   if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
     const matches = resolved.oneOf.filter((branch) =>
-      matchesSchemaValue(branch as SchemaNode, value, schemasByKey),
+      matchesSchemaValue(branch as SchemaNode, value, schemasByKey, nativeDates),
     ).length;
     return matches === 1;
   }
 
-  if (resolved.const !== undefined) {
-    return valueDeepEqual(value, resolved.const);
+  const isDateTime = getSchemaKind(resolved) === "date-time";
+  if (isDateTime && nativeDates && value instanceof Date) {
+    const timestamp = getPortableTimestamp(value);
+    if (timestamp === null) return false;
+    if (resolved.const !== undefined && getPortableTimestamp(resolved.const) !== timestamp) {
+      return false;
+    }
+    if (
+      resolved.enum?.length &&
+      !resolved.enum.some((entry) => getPortableTimestamp(entry) === timestamp)
+    ) {
+      return false;
+    }
+    return true;
+  }
+  // Enum and const constrain a valid timestamp; they must not bypass its type.
+  if (isDateTime && (typeof value !== "string" || !isIsoDateString(value))) {
+    return false;
   }
 
-  if (Array.isArray(resolved.enum) && resolved.enum.length > 0) {
-    return resolved.enum.some((entry) => valueDeepEqual(entry, value));
+  if (resolved.const !== undefined && !valueDeepEqual(value, resolved.const)) {
+    return false;
+  }
+
+  if (resolved.enum?.length && !resolved.enum.some((entry) => valueDeepEqual(entry, value))) {
+    return false;
   }
 
   const type = resolved.type;
@@ -240,10 +285,11 @@ function matchesSchemaValue(
     return typeof value === "boolean";
   }
 
-  if (type === "string" || type === "semver" || type === "date") {
+  if (type === "string") {
     if (typeof value !== "string") {
       return false;
     }
+    if (!valueMatchesFormat(resolved.format, value)) return false;
 
     if (resolved.minLength !== undefined && value.length < resolved.minLength) return false;
     if (resolved.maxLength !== undefined && value.length > resolved.maxLength) return false;
@@ -256,15 +302,11 @@ function matchesSchemaValue(
       }
     }
 
-    if (type === "date" && !isIsoDateString(value)) {
-      return false;
-    }
-
     return true;
   }
 
-  if (type === "integer" || type === "double") {
-    if (typeof value !== "number") {
+  if (type === "integer" || type === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
       return false;
     }
 
@@ -300,7 +342,14 @@ function matchesSchemaValue(
 
       for (const key of Object.keys(objectValue)) {
         if (properties[key]) {
-          if (!matchesSchemaValue(properties[key] as SchemaNode, objectValue[key], schemasByKey)) {
+          if (
+            !matchesSchemaValue(
+              properties[key] as SchemaNode,
+              objectValue[key],
+              schemasByKey,
+              nativeDates,
+            )
+          ) {
             return false;
           }
           continue;
@@ -308,7 +357,12 @@ function matchesSchemaValue(
 
         if (additionalProperties && typeof additionalProperties === "object") {
           if (
-            !matchesSchemaValue(additionalProperties as SchemaNode, objectValue[key], schemasByKey)
+            !matchesSchemaValue(
+              additionalProperties as SchemaNode,
+              objectValue[key],
+              schemasByKey,
+              nativeDates,
+            )
           ) {
             return false;
           }
@@ -323,7 +377,7 @@ function matchesSchemaValue(
 
     if (additionalProperties && typeof additionalProperties === "object") {
       return Object.values(objectValue).every((entry) =>
-        matchesSchemaValue(additionalProperties as SchemaNode, entry, schemasByKey),
+        matchesSchemaValue(additionalProperties as SchemaNode, entry, schemasByKey, nativeDates),
       );
     }
 
@@ -351,7 +405,7 @@ function matchesSchemaValue(
     }
 
     return value.every((entry) =>
-      matchesSchemaValue(resolved.items as SchemaNode, entry, schemasByKey),
+      matchesSchemaValue(resolved.items as SchemaNode, entry, schemasByKey, nativeDates),
     );
   }
 
@@ -424,12 +478,41 @@ function addIssue(
   context: z.RefinementCtx,
   message: string,
   path: (string | number)[] = ["value"],
+  code?: string,
 ): void {
   context.addIssue({
     code: z.ZodIssueCode.custom,
     message,
     path,
+    ...(code ? { params: { code } } : {}),
   });
+}
+
+function getDateOperatorError(
+  attribute: string,
+  operator: string,
+  attributesByKey: Record<string, Attribute>,
+  schemasByKey: Record<string, Schema>,
+): string | null {
+  const leaf = resolveAttributePath(attribute, attributesByKey, schemasByKey);
+  const isDateSchema = (schema: SchemaNode): boolean => {
+    const resolved = resolveSchemaRefs(schema, schemasByKey);
+    if ("oneOf" in resolved && resolved.oneOf?.length) {
+      return resolved.oneOf.every((branch) => isDateSchema(branch as SchemaNode));
+    }
+    return getSchemaKind(resolved) === "date-time";
+  };
+  if (
+    !leaf ||
+    leaf.kind !== "schema" ||
+    !isDateSchema(leaf.schema) ||
+    [...dateOperators, "exists", "notExists", "isNull", "notNull"].includes(operator)
+  ) {
+    return null;
+  }
+  return emptinessOperators.includes(operator)
+    ? `Operator "${operator}" cannot be used with date-time attribute "${attribute}". Use exists or notNull to check that a date was sent.`
+    : `Operator "${operator}" cannot be used with date-time attribute "${attribute}". Compare dates with before or after. To compare it as text too, declare it as a plain string without a format.`;
 }
 
 function validateAttributeAwareCondition(
@@ -451,6 +534,16 @@ function validateAttributeAwareCondition(
   const leafType = getLeafType(resolvedLeaf);
   const leafTypes = getLeafTypes(resolvedLeaf, schemasByKey);
 
+  if (emptinessOperators.includes(data.operator)) {
+    if (leafTypes.length > 0 && !leafTypes.some((type) => emptinessTypes.includes(type))) {
+      addIssue(
+        context,
+        `Operator "${data.operator}" can only be used with string, array or object attributes.`,
+      );
+    }
+    return;
+  }
+
   if (operatorsWithoutValue.includes(data.operator)) {
     return;
   }
@@ -465,18 +558,18 @@ function validateAttributeAwareCondition(
 
   if (
     numericOperators.includes(data.operator) &&
-    !leafTypes.some((type) => ["integer", "double"].includes(type))
+    !leafTypes.some((type) => ["integer", "number"].includes(type))
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with integer or double attributes.`,
+      `Operator "${data.operator}" can only be used with integer or number attributes.`,
     );
     return;
   }
 
   if (
     stringOperators.includes(data.operator) &&
-    !leafTypes.some((type) => ["string", "semver", "date"].includes(type))
+    !leafTypes.some((type) => ["string", "semver", "date-time"].includes(type))
   ) {
     addIssue(context, `Operator "${data.operator}" can only be used with string-like attributes.`);
     return;
@@ -488,31 +581,27 @@ function validateAttributeAwareCondition(
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with string or semver attributes.`,
+      `Operator "${data.operator}" can only be used with string attributes, including format: semver.`,
     );
     return;
   }
 
   if (
     dateOperators.includes(data.operator) &&
-    !leafTypes.some((type) => ["string", "date"].includes(type))
+    !leafTypes.some((type) => ["string", "date-time"].includes(type))
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with string or date attributes.`,
+      `Operator "${data.operator}" can only be used with string attributes, including format: date-time.`,
     );
     return;
   }
 
   if (arrayMembershipOperators.includes(data.operator)) {
-    if (
-      !["primitive", "string", "semver", "date", "integer", "double", "boolean"].includes(
-        leafType || "",
-      )
-    ) {
+    if (leafTypes.length === 0 || leafTypes.some((type) => type !== "string")) {
       addIssue(
         context,
-        `Operator "${data.operator}" can only be used with primitive attribute values.`,
+        `Operator "${data.operator}" can only be used with string attributes or nested paths declared as strings. ${data.operator === "notIn" ? "Use a not group containing an or group of equals conditions for numbers." : "Use an or group of equals conditions for numbers."}`,
       );
       return;
     }
@@ -534,7 +623,7 @@ function validateAttributeAwareCondition(
     return;
   }
 
-  if (arrayOperators.includes(data.operator)) {
+  if ([...arrayOperators, ...arrayListOperators].includes(data.operator)) {
     const itemLeaf = getArrayItemLeaf(resolvedLeaf, schemasByKey);
     if (!itemLeaf) {
       addIssue(context, `Operator "${data.operator}" can only be used with array attributes.`);
@@ -547,7 +636,24 @@ function validateAttributeAwareCondition(
       return;
     }
 
-    if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
+    if (arrayListOperators.includes(data.operator)) {
+      if (Array.isArray(data.value))
+        data.value.forEach((value, index) => {
+          // Malformed candidates already have an indexed operand diagnostic.
+          if (
+            !isPrimitiveAttributeValue(value) ||
+            (typeof value === "number" && !Number.isFinite(value))
+          )
+            return;
+          if (!matchesLeafValue(itemLeaf, value, schemasByKey)) {
+            addIssue(
+              context,
+              `Value at index ${index} does not match the item schema of attribute "${data.attribute}".`,
+              ["value", index],
+            );
+          }
+        });
+    } else if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
       addIssue(context, `Value does not match the item schema of attribute "${data.attribute}".`);
     }
 
@@ -569,13 +675,18 @@ export function getConditionsZodSchema(
   projectConfig: ProjectConfig,
   attributesByKey: Record<string, Attribute>,
   schemasByKey: Record<string, Schema> = {},
+  featuresByKey: Record<string, ParsedFeature> = {},
+  variablesByKey: Record<string, ParsedVariable> = {},
+  segmentKeys: string[] = [],
 ) {
   const plainConditionZodSchema = z
     .object({
       attribute: refineWithMessage(
         z.string(),
         (value) => resolveAttributePath(value, attributesByKey, schemasByKey) !== null,
-        (value) => `Unknown attribute "${value}"`,
+        (value) =>
+          `Unknown attribute "${value}".${suggestKey(value, Object.keys(attributesByKey))}`,
+        () => UNKNOWN_REFERENCE,
       ),
       operator: z.enum([
         ...commonOperators,
@@ -585,10 +696,11 @@ export function getConditionsZodSchema(
         ...dateOperators,
         ...arrayMembershipOperators,
         ...arrayOperators,
+        ...arrayListOperators,
         ...operatorsWithoutValue,
       ]),
       value: z
-        .union([z.string(), z.array(z.string()), z.number(), z.boolean(), z.date(), z.null()])
+        .union([z.string(), z.array(z.unknown()), z.number(), z.boolean(), z.date(), z.null()])
         .optional(),
       regexFlags: z
         .string()
@@ -605,8 +717,40 @@ export function getConditionsZodSchema(
           },
         )
         .optional(),
+      compareTo: z.never().optional(),
     })
+    .strict()
     .superRefine((data, context) => {
+      for (const issue of findDisallowedOperators(
+        data,
+        projectConfig.disallowOperators || [],
+        [],
+      )) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: issue.path,
+          message: `Operator "${issue.operator}" is disallowed by project configuration.`,
+        });
+      }
+      const dateOperatorError = getDateOperatorError(
+        data.attribute,
+        data.operator,
+        attributesByKey,
+        schemasByKey,
+      );
+      if (dateOperatorError) {
+        addIssue(context, dateOperatorError, ["operator"]);
+        return;
+      }
+      // Diagnose the unsupported attribute before checking its membership values.
+      if (arrayMembershipOperators.includes(data.operator)) {
+        const leaf = resolveAttributePath(data.attribute, attributesByKey, schemasByKey);
+        const types = leaf ? getLeafTypes(leaf, schemasByKey) : [];
+        if (leaf && (types.length === 0 || types.some((type) => type !== "string"))) {
+          validateAttributeAwareCondition(data, context, attributesByKey, schemasByKey);
+          return;
+        }
+      }
       if (
         commonOperators.includes(data.operator) &&
         !(
@@ -632,7 +776,18 @@ export function getConditionsZodSchema(
         [...stringOperators, ...semverOperators].includes(data.operator) &&
         typeof data.value !== "string"
       ) {
-        addIssue(context, `when operator is "${data.operator}", value must be a string`);
+        addIssue(
+          context,
+          semverOperators.includes(data.operator) && typeof data.value === "number"
+            ? `when operator is "${data.operator}", value must be a string. Quote versions such as '5.5' so YAML keeps them as text.`
+            : `when operator is "${data.operator}", value must be a string`,
+        );
+      } else if (semverOperators.includes(data.operator) && !isValidVersion(data.value)) {
+        // The operators treat an unparseable version as no match, so the condition can never pass.
+        addIssue(
+          context,
+          `when operator is "${data.operator}", value must be a version the operators can compare, such as 5.5.0, 5.5 or v5.5.0`,
+        );
       }
 
       if (dateOperators.includes(data.operator)) {
@@ -642,17 +797,17 @@ export function getConditionsZodSchema(
           if (!isIsoDateString(data.value)) {
             addIssue(
               context,
-              `when operator is "${data.operator}", value must be a stringified date in ISO 8601 format`,
+              `when operator is "${data.operator}", use an ISO 8601 timestamp YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm and optional 1 to 9 fractional digits, for example 2026-11-27T00:00:00.123456Z`,
             );
           }
         } else if (data.value instanceof Date) {
-          if (isNaN(data.value.getTime())) {
+          if (getPortableTimestamp(data.value) === null) {
             addIssue(context, `when operator is "${data.operator}", value is a Date but invalid`);
           }
         } else {
           addIssue(
             context,
-            `when operator is "${data.operator}", value must be a stringified date in ISO 8601 format or a valid Date object`,
+            `when operator is "${data.operator}", use an ISO 8601 timestamp YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm and optional 1 to 9 fractional digits, for example 2026-11-27T00:00:00.123456Z`,
           );
         }
       }
@@ -669,8 +824,30 @@ export function getConditionsZodSchema(
         addIssue(context, `when operator is "${data.operator}", value must be an array of strings`);
       }
 
+      if (arrayListOperators.includes(data.operator)) {
+        if (!Array.isArray(data.value)) {
+          addIssue(
+            context,
+            `when operator is "${data.operator}", value must be an array of primitive values`,
+            ["value"],
+          );
+        } else
+          for (let index = 0; index < data.value.length; index++) {
+            const value = data.value[index];
+            if (
+              !isPrimitiveAttributeValue(value) ||
+              (typeof value === "number" && !Number.isFinite(value))
+            )
+              addIssue(
+                context,
+                `when operator is "${data.operator}", each candidate must be a string, number, boolean or null`,
+                ["value", index],
+              );
+          }
+      }
+
       if (!arrayMembershipOperators.includes(data.operator) && Array.isArray(data.value)) {
-        if (!["in", "notIn"].includes(data.operator)) {
+        if (!arrayListOperators.includes(data.operator)) {
           addIssue(context, `when operator is "${data.operator}", value must not be an array`);
         }
       }
@@ -680,18 +857,27 @@ export function getConditionsZodSchema(
           addIssue(context, `when operator is "${data.operator}", value must be a string`);
         } else {
           const portableRegexError = getPortableRegexError(data.value);
+          const backtrackingError = !portableRegexError && getBacktrackingError(data.value);
           if (portableRegexError) {
             addIssue(
               context,
               `when operator is "${data.operator}", value ${portableRegexError} in the cross-SDK regex subset`,
               ["value"],
+              "unportable_regex",
+            );
+          } else if (backtrackingError) {
+            addIssue(
+              context,
+              `when operator is "${data.operator}", value ${backtrackingError}.`,
+              ["value"],
+              "regex_backtracking",
             );
           }
         }
       } else if (data.regexFlags) {
         addIssue(
           context,
-          `when operator is nether "matches" nor "notMatches", regexFlags are not needed`,
+          `when operator is neither "matches" nor "notMatches", regexFlags are not needed`,
           ["regexFlags"],
         );
       }
@@ -713,28 +899,131 @@ export function getConditionsZodSchema(
       );
     });
 
-  const andOrNotConditionZodSchema = z.union([
-    z
-      .object({
-        and: z.array(z.lazy(() => conditionZodSchema)).min(1),
-      })
-      .strict(),
-    z
-      .object({
-        or: z.array(z.lazy(() => conditionZodSchema)).min(1),
-      })
-      .strict(),
-    z
-      .object({
-        not: z.array(z.lazy(() => conditionZodSchema)).min(1),
-      })
-      .strict(),
-  ]);
-
-  const everyoneZodSchema = z.literal("*");
-  const conditionZodSchema = z.union([andOrNotConditionZodSchema, plainConditionZodSchema]);
-
-  return z.union([conditionZodSchema, z.array(conditionZodSchema), everyoneZodSchema]);
+  const featureSchema = getFeatureConditionZodSchema(featuresByKey);
+  const variableSchema = getVariableConditionZodSchema(
+    featuresByKey,
+    variablesByKey,
+    schemasByKey,
+    projectConfig,
+  );
+  const segmentSchema = refineWithMessage(
+    z.string().min(1),
+    (key) => key !== "*" && segmentKeys.includes(key),
+    (key) =>
+      key === "*"
+        ? "`*` is only allowed as the entire `conditions` value."
+        : Object.prototype.hasOwnProperty.call(featuresByKey, key)
+          ? `Unknown segment "${key}". "${key}" is a feature: use { feature: ${key} }.`
+          : `Unknown segment "${key}".${suggestKey(key, segmentKeys)}`,
+    (key) => (key === "*" ? undefined : UNKNOWN_REFERENCE),
+  );
+  // Dispatch before parsing, keeping leaf diagnostics and their exact authored paths.
+  const expression: z.ZodTypeAny = z.lazy(() =>
+    z.unknown().transform((value, ctx) => {
+      let selected: z.ZodTypeAny;
+      if (typeof value === "string") selected = segmentSchema;
+      else if (value && typeof value === "object" && !Array.isArray(value)) {
+        const object = value as Record<string, unknown>;
+        const owns = (key: string) => Object.prototype.hasOwnProperty.call(object, key);
+        if (owns("attribute") && (owns("feature") || owns("variable"))) {
+          ctx.addIssue({
+            code: "custom",
+            message: "An attribute condition cannot also contain feature or variable.",
+            path: ["attribute"],
+          });
+          return z.NEVER;
+        }
+        const groups = ["and", "or", "not"].filter(owns);
+        if (groups.length)
+          selected = z
+            .object({
+              [groups[0]]: z
+                .array(expression)
+                .min(1, `\`${groups[0]}\` must contain at least one condition`),
+            })
+            .strict();
+        else if (owns("variable")) selected = variableSchema;
+        else if (owns("feature")) {
+          if (owns("operator")) {
+            ctx.addIssue({
+              code: "custom",
+              message: "To compare a variation, use variation: <value>",
+              path: ["operator"],
+            });
+            return z.NEVER;
+          }
+          selected = featureSchema;
+        } else selected = plainConditionZodSchema;
+      } else selected = plainConditionZodSchema;
+      const result = selected.safeParse(value, diagnosticParseOptions);
+      if (!result.success) {
+        for (const issue of result.error.issues) ctx.addIssue({ ...issue });
+        return z.NEVER;
+      }
+      return result.data;
+    }),
+  );
+  const schema = z.unknown().transform((value, ctx) => {
+    if (value === "*") return value;
+    const result = (
+      Array.isArray(value)
+        ? z.array(expression).min(1, "conditions must not be empty. Use '*' to match everything.")
+        : expression
+    ).safeParse(value, diagnosticParseOptions);
+    if (!result.success) {
+      for (const issue of result.error.issues) ctx.addIssue({ ...issue });
+      return z.NEVER;
+    }
+    return result.data;
+  });
+  const editorExpression: z.ZodTypeAny = z.lazy(() =>
+    z.union([
+      plainConditionZodSchema,
+      featureSchema,
+      variableSchema,
+      z
+        .string()
+        .min(1)
+        .regex(/^(?!\*$).+/),
+      z
+        .object({
+          and: z.array(editorExpression).min(1, "`and` must contain at least one condition"),
+        })
+        .strict(),
+      z
+        .object({
+          or: z.array(editorExpression).min(1, "`or` must contain at least one condition"),
+        })
+        .strict(),
+      z
+        .object({
+          not: z.array(editorExpression).min(1, "`not` must contain at least one condition"),
+        })
+        .strict(),
+    ]),
+  );
+  return Object.assign(schema as z.ZodType<Conditions>, {
+    editorSchema: z.union([
+      z.literal("*"),
+      editorExpression,
+      z
+        .array(editorExpression)
+        .min(1, "conditions must not be empty. Use '*' to match everything."),
+    ]),
+    withEntities: (
+      features: Record<string, ParsedFeature>,
+      variables: Record<string, ParsedVariable>,
+      segments: string[],
+    ) =>
+      getConditionsZodSchema(
+        projectConfig,
+        attributesByKey,
+        schemasByKey,
+        features,
+        variables,
+        segments,
+      ),
+  });
 }
 
 function regexFlagsRequired(operator: string): boolean {

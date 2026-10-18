@@ -1,0 +1,40 @@
+description: Version checks compare feature and global variables together
+environment: staging
+context:
+  userId: preview-client
+  version: 1.0.0-1b
+checks:
+  - feature: versionGate
+    enabled: true
+  - variable: clientVersion
+    operator: semverGreaterThan
+    compareTo:
+      feature: versionGate
+      variable: minimumVersion
+  - variable: versionMessage
+    operator: equals
+    value: Preview release
+  - segment: stableVersion
+    matches: false
+children:
+  - stickyVariables:
+      clientVersion: 1.0.0-10
+    checks:
+      - feature: versionGate
+        enabled: false
+      - variable: versionMessage
+        operator: equals
+        value: Upgrade available
+  - context:
+      version: 1.0.0
+    stickyVariables:
+      clientVersion: "1"
+    checks:
+      - variable: clientVersion
+        operator: semverEquals
+        value: 1.0.0
+      - variable: versionMessage
+        operator: equals
+        value: Stable release
+      - segment: stableVersion
+        matches: true

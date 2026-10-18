@@ -1,0 +1,9 @@
+description: Product flags
+
+tags: [web]
+
+compose:
+  checkout:
+    feature: checkout
+  delivery:
+    feature: delivery

@@ -2,88 +2,83 @@
 
 Full docs:
 
-- Configuration: <https://featurevisor.com/docs/configuration>
-- Environments: <https://featurevisor.com/docs/environments>
-- Tags: <https://featurevisor.com/docs/tags>
-- Targets: <https://featurevisor.com/docs/targets>
-- Projects: <https://featurevisor.com/docs/projects>
+- Configuration: <https://featurevisor.com/docs/configuration/>
+- Environments: <https://featurevisor.com/docs/environments/>
+- Projects: <https://featurevisor.com/docs/projects/>
 
-The single source of truth is `featurevisor.config.js` at the project root.
-
-```js
-/** @type {import('@featurevisor/core').ProjectConfig} */
-module.exports = {
-  environments: ['staging', 'production'],
-  tags: ['all', 'web', 'mobile'],
-};
-```
-
-Always inspect the active config before authoring:
+`featurevisor.config.js` at the project root is the single source of truth. Read the resolved values before authoring:
 
 ```bash
 npx featurevisor config --json --pretty
 ```
 
-## The four shape-changers
+The default scaffold:
 
-Four values determine the _shape_ of every file in the project — classify the project on these before writing anything:
+```js
+/** @type {import('@featurevisor/core').ProjectConfig} */
+module.exports = {
+  prettyState: true,
+}
+```
 
-| Value                | If set / changed                                                                                                                         |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `sets`               | `true` → every definition lives under `sets/<set>/…`; commands scope with `--set`. See [sets-promotions.md](sets-promotions.md).         |
-| `environments`       | Present → `rules`/`force`/`expose` are per-env maps. **Absent → they are direct lists** (no env level).                                  |
-| `parser`             | `"json"` → author `.json` files; custom parser → author in that format. See [custom-parsers.md](custom-parsers.md).                      |
-| `namespaceCharacter` | Key separator for namespaced entities — default `.`, sometimes `/`. Every key reference must use it. See [namespaces.md](namespaces.md). |
+No environments, and a `targets/all.yml` without selectors.
 
-The same request ("add a feature at 10%") produces structurally different files depending on these four — always detect first, then author.
+## The four shape changers
 
-## Keys you will encounter
+The same request ("add a feature at 10%") produces different files depending on these. Classify the project before writing anything.
 
-| Key                                                                                                                                      | Purpose                                                                                                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `environments`                                                                                                                           | Optional array of env names; omit for no environments                                                                             |
-| `tags`                                                                                                                                   | Array of tag names — features must tag themselves with a subset                                                                   |
-| `sets`                                                                                                                                   | `true` → each `sets/<set>/` directory is an independent project tree                                                              |
-| `promotionFlows`                                                                                                                         | Optional allowed set promotion directions, for example dev → staging                                                              |
-| `namespaceCharacter`                                                                                                                     | Separator for namespaced keys (default `.`)                                                                                       |
-| `targetsDirectoryPath`                                                                                                                   | Directory containing target definitions (default `targets/`)                                                                      |
-| `parser`                                                                                                                                 | `"json"`, `"yml"` (default), or custom parser                                                                                     |
-| `defaultBucketBy`                                                                                                                        | Default `bucketBy` for features (defaults to `userId`)                                                                            |
-| `enforceCatchAllRule`                                                                                                                    | Lint requires a `segments: '*'` last rule in every feature/env                                                                    |
-| `allowFeatureAndGlobalVariableKeyCollisions`                                                                                             | Allow a feature and global variable to share a key (default `false`)                                                              |
-| `reservedKeys`                                                                                                                           | Exact feature, global variable, and feature variable keys rejected by linting; defaults to `feature`, `variation`, and `variable` |
-| `requireOverrideKeysInFeatures`                                                                                                          | Lint requires a `key` on every variable override inside a feature (default `false`)                                               |
-| `attributesDirectoryPath`                                                                                                                | default `attributes/`                                                                                                             |
-| `segmentsDirectoryPath`                                                                                                                  | default `segments/`                                                                                                               |
-| `featuresDirectoryPath`                                                                                                                  | default `features/`                                                                                                               |
-| `variablesDirectoryPath`                                                                                                                 | default `variables/` for global variables                                                                                         |
-| `groupsDirectoryPath`                                                                                                                    | default `groups/`                                                                                                                 |
-| `schemasDirectoryPath`                                                                                                                   | default `schemas/`                                                                                                                |
-| `setsDirectoryPath`                                                                                                                      | default `sets/`                                                                                                                   |
-| `testsDirectoryPath`                                                                                                                     | default `tests/`                                                                                                                  |
-| `datafilesDirectoryPath`                                                                                                                 | default `datafiles/`                                                                                                              |
-| `catalogDirectoryPath`                                                                                                                   | default `catalog/`                                                                                                                |
-| `datafileNamePattern`                                                                                                                    | default `featurevisor-%s.json`                                                                                                    |
-| `revisionFileName`                                                                                                                       | default `REVISION`                                                                                                                |
-| `stateDirectoryPath`                                                                                                                     | default `.featurevisor/`                                                                                                          |
-| `prettyState`, `prettyDatafile`                                                                                                          | pretty-printing toggles                                                                                                           |
-| `stringify`                                                                                                                              | stringify conditions in datafiles for lazy client-side parsing (default `true`)                                                   |
-| `maxVariableStringLength`, `maxVariableArrayStringifiedLength`, `maxVariableObjectStringifiedLength`, `maxVariableJSONStringifiedLength` | Per-variable size caps                                                                                                            |
-| `plugins`                                                                                                                                | Custom CLI subcommands — see [plugins-datasource.md](plugins-datasource.md)                                                       |
-| `adapter`                                                                                                                                | Custom datasource adapter class; defaults to the filesystem (Git) adapter                                                         |
+| Value                | Effect                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sets`               | `true` puts every definition under `sets/<set>/` and commands take `--set` ([sets-promotions.md](sets-promotions.md))                             |
+| `environments`       | when present, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment, and tests need `environment` |
+| `parser`             | `'yml'` (default), `'json'`, or a custom parser ([custom-parsers.md](custom-parsers.md))                                                          |
+| `namespaceCharacter` | separator for keys from subdirectories, default `.` ([namespaces.md](namespaces.md))                                                              |
 
-## Tags
+`environments`, when present, is a nonempty list of unique names, such as `['staging', 'production']`. Sets and environments are independent: a Sets project may or may not have environments.
 
-Features and global variables can list tags. Targets use tags to decide which definitions are included in each generated datafile.
+## Other options
 
-Tag a feature with `all` (or your project's chosen catch-all) only if every consumer should load it. Otherwise tag by surface (`web`, `ios`, `android`, `internal-tools`, etc.).
+| Option                                                        | Default                            | Purpose                                                                                                                       |
+| ------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `tags`                                                        | `['all']`                          | tags definitions may use ([tags.md](tags.md))                                                                                 |
+| `defaultBucketBy`                                             | `userId`                           | `bucketBy` for features that omit it                                                                                          |
+| `promotionFlows`                                              | none                               | allowed promotion directions between sets, such as `[{ from: 'dev', to: 'staging' }]`                                         |
+| `enforceCatchAllRule`                                         | `false`                            | lint requires every rule list to end with `conditions: '*'`                                                                   |
+| `requireOverrideKeysInFeatures`                               | `false`                            | lint requires a `key` on every feature variable override                                                                      |
+| `allowFeatureAndVariableKeyCollisions`                        | `false`                            | allow a feature and a global variable to share a key                                                                          |
+| `reservedKeys`                                                | `feature`, `variation`, `variable` | keys lint rejects for features and variables                                                                                  |
+| `disallowOperators`                                           | `[]`                               | operators lint and build reject, for consumers on older SDKs ([operators.md](operators.md#restricting-operators-per-project)) |
+| `precomputeMutations`                                         | `true`                             | resolve global variable mutations at build time. `false` emits runtime programs, which need newer SDKs                        |
+| `stringify`                                                   | `true`                             | store conditions as strings in datafiles, parsed lazily by SDKs                                                               |
+| `prettyState`                                                 | `true`                             | format state files                                                                                                            |
+| `prettyDatafile`                                              | `false`                            | format datafiles                                                                                                              |
+| `maxVariableStringLength` and the other `maxVariable*` limits | none                               | lint size limits for variable values                                                                                          |
+| `catalogBasePath`                                             | `/`                                | URL path when the Catalog is hosted under a prefix                                                                            |
+| `plugins`                                                     | `[]`                               | custom CLI commands ([plugins-datasource.md](plugins-datasource.md))                                                          |
+| `adapter`                                                     | filesystem                         | custom datasource adapter                                                                                                     |
 
-## Targets
+Directories: `attributesDirectoryPath`, `segmentsDirectoryPath`, `featuresDirectoryPath`, `variablesDirectoryPath`, `schemasDirectoryPath`, `targetsDirectoryPath`, `testsDirectoryPath`, `setsDirectoryPath`, `datafilesDirectoryPath`, `stateDirectoryPath` and `catalogDirectoryPath`. File names: `datafileNamePattern` (default `featurevisor-%s.json`) and `revisionFileName` (default `REVISION`).
 
-Targets define generated datafiles under `targets/`. They can include optional tag filters, feature key filters (`includeFeatures` / `excludeFeatures`), global variable key filters (`includeVariables` / `excludeVariables`), and build-time context. See <https://featurevisor.com/docs/targets>.
+## Environments
 
-## Sets and promotions
+Add environments when the same definitions need different rules per deployment stage:
 
-When `sets: true`, the project is split into independent trees under `sets/<set>/` with its own `attributes/`, `segments/`, `features/`, `variables/`, `targets/`, and `tests/`. The same entity key can exist in several sets with different definitions. `npx featurevisor promote --from=<set> --to=<set>` copies definitions plus their full dependency closure, previewing by default and writing only with `--apply`; `promotionFlows` restricts allowed directions.
+```js
+module.exports = {
+  environments: ['staging', 'production'],
+}
+```
 
-**Read [sets-promotions.md](sets-promotions.md) in full before working in a sets project** — it covers when sets are (and aren't) the right tool, layout, per-set builds and state, `--set` scoping, promotion filters, conflicts, and `promotable: false` semantics.
+```yaml
+rules:
+  staging:
+    - key: everyone
+      conditions: '*'
+      percentage: 100
+  production:
+    - key: everyone
+      conditions: '*'
+      percentage: 10
+```
+
+Adding environments to an existing project changes every feature's `rules`, `force` and `expose`, every global variable's `overrides`, and every test assertion. It is a migration, so propose it explicitly rather than as a side effect. When lanes need separate review and promotion rather than per environment rules, Sets fit better ([sets-promotions.md](sets-promotions.md)).

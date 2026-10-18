@@ -3,14 +3,14 @@ tags:
   - all
   - platform
 
-bucketBy: user/id
+bucketBy: user.id
 
 rules:
   staging:
     - key: enabled
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: disabled
-      segments: "*"
+      conditions: "*"
       percentage: 0

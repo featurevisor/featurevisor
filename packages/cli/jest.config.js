@@ -10,4 +10,10 @@ module.exports = {
     ],
   },
   testMatch: ["<rootDir>/src/**/*.spec.ts"],
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@featurevisor/core$": "<rootDir>/../core/src",
+    "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+    "^@featurevisor/parsers$": "<rootDir>/../parsers/src",
+  },
 };

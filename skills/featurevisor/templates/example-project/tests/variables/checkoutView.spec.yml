@@ -1,0 +1,27 @@
+variable: checkoutView
+
+assertions:
+  - key: nl-control
+    description: Dutch shoppers in the control get local payment methods
+    # `at` fixes the bucket for features read through the composition.
+    at: 25
+    context:
+      userId: test-user-nl
+      country: nl
+    expectedValue:
+      enabled: true
+      variation: control
+      paymentMethods: [paypal, ideal]
+      supportEmail: support-nl@example.com
+
+  - key: outside-rollout
+    description: Outside the rollout, checkout members are disabled values
+    at: 50
+    context:
+      userId: test-user-us
+      country: us
+    expectedValue:
+      enabled: false
+      variation: null
+      paymentMethods: null
+      supportEmail: support@example.com

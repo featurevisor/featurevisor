@@ -1,0 +1,14 @@
+variable: gatedPolicy
+assertions:
+  - description: a matching gate reads the evaluated source
+    context: { country: nl }
+    expectedValue: { limit: 75 }
+  - description: an unmet gate returns the validated disabled value
+    context: { country: us }
+    expectedValue: { limit: 0 }
+    expectedEvaluation:
+      reason: conditions_unmet
+  - description: whole variable stickies bypass the gate
+    context: { country: us }
+    stickyVariables: { gatedPolicy: { limit: 99 } }
+    expectedValue: { limit: 99 }

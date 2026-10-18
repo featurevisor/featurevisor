@@ -1,0 +1,13 @@
+description: Live chat widget, shipped dark in app 5.5 and enabled by version
+
+bucketBy: userId
+
+rules:
+  - key: modern-app
+    description: Only builds that contain the widget
+    conditions: modernApp
+    percentage: 100
+
+  - key: everyone
+    conditions: "*"
+    percentage: 0

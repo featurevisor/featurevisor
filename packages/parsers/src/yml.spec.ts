@@ -1,6 +1,18 @@
 import { ymlParser } from "./yml";
 
 describe("core :: parser :: ymlParser", () => {
+  it.each(["compose", "properties", "variablesSchema", "variables", "mutate", "context"])(
+    "preserves an authored __proto__ own key under %s without prototype assignment",
+    (field) => {
+      const parsed = ymlParser.parse<Record<string, Record<string, unknown>>>(
+        `${field}:\n  __proto__:\n    polluted: true\n`,
+      );
+      expect(Object.keys(parsed[field])).toEqual(["__proto__"]);
+      expect(Object.prototype.hasOwnProperty.call(parsed[field], "__proto__")).toBe(true);
+      expect(Object.getPrototypeOf(parsed[field])).toBe(Object.prototype);
+      expect(({} as any).polluted).toBeUndefined();
+    },
+  );
   it("should parse YAML string into object", () => {
     const yamlString = `
 foo: 1
@@ -59,6 +71,85 @@ arr:
       }
     });
 
+    it("should leave out undefined properties, as a plain write does", () => {
+      fs.writeFileSync(
+        tempFile,
+        "description: Checkout # kept\nrules:\n  - key: everyone\nvariations:\n  - value: control\n",
+      );
+
+      const result = ymlParser.stringify(
+        {
+          description: "Checkout",
+          rules: [{ key: "everyone", description: undefined }],
+          variations: undefined,
+        },
+        tempFile,
+      );
+
+      expect(result).toBe("description: Checkout # kept\nrules:\n  - key: everyone\n");
+      expect(ymlParser.parse(result)).not.toHaveProperty("variations");
+    });
+
+    it("should keep blank lines between entries and list items", () => {
+      fs.writeFileSync(
+        tempFile,
+        [
+          "description: Checkout",
+          "",
+          "bucketBy: userId",
+          "",
+          "rules:",
+          "  - key: internal",
+          "    percentage: 100",
+          "",
+          "  - key: everyone",
+          "    percentage: 0",
+          "",
+        ].join("\n"),
+      );
+
+      const result = ymlParser.stringify(
+        {
+          description: "Checkout",
+          tags: ["all"],
+          bucketBy: "userId",
+          rules: [
+            { key: "internal", percentage: 100 },
+            { key: "everyone", percentage: 100 },
+          ],
+        },
+        tempFile,
+      );
+
+      // The new tags key follows the file's blank line between every entry
+      expect(result).toBe(
+        [
+          "description: Checkout",
+          "",
+          "tags:",
+          "  - all",
+          "",
+          "bucketBy: userId",
+          "",
+          "rules:",
+          "  - key: internal",
+          "    percentage: 100",
+          "",
+          "  - key: everyone",
+          "    percentage: 100",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it("should not put a blank line above the first entry", () => {
+      fs.writeFileSync(tempFile, "description: Checkout\n\nbucketBy: userId\n");
+
+      const result = ymlParser.stringify({ bucketBy: "deviceId" }, tempFile);
+
+      expect(result).toBe("bucketBy: deviceId\n");
+    });
+
     it("should save exactly the new object; existing file is only for ordering/comments", () => {
       const beforeYaml =
         `
@@ -88,6 +179,7 @@ array:
         `
 foo: 42 # foo comment here
 bar: new
+
 ##
 # Comment above nested
 #

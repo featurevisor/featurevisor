@@ -1,94 +1,55 @@
-# Segments reference
+# Segments
 
-Full docs: <https://featurevisor.com/docs/segments>
+Full docs: <https://featurevisor.com/docs/segments/>
 
-Segments are reusable named conditions. They live in `segments/<key>.yml` and are referenced from feature rules.
-
-For the list of operators, see [operators.md](operators.md).
-
-## Minimum segment
+A segment names an audience once, so features and variables can share it. Segments live in `segments/<key>.yml`, and a subdirectory adds a namespace to the key, such as `countries.netherlands` ([namespaces.md](namespaces.md)).
 
 ```yaml
-description: Users from The Netherlands
+description: Users in the Netherlands
+
 conditions:
   - attribute: country
     operator: equals
     value: nl
 ```
 
-## Conditions
-
-A single condition has:
-
-- `attribute` — name of the attribute defined under `attributes/` (use dot-paths for nested object attributes, e.g. `account.plan`)
-- `operator` — see [operators.md](operators.md)
-- `value` — type depends on operator (string, number, array, ISO date string, semver string, regex string)
-- `regexFlags` — only for `matches` / `notMatches`
-
-Multiple sibling conditions are implicitly `and`-ed:
+Reference it by key wherever conditions appear. A bare string is always a segment:
 
 ```yaml
+rules:
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+```
+
+## Conditions
+
+Segments use the full [conditions grammar](conditions.md): attribute, segment, feature and variable leaves, combined with lists (AND), `and`, `or` and `not`.
+
+```yaml
+description: Adult iPhone users in the Netherlands or Germany, not on the newsletter
+
 conditions:
-  - attribute: country
-    operator: equals
-    value: us
   - attribute: device
     operator: equals
     value: iPhone
+  - attribute: age
+    operator: greaterThanOrEquals
+    value: 18
+  - or:
+      - attribute: country
+        operator: equals
+        value: nl
+      - attribute: country
+        operator: equals
+        value: de
+  - not:
+      - attribute: subscribedToNewsletter
+        operator: equals
+        value: true
 ```
 
-Equivalent explicit form:
-
-```yaml
-conditions:
-  and:
-    - attribute: country
-      operator: equals
-      value: us
-    - attribute: device
-      operator: equals
-      value: iPhone
-```
-
-### or
-
-```yaml
-conditions:
-  or:
-    - attribute: country
-      operator: equals
-      value: us
-    - attribute: country
-      operator: equals
-      value: ca
-```
-
-### not
-
-```yaml
-conditions:
-  not:
-    - attribute: country
-      operator: equals
-      value: us
-```
-
-Multiple direct children are treated as an implicit `and`, then negated:
-
-```yaml
-conditions:
-  not:
-    - attribute: country
-      operator: equals
-      value: us
-    - attribute: device
-      operator: equals
-      value: iPhone
-```
-
-This means "not both US and iPhone". It still matches US non-iPhone users and iPhone users outside the US.
-
-For "none of these match", wrap the children in `or`:
+`not` negates the AND of its children. `not: [a, b]` means "not both". For "none of these", wrap them in `or`:
 
 ```yaml
 conditions:
@@ -102,54 +63,65 @@ conditions:
           value: ca
 ```
 
-### Nested combinations
+A segment can reference another segment, a feature or a variable:
 
 ```yaml
+description: Paying accounts with live chat
+
 conditions:
-  - and:
-      - attribute: device
-        operator: equals
-        value: iPhone
-  - or:
-      - attribute: country
-        operator: equals
-        value: us
-      - attribute: country
-        operator: equals
-        value: ca
-  - not:
-      - attribute: kyc
-        operator: equals
-        value: pending
+  - payingAccounts
+  - feature: liveChat
 ```
 
-Arbitrarily deep nesting is allowed.
-
-### Targeting everyone
-
-```yaml
-description: Everyone
-conditions: '*'
-```
-
-Equivalent shorthand to a segment whose conditions always match.
+Lint rejects cycles, including mixed ones through features and variables. Operators and their type rules: [operators.md](operators.md).
 
 ## Authoring tips
 
-- **Reuse first.** Before authoring a new segment, run `npx featurevisor list --segments --json --pretty` and `npx featurevisor find-duplicate-segments` to see if one exists. Reusing existing segments keeps targeting consistent across features.
-- **Name by intent**, not by definition. `proAccounts` beats `planEqualsPro` — definitions change, intent doesn't.
-- **Prefer narrow segments composed in rules** over one mega-segment. Rules can `and`/`or`/`not` multiple segment names ([features.md](features.md#segments-in-rules)) — composing at the rule level keeps each segment reusable.
-- After creating or editing a segment, run `npx featurevisor lint`.
+- **Reuse first.** Run `npx featurevisor list --segments --json` and `npx featurevisor find-duplicate-segments` before creating one.
+- **Name by intent.** `payingAccounts` outlives `planEqualsPro`.
+- **Keep segments small and combine them in rules.** `conditions: { and: [iphoneUsers, netherlands] }` keeps each segment reusable.
+- Attributes referenced in a segment must be declared in `attributes/`, and values must fit their types and constraints.
 
-## Archiving
+## Testing a segment
 
 ```yaml
+segment: netherlands
+
+assertions:
+  - key: nl
+    description: The Netherlands matches
+    context:
+      country: nl
+    expectedToMatch: true
+
+  - key: elsewhere
+    matrix:
+      country: [de, us]
+    description: ${{ country }} does not match
+    context:
+      country: ${{ country }}
+    expectedToMatch: false
+```
+
+A segment that depends on a feature or variable can fix those inputs with `at`, `stickyFeatures` and `stickyVariables`. Add `environment` when the project configures environments. See [testing.md](testing.md#segment-specs).
+
+## Before renaming, archiving or deleting
+
+```bash
+npx featurevisor find-usage --segment=netherlands
+```
+
+This lists features and global variables that use the segment. An archived segment is left out of every datafile, so a rule or override using it would never match, and `not` around it would match everyone. Lint therefore rejects a reference to an archived segment from any definition or spec that is not archived itself, with `archived_reference`. Remove every reference in the same change, or archive the definitions that use it too, and delete the segment's specs. Lint checks an archived segment for its shape only, without resolving what its conditions name. Keep the archived file rather than deleting it, so the key is not reused with another meaning.
+
+```yaml
+description: Users in the Netherlands
+
 archived: true
-description: Users from The Netherlands
+
 conditions:
   - attribute: country
     operator: equals
     value: nl
 ```
 
-Archived segments cannot be referenced by features (lint will catch any reference).
+`npx featurevisor list --segments --archived=true` lists archived segments. `npx featurevisor find-usage --unused-segments` finds active segments nothing active references. Archived ones are left out, and `find-usage` marks archived users with `(archived)`.
