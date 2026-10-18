@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/sdk",
   "sideEffects": false,
-  "version": "3.8.0",
+  "version": "4.0.0",
   "description": "Featurevisor SDK for Node.js and the browser",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -56,6 +56,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "3.8.0"
+    "@featurevisor/types": "4.0.0"
   }
 }

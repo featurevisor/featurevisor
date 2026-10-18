@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "3.11.0",
+  "version": "4.0.0",
   "description": "Project configuration, validation and datafile building for Featurevisor tooling",
   "engines": {
     "node": ">=24"
@@ -47,10 +47,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/catalog": "3.9.0",
-    "@featurevisor/parsers": "3.2.0",
-    "@featurevisor/sdk": "3.8.0",
-    "@featurevisor/types": "3.8.0",
+    "@featurevisor/catalog": "4.0.0",
+    "@featurevisor/parsers": "4.0.0",
+    "@featurevisor/sdk": "4.0.0",
+    "@featurevisor/types": "4.0.0",
     "tar": "^7.5.22",
     "yargs": "^18.0.0",
     "zod": "^4.4.3"

@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/types",
   "sideEffects": false,
-  "version": "3.8.0",
+  "version": "4.0.0",
   "description": "Shared TypeScript types for Featurevisor definitions, datafiles and context",
   "main": "src/index.js",
   "module": "src/index.js",
