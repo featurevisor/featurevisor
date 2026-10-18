@@ -172,6 +172,33 @@ describe("core: projectConfig", () => {
     }
   });
 
+  it("validates allowedConditions", () => {
+    expect(getProjectConfig(createTempProject("module.exports = {};")).allowedConditions).toBe(
+      undefined,
+    );
+    const root = createTempProject(
+      'module.exports = { allowedConditions: { rules: ["segment"], segments: [] } };',
+    );
+    expect(getProjectConfig(root).allowedConditions).toEqual({ rules: ["segment"], segments: [] });
+    expect(getProjectConfigForSet(getProjectConfig(root), "staging").allowedConditions).toEqual({
+      rules: ["segment"],
+      segments: [],
+    });
+    for (const [invalid, message] of [
+      ["[]", "Invalid allowedConditions: expected an object"],
+      ['{ rule: ["segment"] }', "Invalid allowedConditions.rule: unknown location. Use one of:"],
+      ['{ rules: "segment" }', "Invalid allowedConditions.rules: expected an array"],
+      ['{ rules: ["segments"] }', "Invalid allowedConditions.rules[0]: segments. Use one of:"],
+      [
+        '{ rules: ["segment", "segment"] }',
+        'Invalid allowedConditions.rules: duplicate kind "segment"',
+      ],
+    ]) {
+      const invalidRoot = createTempProject(`module.exports = { allowedConditions: ${invalid} };`);
+      expect(() => getProjectConfig(invalidRoot)).toThrow(message);
+    }
+  });
+
   it("accepts custom and empty reservedKeys", () => {
     const customRoot = createTempProject('module.exports = { reservedKeys: ["custom"] };');
     expect(getProjectConfig(customRoot).reservedKeys).toEqual(["custom"]);

@@ -8,6 +8,8 @@ import type { Plugin } from "../cli";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 import { comparisonOperators } from "../linter/comparisonOperators";
 import { assertNoGroupDefinitions, REMOVED_GROUPS_MESSAGE } from "./removedGroups";
+import { assertAllowedConditions } from "./allowedConditions";
+import type { AllowedConditions } from "./allowedConditions";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -78,6 +80,8 @@ export interface ProjectConfig {
   disallowOperators?: string[];
   allowFeatureAndVariableKeyCollisions?: boolean;
   requireOverrideKeysInFeatures?: boolean;
+  /** Kinds of condition each location accepts. An omitted location accepts every kind. */
+  allowedConditions?: AllowedConditions;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -106,6 +110,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     disallowOperators: [],
     allowFeatureAndVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
+    allowedConditions: undefined,
 
     adapter: FilesystemAdapter,
 
@@ -227,6 +232,10 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     throw new Error(
       `Invalid requireOverrideKeysInFeatures: ${finalConfig.requireOverrideKeysInFeatures}. It must be a boolean.`,
     );
+  }
+
+  if (typeof finalConfig.allowedConditions !== "undefined") {
+    assertAllowedConditions(finalConfig.allowedConditions);
   }
 
   if (!Array.isArray(finalConfig.reservedKeys)) {

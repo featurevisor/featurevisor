@@ -15,6 +15,7 @@ import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema } from "./conditionSchema";
 import { getArchivedReferenceIssues, getDeprecatedReferenceWarnings } from "./definitionReferences";
 import type { ReferenceIndex, ReferringEntityType } from "./definitionReferences";
+import { getConditionKindIssues } from "./conditionKinds";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
@@ -683,6 +684,27 @@ export async function lintProject(
       });
     }
   }
+  async function reportConditionKinds(
+    entityType: "segment" | "feature" | "variable",
+    key: string,
+    fullPath: string,
+    definition: unknown,
+  ) {
+    for (const issue of getConditionKindIssues(
+      entityType,
+      definition,
+      projectConfig.allowedConditions,
+    )) {
+      await reportSimpleError({
+        entityType,
+        key,
+        fullPath,
+        message: issue.message,
+        pathParts: issue.path,
+        code: "disallowed_condition",
+      });
+    }
+  }
   const isArchived = (definition: unknown) =>
     !!definition &&
     typeof definition === "object" &&
@@ -746,6 +768,7 @@ export async function lintProject(
           });
         }
         await reportArchivedReferences("segment", key, fullPath, parsed);
+        await reportConditionKinds("segment", key, fullPath, parsed);
         reportDeprecatedReferences("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
@@ -843,6 +866,7 @@ export async function lintProject(
           });
         }
         await reportArchivedReferences("feature", key, fullPath, parsed);
+        await reportConditionKinds("feature", key, fullPath, parsed);
         reportDeprecatedReferences("feature", key, fullPath, parsed);
         if (options.v3MutationOrder) {
           for (const change of getMutationOrderChanges(parsed)) {
@@ -942,6 +966,7 @@ export async function lintProject(
           diagnosticParseOptions,
         );
         await reportArchivedReferences("variable", key, fullPath, parsed);
+        await reportConditionKinds("variable", key, fullPath, parsed);
         reportDeprecatedReferences("variable", key, fullPath, parsed);
 
         if (!result.success && "error" in result) {
