@@ -60,11 +60,13 @@ jobs:
           node scripts/release-version.mjs
 
       - name: Publish
+        # from-package publishes only versions missing from npm, so a partly failed
+        # publish can be resumed by running this workflow again.
         run: |
           unset NODE_AUTH_TOKEN
           rm -f .npmrc
           npm config delete always-auth 2>/dev/null || true
-          npx lerna publish --no-private from-git --yes
+          npx lerna publish from-package --no-private --yes
 
       - name: Push back to GitHub
         run: |
