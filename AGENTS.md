@@ -17,8 +17,12 @@ make typecheck
 make format
 ```
 
-make check runs installation, build, tests, lint and typechecks. make format
-formats examples and package sources. Lerna coordinates npm workspaces.
+CI runs installation, build, lint, typechecks and tests only, to stay fast.
+make check runs the same steps, then make test-extended for the slower checks:
+compiled package consumers, browsers, CLI integration, JavaScript conformance,
+editor schemas, release configuration and bundle sizes. Run make check locally
+before publishing. The browser checks need a local Chromium compatible browser.
+There are no Git commit hooks. make format formats examples and package sources. Lerna coordinates npm workspaces.
 Package directories also expose their own
 build, test and typecheck scripts. SDK and Core source lives under packages.
 Internal projects under examples exercise supported authoring and CLI flows.

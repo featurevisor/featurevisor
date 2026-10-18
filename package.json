@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "test": "lerna run test && npm run test:skills && npm run test:package-exports && npm run test:packed-packages && npm run test:react-minimum && npm run test:browser",
+    "test": "lerna run test && npm run test:skills",
     "test:skills": "node --test skills/tests/*.test.mjs",
     "test:react-minimum": "node scripts/test-react-minimum.mjs",
     "test:package-exports": "node scripts/test-package-exports.mjs",

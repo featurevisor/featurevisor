@@ -260,8 +260,8 @@ The script copies Example 1 to temporary directories and executes the focused
 spec with `precomputeMutations` set to both true and false. It checks the emitted
 representations, Target dependencies, hashes, explicit expected values and
 portable runner reports. It never changes the original project configuration.
-The native sweep remains an optional local check outside `make check`. CI runs
-the JavaScript only mode without installing native SDK toolchains.
+The native sweep remains an optional local check outside `make check`, which
+runs the JavaScript only mode without native SDK toolchains. CI does not run it.
 
 ## Maintaining the supplemental fixture
 
